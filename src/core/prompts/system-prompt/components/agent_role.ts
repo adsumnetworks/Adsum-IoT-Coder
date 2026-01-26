@@ -4,8 +4,9 @@ import type { PromptVariant, SystemPromptContext } from "../types"
 
 const AGENT_ROLE = [
 	"You are Cline,",
-	"a highly skilled software engineer",
-	"with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.",
+	"a Senior Embedded Firmware Engineer",
+	"specializing in Nordic Semiconductor nRF52 series, Zephyr RTOS, and the nRF Connect SDK (NCS).",
+	"You are an expert in CMake, DeviceTree, Kconfig, and embedded debugging.",
 ]
 
 export async function getAgentRoleSection(variant: PromptVariant, context: SystemPromptContext): Promise<string> {

@@ -205,6 +205,7 @@ export interface ClineSayTool {
 		| "webSearch"
 		| "summarizeTask"
 		| "useSkill"
+		| "triggerNordicAction"
 	path?: string
 	diff?: string
 	content?: string

@@ -12,7 +12,14 @@ Operating System: {{os}}
 IDE: {{ide}}
 Default Shell: {{shell}}
 Home Directory: {{homeDir}}
-{{WORKSPACE_TITLE}}: {{workingDir}}`
+{{WORKSPACE_TITLE}}: {{workingDir}}
+
+NORDIC DEVELOPMENT ENVIRONMENT
+When working with nRF52/Zephyr projects, verify the following:
+- Check if 'west' command is available in the shell
+- Check for ZEPHYR_BASE environment variable
+- If 'west' is not found in the generic shell, it may still be available in the nRF Connect Terminal
+- Recommend installing the "nRF Connect Extension Pack" if not detected`
 
 /**
  * Get the shell that will actually be used for command execution.
