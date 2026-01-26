@@ -371,7 +371,12 @@ export const ChatRowContent = memo(
 
 		const tool = useMemo(() => {
 			if (message.ask === "tool" || message.say === "tool") {
-				return JSON.parse(message.text || "{}") as ClineSayTool
+				try {
+					return JSON.parse(message.text || "{}") as ClineSayTool
+				} catch {
+					console.error("Failed to parse tool message:", message.text)
+					return null
+				}
 			}
 			return null
 		}, [message.ask, message.say, message.text])
@@ -682,6 +687,22 @@ export const ChatRowContent = memo(
 							<div className={HEADER_CLASSNAMES}>
 								<LightbulbIcon className="size-2" />
 								<span className="font-bold">Cline loaded the skill:</span>
+							</div>
+							<div className="bg-code border border-editor-group-border overflow-hidden rounded-xs py-[9px] px-2.5">
+								<span className="ph-no-capture font-medium">{tool.path}</span>
+							</div>
+						</div>
+					)
+				case "triggerNordicAction":
+					return (
+						<div>
+							<div className={HEADER_CLASSNAMES}>
+								{toolIcon("wrench")}
+								<span className="font-bold">
+									{message.type === "ask"
+										? "Cline wants to trigger nRF Connect action:"
+										: "Cline triggered nRF Connect action:"}
+								</span>
 							</div>
 							<div className="bg-code border border-editor-group-border overflow-hidden rounded-xs py-[9px] px-2.5">
 								<span className="ph-no-capture font-medium">{tool.path}</span>

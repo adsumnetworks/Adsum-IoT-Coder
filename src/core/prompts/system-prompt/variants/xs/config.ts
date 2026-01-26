@@ -49,6 +49,7 @@ export const config = createVariant(ModelFamily.XS)
 		ClineDefaultTool.ASK,
 		ClineDefaultTool.ATTEMPT,
 		ClineDefaultTool.PLAN_MODE,
+		ClineDefaultTool.NORDIC_ACTION,
 	)
 	.placeholders({
 		MODEL_FAMILY: ModelFamily.XS,

@@ -21,6 +21,9 @@
 			"outFiles": [
 				"${workspaceFolder}/dist/**/*.js"
 			],
+			"skipFiles": [
+				"**/node_modules/**"
+			],
 			"preLaunchTask": "${defaultBuildTask}",
 			"envFile": "${workspaceFolder}/.env",
 			"env": {
