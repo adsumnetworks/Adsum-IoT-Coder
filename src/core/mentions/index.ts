@@ -1,7 +1,6 @@
 import { diagnosticsToProblemsString } from "@integrations/diagnostics"
 import { extractTextFromFile } from "@integrations/misc/extract-text"
 import { openFile } from "@integrations/misc/open-file"
-import { UrlContentFetcher } from "@services/browser/UrlContentFetcher"
 import { telemetryService } from "@services/telemetry"
 import { mentionRegexGlobal } from "@shared/context-mentions"
 import { WorkspaceRoot } from "@shared/multi-root/types"
@@ -12,7 +11,6 @@ import { isBinaryFile } from "isbinaryfile"
 import * as path from "path"
 import { HostProvider } from "@/hosts/host-provider"
 import { getLatestTerminalOutput } from "@/hosts/vscode/terminal/get-latest-output"
-import { ShowMessageType } from "@/shared/proto/host/window"
 import { DiagnosticSeverity } from "@/shared/proto/index.cline"
 import { isDirectory } from "@/utils/fs"
 import { getCwd } from "@/utils/path"
@@ -58,7 +56,6 @@ export async function getFileMentionFromPath(filePath: string) {
 export async function parseMentions(
 	text: string,
 	cwd: string,
-	urlContentFetcher: UrlContentFetcher,
 	fileContextTracker?: FileContextTracker,
 	workspaceManager?: WorkspaceRootManager,
 ): Promise<string> {
@@ -92,18 +89,7 @@ export async function parseMentions(
 	})
 
 	const urlMention = Array.from(mentions).find((mention) => mention.startsWith("http"))
-	let launchBrowserError: Error | undefined
-	if (urlMention) {
-		try {
-			await urlContentFetcher.launchBrowser()
-		} catch (error) {
-			launchBrowserError = error
-			HostProvider.window.showMessage({
-				type: ShowMessageType.ERROR,
-				message: `Error fetching content for ${urlMention}: ${error.message}`,
-			})
-		}
-	}
+	// Browser support removed - skipping URL launch logic
 
 	// Filter out duplicate mentions while preserving order
 	const uniqueMentions = Array.from(new Set(mentions))
@@ -118,28 +104,7 @@ export async function parseMentions(
 		}
 
 		if (mention.startsWith("http")) {
-			let result: string
-			if (launchBrowserError) {
-				result = `Error fetching content: ${launchBrowserError.message}`
-				// Track failed URL mention
-				telemetryService.captureMentionFailed("url", "network_error", launchBrowserError?.message || "")
-			} else {
-				try {
-					const markdown = await urlContentFetcher.urlToMarkdown(mention)
-					result = markdown
-					// Track successful URL mention
-					telemetryService.captureMentionUsed("url", markdown.length)
-				} catch (error) {
-					HostProvider.window.showMessage({
-						type: ShowMessageType.ERROR,
-						message: `Error fetching content for ${mention}: ${error.message}`,
-					})
-					result = `Error fetching content: ${error.message}`
-					// Track failed URL mention
-					telemetryService.captureMentionFailed("url", "network_error", error.message)
-				}
-			}
-			parsedText += `\n\n<url_content url="${mention}">\n${result}\n</url_content>`
+			parsedText += `\n\n<url_content url="${mention}">\n(URL content fetching is disabled for this embedded tool)\n</url_content>`
 		} else if (isFileMention(mention)) {
 			const mentionPath = getFilePathFromMention(mention)
 			const mentionType = mention.endsWith("/") ? "folder" : "file"
@@ -315,13 +280,7 @@ export async function parseMentions(
 		}
 	}
 
-	if (urlMention) {
-		try {
-			await urlContentFetcher.closeBrowser()
-		} catch (error) {
-			console.error(`Error closing browser: ${error.message}`)
-		}
-	}
+	// Browser close logic removed
 
 	return parsedText
 }

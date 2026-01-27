@@ -137,9 +137,10 @@ export class StandaloneTerminalManager implements ITerminalManager {
 	/**
 	 * Get or create a terminal for the specified working directory.
 	 * @param cwd The working directory for the terminal
+	 * @param terminalName Optional name of the console to find/create
 	 * @returns The terminal info for an available terminal
 	 */
-	async getOrCreateTerminal(cwd: string): Promise<TerminalInfo> {
+	async getOrCreateTerminal(cwd: string, terminalName?: string): Promise<TerminalInfo> {
 		const terminals = this.registry.getAllTerminals()
 
 		// Find available terminal with matching CWD

@@ -266,7 +266,7 @@ describe("Prompt System Integration Tests", () => {
 
 	describe("Context-Specific Features", () => {
 		const featureTests = [
-			{ name: "browser-specific content when browser is enabled", context: { supportsBrowserUse: true }, check: "browser" },
+			{ name: "Nordic specific content", context: {}, check: "Nordic" },
 			{ name: "MCP content when MCP servers are present", context: {}, check: "MCP" },
 			{ name: "TODO content when focus chain is enabled", context: {}, check: "TODO" },
 			{ name: "user instructions when provided", context: {}, check: "USER'S CUSTOM INSTRUCTIONS" },

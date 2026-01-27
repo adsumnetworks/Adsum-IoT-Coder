@@ -45,8 +45,6 @@ import { formatContentBlockToMarkdown } from "@integrations/misc/export-markdown
 import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { showSystemNotification } from "@integrations/notifications"
 import { ITerminalManager } from "@integrations/terminal/types"
-import { BrowserSession } from "@services/browser/BrowserSession"
-import { UrlContentFetcher } from "@services/browser/UrlContentFetcher"
 import { featureFlagsService } from "@services/feature-flags"
 import { listFiles } from "@services/glob/list-files"
 import { Logger } from "@services/logging/Logger"
@@ -196,8 +194,6 @@ export class Task {
 	// Service handlers
 	api: ApiHandler
 	terminalManager: ITerminalManager
-	private urlContentFetcher: UrlContentFetcher
-	browserSession: BrowserSession
 	contextManager: ContextManager
 	private diffViewProvider: DiffViewProvider
 	public checkpointManager?: ICheckpointManager
@@ -301,8 +297,6 @@ export class Task {
 		this.terminalManager.setSubagentTerminalOutputLineLimit(subagentTerminalOutputLineLimit)
 		this.terminalManager.setDefaultTerminalProfile(defaultTerminalProfile)
 
-		this.urlContentFetcher = new UrlContentFetcher(controller.context)
-		this.browserSession = new BrowserSession(stateManager)
 		this.contextManager = new ContextManager()
 		this.streamHandler = new StreamResponseHandler()
 		this.cwd = cwd
@@ -466,8 +460,7 @@ export class Task {
 		// Now that ulid is initialized, we can build the API handler
 		this.api = buildApiHandler(effectiveApiConfiguration, mode)
 
-		// Set ulid on browserSession for telemetry tracking
-		this.browserSession.setUlid(this.ulid)
+		// Browser session removed - telemetry tracking for browser disabled
 
 		// Note: Task initialization (startTask/resumeTaskFromHistory) is now called
 		// from Controller.initTask() AFTER the task instance is fully assigned.
@@ -535,8 +528,6 @@ export class Task {
 			this.taskState,
 			this.messageStateHandler,
 			this.api,
-			this.urlContentFetcher,
-			this.browserSession,
 			this.diffViewProvider,
 			this.mcpHub,
 			this.fileContextTracker,
@@ -1524,8 +1515,6 @@ export class Task {
 
 			// PHASE 7: Clean up resources
 			this.terminalManager.disposeAll()
-			this.urlContentFetcher.closeBrowser()
-			await this.browserSession.dispose()
 			this.clineIgnoreController.dispose()
 			this.fileContextTracker.dispose()
 			// need to await for when we want to make sure directories/files are reverted before
@@ -1558,8 +1547,12 @@ export class Task {
 	}
 
 	// Tools
-	async executeCommandTool(command: string, timeoutSeconds: number | undefined): Promise<[boolean, ClineToolResponseContent]> {
-		return this.commandExecutor.execute(command, timeoutSeconds)
+	async executeCommandTool(
+		command: string,
+		timeoutSeconds: number | undefined,
+		terminalName?: string,
+	): Promise<[boolean, ClineToolResponseContent]> {
+		return this.commandExecutor.execute(command, timeoutSeconds, terminalName)
 	}
 
 	/**
@@ -3023,13 +3016,7 @@ export class Task {
 		}
 
 		const parseTextBlock = async (text: string): Promise<string> => {
-			const parsedText = await parseMentions(
-				text,
-				cwd,
-				this.urlContentFetcher,
-				this.fileContextTracker,
-				this.workspaceManager,
-			)
+			const parsedText = await parseMentions(text, cwd, this.fileContextTracker, this.workspaceManager)
 
 			const { processedText, needsClinerulesFileCheck: needsCheck } = await parseSlashCommands(
 				parsedText,

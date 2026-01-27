@@ -144,7 +144,7 @@ export async function executeInNordicTerminal(request: ExecuteInNordicTerminalRe
  * Activate/create the nRF Connect terminal without executing a command.
  * This ensures the SDK environment is active for subsequent commands.
  */
-export async function activateNordicTerminal(): Promise<void> {
+export async function activateNordicTerminal(): Promise<string | undefined> {
 	let terminal = findNordicTerminal()
 
 	// If no nRF terminal found, try to create one
@@ -162,5 +162,7 @@ export async function activateNordicTerminal(): Promise<void> {
 	// Show/focus the terminal
 	if (terminal) {
 		terminal.show()
+		return terminal.name
 	}
+	return undefined
 }

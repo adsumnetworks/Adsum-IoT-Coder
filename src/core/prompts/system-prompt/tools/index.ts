@@ -3,7 +3,7 @@ export * from "./act_mode_respond"
 export * from "./apply_patch"
 export * from "./ask_followup_question"
 export * from "./attempt_completion"
-export * from "./browser_action"
+// export * from "./browser_action" (Removed)
 export * from "./execute_command"
 export * from "./focus_chain"
 export * from "./init"
@@ -18,6 +18,6 @@ export * from "./search_files"
 export * from "./trigger_nordic_action"
 export * from "./use_mcp_tool"
 export * from "./use_skill"
-export * from "./web_fetch"
-export * from "./web_search"
+// export * from "./web_fetch" (Removed)
+// export * from "./web_search" (Removed)
 export * from "./write_to_file"

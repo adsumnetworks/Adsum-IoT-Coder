@@ -3,8 +3,6 @@ import type { FileContextTracker } from "@core/context/context-tracking/FileCont
 import type { ClineIgnoreController } from "@core/ignore/ClineIgnoreController"
 import type { CommandPermissionController } from "@core/permissions"
 import type { DiffViewProvider } from "@integrations/editor/DiffViewProvider"
-import type { BrowserSession } from "@services/browser/BrowserSession"
-import type { UrlContentFetcher } from "@services/browser/UrlContentFetcher"
 import type { McpHub } from "@services/mcp/McpHub"
 import type { AutoApprovalSettings } from "@shared/AutoApprovalSettings"
 import type { BrowserSettings } from "@shared/BrowserSettings"
@@ -70,10 +68,9 @@ export interface TaskConfig {
  */
 export interface TaskServices {
 	mcpHub: McpHub
-	browserSession: BrowserSession
-	urlContentFetcher: UrlContentFetcher
 	diffViewProvider: DiffViewProvider
 	fileContextTracker: FileContextTracker
+
 	clineIgnoreController: ClineIgnoreController
 	commandPermissionController: CommandPermissionController
 	contextManager: ContextManager
@@ -103,7 +100,7 @@ export interface TaskCallbacks {
 
 	removeLastPartialMessageIfExistsWithType: (type: "ask" | "say", askOrSay: ClineAsk | ClineSay) => Promise<void>
 
-	executeCommandTool: (command: string, timeoutSeconds: number | undefined) => Promise<[boolean, any]>
+	executeCommandTool: (command: string, timeoutSeconds: number | undefined, terminalName?: string) => Promise<[boolean, any]>
 
 	doesLatestTaskCompletionHaveNewChanges: () => Promise<boolean>
 
@@ -118,7 +115,7 @@ export interface TaskCallbacks {
 	cancelTask: () => Promise<void>
 	updateTaskHistory: (update: any) => Promise<any[]>
 
-	applyLatestBrowserSettings: () => Promise<BrowserSession>
+	applyLatestBrowserSettings: () => Promise<any>
 
 	switchToActMode: () => Promise<boolean>
 

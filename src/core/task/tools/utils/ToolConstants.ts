@@ -37,8 +37,6 @@ export const TASK_CONFIG_KEYS = [
  */
 export const TASK_SERVICES_KEYS = [
 	"mcpHub",
-	"browserSession",
-	"urlContentFetcher",
 	"diffViewProvider",
 	"fileContextTracker",
 	"clineIgnoreController",

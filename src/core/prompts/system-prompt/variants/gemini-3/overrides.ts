@@ -135,7 +135,14 @@ const GEMINI_3_RULES_TEMPLATE = (_context: SystemPromptContext) => `RULES
   - Using incomplete lines in SEARCH blocks (always include complete lines from start to end)
   - Forgetting the \`+++++++ REPLACE\` closing marker
   - Not listing multiple SEARCH/REPLACE blocks in the order they appear in the file
-  - Using the final auto-formatted file state (provided in tool responses) as the reference for subsequent edits is critical for success`
+  - Using the final auto-formatted file state (provided in tool responses) as the reference for subsequent edits is critical for success
+  
+  ## CRITICAL NORDIC DEVELOPMENT RULES
+  1. **ALWAYS use \`trigger_nordic_action\`** for ANY terminal command (compiling, flashing, logging, shell).
+  2. **NEVER** use \`execute_command\` or \`run_command\` directly. The standard shell lacks the required Zephyr/Nordic environment variables.
+  3. **Output Capture**: The \`trigger_nordic_action\` tool automatically handles environment injection and proper terminal selection ("nRF Connect"). Trust it.
+  4. **Debugging**: Use \`trigger_nordic_action\` with \`action="execute"\` and appropriate timeout for RTT logging (e.g. \`nrfjprog --rtt\`).
+  5. **Flash/Build**: Always use \`west build\` and \`west flash\` via the nordic tool.`
 
 const GEMINI_3_FEEDBACK_TEMPLATE = (_context: SystemPromptContext) => `FEEDBACK
 

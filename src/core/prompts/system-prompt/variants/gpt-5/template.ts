@@ -82,7 +82,14 @@ const RULES = (context: SystemPromptContext) => `RULES
 - When using the replace_in_file tool, you must include complete lines in your SEARCH blocks, not partial lines. The system requires exact line matches and cannot match partial lines. For example, if you want to match a line containing "const x = 5;", your SEARCH block must include the entire line, not just "x = 5" or other fragments.
 - When using the replace_in_file tool, if you use multiple SEARCH/REPLACE blocks, list them in the order they appear in the file. For example if you need to make changes to both line 10 and line 50, first include the SEARCH/REPLACE block for line 10, followed by the SEARCH/REPLACE block for line 50.
 - When using the replace_in_file tool, Do NOT add extra characters to the markers (e.g., ------- SEARCH> is INVALID). Do NOT forget to use the closing +++++++ REPLACE marker. Do NOT modify the marker format in any way. Malformed XML will cause complete tool failure and break the entire editing process.
-- You may use multiple tools in a single response when the operations are independent (e.g., reading several files, creating independent files). For dependent operations where one result informs the next, use tools sequentially and wait for the user's response.{{BROWSER_WAIT_RULES}}${hasEnabledMcpServers(context) ? "\n- MCP operations should be used one at a time, similar to other tool usage. Wait for confirmation of success before proceeding with additional operations." : ""}`
+- You may use multiple tools in a single response when the operations are independent (e.g., reading several files, creating independent files). For dependent operations where one result informs the next, use tools sequentially and wait for the user's response.{{BROWSER_WAIT_RULES}}${hasEnabledMcpServers(context) ? "\n- MCP operations should be used one at a time, similar to other tool usage. Wait for confirmation of success before proceeding with additional operations." : ""}
+
+  ## CRITICAL NORDIC DEVELOPMENT RULES
+  1. **ALWAYS use \`trigger_nordic_action\`** for ANY terminal command (compiling, flashing, logging, shell).
+  2. **NEVER** use \`execute_command\` or \`run_command\` directly. The standard shell lacks the required Zephyr/Nordic environment variables.
+  3. **Output Capture**: The \`trigger_nordic_action\` tool automatically handles environment injection and proper terminal selection ("nRF Connect"). Trust it.
+  4. **Debugging**: Use \`trigger_nordic_action\` with \`action="execute"\` and appropriate timeout for RTT logging (e.g. \`nrfjprog --rtt\`).
+  5. **Flash/Build**: Always use \`west build\` and \`west flash\` via the nordic tool.`
 
 export const GPT_5_TEMPLATE_OVERRIDES = {
 	BASE,

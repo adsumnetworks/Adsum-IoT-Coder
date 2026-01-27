@@ -3,15 +3,13 @@ import { FileContextTracker } from "@core/context/context-tracking/FileContextTr
 import { ClineIgnoreController } from "@core/ignore/ClineIgnoreController"
 import { CommandPermissionController } from "@core/permissions"
 import { DiffViewProvider } from "@integrations/editor/DiffViewProvider"
-import { BrowserSession } from "@services/browser/BrowserSession"
-import { UrlContentFetcher } from "@services/browser/UrlContentFetcher"
 import { McpHub } from "@services/mcp/McpHub"
 import { ClineAsk, ClineSay } from "@shared/ExtensionMessage"
 import { ClineContent } from "@shared/messages/content"
 import { ClineDefaultTool } from "@shared/tools"
 import { ClineAskResponse } from "@shared/WebviewMessage"
 import * as vscode from "vscode"
-import { isGPT5ModelFamily, modelDoesntSupportWebp } from "@/utils/model-utils"
+import { isGPT5ModelFamily } from "@/utils/model-utils"
 import { ToolUse } from "../assistant-message"
 import { ContextManager } from "../context/context-management/ContextManager"
 import { formatResponse } from "../prompts/responses"
@@ -26,7 +24,6 @@ import { ActModeRespondHandler } from "./tools/handlers/ActModeRespondHandler"
 import { ApplyPatchHandler } from "./tools/handlers/ApplyPatchHandler"
 import { AskFollowupQuestionToolHandler } from "./tools/handlers/AskFollowupQuestionToolHandler"
 import { AttemptCompletionHandler } from "./tools/handlers/AttemptCompletionHandler"
-import { BrowserToolHandler } from "./tools/handlers/BrowserToolHandler"
 import { CondenseHandler } from "./tools/handlers/CondenseHandler"
 import { ExecuteCommandToolHandler } from "./tools/handlers/ExecuteCommandToolHandler"
 import { GenerateExplanationToolHandler } from "./tools/handlers/GenerateExplanationToolHandler"
@@ -42,8 +39,6 @@ import { SummarizeTaskHandler } from "./tools/handlers/SummarizeTaskHandler"
 import { TriggerNordicActionHandler } from "./tools/handlers/TriggerNordicActionHandler"
 import { UseMcpToolHandler } from "./tools/handlers/UseMcpToolHandler"
 import { UseSkillToolHandler } from "./tools/handlers/UseSkillToolHandler"
-import { WebFetchToolHandler } from "./tools/handlers/WebFetchToolHandler"
-import { WebSearchToolHandler } from "./tools/handlers/WebSearchToolHandler"
 import { WriteToFileToolHandler } from "./tools/handlers/WriteToFileToolHandler"
 import { IPartialBlockHandler, SharedToolHandler, ToolExecutorCoordinator } from "./tools/ToolExecutorCoordinator"
 import { ToolValidator } from "./tools/ToolValidator"
@@ -74,8 +69,6 @@ export class ToolExecutor {
 		private taskState: TaskState,
 		private messageStateHandler: MessageStateHandler,
 		private api: ApiHandler,
-		private urlContentFetcher: UrlContentFetcher,
-		private browserSession: BrowserSession,
 		private diffViewProvider: DiffViewProvider,
 		private mcpHub: McpHub,
 		private fileContextTracker: FileContextTracker,
@@ -162,8 +155,6 @@ export class ToolExecutor {
 			focusChainSettings: this.stateManager.getGlobalSettingsKey("focusChainSettings"),
 			services: {
 				mcpHub: this.mcpHub,
-				browserSession: this.browserSession,
-				urlContentFetcher: this.urlContentFetcher,
 				diffViewProvider: this.diffViewProvider,
 				fileContextTracker: this.fileContextTracker,
 				clineIgnoreController: this.clineIgnoreController,
@@ -186,7 +177,7 @@ export class ToolExecutor {
 				removeLastPartialMessageIfExistsWithType: this.removeLastPartialMessageIfExistsWithType,
 				shouldAutoApproveTool: this.shouldAutoApproveTool.bind(this),
 				shouldAutoApproveToolWithPath: this.shouldAutoApproveToolWithPath.bind(this),
-				applyLatestBrowserSettings: this.applyLatestBrowserSettings.bind(this),
+				applyLatestBrowserSettings: async () => {}, // No-op for now/stubbed
 				switchToActMode: this.switchToActMode,
 				setActiveHookExecution: this.setActiveHookExecution,
 				clearActiveHookExecution: this.clearActiveHookExecution,
@@ -210,10 +201,7 @@ export class ToolExecutor {
 		// Register all tool handlers
 		this.coordinator.register(new ListFilesToolHandler(validator))
 		this.coordinator.register(new ReadFileToolHandler(validator))
-		this.coordinator.register(new BrowserToolHandler())
 		this.coordinator.register(new AskFollowupQuestionToolHandler())
-		this.coordinator.register(new WebFetchToolHandler())
-		this.coordinator.register(new WebSearchToolHandler())
 
 		// Register WriteToFileToolHandler for all three file tools with proper typing
 		const writeHandler = new WriteToFileToolHandler(validator)
@@ -250,12 +238,12 @@ export class ToolExecutor {
 	/**
 	 * Updates the browser settings
 	 */
+	/**
+	 * Updates the browser settings (Stubbed)
+	 */
 	public async applyLatestBrowserSettings() {
-		await this.browserSession.dispose()
-		const apiHandlerModel = this.api.getModel()
-		const useWebp = this.api ? !modelDoesntSupportWebp(apiHandlerModel) : true
-		this.browserSession = new BrowserSession(this.stateManager, useWebp)
-		return this.browserSession
+		// Browser support removed for Nordic Embedded MVP
+		return undefined
 	}
 
 	/**
@@ -388,7 +376,7 @@ export class ToolExecutor {
 
 			// Close browser for non-browser tools
 			if (block.name !== "browser_action") {
-				await this.browserSession.closeBrowser()
+				// No-op - browser session removed
 			}
 
 			// Handle partial blocks

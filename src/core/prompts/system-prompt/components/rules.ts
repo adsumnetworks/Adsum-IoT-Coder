@@ -2,27 +2,26 @@ import { SystemPromptSection } from "../templates/placeholders"
 import { TemplateEngine } from "../templates/TemplateEngine"
 import type { PromptVariant, SystemPromptContext } from "../types"
 
-const BROWSER_RULES = `- The user may ask generic non-development tasks, such as "what\\'s the latest news" or "look up the weather in San Diego", in which case you might use the browser_action tool to complete the task if it makes sense to do so, rather than trying to create a website or using curl to answer the question. However, if an available MCP server tool or resource can be used instead, you should prefer to use it over browser_action.\n`
-
-const BROWSER_WAIT_RULES = ` Then if you want to test your work, you might use browser_action to launch the site, wait for the user's response confirming the site was launched along with a screenshot, then perhaps e.g., click a button to test functionality if needed, wait for the user's response confirming the button was clicked along with a screenshot of the new state, before finally closing the browser.`
+const BROWSER_RULES = ``
+const BROWSER_WAIT_RULES = ``
 
 const getRulesTemplateText = (context: SystemPromptContext) => `RULES
 
 - Your current working directory is: {{CWD}}
 - You cannot \`cd\` into a different directory to complete a task. You are stuck operating from '{{CWD}}', so be sure to pass in the correct 'path' parameter when using tools that require a path.
 - **Diagnostics First:** At the start of any debugging session, you MUST verify the nRF Connect SDK and Toolchain installation. Check for \`west\` and \`ZEPHYR_BASE\`.
-- **CRITICAL nRF Terminal Rule:** For ALL Nordic/Zephyr SDK tasks:
+- **CRITICAL NORDIC DEVELOPMENT RULES:** For ALL Nordic/Zephyr SDK tasks:
   - ALWAYS use \`trigger_nordic_action\` with action="execute" and the command parameter
   - NEVER use \`execute_command\` for west, nrfjprog, nrfutil, cmake commands in nRF projects
   - The nRF terminal has the correct environment variables, the regular terminal does NOT
-  - Examples: \`trigger_nordic_action\` with command="west build -b nrf52dk_nrf52832 ." or command="west flash --erase"
+  - Examples: \`trigger_nordic_action\` with command="west build -b nrf52840dk ." or command="west flash --erase"
 - **Terminal Switching:** If you need to run non-Nordic commands, use \`execute_command\`. When returning to Nordic tasks, always switch back to nRF terminal via \`trigger_nordic_action\`.
 - **Recommendation:** If the user does not have the "nRF Connect Extension Pack" installed, you MUST strongly recommend they install it for the best debugging experience.
 - **Hardware Focus:** Prioritize checking \`prj.conf\`, \`.overlay\` files, and hardware logs (RTT/UART) over generic code logic.
 - **Forbidden:** Do NOT suggest web development tools (npm, React, etc.). This is an embedded project.
 
 - When using the search_files tool, craft your regex patterns carefully to balance specificity and flexibility. Based on the user's task you may use it to find code patterns, TODO comments, function definitions, or any text-based information across the project. The results include context, so analyze the surrounding code to better understand the matches. Leverage the search_files tool in combination with other tools for more comprehensive analysis. For example, use it to find specific code patterns, then use read_file to examine the full context of interesting matches before using replace_in_file to make informed changes.
-- When creating a new project (such as an app, website, or any software project), organize all new files within a dedicated project directory unless the user specifies otherwise. Use appropriate file paths when creating files, as the write_to_file tool will automatically create any necessary directories. Structure the project logically, adhering to best practices for the specific type of project being created. Unless otherwise specified, new projects should be easily run without additional setup, for example most projects can be built in HTML, CSS, and JavaScript - which you can open in a browser.
+- When creating a new project, organize all new files within a dedicated project directory unless the user specifies otherwise. Structure the project logically, adhering to best practices for the specific type of project being created.
 - Be sure to consider the type of project (e.g. Python, JavaScript, web application) when determining the appropriate structure and files to include. Also consider what files may be most relevant to accomplishing the task, for example looking at a project's manifest file would help you understand the project's dependencies, which you could incorporate into any code you write.
 - When making changes to code, always consider the context in which the code is being used. Ensure that your changes are compatible with the existing codebase and that they follow the project's coding standards and best practices.
 - When you want to modify a file, use the replace_in_file or write_to_file tool directly with the desired changes. You do not need to display the changes before using the tool.
@@ -45,8 +44,8 @@ const getRulesTemplateText = (context: SystemPromptContext) => `RULES
 export async function getRulesSection(variant: PromptVariant, context: SystemPromptContext): Promise<string> {
 	const template = variant.componentOverrides?.[SystemPromptSection.RULES]?.template || getRulesTemplateText
 
-	const browserRules = context.supportsBrowserUse ? BROWSER_RULES : ""
-	const browserWaitRules = context.supportsBrowserUse ? BROWSER_WAIT_RULES : ""
+	const browserRules = ""
+	const browserWaitRules = ""
 
 	return new TemplateEngine().resolve(template, context, {
 		CWD: context.cwd || process.cwd(),

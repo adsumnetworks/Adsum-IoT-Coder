@@ -232,10 +232,32 @@ export class VscodeTerminalManager implements ITerminalManager {
 		return mergePromise(process, promise)
 	}
 
-	async getOrCreateTerminal(cwd: string): Promise<ITerminalInfo> {
+	async getOrCreateTerminal(cwd: string, terminalName?: string): Promise<ITerminalInfo> {
 		const terminals = TerminalRegistry.getAllTerminals()
 		const expectedShellPath =
 			this.defaultTerminalProfile !== "default" ? getShellForProfile(this.defaultTerminalProfile) : undefined
+
+		// If a specific terminal name is requested, try to find it
+		if (terminalName) {
+			// First check our registry
+			const namedTerminal = terminals.find((t) => t.terminal.name.toLowerCase().includes(terminalName.toLowerCase()))
+			if (namedTerminal) {
+				console.log(`[TerminalManager] Found registered terminal matching name "${terminalName}"`)
+				this.terminalIds.add(namedTerminal.id)
+				return namedTerminal as unknown as ITerminalInfo
+			}
+
+			// Then check all VS Code terminals (adoption logic)
+			const externalTerminal = vscode.window.terminals.find((t) =>
+				t.name.toLowerCase().includes(terminalName.toLowerCase()),
+			)
+			if (externalTerminal) {
+				console.log(`[TerminalManager] Found external terminal matching name "${terminalName}", adopting it.`)
+				const newInfo = TerminalRegistry.registerTerminal(externalTerminal)
+				this.terminalIds.add(newInfo.id)
+				return newInfo as unknown as ITerminalInfo
+			}
+		}
 
 		// Find available terminal from our pool first (created for this task)
 		console.log(`[TerminalManager] Looking for terminal in cwd: ${cwd}`)

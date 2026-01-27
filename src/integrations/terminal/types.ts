@@ -163,9 +163,10 @@ export interface ITerminalManager {
 	/**
 	 * Get or create a terminal for the specified working directory.
 	 * @param cwd The working directory for the terminal
+	 * @param terminalName Optional name of the terminal to find/create
 	 * @returns The terminal info for an available terminal
 	 */
-	getOrCreateTerminal(cwd: string): Promise<TerminalInfo>
+	getOrCreateTerminal(cwd: string, terminalName?: string): Promise<TerminalInfo>
 
 	/**
 	 * Get terminals filtered by busy state.
