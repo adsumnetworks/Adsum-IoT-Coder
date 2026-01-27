@@ -1,20 +1,14 @@
-import { HistoryIcon, PlusIcon, SettingsIcon, UserCircleIcon } from "lucide-react"
+import { PlusIcon, SettingsIcon } from "lucide-react"
 import { useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { TaskServiceClient } from "@/services/grpc-client"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 
-// Custom MCP Server Icon component using VSCode codicon
-const McpServerIcon = ({ className, size }: { className?: string; size?: number }) => (
-	<span
-		className={`codicon codicon-server flex items-center ${className || ""}`}
-		style={{ fontSize: size ? `${size}px` : "12.5px", marginBottom: "1px" }}
-	/>
-)
+// McpServerIcon removed
 
 export const Navbar = () => {
-	const { navigateToHistory, navigateToSettings, navigateToAccount, navigateToMcp, navigateToChat } = useExtensionState()
+	const { navigateToSettings, navigateToChat } = useExtensionState()
 
 	const SETTINGS_TABS = useMemo(
 		() => [
@@ -32,27 +26,7 @@ export const Navbar = () => {
 						.finally(() => navigateToChat())
 				},
 			},
-			{
-				id: "mcp",
-				name: "MCP",
-				tooltip: "MCP Servers",
-				icon: McpServerIcon,
-				navigate: navigateToMcp,
-			},
-			{
-				id: "history",
-				name: "History",
-				tooltip: "History",
-				icon: HistoryIcon,
-				navigate: navigateToHistory,
-			},
-			{
-				id: "account",
-				name: "Account",
-				tooltip: "Account",
-				icon: UserCircleIcon,
-				navigate: navigateToAccount,
-			},
+			// MCP and Account tabs removed for Nordic Embedded MVP
 			{
 				id: "settings",
 				name: "Settings",
@@ -61,7 +35,7 @@ export const Navbar = () => {
 				navigate: navigateToSettings,
 			},
 		],
-		[navigateToAccount, navigateToChat, navigateToHistory, navigateToMcp, navigateToSettings],
+		[navigateToChat, navigateToSettings],
 	)
 
 	return (

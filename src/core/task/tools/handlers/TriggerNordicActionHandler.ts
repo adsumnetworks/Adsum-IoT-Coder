@@ -64,8 +64,9 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 		// Step 1: Ensure nRF terminal is active (creates if needed)
 		// This sets up the correct SDK environment
+		let terminalName: string | undefined
 		try {
-			await activateNordicTerminal()
+			terminalName = await activateNordicTerminal()
 		} catch (error) {
 			// Non-fatal: continue with command execution
 			// The terminal might already be active or user might be in CLI mode
@@ -74,7 +75,8 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 		// Step 2: Execute command using the standard CommandExecutor
 		// This provides full output capture and streaming
-		const [userRejected, result] = await config.callbacks.executeCommandTool(command, undefined)
+		// We pass the terminal name to ensure we reuse the specific nRF terminal
+		const [userRejected, result] = await config.callbacks.executeCommandTool(command, undefined, terminalName)
 
 		if (userRejected) {
 			config.taskState.didRejectTool = true

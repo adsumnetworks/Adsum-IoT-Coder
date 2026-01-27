@@ -20,7 +20,7 @@ NRFJPROG COMMANDS:
   nrfjprog --eraseall                     Erase all flash
   nrfjprog --recover                      Full recovery
 
-COMMON BOARDS: nrf52dk_nrf52832, nrf52840dk_nrf52840, nrf5340dk_nrf5340_cpuapp, nrf9160dk_nrf9160_ns`
+COMMON BOARDS: nrf52dk, nrf52840dk, nrf52833dk, nrf5340dk, nrf52840dongle (Run "west boards | grep <chip>" for others)`
 
 const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
@@ -40,12 +40,13 @@ ${CLI_REFERENCE}`,
 			required: true,
 			instruction: `The shell command to run in the nRF Connect terminal. Use west, nrfjprog, nrfutil commands.
 Examples:
-- "west build -b nrf52dk_nrf52832 ."
+- "west boards | grep nrf52840" (Find correct board name)
+- "west build -b nrf52840dk ." (Build for specific board)
 - "west flash --erase"
 - "west debug"
 - "nrfjprog --eraseall"
 - "nrfjprog --program build/zephyr/zephyr.hex --verify"`,
-			usage: "west build -b nrf52dk_nrf52832 .",
+			usage: "west build -b nrf52840dk .",
 		},
 	],
 }
@@ -65,7 +66,7 @@ ${CLI_REFERENCE}`,
 		{
 			name: "command",
 			required: true,
-			instruction: 'Command to run. E.g., "west build -b nrf52dk_nrf52832 ."',
+			instruction: 'Command to run. E.g., "west build -b nrf52840dk ."',
 		},
 	],
 }
@@ -91,7 +92,7 @@ ${CLI_REFERENCE}`,
 			name: "command",
 			required: true,
 			instruction: `Command to run in nRF terminal. Examples:
-- "west build -b nrf52dk_nrf52832 ." 
+- "west build -b nrf52840dk ." 
 - "west flash --erase"
 - "nrfjprog --eraseall"`,
 		},

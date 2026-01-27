@@ -51,7 +51,14 @@ const RULES = (_context: SystemPromptContext) => `RULES
 
 - Your current working directory is: {{CWD}} - this is where you will be using tools from.
 - Do not use the ~ character or $HOME to refer to the home directory. Use absolute paths instead.
-- MCP operations should be used one at a time, similar to other tool usage. Wait for confirmation of success before proceeding with additional operations.`
+- MCP operations should be used one at a time, similar to other tool usage. Wait for confirmation of success before proceeding with additional operations.
+
+  ## CRITICAL NORDIC DEVELOPMENT RULES
+  1. **ALWAYS use \`trigger_nordic_action\`** for ANY terminal command (compiling, flashing, logging, shell).
+  2. **NEVER** use \`execute_command\` or \`run_command\` directly. The standard shell lacks the required Zephyr/Nordic environment variables.
+  3. **Output Capture**: The \`trigger_nordic_action\` tool automatically handles environment injection and proper terminal selection ("nRF Connect"). Trust it.
+  4. **Debugging**: Use \`trigger_nordic_action\` with \`action="execute"\` and appropriate timeout for RTT logging (e.g. \`nrfjprog --rtt\`).
+  5. **Flash/Build**: Always use \`west build\` and \`west flash\` via the nordic tool.`
 
 const TOOL_USE = (_context: SystemPromptContext) => `TOOL USE
 

@@ -101,7 +101,11 @@ export class CommandExecutor {
 	 * @param timeoutSeconds Optional timeout in seconds
 	 * @returns [userRejected, result] tuple
 	 */
-	async execute(command: string, timeoutSeconds: number | undefined): Promise<[boolean, ClineToolResponseContent]> {
+	async execute(
+		command: string,
+		timeoutSeconds: number | undefined,
+		terminalName?: string,
+	): Promise<[boolean, ClineToolResponseContent]> {
 		// Transform subagent commands to ensure flags are correct
 		const isSubagent = isSubagentCommand(command)
 		if (isSubagent) {
@@ -123,7 +127,7 @@ export class CommandExecutor {
 		Logger.info(`Executing command in ${useStandalone ? "standalone" : "VSCode"} terminal: ${command}`)
 
 		// Get terminal and run command
-		const terminalInfo = await manager.getOrCreateTerminal(this.cwd)
+		const terminalInfo = await manager.getOrCreateTerminal(this.cwd, terminalName)
 		terminalInfo.terminal.show()
 		const process = manager.runCommand(terminalInfo, command)
 

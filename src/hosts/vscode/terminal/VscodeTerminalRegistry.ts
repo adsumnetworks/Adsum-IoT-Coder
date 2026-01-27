@@ -36,6 +36,10 @@ export class TerminalRegistry {
 		}
 
 		const terminal = vscode.window.createTerminal(terminalOptions)
+		return TerminalRegistry.registerTerminal(terminal, shellPath)
+	}
+
+	static registerTerminal(terminal: vscode.Terminal, shellPath?: string): TerminalInfo {
 		TerminalRegistry.nextTerminalId++
 		const newInfo: TerminalInfo = {
 			terminal,
