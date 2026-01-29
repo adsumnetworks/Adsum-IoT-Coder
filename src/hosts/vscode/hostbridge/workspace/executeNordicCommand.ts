@@ -55,33 +55,41 @@ export async function executeNordicCommand(request: ExecuteNordicCommandRequest)
 }
 
 /**
- * Find an existing nRF Connect terminal by name patterns.
- * Falls back to the most recently active terminal if no nRF terminal is found.
+ * Check if a terminal name indicates an nRF/Nordic terminal.
+ * Matches: "nRF $(icons) v3.2.1", "nRF Connect", "NCS Terminal", etc.
  */
-function findNordicTerminal(): vscode.Terminal | undefined {
+function isNordicTerminalName(name: string): boolean {
+	const lowerName = name.toLowerCase()
+	return (
+		lowerName.startsWith("nrf") || // Matches "nRF $(icons)..." and "nrf-*"
+		lowerName.includes("nordic") ||
+		lowerName.includes("zephyr") ||
+		lowerName.includes("ncs")
+	)
+}
+
+/**
+ * Find an existing nRF Connect terminal by name patterns.
+ * IMPORTANT: This function ONLY returns terminals that are confirmed nRF/Nordic terminals.
+ * It does NOT fallback to regular shells - that would break the SDK environment.
+ */
+export function findNordicTerminal(): vscode.Terminal | undefined {
 	const terminals = vscode.window.terminals
 	if (terminals.length === 0) {
 		return undefined
 	}
 
-	// nRF Connect terminal names - check common patterns
-	const nordicPatterns = ["nrf terminal", "nrf connect", "ncs terminal", "ncs", "zephyr"]
-
+	// Find first terminal matching Nordic patterns
 	for (const terminal of terminals) {
-		const name = terminal.name.toLowerCase()
-		if (nordicPatterns.some((pattern) => name.includes(pattern))) {
+		if (isNordicTerminalName(terminal.name)) {
 			return terminal
 		}
 	}
 
-	// Fallback: return the most recently used/active terminal
-	// vscode.window.activeTerminal is the currently focused terminal
-	if (vscode.window.activeTerminal) {
-		return vscode.window.activeTerminal
-	}
-
-	// Last resort: return the last terminal in the list (most recently created)
-	return terminals[terminals.length - 1]
+	// IMPORTANT: Do NOT fallback to activeTerminal or any other terminal!
+	// Regular shells don't have the SDK environment variables set.
+	// Returning undefined will trigger creation of a proper nRF terminal.
+	return undefined
 }
 
 /**
@@ -147,15 +155,33 @@ export async function executeInNordicTerminal(request: ExecuteInNordicTerminalRe
 export async function activateNordicTerminal(): Promise<string | undefined> {
 	let terminal = findNordicTerminal()
 
-	// If no nRF terminal found, try to create one
-	if (!terminal) {
-		const extension = vscode.extensions.getExtension("nordic-semiconductor.nrf-connect")
+	// Priority 2: If we already have an nRF terminal, just use it (no need to create new)
+	if (terminal) {
+		terminal.show()
+		return terminal.name
+	}
 
-		if (extension) {
-			await vscode.commands.executeCommand("nrf-connect.createNcsTerminal")
-			// Wait for terminal to be created
-			await new Promise((resolve) => setTimeout(resolve, 1500))
+	// No nRF terminal found, try to create one
+	const extension = vscode.extensions.getExtension("nordic-semiconductor.nrf-connect")
+	if (extension) {
+		await vscode.commands.executeCommand("nrf-connect.createNcsTerminal")
+
+		// POLL: Wait for terminal to be created and registered
+		// Try 5 times with 1s delay (total 5s)
+		for (let i = 0; i < 5; i++) {
+			await new Promise((resolve) => setTimeout(resolve, 1000))
 			terminal = findNordicTerminal()
+			if (terminal) break
+		}
+
+		// Fallback: If strict matching failed but we just created a terminal,
+		// the active terminal is almost certainly the nRF one.
+		if (!terminal && vscode.window.activeTerminal) {
+			console.log(
+				"[Nordic] Strict name matching failed, falling back to active terminal:",
+				vscode.window.activeTerminal.name,
+			)
+			terminal = vscode.window.activeTerminal
 		}
 	}
 
@@ -164,5 +190,164 @@ export async function activateNordicTerminal(): Promise<string | undefined> {
 		terminal.show()
 		return terminal.name
 	}
+
+	// If we still can't find it, log the running terminals to help debugging
+	const visibleTerminals = vscode.window.terminals.map((t) => t.name).join(", ")
+	console.warn(`[Nordic] Failed to find nRF terminal after creation attempts. Visible terminals: ${visibleTerminals}`)
+
 	return undefined
+}
+
+// ============================================================
+// RTT AUTOMATION FUNCTIONS
+// ============================================================
+
+export interface RTTConnectionResult {
+	success: boolean
+	method: "plan_a" | "plan_b" | "none"
+	error?: string
+	terminalName?: string
+}
+
+/**
+ * Connect to RTT using Plan A: VS Code nRF Terminal command.
+ * This triggers the nRF Terminal extension's RTT connection.
+ * Note: May show GUI picker if device selection is needed.
+ */
+export async function connectRTTPlanA(): Promise<RTTConnectionResult> {
+	try {
+		// Check if nRF Terminal extension is available
+		const terminalExt = vscode.extensions.getExtension("nordic-semiconductor.nrf-terminal")
+		if (!terminalExt) {
+			return {
+				success: false,
+				method: "plan_a",
+				error: "nRF Terminal extension not found. Install the nRF Connect Extension Pack.",
+			}
+		}
+
+		// Try the nRF Terminal command with RTT connection type
+		await vscode.commands.executeCommand("nrf-terminal.startTerminal", { connectionType: "rtt" })
+
+		// Wait for terminal to appear
+		await new Promise((resolve) => setTimeout(resolve, 2000))
+
+		// Check if an RTT terminal was created
+		const rttTerminal = vscode.window.terminals.find(
+			(t) => t.name.toLowerCase().includes("rtt") || t.name.toLowerCase().includes("terminal"),
+		)
+
+		if (rttTerminal) {
+			rttTerminal.show()
+			return {
+				success: true,
+				method: "plan_a",
+				terminalName: rttTerminal.name,
+			}
+		}
+
+		return {
+			success: false,
+			method: "plan_a",
+			error: "RTT terminal was not created. User may have cancelled device selection.",
+		}
+	} catch (error) {
+		return {
+			success: false,
+			method: "plan_a",
+			error: error instanceof Error ? error.message : String(error),
+		}
+	}
+}
+
+/**
+ * Connect to RTT using Plan B: Spawn JLinkExe directly.
+ * This requires the serial number and device name.
+ * @param serialNumber - Device serial number from `nrfjprog --ids`
+ * @param deviceName - Target device (default: nRF52840_xxAA)
+ * @param rttPort - RTT telnet port (default: 19021)
+ */
+export async function connectRTTPlanB(
+	serialNumber: string,
+	deviceName: string = "nRF52840_xxAA",
+	rttPort: number = 19021,
+): Promise<RTTConnectionResult> {
+	try {
+		// Create a terminal for JLink RTT
+		const terminalName = `RTT (${serialNumber})`
+
+		// Check if we already have this RTT terminal
+		const existingTerminal = vscode.window.terminals.find((t) => t.name === terminalName)
+		if (existingTerminal) {
+			existingTerminal.show()
+			return {
+				success: true,
+				method: "plan_b",
+				terminalName: existingTerminal.name,
+			}
+		}
+
+		// Find JLinkExe path (common locations)
+		const jlinkPaths = [
+			"/opt/SEGGER/JLink/JLinkExe",
+			"/usr/bin/JLinkExe",
+			"JLinkExe", // Rely on PATH
+		]
+
+		// Create terminal with JLink command
+		const terminal = vscode.window.createTerminal({
+			name: terminalName,
+			shellPath: "/bin/bash",
+			shellArgs: [
+				"-c",
+				`echo "Connecting to RTT on device ${serialNumber}..." && ` +
+					`JLinkExe -device ${deviceName} -SelectEmuBySN ${serialNumber} ` +
+					`-if swd -speed auto -AutoConnect 1 -RTTTelnetPort ${rttPort}`,
+			],
+		})
+
+		terminal.show()
+
+		// Give JLink time to connect
+		await new Promise((resolve) => setTimeout(resolve, 3000))
+
+		return {
+			success: true,
+			method: "plan_b",
+			terminalName: terminal.name,
+		}
+	} catch (error) {
+		return {
+			success: false,
+			method: "plan_b",
+			error: error instanceof Error ? error.message : String(error),
+		}
+	}
+}
+
+/**
+ * Try to connect to RTT automatically.
+ * First tries Plan A (VS Code command), falls back to Plan B (JLinkExe) if that fails.
+ * @param serialNumber - Optional serial number for Plan B fallback
+ * @param deviceName - Optional device name for Plan B fallback
+ */
+export async function connectRTT(serialNumber?: string, deviceName?: string): Promise<RTTConnectionResult> {
+	// Try Plan A first
+	const planAResult = await connectRTTPlanA()
+	if (planAResult.success) {
+		return planAResult
+	}
+
+	// If Plan A failed and we have serial number, try Plan B
+	if (serialNumber) {
+		console.log("[Nordic] Plan A RTT failed, attempting Plan B with JLinkExe...")
+		return await connectRTTPlanB(serialNumber, deviceName)
+	}
+
+	// Neither worked
+	return {
+		success: false,
+		method: "none",
+		error: `Plan A failed: ${planAResult.error}. Plan B requires serial number.`,
+	}
 }
