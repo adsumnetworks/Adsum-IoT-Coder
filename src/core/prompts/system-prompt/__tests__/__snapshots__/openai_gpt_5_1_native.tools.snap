@@ -3,7 +3,7 @@
     "type": "function",
     "function": {
       "name": "execute_command",
-      "description": "Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. You must tailor your command to the user's system and provide a clear explanation of what the command does. For command chaining, use the appropriate chaining syntax for the user's shell. Prefer to execute complex CLI commands over creating executable scripts, as they are more flexible and easier to run. Commands will be executed in the current working directory: {{CWD}}{{MULTI_ROOT_HINT}}",
+      "description": "Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. You must tailor your command to the user's system and provide a clear explanation of what the command does. For command chaining, use the appropriate chaining syntax for the user's shell. Prefer to execute complex CLI commands over creating executable scripts, as they are more flexible and easier to run. Commands will be executed in the current working directory: {{CWD}}{{MULTI_ROOT_HINT}}\n⚠️ NORDIC DEVELOPMENT WARNING: Do NOT use this tool for west, nrfjprog, nrfutil, or cmake commands in nRF/Zephyr projects. These MUST be run via trigger_nordic_action to ensure correct SDK environment variables are set.",
       "strict": false,
       "parameters": {
         "type": "object",
@@ -158,39 +158,6 @@
         },
         "required": [
           "path"
-        ],
-        "additionalProperties": false
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
-      "name": "browser_action",
-      "description": "Request to interact with a Puppeteer-controlled browser. Every action, except `close`, will be responded to with a screenshot of the browser's current state, along with any new console logs. You may only perform one browser action per message, and wait for the user's response including a screenshot and logs to determine the next action.\n- The sequence of actions **must always start with** launching the browser at a URL, and **must always end with** closing the browser. If you need to visit a new URL that is not possible to navigate to from the current webpage, you must first close the browser, then launch again at the new URL.\n- While the browser is active, only the `browser_action` tool can be used. No other tools should be called during this time. You may proceed to use other tools only after closing the browser. For example if you run into an error and need to fix a file, you must close the browser, then use other tools to make the necessary changes, then re-launch the browser to verify the result.\n- The browser window has a resolution of **1280x720** pixels. When performing any click actions, ensure the coordinates are within this resolution range.\n- Before clicking on any elements such as icons, links, or buttons, you must consult the provided screenshot of the page to determine the coordinates of the element. The click should be targeted at the **center of the element**, not on its edges.",
-      "strict": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "description": "The action to perform. The available actions are: \n\t* launch: Launch a new Puppeteer-controlled browser instance at the specified URL. This **must always be the first action**. \n\t\t- Use with the `url` parameter to provide the URL. \n\t\t- Ensure the URL is valid and includes the appropriate protocol (e.g. http://localhost:3000/page, file:///path/to/file.html, etc.) \n\t* click: Click at a specific x,y coordinate. \n\t\t- Use with the `coordinate` parameter to specify the location. \n\t\t- Always click in the center of an element (icon, button, link, etc.) based on coordinates derived from a screenshot. \n\t* type: Type a string of text on the keyboard. You might use this after clicking on a text field to input text. \n\t\t- Use with the `text` parameter to provide the string to type. \n\t* scroll_down: Scroll down the page by one page height. \n\t* scroll_up: Scroll up the page by one page height. \n\t* close: Close the Puppeteer-controlled browser instance. This **must always be the final browser action**. \n\t    - Example: `<action>close</action>`"
-          },
-          "url": {
-            "type": "string",
-            "description": "Use this for providing the URL for the `launch` action. \n\t* Example: <url>https://example.com</url>"
-          },
-          "coordinate": {
-            "type": "string",
-            "description": "The X and Y coordinates for the `click` action. Coordinates should be within the **1280x720** resolution. \n\t* Example: <coordinate>450,300</coordinate>"
-          },
-          "text": {
-            "type": "string",
-            "description": "Use this for providing the text for the `type` action. \n\t* Example: <text>Hello, world!</text>"
-          }
-        },
-        "required": [
-          "action"
         ],
         "additionalProperties": false
       }
@@ -412,6 +379,32 @@
         "required": [
           "title",
           "from_ref"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "trigger_nordic_action",
+      "description": "Execute commands in the nRF Connect terminal with the correct Nordic/Zephyr SDK environment. This is the ONLY method to use for west, nrfjprog, nrfutil, and other Nordic CLI tools.\n\nBOARD NAME FORMAT (REQUIRED):\n  • nrf52840dk/nrf52840 (NOT just \"nrf52840dk\")\n  • Find name: west boards | grep <chip>\n\nPROCESS CLEANUP (Crucial for stability):\n  • Before separate/new task: pkill -9 JLink; pkill -9 nrfutil; sleep 1\n  • PREVENT HANGS: Use \"timeout 60s\" for blocking commands (e.g. timeout 60s west flash)\n\nFORBIDDEN COMMANDS (WASTEFUL/FLAKY):\n  • DO NOT USE: hcitool, nRFConnectScanner, ble-scan (Host scanning fails in containers)\n  • DO NOT USE: nrfjprog --family (Use --ids instead)\n  • DO NOT USE: nrfjprog --info (Use --ids instead)\n\nVERIFICATION STRATEGY (TRUST THE LOGS):\n  1. PRIMARY: RTT or UART logs showing boot & functionality.\n  2. SECONDARY: Ask user (\"Do you see LED blinking?\").\n  3. NEVER scan from the host machine.\n\nRTT LOGGING (THE \"PERFECT\" SEQUENCE):\n  1. Check RTT enabled: grep CONFIG_USE_SEGGER_RTT prj.conf\n  2. Cleanup: pkill -9 JLink; pkill -9 nrfutil; sleep 1\n  3. Connect: Use \"nRF RTT Terminal\" (VS Code) or JLinkExe (Plan B)\n  4. RESET (Crucial): In a NEW terminal, run: nrfjprog --reset -s <serial>\n  5. Observe: Watch RTT terminal immediately to catch boot logs\n  6. MISSING LOGS? Check prj.conf for CONFIG_LOG_DEFAULT_LEVEL=4 (Debug)\n\nUART LOGGING (If RTT disabled / CONFIG_LOG_BACKEND_UART=y):\n  • \"RESET & CAT\" PATTERN (Run in new terminal):\n    timeout 20s sh -c 'nrfjprog --reset -s <SN> && sleep 1 && cat /dev/ttyACM0'\n\nFLASH PRIORITY:\n  1. Get devices: nrfjprog --ids\n  2. ONE device: timeout 60s west flash\n  3. MULTIPLE: timeout 60s west flash --snr <serial>\n  4. RECOVER: nrfjprog --recover (only if flash fails)\n\nBUILD DECISION TREE:\n  1. Check for build folder: ls build/ 2>/dev/null || echo \"no build\"\n  2. If NO build/: west build -b BOARD .\n  3. If build/ EXISTS:\n     - Fresh rebuild: west build -b BOARD . -p always\n     - Incremental: west build\n",
+      "strict": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "description": "Must be \"execute\" - runs the command in the nRF Connect terminal."
+          },
+          "command": {
+            "type": "string",
+            "description": "The shell command to run in the nRF Connect terminal. Use west, nrfjprog, nrfutil commands.\nExamples:\n- \"west boards | grep nrf52840\" (Find correct board name)\n- \"west build -b nrf52840dk .\" (Build for specific board)\n- \"west flash --erase\"\n- \"west debug\"\n- \"nrfjprog --eraseall\"\n- \"nrfjprog --program build/zephyr/zephyr.hex --verify\""
+          }
+        },
+        "required": [
+          "action",
+          "command"
         ],
         "additionalProperties": false
       }

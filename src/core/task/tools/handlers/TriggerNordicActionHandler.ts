@@ -68,9 +68,17 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		try {
 			terminalName = await activateNordicTerminal()
 		} catch (error) {
-			// Non-fatal: continue with command execution
-			// The terminal might already be active or user might be in CLI mode
 			console.warn("Could not activate nRF terminal:", error)
+		}
+
+		// CRITICAL FIX: If we can't find/create the nRF terminal, we MUST NOT proceed.
+		// Passing undefined to executeCommandTool causes it to use the default shell (e.g. /bin/bash),
+		// which lacks the Nordic SDK environment variables, causing build failures.
+		if (!terminalName) {
+			const errorMessage =
+				"Failed to activate nRF Connect Terminal. Please ensure the 'nRF Connect' extension is installed and you can open a terminal matching 'nRF' or 'Zephyr' manually."
+			await config.callbacks.say("error", errorMessage)
+			return formatResponse.toolError(errorMessage)
 		}
 
 		// Step 2: Execute command using the standard CommandExecutor

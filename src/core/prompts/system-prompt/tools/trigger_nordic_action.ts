@@ -8,19 +8,49 @@ import type { ClineToolSpec } from "../spec"
  */
 
 const CLI_REFERENCE = `
-WEST COMMANDS:
-  west build -b BOARD [path] [-p always]  Build project (pristine: -p always)
-  west flash [--erase] [--recover]        Flash firmware
-  west debug                              Start GDB session
-  west sign -t imgtool                    Sign for MCUboot
+BOARD NAME FORMAT (REQUIRED):
+  • nrf52840dk/nrf52840 (NOT just "nrf52840dk")
+  • Find name: west boards | grep <chip>
 
-NRFJPROG COMMANDS:
-  nrfjprog --ids                          List connected debuggers
-  nrfjprog --program FILE --verify        Program and verify
-  nrfjprog --eraseall                     Erase all flash
-  nrfjprog --recover                      Full recovery
+PROCESS CLEANUP (Crucial for stability):
+  • Before separate/new task: pkill -9 JLink; pkill -9 nrfutil; sleep 1
+  • PREVENT HANGS: Use "timeout 60s" for blocking commands (e.g. timeout 60s west flash)
 
-COMMON BOARDS: nrf52dk, nrf52840dk, nrf52833dk, nrf5340dk, nrf52840dongle (Run "west boards | grep <chip>" for others)`
+FORBIDDEN COMMANDS (WASTEFUL/FLAKY):
+  • DO NOT USE: hcitool, nRFConnectScanner, ble-scan (Host scanning fails in containers)
+  • DO NOT USE: nrfjprog --family (Use --ids instead)
+  • DO NOT USE: nrfjprog --info (Use --ids instead)
+
+VERIFICATION STRATEGY (TRUST THE LOGS):
+  1. PRIMARY: RTT or UART logs showing boot & functionality.
+  2. SECONDARY: Ask user ("Do you see LED blinking?").
+  3. NEVER scan from the host machine.
+
+RTT LOGGING (THE "PERFECT" SEQUENCE):
+  1. Check RTT enabled: grep CONFIG_USE_SEGGER_RTT prj.conf
+  2. Cleanup: pkill -9 JLink; pkill -9 nrfutil; sleep 1
+  3. Connect: Use "nRF RTT Terminal" (VS Code) or JLinkExe (Plan B)
+  4. RESET (Crucial): In a NEW terminal, run: nrfjprog --reset -s <serial>
+  5. Observe: Watch RTT terminal immediately to catch boot logs
+  6. MISSING LOGS? Check prj.conf for CONFIG_LOG_DEFAULT_LEVEL=4 (Debug)
+
+UART LOGGING (If RTT disabled / CONFIG_LOG_BACKEND_UART=y):
+  • "RESET & CAT" PATTERN (Run in new terminal):
+    timeout 20s sh -c 'nrfjprog --reset -s <SN> && sleep 1 && cat /dev/ttyACM0'
+
+FLASH PRIORITY:
+  1. Get devices: nrfjprog --ids
+  2. ONE device: timeout 60s west flash
+  3. MULTIPLE: timeout 60s west flash --snr <serial>
+  4. RECOVER: nrfjprog --recover (only if flash fails)
+
+BUILD DECISION TREE:
+  1. Check for build folder: ls build/ 2>/dev/null || echo "no build"
+  2. If NO build/: west build -b BOARD .
+  3. If build/ EXISTS:
+     - Fresh rebuild: west build -b BOARD . -p always
+     - Incremental: west build
+`
 
 const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
