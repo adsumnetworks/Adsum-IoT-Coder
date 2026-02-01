@@ -22,6 +22,14 @@ describe("trigger_nordic_action tool", () => {
 		expect(generic?.description).to.include("pkill -9 JLink")
 		expect(generic?.description).to.include("timeout 60s")
 
+		// Check for DYNAMIC CONTEXT (Living Document Rule)
+		expect(generic?.description).to.include("BEFORE STARTING")
+		expect(generic?.description).to.include("NRF52_BEST_PRACTICES_GUIDE.md")
+
+		// Check for AUTONOMY RULES
+		expect(generic?.description).to.include("AUTONOMY RULES")
+		expect(generic?.description).to.include("NEVER ask user")
+
 		// Check for FORBIDDEN COMMANDS
 		expect(generic?.description).to.include("FORBIDDEN COMMANDS")
 		expect(generic?.description).to.include("hcitool")
@@ -38,7 +46,9 @@ describe("trigger_nordic_action tool", () => {
 
 		// Check for UART LOGGING
 		expect(generic?.description).to.include("UART LOGGING")
-		expect(generic?.description).to.include("RESET & CAT")
+		expect(generic?.description).to.include("SINGLE DEVICE")
+		expect(generic?.description).to.include("MULTI-DEVICE")
+		expect(generic?.description).to.include("mkdir -p logs")
 
 		if (!generic) throw new Error("Generic variant not found")
 		const commandParam = generic.parameters?.find((p) => p.name === "command")

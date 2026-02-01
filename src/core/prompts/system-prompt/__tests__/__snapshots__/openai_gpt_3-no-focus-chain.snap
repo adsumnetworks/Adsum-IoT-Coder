@@ -210,6 +210,15 @@ Usage:
 ## trigger_nordic_action
 Description: Execute commands in the nRF Connect terminal with the correct Nordic/Zephyr SDK environment. This is the ONLY method to use for west, nrfjprog, nrfutil, and other Nordic CLI tools.
 
+BEFORE STARTING (DYNAMIC CONTEXT):
+  • CHECK for "nrf-doc/NRF52_BEST_PRACTICES_GUIDE.md"
+  • IF EXISTS: READ IT! It overrides any rules below with project-specific strategies.
+
+AUTONOMY RULES (CRITICAL):
+  • NEVER ask user to run "nrfjprog", "west", or "cat" commands. YOU run them.
+  • NEVER use generic shell for "west" or "nrfjprog". ALWAYS use this tool.
+  • IF FAIL: Ask user "Is Green LED blinking? Is USB connected?" before blaming code.
+
 BOARD NAME FORMAT (REQUIRED):
   • nrf52840dk/nrf52840 (NOT just "nrf52840dk")
   • Find name: west boards | grep <chip>
@@ -220,8 +229,7 @@ PROCESS CLEANUP (Crucial for stability):
 
 FORBIDDEN COMMANDS (WASTEFUL/FLAKY):
   • DO NOT USE: hcitool, nRFConnectScanner, ble-scan (Host scanning fails in containers)
-  • DO NOT USE: nrfjprog --family (Use --ids instead)
-  • DO NOT USE: nrfjprog --info (Use --ids instead)
+  • DO NOT USE: nrfjprog --family --info (Use --ids instead)
 
 VERIFICATION STRATEGY (TRUST THE LOGS):
   1. PRIMARY: RTT or UART logs showing boot & functionality.
@@ -237,8 +245,12 @@ RTT LOGGING (THE "PERFECT" SEQUENCE):
   6. MISSING LOGS? Check prj.conf for CONFIG_LOG_DEFAULT_LEVEL=4 (Debug)
 
 UART LOGGING (If RTT disabled / CONFIG_LOG_BACKEND_UART=y):
-  • "RESET & CAT" PATTERN (Run in new terminal):
-    timeout 20s sh -c 'nrfjprog --reset -s <SN> && sleep 1 && cat /dev/ttyACM0'
+  • SINGLE DEVICE: timeout 20s sh -c 'nrfjprog --reset -s <SN> && sleep 1 && cat /dev/ttyACM0'
+  • MULTI-DEVICE (Advanced):
+      mkdir -p logs
+      (timeout 20s cat /dev/ttyACM0 > logs/dev0.log &)
+      (timeout 20s cat /dev/ttyACM1 > logs/dev1.log &)
+      nrfjprog --reset -s <SN1>; nrfjprog --reset -s <SN2>
 
 FLASH PRIORITY:
   1. Get devices: nrfjprog --ids
