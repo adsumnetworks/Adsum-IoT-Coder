@@ -3,7 +3,7 @@
     "type": "function",
     "function": {
       "name": "execute_command",
-      "description": "Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. You must tailor your command to the user's system and provide a clear explanation of what the command does. For command chaining, use the appropriate chaining syntax for the user's shell. Prefer to execute complex CLI commands over creating executable scripts, as they are more flexible and easier to run. Commands will be executed in the current working directory: {{CWD}}{{MULTI_ROOT_HINT}}\n⚠️ NORDIC DEVELOPMENT WARNING: Do NOT use this tool for west, nrfjprog, nrfutil, or cmake commands in nRF/Zephyr projects. These MUST be run via trigger_nordic_action to ensure correct SDK environment variables are set.",
+      "description": "Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. You must tailor your command to the user's system and provide a clear explanation of what the command does. For command chaining, use the appropriate chaining syntax for the user's shell. Prefer to execute complex CLI commands over creating executable scripts, as they are more flexible and easier to run. Commands will be executed in the current working directory: {{CWD}}{{MULTI_ROOT_HINT}}\n⚠️ NORDIC DEVELOPMENT WARNING: Do NOT use this tool for west, nrfjprog, nrfutil, cmake commands, OR serial port access (cat /dev/ttyACM*, screen, minicom) in nRF/Zephyr projects. These MUST be run via trigger_nordic_action to ensure correct SDK environment variables are set and reliable logging.",
       "strict": false,
       "parameters": {
         "type": "object",
@@ -388,23 +388,54 @@
     "type": "function",
     "function": {
       "name": "trigger_nordic_action",
-      "description": "Execute commands in the nRF Connect terminal with the correct Nordic/Zephyr SDK environment. This is the ONLY method to use for west, nrfjprog, nrfutil, and other Nordic CLI tools.\n\nBEFORE STARTING (DYNAMIC CONTEXT):\n  • CHECK for \"nrf-doc/NRF52_BEST_PRACTICES_GUIDE.md\"\n  • IF EXISTS: READ IT! It overrides any rules below with project-specific strategies.\n\nAUTONOMY RULES (CRITICAL):\n  • NEVER ask user to run \"nrfjprog\", \"west\", or \"cat\" commands. YOU run them.\n  • NEVER use generic shell for \"west\" or \"nrfjprog\". ALWAYS use this tool.\n  • IF FAIL: Ask user \"Is Green LED blinking? Is USB connected?\" before blaming code.\n\nBOARD NAME FORMAT (REQUIRED):\n  • nrf52840dk/nrf52840 (NOT just \"nrf52840dk\")\n  • Find name: west boards | grep <chip>\n\nPROCESS CLEANUP (Crucial for stability):\n  • Before separate/new task: pkill -9 JLink; pkill -9 nrfutil; sleep 1\n  • PREVENT HANGS: Use \"timeout 60s\" for blocking commands (e.g. timeout 60s west flash)\n\nFORBIDDEN COMMANDS (WASTEFUL/FLAKY):\n  • DO NOT USE: hcitool, nRFConnectScanner, ble-scan (Host scanning fails in containers)\n  • DO NOT USE: nrfjprog --family --info (Use --ids instead)\n\nVERIFICATION STRATEGY (TRUST THE LOGS):\n  1. PRIMARY: RTT or UART logs showing boot & functionality.\n  2. SECONDARY: Ask user (\"Do you see LED blinking?\").\n  3. NEVER scan from the host machine.\n\nRTT LOGGING (THE \"PERFECT\" SEQUENCE):\n  1. Check RTT enabled: grep CONFIG_USE_SEGGER_RTT prj.conf\n  2. Cleanup: pkill -9 JLink; pkill -9 nrfutil; sleep 1\n  3. Connect: Use \"nRF RTT Terminal\" (VS Code) or JLinkExe (Plan B)\n  4. RESET (Crucial): In a NEW terminal, run: nrfjprog --reset -s <serial>\n  5. Observe: Watch RTT terminal immediately to catch boot logs\n  6. MISSING LOGS? Check prj.conf for CONFIG_LOG_DEFAULT_LEVEL=4 (Debug)\n\nUART LOGGING (Cross-Platform Tool: nrf-tools/nrf_logger.py):\n  • FIRST TIME SETUP: bash nrf-tools/check_env.sh (or check_env.bat on Windows)\n  • LIST PORTS: python nrf-tools/nrf_logger.py --list\n  • PRE-FLIGHT TEST (2 sec):\n      python nrf-tools/nrf_logger.py --test --port /dev/ttyACM0\n  • SINGLE DEVICE RECORDING:\n      python nrf-tools/nrf_logger.py --port /dev/ttyACM0 --duration 30 --output logs/\n  • MULTI-DEVICE (Central + Peripheral):\n      python nrf-tools/nrf_logger.py         --devices central:/dev/ttyACM0,peripheral:/dev/ttyACM1         --reset-serials <CENTRAL_SN>,<PERIPH_SN>         --duration 60 --output logs/ --analyze\n  • IF NO LOGS: Ask user \"Is USB connected? Try unplug/replug device\"\n\nFLASH PRIORITY:\n  1. Get devices: nrfjprog --ids\n  2. ONE device: timeout 60s west flash\n  3. MULTIPLE: timeout 60s west flash --snr <serial>\n  4. RECOVER: nrfjprog --recover (only if flash fails)\n\nBUILD DECISION TREE:\n  1. Check for build folder: ls build/ 2>/dev/null || echo \"no build\"\n  2. If NO build/: west build -b BOARD .\n  3. If build/ EXISTS:\n     - Fresh rebuild: west build -b BOARD . -p always\n     - Incremental: west build\n",
+      "description": "Execute commands in the nRF Connect terminal with the correct Nordic/Zephyr SDK environment. This is the ONLY method to use for west, nrfjprog, nrfutil, and other Nordic CLI tools.\n\nBEFORE STARTING (Living Document Rule):\n  • FIRST ACTION: Check for NRF52_BEST_PRACTICES_GUIDE.md in workspace root and read if exists\n  • This guide is your DYNAMIC CONTEXT fed by the user's real project experience\n  • Prioritize guide rules over static instructions when conflict arises\n\nAUTONOMY RULES (CRITICAL):\n  • NEVER ask user to run \"nrfjprog\", \"west\", or \"cat\" commands. YOU run them.\n  • NEVER use generic shell for \"west\" or \"nrfjprog\". ALWAYS use this tool.\n  • IF FAIL: Ask user \"Is Green LED blinking? Is USB connected?\" before blaming code.\n\nBOARD NAME FORMAT (REQUIRED):\n  • nrf52840dk/nrf52840 (NOT just \"nrf52840dk\")\n  • Find name: west boards | grep <chip>\n\nPROCESS CLEANUP (Crucial for stability):\n  • Before separate/new task: pkill -9 JLink; pkill -9 nrfutil; sleep 1\n  • PREVENT HANGS: Use \"timeout 60s\" for blocking commands (e.g. timeout 60s west flash)\n\nFORBIDDEN COMMANDS (WASTEFUL/FLAKY):\n  • DO NOT USE: hcitool, nRFConnectScanner, ble-scan (Host scanning fails in containers)\n  • DO NOT USE: nrfjprog --family --info (Use --ids instead)\n\nVERIFICATION STRATEGY (TRUST THE LOGS):\n  1. PRIMARY: RTT or UART logs showing boot & functionality.\n  2. SECONDARY: Ask user (\"Do you see LED blinking?\").\n  3. NEVER scan from the host machine.\n\nRTT LOGGING (THE \"PERFECT\" SEQUENCE):\n  1. Check RTT enabled: grep CONFIG_USE_SEGGER_RTT prj.conf\n  2. Cleanup: pkill -9 JLink; pkill -9 nrfutil; sleep 1\n  3. Connect: Use \"nRF RTT Terminal\" (VS Code) or JLinkExe (Plan B)\n  4. RESET (Crucial): In a NEW terminal, run: nrfjprog --reset -s <serial>\n  5. Observe: Watch RTT terminal immediately to catch boot logs\n  6. MISSING LOGS? Check prj.conf for CONFIG_LOG_DEFAULT_LEVEL=4 (Debug)\n\nUART LOGGING (Access via 'log_device' action):\n  • LIST PORTS: action=\"log_device\", operation=\"list\"\n  • PRE-FLIGHT TEST (2 sec): action=\"log_device\", operation=\"test\", port=\"/dev/ttyACM0\"\n  • CAPTURE LOGS: action=\"log_device\", operation=\"capture\", port=\"/dev/ttyACM0\", duration=\"30\", output=\"logs/\"\n  • MULTI-DEVICE: action=\"log_device\", operation=\"capture\", devices=\"central:/dev/ttyACM0,peripheral:/dev/ttyACM1\", duration=\"60\", output=\"logs/\"\n  • IF NO LOGS: Ask user \"Is USB connected? Try unplug/replug device\"\n\nFLASH PRIORITY:\n  1. Get devices: nrfjprog --ids\n  2. ONE device: timeout 60s west flash\n  3. MULTIPLE: timeout 60s west flash --snr <serial>\n  4. RECOVER: nrfjprog --recover (only if flash fails)\n\nBUILD DECISION TREE:\n  1. Check for build folder: ls build/ 2>/dev/null || echo \"no build\"\n  2. If NO build/: west build -b BOARD .\n  3. If build/ EXISTS:\n     - Fresh rebuild: west build -b BOARD . -p always\n     - Incremental: west build\n",
       "strict": false,
       "parameters": {
         "type": "object",
         "properties": {
           "action": {
             "type": "string",
-            "description": "Must be \"execute\" - runs the command in the nRF Connect terminal."
+            "description": "The action to perform. Options:\n- \"execute\": Run a generic shell command (west, nrfjprog).\n- \"log_device\": Run the native Nordic Logger tool (replaces external python scripts)."
           },
           "command": {
             "type": "string",
-            "description": "The shell command to run in the nRF Connect terminal. Use west, nrfjprog, nrfutil commands.\nExamples:\n- \"west boards | grep nrf52840\" (Find correct board name)\n- \"west build -b nrf52840dk .\" (Build for specific board)\n- \"west flash --erase\"\n- \"west debug\"\n- \"nrfjprog --eraseall\"\n- \"nrfjprog --program build/zephyr/zephyr.hex --verify\""
+            "description": "Required if action=\"execute\". The shell command to run in the nRF Connect terminal. Use west, nrfjprog, nrfutil commands.\nExamples:\n- \"west boards | grep nrf52840\" (Find correct board name)\n- \"west build -b nrf52840dk .\" (Build for specific board)\n- \"west flash --erase\"\n- \"nrfjprog --eraseall\""
+          },
+          "operation": {
+            "type": "string",
+            "description": "Required if action=\"log_device\". Options: \"list\", \"test\", \"capture\", \"monitor\"."
+          },
+          "port": {
+            "type": "string",
+            "description": "Required for \"test\", \"capture\", \"monitor\" (unless \"devices\" is used). The serial port (e.g. /dev/ttyACM0, COM3)."
+          },
+          "duration": {
+            "type": "string",
+            "description": "Optional for \"capture\". Recording duration in seconds. Default provided by tool if omitted."
+          },
+          "devices": {
+            "type": "string",
+            "description": "Optional for \"capture\". Multi-device mapping: \"name:port,name2:port2\"."
+          },
+          "output": {
+            "type": "string",
+            "description": "Optional for \"capture\". Directory to save logs."
+          },
+          "reset": {
+            "type": "string",
+            "description": "Optional. Reset device(s) before capture. DEFAULT: true (ALWAYS reset to catch boot logs unless user explicitly wants mid-runtime capture). Set to false ONLY when user says \"capture from running system\", \"monitor current activity\", or \"record while running\"."
+          },
+          "auto_detect": {
+            "type": "string",
+            "description": "Optional. Auto-detect all connected nRF devices for BLE development. DEFAULT: Use this for BLE scenarios when user doesn't specify ports (enables simultaneous central+peripheral recording). Set to true when debugging BLE connections or multi-device scenarios."
+          },
+          "list_nrf": {
+            "type": "string",
+            "description": "Optional. When true with operation=\"list\", shows only nRF devices (cleaner output) instead of all serial ports."
           }
         },
         "required": [
-          "action",
-          "command"
+          "action"
         ],
         "additionalProperties": false
       }

@@ -225,7 +225,7 @@ export class ToolExecutor {
 		this.coordinator.register(new ReportBugHandler())
 		this.coordinator.register(new ApplyPatchHandler(validator))
 		this.coordinator.register(new GenerateExplanationToolHandler())
-		this.coordinator.register(new TriggerNordicActionHandler())
+		this.coordinator.register(new TriggerNordicActionHandler(this.context))
 	}
 
 	/**

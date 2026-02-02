@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Nordic Logger Wrapper
+# Hides the internal Python script path from user-facing surfaces
+# This wrapper is called instead of directly invoking python3 with the script path
+
+# Get the directory where this script lives
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Execute the Python script with all arguments passed through
+exec python3 "${SCRIPT_DIR}/nrf_logger.py" "$@"
