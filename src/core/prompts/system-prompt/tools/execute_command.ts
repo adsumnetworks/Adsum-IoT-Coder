@@ -7,7 +7,7 @@ import type { ClineToolSpec } from "../spec"
  * For west, nrfjprog, nrfutil, cmake in nRF projects, use trigger_nordic_action.
  */
 const NORDIC_WARNING = `
-⚠️ NORDIC DEVELOPMENT WARNING: Do NOT use this tool for west, nrfjprog, nrfutil, or cmake commands in nRF/Zephyr projects. These MUST be run via trigger_nordic_action to ensure correct SDK environment variables are set.`
+⚠️ NORDIC DEVELOPMENT WARNING: Do NOT use this tool for west, nrfjprog, nrfutil, cmake commands, OR serial port access (cat /dev/ttyACM*, screen, minicom) in nRF/Zephyr projects. These MUST be run via trigger_nordic_action to ensure correct SDK environment variables are set and reliable logging.`
 
 const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,

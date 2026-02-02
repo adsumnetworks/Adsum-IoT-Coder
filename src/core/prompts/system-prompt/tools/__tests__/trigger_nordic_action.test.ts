@@ -46,9 +46,9 @@ describe("trigger_nordic_action tool", () => {
 
 		// Check for UART LOGGING
 		expect(generic?.description).to.include("UART LOGGING")
-		expect(generic?.description).to.include("SINGLE DEVICE")
-		expect(generic?.description).to.include("MULTI-DEVICE")
-		expect(generic?.description).to.include("nrf_logger.py")
+		expect(generic?.description).to.include("log_device")
+		expect(generic?.description).to.include('operation="list"')
+		expect(generic?.description).to.include('operation="capture"')
 
 		if (!generic) throw new Error("Generic variant not found")
 		const commandParam = generic.parameters?.find((p) => p.name === "command")

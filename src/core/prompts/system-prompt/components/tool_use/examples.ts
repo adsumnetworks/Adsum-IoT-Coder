@@ -151,7 +151,14 @@ return (
   "assignees": ["octocat"]
 }
 </arguments>
-</use_mcp_tool>`
+</use_mcp_tool>
+
+## Example 7: Capturing logs from Nordic nRF device (MUST use trigger_nordic_action, NOT execute_command)
+
+<trigger_nordic_action>
+<action>execute</action>
+<command>python nrf-tools/nrf_logger.py --port /dev/ttyACM0 --duration 30 --output logs/</command>
+</trigger_nordic_action>`
 
 export async function getToolUseExamplesSection(_variant: PromptVariant, context: SystemPromptContext): Promise<string> {
 	// Return the placeholder that will be replaced with actual tools
