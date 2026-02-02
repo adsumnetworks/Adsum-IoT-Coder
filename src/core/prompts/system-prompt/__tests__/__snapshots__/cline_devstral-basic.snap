@@ -257,13 +257,16 @@ RTT LOGGING (THE "PERFECT" SEQUENCE):
   5. Observe: Watch RTT terminal immediately to catch boot logs
   6. MISSING LOGS? Check prj.conf for CONFIG_LOG_DEFAULT_LEVEL=4 (Debug)
 
-UART LOGGING (If RTT disabled / CONFIG_LOG_BACKEND_UART=y):
-  • SINGLE DEVICE: timeout 20s sh -c 'nrfjprog --reset -s <SN> && sleep 1 && cat /dev/ttyACM0'
-  • MULTI-DEVICE (Advanced):
-      mkdir -p logs
-      (timeout 20s cat /dev/ttyACM0 > logs/dev0.log &)
-      (timeout 20s cat /dev/ttyACM1 > logs/dev1.log &)
-      nrfjprog --reset -s <SN1>; nrfjprog --reset -s <SN2>
+UART LOGGING (Cross-Platform Tool: nrf-tools/nrf_logger.py):
+  • FIRST TIME SETUP: bash nrf-tools/check_env.sh (or check_env.bat on Windows)
+  • LIST PORTS: python nrf-tools/nrf_logger.py --list
+  • PRE-FLIGHT TEST (2 sec):
+      python nrf-tools/nrf_logger.py --test --port /dev/ttyACM0
+  • SINGLE DEVICE RECORDING:
+      python nrf-tools/nrf_logger.py --port /dev/ttyACM0 --duration 30 --output logs/
+  • MULTI-DEVICE (Central + Peripheral):
+      python nrf-tools/nrf_logger.py         --devices central:/dev/ttyACM0,peripheral:/dev/ttyACM1         --reset-serials <CENTRAL_SN>,<PERIPH_SN>         --duration 60 --output logs/ --analyze
+  • IF NO LOGS: Ask user "Is USB connected? Try unplug/replug device"
 
 FLASH PRIORITY:
   1. Get devices: nrfjprog --ids

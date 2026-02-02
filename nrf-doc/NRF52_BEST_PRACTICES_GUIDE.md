@@ -143,6 +143,77 @@ nrfjprog --memrd 0x0 --len 4 -s 683247800  # Check if flash is valid
 
 **Why:** More reliable than RTT, works without debugger, better for production debugging.
 
+#### **RECOMMENDED: Use nrf_logger.py Tool**
+
+The `nrf-tools/nrf_logger.py` Python tool provides cross-platform UART logging with:
+- Multi-device simultaneous recording
+- Pre-flight connection testing
+- Automatic device reset to capture boot logs
+- Timestamped log files
+- Log analysis
+
+**First-Time Setup:**
+```bash
+# Linux/macOS
+bash nrf-tools/check_env.sh
+
+# Windows
+nrf-tools\check_env.bat
+```
+
+**Usage Examples:**
+```bash
+# List available serial ports
+python nrf-tools/nrf_logger.py --list
+
+# Quick test (2 seconds - verify connection)
+python nrf-tools/nrf_logger.py --test --port /dev/ttyACM0
+
+# Single device recording (30 seconds)
+python nrf-tools/nrf_logger.py --port /dev/ttyACM0 --duration 30 --output logs/
+
+# Multi-device with reset + analysis (RECOMMENDED)
+python nrf-tools/nrf_logger.py \
+  --devices central:/dev/ttyACM0,peripheral:/dev/ttyACM1 \
+  --reset-serials 683247800,683007782 \
+  --duration 60 --output logs/ --analyze
+```
+
+**Multi-Device Workflow (2+ Devices):**
+```bash
+# Step 1: List ports and identify serial numbers
+python nrf-tools/nrf_logger.py --list
+nrfjprog --ids
+
+# Step 2: Quick 3-sec identification test
+python nrf-tools/nrf_logger.py \
+  --devices dev1:/dev/ttyACM1,dev2:/dev/ttyACM2 \
+  --reset-serials <SN1>,<SN2> --duration 3 --output logs/
+
+# Step 3: Check logs to identify Central vs Peripheral
+grep -E "Central|Peripheral|Hub|Sensor" logs/dev1_*.log logs/dev2_*.log
+
+# Step 4: Full recording with correct names
+python nrf-tools/nrf_logger.py \
+  --devices central:/dev/ttyACM1,peripheral:/dev/ttyACM2 \
+  --reset-serials <CENTRAL_SN>,<PERIPH_SN> \
+  --duration 60 --output logs/ --analyze
+```
+
+**Scalability (3-4+ Devices):**
+The tool uses Python threading - each device runs in its own thread. Tested with 2 devices, but scales to any number:
+```bash
+# Example: 4 devices
+python nrf-tools/nrf_logger.py \
+  --devices central:/dev/ttyACM0,periph1:/dev/ttyACM1,periph2:/dev/ttyACM2,gateway:/dev/ttyACM3 \
+  --reset-serials <SN1>,<SN2>,<SN3>,<SN4> --duration 60 --output logs/ --analyze
+```
+
+**Windows Port Names:**
+```bash
+python nrf-tools/nrf_logger.py --port COM3 --duration 30 --output logs/
+```
+
 **Configuration (prj.conf):**
 ```kconfig
 # Enable logging
