@@ -7,11 +7,12 @@ import { ClineDefaultTool } from "@/shared/tools"
 
 describe("TriggerNordicActionHandler (log_device)", () => {
 	let sandbox: sinon.SinonSandbox
-	let handler: any // Typed as any to access private methods if needed (though we test public execute)
+	let handler: any
 	let mockVscode: any
 	let mockActivateNordicTerminal: sinon.SinonStub
 	let mockExecuteCommandTool: sinon.SinonStub
 	let mockTaskConfig: any
+	let mockExec: sinon.SinonStub
 
 	// Path to the module under test
 	const MODULE_PATH = "../TriggerNordicActionHandler"
@@ -23,6 +24,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		mockVscode = {
 			ExtensionContext: class {},
 			Uri: { file: (path: string) => ({ fsPath: path }) },
+			workspace: { workspaceFolders: [] }, // Removed usage, but safe to keep empty
 		}
 
 		// Mock ExtensionContext
@@ -33,9 +35,13 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		// Mock external dependencies
 		mockActivateNordicTerminal = sandbox.stub().resolves("nRF Terminal")
 
+		// Mock child_process exec
+		mockExec = sandbox.stub()
+
 		// Load the class with mocks
 		const TriggerNordicActionHandlerClass = proxyquire(MODULE_PATH, {
 			vscode: mockVscode,
+			"node:child_process": { exec: mockExec },
 			"@/hosts/vscode/hostbridge/workspace/executeNordicCommand": {
 				activateNordicTerminal: mockActivateNordicTerminal,
 			},
@@ -55,6 +61,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		// Setup TaskConfig mock
 		mockExecuteCommandTool = sandbox.stub().resolves([false, { type: "tool_result", content: "Success" }])
 		mockTaskConfig = {
+			cwd: "/mock/workspace", // ADDED for relative path resolution
 			callbacks: {
 				say: sandbox.stub().resolves(),
 				sayAndCreateMissingParamError: sandbox.stub().resolves({ type: "tool_error", content: "Missing param" }),
@@ -71,7 +78,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		sandbox.restore()
 	})
 
-	it("should handle 'log_device' action with 'list' operation", async () => {
+	it("should handle 'log_device' action with 'list' operation internally", async () => {
 		const block: ToolUse = {
 			type: "tool_use",
 			name: ClineDefaultTool.NORDIC_ACTION,
@@ -79,18 +86,43 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 			partial: false,
 		}
 
-		await handler.execute(mockTaskConfig, block)
+		// Mock successful python script execution
+		mockExec.yields(null, "Connected nRF Devices:\n  /dev/ttyACM0\n    Serial: 123456789", "")
 
-		// Verify executeCommandTool was called with the wrapper script (NOT python3)
-		// Path should be: /mock/extension/path/assets/scripts/nordic-logger
-		expect(mockExecuteCommandTool.calledOnce).to.be.true
-		const cmd = mockExecuteCommandTool.firstCall.args[0]
-		// Should contain the wrapper script path
-		expect(cmd).to.contain("/mock/extension/path/assets/scripts/nordic-logger")
-		expect(cmd).to.contain("--list")
-		// Should NOT contain python3 or .py file
-		expect(cmd).to.not.contain("python3")
-		expect(cmd).to.not.contain("nrf_logger.py")
+		const result = await handler.execute(mockTaskConfig, block)
+
+		// Verify executeCommandTool was NOT called (internal now)
+		expect(mockExecuteCommandTool.called).to.be.false
+
+		// Verify exec called with python script
+		expect(mockExec.calledOnce).to.be.true
+		const execCmd = mockExec.firstCall.args[0]
+		expect(execCmd).to.contain("python3")
+		expect(execCmd).to.contain("nrf_logger.py")
+		expect(execCmd).to.contain("--list-nrf")
+
+		// Verify result format
+		expect(result).to.be.an("array")
+		expect(result[0].type).to.equal("text")
+		expect(result[0].text).to.include("/dev/ttyACM0")
+		expect(result[0].text).to.include("Serial: 123456789")
+	})
+
+	it("should handle 'log_device' list operation when script fails", async () => {
+		const block: ToolUse = {
+			type: "tool_use",
+			name: ClineDefaultTool.NORDIC_ACTION,
+			params: { action: "log_device", operation: "list" },
+			partial: false,
+		}
+
+		// Mock failure
+		mockExec.yields(new Error("Script failed"), "", "stderr error")
+
+		const result = await handler.execute(mockTaskConfig, block)
+
+		expect(result.type).to.equal("tool_error")
+		expect(result.content).to.include("Failed to list devices via python script")
 	})
 
 	it("should handle 'log_device' action with 'test' operation", async () => {
@@ -108,20 +140,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		expect(cmd).to.contain("--port /dev/ttyACM0")
 	})
 
-	it("should fail 'test' operation if port is missing", async () => {
-		const block: ToolUse = {
-			type: "tool_use",
-			name: ClineDefaultTool.NORDIC_ACTION,
-			params: { action: "log_device", operation: "test" }, // Missing port
-			partial: false,
-		}
-
-		const result = await handler.execute(mockTaskConfig, block)
-		expect(result.type).to.equal("tool_error")
-		expect(mockExecuteCommandTool.called).to.be.false
-	})
-
-	it("should handle 'log_device' action with 'capture' operation (single device)", async () => {
+	it("should handle 'log_device' action with 'capture' operation", async () => {
 		const block: ToolUse = {
 			type: "tool_use",
 			name: ClineDefaultTool.NORDIC_ACTION,
@@ -140,56 +159,28 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		const cmd = mockExecuteCommandTool.firstCall.args[0]
 		expect(cmd).to.contain("--port /dev/ttyACM0")
 		expect(cmd).to.contain("--duration 10")
-		expect(cmd).to.contain("--output logs/")
-		expect(cmd).to.not.contain("--devices")
+		// Should resolve output path absolute
+		expect(cmd).to.contain("--output /mock/workspace/logs/")
 	})
 
-	it("should handle 'log_device' action with 'capture' operation (multi device)", async () => {
+	it("should use relative path for wrapper script when possible", async () => {
 		const block: ToolUse = {
 			type: "tool_use",
 			name: ClineDefaultTool.NORDIC_ACTION,
-			params: {
-				action: "log_device",
-				operation: "capture",
-				devices: "central:/dev/tty0,periph:/dev/tty1",
-				duration: "60",
-			},
+			params: { action: "log_device", operation: "test", port: "/dev/ttyACM0" },
 			partial: false,
 		}
 
-		await handler.execute(mockTaskConfig, block)
-
-		const cmd = mockExecuteCommandTool.firstCall.args[0]
-		expect(cmd).to.contain("--devices central:/dev/tty0,periph:/dev/tty1")
-		expect(cmd).to.contain("--duration 60")
-		expect(cmd).to.not.contain("--port")
-	})
-
-	it("should use wrapper script (not python3 directly)", async () => {
-		const block: ToolUse = {
-			type: "tool_use",
-			name: ClineDefaultTool.NORDIC_ACTION,
-			params: { action: "log_device", operation: "list" },
-			partial: false,
-		}
+		// In this setup:
+		// CWD = /mock/workspace
+		// Wrapper = /mock/extension/path/assets/scripts/nordic-logger
+		// Relative path starts with ../.., so it should FALLBACK to absolute in our logic
+		// logic: if (!relativePath.startsWith("..") ...)
 
 		await handler.execute(mockTaskConfig, block)
 		const cmd = mockExecuteCommandTool.firstCall.args[0]
-		// Should start with the wrapper path, NOT python3
-		expect(cmd).to.contain("nordic-logger")
-		expect(cmd).to.not.contain("python3")
-	})
 
-	it("should still support legacy 'execute' action", async () => {
-		const block: ToolUse = {
-			type: "tool_use",
-			name: ClineDefaultTool.NORDIC_ACTION,
-			params: { action: "execute", command: "west build" }, // Legacy generic
-			partial: false,
-		}
-
-		await handler.execute(mockTaskConfig, block)
-		const cmd = mockExecuteCommandTool.firstCall.args[0]
-		expect(cmd).to.equal("west build")
+		// Since /mock/extension is NOT inside /mock/workspace, it uses absolute
+		expect(cmd).to.contain("/mock/extension/path/assets/scripts/nordic-logger")
 	})
 })

@@ -1,3 +1,4 @@
+import { exec } from "node:child_process"
 import * as path from "node:path"
 import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
@@ -90,21 +91,42 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			return await config.callbacks.sayAndCreateMissingParamError(this.name, "operation")
 		}
 
-		// Resolve path to the wrapper script (NOT the Python file)
-		// The wrapper hides the Python implementation from user-facing output
-		const wrapperPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", "nordic-logger")
+		// 1. Handle "list" operation internally (Hidden "Under the Hood")
+		if (operation === "list") {
+			return this.listDevicesInternal()
+		}
+
+		// 2. Resolve paths for "capture" / "test" / "monitor"
+
+		// A. Script Path: Use relative path for cleaner terminal output
+		const absoluteWrapperPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", "nordic-logger")
+		let wrapperPath = absoluteWrapperPath
+
+		// Try to make it relative to the current working directory (workspace root)
+		if (config.cwd) {
+			const workspaceRoot = config.cwd
+			try {
+				const relativePath = path.relative(workspaceRoot, absoluteWrapperPath)
+				// If relative path is shorter and doesn't traverse too far up, use it
+				if (!relativePath.startsWith("..") && relativePath.length < absoluteWrapperPath.length) {
+					wrapperPath = "./" + relativePath
+				}
+			} catch (e) {
+				// Fallback to absolute
+			}
+		}
 
 		const args = [wrapperPath]
 
+		// B. Output Path: Ensure it is ABSOLUTE to avoid saving in wrong CWD
+		let resolvedOutput = output
+		if (output && !path.isAbsolute(output)) {
+			if (config.cwd) {
+				resolvedOutput = path.join(config.cwd, output)
+			}
+		}
+
 		switch (operation) {
-			case "list":
-				// Use --list-nrf for clean output (only nRF devices) or --list for all ports
-				if (list_nrf) {
-					args.push("--list-nrf")
-				} else {
-					args.push("--list")
-				}
-				break
 			case "test":
 				if (port) {
 					args.push("--test", "--port", port)
@@ -139,7 +161,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 				}
 
 				if (duration) args.push("--duration", duration.toString())
-				if (output) args.push("--output", output)
+				if (resolvedOutput) args.push("--output", resolvedOutput)
 				break
 			case "monitor":
 				// Monitor maps to undefined (default behavior of script if no duration?)
@@ -169,6 +191,42 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		// Execute using the same NRF terminal logic to ensure python environment is okay
 		// (Though python might be system wide, NRF terminal is safer for consistency)
 		return this.executeInNrfTerminal(config, cmd)
+	}
+
+	private async listDevicesInternal(): Promise<ToolResponse> {
+		const scriptPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", "nrf_logger.py")
+		const cmd = `python3 "${scriptPath}" --list-nrf`
+
+		return new Promise((resolve) => {
+			exec(cmd, (error, stdout, stderr) => {
+				if (error) {
+					// Fallback if python fails
+					return resolve(
+						formatResponse.toolError(`Failed to list devices via python script: ${error.message}\n${stderr}`),
+					)
+				}
+
+				// The script output is already human-readable and contains Ports + Serials
+				// e.g. "/dev/ttyACM0 ... Serial: 683..."
+				const output = stdout.trim()
+
+				if (!output || output.includes("No nRF devices found")) {
+					return resolve([
+						{
+							type: "text",
+							text: "No connected nRF devices found.",
+						},
+					])
+				}
+
+				resolve([
+					{
+						type: "text",
+						text: output,
+					},
+				])
+			})
+		})
 	}
 
 	private async executeInNrfTerminal(config: TaskConfig, command: string): Promise<ToolResponse> {
