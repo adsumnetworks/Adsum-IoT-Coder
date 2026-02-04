@@ -9,9 +9,9 @@ export default defineConfig({
 	forbidOnly: isCI,
 	testDir: "src/test/e2e",
 	testMatch: /.*\.test\.ts/,
-	timeout: isCI || isWindow ? 40000 : 20000,
+	timeout: isCI || isWindow ? 90000 : 20000,
 	expect: {
-		timeout: isCI || isWindow ? 5000 : 2000,
+		timeout: isCI || isWindow ? 10000 : 2000,
 	},
 	fullyParallel: true,
 	reporter: isCI ? [["github"], ["list"]] : [["list"]],

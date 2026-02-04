@@ -60,6 +60,12 @@ old_docs/**
 !node_modules/@vscode/codicons/dist/codicon.css
 !node_modules/@vscode/codicons/dist/codicon.ttf
 
+# Include better-sqlite3 native module and its dependencies
+!node_modules/better-sqlite3/**
+!node_modules/bindings/**
+!node_modules/file-uri-to-path/**
+!node_modules/node-gyp-build/**
+
 # Include default themes JSON files used in getTheme
 !src/integrations/theme/default-themes/**
 
