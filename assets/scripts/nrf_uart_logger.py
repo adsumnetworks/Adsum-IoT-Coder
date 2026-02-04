@@ -25,6 +25,7 @@ Usage:
 """
 
 import argparse
+import atexit
 import os
 import sys
 import signal
