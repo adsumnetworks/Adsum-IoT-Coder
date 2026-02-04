@@ -1,0 +1,15 @@
+#!/bin/bash
+# RTT Logger Wrapper Script
+# Provides a consistent interface for the RTT logging tool
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_SCRIPT="${SCRIPT_DIR}/nrf_rtt_logger.py"
+
+# Check if Python script exists
+if [ ! -f "$PYTHON_SCRIPT" ]; then
+    echo "ERROR: nrf_rtt_logger.py not found at $PYTHON_SCRIPT"
+    exit 1
+fi
+
+# Execute Python script with all arguments
+exec python3 "$PYTHON_SCRIPT" "$@"

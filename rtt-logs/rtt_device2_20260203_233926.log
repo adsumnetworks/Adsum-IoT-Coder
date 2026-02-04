@@ -1,0 +1,168 @@
+[00:00:07.045,715] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=70[0m
+[00:00:07.046,203] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=70[0m
+[00:00:07.046,783] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         6e 9d d4 41 11 b9 6b 42  46 00 00 00             |n..A..kB F...    [0m
+[00:00:08.048,004] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=80[0m
+[00:00:08.048,522] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=80[0m
+[00:00:08.049,102] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         95 f4 d6 41 d7 71 6a 42  50 00 00 00             |...A.qjB P...    [0m
+[00:00:09.050,354] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=90[0m
+[00:0*** Booting nRF Connect SDK v3.2.1-d8887f6f32df ***
+*** Using Zephyr OS v4.2.99-ec78104f1569 ***
+[00:00:00.000,946] [0m<inf> main: === nRF52840 IoT Sensor Node (Peripheral) Starting ===[0m
+[00:00:00.001,312] [0m<inf> fake_sensor: Fake sensor initialized[0m
+[00:00:00.001,647] [0m<inf> ble_peripheral: Initializing BLE stack[0m
+[00:00:00.008,148] [0m<inf> fs_nvs: 2 Sectors of 4096 bytes[0m
+[00:00:00.008,483] [0m<inf> fs_nvs: alloc wra: 0, fe8[0m
+[00:00:00.008,758] [0m<inf> fs_nvs: data wra: 0, 0[0m
+[00:00:00.009,124] [0m<inf> bt_sdc_hci_driver: SoftDevice Controller build revision: 
+                                            9b 8f ac c3 1d 42 ae 44  fa cd 1f c3 48 a0 b4 2f |.....B.D ....H../
+                                            cf 29 ee 3d                                      |.).=             [0m
+[00:00:00.013,244] [0m<inf> bt_hci_core: HW Platform: Nordic Semiconductor (0x0002)[0m
+[00:00:00.013,641] [0m<inf> bt_hci_core: HW Variant: nRF52x (0x0002)[0m
+[00:00:00.014,007] [0m<inf> bt_hci_core: Firmware: Standard Bluetooth controller (0x00) Version 155.44175 Build 2923568579[0m
+[00:00:00.014,770] [0m<inf> bt_hci_core: No ID address. App must call settings_load()[0m
+[00:00:00.015,136] [0m<inf> ble_peripheral: Bluetooth enabled[0m
+[00:00:00.015,869] [0m<inf> bt_hci_core: HCI transport: SDC[0m
+[00:00:00.016,235] [0m<inf> bt_hci_core: Identity: E8:2B:68:5E:01:1A (random)[0m
+[00:00:00.016,632] [0m<inf> bt_hci_core: HCI: version 6.2 (0x10) revision 0x1020, manufacturer 0x0059[0m
+[00:00:00.022,125] [0m<inf> bt_hci_core: LMP: version 6.2 (0x10) subver 0x1020[0m
+[00:00:00.022,521] [0m<inf> ble_peripheral: Starting BLE advertising[0m
+[00:00:00.023,956] [0m<inf> ble_peripheral: BLE advertising started successfully[0m
+[00:00:00.024,353] [0m<inf> main: BLE advertising started. Ready to accept connections.[0m
+[00:00:00.030,090] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=0[0m
+[00:00:00.030,578] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=0[0m
+[00:00:00.031,158] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         00 00 c0 41 00 00 70 42  00 00 00 00             |...A..pB ....    [0m
+[00:00:01.032,348] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=10[0m
+[00:00:01.032,867] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=10[0m
+[00:00:01.033,416] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         d6 31 c3 41 41 e9 6f 42  0a 00 00 00             |.1.AA.oB ....    [0m
+[00:00:02.034,606] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=20[0m
+[00:00:02.035,125] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=20[0m
+[00:00:02.035,675] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         80 5b c6 41 1d a5 6f 42  14 00 00 00             |.[.A..oB ....    [0m
+[00:00:03.036,865] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=30[0m
+[00:00:03.037,384] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=30[0m
+[00:00:03.037,963] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         e7 74 c9 41 e2 33 6f 42  1e 00 00 00             |.t.A.3oB ....    [0m
+[00:00:04.039,154] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=40[0m
+[00:00:04.039,672] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=40[0m
+[00:00:04.040,222] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         1d 76 cc 41 10 96 6e 42  28 00 00 00             |.v.A..nB (...    [0m
+[00:00:05.041,412] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=50[0m
+[00:00:05.041,931] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=50[0m
+[00:00:05.042,480] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         74 57 cf 41 5c cc 6d 42  32 00 00 00             |tW.A\.mB 2...    [0m
+[00:00:06.043,701] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=60[0m
+[00:00:06.044,219] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=60[0m
+[00:00:06.044,769] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         8d 11 d2 41 aa d7 6c 42  3c 00 00 00             |...A..lB <...    [0m
+[00:00:07.045,959] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=70[0m
+[00:00:07.046,478] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=70[0m
+[00:00:07.047,027] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         6e 9d d4 41 11 b9 6b 42  46 00 00 00             |n..A..kB F...    [0m
+[00:00:08.048,217] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=80[0m
+[00:00:08.048,736] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=80[0m
+[00:00:08.049,316] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         95 f4 d6 41 d7 71 6a 42  50 00 00 00             |...A.qjB P...    [0m
+[00:00:09.050,506] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=90[0m
+[00:00:09.051,025] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=90[0m
+[00:00:09.051,605] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         04 11 d9 41 70 03 69 42  5a 00 00 00             |...Ap.iB Z...    [0m
+[00:00:10.052,795] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=100[0m
+[00:00:10.053,314] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=100[0m
+[00:00:10.053,924] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         55 ed da 41 7c 6f 67 42  64 00 00 00             |U..A|ogB d...    [0m
+[00:00:11.055,114] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=110[0m
+[00:00:11.055,633] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=110[0m
+[00:00:11.056,213] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         c5 84 dc 41 c8 b7 65 42  6e 00 00 00             |...A..eB n...    [0m
+[00:00:12.057,434] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=120[0m
+[00:00:12.057,922] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=120[0m
+[00:00:12.058,502] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         44 d3 dd 41 47 de 63 42  78 00 00 00             |D..AG.cB x...    [0m
+[00:00:13.059,753] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=130[0m
+[00:00:13.060,241] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=130[0m
+[00:00:13.060,821] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         78 d5 de 41 14 e5 61 42  82 00 00 00             |x..A..aB ....    [0m
+[00:00:14.062,042] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=140[0m
+[00:00:14.062,530] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=140[0m
+[00:00:14.063,110] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         ce 88 df 41 6c ce 5f 42  8c 00 00 00             |...Al._B ....    [0m
+[00:00:15.064,300] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=150[0m
+[00:00:15.064,819] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=150[0m
+[00:00:15.065,399] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         7b eb df 41 b2 9c 5d 42  96 00 00 00             |{..A..]B ....    [0m
+[00:00:16.066,619] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=160[0m
+[00:00:16.067,108] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=160[0m
+[00:00:16.067,687] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         82 fc df 41 63 52 5b 42  a0 00 00 00             |...AcR[B ....    [0m
+[00:00:17.068,908] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=170[0m
+[00:00:17.069,396] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=170[0m
+[00:00:17.069,976] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         b8 bb df 41 1a f2 58 42  aa 00 00 00             |...A..XB ....    [0m
+[00:00:18.071,197] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=180[0m
+[00:00:18.071,685] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=180[0m
+[00:00:18.072,265] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         c2 29 df 41 8b 7e 56 42  b4 00 00 00             |.).A.~VB ....    [0m
+[00:00:19.073,486] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=190[0m
+[00:00:19.073,974] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=190[0m
+[00:00:19.074,584] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         17 48 de 41 80 fa 53 42  be 00 00 00             |.H.A..SB ....    [0m
+[00:00:20.075,805] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=200[0m
+[00:00:20.076,293] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=200[0m
+[00:00:20.076,873] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         f7 18 dd 41 d5 68 51 42  c8 00 00 00             |...A.hQB ....    [0m
+[00:00:21.078,094] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=210[0m
+[00:00:21.078,582] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=210[0m
+[00:00:21.079,162] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         69 9f db 41 77 cc 4e 42  d2 00 00 00             |i..Aw.NB ....    [0m
+[00:00:22.080,413] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=220[0m
+[00:00:22.080,902] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=220[0m
+[00:00:22.081,481] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         34 df d9 41 5d 28 4c 42  dc 00 00 00             |4..A](LB ....    [0m
+[00:00:23.082,702] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=230[0m
+[00:00:23.083,190] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=230[0m
+[00:00:23.083,770] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         d1 dc d7 41 88 7f 49 42  e6 00 00 00             |...A..IB ....    [0m
+[00:00:24.084,991] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=240[0m
+[00:00:24.085,479] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=240[0m
+[00:00:24.086,059] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         65 9d d5 41 ff d4 46 42  f0 00 00 00             |e..A..FB ....    [0m
+[00:00:25.087,280] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=250[0m
+[00:00:25.087,768] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=250[0m
+[00:00:25.088,348] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         af 26 d3 41 cb 2b 44 42  fa 00 00 00             |.&.A.+DB ....    [0m
+[00:00:26.089,569] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=260[0m
+[00:00:26.090,057] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=260[0m
+[00:00:26.090,637] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         fd 7e d0 41 f1 86 41 42  04 01 00 00             |.~.A..AB ....    [0m
+[00:00:27.091,857] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=270[0m
+[00:00:27.092,346] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=270[0m
+[00:00:27.092,926] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         18 ad cd 41 74 e9 3e 42  0e 01 00 00             |...At.>B ....    [0m
+[00:00:28.094,146] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=280[0m
+[00:00:28.094,635] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=280[0m
+[00:00:28.095,245] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         39 b8 ca 41 4c 56 3c 42  18 01 00 00             |9..ALV<B ....    [0m
+[00:00:29.096,466] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=290[0m
+[00:00:29.096,954] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=290[0m
+[00:00:29.097,534] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         ee a7 c7 41 69 d0 39 42  22 01 00 00             |...Ai.9B "...    [0m
+[00:00:30.098,754] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=300[0m
+[00:00:30.099,243] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=300[0m
+[00:00:30.099,822] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         0e 84 c4 41 a8 5a 37 42  2c 01 00 00             |...A.Z7B ,...    [0m
+[00:00:31.101,074] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=310[0m
+[00:00:31.101,562] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=310[0m
+[00:00:31.102,142] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         a1 54 c1 41 d6 f7 34 42  36 01 00 00             |.T.A..4B 6...    [0m
+[00:00:32.103,363] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=320[0m
+[00:00:32.103,851] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=320[0m
+[00:00:32.104,431] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         cc 21 be 41 a9 aa 32 42  40 01 00 00             |.!.A..2B @...    [0m
+[00:00:33.105,651] [0m<dbg> fake_sensor: fake_sensor_read: Sensor read: Temp=*float*°C, Humidity=*float*%, TS=330[0m
+[00:00:33.106,140] [0m<dbg> ble_peripheral: ble_peripheral_update_sensor_data: Sensor data updated: Temp=*float*°C, Humidity=*float*%, TS=330[0m
+[00:00:33.106,719] [0m<inf> ble_peripheral: Sensor Data TX (Hex)
+                                         bf f3 ba 41 c0 75 30 42  4a 01 00 00             |...A.u0B J...    [0m

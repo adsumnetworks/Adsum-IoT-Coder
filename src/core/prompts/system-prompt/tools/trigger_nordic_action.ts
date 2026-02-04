@@ -64,81 +64,96 @@ BUILD DECISION TREE:
      - Incremental: west build
 `
 
+const PARAMETERS = [
+	{
+		name: "action",
+		required: true,
+		instruction: `The action to perform. Options:
+- "execute": Run a generic shell command (west, nrfjprog).
+- "log_device": Run the native Nordic Logger tool (replaces external python scripts).`,
+		usage: "execute",
+	},
+	{
+		name: "command",
+		required: false,
+		instruction: `Required if action="execute". The shell command to run in the nRF Connect terminal. Use west, nrfjprog, nrfutil commands.
+Examples:
+- "west boards | grep nrf52840" (Find correct board name)
+- "west build -b nrf52840dk ." (Build for specific board)
+- "west flash --erase"
+- "nrfjprog --eraseall"`,
+		usage: "west build -b nrf52840dk .",
+	},
+	{
+		name: "operation",
+		required: false,
+		instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor".`,
+		usage: "list",
+	},
+	{
+		name: "transport",
+		required: false,
+		instruction: `Optional for "log_device". Options: 
+- "uart" (default): Use serial port (requires "port" or "devices" as /dev/ttyACM*).
+- "rtt": Use J-Link RTT (requires "port" or "devices" as Serial Numbers, e.g. 683335182).
+CRITICAL: If you are using Serial Numbers (9-digit IDs), you MUST set transport="rtt".`,
+		usage: "rtt",
+	},
+	{
+		name: "port",
+		required: false,
+		instruction: `Required for "test", "capture", "monitor" (unless "devices" is used). 
+- For UART: The serial port (e.g. /dev/ttyACM0, COM3).
+- For RTT: The J-Link Serial Number (e.g. 683335182).`,
+		usage: "/dev/ttyACM0",
+	},
+	{
+		name: "duration",
+		required: false,
+		instruction: `Optional for "capture". Recording duration in seconds. Default: 30.`,
+		usage: "30",
+	},
+	{
+		name: "devices",
+		required: false,
+		instruction: `Optional for "capture". Multi-device mapping: "name:identifier,name2:identifier2".
+- For UART: identifier is the serial port (e.g. "central:/dev/ttyACM0").
+- For RTT: identifier is the serial number (e.g. "central:683335182").`,
+		usage: "central:683335182,peripheral:683007782",
+	},
+	{
+		name: "output",
+		required: false,
+		instruction: `Optional for "capture". Directory to save logs.`,
+		usage: "logs/",
+	},
+	{
+		name: "reset",
+		required: false,
+		instruction: `Optional. Reset device(s) before capture. DEFAULT: true. Set to false ONLY for mid-runtime capture.`,
+		usage: "true",
+	},
+	{
+		name: "auto_detect",
+		required: false,
+		instruction: `Optional. Auto-detect all connected nRF devices. Set to true for BLE/multi-device scenarios where you want to capture everything without specifying ports.`,
+		usage: "true",
+	},
+	{
+		name: "list_nrf",
+		required: false,
+		instruction: `Optional. When true with operation="list", shows only nRF devices.`,
+		usage: "true",
+	},
+]
+
 const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: "trigger_nordic_action",
 	description: `Execute commands in the nRF Connect terminal with the correct Nordic/Zephyr SDK environment. This is the ONLY method to use for west, nrfjprog, nrfutil, and other Nordic CLI tools.
 ${CLI_REFERENCE}`,
-	parameters: [
-		{
-			name: "action",
-			required: true,
-			instruction: `The action to perform. Options:
-- "execute": Run a generic shell command (west, nrfjprog).
-- "log_device": Run the native Nordic Logger tool (replaces external python scripts).`,
-			usage: "execute",
-		},
-		{
-			name: "command",
-			required: false,
-			instruction: `Required if action="execute". The shell command to run in the nRF Connect terminal. Use west, nrfjprog, nrfutil commands.
-Examples:
-- "west boards | grep nrf52840" (Find correct board name)
-- "west build -b nrf52840dk ." (Build for specific board)
-- "west flash --erase"
-- "nrfjprog --eraseall"`,
-			usage: "west build -b nrf52840dk .",
-		},
-		{
-			name: "operation",
-			required: false,
-			instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor".`,
-			usage: "list",
-		},
-		{
-			name: "port",
-			required: false,
-			instruction: `Required for "test", "capture", "monitor" (unless "devices" is used). The serial port (e.g. /dev/ttyACM0, COM3).`,
-			usage: "/dev/ttyACM0",
-		},
-		{
-			name: "duration",
-			required: false,
-			instruction: `Optional for "capture". Recording duration in seconds. Default provided by tool if omitted.`,
-			usage: "30",
-		},
-		{
-			name: "devices",
-			required: false,
-			instruction: `Optional for "capture". Multi-device mapping: "name:port,name2:port2".`,
-			usage: "central:/dev/ttyACM0,peripheral:/dev/ttyACM1",
-		},
-		{
-			name: "output",
-			required: false,
-			instruction: `Optional for "capture". Directory to save logs.`,
-			usage: "logs/",
-		},
-		{
-			name: "reset",
-			required: false,
-			instruction: `Optional. Reset device(s) before capture. DEFAULT: true (ALWAYS reset to catch boot logs unless user explicitly wants mid-runtime capture). Set to false ONLY when user says "capture from running system", "monitor current activity", or "record while running".`,
-			usage: "true",
-		},
-		{
-			name: "auto_detect",
-			required: false,
-			instruction: `Optional. Auto-detect all connected nRF devices for BLE development. DEFAULT: Use this for BLE scenarios when user doesn't specify ports (enables simultaneous central+peripheral recording). Set to true when debugging BLE connections or multi-device scenarios.`,
-			usage: "true",
-		},
-		{
-			name: "list_nrf",
-			required: false,
-			instruction: `Optional. When true with operation="list", shows only nRF devices (cleaner output) instead of all serial ports.`,
-			usage: "true",
-		},
-	],
+	parameters: PARAMETERS,
 }
 
 const NATIVE_GPT_5: ClineToolSpec = {
@@ -147,43 +162,7 @@ const NATIVE_GPT_5: ClineToolSpec = {
 	name: ClineDefaultTool.NORDIC_ACTION,
 	description: `Execute commands in nRF Connect terminal or access Native Logger. ALWAYS use this for west/nrfjprog/logging.
 ${CLI_REFERENCE}`,
-	parameters: [
-		{
-			name: "action",
-			required: true,
-			instruction: 'Action: "execute" (generic cmd) or "log_device" (native logger).',
-		},
-		{
-			name: "command",
-			required: false,
-			instruction: 'Command for action="execute". E.g., "west build ..."',
-		},
-		{
-			name: "operation",
-			required: false,
-			instruction: 'Operation for action="log_device": "list", "test", "capture".',
-		},
-		{
-			name: "port",
-			required: false,
-			instruction: "Serial port for log_device. E.g. /dev/ttyACM0",
-		},
-		{
-			name: "duration",
-			required: false,
-			instruction: "Log duration in seconds.",
-		},
-		{
-			name: "devices",
-			required: false,
-			instruction: 'Multi-device map: "central:/dev/ttyACM0,..."',
-		},
-		{
-			name: "output",
-			required: false,
-			instruction: "Output directory for logs.",
-		},
-	],
+	parameters: PARAMETERS,
 }
 
 const NATIVE_NEXT_GEN: ClineToolSpec = {
@@ -197,43 +176,7 @@ const GEMINI_3: ClineToolSpec = {
 	name: ClineDefaultTool.NORDIC_ACTION,
 	description: `Execute commands in the nRF Connect terminal or use Native Logger. ALWAYS use this for west, nrfjprog, nrfutil commands.
 ${CLI_REFERENCE}`,
-	parameters: [
-		{
-			name: "action",
-			required: true,
-			instruction: '"execute" or "log_device".',
-		},
-		{
-			name: "command",
-			required: false,
-			instruction: 'Shell command for "execute".',
-		},
-		{
-			name: "operation",
-			required: false,
-			instruction: 'Logger op: "list", "test", "capture".',
-		},
-		{
-			name: "port",
-			required: false,
-			instruction: "Serial port.",
-		},
-		{
-			name: "duration",
-			required: false,
-			instruction: "Seconds to record.",
-		},
-		{
-			name: "devices",
-			required: false,
-			instruction: "Multi-device mapping.",
-		},
-		{
-			name: "output",
-			required: false,
-			instruction: "Log output directory.",
-		},
-	],
+	parameters: PARAMETERS,
 }
 
 export const trigger_nordic_action_variants: ClineToolSpec[] = [GENERIC, NATIVE_GPT_5, NATIVE_NEXT_GEN, GEMINI_3]

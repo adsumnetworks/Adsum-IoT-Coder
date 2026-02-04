@@ -343,6 +343,9 @@
         "operation": {
           "type": "STRING"
         },
+        "transport": {
+          "type": "STRING"
+        },
         "port": {
           "type": "STRING"
         },
@@ -353,6 +356,15 @@
           "type": "STRING"
         },
         "output": {
+          "type": "STRING"
+        },
+        "reset": {
+          "type": "STRING"
+        },
+        "auto_detect": {
+          "type": "STRING"
+        },
+        "list_nrf": {
           "type": "STRING"
         }
       },

@@ -276,21 +276,30 @@ Examples:
 - "west flash --erase"
 - "nrfjprog --eraseall"
 - operation: (optional) Required if action="log_device". Options: "list", "test", "capture", "monitor".
-- port: (optional) Required for "test", "capture", "monitor" (unless "devices" is used). The serial port (e.g. /dev/ttyACM0, COM3).
-- duration: (optional) Optional for "capture". Recording duration in seconds. Default provided by tool if omitted.
-- devices: (optional) Optional for "capture". Multi-device mapping: "name:port,name2:port2".
+- transport: (optional) Optional for "log_device". Options: 
+- "uart" (default): Use serial port (requires "port" or "devices" as /dev/ttyACM*).
+- "rtt": Use J-Link RTT (requires "port" or "devices" as Serial Numbers, e.g. 683335182).
+CRITICAL: If you are using Serial Numbers (9-digit IDs), you MUST set transport="rtt".
+- port: (optional) Required for "test", "capture", "monitor" (unless "devices" is used). 
+- For UART: The serial port (e.g. /dev/ttyACM0, COM3).
+- For RTT: The J-Link Serial Number (e.g. 683335182).
+- duration: (optional) Optional for "capture". Recording duration in seconds. Default: 30.
+- devices: (optional) Optional for "capture". Multi-device mapping: "name:identifier,name2:identifier2".
+- For UART: identifier is the serial port (e.g. "central:/dev/ttyACM0").
+- For RTT: identifier is the serial number (e.g. "central:683335182").
 - output: (optional) Optional for "capture". Directory to save logs.
-- reset: (optional) Optional. Reset device(s) before capture. DEFAULT: true (ALWAYS reset to catch boot logs unless user explicitly wants mid-runtime capture). Set to false ONLY when user says "capture from running system", "monitor current activity", or "record while running".
-- auto_detect: (optional) Optional. Auto-detect all connected nRF devices for BLE development. DEFAULT: Use this for BLE scenarios when user doesn't specify ports (enables simultaneous central+peripheral recording). Set to true when debugging BLE connections or multi-device scenarios.
-- list_nrf: (optional) Optional. When true with operation="list", shows only nRF devices (cleaner output) instead of all serial ports.
+- reset: (optional) Optional. Reset device(s) before capture. DEFAULT: true. Set to false ONLY for mid-runtime capture.
+- auto_detect: (optional) Optional. Auto-detect all connected nRF devices. Set to true for BLE/multi-device scenarios where you want to capture everything without specifying ports.
+- list_nrf: (optional) Optional. When true with operation="list", shows only nRF devices.
 Usage:
 <trigger_nordic_action>
 <action>execute</action>
 <command>west build -b nrf52840dk .</command>
 <operation>list</operation>
+<transport>rtt</transport>
 <port>/dev/ttyACM0</port>
 <duration>30</duration>
-<devices>central:/dev/ttyACM0,peripheral:/dev/ttyACM1</devices>
+<devices>central:683335182,peripheral:683007782</devices>
 <output>logs/</output>
 <reset>true</reset>
 <auto_detect>true</auto_detect>
@@ -614,7 +623,7 @@ RULES
   1. **ALWAYS use `trigger_nordic_action`** for ANY terminal command (compiling, flashing, logging, shell).
   2. **NEVER** use `execute_command` or `run_command` directly. The standard shell lacks the required Zephyr/Nordic environment variables.
   3. **Output Capture**: The `trigger_nordic_action` tool automatically handles environment injection and proper terminal selection ("nRF Connect"). Trust it.
-  4. **Debugging**: Use `trigger_nordic_action` with `action="execute"` and appropriate timeout for RTT logging (e.g. `nrfjprog --rtt`).
+  4. **Debugging**: Use `trigger_nordic_action` with `action="log_device", transport="rtt"` for RTT logging (instead of nrfjprog).`
   5. **Flash/Build**: Always use `west build` and `west flash` via the nordic tool.
 
 ====

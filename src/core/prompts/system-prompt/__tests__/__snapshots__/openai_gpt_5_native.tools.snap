@@ -346,31 +346,47 @@
         "properties": {
           "action": {
             "type": "string",
-            "description": "Action: \"execute\" (generic cmd) or \"log_device\" (native logger)."
+            "description": "The action to perform. Options:\n- \"execute\": Run a generic shell command (west, nrfjprog).\n- \"log_device\": Run the native Nordic Logger tool (replaces external python scripts)."
           },
           "command": {
             "type": "string",
-            "description": "Command for action=\"execute\". E.g., \"west build ...\""
+            "description": "Required if action=\"execute\". The shell command to run in the nRF Connect terminal. Use west, nrfjprog, nrfutil commands.\nExamples:\n- \"west boards | grep nrf52840\" (Find correct board name)\n- \"west build -b nrf52840dk .\" (Build for specific board)\n- \"west flash --erase\"\n- \"nrfjprog --eraseall\""
           },
           "operation": {
             "type": "string",
-            "description": "Operation for action=\"log_device\": \"list\", \"test\", \"capture\"."
+            "description": "Required if action=\"log_device\". Options: \"list\", \"test\", \"capture\", \"monitor\"."
+          },
+          "transport": {
+            "type": "string",
+            "description": "Optional for \"log_device\". Options: \n- \"uart\" (default): Use serial port (requires \"port\" or \"devices\" as /dev/ttyACM*).\n- \"rtt\": Use J-Link RTT (requires \"port\" or \"devices\" as Serial Numbers, e.g. 683335182).\nCRITICAL: If you are using Serial Numbers (9-digit IDs), you MUST set transport=\"rtt\"."
           },
           "port": {
             "type": "string",
-            "description": "Serial port for log_device. E.g. /dev/ttyACM0"
+            "description": "Required for \"test\", \"capture\", \"monitor\" (unless \"devices\" is used). \n- For UART: The serial port (e.g. /dev/ttyACM0, COM3).\n- For RTT: The J-Link Serial Number (e.g. 683335182)."
           },
           "duration": {
             "type": "string",
-            "description": "Log duration in seconds."
+            "description": "Optional for \"capture\". Recording duration in seconds. Default: 30."
           },
           "devices": {
             "type": "string",
-            "description": "Multi-device map: \"central:/dev/ttyACM0,...\""
+            "description": "Optional for \"capture\". Multi-device mapping: \"name:identifier,name2:identifier2\".\n- For UART: identifier is the serial port (e.g. \"central:/dev/ttyACM0\").\n- For RTT: identifier is the serial number (e.g. \"central:683335182\")."
           },
           "output": {
             "type": "string",
-            "description": "Output directory for logs."
+            "description": "Optional for \"capture\". Directory to save logs."
+          },
+          "reset": {
+            "type": "string",
+            "description": "Optional. Reset device(s) before capture. DEFAULT: true. Set to false ONLY for mid-runtime capture."
+          },
+          "auto_detect": {
+            "type": "string",
+            "description": "Optional. Auto-detect all connected nRF devices. Set to true for BLE/multi-device scenarios where you want to capture everything without specifying ports."
+          },
+          "list_nrf": {
+            "type": "string",
+            "description": "Optional. When true with operation=\"list\", shows only nRF devices."
           }
         },
         "required": [

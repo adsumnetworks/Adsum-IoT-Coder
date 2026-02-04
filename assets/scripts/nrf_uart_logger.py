@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-nrf_logger.py - Cross-platform UART/RTT Logging Tool for Nordic nRF Devices
+nrf_uart_logger.py - Cross-platform UART Logging Tool for Nordic nRF Devices
 
 Features:
 - Multi-device simultaneous logging
@@ -11,13 +11,13 @@ Features:
 
 Usage:
     # List available ports
-    python nrf_logger.py --list
+    python nrf_uart_logger.py --list
 
     # Test connection (2 sec)
-    python nrf_logger.py --test --port /dev/ttyACM0
+    python nrf_uart_logger.py --test --port /dev/ttyACM0
 
     # Record from single device
-    python nrf_logger.py --port /dev/ttyACM0 --duration 60 --output logs/
+    python nrf_uart_logger.py --port /dev/ttyACM0 --duration 60 --output logs/
 
     # Multi-device recording with reset
     python nrf_logger.py --devices central:/dev/ttyACM0,peripheral:/dev/ttyACM1 \
@@ -285,7 +285,7 @@ def record_logs(devices, duration, output_dir, reset_serials=None):
     
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
-    print(f"\n[RECORD] Starting {duration}s recording to {output_dir}/")
+    print(f"\n[RECORD] [UART MODE] Starting {duration}s recording to {output_dir}/")
     
     # PHASE 1: Start loggers FIRST (before reset to capture boot logs)
     print("\n[PHASE 1] Starting log capture FIRST (to catch boot logs)...")
