@@ -33,14 +33,33 @@ active_processes: List[subprocess.Popen] = []
 # ============================================================================
 
 def kill_jlink_processes():
-    """Kill any existing J-Link processes to prevent locks."""
+    """Kill any existing J-Link processes to prevent locks. Cross-platform."""
+    is_windows = sys.platform == "win32"
+    processes_to_kill = ["JLinkRTTLogger", "nrfjprog", "JLinkExe", "JLinkGDBServer"]
+    
     try:
-        subprocess.run(["pkill", "-9", "JLinkRTTLogger"], capture_output=True)
-        subprocess.run(["pkill", "-9", "nrfjprog"], capture_output=True)
-        subprocess.run(["pkill", "-9", "JLinkExe"], capture_output=True)
-        subprocess.run(["pkill", "-9", "JLinkGDBServer"], capture_output=True)
+        for proc_name in processes_to_kill:
+            try:
+                if is_windows:
+                    # Windows: use taskkill
+                    subprocess.run(
+                        ["taskkill", "/F", "/IM", f"{proc_name}.exe"],
+                        capture_output=True,
+                        timeout=5
+                    )
+                else:
+                    # Unix: use pkill
+                    subprocess.run(
+                        ["pkill", "-9", proc_name],
+                        capture_output=True,
+                        timeout=5
+                    )
+            except Exception:
+                # Process might not exist or command failed - that's OK
+                pass
         time.sleep(0.5)
     except Exception:
+        # Non-fatal if cleanup fails
         pass
 
 

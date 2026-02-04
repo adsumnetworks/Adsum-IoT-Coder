@@ -46,6 +46,74 @@ DEFAULT_BAUDRATE = 115200
 DEFAULT_TIMEOUT = 1.0
 DEFAULT_DURATION = 30
 
+# Track active processes for cleanup
+active_processes = []
+
+
+# ============================================================================
+# Cross-platform Process Cleanup
+# ============================================================================
+
+def kill_jlink_processes():
+    """Kill any existing J-Link/nrfjprog processes to prevent locks. Cross-platform."""
+    is_windows = sys.platform == "win32"
+    processes_to_kill = ["nrfjprog", "JLinkExe", "JLinkGDBServer"]
+    
+    try:
+        for proc_name in processes_to_kill:
+            try:
+                if is_windows:
+                    # Windows: use taskkill
+                    subprocess.run(
+                        ["taskkill", "/F", "/IM", f"{proc_name}.exe"],
+                        capture_output=True,
+                        timeout=5
+                    )
+                else:
+                    # Unix: use pkill
+                    subprocess.run(
+                        ["pkill", "-9", proc_name],
+                        capture_output=True,
+                        timeout=5
+                    )
+            except Exception:
+                # Process might not exist or command failed - that's OK
+                pass
+    except Exception:
+        # Non-fatal if cleanup fails
+        pass
+
+
+def cleanup_processes():
+    """Cleanup active processes."""
+    kill_jlink_processes()
+    for proc in active_processes:
+        if proc.poll() is None:
+            try:
+                proc.terminate()
+                proc.wait(timeout=1)
+            except:
+                try:
+                    proc.kill()
+                except:
+                    pass
+
+
+def signal_handler(signum, frame):
+    """Handle signals gracefully."""
+    cleanup_processes()
+    sys.exit(0)
+
+
+# Register cleanup handlers
+atexit.register(cleanup_processes)
+try:
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+except (AttributeError, ValueError):
+    # Some signals might not be available on all platforms
+    pass
+
 
 def list_ports():
     """List all available serial ports."""

@@ -53,6 +53,9 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 					toolError: (msg: string) => ({ type: "tool_error", content: msg }),
 				},
 			},
+			"../../index": {
+				// Mock any types or values exported from index that might be needed
+			},
 		}).TriggerNordicActionHandler
 
 		// Instantiate handler

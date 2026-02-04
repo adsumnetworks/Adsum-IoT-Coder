@@ -10,6 +10,7 @@
 	"spec": [
 		"src/core/prompts/system-prompt/tools/__tests__/trigger_nordic_action.test.ts",
 		"src/core/prompts/system-prompt/components/__tests__/rules_compliance.test.ts",
-		"src/core/task/tools/handlers/__tests__/TriggerNordicActionHandler.test.ts"
+		"src/core/task/tools/handlers/__tests__/TriggerNordicActionHandler.test.ts",
+		"src/core/task/tools/handlers/__tests__/WindowsSupport.test.ts"
 	]
 }
