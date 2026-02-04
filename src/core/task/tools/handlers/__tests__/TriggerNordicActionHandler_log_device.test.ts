@@ -98,8 +98,8 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		expect(mockExec.calledOnce).to.be.true
 		const execCmd = mockExec.firstCall.args[0]
 		expect(execCmd).to.contain("python3")
-		expect(execCmd).to.contain("nrf_logger.py")
-		expect(execCmd).to.contain("--list-nrf")
+		expect(execCmd).to.contain("nrf_uart_logger.py")
+		expect(execCmd).to.contain("--list")
 
 		// Verify result format
 		expect(result).to.be.an("array")
@@ -173,7 +173,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 
 		// In this setup:
 		// CWD = /mock/workspace
-		// Wrapper = /mock/extension/path/assets/scripts/nordic-logger
+		// Wrapper = /mock/extension/path/assets/scripts/uart-logger
 		// Relative path starts with ../.., so it should FALLBACK to absolute in our logic
 		// logic: if (!relativePath.startsWith("..") ...)
 
@@ -181,6 +181,183 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		const cmd = mockExecuteCommandTool.firstCall.args[0]
 
 		// Since /mock/extension is NOT inside /mock/workspace, it uses absolute
-		expect(cmd).to.contain("/mock/extension/path/assets/scripts/nordic-logger")
+		expect(cmd).to.contain("/mock/extension/path/assets/scripts/uart-logger")
+	})
+
+	// ============================================================================
+	// RTT DISPATCH VERIFICATION TESTS
+	// These tests ensure the handler correctly selects the RTT or UART wrapper
+	// and passes the correct arguments
+	// ============================================================================
+
+	describe("RTT vs UART transport dispatch", () => {
+		it("should use rtt-logger wrapper when transport='rtt'", async () => {
+			const block: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: {
+					action: "log_device",
+					operation: "capture",
+					transport: "rtt",
+					auto_detect: "true",
+					duration: "30",
+				} as any,
+				partial: false,
+			}
+
+			await handler.execute(mockTaskConfig, block)
+
+			const cmd = mockExecuteCommandTool.firstCall.args[0]
+			// CRITICAL: Must use rtt-logger, NOT uart-logger
+			expect(cmd).to.contain("rtt-logger")
+			expect(cmd).to.not.contain("uart-logger")
+		})
+
+		it("should use uart-logger wrapper when transport is undefined (UART default)", async () => {
+			const block: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: {
+					action: "log_device",
+					operation: "capture",
+					port: "/dev/ttyACM0",
+					duration: "30",
+				} as any,
+				partial: false,
+			}
+
+			await handler.execute(mockTaskConfig, block)
+
+			const cmd = mockExecuteCommandTool.firstCall.args[0]
+			expect(cmd).to.contain("uart-logger")
+			expect(cmd).to.not.contain("rtt-logger")
+		})
+
+		it("should use uart-logger wrapper when transport='uart'", async () => {
+			const block: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: {
+					action: "log_device",
+					operation: "capture",
+					transport: "uart",
+					port: "/dev/ttyACM0",
+					duration: "30",
+				} as any,
+				partial: false,
+			}
+
+			await handler.execute(mockTaskConfig, block)
+
+			const cmd = mockExecuteCommandTool.firstCall.args[0]
+			expect(cmd).to.contain("uart-logger")
+		})
+	})
+
+	describe("--capture flag verification", () => {
+		it("should include --capture flag when operation is capture (CRITICAL BUG FIX)", async () => {
+			const block: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: {
+					action: "log_device",
+					operation: "capture",
+					port: "/dev/ttyACM0",
+					duration: "30",
+				} as any,
+				partial: false,
+			}
+
+			await handler.execute(mockTaskConfig, block)
+
+			const cmd = mockExecuteCommandTool.firstCall.args[0]
+			// UART script should NOT have --capture flag
+			expect(cmd).to.not.contain("--capture")
+		})
+
+		it("should include --capture flag for RTT capture", async () => {
+			const block: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: {
+					action: "log_device",
+					operation: "capture",
+					transport: "rtt",
+					auto_detect: "true",
+				} as any,
+				partial: false,
+			}
+
+			await handler.execute(mockTaskConfig, block)
+
+			const cmd = mockExecuteCommandTool.firstCall.args[0]
+			expect(cmd).to.contain("--capture")
+			expect(cmd).to.contain("rtt-logger")
+		})
+	})
+
+	describe("auto_detect parameter handling", () => {
+		it("should include --auto-detect flag when auto_detect is 'true' string", async () => {
+			const block: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: {
+					action: "log_device",
+					operation: "capture",
+					auto_detect: "true",
+					duration: "30",
+				} as any,
+				partial: false,
+			}
+
+			await handler.execute(mockTaskConfig, block)
+
+			const cmd = mockExecuteCommandTool.firstCall.args[0]
+			expect(cmd).to.contain("--auto-detect")
+			expect(cmd).to.not.contain("--capture")
+		})
+
+		it("should NOT include --auto-detect flag when auto_detect is 'false' string", async () => {
+			const block: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: {
+					action: "log_device",
+					operation: "capture",
+					auto_detect: "false",
+					port: "/dev/ttyACM0",
+					duration: "30",
+				} as any,
+				partial: false,
+			}
+
+			await handler.execute(mockTaskConfig, block)
+
+			const cmd = mockExecuteCommandTool.firstCall.args[0]
+			expect(cmd).to.not.contain("--auto-detect")
+		})
+
+		it("should include --auto-detect for RTT with auto_detect", async () => {
+			const block: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: {
+					action: "log_device",
+					operation: "capture",
+					transport: "rtt",
+					auto_detect: "true",
+					duration: "60",
+				} as any,
+				partial: false,
+			}
+
+			await handler.execute(mockTaskConfig, block)
+
+			const cmd = mockExecuteCommandTool.firstCall.args[0]
+			expect(cmd).to.contain("rtt-logger")
+			expect(cmd).to.contain("--capture")
+			expect(cmd).to.contain("--auto-detect")
+			expect(cmd).to.contain("--duration 60")
+		})
 	})
 })

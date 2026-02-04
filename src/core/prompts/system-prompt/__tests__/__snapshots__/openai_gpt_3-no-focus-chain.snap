@@ -276,21 +276,30 @@ Examples:
 - "west flash --erase"
 - "nrfjprog --eraseall"
 - operation: (optional) Required if action="log_device". Options: "list", "test", "capture", "monitor".
-- port: (optional) Required for "test", "capture", "monitor" (unless "devices" is used). The serial port (e.g. /dev/ttyACM0, COM3).
-- duration: (optional) Optional for "capture". Recording duration in seconds. Default provided by tool if omitted.
-- devices: (optional) Optional for "capture". Multi-device mapping: "name:port,name2:port2".
+- transport: (optional) Optional for "log_device". Options: 
+- "uart" (default): Use serial port (requires "port" or "devices" as /dev/ttyACM*).
+- "rtt": Use J-Link RTT (requires "port" or "devices" as Serial Numbers, e.g. 683335182).
+CRITICAL: If you are using Serial Numbers (9-digit IDs), you MUST set transport="rtt".
+- port: (optional) Required for "test", "capture", "monitor" (unless "devices" is used). 
+- For UART: The serial port (e.g. /dev/ttyACM0, COM3).
+- For RTT: The J-Link Serial Number (e.g. 683335182).
+- duration: (optional) Optional for "capture". Recording duration in seconds. Default: 30.
+- devices: (optional) Optional for "capture". Multi-device mapping: "name:identifier,name2:identifier2".
+- For UART: identifier is the serial port (e.g. "central:/dev/ttyACM0").
+- For RTT: identifier is the serial number (e.g. "central:683335182").
 - output: (optional) Optional for "capture". Directory to save logs.
-- reset: (optional) Optional. Reset device(s) before capture. DEFAULT: true (ALWAYS reset to catch boot logs unless user explicitly wants mid-runtime capture). Set to false ONLY when user says "capture from running system", "monitor current activity", or "record while running".
-- auto_detect: (optional) Optional. Auto-detect all connected nRF devices for BLE development. DEFAULT: Use this for BLE scenarios when user doesn't specify ports (enables simultaneous central+peripheral recording). Set to true when debugging BLE connections or multi-device scenarios.
-- list_nrf: (optional) Optional. When true with operation="list", shows only nRF devices (cleaner output) instead of all serial ports.
+- reset: (optional) Optional. Reset device(s) before capture. DEFAULT: true. Set to false ONLY for mid-runtime capture.
+- auto_detect: (optional) Optional. Auto-detect all connected nRF devices. Set to true for BLE/multi-device scenarios where you want to capture everything without specifying ports.
+- list_nrf: (optional) Optional. When true with operation="list", shows only nRF devices.
 Usage:
 <trigger_nordic_action>
 <action>execute</action>
 <command>west build -b nrf52840dk .</command>
 <operation>list</operation>
+<transport>rtt</transport>
 <port>/dev/ttyACM0</port>
 <duration>30</duration>
-<devices>central:/dev/ttyACM0,peripheral:/dev/ttyACM1</devices>
+<devices>central:683335182,peripheral:683007782</devices>
 <output>logs/</output>
 <reset>true</reset>
 <auto_detect>true</auto_detect>
@@ -607,8 +616,8 @@ RULES
   - If MULTIPLE boards connected: Ask which device to flash using serial number
 - **Log Capture:** Before suggesting RTT or UART logging:
   1. Check prj.conf for CONFIG_USE_SEGGER_RTT (RTT) or CONFIG_UART_CONSOLE (UART)
-  2. For RTT: Recommend VS Code "nRF RTT Terminal" from terminal dropdown - DO NOT use blocking JLinkRTTClient
-  3. For UART: Recommend VS Code "nRF Serial Terminal" from terminal dropdown
+  2. For RTT: ALWAYS use `trigger_nordic_action` with `action="log_device", transport="rtt"`. DO NOT recommend VS Code terminals or use JLinkRTTClient directly.
+  3. For UART: ALWAYS use `trigger_nordic_action` with `action="log_device"`. DO NOT recommend VS Code terminals or use cat/screen/minicom.
 - **STRICTLY FORBIDDEN - Serial Port Access:** NEVER use `execute_command` with `cat`, `screen`, `minicom`, or any command targeting `/dev/tty*` or `COM*` ports. These generic tools suffer from buffering issues, incomplete data capture, and unreliable behavior with embedded devices. ALWAYS use `trigger_nordic_action` with the `nrf_logger.py` tool for reliable log capture.
 - **UART Logging Best Practices (Native Tool):**
   - **The "Pro" Way:** maximize robustness by using the `trigger_nordic_action` tool with `action="log_device"`.
@@ -619,6 +628,7 @@ RULES
   - **NOTE:** The tool handles the internal path resolution for the logging script. You do NOT need to run python commands manually.
   
   **BLE/IoT Expert Mode - Smart Defaults:**
+  - **RTT LOGS:** `trigger_nordic_action` with `action="log_device", operation="capture", transport="rtt", auto_detect="true", duration="30"`
   - **Multi-Device BLE:** When debugging BLE connections, ALWAYS use `auto_detect=true` to record central + peripheral simultaneously (see connection handshake in both logs)
   - **Reset DEFAULT:** ALWAYS use `reset=true` (or omit, it's default) to catch boot logs. ONLY use `reset=false` when user explicitly says "from running system", "monitor current activity", or "mid-runtime"
   - **Clean Listing:** Use `list_nrf=true` with operation="list" to show only nRF devices (not 30+ ttyS ports)

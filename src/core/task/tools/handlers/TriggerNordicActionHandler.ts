@@ -85,7 +85,17 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 	private async handleLogDevice(config: TaskConfig, block: ToolUse): Promise<ToolResponse> {
 		const operation = block.params.operation
-		const { port, duration, devices, output, reset, auto_detect, list_nrf } = block.params as any
+		let { port, duration, devices, output, reset, auto_detect, list_nrf, transport } = block.params as any
+
+		// FOOLPROOF: Smart transport detection if agent forgets to set it
+		if (!transport) {
+			const isRttSerial = (id: string) => /^\d{9}$/.test(id.trim())
+			if (port && isRttSerial(port)) {
+				transport = "rtt"
+			} else if (devices && devices.split(",").some((d: string) => isRttSerial(d.split(":")[1] || ""))) {
+				transport = "rtt"
+			}
+		}
 
 		if (!operation) {
 			return await config.callbacks.sayAndCreateMissingParamError(this.name, "operation")
@@ -93,13 +103,16 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 		// 1. Handle "list" operation internally (Hidden "Under the Hood")
 		if (operation === "list") {
-			return this.listDevicesInternal()
+			return this.listDevicesInternal(transport)
 		}
 
 		// 2. Resolve paths for "capture" / "test" / "monitor"
 
+		// Determine which wrapper script to use based on transport
+		const wrapperName = transport === "rtt" ? "rtt-logger" : "uart-logger"
+
 		// A. Script Path: Use relative path for cleaner terminal output
-		const absoluteWrapperPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", "nordic-logger")
+		const absoluteWrapperPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", wrapperName)
 		let wrapperPath = absoluteWrapperPath
 
 		// Try to make it relative to the current working directory (workspace root)
@@ -135,11 +148,19 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 				}
 				break
 			case "capture":
-				// Auto-detect takes precedence over manual port/devices configuration
-				if (auto_detect) {
+				// CRITICAL: rtt-logger requires --capture flag, but uart-logger (UART) fails with it!
+				// Only add it if we are using RTT transport.
+				if (transport === "rtt") {
+					args.push("--capture")
+				}
+				// Helper to check for truthiness including string "false"
+				const isAutoDetect = auto_detect === true || auto_detect === "true"
+				const isResetDisabled = reset === false || reset === "false"
+
+				if (isAutoDetect) {
 					args.push("--auto-detect")
 					// Reset is DEFAULT for auto-detect unless explicitly disabled
-					if (reset === false) {
+					if (isResetDisabled) {
 						args.push("--no-reset")
 					}
 				} else {
@@ -155,7 +176,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 					}
 
 					// Reset is DEFAULT unless explicitly disabled
-					if (reset === false) {
+					if (isResetDisabled) {
 						args.push("--no-reset")
 					}
 				}
@@ -184,7 +205,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			"tool",
 			JSON.stringify({
 				tool: "triggerNordicAction",
-				path: `Nordic Logger: ${operation}`,
+				path: `Nordic Logger [${(transport || "uart").toUpperCase()}]: ${operation}`,
 			}),
 		)
 
@@ -193,9 +214,11 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		return this.executeInNrfTerminal(config, cmd)
 	}
 
-	private async listDevicesInternal(): Promise<ToolResponse> {
-		const scriptPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", "nrf_logger.py")
-		const cmd = `python3 "${scriptPath}" --list-nrf`
+	private async listDevicesInternal(transport?: string): Promise<ToolResponse> {
+		// Select the appropriate script based on transport
+		const scriptName = transport === "rtt" ? "nrf_rtt_logger.py" : "nrf_uart_logger.py"
+		const scriptPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", scriptName)
+		const cmd = `python3 "${scriptPath}" --list`
 
 		return new Promise((resolve) => {
 			exec(cmd, (error, stdout, stderr) => {

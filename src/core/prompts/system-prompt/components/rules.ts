@@ -31,8 +31,8 @@ const getRulesTemplateText = (context: SystemPromptContext) => `RULES
   - If MULTIPLE boards connected: Ask which device to flash using serial number
 - **Log Capture:** Before suggesting RTT or UART logging:
   1. Check prj.conf for CONFIG_USE_SEGGER_RTT (RTT) or CONFIG_UART_CONSOLE (UART)
-  2. For RTT: Recommend VS Code "nRF RTT Terminal" from terminal dropdown - DO NOT use blocking JLinkRTTClient
-  3. For UART: Recommend VS Code "nRF Serial Terminal" from terminal dropdown
+  2. For RTT: ALWAYS use \`trigger_nordic_action\` with \`action="log_device", transport="rtt"\`. DO NOT recommend VS Code terminals or use JLinkRTTClient directly.
+  3. For UART: ALWAYS use \`trigger_nordic_action\` with \`action="log_device"\`. DO NOT recommend VS Code terminals or use cat/screen/minicom.
 - **STRICTLY FORBIDDEN - Serial Port Access:** NEVER use \`execute_command\` with \`cat\`, \`screen\`, \`minicom\`, or any command targeting \`/dev/tty*\` or \`COM*\` ports. These generic tools suffer from buffering issues, incomplete data capture, and unreliable behavior with embedded devices. ALWAYS use \`trigger_nordic_action\` with the \`nrf_logger.py\` tool for reliable log capture.
 - **UART Logging Best Practices (Native Tool):**
   - **The "Pro" Way:** maximize robustness by using the \`trigger_nordic_action\` tool with \`action="log_device"\`.
@@ -43,6 +43,7 @@ const getRulesTemplateText = (context: SystemPromptContext) => `RULES
   - **NOTE:** The tool handles the internal path resolution for the logging script. You do NOT need to run python commands manually.
   
   **BLE/IoT Expert Mode - Smart Defaults:**
+  - **RTT LOGS:** \`trigger_nordic_action\` with \`action="log_device", operation="capture", transport="rtt", auto_detect="true", duration="30"\`
   - **Multi-Device BLE:** When debugging BLE connections, ALWAYS use \`auto_detect=true\` to record central + peripheral simultaneously (see connection handshake in both logs)
   - **Reset DEFAULT:** ALWAYS use \`reset=true\` (or omit, it's default) to catch boot logs. ONLY use \`reset=false\` when user explicitly says "from running system", "monitor current activity", or "mid-runtime"
   - **Clean Listing:** Use \`list_nrf=true\` with operation="list" to show only nRF devices (not 30+ ttyS ports)
