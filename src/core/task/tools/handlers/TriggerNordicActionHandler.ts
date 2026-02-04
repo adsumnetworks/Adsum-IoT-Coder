@@ -109,7 +109,13 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		// 2. Resolve paths for "capture" / "test" / "monitor"
 
 		// Determine which wrapper script to use based on transport
-		const wrapperName = transport === "rtt" ? "rtt-logger" : "uart-logger"
+		let wrapperName = transport === "rtt" ? "rtt-logger" : "uart-logger"
+
+		// Add .bat extension on Windows, use as-is on Unix
+		const isWindows = process.platform === "win32"
+		if (isWindows) {
+			wrapperName = wrapperName + ".bat"
+		}
 
 		// A. Script Path: Use relative path for cleaner terminal output
 		const absoluteWrapperPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", wrapperName)
@@ -127,6 +133,11 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			} catch (e) {
 				// Fallback to absolute
 			}
+		}
+
+		// On Windows, quote the path if it contains spaces
+		if (isWindows && wrapperPath.includes(" ")) {
+			wrapperPath = `"${wrapperPath}"`
 		}
 
 		const args = [wrapperPath]
