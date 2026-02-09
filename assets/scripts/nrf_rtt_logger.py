@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 import threading
+import shutil
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
@@ -26,6 +27,84 @@ DEFAULT_DURATION = 30
 
 # Track active processes for cleanup
 active_processes: List[subprocess.Popen] = []
+
+
+# ============================================================================
+# Binary Path Resolution
+# ============================================================================
+
+def find_jlink_rtt_logger() -> str:
+    """Find JLinkRTTLogger executable on the system.
+    
+    Returns:
+        Path to JLinkRTTLogger or raises error if not found.
+    """
+    is_windows = sys.platform == "win32"
+    exe_name = "JLinkRTTLogger.exe" if is_windows else "JLinkRTTLogger"
+    
+    # Try to find via PATH first
+    found = shutil.which(exe_name)
+    if found:
+        return found
+    
+    # On Windows, search common J-Link installation directories (including versioned ones)
+    if is_windows:
+        import glob
+        common_paths = [
+            r"C:\Program Files\SEGGER\JLink\JLinkRTTLogger.exe",
+            r"C:\Program Files (x86)\SEGGER\JLink\JLinkRTTLogger.exe",
+            # Also search for versioned installations like JLink_V876
+            r"C:\Program Files\SEGGER\JLink_V*\JLinkRTTLogger.exe",
+            r"C:\Program Files (x86)\SEGGER\JLink_V*\JLinkRTTLogger.exe",
+            os.path.expandvars(r"%ProgramFiles%\SEGGER\JLink\JLinkRTTLogger.exe"),
+            os.path.expandvars(r"%ProgramFiles(x86)%\SEGGER\JLink\JLinkRTTLogger.exe"),
+            os.path.expandvars(r"%ProgramFiles%\SEGGER\JLink_V*\JLinkRTTLogger.exe"),
+            os.path.expandvars(r"%ProgramFiles(x86)%\SEGGER\JLink_V*\JLinkRTTLogger.exe"),
+            # nRF Command Line Tools installation  
+            os.path.expandvars(r"%ProgramFiles%\Nordic Semiconductor\nrf-command-line-tools\bin\JLinkRTTLogger.exe"),
+            os.path.expandvars(r"%ProgramFiles(x86)%\Nordic Semiconductor\nrf-command-line-tools\bin\JLinkRTTLogger.exe"),
+            # nRF Connect SDK toolchain
+            os.path.expandvars(r"%LocalAppData%\ncs\toolchains\v*\bin\JLinkRTTLogger.exe"),
+        ]
+        
+        for path_pattern in common_paths:
+            if "*" in path_pattern:
+                # Handle glob patterns
+                matches = glob.glob(path_pattern)
+                for match in matches:
+                    if os.path.exists(match):
+                        return match
+            elif os.path.exists(path_pattern):
+                return path_pattern
+    else:
+        # On macOS/Linux, also check common installation paths
+        common_paths = [
+            "/usr/local/bin/JLinkRTTLogger",
+            "/opt/SEGGER/JLink/JLinkRTTLogger",
+            "/Applications/SEGGER/JLink_*/JLinkRTTLogger",
+        ]
+        for path_pattern in common_paths:
+            if "*" in path_pattern:
+                import glob
+                matches = glob.glob(path_pattern)
+                for match in matches:
+                    if os.path.exists(match):
+                        return match
+            elif os.path.exists(path_pattern):
+                return path_pattern
+    
+    # Not found - provide helpful error with download link
+    raise FileNotFoundError(
+        f"{exe_name} not found in PATH or common installation directories.\n"
+        "\nTo enable RTT logging:\n"
+        "1. Download J-Link Software Pack from:\n"
+        "   https://www.segger.com/downloads/jlink/\n"
+        "2. Run the installer and follow the prompts\n"
+        "3. Ensure J-Link installation is added to your PATH\n"
+        "\nOr set the J-Link path explicitly:\n"
+        "   export PATH=/path/to/jlink:$PATH  (Linux/macOS)\n"
+        "   set PATH=C:\\path\\to\\jlink;%PATH%  (Windows)"
+    )
 
 
 # ============================================================================
@@ -185,11 +264,18 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
             reset_device(serial)
     
     started = []
+    # Find JLinkRTTLogger executable once
+    try:
+        jlink_exe = find_jlink_rtt_logger()
+    except FileNotFoundError as e:
+        print(f"  ERROR: {e}")
+        return {}
+    
     for name, serial in devices:
         final_file = os.path.abspath(os.path.join(output_dir, f"rtt_{name}_{timestamp}.log"))
         raw_file = final_file + ".raw"
         
-        cmd = ["JLinkRTTLogger", "-Device", device_type, "-If", "SWD", "-Speed", "4000", "-USB", str(serial), "-RTTChannel", str(channel), raw_file]
+        cmd = [jlink_exe, "-Device", device_type, "-If", "SWD", "-Speed", "4000", "-USB", str(serial), "-RTTChannel", str(channel), raw_file]
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             active_processes.append(proc)
