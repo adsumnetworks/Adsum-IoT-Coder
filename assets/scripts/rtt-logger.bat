@@ -14,6 +14,17 @@ if not exist "%PYTHON_SCRIPT%" (
     exit /b 1
 )
 
+REM Detect available Python (Windows convention: python > python3 > py -3)
+set PYTHON_CMD=
+where /q python.exe && set PYTHON_CMD=python
+if "%PYTHON_CMD%"=="" where /q python3.exe && set PYTHON_CMD=python3
+if "%PYTHON_CMD%"=="" where /q py.exe && set PYTHON_CMD=py -3
+
+if "%PYTHON_CMD%"=="" (
+    echo ERROR: Python not found. Please ensure Python is in PATH.
+    exit /b 1
+)
+
 REM Execute Python script with all arguments passed through
-python3 "%PYTHON_SCRIPT%" %*
+%PYTHON_CMD% "%PYTHON_SCRIPT%" %*
 exit /b !errorlevel!
