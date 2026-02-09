@@ -134,7 +134,28 @@ def list_ports():
 
 
 def list_nrf_devices():
-    """List ONLY nRF devices using nrfjprog."""
+    """List ONLY nRF devices using nrfutil (modern) or nrfjprog (legacy)."""
+    # Try nrfutil first (modern standard)
+    try:
+        result = subprocess.run(
+            ["nrfutil", "device", "list"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        if result.returncode == 0 and result.stdout.strip():
+            print("\nConnected nRF Devices (via nrfutil):")
+            print("-" * 60)
+            print(result.stdout)
+            return True
+        
+    except FileNotFoundError:
+        print("[INFO] nrfutil not found. Trying nrfjprog fallback...")
+    except Exception as e:
+        print(f"[INFO] nrfutil error: {e}. Trying nrfjprog fallback...")
+    
+    # Fallback: Try nrfjprog (legacy)
     try:
         result = subprocess.run(
             ["nrfjprog", "--ids"],
@@ -143,37 +164,25 @@ def list_nrf_devices():
             timeout=5
         )
         
-        if result.returncode != 0 or not result.stdout.strip():
-            print("No nRF devices found (via nrfjprog)")
-            return []
+        if result.returncode == 0 or result.stdout.strip():
+            print("\nConnected nRF Devices (via nrfjprog - LEGACY):")
+            print("-" * 60)
+            output = result.stdout.strip()
+            if output:
+                print(output)
+            else:
+                print("No devices found")
+            return True
         
-        serial_numbers = [s.strip() for s in result.stdout.strip().split('\n') if s.strip()]
-        
-        # Map to /dev/ttyACM* ports
-        ports = serial.tools.list_ports.comports()
-        nrf_devices = []
-        
-        print("\nConnected nRF Devices:")
-        print("-" * 60)
-        for sn in serial_numbers:
-            # Find matching port
-            for port in ports:
-                if sn in port.hwid or (hasattr(port, 'serial_number') and sn in str(port.serial_number)):
-                    print(f"  {port.device}")
-                    print(f"    Serial: {sn}")
-                    print(f"    Description: {port.description}")
-                    print()
-                    nrf_devices.append((port.device, sn))
-                    break
-        
-        return nrf_devices
+        return False
         
     except FileNotFoundError:
-        print("ERROR: nrfjprog not found. Falling back to standard port list.")
-        return list_ports()
+        print("[ERROR] Neither nrfutil nor nrfjprog found.")
+        print("[INFO] Install nRF Util: https://github.com/NordicSemiconductor/nrfutil")
+        return False
     except Exception as e:
-        print(f"ERROR listing nRF devices: {e}")
-        return []
+        print(f"[ERROR] listing devices: {e}")
+        return False
 
 
 def auto_detect_devices():
@@ -260,10 +269,36 @@ def get_device_serial(port):
 
 
 def reset_device(serial_number):
-    """Reset device using nrfjprog."""
-    # Ensure no leading zeros for nrfjprog
+    """Reset device using nrfutil (modern) with nrfjprog as fallback (legacy).
+    
+    nrfutil: Modern standard (recommended)
+    nrfjprog: Legacy fallback for older development setups
+    """
     serial_str = str(serial_number).lstrip('0')
     print(f"[RESET] Resetting device {serial_str}...")
+    
+    # Try nrfutil first (modern standard)
+    try:
+        result = subprocess.run(
+            ["nrfutil", "device", "reset", "--serial-number", serial_str],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode == 0:
+            print(f"[RESET] Device {serial_number} reset successfully (via nrfutil)")
+            return True
+        else:
+            print(f"[WARNING] nrfutil reset failed: {result.stderr}")
+            # Fall through to nrfjprog fallback
+    except FileNotFoundError:
+        print("[WARNING] nrfutil not found. Trying nrfjprog fallback...")
+    except subprocess.TimeoutExpired:
+        print("[WARNING] nrfutil reset timed out. Trying nrfjprog fallback...")
+    except Exception as e:
+        print(f"[WARNING] nrfutil error: {e}. Trying nrfjprog fallback...")
+    
+    # Fallback: Try nrfjprog (legacy)
     try:
         result = subprocess.run(
             ["nrfjprog", "--reset", "-s", serial_str],
@@ -272,16 +307,21 @@ def reset_device(serial_number):
             timeout=10
         )
         if result.returncode == 0:
-            print(f"[RESET] Device {serial_number} reset successfully")
+            print(f"[RESET] Device {serial_number} reset successfully (via nrfjprog)")
             return True
         else:
-            print(f"[ERROR] Reset failed: {result.stderr}")
+            print(f"[WARNING] nrfjprog reset also failed: {result.stderr}")
             return False
     except FileNotFoundError:
-        print("[ERROR] nrfjprog not found. Is nRF Command Line Tools installed?")
+        print("[WARNING] nrfjprog not found either. Resetting requires nRF tools.")
+        print("[WARNING] Continuing without reset. Boot logs may be incomplete.")
+        print("         Install: https://www.nordicsemi.com/Products/Development-tools/nrf-command-line-tools")
         return False
     except subprocess.TimeoutExpired:
-        print("[ERROR] Reset command timed out")
+        print("[WARNING] nrfjprog reset timed out. Continuing without reset.")
+        return False
+    except Exception as e:
+        print(f"[WARNING] Reset error: {e}. Continuing without reset.")
         return False
 
 
@@ -349,12 +389,22 @@ class DeviceLogger(threading.Thread):
             ser.close()
 
 
-def record_logs(devices, duration, output_dir, reset_serials=None):
-    """Record logs from multiple devices simultaneously."""
+def record_logs(devices, duration, output_dir, reset_serials=None, pre_capture_delay=0):
+    """Record logs from multiple devices simultaneously.
+    
+    Args:
+        devices: Dict of {name: port} for devices to capture from
+        duration: Recording duration in seconds
+        output_dir: Directory to save logs
+        reset_serials: List of device serial numbers to reset
+        pre_capture_delay: Extra delay before reset (in seconds) to ensure loggers are ready
+    """
     
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
     print(f"\n[RECORD] [UART MODE] Starting {duration}s recording to {output_dir}/")
+    if pre_capture_delay > 0:
+        print(f"[PRE-CAPTURE] Pre-capture delay enabled: {pre_capture_delay}s")
     
     # PHASE 1: Start loggers FIRST (before reset to capture boot logs)
     print("\n[PHASE 1] Starting log capture FIRST (to catch boot logs)...")
@@ -372,7 +422,17 @@ def record_logs(devices, duration, output_dir, reset_serials=None):
         print(f"  - {name}: {port} -> {logger.filename}")
     
     # Wait for serial ports to be fully open and ready
-    time.sleep(0.3)  # Give time for serial connections to establish
+    stabilization_delay = 0.3  # Give time for serial connections to establish
+    total_pre_delay = stabilization_delay + pre_capture_delay
+    
+    if total_pre_delay > 0:
+        print(f"\n[PHASE 1B] Waiting {total_pre_delay}s for ports to stabilize...")
+        for remaining in range(int(total_pre_delay), 0, -1):
+            print(f"  {remaining}s...", end='\r', flush=True)
+            time.sleep(1)
+        print("  Ready! Starting reset...                 ")
+    else:
+        time.sleep(stabilization_delay)
     
     # PHASE 2: Reset devices AFTER loggers are running
     if reset_serials:
@@ -380,6 +440,8 @@ def record_logs(devices, duration, output_dir, reset_serials=None):
         for sn in reset_serials:
             reset_device(sn)
         print("  Boot logs should now be captured!")
+    else:
+        print("\n[PHASE 2] No reset serials provided. Capturing runtime logs.")
     
     # Wait for completion
     print(f"\n[RECORDING] Capturing for {duration} seconds... (Ctrl+C to stop early)")
@@ -462,6 +524,7 @@ def main():
     parser.add_argument("--reset", action="store_true", help="Reset device(s) before capture (DEFAULT for boot logs)")
     parser.add_argument("--no-reset", action="store_true", help="Skip reset (for mid-runtime capture)")
     parser.add_argument("--reset-serials", help="Device serial numbers to reset (comma-separated, auto-detected if not provided)")
+    parser.add_argument("--pre-capture-delay", type=int, default=0, help="Extra delay before reset in seconds (default: 0, recommended: 2-3 for boot logs)")
     parser.add_argument("--analyze", action="store_true", help="Analyze logs after recording")
     
     args = parser.parse_args()
@@ -491,7 +554,7 @@ def main():
         reset_serials = serials if not args.no_reset else []
         
         # Record logs
-        log_files = record_logs(devices, args.duration, args.output, reset_serials)
+        log_files = record_logs(devices, args.duration, args.output, reset_serials, args.pre_capture_delay)
         
         # Analyze if requested
         if args.analyze and log_files:
@@ -551,7 +614,7 @@ def main():
                 print("  Tip: Provide --reset-serials manually for reliable reset.")
     
     # Record logs
-    log_files = record_logs(devices, args.duration, args.output, reset_serials)
+    log_files = record_logs(devices, args.duration, args.output, reset_serials, args.pre_capture_delay)
     
     # Analyze if requested
     if args.analyze and log_files:

@@ -4,12 +4,13 @@ import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
 import { activateNordicTerminal } from "@/hosts/vscode/hostbridge/workspace/executeNordicCommand"
+import { getCachedCapabilities } from "@/platform/nordicProjectDetector"
+import detectPython from "@/platform/pythonDetector"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
-import detectPython from "@/platform/pythonDetector"
 
 /**
  * Handler for executing commands in the nRF Connect terminal.
@@ -88,14 +89,47 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		const operation = block.params.operation
 		let { port, duration, devices, output, reset, auto_detect, list_nrf, transport } = block.params as any
 
-		// FOOLPROOF: Smart transport detection if agent forgets to set it
+		// ROBUST TRANSPORT DETECTION with explicit user input priority
 		if (!transport) {
-			const isRttSerial = (id: string) => /^\d{9}$/.test(id.trim())
-			if (port && isRttSerial(port)) {
-				transport = "rtt"
-			} else if (devices && devices.split(",").some((d: string) => isRttSerial(d.split(":")[1] || ""))) {
-				transport = "rtt"
+			// Step 1 (PRIORITY): Check project capabilities from prj.conf FIRST
+			// This is the source of truth - check BEFORE guessing from serial format
+			if (config.cwd) {
+				try {
+					const capabilities = getCachedCapabilities(config.cwd)
+					transport = capabilities.recommendedTransport
+
+					console.log(`[Nordic Transport] Detected from prj.conf: ${transport.toUpperCase()}`)
+					console.log(`[Nordic Project] RTT: ${capabilities.hasRTT}, UART: ${capabilities.hasUART}`)
+					if (capabilities.configPath) {
+						console.log(`[Nordic Config] Using: ${capabilities.configPath}`)
+					}
+				} catch (error) {
+					console.warn("[Nordic Transport] Could not detect from prj.conf, will use fallback")
+					transport = null
+				}
 			}
+
+			// Step 2 (FALLBACK): If prj.conf detection didn't work, check port/devices format
+			if (!transport) {
+				const isRttSerial = (id: string) => /^\d{9}$/.test(id.trim())
+
+				// Check if port/devices explicitly indicate RTT (9-digit serial format)
+				if (port && isRttSerial(port)) {
+					transport = "rtt"
+					console.log(`[Nordic Transport] Detected RTT (serial format): ${port}`)
+				} else if (devices && devices.split(",").some((d: string) => isRttSerial(d.split(":")[1] || ""))) {
+					transport = "rtt"
+					console.log(`[Nordic Transport] Detected RTT (serial in devices parameter)`)
+				}
+			}
+
+			// Step 3 (DEFAULT): If still no transport determined, default to UART (most common)
+			if (!transport) {
+				transport = "uart"
+				console.log(`[Nordic Transport] No detection results, defaulting to UART (most common)`)
+			}
+		} else {
+			console.log(`[Nordic Transport] Explicitly set by agent: ${transport.toUpperCase()}`)
 		}
 
 		if (!operation) {
@@ -241,15 +275,25 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 					// Normalize pythonCmd that may include '-3' (e.g., 'py -3')
 					if (pythonCmd.includes(" ")) {
 						const parts = pythonCmd.split(" ")
-						execFile(parts[0], [parts[1], scriptPath, "--list"], { windowsHide: true, timeout: 10000 }, (err, stdout, stderr) => {
-							if (err) return reject(err)
-							return resolve({ stdout: stdout || "", stderr: stderr || "" })
-						})
+						execFile(
+							parts[0],
+							[parts[1], scriptPath, "--list"],
+							{ windowsHide: true, timeout: 10000 },
+							(err, stdout, stderr) => {
+								if (err) return reject(err)
+								return resolve({ stdout: stdout || "", stderr: stderr || "" })
+							},
+						)
 					} else {
-						execFile(pythonCmd, [scriptPath, "--list"], { windowsHide: true, timeout: 10000 }, (err, stdout, stderr) => {
-							if (err) return reject(err)
-							return resolve({ stdout: stdout || "", stderr: stderr || "" })
-						})
+						execFile(
+							pythonCmd,
+							[scriptPath, "--list"],
+							{ windowsHide: true, timeout: 10000 },
+							(err, stdout, stderr) => {
+								if (err) return reject(err)
+								return resolve({ stdout: stdout || "", stderr: stderr || "" })
+							},
+						)
 					}
 				})
 

@@ -1,0 +1,8 @@
+# Log from device (COM3)
+# Started: 2026-02-09T07:09:20.321923
+# Baudrate: 115200
+------------------------------------------------------------
+[07:09:20.870] [NOTIFICATION] data 0x20007146 length 2
+[07:09:20.874] [NOTIFICATION] data 0x20007146 length 2
+[07:09:22.870] [NOTIFICATION] data 0x20007146 length 2
+[07:09:22.874] [NOTIFICATION] data 0x20007146 length 2
