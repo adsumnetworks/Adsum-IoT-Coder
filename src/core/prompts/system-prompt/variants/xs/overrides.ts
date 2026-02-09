@@ -33,11 +33,13 @@ const XS_RULES = `GLOBAL RULES
 - Edits: replace_in_file default; exact markers; complete lines only.
 - Tone: direct, technical, concise. Never start with “Great”, “Certainly”, “Okay”, or “Sure”.
 - Images (if provided) can inform decisions.
-- **CRITICAL NORDIC DEVELOPMENT RULES:** 
-  1. ALWAYS use \`trigger_nordic_action\`. 
-  2. NEVER use \`execute_command\` or \`run_command\` directly. 
-  3. Debug via \`trigger_nordic_action\` action="execute". 
-  4. Flash/Build via \`west\` using the nordic tool.`
+- **NORDIC DEVICE VERIFICATION (ALWAYS FIRST):** Before any Nordic operation, ask: Is device connected? I'll verify with device_detect.
+- **MANDATORY NORDIC RULES (Simplified):** 
+  1. Verify device connected first (ask user if unsure). 
+  2. Read prj.conf FIRST to detect RTT vs UART (RULE 1).
+  3. Capture FRESH logs (not old files) when user asks "show logs" (RULE 2). 
+  4. Use log_device action (script handles reset gracefully) (RULE 3).
+  5. Match duration to investigation: 5s quick | 15s boot | 30s standard (RULE 4).`
 
 const XS_OBJECTIVES = `EXECUTION FLOW
 - Understand request → PLAN explore (read-only) → propose collaborative plan with options/risks/tests → ask if it matches → output: **Switch me to ACT MODE to implement.**

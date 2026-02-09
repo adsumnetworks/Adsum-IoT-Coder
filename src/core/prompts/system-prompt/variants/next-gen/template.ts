@@ -81,9 +81,75 @@ export const rules_template = (context: SystemPromptContext) => `RULES
 - It is critical you wait for the user's response after each tool use, in order to confirm the success of the tool use. For example, if asked to make a todo app, you would create a file, wait for the user's response it was created successfully, then create another file if needed, wait for the user's response it was created successfully, etc.{{BROWSER_WAIT_RULES}}
 - MCP operations should be used one at a time, similar to other tool usage. Wait for confirmation of success before proceeding with additional operations.
 
-  ## CRITICAL NORDIC DEVELOPMENT RULES
-  1. **ALWAYS use \`trigger_nordic_action\`** for ANY terminal command (compiling, flashing, logging, shell).
-  2. **NEVER** use \`execute_command\` or \`run_command\` directly. The standard shell lacks the required Zephyr/Nordic environment variables.
-  3. **Output Capture**: The \`trigger_nordic_action\` tool automatically handles environment injection and proper terminal selection ("nRF Connect"). Trust it.
-  4. **Debugging**: Use \`trigger_nordic_action\` with \`action="log_device", transport="rtt"\` for RTT logging (instead of nrfjprog).\`
-  5. **Flash/Build**: Always use \`west build\` and \`west flash\` via the nordic tool.`
+  ## � NORDIC DEVICE DIAGNOSTICS (REQUIRED BEFORE ANY OPERATION)
+
+  **BEFORE attempting ANY Nordic device operation (log capture, reset, flash), ALWAYS:**
+
+  ### Step 1: Ask User Diagnostic Questions
+  When user wants to debug/capture/flash, ask FIRST:
+  - Is device connected? USB plugged in?
+  - Which transport? RTT or UART?
+  - Device serial or COM port?
+
+  If unsure, DON'T GUESS. Ask the user first:
+  \`❓ Quick check:
+  1. Is your nRF device USB-connected? (plug in if needed)
+  2. RTT or UART? (I'll check prj.conf)
+  3. Device: Single or multiple? (serial number)\`
+
+  ### Step 2: Verify Device Connected (trigger_nordic_action)
+  \`action: "device_detect"\`
+  Output shows: ✓ Device found OR ✗ No devices
+
+  ### Step 3: Identify Transport (from prj.conf)
+  \`grep -i "CONFIG_USE_SEGGER_RTT|CONFIG_LOG_BACKEND_UART" prj.conf\`
+  Result → RTT or UART
+
+  ### Step 4: Proceed (NOW you can proceed)
+  - Device ✓ confirmed connected
+  - Transport ✓ identified
+  - Serial ✓ known
+  → NOW start operation
+
+  ### Real Example:
+  User: "Show me device logs"
+  YOU: "Let me check your setup first..."
+  1. Trigger device_detect → finds device ✓
+  2. Read prj.conf → identifies UART ✓
+  3. Report: "Found COM5 (serial 683007782), using UART"
+  4. Capture logs → SUCCESS
+
+  ---
+
+  ## �🚨 MANDATORY NORDIC DEVELOPMENT RULES (From Handbook)
+
+  ⭐ RULE 1: TRANSPORT SELECTION - Auto-Detect First
+    YOU MUST: Read prj.conf FIRST
+    grep -i "CONFIG_USE_SEGGER_RTT\|CONFIG_LOG_BACKEND_UART" prj.conf
+    Then apply: RTT config → transport="rtt" | UART config → transport="uart"
+    MANDATORY: Don't assume transport. Always read prj.conf.
+
+  ⭐ RULE 2: LOG CAPTURE vs ANALYSIS - Fresh Logs Default
+    YOU MUST: Capture fresh from device (not old logs) when user says "show logs"
+    YOU MUST: Only read old files if user explicitly asks "analyze logs/"
+    MANDATORY: Distinguish between capturing new data vs analyzing old data
+
+  ⭐ RULE 3: DEVICE RESET - Use Script Handler
+    FORBIDDEN: Calling nrfjprog or nrfutil directly
+    REQUIRED: Use trigger_nordic_action action="log_device"
+    Script handles: nrfutil (primary) → nrfjprog (fallback) → warn and continue
+    MANDATORY: Let script manage reset gracefully
+
+  ⭐ RULE 4: DURATION - Match Investigation Goal
+    Quick test (5s) | Boot capture (15s) | Standard (30s) | Extended (60+s)
+    FORBIDDEN: Defaulting to 60+ seconds for quick tests
+    MANDATORY: Match duration to investigation context
+
+  ⭐ RULE 5: PRE-CAPTURE DELAY - Complete Boot Logs
+    "Show boot logs" → YOU MUST use pre-capture-delay="3"
+    This starts listeners 3 seconds BEFORE reset
+    Result: Complete boot sequence (from first line)
+    MANDATORY: Use for any boot sequence capture
+
+  Reference: See NORDIC_INSTRUCTION_HANDBOOK.md for detailed patterns, platform guidance, board-specific configs.
+`

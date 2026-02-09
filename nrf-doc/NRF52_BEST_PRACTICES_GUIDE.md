@@ -2,8 +2,46 @@
 ## Nordic Semiconductor & Zephyr RTOS - Lessons Learned
 
 **Created:** January 29, 2026  
+**Updated:** February 9, 2026 - Added nrfutil support, critical agent rules, pre-capture delay  
 **Based On:** Real debugging session with nRF52840 DK + nRF Connect SDK v3.2.1  
 **Purpose:** Document best practices, common pitfalls, and proven workflows
+
+---
+
+## ⚡ CRITICAL: 5 Agent Rules (MUST FOLLOW)
+
+**These rules are prioritized by the AIDebug Agent system prompt:**
+
+### RULE 1: Transport Selection - Auto-Detect First ⭐
+- ALWAYS check `prj.conf` for `CONFIG_USE_SEGGER_RTT` or `CONFIG_LOG_BACKEND_UART`
+- RTT indicators → use transport="rtt" | UART indicators → use transport="uart"
+- Port format: `COM3` or `/dev/ttyACM0` → UART | 9-digit serial → RTT
+- **NEVER assume RTT unless prj.conf confirms** - ALWAYS let handler auto-detect
+
+### RULE 2: Log Capture vs Analysis - NEW Logs by Default ⭐
+- User says "show logs" or "capture logs" → ALWAYS capture FRESH from device
+- User explicitly says "analyze this log file" → Then read old files
+- **NEVER analyze old logs without confirming** with user first
+- DEFAULT: Assume LIVE capture, not file analysis
+
+### RULE 3: Device Reset - Let Script Handle Gracefully ⭐
+- NEVER call `nrfjprog` or `nrfutil` directly for device resets
+- Use `trigger_nordic_action` with `action="log_device"`
+- Script tries: `nrfutil device reset` (modern) → `nrfjprog --reset` (legacy) → warns and continues
+- **If reset fails: capture continues with warning** (not an error)
+
+### RULE 4: Capture Duration - Use Appropriate Defaults ⭐
+- Quick connection test: `duration="5"` (verify device responding)
+- Boot sequence capture: `duration="15"` (covers startup messages)
+- Normal operation: `duration="30"` (standard logging session)
+- Extended analysis: `duration="60"` (complex issues)
+- **NEVER default to 45+ seconds for quick tests**
+
+### RULE 5: Pre-Capture Delay - When Device Needs Setup Time ⭐
+- Use for boot logs: `pre-capture-delay="3"` (listeners start BEFORE reset)
+- Ensures complete boot sequence captured (no missed startup messages)
+- Format: `trigger_nordic_action ... duration="20" pre-capture-delay="3"`
+- Default: 0 (no delay) | Recommended: 2-3 seconds for boot logs
 
 ---
 
@@ -43,33 +81,45 @@ west build -b nrf52840dk/nrf52840 . -p always
 ### 2. Flashing to Specific Device
 
 ```bash
-# Check connected devices
+# Check connected devices (PRIMARY - modern)
+nrfutil device list
+
+# Check connected devices (FALLBACK - legacy)
 nrfjprog --ids
 
-# Flash to specific device by serial number
-west flash --snr 683247800  # Central board
-west flash --snr 683007782  # Peripheral board
+# Flash to specific device (PRIMARY - modern method)
+nrfutil device reset --serial-number 683247800
+west flash --snr 683247800
 
 # Flash from specific build directory
 west flash --build-dir central/build --snr 683247800
 ```
 
-**Best Practice:** Always use `--snr` when multiple devices connected to avoid flashing to wrong board.
+**Best Practice:** Always use `--snr` when multiple devices connected. nrfutil is modern standard; nrfjprog is legacy fallback.
 
 ### 3. Device Management
 
 ```bash
-# Reset a specific device (clean start)
+# Reset a specific device (PRIMARY - modern)
+nrfutil device reset --serial-number 683247800
+
+# Reset a specific device (FALLBACK - legacy)
 nrfjprog --reset -s 683247800
 
-# Erase all flash on device (fresh start)
+# Erase all flash on device (PRIMARY - modern)
+nrfutil device reset --full-erase --serial-number 683247800
+
+# Erase all flash on device (FALLBACK - legacy)
 nrfjprog --eraseall -s 683247800
 
-# Recover device (if flash fails)
+# Recover device if flash fails (USE LEGACY)
 nrfjprog --recover -s 683247800
 ```
 
-**Best Practice:** Use `--reset` before starting log capture to ensure clean boot sequence.
+**Best Practice:** 
+- Primary: Use `nrfutil device reset` (modern Nordic standard)
+- Fallback: Use `nrfjprog --reset` (legacy, if nrfutil not available)
+- Reset BEFORE log capture to get complete boot sequence
 
 ### 4. Process Cleanup (CRITICAL!)
 
@@ -237,17 +287,41 @@ CONFIG_RTT_CONSOLE=n
 # Method 1: Direct cat (simple)
 cat /dev/ttyACM0
 
-# Method 2: Timeout capture (controlled)
-timeout 10s cat /dev/ttyACM0 > logs/central.log 2>&1
+# Method 2: Quick test (2-5 seconds - verify connection)
+timeout 5s cat /dev/ttyACM0
 
-# Method 3: Background capture (both boards simultaneously)
+# Method 3: Standard capture (30 seconds - normal logging)
+timeout 30s cat /dev/ttyACM0 > logs/central.log 2>&1
+
+# Method 4: Reset & Cat with Boot Capture (RECOMMENDED for boot logs)
+# This uses PRE-CAPTURE DELAY concept: start listeners BEFORE reset
+timeout 20s sh -c 'cat /dev/ttyACM0 > logs/boot.log & sleep 0.5 && nrfjprog --reset -s 683247800 && wait'
+
+# Method 5: Modern nrfutil reset (PRIMARY)
+timeout 20s sh -c 'cat /dev/ttyACM0 > logs/boot.log & sleep 0.5 && nrfutil device reset --serial-number 683247800 && wait'
+
+# Method 6: Background capture for both boards simultaneously (RECOMMENDED)
 rm -f logs/*.log
-(timeout 10s cat /dev/ttyACM0 > logs/central.log 2>&1) &
-timeout 10s cat /dev/ttyACM1 > logs/peripheral.log 2>&1
+(timeout 15s cat /dev/ttyACM0 > logs/central.log 2>&1) &
+sleep 0.5
+nrfjprog --reset -s 683247800  # Reset AFTER capture started
+timeout 15s cat /dev/ttyACM1 > logs/peripheral.log 2>&1
 wait  # Wait for background process
+```
 
-# Method 4: Reset & Cat (captures boot sequence) - CRITICAL!
-timeout 20s sh -c 'nrfjprog --reset -s 683007782 && sleep 1 && cat /dev/ttyACM1 > logs/peripheral.log'
+**Duration Guidance (ALIGN WITH RULE 4):**
+```bash
+# QUICK TEST (5 seconds) - Verify device is responding
+timeout 5s cat /dev/ttyACM0
+
+# BOOT CAPTURE (15 seconds) - Covers complete startup sequence
+timeout 15s sh -c '(cat /dev/ttyACM0 > logs/boot.log) & nrfjprog --reset -s 683247800 && sleep 12 && wait'
+
+# STANDARD (30 seconds) - Normal logging session
+timeout 30s cat /dev/ttyACM0 > logs/standard.log 2>&1
+
+# EXTENDED (60+ seconds) - Complex issue diagnosis
+timeout 60s cat /dev/ttyACM0 > logs/extended.log 2>&1
 ```
 
 **Troubleshooting UART:**
@@ -350,19 +424,20 @@ west build -b nrf52840dk/nrf52840 .
 ### Device Identification
 
 ```bash
-# List all connected nRF devices
+# List all connected nRF devices (PRIMARY - modern)
+nrfutil device list
+
+# List all connected nRF devices (FALLBACK - legacy)
 nrfjprog --ids
 
-# Expected output:
-# 683247800
-# 683007782
-
-# Get detailed device info (for specific device)
+# Get detailed device info (for specific device - legacy)
 nrfjprog --id 683247800 --info
 
 # Check which firmware is running
 # Look in logs for: "=== nRF52840 IoT Hub (Central) Starting ==="
 ```
+
+**Best Practice:** Use `nrfutil device list` (modern). Fall back to `nrfjprog --ids` if needed.
 
 ### Board-to-Firmware Mapping
 
@@ -391,8 +466,11 @@ Peripheral Board (Sensor):
 # Full cleanup sequence (start fresh)
 pkill -9 JLink
 pkill -9 nrfutil
-nrfjprog --eraseall -s 683247800
-nrfjprog --eraseall -s 683007782
+nrfutil device reset --full-erase --serial-number 683247800  # PRIMARY
+nrfutil device reset --full-erase --serial-number 683007782  # PRIMARY
+# Fallback if nrfutil not available:
+# nrfjprog --eraseall -s 683247800
+# nrfjprog --eraseall -s 683007782
 sleep 2
 
 # Flash both devices
@@ -400,9 +478,12 @@ west flash --snr 683247800 &
 west flash --snr 683007782 &
 wait
 
-# Reset both devices
-nrfjprog --reset -s 683247800
-nrfjprog --reset -s 683007782
+# Reset both devices (PRIMARY - modern)
+nrfutil device reset --serial-number 683247800
+nrfutil device reset --serial-number 683007782
+# Fallback if nrfutil not available:
+# nrfjprog --reset -s 683247800
+# nrfjprog --reset -s 683007782
 ```
 
 ---
@@ -439,12 +520,17 @@ echo $ZEPHYR_BASE
 
 **Solution:** 
 ```bash
-# ALWAYS check devices first
+# ALWAYS check devices first (PRIMARY - modern)
+nrfutil device list
+
+# ALWAYS check devices first (FALLBACK - legacy)
 nrfjprog --ids
 
 # ALWAYS use --snr flag
 west flash --snr 683247800  # Explicitly target specific board
 ```
+
+**Best Practice:** Check device list first. Always use --snr. Never trust default device selection.
 
 ### Pitfall 3: J-Link Process Conflicts
 
@@ -479,13 +565,20 @@ ps aux | grep -E "JLink|nrfutil"
 
 **Solution:**
 ```bash
-# Method 1: Reset & Cat (RECOMMENDED)
-timeout 20s sh -c 'nrfjprog --reset -s 683247800 && sleep 1 && cat /dev/ttyACM0 > boot.log'
+# Method 1: Reset & Cat (RECOMMENDED) - Uses PRE-CAPTURE DELAY concept
+# Starts listener BEFORE reset to catch boot sequence
+timeout 20s sh -c 'cat /dev/ttyACM0 > logs/boot.log & sleep 0.5 && nrfjprog --reset -s 683247800 && wait'
 
-# Method 2: Background capture with reset
+# Method 2: Modern nrfutil version (PRIMARY)
+timeout 20s sh -c 'cat /dev/ttyACM0 > logs/boot.log & sleep 0.5 && nrfutil device reset --serial-number 683247800 && wait'
+
+# Method 3: Background capture with reset
 (timeout 15s cat /dev/ttyACM0 > logs/central.log 2>&1) &
 nrfjprog --reset -s 683247800  # Reset AFTER starting capture
 ```
+
+**Best Practice:** Start listeners FIRST (pre-capture listening), THEN reset device. This ensures complete boot sequence captured.
+
 
 ### Pitfall 5: Log Buffering Hiding Crash Data
 
@@ -1032,16 +1125,28 @@ west flash --snr 683247800                   # Specific device
 timeout 60s west flash --snr 683247800       # With timeout
 west flash --erase --snr 683247800           # With erase
 
-# Device Management
+# Device Management (PRIMARY - modern nrfutil)
+nrfutil device list                          # List devices
+nrfutil device reset --serial-number XXXXX  # Reset device
+nrfutil device reset --full-erase --serial-number XXXXX # Erase flash
+
+# Device Management (FALLBACK - legacy nrfjprog)
 nrfjprog --ids                               # List devices
-nrfjprog --reset -s 683247800               # Reset device
-nrfjprog --eraseall -s 683247800           # Erase flash
+nrfjprog --reset -s XXXXX                   # Reset device
+nrfjprog --eraseall -s XXXXX                # Erase flash
+
+# Cleanup
 pkill -9 JLink                              # Kill J-Link
 pkill -9 nrfutil                             # Kill nrfutil
 
-# Log Capture (UART)
-timeout 10s cat /dev/ttyACM0 > logs/test.log # Simple
-timeout 20s sh -c 'nrfjprog --reset && sleep 1 && cat /dev/ttyACM0 > boot.log' # Reset & Cat
+# Log Capture (UART) - Quick Test (5 seconds)
+timeout 5s cat /dev/ttyACM0
+
+# Log Capture (UART) - Boot Sequence with Pre-Capture Listener
+timeout 20s sh -c 'cat /dev/ttyACM0 > logs/boot.log & sleep 0.5 && nrfutil device reset --serial-number XXXXX && wait'
+
+# Log Capture (UART) - Standard (30 seconds)
+timeout 30s cat /dev/ttyACM0 > logs/test.log
 
 # Log Capture (RTT)
 JLinkRTTLogger -Device nRF52840_xxAA -If SWD -SerialNo 683247800 -RTTCh 0 > logs/rtt.log &
@@ -1057,33 +1162,34 @@ tail -f logs/central.log                   # Follow logs live
 
 ## Summary
 
-### Key Takeaways
+### Key Takeaways (CRITICAL - ALIGN WITH 5 AGENT RULES)
 
-1. **Always use nRF Connect terminal** - Regular terminal lacks SDK environment
-2. **Kill processes before operations** - Prevents J-Link/nrfutil conflicts
-3. **Use --snr flag** - Always specify target device when multiple boards connected
-4. **Reset before log capture** - Ensures complete boot sequence is captured
-5. **Use immediate logging mode** - Prevents log loss on crash
-6. **Check RF configuration** - TX power and physical proximity matter for BLE
-7. **Document board mapping** - Track which serial/USB corresponds to which board
-8. **Use correct board name** - `nrf52840dk/nrf52840`, not just `nrf52840dk`
-9. **Timeout long operations** - Prevents hangs on flash/log capture
-10. **Verify with grep** - Always check logs for errors and expected patterns
+1. **Transport Auto-Detection (RULE 1)** - Check prj.conf for RTT vs UART config
+2. **Capture Fresh Logs (RULE 2)** - User says "show logs" → capture NEW, not old files
+3. **Device Reset is Graceful (RULE 3)** - nrfutil (modern) → nrfjprog (legacy) → warn and continue
+4. **Duration Matters (RULE 4)** - Quick: 5s | Boot: 15s | Standard: 30s | Extended: 60s+
+5. **Pre-Capture Delay (RULE 5)** - Start listeners BEFORE reset for complete boot logs
+6. **Always use nRF Connect terminal** - Regular terminal lacks SDK environment
+7. **Kill processes before operations** - Prevents J-Link/nrfutil conflicts
+8. **Use --snr flag** - Always specify target device when multiple boards connected
+9. **Document board mapping** - Track which serial/USB corresponds to which board
+10. **Use correct board name** - `nrf52840dk/nrf52840`, not just `nrf52840dk`
 
 ### Recommended Workflow
 
 ```
 Setup → Kill processes → Check devices → Build → Flash → Reset → Capture logs → Analyze
   ↓        ↓                ↓             ↓       ↓       ↓         ↓          ↓
-  ↓        pkill -9         nrfjprog      west    west    nrfjprog   cat       grep
-  ↓        JLink            --ids         build   flash   --reset    > logs   error
-  ↓        nrfutil          ls /dev/              --snr     sleep 1   2>&1
-  ↓                                         683247800
+  ↓        pkill -9         nrfutil       west    west    nrfutil   cat       grep
+  ↓        JLink            device list   build   flash   device    > logs   error
+  ↓        nrfutil          or nrfjprog   --snr   reset   2>&1
+  ↓                         --ids         XXXXX   XXXXX
 ```
 
 ---
 
-**Document Version:** 1.0  
+**Document Version:** 2.0  
+**Updated:** February 9, 2026 - Added 5 Critical Agent Rules, nrfutil support  
 **Created:** January 29, 2026  
 **Based On:** Real debugging session with nRF52840 DK + nRF Connect SDK v3.2.1  
 **Author:** AI Senior Embedded Firmware Engineer (Nordic/Zephyr Specialist)
