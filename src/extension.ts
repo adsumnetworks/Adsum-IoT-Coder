@@ -4,17 +4,15 @@
 import assert from "node:assert"
 import { DIFF_VIEW_URI_SCHEME } from "@hosts/vscode/VscodeDiffViewProvider"
 import * as vscode from "vscode"
-import { sendAccountButtonClickedEvent } from "./core/controller/ui/subscribeToAccountButtonClicked"
 import { sendChatButtonClickedEvent } from "./core/controller/ui/subscribeToChatButtonClicked"
 import { sendHistoryButtonClickedEvent } from "./core/controller/ui/subscribeToHistoryButtonClicked"
-import { sendMcpButtonClickedEvent } from "./core/controller/ui/subscribeToMcpButtonClicked"
 import { sendSettingsButtonClickedEvent } from "./core/controller/ui/subscribeToSettingsButtonClicked"
 import { sendWorktreesButtonClickedEvent } from "./core/controller/ui/subscribeToWorktreesButtonClicked"
 import { WebviewProvider } from "./core/webview"
 import { createClineAPI } from "./exports"
 import { Logger } from "./services/logging/Logger"
 import { cleanupTestMode, initializeTestMode } from "./services/test/TestMode"
-import "./utils/path" // necessary to have access to String.prototype.toPosix
+import "./utils/path"; // necessary to have access to String.prototype.toPosix
 
 import path from "node:path"
 import type { ExtensionContext } from "vscode"
@@ -35,8 +33,8 @@ import { workspaceResolver } from "./core/workspace"
 import { findMatchingNotebookCell, getContextForCommand, showWebview } from "./hosts/vscode/commandUtils"
 import { abortCommitGeneration, generateCommitMsg } from "./hosts/vscode/commit-message-generator"
 import {
-	disposeVscodeCommentReviewController,
-	getVscodeCommentReviewController,
+    disposeVscodeCommentReviewController,
+    getVscodeCommentReviewController,
 } from "./hosts/vscode/review/VscodeCommentReviewController"
 import { VscodeTerminalManager } from "./hosts/vscode/terminal/VscodeTerminalManager"
 import { VscodeDiffViewProvider } from "./hosts/vscode/VscodeDiffViewProvider"
@@ -113,17 +111,26 @@ export async function activate(context: vscode.ExtensionContext) {
 			console.log("[DEBUG] plusButtonClicked")
 
 			const sidebarInstance = WebviewProvider.getInstance()
-			await sidebarInstance.controller.clearTask()
+
+			// Use a timeout to prevent clearTask() from blocking indefinitely
+			// if the current task is stuck (e.g. in a pWaitFor loop)
+			try {
+				await Promise.race([
+					sidebarInstance.controller.clearTask(),
+					new Promise<void>((_, reject) =>
+						setTimeout(() => reject(new Error("clearTask timeout")), 5000),
+					),
+				])
+			} catch (e) {
+				console.warn("[DEBUG] clearTask timed out or failed, forcing state reset:", e)
+			}
+
 			await sidebarInstance.controller.postStateToWebview()
 			await sendChatButtonClickedEvent()
 		}),
 	)
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand(commands.McpButton, () => {
-			sendMcpButtonClickedEvent()
-		}),
-	)
+
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(commands.SettingsButton, () => {
@@ -138,12 +145,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand(commands.AccountButton, () => {
-			// Send event to all subscribers using the gRPC streaming method
-			sendAccountButtonClickedEvent()
-		}),
-	)
+
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(commands.WorktreesButton, () => {

@@ -16,21 +16,22 @@ import { Navbar } from "../menu/Navbar"
 import AutoApproveBar from "./auto-approve-menu/AutoApproveBar"
 // Import utilities and hooks from the new structure
 import {
-	ActionButtons,
-	CHAT_CONSTANTS,
-	ChatLayout,
-	convertHtmlToMarkdown,
-	filterVisibleMessages,
-	groupLowStakesTools,
-	groupMessages,
-	InputSection,
-	MessagesArea,
-	TaskSection,
-	useChatState,
-	useMessageHandlers,
-	useScrollBehavior,
-	WelcomeSection,
+    ActionButtons,
+    CHAT_CONSTANTS,
+    ChatLayout,
+    convertHtmlToMarkdown,
+    filterVisibleMessages,
+    groupLowStakesTools,
+    groupMessages,
+    InputSection,
+    MessagesArea,
+    TaskSection,
+    useChatState,
+    useMessageHandlers,
+    useScrollBehavior,
 } from "./chat-view"
+import ModeSelector from "./ModeSelector"
+import { NORDIC_MODES, TASK_COMPLETE_MARKER } from "./nordicModes"
 
 interface ChatViewProps {
 	isHidden: boolean
@@ -104,6 +105,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		setExpandedRows,
 		textAreaRef,
 	} = chatState
+
+	const { nordicPhase, setNordicPhase, nordicMode, setNordicMode } = chatState
 
 	useEffect(() => {
 		const handleCopy = async (e: ClipboardEvent) => {
@@ -197,6 +200,31 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 
 	// Use message handlers hook
 	const messageHandlers = useMessageHandlers(messages, chatState)
+
+	// Handle Nordic mode selection (must be after messageHandlers)
+	const handleModeSelect = useCallback(
+		async (mode: "log_generator" | "log_analyzer") => {
+			try {
+				const modeConfig = NORDIC_MODES[mode]
+				setNordicMode(mode)
+				setNordicPhase("active")
+
+				// Send a concise task instruction — NOT the full system prompt
+				const taskPrompt =
+					mode === "log_generator"
+						? "You are a Nordic nRF Connect SDK logging assistant. Your job is to help add LOG_* macros (LOG_DBG, LOG_INF, LOG_WRN, LOG_ERR) to C source files using the Zephyr logging API. Start by asking: Which C source file needs logging? (provide full path from workspace root, e.g. src/main.c)"
+						: "You are a Nordic nRF Connect SDK log analyzer. Your job is to help record and analyze logs from connected nRF devices using RTT. Start by using the trigger_nordic_action tool with action 'list_devices' to detect connected nRF devices."
+				await messageHandlers.handleSendMessage(taskPrompt, [], [])
+			} catch (error) {
+				console.error("[ChatView] Failed to start Nordic task:", error)
+				// Reset state to avoid stuck UI
+				setNordicPhase("awaiting_mode")
+				setNordicMode(null)
+				// Optional: Show error to user via window.showErrorMessage if available, but console log + UI reset is sufficient to unblock
+			}
+		},
+		[messageHandlers, setNordicMode, setNordicPhase],
+	)
 
 	const { selectedModelInfo } = useMemo(() => {
 		return normalizeApiConfiguration(apiConfiguration, mode)
@@ -335,9 +363,22 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	const scrollBehavior = useScrollBehavior(messages, visibleMessages, groupedMessages, expandedRows, setExpandedRows)
 
 	const placeholderText = useMemo(() => {
+		if (nordicPhase === "awaiting_mode") {
+			return "Select a mode to start..."
+		}
 		const text = task ? "Type a message..." : "Type your task here..."
 		return text
-	}, [task])
+	}, [task, nordicPhase])
+
+	// Detect task completion in messages
+	useEffect(() => {
+		if (modifiedMessages.length > 0) {
+			const last = modifiedMessages[modifiedMessages.length - 1]
+			if (last?.type === "say" && last?.say === "text" && last?.text?.includes(TASK_COMPLETE_MARKER)) {
+				setNordicPhase("task_complete")
+			}
+		}
+	}, [modifiedMessages, setNordicPhase])
 
 	return (
 		<ChatLayout isHidden={isHidden}>
@@ -356,17 +397,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						task={task}
 					/>
 				) : (
-					<WelcomeSection
-						hideAnnouncement={hideAnnouncement}
-						shouldShowQuickWins={shouldShowQuickWins}
-						showAnnouncement={showAnnouncement}
-						showHistoryView={showHistoryView}
-						taskHistory={taskHistory}
-						telemetrySetting={telemetrySetting}
-						version={version}
-					/>
+					<ModeSelector onModeSelect={handleModeSelect} variant="welcome" />
 				)}
-				{task && (
+					{task && (
 					<MessagesArea
 						chatState={chatState}
 						groupedMessages={groupedMessages}
@@ -375,6 +408,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						scrollBehavior={scrollBehavior}
 						task={task}
 					/>
+				)}
+				{nordicPhase === "task_complete" && (
+					<ModeSelector onModeSelect={handleModeSelect} variant="inline" />
 				)}
 			</div>
 			<footer className="bg-(--vscode-sidebar-background)" style={{ gridRow: "2" }}>

@@ -86,7 +86,9 @@ export async function newTask(controller: Controller, request: NewTaskRequest): 
 
 					// Platform validation: Only allow enabling hooks on macOS and Linux
 					if (isEnabled && process.platform === "win32") {
-						throw new Error("Hooks are not yet supported on Windows")
+						// Expert fix: Don't throw, just disable and warn to avoid breaking the UI flow
+						console.warn("Hooks are not yet supported on Windows, disabling for this task")
+						return false
 					}
 
 					return isEnabled
