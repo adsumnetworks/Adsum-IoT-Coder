@@ -6,6 +6,7 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { SlashServiceClient, TaskServiceClient } from "@/services/grpc-client"
 import type { ButtonActionType } from "../shared/buttonConfig"
 import type { ChatState, MessageHandlers } from "../types/chatTypes"
+import { enforceScope } from "../../nordicScopeEnforcer"
 
 /**
  * Custom hook for managing message handlers
@@ -23,6 +24,9 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 		setEnableButtons,
 		clineAsk,
 		lastMessage,
+		nordicMode,
+		setNordicMode,
+		setNordicPhase,
 	} = chatState
 
 	// Handle sending a message
@@ -30,6 +34,16 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 		async (text: string, images: string[], files: string[]) => {
 			let messageToSend = text.trim()
 			const hasContent = messageToSend || images.length > 0 || files.length > 0
+
+			// Scope enforcement: reject off-topic messages for the current Nordic mode
+			if (hasContent && nordicMode && messages.length > 0) {
+				const rejection = enforceScope(nordicMode, messageToSend)
+				if (rejection) {
+					// Replace input with the rejection message instead of sending
+					setInputValue(rejection)
+					return
+				}
+			}
 
 			// Prepend the active quote if it exists
 			if (activeQuote && hasContent) {
@@ -141,14 +155,17 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 			setSelectedFiles,
 			setEnableButtons,
 			chatState,
+			nordicMode,
 		],
 	)
 
 	// Start a new task
 	const startNewTask = useCallback(async () => {
 		setActiveQuote(null)
+		setNordicMode(null)
+		setNordicPhase("awaiting_mode")
 		await TaskServiceClient.clearTask(EmptyRequest.create({}))
-	}, [setActiveQuote])
+	}, [setActiveQuote, setNordicMode, setNordicPhase])
 
 	// Clear input state helper
 	const clearInputState = useCallback(() => {

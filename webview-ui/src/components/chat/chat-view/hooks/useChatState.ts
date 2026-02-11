@@ -1,6 +1,7 @@
 import { ClineMessage } from "@shared/ExtensionMessage"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ChatState } from "../types/chatTypes"
+import type { NordicModeId, NordicChatPhase } from "../../nordicModes"
 
 /**
  * Custom hook for managing chat state
@@ -20,6 +21,10 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 	const [primaryButtonText, setPrimaryButtonText] = useState<string | undefined>("Approve")
 	const [secondaryButtonText, setSecondaryButtonText] = useState<string | undefined>("Reject")
 	const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({})
+
+	// Nordic mode state
+	const [nordicMode, setNordicMode] = useState<NordicModeId | null>(null)
+	const [nordicPhase, setNordicPhase] = useState<NordicChatPhase>("awaiting_mode")
 
 	// Refs
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
@@ -41,6 +46,8 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 		setActiveQuote(null)
 		setSelectedImages([])
 		setSelectedFiles([])
+		setNordicMode(null)
+		setNordicPhase("awaiting_mode")
 	}, [])
 
 	// Handle focus change
@@ -89,5 +96,11 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 		handleFocusChange,
 		clearExpandedRows,
 		resetState,
+
+		// Nordic mode
+		nordicMode,
+		setNordicMode,
+		nordicPhase,
+		setNordicPhase,
 	}
 }

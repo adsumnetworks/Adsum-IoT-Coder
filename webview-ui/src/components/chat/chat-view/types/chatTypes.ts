@@ -5,6 +5,7 @@
 import { ClineAsk, ClineMessage } from "@shared/ExtensionMessage"
 import { ListRange, VirtuosoHandle } from "react-virtuoso"
 import { ButtonActionType } from "../shared/buttonConfig"
+import type { NordicModeId, NordicChatPhase } from "../../nordicModes"
 
 /**
  * Main ChatView component props
@@ -55,6 +56,12 @@ export interface ChatState {
 	handleFocusChange: (isFocused: boolean) => void
 	clearExpandedRows: () => void
 	resetState: () => void
+
+	// Nordic mode state
+	nordicMode: NordicModeId | null
+	setNordicMode: React.Dispatch<React.SetStateAction<NordicModeId | null>>
+	nordicPhase: NordicChatPhase
+	setNordicPhase: React.Dispatch<React.SetStateAction<NordicChatPhase>>
 
 	// Scroll-related state (will be moved to scroll hook)
 	showScrollToBottom?: boolean

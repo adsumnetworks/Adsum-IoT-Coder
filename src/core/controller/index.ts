@@ -975,8 +975,23 @@ export class Controller {
 		if (this.task) {
 			// Clear task settings cache when task ends
 			await this.stateManager.clearTaskSettings()
+
+			// Expert Fix: Add timeout to prevent hang if abortTask stalls (e.g. zombie process)
+			// This ensures sidebar buttons like '+' never freeze indefinitely.
+			try {
+				const abortPromise = this.task.abortTask()
+				// Create a promise that resolves (not rejects) after timeout to allow cleanup to proceed
+				const timeoutPromise = new Promise<void>((resolve) => {
+					setTimeout(() => {
+						console.warn("[Controller] clearTask abort timed out, forcing cleanup")
+						resolve()
+					}, 3000)
+				})
+				await Promise.race([abortPromise, timeoutPromise])
+			} catch (e) {
+				console.error("[Controller] clearTask failed (non-fatal):", e)
+			}
 		}
-		await this.task?.abortTask()
 		this.task = undefined // removes reference to it, so once promises end it will be garbage collected
 	}
 

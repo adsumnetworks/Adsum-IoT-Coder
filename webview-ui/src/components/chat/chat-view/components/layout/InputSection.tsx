@@ -36,9 +36,14 @@ export const InputSection: React.FC<InputSectionProps> = ({
 		setSelectedFiles,
 		textAreaRef,
 		handleFocusChange,
+		nordicPhase,
 	} = chatState
 
 	const { isAtBottom, scrollToBottomAuto } = scrollBehavior
+
+	// Freeze input when awaiting mode selection
+	const isInputFrozen = nordicPhase === "awaiting_mode"
+	const effectiveSendingDisabled = sendingDisabled || isInputFrozen
 
 	return (
 		<>
@@ -52,27 +57,30 @@ export const InputSection: React.FC<InputSectionProps> = ({
 				</div>
 			)}
 
-			<ChatTextArea
-				activeQuote={activeQuote}
-				inputValue={inputValue}
-				onFocusChange={handleFocusChange}
-				onHeightChange={() => {
-					if (isAtBottom) {
-						scrollToBottomAuto()
-					}
-				}}
-				onSelectFilesAndImages={selectFilesAndImages}
-				onSend={() => messageHandlers.handleSendMessage(inputValue, selectedImages, selectedFiles)}
-				placeholderText={placeholderText}
-				ref={textAreaRef}
-				selectedFiles={selectedFiles}
-				selectedImages={selectedImages}
-				sendingDisabled={sendingDisabled}
-				setInputValue={setInputValue}
-				setSelectedFiles={setSelectedFiles}
-				setSelectedImages={setSelectedImages}
-				shouldDisableFilesAndImages={shouldDisableFilesAndImages}
-			/>
+			<div style={{ opacity: isInputFrozen ? 0.5 : 1 }}>
+				<ChatTextArea
+					activeQuote={activeQuote}
+					inputValue={inputValue}
+					onFocusChange={handleFocusChange}
+					onHeightChange={() => {
+						if (isAtBottom) {
+							scrollToBottomAuto()
+						}
+					}}
+					onSelectFilesAndImages={selectFilesAndImages}
+					onSend={() => messageHandlers.handleSendMessage(inputValue, selectedImages, selectedFiles)}
+					placeholderText={placeholderText}
+					ref={textAreaRef}
+					selectedFiles={selectedFiles}
+					selectedImages={selectedImages}
+					sendingDisabled={effectiveSendingDisabled}
+					setInputValue={setInputValue}
+					setSelectedFiles={setSelectedFiles}
+					setSelectedImages={setSelectedImages}
+					shouldDisableFilesAndImages={shouldDisableFilesAndImages}
+				/>
+			</div>
 		</>
 	)
 }
+
