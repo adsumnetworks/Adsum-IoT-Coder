@@ -30,23 +30,17 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = fa
 			data-testid="mode-selector">
 			{isWelcome && (
 				<div className="text-center mb-4">
-					<h2
-						className="text-lg font-semibold mb-1"
-						style={{ color: "var(--vscode-foreground)" }}>
+					<h2 className="text-lg font-semibold mb-1" style={{ color: "var(--vscode-foreground)" }}>
 						Nordic Logging Assistant
 					</h2>
-					<p
-						className="text-sm"
-						style={{ color: "var(--vscode-descriptionForeground)" }}>
+					<p className="text-sm" style={{ color: "var(--vscode-descriptionForeground)" }}>
 						What would you like to do?
 					</p>
 				</div>
 			)}
 
 			{!isWelcome && (
-				<p
-					className="text-sm font-medium"
-					style={{ color: "var(--vscode-descriptionForeground)" }}>
+				<p className="text-sm font-medium" style={{ color: "var(--vscode-descriptionForeground)" }}>
 					What would you like to do next?
 				</p>
 			)}
@@ -54,23 +48,16 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = fa
 			<div className={`flex flex-col gap-3 w-full ${isWelcome ? "max-w-md" : ""}`}>
 				{modes.map((mode) => (
 					<button
-						key={mode.id}
-						type="button"
+						className="flex items-center rounded-lg cursor-pointer transition-all duration-200"
 						data-testid={`mode-button-${mode.id}`}
 						disabled={disabled}
+						key={mode.id}
 						onClick={() => onModeSelect(mode.id)}
-						className="flex items-center rounded-lg cursor-pointer transition-all duration-200"
-						style={{
-							padding: isWelcome ? "16px 20px" : "12px 16px",
-							background: "var(--vscode-input-background)",
-							border: "2px solid var(--vscode-input-border, var(--vscode-editorGroup-border))",
-							opacity: disabled ? 0.5 : 1,
-							pointerEvents: disabled ? "none" : "auto",
-						}}
 						onMouseEnter={(e) => {
 							if (!disabled) {
 								e.currentTarget.style.borderColor = "#00a9ce"
-								e.currentTarget.style.background = "color-mix(in srgb, #00a9ce 8%, var(--vscode-input-background))"
+								e.currentTarget.style.background =
+									"color-mix(in srgb, #00a9ce 8%, var(--vscode-input-background))"
 								e.currentTarget.style.transform = "translateY(-2px)"
 								e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 169, 206, 0.15)"
 							}
@@ -80,7 +67,15 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = fa
 							e.currentTarget.style.background = "var(--vscode-input-background)"
 							e.currentTarget.style.transform = "none"
 							e.currentTarget.style.boxShadow = "none"
-						}}>
+						}}
+						style={{
+							padding: isWelcome ? "16px 20px" : "12px 16px",
+							background: "var(--vscode-input-background)",
+							border: "2px solid var(--vscode-input-border, var(--vscode-editorGroup-border))",
+							opacity: disabled ? 0.5 : 1,
+							pointerEvents: disabled ? "none" : "auto",
+						}}
+						type="button">
 						<span
 							className="flex-shrink-0"
 							style={{ fontSize: isWelcome ? "32px" : "24px", marginRight: isWelcome ? "16px" : "12px" }}>
@@ -96,9 +91,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = fa
 								}}>
 								{mode.title}
 							</span>
-							<span
-								className="text-sm"
-								style={{ color: "var(--vscode-descriptionForeground)" }}>
+							<span className="text-sm" style={{ color: "var(--vscode-descriptionForeground)" }}>
 								{mode.description}
 							</span>
 						</div>

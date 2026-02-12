@@ -63,7 +63,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 
 		// Instantiate handler
 		handler = new TriggerNordicActionHandlerClass(mockContext)
-// ... rest is similar but need to update mockExecFile usage to mockExecFileFile and fix expectations
+		// ... rest is similar but need to update mockExecFile usage to mockExecFileFile and fix expectations
 
 		// Setup TaskConfig mock
 		mockExecuteCommandTool = sandbox.stub().resolves([false, { type: "tool_result", content: "Success" }])
@@ -192,7 +192,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		const cmd = mockExecuteCommandTool.firstCall.args[0]
 		// Normalize backslashes for Windows test env
 		const normalizedCmd = cmd.replace(/\\/g, "/")
-		
+
 		// Since /mock/extension is NOT inside /mock/workspace, it uses absolute
 		expect(normalizedCmd).to.contain("/mock/extension/path/assets/scripts/uart-logger")
 	})

@@ -87,11 +87,7 @@ function parseJwtClaims(token: string): IdTokenClaims | undefined {
  * 3. First organization ID
  */
 function extractAccountIdFromClaims(claims: IdTokenClaims): string | undefined {
-	return (
-		claims.chatgpt_account_id ||
-		claims["https://api.openai.com/auth"]?.chatgpt_account_id ||
-		claims.organizations?.[0]?.id
-	)
+	return claims.chatgpt_account_id || claims["https://api.openai.com/auth"]?.chatgpt_account_id || claims.organizations?.[0]?.id
 }
 
 /**
@@ -148,9 +144,7 @@ function parseOAuthErrorDetails(errorText: string): { errorCode?: string; errorM
 		const errorCode: string | undefined =
 			typeof errorField === "string"
 				? errorField
-				: errorField &&
-					  typeof errorField === "object" &&
-					  typeof (errorField as Record<string, unknown>).type === "string"
+				: errorField && typeof errorField === "object" && typeof (errorField as Record<string, unknown>).type === "string"
 					? ((errorField as Record<string, unknown>).type as string)
 					: undefined
 

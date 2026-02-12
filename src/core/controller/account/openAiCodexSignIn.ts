@@ -1,8 +1,8 @@
 import { Empty, EmptyRequest } from "@shared/proto/cline/common"
-import { openAiCodexOAuthManager } from "@/integrations/openai-codex/oauth"
-import { HostProvider } from "@/hosts/host-provider"
-import { openExternal } from "@/utils/env"
 import { ShowMessageType } from "@shared/proto/host/window"
+import { HostProvider } from "@/hosts/host-provider"
+import { openAiCodexOAuthManager } from "@/integrations/openai-codex/oauth"
+import { openExternal } from "@/utils/env"
 import { Controller } from ".."
 
 /**

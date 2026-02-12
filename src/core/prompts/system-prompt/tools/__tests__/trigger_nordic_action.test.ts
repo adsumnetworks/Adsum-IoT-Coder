@@ -22,8 +22,6 @@ describe("trigger_nordic_action tool", () => {
 		expect(generic?.description).to.include("pkill -9 JLink")
 		expect(generic?.description).to.include("timeout 60s")
 
-
-
 		// Check for TRANSPORT SELECTION (Replaces RTT/UART sections)
 		expect(generic?.description).to.include("TRANSPORT SELECTION")
 		expect(generic?.description).to.include("CONFIG_USE_SEGGER_RTT")

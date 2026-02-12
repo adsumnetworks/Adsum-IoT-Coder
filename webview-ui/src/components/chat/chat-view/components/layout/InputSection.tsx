@@ -83,4 +83,3 @@ export const InputSection: React.FC<InputSectionProps> = ({
 		</>
 	)
 }
-

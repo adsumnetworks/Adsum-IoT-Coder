@@ -1,36 +1,37 @@
 import { COMMAND_OUTPUT_STRING } from "@shared/combineCommandSequences"
 import {
-    ClineApiReqInfo,
-    ClineAskQuestion,
-    ClineAskUseMcpServer,
-    ClineMessage, ClineSayGenerateExplanation,
-    ClineSayTool,
-    COMPLETION_RESULT_CHANGES_FLAG
+	ClineApiReqInfo,
+	ClineAskQuestion,
+	ClineAskUseMcpServer,
+	ClineMessage,
+	ClineSayGenerateExplanation,
+	ClineSayTool,
+	COMPLETION_RESULT_CHANGES_FLAG,
 } from "@shared/ExtensionMessage"
 import { BooleanRequest, StringRequest } from "@shared/proto/cline/common"
 import { Mode } from "@shared/storage/types"
 import deepEqual from "fast-deep-equal"
 import {
-    ArrowRightIcon,
-    BellIcon,
-    CheckIcon,
-    CircleSlashIcon,
-    CircleXIcon,
-    FileCode2Icon,
-    FilePlus2Icon,
-    FoldVerticalIcon,
-    ImageUpIcon,
-    LightbulbIcon,
-    Link2Icon,
-    LoaderCircleIcon,
-    PencilIcon,
-    RefreshCwIcon,
-    SearchIcon,
-    SettingsIcon,
-    SquareArrowOutUpRightIcon,
-    SquareMinusIcon,
-    TerminalIcon,
-    TriangleAlertIcon,
+	ArrowRightIcon,
+	BellIcon,
+	CheckIcon,
+	CircleSlashIcon,
+	CircleXIcon,
+	FileCode2Icon,
+	FilePlus2Icon,
+	FoldVerticalIcon,
+	ImageUpIcon,
+	LightbulbIcon,
+	Link2Icon,
+	LoaderCircleIcon,
+	PencilIcon,
+	RefreshCwIcon,
+	SearchIcon,
+	SettingsIcon,
+	SquareArrowOutUpRightIcon,
+	SquareMinusIcon,
+	TerminalIcon,
+	TriangleAlertIcon,
 } from "lucide-react"
 import { MouseEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSize } from "react-use"

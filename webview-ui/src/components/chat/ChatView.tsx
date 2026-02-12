@@ -16,19 +16,19 @@ import { Navbar } from "../menu/Navbar"
 import AutoApproveBar from "./auto-approve-menu/AutoApproveBar"
 // Import utilities and hooks from the new structure
 import {
-    ActionButtons,
-    CHAT_CONSTANTS,
-    ChatLayout,
-    convertHtmlToMarkdown,
-    filterVisibleMessages,
-    groupLowStakesTools,
-    groupMessages,
-    InputSection,
-    MessagesArea,
-    TaskSection,
-    useChatState,
-    useMessageHandlers,
-    useScrollBehavior,
+	ActionButtons,
+	CHAT_CONSTANTS,
+	ChatLayout,
+	convertHtmlToMarkdown,
+	filterVisibleMessages,
+	groupLowStakesTools,
+	groupMessages,
+	InputSection,
+	MessagesArea,
+	TaskSection,
+	useChatState,
+	useMessageHandlers,
+	useScrollBehavior,
 } from "./chat-view"
 import ModeSelector from "./ModeSelector"
 import { NORDIC_MODES, TASK_COMPLETE_MARKER } from "./nordicModes"
@@ -399,7 +399,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				) : (
 					<ModeSelector onModeSelect={handleModeSelect} variant="welcome" />
 				)}
-					{task && (
+				{task && (
 					<MessagesArea
 						chatState={chatState}
 						groupedMessages={groupedMessages}
@@ -409,9 +409,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						task={task}
 					/>
 				)}
-				{nordicPhase === "task_complete" && (
-					<ModeSelector onModeSelect={handleModeSelect} variant="inline" />
-				)}
+				{nordicPhase === "task_complete" && <ModeSelector onModeSelect={handleModeSelect} variant="inline" />}
 			</div>
 			<footer className="bg-(--vscode-sidebar-background)" style={{ gridRow: "2" }}>
 				<AutoApproveBar />
