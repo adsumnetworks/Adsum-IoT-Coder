@@ -1,38 +1,36 @@
 import { COMMAND_OUTPUT_STRING } from "@shared/combineCommandSequences"
 import {
-	ClineApiReqInfo,
-	ClineAskQuestion,
-	ClineAskUseMcpServer,
-	ClineMessage,
-	ClinePlanModeResponse,
-	ClineSayGenerateExplanation,
-	ClineSayTool,
-	COMPLETION_RESULT_CHANGES_FLAG,
+    ClineApiReqInfo,
+    ClineAskQuestion,
+    ClineAskUseMcpServer,
+    ClineMessage, ClineSayGenerateExplanation,
+    ClineSayTool,
+    COMPLETION_RESULT_CHANGES_FLAG
 } from "@shared/ExtensionMessage"
 import { BooleanRequest, StringRequest } from "@shared/proto/cline/common"
 import { Mode } from "@shared/storage/types"
 import deepEqual from "fast-deep-equal"
 import {
-	ArrowRightIcon,
-	BellIcon,
-	CheckIcon,
-	CircleSlashIcon,
-	CircleXIcon,
-	FileCode2Icon,
-	FilePlus2Icon,
-	FoldVerticalIcon,
-	ImageUpIcon,
-	LightbulbIcon,
-	Link2Icon,
-	LoaderCircleIcon,
-	PencilIcon,
-	RefreshCwIcon,
-	SearchIcon,
-	SettingsIcon,
-	SquareArrowOutUpRightIcon,
-	SquareMinusIcon,
-	TerminalIcon,
-	TriangleAlertIcon,
+    ArrowRightIcon,
+    BellIcon,
+    CheckIcon,
+    CircleSlashIcon,
+    CircleXIcon,
+    FileCode2Icon,
+    FilePlus2Icon,
+    FoldVerticalIcon,
+    ImageUpIcon,
+    LightbulbIcon,
+    Link2Icon,
+    LoaderCircleIcon,
+    PencilIcon,
+    RefreshCwIcon,
+    SearchIcon,
+    SettingsIcon,
+    SquareArrowOutUpRightIcon,
+    SquareMinusIcon,
+    TerminalIcon,
+    TriangleAlertIcon,
 } from "lucide-react"
 import { MouseEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSize } from "react-use"
@@ -54,7 +52,6 @@ import ErrorRow from "./ErrorRow"
 import HookMessage from "./HookMessage"
 import { MarkdownRow } from "./MarkdownRow"
 import NewTaskPreview from "./NewTaskPreview"
-import PlanCompletionOutputRow from "./PlanCompletionOutputRow"
 import QuoteButton from "./QuoteButton"
 import ReportBugPreview from "./ReportBugPreview"
 import { RequestStartRow } from "./RequestStartRow"
@@ -1235,35 +1232,8 @@ export const ChatRowContent = memo(
 							</div>
 						)
 					case "plan_mode_respond": {
-						let response: string | undefined
-						let options: string[] | undefined
-						let selected: string | undefined
-						try {
-							const parsedMessage = JSON.parse(message.text || "{}") as ClinePlanModeResponse
-							response = parsedMessage.response
-							options = parsedMessage.options
-							selected = parsedMessage.selected
-						} catch (_e) {
-							// legacy messages would pass response directly
-							response = message.text
-						}
-						return (
-							<div>
-								<PlanCompletionOutputRow
-									headClassNames={HEADER_CLASSNAMES}
-									text={response || message.text || ""}
-								/>
-								<OptionsButtons
-									inputValue={inputValue}
-									isActive={
-										(isLast && lastModifiedMessage?.ask === "plan_mode_respond") ||
-										(!selected && options && options.length > 0)
-									}
-									options={options}
-									selected={selected}
-								/>
-							</div>
-						)
+						// Nordic Assistant: always "act" mode, skip plan choice
+						return <InvisibleSpacer />
 					}
 					default:
 						return <InvisibleSpacer />

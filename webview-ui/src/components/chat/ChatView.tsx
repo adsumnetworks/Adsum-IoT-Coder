@@ -372,13 +372,13 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 
 	// Detect task completion in messages
 	useEffect(() => {
-		if (modifiedMessages.length > 0) {
+		if (nordicPhase === "active" && modifiedMessages.length > 0) {
 			const last = modifiedMessages[modifiedMessages.length - 1]
 			if (last?.type === "say" && last?.say === "text" && last?.text?.includes(TASK_COMPLETE_MARKER)) {
 				setNordicPhase("task_complete")
 			}
 		}
-	}, [modifiedMessages, setNordicPhase])
+	}, [modifiedMessages, setNordicPhase, nordicPhase])
 
 	return (
 		<ChatLayout isHidden={isHidden}>

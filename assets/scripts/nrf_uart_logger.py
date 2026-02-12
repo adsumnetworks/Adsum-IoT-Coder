@@ -33,6 +33,7 @@ import subprocess
 import threading
 import time
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple, Any
 
 try:
     import serial
@@ -40,6 +41,8 @@ try:
 except ImportError:
     print("ERROR: pyserial not installed. Run: pip install pyserial")
     sys.exit(1)
+
+
 
 
 # Default settings
@@ -134,9 +137,12 @@ def list_ports():
 
 
 def list_nrf_devices():
-    """List ONLY nRF devices using nrfutil (modern) or nrfjprog (legacy)."""
+    """List ONLY nRF devices and return list of (port, serial)."""
+    devices = []
+    
     # Try nrfutil first (modern standard)
     try:
+        # Use --json for machine-readable output if supported, but standard table is more common in current versions
         result = subprocess.run(
             ["nrfutil", "device", "list"],
             capture_output=True,
@@ -145,59 +151,55 @@ def list_nrf_devices():
         )
         
         if result.returncode == 0 and result.stdout.strip():
-            print("\nConnected nRF Devices (via nrfutil):")
-            print("-" * 60)
-            print(result.stdout)
-            return True
+            # Basic parsing of nrfutil table output
+            lines = result.stdout.strip().split('\n')
+            for line in lines:
+                if 'tty' in line or 'COM' in line:
+                    parts = line.split()
+                    # Expecting format: identifier serial_number ...
+                    if len(parts) >= 2:
+                        port = parts[0]
+                        sn = parts[1]
+                        devices.append((port, sn))
+            
+            if devices:
+                print(f"[INFO] Found {len(devices)} nRF devices via nrfutil")
+                return devices
         
     except FileNotFoundError:
-        print("[INFO] nrfutil not found. Trying nrfjprog fallback...")
+        pass
     except Exception as e:
-        print(f"[INFO] nrfutil error: {e}. Trying nrfjprog fallback...")
+        print(f"[INFO] nrfutil error: {e}")
     
-    # Fallback: Try nrfjprog (legacy)
+    # Fallback: Try pyserial list_ports to find J-Link CDC ports
     try:
-        result = subprocess.run(
-            ["nrfjprog", "--ids"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        
-        if result.returncode == 0 or result.stdout.strip():
-            print("\nConnected nRF Devices (via nrfjprog - LEGACY):")
-            print("-" * 60)
-            output = result.stdout.strip()
-            if output:
-                print(output)
-            else:
-                print("No devices found")
-            return True
-        
-        return False
-        
-    except FileNotFoundError:
-        print("[ERROR] Neither nrfutil nor nrfjprog found.")
-        print("[INFO] Install nRF Util: https://github.com/NordicSemiconductor/nrfutil")
-        return False
+        ports = serial.tools.list_ports.comports()
+        for p in ports:
+            # Common Nordic/J-Link identifiers
+            if "JLink" in p.description or "SEGGER" in p.description:
+                sn = p.serial_number or get_device_serial(p.device) or "0"
+                devices.append((p.device, sn))
     except Exception as e:
-        print(f"[ERROR] listing devices: {e}")
-        return False
+        print(f"[ERROR] listing devices via pyserial: {e}")
+    
+    return devices
 
 
 def auto_detect_devices():
     """Auto-detect all connected nRF devices for BLE development."""
     nrf_devices = list_nrf_devices()
     if not nrf_devices:
-        return {}
+        return {}, []
     
     # Create device map with automatic naming
     device_map = {}
     if len(nrf_devices) >= 2:
+        # Sort by port to have consistent naming
+        nrf_devices.sort() 
         # BLE scenario: likely central + peripheral
         device_map["central"] = nrf_devices[0][0]
         device_map["peripheral"] = nrf_devices[1][0]
-        for i, (port, sn) in enumerate(nrf_devices[2:], start=3):
+        for i, (port, _) in enumerate(nrf_devices[2:], start=3):
             device_map[f"device_{i}"] = port
     else:
         # Single device
@@ -288,15 +290,11 @@ def reset_device(serial_number):
         if result.returncode == 0:
             print(f"[RESET] Device {serial_number} reset successfully (via nrfutil)")
             return True
-        else:
-            print(f"[WARNING] nrfutil reset failed: {result.stderr}")
-            # Fall through to nrfjprog fallback
+        nrfutil_error = result.stderr.strip() or "Unknown error"
     except FileNotFoundError:
-        print("[WARNING] nrfutil not found. Trying nrfjprog fallback...")
-    except subprocess.TimeoutExpired:
-        print("[WARNING] nrfutil reset timed out. Trying nrfjprog fallback...")
+        pass # nrfutil not installed
     except Exception as e:
-        print(f"[WARNING] nrfutil error: {e}. Trying nrfjprog fallback...")
+        nrfutil_error = str(e)
     
     # Fallback: Try nrfjprog (legacy)
     try:
@@ -310,18 +308,16 @@ def reset_device(serial_number):
             print(f"[RESET] Device {serial_number} reset successfully (via nrfjprog)")
             return True
         else:
-            print(f"[WARNING] nrfjprog reset also failed: {result.stderr}")
+            if nrfutil_error:
+                print(f"[WARNING] Reset failed (nrfutil): {nrfutil_error}")
+            else:
+                print(f"[WARNING] nrfjprog reset also failed: {result.stderr}")
             return False
-    except FileNotFoundError:
-        print("[WARNING] nrfjprog not found either. Resetting requires nRF tools.")
-        print("[WARNING] Continuing without reset. Boot logs may be incomplete.")
-        print("         Install: https://www.nordicsemi.com/Products/Development-tools/nrf-command-line-tools")
-        return False
-    except subprocess.TimeoutExpired:
-        print("[WARNING] nrfjprog reset timed out. Continuing without reset.")
-        return False
     except Exception as e:
-        print(f"[WARNING] Reset error: {e}. Continuing without reset.")
+        if nrfutil_error:
+             print(f"[WARNING] Reset failed: {nrfutil_error}")
+        else:
+             print(f"[WARNING] Reset error: {e}. Continuing without reset.")
         return False
 
 
@@ -337,7 +333,7 @@ class DeviceLogger(threading.Thread):
         self.duration = duration
         self.running = True
         self.line_count = 0
-        self.error = None
+        self.error = ""
         
         # Create timestamped filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -354,8 +350,13 @@ class DeviceLogger(threading.Thread):
                 timeout=0.5,
                 bytesize=serial.EIGHTBITS,
                 parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE
+                stopbits=serial.STOPBITS_ONE,
+                rtscts=False,
+                dsrdtr=False
             )
+            # FORCE DTR/RTS active (crucial for some boards to output logs)
+            ser.dtr = True
+            ser.rts = True
         except serial.SerialException as e:
             self.error = f"Cannot open {self.port}: {e}"
             return
@@ -366,6 +367,9 @@ class DeviceLogger(threading.Thread):
             with open(self.filename, 'w', encoding='utf-8') as f:
                 # Write header
                 f.write(f"# Log from {self.name} ({self.port})\n")
+                f.write(f"# Started: {datetime.now().isoformat()}\n")
+                f.write(f"# Baudrate: {self.baudrate}\n")
+                f.write(f"# Settings: DTR=True, RTS=True\n")
                 f.write(f"# Started: {datetime.now().isoformat()}\n")
                 f.write(f"# Baudrate: {self.baudrate}\n")
                 f.write("-" * 60 + "\n")
@@ -508,13 +512,20 @@ def main():
     parser = argparse.ArgumentParser(
         description="nRF UART Logger - Cross-platform serial logging tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__
+        epilog="""
+nRF UART Logger - Cross-platform serial logging tool
+Usage:
+    python nrf_uart_logger.py --list
+    python nrf_uart_logger.py --test --port COM3
+    python nrf_uart_logger.py --capture --port COM3 --duration 30
+"""
     )
     
     parser.add_argument("--list", action="store_true", help="List available serial ports")
     parser.add_argument("--list-nrf", action="store_true", help="List only nRF devices (using nrfjprog)")
     parser.add_argument("--auto-detect", action="store_true", help="Auto-detect all nRF devices for BLE recording")
     parser.add_argument("--test", action="store_true", help="Test connection (2-5 sec capture)")
+    parser.add_argument("--capture", action="store_true", help="Capture logs from device(s)")
     parser.add_argument("--port", help="Serial port (e.g., /dev/ttyACM0, COM3)")
     parser.add_argument("--name", default="device", help="Device name for log file (default: device)")
     parser.add_argument("--devices", help="Multi-device: name1:port1,name2:port2")

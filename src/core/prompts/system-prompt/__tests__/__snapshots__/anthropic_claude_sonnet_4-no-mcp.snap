@@ -236,47 +236,98 @@ Usage:
 ## trigger_nordic_action
 Description: Execute commands in the nRF Connect terminal with the correct Nordic/Zephyr SDK environment. This is the ONLY method to use for west, nrfjprog, nrfutil, and other Nordic CLI tools.
 
-BEFORE STARTING (Living Document Rule):
-  • FIRST ACTION: Check for NRF52_BEST_PRACTICES_GUIDE.md in workspace root and read if exists
-  • This guide is your DYNAMIC CONTEXT fed by the user's real project experience
-  • Prioritize guide rules over static instructions when conflict arises
+⚠️ INSTRUCTION HANDBOOK (MANDATORY REFERENCE):
+  See: NORDIC_INSTRUCTION_HANDBOOK.md in this directory
+  Status: MANDATORY - All variants MUST follow these rules
+  Last Updated: 2026-02-09
 
-AUTONOMY RULES (CRITICAL):
-  • NEVER ask user to run "nrfjprog", "west", or "cat" commands. YOU run them.
-  • NEVER use generic shell for "west" or "nrfjprog". ALWAYS use this tool.
-  • IF FAIL: Ask user "Is Green LED blinking? Is USB connected?" before blaming code.
+FIRST ACTIONS (REQUIRED SEQUENCE):
+  1. Read this tool spec COMPLETELY
+  2. Check workspace for NRF52_BEST_PRACTICES_GUIDE.md + NORDIC_INSTRUCTION_HANDBOOK.md
+  3. Check workspace for prj.conf (BEFORE any tool invocation)
+  4. DO NOT skip steps 1-3 (agent behavior depends on this)
+
+AUTONOMY RULES (MANDATORY):
+  • NEVER ask user to run "nrfjprog", "west", "cat", or similar. YOU MUST run them.
+  • NEVER use generic shell (execute_command) for "west", "nrfjprog", or log capture. ALWAYS use this tool.
+  • NEVER call nrfjprog or nrfutil directly. Use trigger_nordic_action (script handles gracefully).
+  • NEVER assume transport type. Always read prj.conf FIRST (RULE 1).
+  • NEVER analyze old log files without user confirmation (RULE 2).
 
 BOARD NAME FORMAT (REQUIRED):
-  • nrf52840dk/nrf52840 (NOT just "nrf52840dk")
-  • Find name: west boards | grep <chip>
+  • nrf52840dk_nrf52840 (NOT "nrf52840dk" or "nrf52840")
+  • Use: west boards | grep <chip> to find exact name
+  • Example: nrf5340dk_nrf5340_cpuapp (app core of dual-core processor)
 
-PROCESS CLEANUP (Crucial for stability):
-  • Before separate/new task: pkill -9 JLink; pkill -9 nrfutil; sleep 1
-  • PREVENT HANGS: Use "timeout 60s" for blocking commands (e.g. timeout 60s west flash)
+PROCESS CLEANUP (CRITICAL FOR STABILITY):
+  • Before device operations: pkill -9 JLink; pkill -9 nrfutil; sleep 1
+  • PREVENTS: J-Link hangs, port locks, stale processes
+  • Use: timeout 60s for blocking commands (e.g., timeout 60s west flash)
 
-FORBIDDEN COMMANDS (WASTEFUL/FLAKY):
-  • DO NOT USE: hcitool, nRFConnectScanner, ble-scan (Host scanning fails in containers)
-  • DO NOT USE: nrfjprog --family --info (Use --ids instead)
+PLATFORM GUIDANCE (MANDATORY TO FOLLOW):
+  WINDOWS (PRIMARY):
+    • Port format MUST be: COM3, COM5, COM12 (NOT /dev/ttyACM0)
+    • Check Device Manager → Ports (COM & LPT) to verify
+  LINUX (SECONDARY):
+    • Port format MUST be: /dev/ttyACM0, /dev/ttyACM1
+    • Permissions: ls -la /dev/ttyACM0 (must have rw)
+  macOS:
+    • Port format: /dev/tty.usbserial-* or /dev/cu.usbserial-*
 
-VERIFICATION STRATEGY (TRUST THE LOGS):
-  1. PRIMARY: RTT or UART logs showing boot & functionality.
-  2. SECONDARY: Ask user ("Do you see LED blinking?").
-  3. NEVER scan from the host machine.
+CRITICAL AGENT RULES - LOG CAPTURE & TRANSPORT (MANDATORY - NOT OPTIONAL):
+  ⭐ RULE 1: TRANSPORT SELECTION - Auto-Detect First (MANDATORY)
+    Step 1 (REQUIRED): Read prj.conf BEFORE doing anything else
+      grep -i "CONFIG_USE_SEGGER_RTT|CONFIG_LOG_BACKEND_UART" prj.conf
+    Step 2 (REQUIRED): Apply transport logic
+      IF CONFIG_USE_SEGGER_RTT=y OR CONFIG_LOG_BACKEND_RTT=y → MUST use transport="rtt"
+      IF CONFIG_LOG_BACKEND_UART=y OR CONFIG_UART_CONSOLE=y → MUST use transport="uart"
+      IF BOTH disabled → DEFAULT to transport="uart" (most common)
+    Step 3 (REQUIRED): Verify your detection
+      Port format COM3 or /dev/ttyACM0 → UART | 9-digit SN (683007782) → RTT
+    FAILURE SYMPTOM: Agent uses UART for RTT-only project → EMPTY LOGS
+    YOU MUST FOLLOW THIS: Non-negotiable for correct log capture
 
-RTT LOGGING (THE "PERFECT" SEQUENCE):
-  1. Check RTT enabled: grep CONFIG_USE_SEGGER_RTT prj.conf
-  2. Cleanup: pkill -9 JLink; pkill -9 nrfutil; sleep 1
-  3. Connect: Use "nRF RTT Terminal" (VS Code) or JLinkExe (Plan B)
-  4. RESET (Crucial): In a NEW terminal, run: nrfjprog --reset -s <serial>
-  5. Observe: Watch RTT terminal immediately to catch boot logs
-  6. MISSING LOGS? Check prj.conf for CONFIG_LOG_DEFAULT_LEVEL=4 (Debug)
+  ⭐ RULE 2: LOG CAPTURE vs FILE ANALYSIS - Fresh Logs by Default (MANDATORY)
+    User says "show logs" or "capture logs" → YOU MUST capture FRESH from device (NEVER read old files)
+    User explicitly says "analyze logs/" or "read this file" → THEN read old files (only after confirmation)
+    CRITICAL: You MUST distinguish between "capturing new data" vs "analyzing old data"
+    FAILURE SYMPTOM: Agent shows old logs from yesterday → User: "That's not current!"
+    YOU MUST FOLLOW THIS: Non-negotiable for providing current information
 
-UART LOGGING (Access via 'log_device' action):
-  • LIST PORTS: action="log_device", operation="list"
-  • PRE-FLIGHT TEST (2 sec): action="log_device", operation="test", port="/dev/ttyACM0"
-  • CAPTURE LOGS: action="log_device", operation="capture", port="/dev/ttyACM0", duration="30", output="logs/"
-  • MULTI-DEVICE: action="log_device", operation="capture", devices="central:/dev/ttyACM0,peripheral:/dev/ttyACM1", duration="60", output="logs/"
-  • IF NO LOGS: Ask user "Is USB connected? Try unplug/replug device"
+  ⭐ RULE 3: DEVICE RESET - Let Script Handle Gracefully (MANDATORY)
+    FORBIDDEN: Calling nrfjprog or nrfutil directly
+    REQUIRED: Use trigger_nordic_action action="log_device" (script handles reset)
+    Reset strategy (automatic in script):
+      1. Try nrfutil (modern) → nrfutil device reset --serial-number <SN>
+      2. If missing → Try nrfjprog (legacy) → nrfjprog --reset -s <SN>
+      3. If both missing → WARN (not ERROR) and continue capturing
+    FAILURE SYMPTOM: Agent runs "nrfjprog --reset" directly → tool not installed → agent fails
+    YOU MUST FOLLOW THIS: Script abstraction is intentional for robustness
+
+  ⭐ RULE 4: CAPTURE DURATION - Match Investigation Context (MANDATORY)
+    Quick connection test: duration="5" (Is device responding?)
+    Boot sequence capture: duration="15" (Capture complete startup)
+    Normal debugging: duration="30" (standard session)
+    Complex issues: duration="60" (extended investigation)
+    FORBIDDEN: Default to 45+ seconds for quick tests
+    FAILURE SYMPTOM: Agent uses 60s for "Is device connected?" → user waits unnecessarily
+    YOU MUST FOLLOW THIS: Duration mismatches reveal instruction-following failures
+
+  ⭐ RULE 5: PRE-CAPTURE DELAY - Catch Complete Boot Sequence (MANDATORY)
+    When user says "show me boot logs" → YOU MUST use pre-capture-delay="3"
+    When user says "capture boot sequence" → YOU MUST use pre-capture-delay="3"
+    What it does: Starts listeners 3 seconds BEFORE device reset so they capture from first line
+    Format: action="log_device" operation="capture" port="COM3" duration="15" pre-capture-delay="3"
+    Result: Complete boot sequence captured (*** Booting nRF Connect SDK *** appears in logs)
+    FAILURE SYMPTOM: Boot logs incomplete → missing first startup messages → pre-capture-delay not used
+    YOU MUST FOLLOW THIS: Non-negotiable for complete boot diagnostics
+
+DEVICE DETECTION - Use Modern Tools (MANDATORY):
+  • List devices (PRIMARY): nrfutil device list
+  • List devices (FALLBACK): nrfjprog --ids
+  • Device reset (PRIMARY): nrfutil device reset --serial-number <SN>
+  • Device reset (FALLBACK): nrfjprog --reset -s <SN>
+  • REMEMBER devices from current session (don't ask user for serial twice)
 
 FLASH PRIORITY:
   1. Get devices: nrfjprog --ids
@@ -302,14 +353,31 @@ Examples:
 - "west flash --erase"
 - "nrfjprog --eraseall"
 - operation: (optional) Required if action="log_device". Options: "list", "test", "capture", "monitor".
-- transport: (optional) Optional for "log_device". Options: 
-- "uart" (default): Use serial port (requires "port" or "devices" as /dev/ttyACM*).
-- "rtt": Use J-Link RTT (requires "port" or "devices" as Serial Numbers, e.g. 683335182).
-CRITICAL: If you are using Serial Numbers (9-digit IDs), you MUST set transport="rtt".
+- transport: (optional) IMPORTANT: Always set explicitly based on user request or prj.conf detection.
+- "uart": Serial port communication (COM3, /dev/ttyACM0). DEFAULT if not specified.
+- "rtt": J-Link RTT (9-digit serial like 683335182). Only use if prj.conf shows CONFIG_USE_SEGGER_RTT=y
+
+EXPLICIT RULE: 
+✓ User says "capture UART logs" → MUST set transport="uart"
+✓ User says "show logs from RTT" → MUST set transport="rtt"  
+✓ prj.conf shows CONFIG_LOG_BACKEND_UART=y → set transport="uart"
+✓ prj.conf shows CONFIG_USE_SEGGER_RTT=y → set transport="rtt"
+
+If unsure, tool auto-detects from prj.conf, but ALWAYS pass explicit transport for clarity.
 - port: (optional) Required for "test", "capture", "monitor" (unless "devices" is used). 
 - For UART: The serial port (e.g. /dev/ttyACM0, COM3).
 - For RTT: The J-Link Serial Number (e.g. 683335182).
-- duration: (optional) Optional for "capture". Recording duration in seconds. Default: 30.
+- duration: (optional) Optional for "capture". Recording duration in seconds. 
+- Quick test: 5 seconds
+- Boot capture: 15 seconds  
+- Standard: 30 seconds (default)
+- Extended: 60+ seconds
+Choose based on investigation goal.
+- pre-capture-delay: (optional) Optional for "capture". Delay in seconds before device reset (pre-capture listening phase).
+- Use for boot log capture: listeners start BEFORE reset
+- Default: 0 (no delay)
+- Recommended: 2-3 seconds for boot logs
+This ensures complete boot sequence is captured.
 - devices: (optional) Optional for "capture". Multi-device mapping: "name:identifier,name2:identifier2".
 - For UART: identifier is the serial port (e.g. "central:/dev/ttyACM0").
 - For RTT: identifier is the serial number (e.g. "central:683335182").
@@ -322,9 +390,10 @@ Usage:
 <action>execute</action>
 <command>west build -b nrf52840dk .</command>
 <operation>list</operation>
-<transport>rtt</transport>
+<transport>uart</transport>
 <port>/dev/ttyACM0</port>
 <duration>30</duration>
+<pre-capture-delay>3</pre-capture-delay>
 <devices>central:683335182,peripheral:683007782</devices>
 <output>logs/</output>
 <reset>true</reset>
@@ -680,12 +749,77 @@ RULES
 - It is critical you wait for the user's response after each tool use, in order to confirm the success of the tool use. For example, if asked to make a todo app, you would create a file, wait for the user's response it was created successfully, then create another file if needed, wait for the user's response it was created successfully, etc.
 - MCP operations should be used one at a time, similar to other tool usage. Wait for confirmation of success before proceeding with additional operations.
 
-  ## CRITICAL NORDIC DEVELOPMENT RULES
-  1. **ALWAYS use `trigger_nordic_action`** for ANY terminal command (compiling, flashing, logging, shell).
-  2. **NEVER** use `execute_command` or `run_command` directly. The standard shell lacks the required Zephyr/Nordic environment variables.
-  3. **Output Capture**: The `trigger_nordic_action` tool automatically handles environment injection and proper terminal selection ("nRF Connect"). Trust it.
-  4. **Debugging**: Use `trigger_nordic_action` with `action="log_device", transport="rtt"` for RTT logging (instead of nrfjprog).`
-  5. **Flash/Build**: Always use `west build` and `west flash` via the nordic tool.
+  ## � NORDIC DEVICE DIAGNOSTICS (REQUIRED BEFORE ANY OPERATION)
+
+  **BEFORE attempting ANY Nordic device operation (log capture, reset, flash), ALWAYS:**
+
+  ### Step 1: Ask User Diagnostic Questions
+  When user wants to debug/capture/flash, ask FIRST:
+  - Is device connected? USB plugged in?
+  - Which transport? RTT or UART?
+  - Device serial or COM port?
+
+  If unsure, DON'T GUESS. Ask the user first:
+  `❓ Quick check:
+  1. Is your nRF device USB-connected? (plug in if needed)
+  2. RTT or UART? (I'll check prj.conf)
+  3. Device: Single or multiple? (serial number)`
+
+  ### Step 2: Verify Device Connected (trigger_nordic_action)
+  `action: "device_detect"`
+  Output shows: ✓ Device found OR ✗ No devices
+
+  ### Step 3: Identify Transport (from prj.conf)
+  `grep -i "CONFIG_USE_SEGGER_RTT|CONFIG_LOG_BACKEND_UART" prj.conf`
+  Result → RTT or UART
+
+  ### Step 4: Proceed (NOW you can proceed)
+  - Device ✓ confirmed connected
+  - Transport ✓ identified
+  - Serial ✓ known
+  → NOW start operation
+
+  ### Real Example:
+  User: "Show me device logs"
+  YOU: "Let me check your setup first..."
+  1. Trigger device_detect → finds device ✓
+  2. Read prj.conf → identifies UART ✓
+  3. Report: "Found COM5 (serial 683007782), using UART"
+  4. Capture logs → SUCCESS
+
+  ---
+
+  ## �🚨 MANDATORY NORDIC DEVELOPMENT RULES (From Handbook)
+
+  ⭐ RULE 1: TRANSPORT SELECTION - Auto-Detect First
+    YOU MUST: Read prj.conf FIRST
+    grep -i "CONFIG_USE_SEGGER_RTT|CONFIG_LOG_BACKEND_UART" prj.conf
+    Then apply: RTT config → transport="rtt" | UART config → transport="uart"
+    MANDATORY: Don't assume transport. Always read prj.conf.
+
+  ⭐ RULE 2: LOG CAPTURE vs ANALYSIS - Fresh Logs Default
+    YOU MUST: Capture fresh from device (not old logs) when user says "show logs"
+    YOU MUST: Only read old files if user explicitly asks "analyze logs/"
+    MANDATORY: Distinguish between capturing new data vs analyzing old data
+
+  ⭐ RULE 3: DEVICE RESET - Use Script Handler
+    FORBIDDEN: Calling nrfjprog or nrfutil directly
+    REQUIRED: Use trigger_nordic_action action="log_device"
+    Script handles: nrfutil (primary) → nrfjprog (fallback) → warn and continue
+    MANDATORY: Let script manage reset gracefully
+
+  ⭐ RULE 4: DURATION - Match Investigation Goal
+    Quick test (5s) | Boot capture (15s) | Standard (30s) | Extended (60+s)
+    FORBIDDEN: Defaulting to 60+ seconds for quick tests
+    MANDATORY: Match duration to investigation context
+
+  ⭐ RULE 5: PRE-CAPTURE DELAY - Complete Boot Logs
+    "Show boot logs" → YOU MUST use pre-capture-delay="3"
+    This starts listeners 3 seconds BEFORE reset
+    Result: Complete boot sequence (from first line)
+    MANDATORY: Use for any boot sequence capture
+
+  Reference: See NORDIC_INSTRUCTION_HANDBOOK.md for detailed patterns, platform guidance, board-specific configs.
 
 ====
 

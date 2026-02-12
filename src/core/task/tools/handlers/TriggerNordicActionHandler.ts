@@ -91,9 +91,22 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 		// ROBUST TRANSPORT DETECTION with explicit user input priority
 		if (!transport) {
-			// Step 1 (PRIORITY): Check project capabilities from prj.conf FIRST
-			// This is the source of truth - check BEFORE guessing from serial format
-			if (config.cwd) {
+			// Step 1 (PRIORITY): Check port/devices format FIRST (explicit user intent)
+			const isRttSerial = (id: string) => /^\d{9}$/.test(id.trim())
+
+			if (port && isRttSerial(port)) {
+				transport = "rtt"
+				console.log(`[Nordic Transport] Detected RTT (serial format): ${port}`)
+			} else if (devices && devices.split(",").some((d: string) => isRttSerial(d.split(":")[1] || ""))) {
+				transport = "rtt"
+				console.log(`[Nordic Transport] Detected RTT (serial in devices parameter)`)
+			} else if (port && (port.toUpperCase().startsWith("COM") || port.startsWith("/dev/"))) {
+				transport = "uart"
+				console.log(`[Nordic Transport] Detected UART (COM/dev format): ${port}`)
+			}
+
+			// Step 2 (FALLBACK): Check project capabilities from prj.conf
+			if (!transport && config.cwd) {
 				try {
 					const capabilities = getCachedCapabilities(config.cwd)
 					transport = capabilities.recommendedTransport
@@ -106,20 +119,6 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 				} catch (error) {
 					console.warn("[Nordic Transport] Could not detect from prj.conf, will use fallback")
 					transport = null
-				}
-			}
-
-			// Step 2 (FALLBACK): If prj.conf detection didn't work, check port/devices format
-			if (!transport) {
-				const isRttSerial = (id: string) => /^\d{9}$/.test(id.trim())
-
-				// Check if port/devices explicitly indicate RTT (9-digit serial format)
-				if (port && isRttSerial(port)) {
-					transport = "rtt"
-					console.log(`[Nordic Transport] Detected RTT (serial format): ${port}`)
-				} else if (devices && devices.split(",").some((d: string) => isRttSerial(d.split(":")[1] || ""))) {
-					transport = "rtt"
-					console.log(`[Nordic Transport] Detected RTT (serial in devices parameter)`)
 				}
 			}
 
@@ -194,11 +193,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 				}
 				break
 			case "capture":
-				// CRITICAL: rtt-logger requires --capture flag, but uart-logger (UART) fails with it!
-				// Only add it if we are using RTT transport.
-				if (transport === "rtt") {
-					args.push("--capture")
-				}
+				args.push("--capture")
 				// Helper to check for truthiness including string "false"
 				const isAutoDetect = auto_detect === true || auto_detect === "true"
 				const isResetDisabled = reset === false || reset === "false"

@@ -10,6 +10,7 @@
 
 import { expect } from "chai"
 import { describe, it } from "mocha"
+import * as path from "path"
 
 describe("Windows Support Integration", () => {
 	describe("Process Platform Detection", () => {
@@ -97,8 +98,7 @@ describe("Windows Support Integration", () => {
 		it("should use Node.js built-in path methods (already cross-platform)", () => {
 			// Node.js path module handles / vs \ automatically
 			// So our TypeScript handler doesn't need OS-specific path code
-			expect(require("path")).to.be.an("object")
-			expect(require("path").join).to.be.a("function")
+			expect(path.join).to.be.a("function")
 		})
 
 		it("should use cross-platform serial port detection", () => {

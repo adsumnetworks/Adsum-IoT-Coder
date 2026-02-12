@@ -15,6 +15,14 @@ import shutil
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
+try:
+    import serial.tools.list_ports
+    HAS_PYSERIAL = True
+except ImportError:
+    HAS_PYSERIAL = False
+
+
+
 # ============================================================================
 # Constants
 # ============================================================================
@@ -168,19 +176,74 @@ signal.signal(signal.SIGINT, signal_handler)
 # ============================================================================
 
 def list_jlink_devices() -> List[str]:
+    """List J-Link devices using nrfutil (preferred) or nrfjprog."""
+    devices = []
+    # Try nrfutil first
     try:
-        result = subprocess.run(["nrfjprog", "--ids"], capture_output=True, text=True, timeout=5)
-        if result.returncode != 0: return []
-        return [s.strip() for s in result.stdout.strip().split('\n') if s.strip()]
+        result = subprocess.run(["nrfutil", "device", "list"], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0 and result.stdout.strip():
+            lines = result.stdout.strip().split('\n')
+            for line in lines:
+                parts = line.split()
+                if len(parts) >= 2 and (len(parts[1]) == 9 or len(parts[1]) == 12): # Basic SN validation
+                     devices.append(parts[1])
+            if devices: return devices
     except:
-        return []
+        pass
+
+    # Fallback: Try pyserial to find J-Link CDC ports
+    if not devices and HAS_PYSERIAL:
+        try:
+            ports = serial.tools.list_ports.comports()
+            for p in ports:
+                # Common Nordic/J-Link identifiers
+                if "JLink" in p.description or "SEGGER" in p.description or "1366" in p.hwid:
+                    # Extract serial from object or HWID
+                    sn = getattr(p, 'serial_number', None)
+                    if not sn and "SER=" in p.hwid:
+                        sn = p.hwid.split("SER=")[1].split()[0]
+                    
+                    if sn and sn not in devices:
+                        devices.append(sn)
+        except:
+            pass
+            
+    return devices
 
 def reset_device(serial_number: str) -> bool:
+    """Reset device using nrfutil (preferred) or nrfjprog."""
     serial_str = str(serial_number).lstrip('0') or str(serial_number)
+    
+    nrfutil_error = None
+    
+    # Try nrfutil first
+    try:
+        result = subprocess.run(["nrfutil", "device", "reset", "--serial-number", serial_str], capture_output=True, text=True, timeout=10)
+        if result.returncode == 0: return True
+        nrfutil_error = result.stderr.strip() or "Unknown nrfutil error"
+    except FileNotFoundError:
+        pass # nrfutil not installed
+    except Exception as e:
+        nrfutil_error = str(e)
+
+    # Fallback to nrfjprog
     try:
         result = subprocess.run(["nrfjprog", "--reset", "-s", serial_str], capture_output=True, text=True, timeout=10)
-        return result.returncode == 0
-    except:
+        if result.returncode == 0: return True
+        # If both failed, show nrfutil error if it existed (since it's preferred)
+        if nrfutil_error:
+             print(f"[WARNING] Device {serial_str} reset failed (nrfutil): {nrfutil_error}")
+        else:
+             print(f"[WARNING] Device {serial_str} reset failed (nrfjprog): {result.stderr.strip()}")
+        return False
+    except FileNotFoundError:
+        if nrfutil_error:
+             print(f"[WARNING] Device {serial_str} reset failed: {nrfutil_error}")
+        else:
+             print("[WARNING] neither nrfutil nor nrfjprog found. Reset skipped.")
+        return False
+    except Exception as e:
+        print(f"[WARNING] Reset error: {e}")
         return False
 
 
@@ -227,6 +290,7 @@ class RTTLoggerThread(threading.Thread):
             with open(self.final_file, 'w', encoding='utf-8') as f:
                 f.write(f"# RTT Log from {self.name} ({self.serial})\n")
                 f.write(f"# Started: {datetime.now().isoformat()}\n")
+                f.write(f"# Interface: SWD, Speed: 4000 kHz, Channel: 0\n")
                 f.write("-" * 60 + "\n")
                 
                 while self.running:
@@ -326,7 +390,7 @@ def main():
     parser.add_argument("--port", type=str)
     parser.add_argument("--name", type=str, default="device")
     parser.add_argument("--duration", type=int, default=DEFAULT_DURATION)
-    parser.add_argument("--output", type=str, default="./rtt_logs")
+    parser.add_argument("--output", type=str, default="logs")
     parser.add_argument("--no-reset", action="store_true")
     parser.add_argument("--channel", type=int, default=DEFAULT_RTT_CHANNEL)
     parser.add_argument("--device-type", type=str, default=DEFAULT_DEVICE_TYPE)
