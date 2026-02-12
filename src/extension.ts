@@ -12,7 +12,7 @@ import { WebviewProvider } from "./core/webview"
 import { createClineAPI } from "./exports"
 import { Logger } from "./services/logging/Logger"
 import { cleanupTestMode, initializeTestMode } from "./services/test/TestMode"
-import "./utils/path"; // necessary to have access to String.prototype.toPosix
+import "./utils/path" // necessary to have access to String.prototype.toPosix
 
 import path from "node:path"
 import type { ExtensionContext } from "vscode"
@@ -33,8 +33,8 @@ import { workspaceResolver } from "./core/workspace"
 import { findMatchingNotebookCell, getContextForCommand, showWebview } from "./hosts/vscode/commandUtils"
 import { abortCommitGeneration, generateCommitMsg } from "./hosts/vscode/commit-message-generator"
 import {
-    disposeVscodeCommentReviewController,
-    getVscodeCommentReviewController,
+	disposeVscodeCommentReviewController,
+	getVscodeCommentReviewController,
 } from "./hosts/vscode/review/VscodeCommentReviewController"
 import { VscodeTerminalManager } from "./hosts/vscode/terminal/VscodeTerminalManager"
 import { VscodeDiffViewProvider } from "./hosts/vscode/VscodeDiffViewProvider"
@@ -117,9 +117,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			try {
 				await Promise.race([
 					sidebarInstance.controller.clearTask(),
-					new Promise<void>((_, reject) =>
-						setTimeout(() => reject(new Error("clearTask timeout")), 5000),
-					),
+					new Promise<void>((_, reject) => setTimeout(() => reject(new Error("clearTask timeout")), 5000)),
 				])
 			} catch (e) {
 				console.warn("[DEBUG] clearTask timed out or failed, forcing state reset:", e)
@@ -129,8 +127,6 @@ export async function activate(context: vscode.ExtensionContext) {
 			await sendChatButtonClickedEvent()
 		}),
 	)
-
-
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(commands.SettingsButton, () => {
@@ -144,8 +140,6 @@ export async function activate(context: vscode.ExtensionContext) {
 			await sendHistoryButtonClickedEvent()
 		}),
 	)
-
-
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(commands.WorktreesButton, () => {

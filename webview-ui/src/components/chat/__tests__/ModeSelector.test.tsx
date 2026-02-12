@@ -1,5 +1,5 @@
+import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
 import ModeSelector from "../ModeSelector"
 
 describe("ModeSelector", () => {
@@ -37,7 +37,7 @@ describe("ModeSelector", () => {
 
 	it("does not call onModeSelect when disabled", () => {
 		const onModeSelect = vi.fn()
-		render(<ModeSelector onModeSelect={onModeSelect} disabled />)
+		render(<ModeSelector disabled onModeSelect={onModeSelect} />)
 
 		fireEvent.click(screen.getByTestId("mode-button-log_generator"))
 		expect(onModeSelect).not.toHaveBeenCalled()

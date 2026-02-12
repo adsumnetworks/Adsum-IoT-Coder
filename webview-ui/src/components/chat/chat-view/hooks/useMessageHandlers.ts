@@ -4,9 +4,9 @@ import { AskResponseRequest, NewTaskRequest } from "@shared/proto/cline/task"
 import { useCallback } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { SlashServiceClient, TaskServiceClient } from "@/services/grpc-client"
+import { enforceScope } from "../../nordicScopeEnforcer"
 import type { ButtonActionType } from "../shared/buttonConfig"
 import type { ChatState, MessageHandlers } from "../types/chatTypes"
-import { enforceScope } from "../../nordicScopeEnforcer"
 
 /**
  * Custom hook for managing message handlers

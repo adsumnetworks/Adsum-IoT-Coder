@@ -7,24 +7,24 @@ import { spawnSync } from "node:child_process"
  * or null if none were found.
  */
 export async function detectPython(): Promise<string | null> {
-  const candidates = ["python3", "python", "py"]
+	const candidates = ["python3", "python", "py"]
 
-  for (const cmd of candidates) {
-    try {
-      if (cmd === "py") {
-        // Windows py needs '-3' to request Python 3
-        const res = spawnSync(cmd, ["-3", "--version"], { encoding: "utf8" })
-        if (res.status === 0 && /Python 3/.test(res.stdout + res.stderr)) return cmd + " -3"
-      } else {
-        const res = spawnSync(cmd, ["--version"], { encoding: "utf8" })
-        if (res.status === 0 && /Python 3/.test(res.stdout + res.stderr)) return cmd
-      }
-    } catch (e) {
-      // ignore and try next
-    }
-  }
+	for (const cmd of candidates) {
+		try {
+			if (cmd === "py") {
+				// Windows py needs '-3' to request Python 3
+				const res = spawnSync(cmd, ["-3", "--version"], { encoding: "utf8" })
+				if (res.status === 0 && /Python 3/.test(res.stdout + res.stderr)) return cmd + " -3"
+			} else {
+				const res = spawnSync(cmd, ["--version"], { encoding: "utf8" })
+				if (res.status === 0 && /Python 3/.test(res.stdout + res.stderr)) return cmd
+			}
+		} catch (e) {
+			// ignore and try next
+		}
+	}
 
-  return null
+	return null
 }
 
 export default detectPython

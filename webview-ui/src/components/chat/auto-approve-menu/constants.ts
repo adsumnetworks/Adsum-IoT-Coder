@@ -46,7 +46,6 @@ export const ACTION_METADATA: ActionMetadata[] = [
 		shortName: "Browser",
 		icon: "codicon-globe",
 	},
-
 ]
 
 export const NOTIFICATIONS_SETTING: ActionMetadata = {

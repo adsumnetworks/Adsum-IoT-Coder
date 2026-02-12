@@ -3,7 +3,7 @@ import { ModelFamily } from "@/shared/prompts"
 import { SystemPromptSection } from "../../templates/placeholders"
 import { loadVariantConfig, VariantId } from "../../variants"
 import { rules_template } from "../../variants/next-gen/template"
-import { getRulesSection } from "../rules"; // Default rules function
+import { getRulesSection } from "../rules" // Default rules function
 
 // Note: Imports might need adjusting based on actual exports.
 // I'll check `getRulesSection` export and also verify `variants/index.ts` loads correctly.

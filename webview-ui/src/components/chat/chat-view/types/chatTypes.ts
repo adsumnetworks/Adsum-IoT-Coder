@@ -4,8 +4,8 @@
 
 import { ClineAsk, ClineMessage } from "@shared/ExtensionMessage"
 import { ListRange, VirtuosoHandle } from "react-virtuoso"
+import type { NordicChatPhase, NordicModeId } from "../../nordicModes"
 import { ButtonActionType } from "../shared/buttonConfig"
-import type { NordicModeId, NordicChatPhase } from "../../nordicModes"
 
 /**
  * Main ChatView component props

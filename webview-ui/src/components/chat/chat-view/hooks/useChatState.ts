@@ -1,7 +1,7 @@
 import { ClineMessage } from "@shared/ExtensionMessage"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { NordicChatPhase, NordicModeId } from "../../nordicModes"
 import { ChatState } from "../types/chatTypes"
-import type { NordicModeId, NordicChatPhase } from "../../nordicModes"
 
 /**
  * Custom hook for managing chat state

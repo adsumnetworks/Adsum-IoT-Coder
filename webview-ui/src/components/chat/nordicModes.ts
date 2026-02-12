@@ -61,8 +61,7 @@ LOG_ERR("Failed to init: err=%d", err);
 \`\`\`
 
 Stay focused on logging only.`,
-		initialMessage:
-			'Let me scan your project for source files...',
+		initialMessage: "Let me scan your project for source files...",
 	},
 	log_analyzer: {
 		id: "log_analyzer",
@@ -126,10 +125,7 @@ WORKFLOW:
 CONSTRAINTS:
 - DO NOT hallucinate COM ports.
 - ALWAYS use \`output="logs/"\`.`,
-		initialMessage:
-			'Let me check your build configuration (build/zephyr/.config) and connected devices...',
-
-
+		initialMessage: "Let me check your build configuration (build/zephyr/.config) and connected devices...",
 	},
 }
 
