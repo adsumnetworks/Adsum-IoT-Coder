@@ -1,9 +1,11 @@
 import type { ToolUse } from "@core/assistant-message"
 import { expect } from "chai"
 import { afterEach, beforeEach, describe, it } from "mocha"
-import proxyquire from "proxyquire"
 import sinon from "sinon"
 import { ClineDefaultTool } from "@/shared/tools"
+
+// Use require for proxyquire to work reliably in mixed env
+const proxyquire = require("proxyquire")
 
 describe("TriggerNordicActionHandler (log_device)", () => {
 	let sandbox: sinon.SinonSandbox
@@ -12,7 +14,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 	let mockActivateNordicTerminal: sinon.SinonStub
 	let mockExecuteCommandTool: sinon.SinonStub
 	let mockTaskConfig: any
-	let mockExec: sinon.SinonStub
+	let mockExecFile: sinon.SinonStub
 
 	// Path to the module under test
 	const MODULE_PATH = "../TriggerNordicActionHandler"
@@ -24,7 +26,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		mockVscode = {
 			ExtensionContext: class {},
 			Uri: { file: (path: string) => ({ fsPath: path }) },
-			workspace: { workspaceFolders: [] }, // Removed usage, but safe to keep empty
+			workspace: { workspaceFolders: [] },
 		}
 
 		// Mock ExtensionContext
@@ -35,15 +37,18 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		// Mock external dependencies
 		mockActivateNordicTerminal = sandbox.stub().resolves("nRF Terminal")
 
-		// Mock child_process exec
-		mockExec = sandbox.stub()
+		// Mock child_process execFile
+		mockExecFile = sandbox.stub()
 
-		// Load the class with mocks
+		// Load the class with mocks using proxyquire
 		const TriggerNordicActionHandlerClass = proxyquire(MODULE_PATH, {
 			vscode: mockVscode,
-			"node:child_process": { exec: mockExec },
+			"node:child_process": { execFile: mockExecFile },
 			"@/hosts/vscode/hostbridge/workspace/executeNordicCommand": {
 				activateNordicTerminal: mockActivateNordicTerminal,
+			},
+			"@/platform/pythonDetector": {
+				default: sandbox.stub().resolves("python3"),
 			},
 			"@/shared/tools": {
 				ClineDefaultTool: { NORDIC_ACTION: "trigger_nordic_action" },
@@ -53,13 +58,12 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 					toolError: (msg: string) => ({ type: "tool_error", content: msg }),
 				},
 			},
-			"../../index": {
-				// Mock any types or values exported from index that might be needed
-			},
+			"../../index": {},
 		}).TriggerNordicActionHandler
 
 		// Instantiate handler
 		handler = new TriggerNordicActionHandlerClass(mockContext)
+// ... rest is similar but need to update mockExecFile usage to mockExecFileFile and fix expectations
 
 		// Setup TaskConfig mock
 		mockExecuteCommandTool = sandbox.stub().resolves([false, { type: "tool_result", content: "Success" }])
@@ -90,7 +94,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		}
 
 		// Mock successful python script execution
-		mockExec.yields(null, "Connected nRF Devices:\n  /dev/ttyACM0\n    Serial: 123456789", "")
+		mockExecFile.yields(null, "Connected nRF Devices:\n  /dev/ttyACM0\n    Serial: 123456789", "")
 
 		const result = await handler.execute(mockTaskConfig, block)
 
@@ -98,11 +102,14 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		expect(mockExecuteCommandTool.called).to.be.false
 
 		// Verify exec called with python script
-		expect(mockExec.calledOnce).to.be.true
-		const execCmd = mockExec.firstCall.args[0]
-		expect(execCmd).to.contain("python3")
-		expect(execCmd).to.contain("nrf_uart_logger.py")
-		expect(execCmd).to.contain("--list")
+		expect(mockExecFile.calledOnce).to.be.true
+		const execFile = mockExecFile.firstCall.args[0]
+		const execArgs = mockExecFile.firstCall.args[1]
+		expect(execFile).to.equal("python3")
+		// Check that one of the arguments contains the script name (it might be a full path)
+		const scriptArg = execArgs.find((arg: string) => arg.includes("nrf_uart_logger.py"))
+		expect(scriptArg, "Arguments should include nrf_uart_logger.py").to.exist
+		expect(execArgs).to.include("--list")
 
 		// Verify result format
 		expect(result).to.be.an("array")
@@ -120,7 +127,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		}
 
 		// Mock failure
-		mockExec.yields(new Error("Script failed"), "", "stderr error")
+		mockExecFile.yields(new Error("Script failed"), "", "stderr error")
 
 		const result = await handler.execute(mockTaskConfig, block)
 
@@ -160,10 +167,11 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		await handler.execute(mockTaskConfig, block)
 
 		const cmd = mockExecuteCommandTool.firstCall.args[0]
-		expect(cmd).to.contain("--port /dev/ttyACM0")
-		expect(cmd).to.contain("--duration 10")
+		const normalizedCmd = cmd.replace(/\\/g, "/")
+		expect(normalizedCmd).to.contain("--port /dev/ttyACM0")
+		expect(normalizedCmd).to.contain("--duration 10")
 		// Should resolve output path absolute
-		expect(cmd).to.contain("--output /mock/workspace/logs/")
+		expect(normalizedCmd).to.contain("--output /mock/workspace/logs/")
 	})
 
 	it("should use relative path for wrapper script when possible", async () => {
@@ -182,9 +190,11 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 
 		await handler.execute(mockTaskConfig, block)
 		const cmd = mockExecuteCommandTool.firstCall.args[0]
-
+		// Normalize backslashes for Windows test env
+		const normalizedCmd = cmd.replace(/\\/g, "/")
+		
 		// Since /mock/extension is NOT inside /mock/workspace, it uses absolute
-		expect(cmd).to.contain("/mock/extension/path/assets/scripts/uart-logger")
+		expect(normalizedCmd).to.contain("/mock/extension/path/assets/scripts/uart-logger")
 	})
 
 	// ============================================================================
@@ -274,8 +284,8 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 			await handler.execute(mockTaskConfig, block)
 
 			const cmd = mockExecuteCommandTool.firstCall.args[0]
-			// UART script should NOT have --capture flag
-			expect(cmd).to.not.contain("--capture")
+			// UART script MUST have --capture flag now (unified)
+			expect(cmd).to.contain("--capture")
 		})
 
 		it("should include --capture flag for RTT capture", async () => {
@@ -317,7 +327,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 
 			const cmd = mockExecuteCommandTool.firstCall.args[0]
 			expect(cmd).to.contain("--auto-detect")
-			expect(cmd).to.not.contain("--capture")
+			expect(cmd).to.contain("--capture")
 		})
 
 		it("should NOT include --auto-detect flag when auto_detect is 'false' string", async () => {
