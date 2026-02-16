@@ -37,6 +37,7 @@ import {
 import { releaseTaskLock } from "@core/task/TaskLockUtils"
 import { isMultiRootEnabled } from "@core/workspace/multi-root-utils"
 import { WorkspaceRootManager } from "@core/workspace/WorkspaceRootManager"
+import { getWorkspacePaths } from "@/hosts/vscode/hostbridge/workspace/getWorkspacePaths"
 import { buildCheckpointManager, shouldUseMultiRoot } from "@integrations/checkpoints/factory"
 import { ensureCheckpointInitialized } from "@integrations/checkpoints/initializer"
 import { ICheckpointManager } from "@integrations/checkpoints/types"
@@ -3324,9 +3325,30 @@ export class Task {
 				// don't want to immediately access desktop since it would show permission popup
 				details += "(Desktop files not shown automatically. Use list_files to explore if needed.)"
 			} else {
-				const [files, didHitLimit] = await listFiles(this.cwd, true, 200)
-				const result = formatResponse.formatFilesList(this.cwd, files, didHitLimit, this.clineIgnoreController)
-				details += result
+				// Get actual VS Code workspace folders (supports ad-hoc multi-root)
+				const workspaceResponse = await getWorkspacePaths({})
+				const vscodeFolders = workspaceResponse?.paths ?? []
+
+				if (vscodeFolders.length > 1) {
+					// Multi-Root: List files from EACH VS Code workspace folder
+					details += "\n# Workspace Files (Multi-Root)"
+					for (const folderPath of vscodeFolders) {
+						const folderName = folderPath.split(/[\\/]/).pop() || "Project"
+						details += `\n\n## Root: ${folderName} (${folderPath})`
+						try {
+							const [files, didHitLimit] = await listFiles(folderPath, true, 200)
+							const result = formatResponse.formatFilesList(folderPath, files, didHitLimit, this.clineIgnoreController)
+							details += "\n" + result
+						} catch (e) {
+							details += `\n(Error listing files for ${folderName}: ${e})`
+						}
+					}
+				} else {
+					// Single root (Standard Behavior)
+					const [files, didHitLimit] = await listFiles(this.cwd, true, 200)
+					const result = formatResponse.formatFilesList(this.cwd, files, didHitLimit, this.clineIgnoreController)
+					details += result
+				}
 			}
 
 			// Add workspace information in JSON format
