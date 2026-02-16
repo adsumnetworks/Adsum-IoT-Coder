@@ -212,7 +212,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				// Send a concise task instruction — NOT the full system prompt
 				const taskPrompt =
 					mode === "log_generator"
-						? "You are a Nordic nRF Connect SDK logging assistant. Your job is to help add LOG_* macros (LOG_DBG, LOG_INF, LOG_WRN, LOG_ERR) to C source files using the Zephyr logging API. Start by asking: Which C source file needs logging? (provide full path from workspace root, e.g. src/main.c)"
+						? "You are in Log Code Generator mode. GOAL: Add logging to ALL nRF projects. CRITICAL WORKFLOW: 1. Read environment_details for workspace roots. 2. Analyze ALL projects. 3. IF SINGLE PROJECT: Report and IMMEDIATELY generate code (no asking). 4. IF MULTI-PROJECT: Report and use ask_followup_question with options=['Add to both', 'Only Central', 'Only Peripheral']. 5. Generate code. 6. AFTER generation, suggest RTT if using UART. DO NOT create markdown files."
 						: "You are a Nordic nRF Connect SDK log analyzer. Your job is to help record and analyze logs from connected nRF devices using RTT. Start by using the trigger_nordic_action tool with action 'list_devices' to detect connected nRF devices."
 				await messageHandlers.handleSendMessage(taskPrompt, [], [])
 			} catch (error) {

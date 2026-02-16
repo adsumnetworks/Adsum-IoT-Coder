@@ -4,7 +4,6 @@ import { AskResponseRequest, NewTaskRequest } from "@shared/proto/cline/task"
 import { useCallback } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { SlashServiceClient, TaskServiceClient } from "@/services/grpc-client"
-import { enforceScope } from "../../nordicScopeEnforcer"
 import type { ButtonActionType } from "../shared/buttonConfig"
 import type { ChatState, MessageHandlers } from "../types/chatTypes"
 
@@ -35,15 +34,7 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 			let messageToSend = text.trim()
 			const hasContent = messageToSend || images.length > 0 || files.length > 0
 
-			// Scope enforcement: reject off-topic messages for the current Nordic mode
-			if (hasContent && nordicMode && messages.length > 0) {
-				const rejection = enforceScope(nordicMode, messageToSend)
-				if (rejection) {
-					// Replace input with the rejection message instead of sending
-					setInputValue(rejection)
-					return
-				}
-			}
+			// Scope enforcement removed to prevent UI freezing. The agent will handle off-topic requests via system prompt instructions.
 
 			// Prepend the active quote if it exists
 			if (activeQuote && hasContent) {

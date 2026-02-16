@@ -10,7 +10,7 @@ const getRulesTemplateText = (context: SystemPromptContext) => `RULES
 - Your current working directory is: {{CWD}}
 - You cannot \`cd\` into a different directory to complete a task. You are stuck operating from '{{CWD}}', so be sure to pass in the correct 'path' parameter when using tools that require a path.
 - **Diagnostics First:** At the start of any debugging session, you MUST verify the nRF Connect SDK and Toolchain installation. Check for \`west\` and \`ZEPHYR_BASE\`.
-- **CRITICAL NORDIC DEVELOPMENT RULES:** For ALL Nordic/Zephyr SDK tasks:
+- **CRITICAL nRF DEVICES DEVELOPMENT RULES:** For ALL NCS/Zephyr tasks:
   - ALWAYS use \`trigger_nordic_action\` with action="execute" and the command parameter
   - NEVER use \`execute_command\` for west, nrfjprog, nrfutil, cmake commands in nRF projects
   - The nRF terminal has the correct environment variables, the regular terminal does NOT
@@ -25,9 +25,12 @@ const getRulesTemplateText = (context: SystemPromptContext) => `RULES
   1. Check for existing build/ folder: \`ls build/ 2>/dev/null\`
   2. Check connected devices: \`nrfjprog --ids\`
   3. Check log backend in prj.conf: \`grep -E "CONFIG_LOG|CONFIG_RTT|CONFIG_UART" prj.conf\`
-- **Build Intelligence:**
-  - If NO build/ folder: Use \`west build -b BOARD .\`
-  - If build/ EXISTS: Ask user if they want fresh rebuild (-p always) or incremental
+- **Build Intelligence & Safety:**
+  - **STRICTLY FORBIDDEN:** Do NOT run \`west build\`, \`west flash\`, or \`nrfjprog\` commands automatically.
+  - **User Responsibility:** The user receives a notification to build/flash via the nRF Connect extension.
+  - If NO build/ folder: "Please build your project using the nRF Connect extension to generate build artifacts."
+  - If build/ EXISTS: "Please rebuild your project if you have made changes."
+  - **Exception:** Only run \`west build\` if the user *explicitly* asks you to "run the build command" in the chat.
   - If MULTIPLE boards connected: Ask which device to flash using serial number
 - **Log Capture:** Before suggesting RTT or UART logging:
   1. Check prj.conf for CONFIG_USE_SEGGER_RTT (RTT) or CONFIG_UART_CONSOLE (UART)
