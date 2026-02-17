@@ -1,43 +1,39 @@
 {
-	"name": "claude-dev",
-	"displayName": "Cline",
-	"description": "Autonomous coding agent right in your IDE, capable of creating/editing files, running commands, using the browser, and more with your permission every step of the way.",
-	"version": "3.51.0",
+	"name": "nrf-ai-debugger",
+	"displayName": "nRF AI Debugger",
+	"description": "Open-Source AI-powered debugging assistant for nRF Connect SDK development. Generates logging code, analyzes RTT/UART logs, and provides real-time BLE stack diagnostics.",
+	"version": "0.0.1",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
 	},
 	"author": {
-		"name": "Cline Bot Inc."
+		"name": "Adsum Networks"
 	},
 	"license": "Apache-2.0",
-	"publisher": "saoudrizwan",
+	"publisher": "adsumnetworks",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/cline/cline"
+		"url": "https://github.com/adsumnetworks/AIDebug-Agent"
 	},
-	"homepage": "https://cline.bot",
+	"homepage": "https://github.com/adsumnetworks/AIDebug-Agent",
 	"categories": [
 		"AI",
-		"Chat",
-		"Programming Languages",
-		"Education",
-		"Snippets",
+		"Debuggers",
 		"Testing"
 	],
 	"keywords": [
-		"cline",
-		"claude",
-		"dev",
-		"mcp",
-		"openrouter",
-		"coding",
-		"agent",
-		"autonomous",
-		"chatgpt",
-		"sonnet",
+		"nrf",
+		"nordic",
+		"zephyr",
+		"rtos",
+		"ble",
+		"debugging",
+		"logging",
+		"rtt",
+		"embedded",
 		"ai",
-		"llama"
+		"agent"
 	],
 	"activationEvents": [
 		"onLanguage",
@@ -55,63 +51,12 @@
 				}
 			}
 		},
-		"walkthroughs": [
-			{
-				"id": "ClineWalkthrough",
-				"title": "Meet Cline, your new coding partner",
-				"description": "Cline codes like a developer because it thinks like one. Here are 5 ways to put it to work:",
-				"steps": [
-					{
-						"id": "welcome",
-						"title": "Start with a Goal, Not Just a Prompt",
-						"description": "Tell Cline what you want to achieve. It plans, asks, and then codes, like a true partner.",
-						"media": {
-							"markdown": "walkthrough/step1.md"
-						}
-					},
-					{
-						"id": "learn",
-						"title": "Let Cline Learn Your Codebase",
-						"description": "Point Cline to your project. It builds understanding to make smart, context-aware changes.",
-						"media": {
-							"markdown": "walkthrough/step2.md"
-						}
-					},
-					{
-						"id": "advanced-features",
-						"title": "Always Use the Best AI Models",
-						"description": "Cline empowers you with State-of-the-Art AI, connecting to top models (Anthropic, Gemini, OpenAI & more).",
-						"media": {
-							"markdown": "walkthrough/step3.md"
-						}
-					},
-					{
-						"id": "mcp",
-						"title": "Extend with Powerful Tools (MCP)",
-						"description": "Connect to databases, APIs, or discover new capabilities in the MCP Marketplace.",
-						"media": {
-							"markdown": "walkthrough/step4.md"
-						}
-					},
-					{
-						"id": "getting-started",
-						"title": "You're Always in Control",
-						"description": "Review Cline's plans and diffs. Approve changes before they happen. No surprises.",
-						"media": {
-							"markdown": "walkthrough/step5.md"
-						},
-						"content": {
-							"path": "walkthrough/step5.md"
-						}
-					}
-				]
-			}
-		],
+
 		"viewsContainers": {
 			"activitybar": [
 				{
 					"id": "claude-dev-ActivityBar",
-					"title": "Cline",
+					"title": "nRF AI Debugger",
 					"icon": "assets/icons/icon.svg"
 				}
 			]
@@ -145,91 +90,88 @@
 			{
 				"command": "cline.dev.createTestTasks",
 				"title": "Create Test Tasks",
-				"category": "Cline",
+				"category": "nRF AI Debugger",
 				"when": "cline.isDevMode"
 			},
 			{
 				"command": "cline.dev.expireMcpOAuthTokens",
 				"title": "Expire MCP OAuth Tokens (for testing)",
-				"category": "Cline",
+				"category": "nRF AI Debugger",
 				"when": "cline.isDevMode"
 			},
 			{
 				"command": "cline.addToChat",
-				"title": "Add to Cline",
-				"category": "Cline"
+				"title": "Add to nRF AI Debugger",
+				"category": "nRF AI Debugger"
 			},
 			{
 				"command": "cline.addTerminalOutputToChat",
-				"title": "Add to Cline",
-				"category": "Cline"
+				"title": "Add to nRF AI Debugger",
+				"category": "nRF AI Debugger"
 			},
 			{
 				"command": "cline.focusChatInput",
 				"title": "Jump to Chat Input",
-				"category": "Cline"
+				"category": "nRF AI Debugger"
 			},
-			{
-				"command": "cline.generateGitCommitMessage",
-				"title": "Generate Commit Message with Cline",
-				"category": "Cline",
-				"icon": "$(cline-icon)"
-			},
-			{
-				"command": "cline.abortGitCommitMessage",
-				"title": "Generate Commit Message with Cline - Stop",
-				"category": "Cline",
-				"icon": "$(debug-stop)"
-			},
+
 			{
 				"command": "cline.explainCode",
-				"title": "Explain with Cline",
-				"category": "Cline"
+				"title": "Explain with nRF AI Debugger",
+				"category": "nRF AI Debugger"
 			},
 			{
 				"command": "cline.improveCode",
-				"title": "Improve with Cline",
-				"category": "Cline"
+				"title": "Improve with nRF AI Debugger",
+				"category": "nRF AI Debugger"
 			},
 			{
 				"command": "cline.jupyterGenerateCell",
-				"title": "Generate Jupyter Cell with Cline",
-				"category": "Cline",
+				"title": "Generate Jupyter Cell with nRF AI Debugger",
+				"category": "nRF AI Debugger",
 				"icon": "$(sparkle)"
 			},
 			{
 				"command": "cline.jupyterExplainCell",
-				"title": "Explain Jupyter Cell with Cline",
-				"category": "Cline",
+				"title": "Explain Jupyter Cell with nRF AI Debugger",
+				"category": "nRF AI Debugger",
 				"icon": "$(question)"
 			},
 			{
 				"command": "cline.jupyterImproveCell",
-				"title": "Improve Jupyter Cell with Cline",
-				"category": "Cline",
+				"title": "Improve Jupyter Cell with nRF AI Debugger",
+				"category": "nRF AI Debugger",
 				"icon": "$(lightbulb)"
 			},
-			{
-				"command": "cline.openWalkthrough",
-				"title": "Open Walkthrough",
-				"category": "Cline"
-			},
+
 			{
 				"command": "cline.reconstructTaskHistory",
 				"title": "Reconstruct Task History",
-				"category": "Cline"
+				"category": "nRF AI Debugger"
 			},
 			{
 				"command": "cline.reviewComment.reply",
 				"title": "Reply",
-				"category": "Cline",
+				"category": "nRF AI Debugger",
 				"enablement": "!commentIsEmpty"
 			},
 			{
 				"command": "cline.reviewComment.addToChat",
-				"title": "Add to Cline Chat",
-				"category": "Cline",
+				"title": "Add to nRF AI Debugger Chat",
+				"category": "nRF AI Debugger",
 				"icon": "$(link-external)"
+			},
+			{
+				"command": "cline.generateGitCommitMessage",
+				"title": "Generate Commit Message",
+				"category": "nRF AI Debugger",
+				"icon": "$(sparkle)"
+			},
+			{
+				"command": "cline.abortGitCommitMessage",
+				"title": "Abort Commit Message Generation",
+				"category": "nRF AI Debugger",
+				"icon": "$(close)"
 			}
 		],
 		"keybindings": [
@@ -246,10 +188,7 @@
 				"linux": "ctrl+'",
 				"when": "editorHasSelection"
 			},
-			{
-				"command": "cline.generateGitCommitMessage",
-				"when": "config.git.enabled && scmProvider == git"
-			},
+
 			{
 				"command": "cline.focusChatInput",
 				"key": "cmd+'",
@@ -351,7 +290,7 @@
 			]
 		},
 		"configuration": {
-			"title": "Cline",
+			"title": "nRF AI Debugger",
 			"properties": {}
 		}
 	},

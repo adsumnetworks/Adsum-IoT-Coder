@@ -91,7 +91,15 @@ export class VscodeWebviewProvider extends WebviewProvider implements vscode.Web
 		// This happens when the user closes the view or when the view is closed programmatically
 		webviewView.onDidDispose(
 			async () => {
-				await this.dispose()
+				// Avoid calling this.dispose() which destroys the controller and singleton.
+				// Instead, just clean up the view-related resources.
+				while (this.disposables.length) {
+					const x = this.disposables.pop()
+					if (x) {
+						x.dispose()
+					}
+				}
+				this.webview = undefined
 			},
 			null,
 			this.disposables,

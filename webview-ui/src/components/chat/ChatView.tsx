@@ -16,19 +16,19 @@ import { Navbar } from "../menu/Navbar"
 import AutoApproveBar from "./auto-approve-menu/AutoApproveBar"
 // Import utilities and hooks from the new structure
 import {
-	ActionButtons,
-	CHAT_CONSTANTS,
-	ChatLayout,
-	convertHtmlToMarkdown,
-	filterVisibleMessages,
-	groupLowStakesTools,
-	groupMessages,
-	InputSection,
-	MessagesArea,
-	TaskSection,
-	useChatState,
-	useMessageHandlers,
-	useScrollBehavior,
+    ActionButtons,
+    CHAT_CONSTANTS,
+    ChatLayout,
+    convertHtmlToMarkdown,
+    filterVisibleMessages,
+    groupLowStakesTools,
+    groupMessages,
+    InputSection,
+    MessagesArea,
+    TaskSection,
+    useChatState,
+    useMessageHandlers,
+    useScrollBehavior,
 } from "./chat-view"
 import ModeSelector from "./ModeSelector"
 import { NORDIC_MODES, TASK_COMPLETE_MARKER } from "./nordicModes"
@@ -366,7 +366,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		if (nordicPhase === "awaiting_mode") {
 			return "Select a mode to start..."
 		}
-		const text = task ? "Type a message..." : "Type your task here..."
+		const text = task ? "Type a message..." : "Describe your nRF debugging task..."
 		return text
 	}, [task, nordicPhase])
 

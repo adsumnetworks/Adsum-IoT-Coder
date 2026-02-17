@@ -58,7 +58,7 @@ const AppContent = () => {
 	}
 
 	if (showWelcome) {
-		return onboardingModels ? <OnboardingView onboardingModels={onboardingModels} /> : <WelcomeView />
+		return onboardingModels ? <OnboardingView /> : <WelcomeView />
 	}
 
 	return (

@@ -20,7 +20,7 @@ const MockApp = () => {
 		<HeroUIProvider>
 			{showWelcome ? (
 				onboardingModels ? (
-					<OnboardingView onboardingModels={onboardingModels} />
+					<OnboardingView />
 				) : (
 					<WelcomeView />
 				)
@@ -322,67 +322,11 @@ export const Onboarding: Story = {
 		const canvas = within(canvasElement)
 
 		// Step 0: User type selection should be visible
-		const title = canvas.getByText("How will you use Cline?")
+		const title = canvas.getByText("Welcome to nRF AI Debugger")
 		await expect(title).toBeInTheDocument()
-		const freeUserOption = canvas.getByText("Absolutely Free")
-		const powerUserOption = canvas.getByText("Frontier Model")
-		await expect(freeUserOption).toBeInTheDocument()
-		await expect(powerUserOption).toBeInTheDocument()
 
-		// Select "Free User" option
-		await userEvent.click(freeUserOption)
-
-		// Verify the next button appears
-		const nextButton = canvas.getByText("Continue")
-		await expect(nextButton).toBeInTheDocument()
-
-		// Click next to go to model selection
-		await userEvent.click(nextButton)
-
-		// Step 1: Model selection should be visible
-		// Check for model group headers
-		const otherOptionsHeader = canvas.getByText("Select a free model")
-
-		// At least one should be visible
-		await expect(otherOptionsHeader).toBeInTheDocument()
-
-		// Test search functionality
-		const searchInput = canvas.getByPlaceholderText("Search model...")
-		await expect(searchInput).toBeInTheDocument()
-
-		// Type in search box
-		await userEvent.type(searchInput, "claude")
-
-		// Verify search term is in the input
-		await expect(searchInput).toHaveValue("claude")
-
-		// Clear search
-		await userEvent.clear(searchInput)
-
-		// Verify sign in button appears after model selection
-		const signInButton = canvas.getByText("Create my Account")
-		await expect(signInButton).toBeInTheDocument()
-
-		// Test back navigation
-		const backButton = canvas.getByText("Back")
-		await expect(backButton).toBeInTheDocument()
-		await userEvent.click(backButton)
-
-		// Should be back to user type selection
-		await expect(canvas.getByText("How will you use Cline?")).toBeInTheDocument()
-
-		// Test power user flow
-		await userEvent.click(powerUserOption)
-
-		const continueButton = canvas.getByText("Continue")
-		await userEvent.click(continueButton)
-
-		// Should see model selection again
-		await expect(canvas.getByPlaceholderText("Search model...")).toBeInTheDocument()
-		await userEvent.click(canvas.getByText("Back"))
 	},
 }
-
 export const EmptyState: Story = {
 	decorators: [createStoryDecorator({ clineMessages: [], taskHistory: [], isNewUser: true, showAnnouncement: true })],
 	parameters: {
