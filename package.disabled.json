@@ -1,0 +1,8 @@
+{
+	"walkthroughs": "DISABLED: ClineWalkthrough",
+	"commands": [
+		"cline.generateGitCommitMessage",
+		"cline.abortGitCommitMessage",
+		"cline.openWalkthrough"
+	]
+}

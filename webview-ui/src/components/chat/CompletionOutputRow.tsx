@@ -1,7 +1,6 @@
 import { Int64Request } from "@shared/proto/cline/common"
 import { CheckIcon } from "lucide-react"
 import { memo } from "react"
-import { PLATFORM_CONFIG, PlatformType } from "@/config/platform.config"
 import { cn } from "@/lib/utils"
 import { TaskServiceClient } from "@/services/grpc-client"
 import { CopyButton } from "../common/CopyButton"
@@ -108,7 +107,7 @@ const CompletionOutputActionRow = memo(
 					View Changes
 				</SuccessButton>
 
-				{PLATFORM_CONFIG.type === PlatformType.VSCODE && (
+				{/* {PLATFORM_CONFIG.type === PlatformType.VSCODE && (
 					<SuccessButton
 						disabled={explainChangesDisabled}
 						onClick={() => {
@@ -128,7 +127,7 @@ const CompletionOutputActionRow = memo(
 						<i className="codicon codicon-comment-discussion" style={{ marginRight: 6 }} />
 						{explainChangesDisabled ? "Explaining..." : "Explain Changes"}
 					</SuccessButton>
-				)}
+				)} */}
 			</div>
 		)
 	},

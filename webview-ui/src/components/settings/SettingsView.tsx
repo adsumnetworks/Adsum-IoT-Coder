@@ -2,14 +2,14 @@ import type { ExtensionMessage } from "@shared/ExtensionMessage"
 import { ResetStateRequest } from "@shared/proto/cline/state"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import {
-	CheckCheck,
-	FlaskConical,
-	Info,
-	type LucideIcon,
-	SlidersHorizontal,
-	SquareMousePointer,
-	SquareTerminal,
-	Wrench,
+    CheckCheck,
+    FlaskConical,
+    Info,
+    type LucideIcon,
+    SlidersHorizontal,
+    SquareMousePointer,
+    SquareTerminal,
+    Wrench,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useEvent } from "react-use"
@@ -54,6 +54,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
 		tooltipText: "Feature Settings",
 		headerText: "Feature Settings",
 		icon: CheckCheck,
+		hidden: true,
 	},
 	{
 		id: "browser",
@@ -61,6 +62,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
 		tooltipText: "Browser Settings",
 		headerText: "Browser Settings",
 		icon: SquareMousePointer,
+		hidden: true,
 	},
 	{
 		id: "terminal",
@@ -68,6 +70,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
 		tooltipText: "Terminal Settings",
 		headerText: "Terminal Settings",
 		icon: SquareTerminal,
+		hidden: true,
 	},
 	{
 		id: "general",
@@ -75,11 +78,12 @@ export const SETTINGS_TABS: SettingsTab[] = [
 		tooltipText: "General Settings",
 		headerText: "General Settings",
 		icon: Wrench,
+		hidden: true,
 	},
 	{
 		id: "about",
 		name: "About",
-		tooltipText: "About Cline",
+		tooltipText: "About nRF AI Debugger",
 		headerText: "About",
 		icon: Info,
 	},

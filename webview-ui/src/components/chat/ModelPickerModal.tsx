@@ -18,12 +18,12 @@ import { freeModels, recommendedModels } from "@/components/settings/OpenRouterM
 import { SUPPORTED_ANTHROPIC_THINKING_MODELS } from "@/components/settings/providers/AnthropicProvider"
 import { SUPPORTED_BEDROCK_THINKING_MODELS } from "@/components/settings/providers/BedrockProvider"
 import {
-	filterOpenRouterModelIds,
-	getModelsForProvider,
-	getModeSpecificFields,
-	getProviderInfo,
-	normalizeApiConfiguration,
-	syncModeConfigurations,
+    filterOpenRouterModelIds,
+    getModelsForProvider,
+    getModeSpecificFields,
+    getProviderInfo,
+    normalizeApiConfiguration,
+    syncModeConfigurations,
 } from "@/components/settings/utils/providerUtils"
 import { useApiConfigurationHandlers } from "@/components/settings/utils/useApiConfigurationHandlers"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -32,20 +32,9 @@ import { StateServiceClient } from "@/services/grpc-client"
 import { getConfiguredProviders, getProviderLabel } from "@/utils/getConfiguredProviders"
 import ThinkingBudgetSlider from "../settings/ThinkingBudgetSlider"
 
-const SETTINGS_ONLY_PROVIDERS: ApiProvider[] = [
-	"openai",
-	"ollama",
-	"lmstudio",
-	"vscode-lm",
-	"requesty",
-	"hicap",
-	"dify",
-	"oca",
-	"aihubmix",
-	"together",
-]
+const SETTINGS_ONLY_PROVIDERS: ApiProvider[] = []
 
-const OPENROUTER_MODEL_PROVIDERS: ApiProvider[] = ["cline", "openrouter", "vercel-ai-gateway"]
+const OPENROUTER_MODEL_PROVIDERS: ApiProvider[] = ["openrouter", "vercel-ai-gateway"]
 
 interface ModelPickerModalProps {
 	isOpen: boolean
@@ -159,11 +148,12 @@ const ModelPickerModal: React.FC<ModelPickerModalProps> = ({ isOpen, onOpenChang
 
 	// Get configured providers
 	const configuredProviders = useMemo(() => {
-		if (remoteConfigSettings?.remoteConfiguredProviders?.length) {
-			return remoteConfigSettings.remoteConfiguredProviders
-		}
-
-		return getConfiguredProviders(apiConfiguration)
+		const allProviders = remoteConfigSettings?.remoteConfiguredProviders?.length
+			? remoteConfigSettings.remoteConfiguredProviders
+			: getConfiguredProviders(apiConfiguration)
+		
+		// STRICTLY FILTER TO ONLY OPENAI AND OPENROUTER
+		return allProviders.filter(p => p === "openai" || p === "openrouter")
 	}, [apiConfiguration, remoteConfigSettings?.remoteConfiguredProviders])
 
 	// Get models for current provider
@@ -211,13 +201,7 @@ const ModelPickerModal: React.FC<ModelPickerModalProps> = ({ isOpen, onOpenChang
 
 	// Filtered models - for OpenRouter/Vercel show all by default, for Cline only when searching
 	const filteredModels = useMemo(() => {
-		const isCline = selectedProvider === "cline"
-
-		// For Cline: only show non-featured models when searching
-		if (isCline && !searchQuery) {
-			return []
-		}
-
+		// No Cline provider support here anymore
 		let models: ModelItem[]
 		if (searchQuery) {
 			models = allModels.filter((m) => matchesSearch(m, searchQuery))
@@ -229,14 +213,8 @@ const ModelPickerModal: React.FC<ModelPickerModalProps> = ({ isOpen, onOpenChang
 		// Filter out current model
 		models = models.filter((m) => m.id !== selectedModelId)
 
-		// For Cline when searching, also filter out featured models (they're shown separately)
-		if (isCline) {
-			const featuredIds = new Set([...recommendedModels, ...freeModels].map((m) => m.id))
-			models = models.filter((m) => !featuredIds.has(m.id))
-		}
-
 		// For openrouter/vercel-ai-gateway (not cline): put favorites first
-		if (!isCline && (selectedProvider === "openrouter" || selectedProvider === "vercel-ai-gateway")) {
+		if (selectedProvider === "openrouter" || selectedProvider === "vercel-ai-gateway") {
 			const favoriteSet = new Set(favoritedModelIds || [])
 			const favoritedModels = models.filter((m) => favoriteSet.has(m.id))
 			const nonFavoritedModels = models.filter((m) => !favoriteSet.has(m.id))
@@ -250,28 +228,10 @@ const ModelPickerModal: React.FC<ModelPickerModalProps> = ({ isOpen, onOpenChang
 		return models
 	}, [searchQuery, matchesSearch, selectedModelId, selectedProvider, allModels, favoritedModelIds])
 
-	// Featured models for Cline provider (recommended + free)
-	const featuredModels = useMemo(() => {
-		if (selectedProvider !== "cline") {
-			return []
-		}
-
-		const allFeatured = [...recommendedModels, ...freeModels].map((m) => ({
-			...m,
-			name: m.id.split("/").pop() || m.id,
-			provider: m.id.split("/")[0],
-		}))
-
-		// Filter out current model
-		const filtered = allFeatured.filter((m) => m.id !== selectedModelId)
-
-		// Apply search filter if searching (uses same multi-word logic)
-		if (searchQuery) {
-			return filtered.filter((m) => matchesSearch(m, searchQuery))
-		}
-
-		return filtered
-	}, [selectedProvider, searchQuery, selectedModelId, matchesSearch])
+	// Featured models (NOW EMPTY/UNUSED)
+	const featuredModels = useMemo((): ModelItem[] => {
+		return []
+	}, [])
 
 	// Handle model selection - in split mode uses activeEditMode, otherwise closes modal
 	const handleSelectModel = useCallback(
@@ -743,22 +703,7 @@ const ModelPickerModal: React.FC<ModelPickerModalProps> = ({ isOpen, onOpenChang
 								</EmptyModelRow>
 							) : null}
 
-							{/* For Cline: Show recommended models */}
-							{isClineProvider &&
-								featuredModels.map((model, index) => (
-									<ModelItemContainer
-										$isSelected={index === selectedIndex}
-										key={model.id}
-										onClick={() => handleSelectModel(model.id, openRouterModels[model.id])}
-										onMouseEnter={() => setSelectedIndex(index)}
-										ref={(el) => (itemRefs.current[index] = el)}>
-										<ModelInfoRow>
-											<ModelName>{model.name}</ModelName>
-											<ModelProvider>{model.provider}</ModelProvider>
-										</ModelInfoRow>
-										<ModelLabel>{model.label}</ModelLabel>
-									</ModelItemContainer>
-								))}
+
 
 							{/* All other models (for non-Cline always, for Cline only when searching) */}
 							{filteredModels.map((model, index) => {
