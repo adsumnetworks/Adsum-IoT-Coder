@@ -135,6 +135,26 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			return await config.callbacks.sayAndCreateMissingParamError(this.name, "operation")
 		}
 
+		// 1b. Handle "device_info" operation
+		if (operation === "device_info") {
+			const serialNumber = port || (devices ? devices.split(",")[0].split(":")[1] : undefined)
+			if (!serialNumber) {
+				return formatResponse.toolError("Operation 'device_info' requires 'port' (serial number) parameter.")
+			}
+			
+			const cmd = `nrfutil device device-info --serial-number ${serialNumber}`
+			
+			await config.callbacks.say(
+				"tool",
+				JSON.stringify({
+					tool: "triggerNordicAction",
+					path: `Nordic Device Info [${serialNumber}]`,
+				}),
+			)
+			
+			return this.executeInNrfTerminal(config, cmd)
+		}
+
 		// 1. Handle "list" operation internally (Hidden "Under the Hood")
 		if (operation === "list") {
 			return this.listDevicesInternal(transport)

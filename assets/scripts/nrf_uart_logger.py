@@ -193,17 +193,8 @@ def auto_detect_devices():
     
     # Create device map with automatic naming
     device_map = {}
-    if len(nrf_devices) >= 2:
-        # Sort by port to have consistent naming
-        nrf_devices.sort() 
-        # BLE scenario: likely central + peripheral
-        device_map["central"] = nrf_devices[0][0]
-        device_map["peripheral"] = nrf_devices[1][0]
-        for i, (port, _) in enumerate(nrf_devices[2:], start=3):
-            device_map[f"device_{i}"] = port
-    else:
-        # Single device
-        device_map["device"] = nrf_devices[0][0]
+    for i, (port, _) in enumerate(nrf_devices):
+        device_map[f"device{i+1}"] = port
     
     return device_map, [sn for _, sn in nrf_devices]
 
@@ -279,6 +270,7 @@ def reset_device(serial_number):
     serial_str = str(serial_number).lstrip('0')
     print(f"[RESET] Resetting device {serial_str}...")
     
+    nrfutil_error = ""
     # Try nrfutil first (modern standard)
     try:
         result = subprocess.run(
@@ -324,20 +316,34 @@ def reset_device(serial_number):
 class DeviceLogger(threading.Thread):
     """Thread to log from a single device."""
     
-    def __init__(self, name, port, baudrate, output_dir, duration):
+    def __init__(self, name, port, baudrate, output_dir, duration, role=None, backend="uart"):
         super().__init__()
         self.name = name
         self.port = port
         self.baudrate = baudrate
         self.output_dir = output_dir
         self.duration = duration
+        self.role = role
+        self.backend = backend
         self.running = True
         self.line_count = 0
         self.error = ""
         
-        # Create timestamped filename
+        # Use provided output directory directly (handler manages structure)
+        self.log_dir = output_dir
+        os.makedirs(self.log_dir, exist_ok=True)
+        
+        # Create structured filename: {role}_{SN}_{DT}.log OR {name}_{DT}.log
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.filename = os.path.join(output_dir, f"{name}_{timestamp}.log")
+        serial_num = get_device_serial(port) or "unknown"
+        
+        if self.role:
+            # e.g. central_683007782_20260209_120000.log
+            clean_role = self.role.lower().replace(" ", "_")
+            self.filename = os.path.join(self.log_dir, f"{clean_role}_{serial_num}_{timestamp}.log")
+        else:
+            # Legacy fallback: device_20260209_120000.log
+            self.filename = os.path.join(self.log_dir, f"{name}_{timestamp}.log")
     
     def stop(self):
         self.running = False
@@ -414,12 +420,21 @@ def record_logs(devices, duration, output_dir, reset_serials=None, pre_capture_d
     print("\n[PHASE 1] Starting log capture FIRST (to catch boot logs)...")
     loggers = []
     for name, port in devices.items():
+        # Infer role from name if possible (central/peripheral)
+        role = None
+        if "central" in name.lower():
+            role = "central"
+        elif "peripheral" in name.lower():
+            role = "peripheral"
+            
         logger = DeviceLogger(
             name=name,
             port=port,
             baudrate=DEFAULT_BAUDRATE,
             output_dir=output_dir,
-            duration=duration
+            duration=duration,
+            role=role,
+            backend="uart"
         )
         logger.start()
         loggers.append(logger)
@@ -479,19 +494,38 @@ def record_logs(devices, duration, output_dir, reset_serials=None, pre_capture_d
 
 
 def analyze_logs(log_files):
-    """Basic analysis of log files."""
+    """Enhanced analysis of log files with BLE event tracking and timeline."""
     print("\n[ANALYSIS] Scanning logs for key patterns...")
     
+    # BLE Event Patterns
     patterns = {
         "boot": ["*** Booting", "Zephyr OS", "ncs", "main()"],
-        "errors": ["[ERR]", "Error", "FAULT", "assert", "panic"],
+        "errors": ["[ERR]", "Error", "FAULT", "assert", "panic", "HardFault", "BusFault"],
         "warnings": ["[WRN]", "Warning"],
-        "ble": ["BT", "Bluetooth", "advertising", "connected", "disconnected"],
-        "data": ["sensor", "temp", "data", "value"]
+        "ble_adv": ["Advertising successfully started", "Advertising started", "adv_data"],
+        "ble_conn": ["Connected", "Security changed", "Le Connected"],
+        "ble_disc": ["Disconnected", "Le Disconnected", "Terminated"],
+        "ble_scan": ["Scanning started", "Device found"],
+        "ble_data": ["Notification enabled", "Value:", "Data received"],
+        "mtu": ["MTU exchange", "MTU updated"]
     }
     
+    # Error Code Map (Common Zephyr/BLE codes)
+    error_codes = {
+        "0x08": "Timeout",
+        "0x13": "Remote User Terminated Connection",
+        "0x16": "Local Host Terminated Connection",
+        "0x3d": "MIC Failure (Decryption Error)",
+        "-116": "ETIMEDOUT",
+        "-128": "ENOTCONN"
+    }
+    
+    events = []
+    
     for log_file in log_files:
-        print(f"\n  File: {os.path.basename(log_file)}")
+        filename = os.path.basename(log_file)
+        print(f"\n  File: {filename}")
+        
         try:
             with open(log_file, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -499,13 +533,58 @@ def analyze_logs(log_files):
                 
             print(f"    Total lines: {len(lines)}")
             
-            for category, keywords in patterns.items():
-                matches = sum(1 for line in lines if any(kw.lower() in line.lower() for kw in keywords))
-                if matches > 0:
-                    print(f"    {category.upper()}: {matches} matches")
+            # Pattern Matching
+            stats = {k: 0 for k in patterns}
+            
+            for line in lines:
+                # Track statistics
+                for category, keywords in patterns.items():
+                    if any(kw.lower() in line.lower() for kw in keywords):
+                        stats[category] += 1
+                        
+                # Extract Timeline Events
+                timestamp = line.split(']')[0].replace('[', '').strip() if line.startswith('[') else ""
+                
+                # Check for specific notable events to add to timeline
+                if any(kw in line for kw in ["Connected", "Disconnected", "Booting", "Advertising", "Error", "FAULT"]):
+                    events.append({
+                        "time": timestamp,
+                        "file": filename,
+                        "event": line.strip()
+                    })
+                    
+                # Check for error codes
+                for code, desc in error_codes.items():
+                    if code in line:
+                         events.append({
+                            "time": timestamp,
+                            "file": filename,
+                            "event": f"⚠️ ERROR CODE {code}: {desc}"
+                        })
+
+            # Print Statistics
+            for category, count in stats.items():
+                if count > 0:
+                    print(f"    {category.upper()}: {count} matches")
                     
         except Exception as e:
             print(f"    ERROR reading file: {e}")
+
+    # Generate Timeline Summary
+    if events:
+        print("\n[TIMELINE] Key Events across all devices:")
+        print("-" * 80)
+        # Sort by timestamp if possible (simple string sort for now)
+        try:
+            events.sort(key=lambda x: x["time"])
+        except:
+             pass # partial sort if timestamps vary
+             
+        for e in events:
+            # Format: [Time] [File] Event
+            print(f"  [{e['time']:<12}] {e['file'][:15]:<15} | {e['event']}")
+        print("-" * 80)
+        print("Tip: Use these timestamps to correlate interactions between Central and Peripheral.")
 
 
 def main():

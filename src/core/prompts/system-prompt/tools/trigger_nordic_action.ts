@@ -7,114 +7,6 @@ import type { ClineToolSpec } from "../spec"
  * This is the PRIMARY method for all Nordic/Zephyr development tasks.
  */
 
-const CLI_REFERENCE = `
-⚠️ INSTRUCTION HANDBOOK (MANDATORY REFERENCE):
-  See: NORDIC_INSTRUCTION_HANDBOOK.md in this directory
-  Status: MANDATORY - All variants MUST follow these rules
-  Last Updated: 2026-02-09
-
-FIRST ACTIONS (REQUIRED SEQUENCE):
-  1. Read this tool spec COMPLETELY
-  2. Check workspace for NRF52_BEST_PRACTICES_GUIDE.md + NORDIC_INSTRUCTION_HANDBOOK.md
-  3. Check workspace for prj.conf (BEFORE any tool invocation)
-  4. DO NOT skip steps 1-3 (agent behavior depends on this)
-
-AUTONOMY RULES (MANDATORY):
-  • NEVER ask user to run "nrfjprog", "west", "cat", or similar. YOU MUST run them.
-  • NEVER use generic shell (execute_command) for "west", "nrfjprog", or log capture. ALWAYS use this tool.
-  • NEVER call nrfjprog or nrfutil directly. Use trigger_nordic_action (script handles gracefully).
-  • NEVER assume transport type. Always read prj.conf FIRST (RULE 1).
-  • NEVER analyze old log files without user confirmation (RULE 2).
-
-BOARD NAME FORMAT (REQUIRED):
-  • nrf52840dk_nrf52840 (NOT "nrf52840dk" or "nrf52840")
-  • Use: west boards | grep <chip> to find exact name
-  • Example: nrf5340dk_nrf5340_cpuapp (app core of dual-core processor)
-
-PROCESS CLEANUP (CRITICAL FOR STABILITY):
-  • Before device operations: pkill -9 JLink; pkill -9 nrfutil; sleep 1
-  • PREVENTS: J-Link hangs, port locks, stale processes
-  • Use: timeout 60s for blocking commands (e.g., timeout 60s west flash)
-
-PLATFORM GUIDANCE (MANDATORY TO FOLLOW):
-  WINDOWS (PRIMARY):
-    • Port format MUST be: COM3, COM5, COM12 (NOT /dev/ttyACM0)
-    • Check Device Manager → Ports (COM & LPT) to verify
-  LINUX (SECONDARY):
-    • Port format MUST be: /dev/ttyACM0, /dev/ttyACM1
-    • Permissions: ls -la /dev/ttyACM0 (must have rw)
-  macOS:
-    • Port format: /dev/tty.usbserial-* or /dev/cu.usbserial-*
-
-CRITICAL AGENT RULES - LOG CAPTURE & TRANSPORT (MANDATORY - NOT OPTIONAL):
-  ⭐ RULE 1: TRANSPORT SELECTION - Auto-Detect First (MANDATORY)
-    Step 1 (REQUIRED): Read prj.conf BEFORE doing anything else
-      grep -i "CONFIG_USE_SEGGER_RTT\|CONFIG_LOG_BACKEND_UART" prj.conf
-    Step 2 (REQUIRED): Apply transport logic
-      IF CONFIG_USE_SEGGER_RTT=y OR CONFIG_LOG_BACKEND_RTT=y → MUST use transport="rtt"
-      IF CONFIG_LOG_BACKEND_UART=y OR CONFIG_UART_CONSOLE=y → MUST use transport="uart"
-      IF BOTH disabled → DEFAULT to transport="uart" (most common)
-    Step 3 (REQUIRED): Verify your detection
-      Port format COM3 or /dev/ttyACM0 → UART | 9-digit SN (683007782) → RTT
-    FAILURE SYMPTOM: Agent uses UART for RTT-only project → EMPTY LOGS
-    YOU MUST FOLLOW THIS: Non-negotiable for correct log capture
-
-  ⭐ RULE 2: LOG CAPTURE vs FILE ANALYSIS - Fresh Logs by Default (MANDATORY)
-    User says "show logs" or "capture logs" → YOU MUST capture FRESH from device (NEVER read old files)
-    User explicitly says "analyze logs/" or "read this file" → THEN read old files (only after confirmation)
-    CRITICAL: You MUST distinguish between "capturing new data" vs "analyzing old data"
-    FAILURE SYMPTOM: Agent shows old logs from yesterday → User: "That's not current!"
-    YOU MUST FOLLOW THIS: Non-negotiable for providing current information
-
-  ⭐ RULE 3: DEVICE RESET - Let Script Handle Gracefully (MANDATORY)
-    FORBIDDEN: Calling nrfjprog or nrfutil directly
-    REQUIRED: Use trigger_nordic_action action="log_device" (script handles reset)
-    Reset strategy (automatic in script):
-      1. Try nrfutil (modern) → nrfutil device reset --serial-number <SN>
-      2. If missing → Try nrfjprog (legacy) → nrfjprog --reset -s <SN>
-      3. If both missing → WARN (not ERROR) and continue capturing
-    FAILURE SYMPTOM: Agent runs "nrfjprog --reset" directly → tool not installed → agent fails
-    YOU MUST FOLLOW THIS: Script abstraction is intentional for robustness
-
-  ⭐ RULE 4: CAPTURE DURATION - Match Investigation Context (MANDATORY)
-    Quick connection test: duration="5" (Is device responding?)
-    Boot sequence capture: duration="15" (Capture complete startup)
-    Normal debugging: duration="30" (standard session)
-    Complex issues: duration="60" (extended investigation)
-    FORBIDDEN: Default to 45+ seconds for quick tests
-    FAILURE SYMPTOM: Agent uses 60s for "Is device connected?" → user waits unnecessarily
-    YOU MUST FOLLOW THIS: Duration mismatches reveal instruction-following failures
-
-  ⭐ RULE 5: PRE-CAPTURE DELAY - Catch Complete Boot Sequence (MANDATORY)
-    When user says "show me boot logs" → YOU MUST use pre-capture-delay="3"
-    When user says "capture boot sequence" → YOU MUST use pre-capture-delay="3"
-    What it does: Starts listeners 3 seconds BEFORE device reset so they capture from first line
-    Format: action="log_device" operation="capture" port="COM3" duration="15" pre-capture-delay="3"
-    Result: Complete boot sequence captured (*** Booting nRF Connect SDK *** appears in logs)
-    FAILURE SYMPTOM: Boot logs incomplete → missing first startup messages → pre-capture-delay not used
-    YOU MUST FOLLOW THIS: Non-negotiable for complete boot diagnostics
-
-DEVICE DETECTION - Use Modern Tools (MANDATORY):
-  • List devices (PRIMARY): nrfutil device list
-  • List devices (FALLBACK): nrfjprog --ids
-  • Device reset (PRIMARY): nrfutil device reset --serial-number <SN>
-  • Device reset (FALLBACK): nrfjprog --reset -s <SN>
-  • REMEMBER devices from current session (don't ask user for serial twice)
-
-FLASH PRIORITY:
-  1. Get devices: nrfjprog --ids
-  2. ONE device: timeout 60s west flash
-  3. MULTIPLE: timeout 60s west flash --snr <serial>
-  4. RECOVER: nrfjprog --recover (only if flash fails)
-
-BUILD DECISION TREE:
-  1. Check for build folder: ls build/ 2>/dev/null || echo "no build"
-  2. If NO build/: west build -b BOARD .
-  3. If build/ EXISTS:
-     - Fresh rebuild: west build -b BOARD . -p always
-     - Incremental: west build
-`
-
 const PARAMETERS = [
 	{
 		name: "action",
@@ -138,7 +30,7 @@ Examples:
 	{
 		name: "operation",
 		required: false,
-		instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor".`,
+		instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor", "device_info".`,
 		usage: "list",
 	},
 	{
@@ -220,12 +112,23 @@ This ensures complete boot sequence is captured.`,
 	},
 ]
 
+const TECHNICAL_REFERENCE = `
+CRITICAL OPERATIONAL RULES:
+1. BOARD NAMES: Must be full Zephyr ID (e.g., "nrf52840dk_nrf52840", NOT "nrf52840dk"). Use "west boards" to verify.
+2. FLASHING:
+   - Single device: "west flash"
+   - Multiple devices: "west flash --snr <serial_number>" (REQUIRED to avoid ambiguity).
+3. CLEANUP: Always run "pkill -9 JLink; pkill -9 nrfutil" before "log_device" or "west flash" to prevent lockups.
+4. PORTS: Windows use COMx; Linux use /dev/ttyACMx.
+5. DEVICE LISTING: ALWAYS use trigger_nordic_action(action="log_device", operation="list"). NEVER call nrfutil device list directly. NEVER use nrfjprog --ids on Windows.
+`
+
 const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: "trigger_nordic_action",
 	description: `Execute commands in the nRF Connect terminal with the correct Nordic/Zephyr SDK environment. This is the ONLY method to use for west, nrfjprog, nrfutil, and other Nordic CLI tools.
-${CLI_REFERENCE}`,
+${TECHNICAL_REFERENCE}`,
 	parameters: PARAMETERS,
 }
 
@@ -234,7 +137,7 @@ const NATIVE_GPT_5: ClineToolSpec = {
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: ClineDefaultTool.NORDIC_ACTION,
 	description: `Execute commands in nRF Connect terminal or access Native Logger. ALWAYS use this for west/nrfjprog/logging.
-${CLI_REFERENCE}`,
+${TECHNICAL_REFERENCE}`,
 	parameters: PARAMETERS,
 }
 
@@ -248,7 +151,7 @@ const GEMINI_3: ClineToolSpec = {
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: ClineDefaultTool.NORDIC_ACTION,
 	description: `Execute commands in the nRF Connect terminal or use Native Logger. ALWAYS use this for west, nrfjprog, nrfutil commands.
-${CLI_REFERENCE}`,
+${TECHNICAL_REFERENCE}`,
 	parameters: PARAMETERS,
 }
 

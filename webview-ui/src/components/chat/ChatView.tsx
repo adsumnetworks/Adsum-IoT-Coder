@@ -16,19 +16,19 @@ import { Navbar } from "../menu/Navbar"
 import AutoApproveBar from "./auto-approve-menu/AutoApproveBar"
 // Import utilities and hooks from the new structure
 import {
-    ActionButtons,
-    CHAT_CONSTANTS,
-    ChatLayout,
-    convertHtmlToMarkdown,
-    filterVisibleMessages,
-    groupLowStakesTools,
-    groupMessages,
-    InputSection,
-    MessagesArea,
-    TaskSection,
-    useChatState,
-    useMessageHandlers,
-    useScrollBehavior,
+	ActionButtons,
+	CHAT_CONSTANTS,
+	ChatLayout,
+	convertHtmlToMarkdown,
+	filterVisibleMessages,
+	groupLowStakesTools,
+	groupMessages,
+	InputSection,
+	MessagesArea,
+	TaskSection,
+	useChatState,
+	useMessageHandlers,
+	useScrollBehavior,
 } from "./chat-view"
 import ModeSelector from "./ModeSelector"
 import { NORDIC_MODES, TASK_COMPLETE_MARKER } from "./nordicModes"
@@ -213,7 +213,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				const taskPrompt =
 					mode === "log_generator"
 						? "You are in Log Code Generator mode. GOAL: Add logging to ALL nRF projects. CRITICAL WORKFLOW: 1. Read environment_details for workspace roots. 2. Analyze ALL projects. 3. IF SINGLE PROJECT: Report and IMMEDIATELY generate code (no asking). 4. IF MULTI-PROJECT: Report and use ask_followup_question with options=['Add to both', 'Only Central', 'Only Peripheral']. 5. Generate code. 6. AFTER generation, suggest RTT if using UART. DO NOT create markdown files."
-						: "You are a Nordic nRF Connect SDK log analyzer. Your job is to help record and analyze logs from connected nRF devices using RTT. Start by using the trigger_nordic_action tool with action 'list_devices' to detect connected nRF devices."
+						: "You are in Log Analyzer mode. CRITICAL WORKFLOW: 1. Read environment_details (Silent Analysis). 2. Detect projects and config (RTT/UART). 3. List devices and INTELLIGENTLY MATCH them to projects (e.g., 'Heart Rate Central'). 4. PROPOSE PLAN using ask_followup_question (Buttons). DO NOT ask open-ended questions."
 				await messageHandlers.handleSendMessage(taskPrompt, [], [])
 			} catch (error) {
 				console.error("[ChatView] Failed to start Nordic task:", error)

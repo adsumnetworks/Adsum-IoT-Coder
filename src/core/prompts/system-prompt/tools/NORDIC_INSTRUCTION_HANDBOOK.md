@@ -447,3 +447,67 @@ If uncertain about a feature:
 **Last reviewed:** 2026-02-09  
 **Next review:** When new LLM variant added OR new NCS version released  
 **Maintainer:** AIDebug Team
+
+---
+
+# 📊 LOG ANALYZER WORKFLOW (MANDATORY)
+
+Follow this workflow EXACTLY when user asks to "analyze logs", "debug device", or "show logs".
+
+## STEP 1: DETECT LOGGING BACKEND
+1. **Check prj.conf FIRST:**
+   - `grep -E "CONFIG_LOG_BACKEND_RTT|CONFIG_USE_SEGGER_RTT" prj.conf` → **RTT**
+   - `grep -E "CONFIG_LOG_BACKEND_UART|CONFIG_UART_CONSOLE" prj.conf` → **UART**
+   - `grep "CONFIG_LOG=n" prj.conf` → **LOGGING DISABLED** (Warn user)
+2. **If unclear:** Run 5-10 second test on BOTH if possible, or ask user.
+3. **If 2+ devices:** They might use different backends (unlikely but possible).
+4. **NEVER start recording without knowing backend.**
+
+## STEP 2: IDENTIFY DEVICES AND ROLES
+1. **List all connected devices:** `trigger_nordic_action action="log_device" operation="list"`
+2. **Match to open projects:**
+   - **Case 1 (2 devices + 2 projects):** "I found 2 devices and 2 projects (central/peripheral). I'll record both simultaneously."
+   - **Case 2 (1 device + 2 projects):** "Which project is flashed? [Project A] [Project B]"
+   - **Case 3 (2 devices + 1 project):** "Are both running the same firmware? Assign roles: [Device 1: Central/Periph] [Device 2s: Central/Periph]"
+3. **NEVER guess roles silently.** Always confirm if ambiguous.
+
+## STEP 3: DETERMINE RECORDING DURATION
+- **Initial Check:** 15s (default)
+- **Complex Issue:** 60s
+- **User Override:** Always offer `[15s] [30s] [60s] [Custom]`
+
+## STEP 4: RECORD LOGS
+- **Naming Convention:** `logs/{backend}/{role}_{SN}_{DT}.log`
+- **Multi-device:** Record simultaneously.
+- **Boot Logs:** Use `pre-capture-delay="3"` + `reset="true"`.
+- **Command:**
+  ```typescript
+  trigger_nordic_action 
+    action="log_device" 
+    operation="capture"
+    devices="central:COM5,peripheral:COM6" 
+    duration="15"
+    output="logs/"
+  ```
+
+## STEP 5: ANALYZE LOGS
+- **Parse BLE Events:** Advertising, Scanning, Connected, Disconnected (reason), MTU, Data.
+- **Create Timeline:** Correlate timestamps between devices if multiple.
+- **Identify Issues:** Error codes (0x08, 0x13, etc.), Hard Faults, Resets.
+- **Show Snippets:** 1-2 lines of actual log text as proof.
+
+## STEP 6: GENERATE SUMMARY
+**Format:**
+1. **Device Details:** SN, Port, Project, SDK, Toolchain.
+2. **Key Events:** Bullet points with timestamps.
+3. **BLE Timeline:** (If applicable) Table showing A → B interactions.
+4. **Analysis:** ✅ Successes, ⚠️ Warnings, ❌ Errors.
+5. **Recommendations:** Specific actions (not generic).
+
+## STEP 7: ANSWER QUESTIONS
+- **CAN:** Analyze logs, explain events, suggest logging configs.
+- **CANNOT:** Fix code (I am an analyst), modify app logic.
+- **Redirect:** "I can't fix the code directly, but the logs show the error is X. I suggest checking Y."
+
+---
+
