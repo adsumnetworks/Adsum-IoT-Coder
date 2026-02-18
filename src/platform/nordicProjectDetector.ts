@@ -11,6 +11,7 @@ export interface ProjectCapabilities {
 	hasUART: boolean
 	recommendedTransport: "rtt" | "uart"
 	configPath: string | null
+	loggingDisabled: boolean
 }
 
 /**
@@ -22,6 +23,7 @@ function scanPrjConf(prjConfPath: string): ProjectCapabilities {
 		hasUART: false,
 		recommendedTransport: "uart",
 		configPath: null,
+		loggingDisabled: false,
 	}
 
 	if (!fs.existsSync(prjConfPath)) {
@@ -40,24 +42,34 @@ function scanPrjConf(prjConfPath: string): ProjectCapabilities {
 		}
 
 		// Check for UART configuration
-		const hasUART =
+		// In Zephyr, UART backend is often default if LOG is enabled, unless explicitly disabled.
+		// We look for explicit disablement (=n) or explicit enablement (=y).
+		const uartDisabled = /^\s*CONFIG_LOG_BACKEND_UART\s*=\s*n/im.test(content)
+		const uartEnabled =
 			/^\s*CONFIG_LOG_BACKEND_UART\s*=\s*y/im.test(content) ||
 			/^\s*CONFIG_SERIAL\s*=\s*y/im.test(content) ||
 			/^\s*CONFIG_UART\s*=\s*y/im.test(content)
 
-		if (hasUART || !hasRTT) {
-			// UART defaults to true if RTT is not explicitly configured
+		if (uartEnabled || (!uartDisabled && !hasRTT)) {
+			// UART is enabled if explicitly set OR if it's the default (no RTT, not disabled)
+			// Even if RTT is present, UART might be active, but we prioritize RTT recommendation.
+			capabilities.hasUART = true
+		} else if (!uartDisabled) {
+			// If RTT is present and UART not disabled, likely both are active or UART is fallback
 			capabilities.hasUART = true
 		}
 
+		// Check if logging is explicitly disabled
+		if (/^\s*CONFIG_LOG\s*=\s*n/im.test(content)) {
+			capabilities.loggingDisabled = true
+		}
+
 		// Recommend based on what's available
-		if (hasRTT && !hasUART) {
+		if (hasRTT) {
+			// RTT is always recommended if available (faster, non-intrusive)
 			capabilities.recommendedTransport = "rtt"
-		} else if (!hasRTT && hasUART) {
+		} else {
 			capabilities.recommendedTransport = "uart"
-		} else if (hasRTT && hasUART) {
-			// Both present, RTT is faster
-			capabilities.recommendedTransport = "rtt"
 		}
 	} catch (error) {
 		console.error(`Error reading prj.conf: ${error instanceof Error ? error.message : String(error)}`)
@@ -91,6 +103,7 @@ export function detectProjectCapabilities(workspacePath: string): ProjectCapabil
 		hasUART: true,
 		recommendedTransport: "uart",
 		configPath: null,
+		loggingDisabled: false,
 	}
 }
 

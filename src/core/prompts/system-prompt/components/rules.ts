@@ -56,6 +56,8 @@ const getRulesTemplateText = (context: SystemPromptContext) => `RULES
     * User: "Monitor running device" → \`reset=false\` (mid-runtime)
     * User: "List devices" → \`list_nrf=true\` (clean output)
 
+- **One-Shot Log Analysis:** When analyzing logs, you MUST follow the **LOG ANALYZER WORKFLOW** in the Nordic Instruction Handbook EXACTLY. Do not skip backend detection or role identification steps.
+
 
 - When using the search_files tool, craft your regex patterns carefully to balance specificity and flexibility. Based on the user's task you may use it to find code patterns, TODO comments, function definitions, or any text-based information across the project. The results include context, so analyze the surrounding code to better understand the matches. Leverage the search_files tool in combination with other tools for more comprehensive analysis. For example, use it to find specific code patterns, then use read_file to examine the full context of interesting matches before using replace_in_file to make informed changes.
 - When creating a new project, organize all new files within a dedicated project directory unless the user specifies otherwise. Structure the project logically, adhering to best practices for the specific type of project being created.

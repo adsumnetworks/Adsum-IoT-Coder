@@ -324,7 +324,7 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
     
     if reset:
         print(f"  Resetting {len(devices)} device(s)...")
-        for name, serial in devices:
+        for name, serial in devices.items():
             reset_device(serial)
     
     started = []
@@ -335,9 +335,20 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
         print(f"  ERROR: {e}")
         return {}
     
-    for name, serial in devices:
-        final_file = os.path.abspath(os.path.join(output_dir, f"rtt_{name}_{timestamp}.log"))
-        raw_file = final_file + ".raw"
+    # Use provided output directory directly (handler manages structure)
+    log_dir = output_dir 
+    os.makedirs(log_dir, exist_ok=True)
+    
+    for name, serial in devices.items():
+        # Determine role from name
+        role = name if name in ["central", "peripheral"] else "device"
+        
+        # Filename: rtt/{role}_{serial}_{timestamp}.log
+        filename = f"{role}_{serial}_{timestamp}.log"
+        final_file = os.path.join(log_dir, filename)
+        
+        # Determine raw file path (temp)
+        raw_file = os.path.join(log_dir, f"{role}_{serial}_{timestamp}_raw.log")
         
         cmd = [jlink_exe, "-Device", device_type, "-If", "SWD", "-Speed", "4000", "-USB", str(serial), "-RTTChannel", str(channel), raw_file]
         try:
@@ -381,6 +392,106 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
     return {n: f for n, p, t, r, f in started}
 
 
+def analyze_logs(log_files):
+    """Enhanced analysis of log files with BLE event tracking and timeline."""
+    print("\n[ANALYSIS] Scanning logs for key patterns...")
+    
+    # BLE Event Patterns
+    patterns = {
+        "boot": ["*** Booting", "Zephyr OS", "ncs", "main()"],
+        "errors": ["[ERR]", "Error", "FAULT", "assert", "panic", "HardFault", "BusFault"],
+        "warnings": ["[WRN]", "Warning"],
+        "ble_adv": ["Advertising successfully started", "Advertising started", "adv_data"],
+        "ble_conn": ["Connected", "Security changed", "Le Connected"],
+        "ble_disc": ["Disconnected", "Le Disconnected", "Terminated"],
+        "ble_scan": ["Scanning started", "Device found"],
+        "ble_data": ["Notification enabled", "Value:", "Data received"],
+        "mtu": ["MTU exchange", "MTU updated"]
+    }
+    
+    # Error Code Map (Common Zephyr/BLE codes)
+    error_codes = {
+        "0x08": "Timeout",
+        "0x13": "Remote User Terminated Connection",
+        "0x16": "Local Host Terminated Connection",
+        "0x3d": "MIC Failure (Decryption Error)",
+        "-116": "ETIMEDOUT",
+        "-128": "ENOTCONN"
+    }
+    
+    events = []
+    
+    for log_file in log_files:
+        filename = os.path.basename(log_file)
+        print(f"\n  File: {filename}")
+        
+        try:
+            with open(log_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+                lines = content.split('\n')
+                
+            print(f"    Total lines: {len(lines)}")
+            
+            # Pattern Matching
+            stats = {k: 0 for k in patterns}
+            
+            for line in lines:
+                # Track statistics
+                for category, keywords in patterns.items():
+                    if any(kw.lower() in line.lower() for kw in keywords):
+                        stats[category] += 1
+                        
+                # Extract Timeline Events
+                # RTT logs often have timestamp at start: "00> [00:00:00.123,456] <inf> ..."
+                timestamp = ""
+                if "]" in line and "[" in line:
+                     try:
+                        timestamp = line.split(']')[0].split('[')[-1].strip()
+                     except:
+                        pass
+                
+                # Check for specific notable events to add to timeline
+                if any(kw in line for kw in ["Connected", "Disconnected", "Booting", "Advertising", "Error", "FAULT"]):
+                    events.append({
+                        "time": timestamp,
+                        "file": filename,
+                        "event": line.strip()
+                    })
+                    
+                # Check for error codes
+                for code, desc in error_codes.items():
+                    if code in line:
+                         events.append({
+                            "time": timestamp,
+                            "file": filename,
+                            "event": f"⚠️ ERROR CODE {code}: {desc}"
+                        })
+
+            # Print Statistics
+            for category, count in stats.items():
+                if count > 0:
+                    print(f"    {category.upper()}: {count} matches")
+                    
+        except Exception as e:
+            print(f"    ERROR reading file: {e}")
+
+    # Generate Timeline Summary
+    if events:
+        print("\n[TIMELINE] Key Events across all devices:")
+        print("-" * 80)
+        # Sort by timestamp if possible
+        try:
+            events.sort(key=lambda x: x["time"])
+        except:
+             pass 
+             
+        for e in events:
+            # Format: [Time] [File] Event
+            print(f"  [{e['time']:<12}] {e['file'][:15]:<15} | {e['event']}")
+        print("-" * 80)
+        print("Tip: Use these timestamps to correlate interactions between Central and Peripheral.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="nRF RTT Logger")
     parser.add_argument("--list", action="store_true")
@@ -392,6 +503,8 @@ def main():
     parser.add_argument("--duration", type=int, default=DEFAULT_DURATION)
     parser.add_argument("--output", type=str, default="logs")
     parser.add_argument("--no-reset", action="store_true")
+    parser.add_argument("--reset-serials", help="Device serial numbers to reset (comma-separated)")
+    parser.add_argument("--analyze", action="store_true", help="Analyze logs after recording")
     parser.add_argument("--channel", type=int, default=DEFAULT_RTT_CHANNEL)
     parser.add_argument("--device-type", type=str, default=DEFAULT_DEVICE_TYPE)
     
@@ -400,27 +513,53 @@ def main():
     if args.list:
         serials = list_jlink_devices()
         print("\nConnected J-Link Devices:")
-        for s in sorted(serials): print(f"  {s}")
+        if not serials:
+            print("  No devices found.")
+        for s in serials:
+            print(f"  {s}")
         return
 
-    if args.capture:
-        if args.devices:
-            devices = []
-            for d in args.devices.split(','):
-                if ':' in d:
-                    n, s = d.split(':', 1)
-                    devices.append((n.strip(), s.strip()))
-                else:
-                    devices.append((d.strip(), d.strip()))
-        elif args.port:
-            devices = [(args.name, args.port)]
-        elif args.auto_detect:
-            serials = list_jlink_devices()
-            devices = [(f"device_{i}", s) for i, s in enumerate(sorted(serials))]
+    # Parse devices
+    devices = {}
+    if args.devices:
+        for item in args.devices.split(","):
+            if ":" in item or "=" in item:
+                # Support name:serial or name=serial
+                sep = ":" if ":" in item else "="
+                name, serial = item.split(sep, 1)
+                devices[name.strip()] = serial.strip()
+            else:
+                print(f"ERROR: Invalid device format '{item}'. Use name:serial")
+                sys.exit(1)
+    elif args.port:
+        devices["device"] = args.port
+    else:
+        # Auto-detect if requested
+        if args.auto_detect:
+            print("[AUTO] Detecting connected J-Link devices...")
+            jlink_devices = list_jlink_devices()
+            if not jlink_devices:
+                print("ERROR: No J-Link devices found.")
+                sys.exit(1)
+            
+            for i, serial in enumerate(jlink_devices):
+                name = f"device{i+1}"
+                devices[name] = serial
+                print(f"  - Auto-assigned {name}: {serial}")
         else:
-            return
+             print("ERROR: Specify --port, --devices, or --auto-detect")
+             parser.print_help()
+             sys.exit(1)
 
-        capture_rtt_logs(devices, args.duration, args.output, not args.no_reset, args.device_type, args.channel)
+    # Capture
+    log_files = capture_rtt_logs(devices, args.duration, args.output, reset=not args.no_reset, device_type=args.device_type, channel=args.channel)
+    
+    # Analyze
+    if args.analyze and log_files:
+        # Convert map values to list
+        file_list = list(log_files.values()) if isinstance(log_files, dict) else log_files
+        if file_list:
+            analyze_logs(file_list)
 
 if __name__ == "__main__":
     main()
