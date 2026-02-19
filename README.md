@@ -1,151 +1,175 @@
-<div align="center"><sub>
-English | <a href="https://github.com/cline/cline/blob/main/locales/es/README.md" target="_blank">Español</a> | <a href="https://github.com/cline/cline/blob/main/locales/de/README.md" target="_blank">Deutsch</a> | <a href="https://github.com/cline/cline/blob/main/locales/ja/README.md" target="_blank">日本語</a> | <a href="https://github.com/cline/cline/blob/main/locales/zh-cn/README.md" target="_blank">简体中文</a> | <a href="https://github.com/cline/cline/blob/main/locales/zh-tw/README.md" target="_blank">繁體中文</a> | <a href="https://github.com/cline/cline/blob/main/locales/ko/README.md" target="_blank">한국어</a>
-</sub></div>
+<div align="center">
 
-# Cline
+# nRF AI Debugger
 
-<p align="center">
-  <img src="https://media.githubusercontent.com/media/cline/cline/main/assets/docs/demo.gif" width="100%" />
+### Open-Source AI Agent for Debugging nRF Devices
+
+Captures live logs from your nRF boards, analyzes BLE behavior, and generates detailed reports — right from VS Code.
+
+<p>
+  <a href="https://marketplace.visualstudio.com/items?itemName=adsumnetworks.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/v/adsumnetworks.nrf-ai-debugger?label=VS%20Code%20Marketplace&logo=visual-studio-code&color=0078d4" alt="VS Marketplace"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/nRF%20Connect%20SDK-v2.x%20%7C%20v3.x-00A9CE" alt="NCS">
+  <img src="https://img.shields.io/badge/Zephyr%20RTOS-compatible-blueviolet" alt="Zephyr">
 </p>
 
-<div align="center">
-<table>
-<tbody>
-<td align="center">
-<a href="https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev" target="_blank"><strong>Download on VS Marketplace</strong></a>
-</td>
-<td align="center">
-<a href="https://discord.gg/cline" target="_blank"><strong>Discord</strong></a>
-</td>
-<td align="center">
-<a href="https://www.reddit.com/r/cline/" target="_blank"><strong>r/cline</strong></a>
-</td>
-<td align="center">
-<a href="https://github.com/cline/cline/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop" target="_blank"><strong>Feature Requests</strong></a>
-</td>
-<td align="center">
-<a href="https://docs.cline.bot/getting-started/for-new-coders" target="_blank"><strong>Getting Started</strong></a>
-</td>
-</tbody>
-</table>
+<!-- Replace with actual demo GIF once recorded -->
+<p><img src="assets/docs/demo.gif" width="100%" alt="nRF AI Debugger Demo" /></p>
+
 </div>
-
-Meet Cline, an AI assistant that can use your **CLI** a**N**d **E**ditor.
-
-Thanks to [Claude Sonnet's agentic coding capabilities](https://www.anthropic.com/claude/sonnet), Cline can handle complex software development tasks step-by-step. With tools that let him create & edit files, explore large projects, use the browser, and execute terminal commands (after you grant permission), he can assist you in ways that go beyond code completion or tech support. Cline can even use the Model Context Protocol (MCP) to create new tools and extend his own capabilities. While autonomous AI scripts traditionally run in sandboxed environments, this extension provides a human-in-the-loop GUI to approve every file change and terminal command, providing a safe and accessible way to explore the potential of agentic AI.
-
-1. Enter your task and add images to convert mockups into functional apps or fix bugs with screenshots.
-2. Cline starts by analyzing your file structure & source code ASTs, running regex searches, and reading relevant files to get up to speed in existing projects. By carefully managing what information is added to context, Cline can provide valuable assistance even for large, complex projects without overwhelming the context window.
-3. Once Cline has the information he needs, he can:
-    - Create and edit files + monitor linter/compiler errors along the way, letting him proactively fix issues like missing imports and syntax errors on his own.
-    - Execute commands directly in your terminal and monitor their output as he works, letting him e.g., react to dev server issues after editing a file.
-    - For web development tasks, Cline can launch the site in a headless browser, click, type, scroll, and capture screenshots + console logs, allowing him to fix runtime errors and visual bugs.
-4. When a task is completed, Cline will present the result to you with a terminal command like `open -a "Google Chrome" index.html`, which you run with a click of a button.
-
-> [!TIP]
-> Follow [this guide](https://docs.cline.bot/features/customization/opening-cline-in-sidebar) to open Cline on the right side of your editor. This lets you use Cline side-by-side with your file explorer, and see how he changes your workspace more clearly.
 
 ---
 
-<img align="right" width="340" src="https://github.com/user-attachments/assets/3cf21e04-7ce9-4d22-a7b9-ba2c595e88a4">
+## The Problem
 
-### Use any API and Model
+**Debugging BLE applications on nRF devices is painful.** You flash your firmware, open a terminal, and stare at raw logs scrolling past. You try to match timestamps between two connected devices. You manually search your source code to figure out what that error code means.
 
-Cline supports API providers like OpenRouter, Anthropic, OpenAI, Google Gemini, AWS Bedrock, Azure, GCP Vertex, Cerebras and Groq. You can also configure any OpenAI compatible API, or use a local model through LM Studio/Ollama. If you're using OpenRouter, the extension fetches their latest model list, allowing you to use the newest models as soon as they're available.
+**nRF AI Debugger changes that.** It's an AI agent that lives inside VS Code — it captures live logs from your connected nRF boards and analyzes them, correlating log output with your actual source code to pinpoint issues. No more guessing.
 
-The extension also keeps track of total tokens and API usage cost for the entire task loop and individual requests, keeping you informed of spend every step of the way.
+---
 
-<!-- Transparent pixel to create line break after floating image -->
+## Features
 
-<img width="2000" height="0" src="https://github.com/user-attachments/assets/ee14e6f7-20b8-4391-9091-8e8e25561929"><br>
+### 📊 Capture & Analyze Device Logs
 
-<img align="left" width="370" src="https://github.com/user-attachments/assets/81be79a8-1fdb-4028-9129-5fe055e01e76">
+Your AI debugging partner captures live logs from connected nRF boards, reads them like an expert, and produces a structured analysis report — including boot verification, connection flow, data transfer metrics, and error diagnosis.
 
-### Run Commands in Terminal
+<!-- Replace with actual Feature GIF once recorded -->
+<p><img src="assets/docs/analyzer.gif" width="100%" alt="Log Analyzer Demo" /></p>
 
-Thanks to the new [shell integration updates in VSCode v1.93](https://code.visualstudio.com/updates/v1_93#_terminal-shell-integration-api), Cline can execute commands directly in your terminal and receive the output. This allows him to perform a wide range of tasks, from installing packages and running build scripts to deploying applications, managing databases, and executing tests, all while adapting to your dev environment & toolchain to get the job done right.
+**Key Capabilities:**
+- 🔍 **Auto-detects** connected devices via J-Link serial numbers
+- 📡 **Dual-device capture** — record two devices simultaneously (e.g. Central + Peripheral)
+- 🧠 **Code-aware analysis** — correlates log errors with your source code
+- 📋 **Expert reports** — structured analysis with connection timeline, performance metrics, and root cause
+- 💡 **Proactive suggestions** — recommends deeper logging if data is sparse, offers detailed report generation
 
-For long running processes like dev servers, use the "Proceed While Running" button to let Cline continue in the task while the command runs in the background. As Cline works he’ll be notified of any new terminal output along the way, letting him react to issues that may come up, such as compile-time errors when editing files.
+---
 
-<!-- Transparent pixel to create line break after floating image -->
+### 🔧 Generate Logging Code
 
-<img width="2000" height="0" src="https://github.com/user-attachments/assets/ee14e6f7-20b8-4391-9091-8e8e25561929"><br>
+Before you can analyze, you need good logs. The agent reads your nRF Connect SDK project, understands the BLE stack, and injects the right log statements — so when it analyzes later, it knows exactly what each line means.
 
-<img align="right" width="400" src="https://github.com/user-attachments/assets/c5977833-d9b8-491e-90f9-05f9cd38c588">
+<!-- Replace with actual Feature GIF once recorded -->
+<p><img src="assets/docs/generator.gif" width="100%" alt="Log Generator Demo" /></p>
 
-### Create and Edit Files
+**Key Capabilities:**
+- 📁 **Multi-project awareness** — handles Central + Peripheral workspaces simultaneously
+- ⚙️ **Auto-configures** logging backend (RTT vs UART) in `prj.conf`
+- 🎯 **NCS-compliant** — follows Zephyr RTOS logging best practices
+- 🔘 **Interactive** — asks before modifying, suggests RTT over UART for BLE projects
 
-Cline can create and edit files directly in your editor, presenting you a diff view of the changes. You can edit or revert Cline's changes directly in the diff view editor, or provide feedback in chat until you're satisfied with the result. Cline also monitors linter/compiler errors (missing imports, syntax errors, etc.) so he can fix issues that come up along the way on his own.
+> **Why does the agent generate the logging code?** Because an agent that wrote the log statements can analyze the output far more intelligently — it understands the context because it created it.
 
-All changes made by Cline are recorded in your file's Timeline, providing an easy way to track and revert modifications if needed.
+---
 
-<!-- Transparent pixel to create line break after floating image -->
+## Quick Start
 
-<img width="2000" height="0" src="https://github.com/user-attachments/assets/ee14e6f7-20b8-4391-9091-8e8e25561929"><br>
+1. **Install** nRF AI Debugger from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=adsumnetworks.nrf-ai-debugger)
+2. **Open** your nRF Connect SDK project in VS Code
+3. **Click** the nRF AI Debugger icon in the sidebar
+4. **Configure** your AI provider (see [Tested Models](#tested-models) below)
+5. **Choose** a mode: **"Analyze Device Logs"** or **"Generate Logging Code"**
 
-<img align="left" width="370" src="https://github.com/user-attachments/assets/bc2e85ba-dfeb-4fe6-9942-7cfc4703cbe5">
+---
 
-### Use the Browser
+## Requirements
 
-With Claude Sonnet's new [Computer Use](https://www.anthropic.com/news/3-5-models-and-computer-use) capability, Cline can launch a browser, click elements, type text, and scroll, capturing screenshots and console logs at each step. This allows for interactive debugging, end-to-end testing, and even general web use! This gives him autonomy to fixing visual bugs and runtime issues without you needing to handhold and copy-pasting error logs yourself.
+| Requirement | Details |
+|-------------|---------|
+| **VS Code** | v1.84 or later |
+| **nRF Connect SDK** | v2.x or v3.x |
+| **[nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack)** | Required — includes terminal, toolchain manager, and device tree support |
+| **Python** | 3.8+ (used by log capture scripts) |
+| **Hardware** | nRF DK or any J-Link-compatible board for RTT capture |
+| **AI Provider** | See [Tested Models](#tested-models) |
 
-Try asking Cline to "test the app", and watch as he runs a command like `npm run dev`, launches your locally running dev server in a browser, and performs a series of tests to confirm that everything works. [See a demo here.](https://x.com/sdrzn/status/1850880547825823989)
+---
 
-<!-- Transparent pixel to create line break after floating image -->
+## Tested Hardware
 
-<img width="2000" height="0" src="https://github.com/user-attachments/assets/ee14e6f7-20b8-4391-9091-8e8e25561929"><br>
+| Board | BLE | RTT | UART | Status |
+|-------|-----|-----|------|--------|
+| nRF52840 DK | ✅ | ✅ | ✅ | **Tested** ✅ |
+| nRF52832 DK | ✅ | ✅ | ✅ | **Tested** ✅ |
 
-<img align="right" width="350" src="https://github.com/user-attachments/assets/ac0efa14-5c1f-4c26-a42d-9d7c56f5fadd">
+> Built for BLE debugging with the nRF Connect SDK. Should work with other nRF5x boards — [tell us what you're using](https://github.com/adsumnetworks/AIDebug-Agent/issues) and we'll add official support!
 
-### "add a tool that..."
+---
 
-Thanks to the [Model Context Protocol](https://github.com/modelcontextprotocol), Cline can extend his capabilities through custom tools. While you can use [community-made servers](https://github.com/modelcontextprotocol/servers), Cline can instead create and install tools tailored to your specific workflow. Just ask Cline to "add a tool" and he will handle everything, from creating a new MCP server to installing it into the extension. These custom tools then become part of Cline's toolkit, ready to use in future tasks.
+## Tested Models
 
--   "add a tool that fetches Jira tickets": Retrieve ticket ACs and put Cline to work
--   "add a tool that manages AWS EC2s": Check server metrics and scale instances up or down
--   "add a tool that pulls the latest PagerDuty incidents": Fetch details and ask Cline to fix bugs
+nRF AI Debugger works through [OpenRouter](https://openrouter.ai/) and any OpenAI-compatible API endpoint.
 
-<!-- Transparent pixel to create line break after floating image -->
+| Model | Provider | Tested | Notes |
+|-------|----------|--------|-------|
+| **GLM-4.7** (Coding Plan) | OpenRouter | ✅ **Recommended** | Best cost/performance ratio for embedded debugging |
+| **Claude Haiku 4.5** | OpenRouter | ✅ Tested | Fast, reliable alternative |
 
-<img width="2000" height="0" src="https://github.com/user-attachments/assets/ee14e6f7-20b8-4391-9091-8e8e25561929"><br>
+> More providers and models coming in future releases. Have a model suggestion? [Let us know!](https://github.com/adsumnetworks/AIDebug-Agent/discussions)
 
-<img align="left" width="360" src="https://github.com/user-attachments/assets/7fdf41e6-281a-4b4b-ac19-020b838b6970">
+---
 
-### Add Context
+## How It Works
 
-**`@url`:** Paste in a URL for the extension to fetch and convert to markdown, useful when you want to give Cline the latest docs
+```mermaid
+graph LR
+    A[Your nRF Project] -->|Agent reads code| B[Log Generator]
+    B -->|Injects log statements| A
+    A -->|Build & Flash| C[nRF Device]
+    C -->|Live RTT/UART capture| D[Log Analyzer]
+    D -->|Code-aware analysis| E[Expert Report]
+```
 
-**`@problems`:** Add workspace errors and warnings ('Problems' panel) for Cline to fix
+- Built on top of [Cline](https://github.com/cline/cline) — an open-source AI coding assistant
+- Custom nRF-specific modes with deep knowledge of Zephyr RTOS and the BLE stack
+- Embedded Python scripts for reliable J-Link RTT and UART log capture
+- Built-in device detection via J-Link and `nrfutil`
 
-**`@file`:** Adds a file's contents so you don't have to waste API requests approving read file (+ type to search files)
+---
 
-**`@folder`:** Adds folder's files all at once to speed up your workflow even more
+## Roadmap
 
-<!-- Transparent pixel to create line break after floating image -->
+| Version | Focus | Status |
+|---------|-------|--------|
+| **v0.1** | Log Code Generator + Log Analyzer | ✅ Released |
+| **v0.2** | Deep BLE stack analysis — connection parameters, PHY negotiation, MTU exchange, GATT operations | 🔜 Next |
+| **v0.3** | Expand support — more boards, more tested LLMs, more protocols, more embedded tools (based on community requests) | 📋 Planned |
+| **Future** | Driven by **your** needs | [Request a feature →](https://github.com/adsumnetworks/AIDebug-Agent/discussions) |
 
-<img width="2000" height="0" src="https://github.com/user-attachments/assets/ee14e6f7-20b8-4391-9091-8e8e25561929"><br>
+> We're building this tool based on **real developer needs**. Tell us what board you use, what protocol you debug, and what analysis you need — we'll prioritize accordingly.
 
-<img align="right" width="350" src="https://github.com/user-attachments/assets/140c8606-d3bf-41b9-9a1f-4dbf0d4c90cb">
+---
 
-### Checkpoints: Compare and Restore
+## About Us
 
-As Cline works through a task, the extension takes a snapshot of your workspace at each step. You can use the 'Compare' button to see a diff between the snapshot and your current workspace, and the 'Restore' button to roll back to that point.
+**[Adsum Networks](https://github.com/adsumnetworks)** — We've been developing IoT solutions on nRF and other embedded platforms for over 7 years, building connected systems for smart city and industrial applications using BLE, cellular, and Wi-Fi technologies.
 
-For example, when working with a local web server, you can use 'Restore Workspace Only' to quickly test different versions of your app, then use 'Restore Task and Workspace' when you find the version you want to continue building from. This lets you safely explore different approaches without losing progress.
+We built nRF AI Debugger because **we needed it ourselves**. Debugging multi-device BLE applications with raw logs was the most painful part of our workflow. So we built an AI agent that does it for us — and now we're sharing it with the community.
 
-<!-- Transparent pixel to create line break after floating image -->
+This project is part of our broader vision: **creating agentic AI tools for IoT and embedded developers** — not just code generators, but intelligent assistants that understand hardware, protocols, and real-world constraints.
 
-<img width="2000" height="0" src="https://github.com/user-attachments/assets/ee14e6f7-20b8-4391-9091-8e8e25561929"><br>
+---
 
 ## Contributing
 
-To contribute to the project, start with our [Contributing Guide](CONTRIBUTING.md) to learn the basics. You can also join our [Discord](https://discord.gg/cline) to chat with other contributors in the `#contributors` channel. If you're looking for full-time work, check out our open positions on our [careers page](https://cline.bot/join-us)!
+Pull requests are welcome! Help us make nRF AI Debugger better:
 
-## Enterprise
+- 🐛 Report bugs on [Issues](https://github.com/adsumnetworks/AIDebug-Agent/issues)
+- 💡 Request features on [Discussions](https://github.com/adsumnetworks/AIDebug-Agent/discussions)
+- 🧪 Help us test on more nRF boards
+- 🤖 Suggest new LLM models to test
 
-Get the same Cline experience with enterprise-grade controls: SSO (SAML/OIDC), global policies and configuration, observability with audit trails, private networking (VPC/private link), and self-hosted or on-prem deployments, and enterprise support. Learn more at our [enterprise page](https://cline.bot/enterprise) or [talk to us](https://cline.bot/contact-sales).
+---
 
+## Acknowledgments
+
+- [Cline](https://github.com/cline/cline) — the open-source AI assistant this project builds upon
+- [Nordic Semiconductor](https://www.nordicsemi.com/) — for the nRF Connect SDK and exceptional developer tools
+- [Zephyr Project](https://www.zephyrproject.org/) — the RTOS powering nRF applications
+
+---
 
 ## License
 
-[Apache 2.0 © 2025 Cline Bot Inc.](./LICENSE)
+[Apache 2.0 © 2026 Adsum Networks](./LICENSE)
