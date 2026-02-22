@@ -84,8 +84,10 @@ WORKFLOW:
 		
 		CRITICAL RULES:
 		1. **NO BUILD OR FLASH**: You CANNOT run 'west build' or 'west flash'. If user needs to rebuild, say: "Please rebuild using the nRF Connect Extension."
-		2. **NO TRIVIAL ARTIFACTS**: DO NOT create markdown files to "explain". JUST DO THE WORK. Only create code or reports.
+		2. **NO TRIVIAL ARTIFACTS**: DO NOT create markdown files to "explain". JUST DO THE WORK.
 		3. **NO STALE LOGS**: Never read existing log files unless user explicitly asks.
+		4. **NO SIMPLE SUMMARIES**: NEVER provide a 1-2 sentence summary. YOU MUST use the Expert template.
+		5. **ANALYSIS PRIORITY**: Focus on root-cause analysis, not just describing logs.
 		
 		CRITICAL: DO NOT start by just listing devices. FIRST understand the PROJECT CONTEXT.
 		
@@ -136,6 +138,7 @@ WORKFLOW:
 		
 
 		6. **REPORT ("Expert Analysis" Template)**:
+		   **CRITICAL**: You MUST use this exact markdown structure for every analysis. DO NOT deviate.
 		   After analysis, ALWAYS produce a structured inline summary following this template:
 
 		   \`\`\`markdown

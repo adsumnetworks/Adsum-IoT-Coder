@@ -1,11 +1,10 @@
-import { execFile } from "node:child_process"
 import * as path from "node:path"
 import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
 import { activateNordicTerminal } from "@/hosts/vscode/hostbridge/workspace/executeNordicCommand"
 import { getCachedCapabilities } from "@/platform/nordicProjectDetector"
-import detectPython from "@/platform/pythonDetector"
+
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
@@ -69,6 +68,16 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		if (!command) {
 			config.taskState.consecutiveMistakeCount++
 			return await config.callbacks.sayAndCreateMissingParamError(this.name, "command")
+		}
+
+		// ENFORCE: Block build/flash commands — agent must NOT do these
+		const lowerCommand = command.toLowerCase().trim()
+		if (lowerCommand.includes("west build") || lowerCommand.includes("west flash")) {
+			const errorMessage =
+				"BUILD/FLASH operations are NOT allowed via this tool. " +
+				"Please tell the user: 'To build or flash, use the nRF Connect Extension directly (Build/Flash buttons in the sidebar).'"
+			await config.callbacks.say("error", errorMessage)
+			return formatResponse.toolError(errorMessage)
 		}
 
 		config.taskState.consecutiveMistakeCount = 0
@@ -155,9 +164,16 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			return this.executeInNrfTerminal(config, cmd)
 		}
 
-		// 1. Handle "list" operation internally (Hidden "Under the Hood")
+		// 1. Handle "list" operation via nRF terminal (ensures nrfutil is available)
 		if (operation === "list") {
-			return this.listDevicesInternal(transport)
+			await config.callbacks.say(
+				"tool",
+				JSON.stringify({
+					tool: "triggerNordicAction",
+					path: `Nordic Logger: list devices`,
+				}),
+			)
+			return this.executeInNrfTerminal(config, "nrfutil device list")
 		}
 
 		// 2. Resolve paths for "capture" / "test" / "monitor"
@@ -201,6 +217,15 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		if (output && !path.isAbsolute(output)) {
 			if (config.cwd) {
 				resolvedOutput = path.join(config.cwd, output)
+			}
+		}
+
+		// Ensure transport-specific subfolder is used
+		if (resolvedOutput && transport) {
+			const transportPath = transport.toLowerCase()
+			if (!resolvedOutput.toLowerCase().endsWith(transportPath) && 
+				!resolvedOutput.toLowerCase().endsWith(transportPath + path.sep)) {
+				resolvedOutput = path.join(resolvedOutput, transportPath)
 			}
 		}
 
@@ -275,89 +300,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		return this.executeInNrfTerminal(config, cmd)
 	}
 
-	private async listDevicesInternal(transport?: string): Promise<ToolResponse> {
-		// Select the appropriate script based on transport
-		const scriptName = transport === "rtt" ? "nrf_rtt_logger.py" : "nrf_uart_logger.py"
-		const scriptPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", scriptName)
 
-		// Try to detect Python first and run the script via execFile (no shell).
-		// If that fails or returns no devices, fall back to `nrfutil device list`.
-		const pythonCmd = await detectPython().catch(() => null)
-
-		if (pythonCmd) {
-			try {
-				const execResult = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-					// Normalize pythonCmd that may include '-3' (e.g., 'py -3')
-					if (pythonCmd.includes(" ")) {
-						const parts = pythonCmd.split(" ")
-						execFile(
-							parts[0],
-							[parts[1], scriptPath, "--list"],
-							{ windowsHide: true, timeout: 10000 },
-							(err, stdout, stderr) => {
-								if (err) return reject(err)
-								return resolve({ stdout: stdout || "", stderr: stderr || "" })
-							},
-						)
-					} else {
-						execFile(
-							pythonCmd,
-							[scriptPath, "--list"],
-							{ windowsHide: true, timeout: 10000 },
-							(err, stdout, stderr) => {
-								if (err) return reject(err)
-								return resolve({ stdout: stdout || "", stderr: stderr || "" })
-							},
-						)
-					}
-				})
-
-				const output = execResult.stdout.trim()
-				if (output && !output.includes("No nRF devices found")) {
-					return [
-						{
-							type: "text",
-							text: output,
-						},
-					]
-				}
-			} catch (err) {
-				console.warn("python execFile failed for device list:", err instanceof Error ? err.message : String(err))
-				// fall through to fallback
-			}
-		}
-
-		// Fallback: try `nrfutil device list` (works on Windows where nrfjprog may be missing)
-		try {
-			const nrfutilResult = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-				execFile("nrfutil", ["device", "list"], { windowsHide: true, timeout: 10000 }, (err, stdout, stderr) => {
-					if (err) return reject(err)
-					return resolve({ stdout: stdout || "", stderr: stderr || "" })
-				})
-			})
-
-			const output = nrfutilResult.stdout.trim()
-			if (!output) {
-				return [
-					{
-						type: "text",
-						text: "No connected nRF devices found.",
-					},
-				]
-			}
-
-			return [
-				{
-					type: "text",
-					text: output,
-				},
-			]
-		} catch (err) {
-			return formatResponse.toolError(
-				`Failed to list devices via python script and 'nrfutil': ${err instanceof Error ? err.message : String(err)}`,
-			)
-		}
-	}
 
 	private async executeInNrfTerminal(config: TaskConfig, command: string): Promise<ToolResponse> {
 		// Step 1: Ensure nRF terminal is active (creates if needed)
