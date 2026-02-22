@@ -13,7 +13,7 @@ Captures live logs from your connected nRF devices, analyzes application behavio
   <img src="https://img.shields.io/badge/Zephyr%20RTOS-compatible-blueviolet" alt="Zephyr">
 </p>
 
-<!- Replace with actual GIF once recorded ->
+
 <p><img src="assets/docs/demo.gif" width="100%" alt="nRF AI Debugger Demo" /></p>
 
 </div>
@@ -33,8 +33,8 @@ Captures live logs from your connected nRF devices, analyzes application behavio
 ### 📊 1. Capture & Analyze Device Logs
 The **nRF AI debugger** captures live RTT or UART logs, identifies patterns in your application's behavior, and produces structured analysis reports—covering everything from boot sequences to protocol-specific events.
 
-<!- Replace with actual Feature GIF once recorded ->
-<p><img src="assets/docs/analyzer.gif" width="100%" alt="Log Analyzer Demo" /></p>
+<!-- Replace with actual Feature GIF once recorded -->
+<!-- <p><img src="assets/docs/analyzer.gif" width="100%" alt="Log Analyzer Demo" /></p> -->
 
 
 **Key Capabilities:**
@@ -46,8 +46,8 @@ The **nRF AI debugger** captures live RTT or UART logs, identifies patterns in y
 ### 🔧 2. Generate Best-Practice Logging
 Before you can analyze, you need good logs. The agent reads your nRF Connect SDK project, understands the BLE stack, and injects the right log statements — so when it analyzes later, it knows exactly what each line means.
 
-<!- Replace with actual Feature GIF once recorded ->
-<p><img src="assets/docs/generator.gif" width="100%" alt="Log Generator Demo" /></p>
+<!-- Replace with actual Feature GIF once recorded -->
+<!-- <p><img src="assets/docs/generator.gif" width="100%" alt="Log Generator Demo" /></p> -->
 
 **Key Capabilities:**
 - 📁 **Multi-project awareness** — handles Central + Peripheral workspaces simultaneously
@@ -63,6 +63,9 @@ Before you can analyze, you need good logs. The agent reads your nRF Connect SDK
 1. **Install** nRF AI Debugger from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=adsumnetworks.nrf-ai-debugger).
 2. **Configure** your AI provider (We recommend **GLM-4.7** for cost-effective, high-performance analysis).
 3. **Choose** a mode: **"Analyze Device Logs"** or **"Generate Logging Code"**.
+
+<p><img src="assets/docs/home.png" width="100%" alt="nRF AI Debugger Home" /></p>
+
 
 ---
 
