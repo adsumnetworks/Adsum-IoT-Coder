@@ -4,7 +4,7 @@
 
 ### Open-Source AI Agent for Debugging nRF Devices
 
-Captures live logs from your connected nRF devices, analyzes application behavior, and generates expert insights — right from VS Code.
+Captures live logs from your connected nRF devices, analyzes applications behavior, and generates expert insights — right from VS Code.
 
 <p>
   <a href="https://marketplace.visualstudio.com/items?itemName=adsumnetworks.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/v/adsumnetworks.nrf-ai-debugger?label=VS%20Code%20Marketplace&logo=visual-studio-code&color=0078d4" alt="VS Marketplace"></a>
@@ -62,7 +62,7 @@ Before you can analyze, you need good logs. The agent reads your nRF Connect SDK
 ## Quick Start
 1. **Install** nRF AI Debugger from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=adsumnetworks.nrf-ai-debugger).
 2. **Configure** your AI provider (We recommend **GLM-4.7** for cost-effective, high-performance analysis).
-3. **Choose** a mode: **"Analyze Device Logs"** or **"Generate Logging Code"**.
+3. **Choose** a mode: **"Analyze nRF Device Logs"** or **"Generate Logging Code"**.
 
 <p><img src="assets/docs/home.png" width="100%" alt="nRF AI Debugger Home" /></p>
 
@@ -73,6 +73,7 @@ Before you can analyze, you need good logs. The agent reads your nRF Connect SDK
 
 | Requirement | Details |
 |-------------|---------|
+| **Operating System** | **Win 11, Win 10** *(macOS/Linux planned via community)* |
 | **nRF Connect SDK** | Tested with **v3.2.1** |
 | **Extension Pack** | Requires [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) |
 | **Python** | 3.8+ (Uses the Python environment bundled with your nRF Connect Extension) |
@@ -85,8 +86,9 @@ We are expanding based on community needs. If you need support for a specific pr
 
 | Category | Supported / Tested | Future Exploration (User Driven) |
 | :--- | :--- | :--- |
-| **Boards** | nRF52840 DK, nRF52832 DK | nRF53 Series (Dual-core), nRF91, nRF54 |
-| **Protocols** | BLE (Bluetooth Low Energy) | Thread, Matter, LTE-M / NB-IoT |
+| **OS** | Win 11, Win 10 | macOS, Linux |
+| **Boards** | nRF52840 DK, nRF52832 DK | nRF53, nRF91, nRF70, nRF54 |
+| **Protocols** | BLE (Bluetooth Low Energy) | WIFI, Thread, Matter, LTE-M / NB-IoT, DECT NR+ |
 | **NCS Version** | v3.2.x | v2.9.x LTS, v3.3+ |
 | **LLMs** | GLM-4.7, Claude Haiku 4.5 | DeepSeek-V3, Local LLMs (Ollama) |
 
