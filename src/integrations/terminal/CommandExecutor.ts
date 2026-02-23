@@ -122,9 +122,15 @@ export class CommandExecutor {
 
 		// Select the appropriate terminal manager
 		// Subagents always use standalone manager (hidden terminal)
-		const useStandalone = isSubagent || this.terminalExecutionMode === "backgroundExec"
+		// IMPORTANT: If a specific terminalName is requested (e.g. nRF Connect terminal),
+		// we MUST use the VSCode terminal manager regardless of execution mode.
+		// Using standaloneManager for named terminals would create a new hidden shell
+		// where the SDK environment (nrfutil, west, etc.) is NOT available.
+		const useStandalone = (isSubagent || this.terminalExecutionMode === "backgroundExec") && !terminalName
 		const manager = useStandalone ? this.standaloneManager : this.terminalManager
-		Logger.info(`Executing command in ${useStandalone ? "standalone" : "VSCode"} terminal: ${command}`)
+		Logger.info(
+			`Executing command in ${useStandalone ? "standalone" : "VSCode"} terminal${terminalName ? ` (named: ${terminalName})` : ""}: ${command}`,
+		)
 
 		// Get terminal and run command
 		const terminalInfo = await manager.getOrCreateTerminal(this.cwd, terminalName)
