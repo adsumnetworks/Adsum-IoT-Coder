@@ -7,7 +7,7 @@
 Captures live logs from your connected nRF devices, analyzes applications behavior, and generates expert insights — right from VS Code.
 
 <p>
-  <a href="https://marketplace.visualstudio.com/items?itemName=adsumnetworks.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/v/adsumnetworks.nrf-ai-debugger?label=VS%20Code%20Marketplace&logo=visual-studio-code&color=0078d4" alt="VS Marketplace"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/v/AdsumNetwork.nrf-ai-debugger?label=VS%20Code%20Marketplace&logo=visual-studio-code&color=0078d4" alt="VS Marketplace"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/nRF%20Connect%20SDK-v3.2.1-00A9CE" alt="NCS">
   <img src="https://img.shields.io/badge/Zephyr%20RTOS-compatible-blueviolet" alt="Zephyr">
@@ -60,7 +60,7 @@ Before you can analyze, you need good logs. The agent reads your nRF Connect SDK
 ---
 
 ## Quick Start
-1. **Install** nRF AI Debugger from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=adsumnetworks.nrf-ai-debugger).
+1. **Install** nRF AI Debugger from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger).
 2. **Configure** your AI provider (We recommend **GLM-4.7** for cost-effective, high-performance analysis).
 3. **Choose** a mode: **"Analyze nRF Device Logs"** or **"Generate Logging Code"**.
 
