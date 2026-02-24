@@ -41,7 +41,7 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 		console.error("[Controller] CRITICAL: Failed to initialize StateManager - extension may not function properly:", error)
 		HostProvider.window.showMessage({
 			type: ShowMessageType.ERROR,
-			message: "Failed to initialize Cline's application state. Please restart the extension.",
+			message: "Failed to initialize nRF AI Debugger's application state. Please restart the extension.",
 		})
 	}
 
@@ -102,11 +102,11 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 	// Version checking for autoupdate notification
 	const currentVersion = ExtensionRegistryInfo.version
-	const previousVersion = context.globalState.get<string>("clineVersion")
+	const previousVersion = context.globalState.get<string>("nrfAiDebuggerVersion")
 	// Perform post-update actions if necessary
 	try {
 		if (!previousVersion || currentVersion !== previousVersion) {
-			Logger.log(`Cline version changed: ${previousVersion} -> ${currentVersion}. First run or update detected.`)
+			Logger.log(`nRF AI Debugger version changed: ${previousVersion} -> ${currentVersion}. First run or update detected.`)
 
 			// Check if there's a new announcement to show
 			const lastShownAnnouncementId = context.globalState.get<string>("lastShownAnnouncementId")
@@ -115,15 +115,15 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 			if (lastShownAnnouncementId !== latestAnnouncementId) {
 				// Show notification when there's a new announcement (major/minor updates or fresh installs)
 				const message = previousVersion
-					? `Cline has been updated to v${currentVersion}`
-					: `Welcome to Cline v${currentVersion}`
+					? `nRF AI Debugger has been updated to v${currentVersion}`
+					: `Welcome to nRF AI Debugger v${currentVersion}`
 				HostProvider.window.showMessage({
 					type: ShowMessageType.INFORMATION,
 					message,
 				})
 			}
 			// Always update the main version tracker for the next launch.
-			await context.globalState.update("clineVersion", currentVersion)
+			await context.globalState.update("nrfAiDebuggerVersion", currentVersion)
 		}
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
