@@ -24,12 +24,12 @@ For features and large contributions:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/adsumnetworks/AIDebug-Agent.git
+   git clone https://github.com/adsumnetworks/nRF-AI-Debugger.git
    ```
 
 2. **Open the project in VSCode:**
    ```bash
-   cd AIDebug-Agent
+   cd nRF-AI-Debugger
    code .
    ```
 

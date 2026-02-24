@@ -82,7 +82,7 @@ Before you can analyze, you need good logs. The agent reads your nRF Connect SDK
 ---
 
 ## Roadmap & Compatibility
-We are expanding based on community needs. If you need support for a specific protocol or board, [join our discussions!](https://github.com/adsumnetworks/AIDebug-Agent/discussions)
+We are expanding based on community needs. If you need support for a specific protocol or board, [join our discussions!](https://github.com/adsumnetworks/nRF-AI-Debugger/discussions)
 
 | Category | Supported / Tested | Future Exploration (User Driven) |
 | :--- | :--- | :--- |

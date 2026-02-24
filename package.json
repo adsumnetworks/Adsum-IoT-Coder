@@ -14,9 +14,9 @@
 	"publisher": "adsumnetworks",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/adsumnetworks/AIDebug-Agent"
+		"url": "https://github.com/adsumnetworks/nRF-AI-Debugger"
 	},
-	"homepage": "https://github.com/adsumnetworks/AIDebug-Agent",
+	"homepage": "https://github.com/adsumnetworks/nRF-AI-Debugger",
 	"categories": [
 		"AI",
 		"Debuggers",
