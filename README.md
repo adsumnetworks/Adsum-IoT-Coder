@@ -73,7 +73,7 @@ Before you can analyze, you need good logs. The agent reads your nRF Connect SDK
 
 | Requirement | Details |
 |-------------|---------|
-| **Operating System** | **Win 11, Win 10** *(macOS/Linux planned via community)* |
+| **Operating System** | **Windows 11** *(macOS/Linux planned via community)* |
 | **nRF Connect SDK** | Tested with **v3.2.1** |
 | **Extension Pack** | Requires [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) |
 | **Python** | 3.8+ (Uses the Python environment bundled with your nRF Connect Extension) |
@@ -86,7 +86,7 @@ We are expanding based on community needs. If you need support for a specific pr
 
 | Category | Supported / Tested | Future Exploration (User Driven) |
 | :--- | :--- | :--- |
-| **OS** | Win 11, Win 10 | macOS, Linux |
+| **OS** | Windows 11 | macOS, Linux |
 | **Boards** | nRF52840 DK, nRF52832 DK | nRF53, nRF91, nRF70, nRF54 |
 | **Protocols** | BLE (Bluetooth Low Energy) | WIFI, Thread, Matter, LTE-M / NB-IoT, DECT NR+ |
 | **NCS Version** | v3.2.x | v2.9.x LTS, v3.3+ |
