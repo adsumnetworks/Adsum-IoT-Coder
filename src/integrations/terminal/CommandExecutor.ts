@@ -16,6 +16,7 @@
  */
 
 import { isSubagentCommand, transformClineCommand } from "@integrations/cli-subagents/subagent_command"
+import { HostProvider } from "@hosts/host-provider"
 import { Logger } from "@services/logging/Logger"
 import { telemetryService } from "@services/telemetry"
 import { findLastIndex } from "@shared/array"
@@ -56,6 +57,12 @@ export class CommandExecutor {
 		timestamps: [],
 		lastSuggestionShown: undefined,
 	}
+
+	// Lazily created VscodeTerminalManager for named terminal requests in backgroundExec mode.
+	// In backgroundExec mode, this.terminalManager is a StandaloneTerminalManager which
+	// cannot access VS Code terminals. When a named terminal (e.g. nRF Connect) is requested,
+	// we need a real VscodeTerminalManager to find/interact with it.
+	private vscodeManagerForNamedTerminals: ITerminalManager | null = null
 
 	constructor(config: CommandExecutorConfig, callbacks: CommandExecutorCallbacks) {
 		this.cwd = config.cwd
@@ -105,6 +112,7 @@ export class CommandExecutor {
 		command: string,
 		timeoutSeconds: number | undefined,
 		terminalName?: string,
+		suppressShellIntegrationWarning?: boolean
 	): Promise<[boolean, ClineToolResponseContent]> {
 		// Transform subagent commands to ensure flags are correct
 		const isSubagent = isSubagentCommand(command)
@@ -127,7 +135,20 @@ export class CommandExecutor {
 		// Using standaloneManager for named terminals would create a new hidden shell
 		// where the SDK environment (nrfutil, west, etc.) is NOT available.
 		const useStandalone = (isSubagent || this.terminalExecutionMode === "backgroundExec") && !terminalName
-		const manager = useStandalone ? this.standaloneManager : this.terminalManager
+		let manager: ITerminalManager
+		if (useStandalone) {
+			manager = this.standaloneManager
+		} else if (terminalName && this.terminalExecutionMode === "backgroundExec") {
+			// In backgroundExec mode, this.terminalManager is a StandaloneTerminalManager
+			// which cannot find VS Code terminals by name. We need a real VscodeTerminalManager.
+			if (!this.vscodeManagerForNamedTerminals) {
+				this.vscodeManagerForNamedTerminals = HostProvider.get().createTerminalManager()
+				Logger.info(`[CommandExecutor] Created VscodeTerminalManager for named terminal request in backgroundExec mode`)
+			}
+			manager = this.vscodeManagerForNamedTerminals
+		} else {
+			manager = this.terminalManager
+		}
 		Logger.info(
 			`Executing command in ${useStandalone ? "standalone" : "VSCode"} terminal${terminalName ? ` (named: ${terminalName})` : ""}: ${command}`,
 		)
@@ -161,6 +182,7 @@ export class CommandExecutor {
 					}
 				: undefined,
 			showShellIntegrationSuggestion: this.shouldShowBackgroundTerminalSuggestion(),
+			suppressShellIntegrationWarning,
 			terminalType: useStandalone ? "standalone" : "vscode",
 		})
 

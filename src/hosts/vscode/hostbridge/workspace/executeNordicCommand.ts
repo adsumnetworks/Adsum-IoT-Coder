@@ -167,21 +167,11 @@ export async function activateNordicTerminal(): Promise<string | undefined> {
 		await vscode.commands.executeCommand("nrf-connect.createNcsTerminal")
 
 		// POLL: Wait for terminal to be created and registered
-		// Try 5 times with 1s delay (total 5s)
-		for (let i = 0; i < 5; i++) {
-			await new Promise((resolve) => setTimeout(resolve, 1000))
+		// Try 30 times with 500ms delay (total 15s)
+		for (let i = 0; i < 30; i++) {
+			await new Promise((resolve) => setTimeout(resolve, 500))
 			terminal = findNordicTerminal()
 			if (terminal) break
-		}
-
-		// Fallback: If strict matching failed but we just created a terminal,
-		// the active terminal is almost certainly the nRF one.
-		if (!terminal && vscode.window.activeTerminal) {
-			console.log(
-				"[Nordic] Strict name matching failed, falling back to active terminal:",
-				vscode.window.activeTerminal.name,
-			)
-			terminal = vscode.window.activeTerminal
 		}
 	}
 

@@ -50,3 +50,4 @@ test-results
 .vscode/settings.json
 logs/
 _test_chat/
+chat_tests/

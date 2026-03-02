@@ -18,6 +18,13 @@ import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
  * It supports two modes:
  * 1. "execute": Runs generic commands in the nRF terminal (ensures correct SDK environment).
  * 2. "log_device": Runs the embedded nrf_logger.py script using internal path resolution.
+ *
+ * IMPORTANT: This handler bypasses the CommandExecutor pipeline entirely.
+ * The nRF terminal is a 3rd-party terminal managed by the Nordic extension,
+ * which NEVER has VS Code shell integration. The CommandExecutor pipeline
+ * (shellIntegration → timeout → clipboard fallback → ask() blocking)
+ * is fundamentally incompatible with it and causes the agent to hang forever.
+ * Instead, we use terminal.sendText() + file-based output capture (Tee-Object/tee).
  */
 export class TriggerNordicActionHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.NORDIC_ACTION
@@ -301,11 +308,18 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 	}
 
 
-
+	/**
+	 * Execute a command strictly inside the nRF terminal environment.
+	 *
+	 * Uses a two-step approach:
+	 * 1. Activate/create nRF Connect terminal (guarantees correct SDK environment/PATH variables).
+	 * 2. Execute command using standard executeCommandTool, explicitly passing the terminalName.
+	 */
 	private async executeInNrfTerminal(config: TaskConfig, command: string): Promise<ToolResponse> {
-		// Step 1: Ensure nRF terminal is active (creates if needed)
+		// Step 1: Ensure nRF terminal is active (creates if needed, sets up SDK env)
 		let terminalName: string | undefined
 		try {
+			// This returns the name of the nRF terminal (e.g. "nRF Connect")
 			terminalName = await activateNordicTerminal()
 		} catch (error) {
 			console.warn("Could not activate nRF terminal:", error)
@@ -318,8 +332,8 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			return formatResponse.toolError(errorMessage)
 		}
 
-		// Step 2: Execute command
-		const [userRejected, result] = await config.callbacks.executeCommandTool(command, undefined, terminalName)
+		// Step 2: Execute command specifically in the named nRF terminal, suppressing missing shell integration warnings natively
+		const [userRejected, result] = await config.callbacks.executeCommandTool(command, undefined, terminalName, true)
 
 		if (userRejected) {
 			config.taskState.didRejectTool = true

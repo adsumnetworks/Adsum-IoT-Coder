@@ -372,6 +372,8 @@ export interface OrchestrationOptions {
 	onOutputLine?: (line: string) => void
 	/** Whether to show shell integration warning with suggestion */
 	showShellIntegrationSuggestion?: boolean
+	/** Whether to completely suppress shell integration warnings (e.g. for nRF terminals) */
+	suppressShellIntegrationWarning?: boolean
 	/**
 	 * Callback invoked when user clicks "Proceed While Running".
 	 * Used to start background command tracking in the terminal manager.
