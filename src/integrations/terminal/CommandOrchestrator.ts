@@ -22,21 +22,21 @@ import { ClineTempManager } from "@services/temp"
 import { COMMAND_CANCEL_TOKEN } from "@shared/ExtensionMessage"
 import * as fs from "fs"
 import {
-	BUFFER_STUCK_TIMEOUT_MS,
-	CHUNK_BYTE_SIZE,
-	CHUNK_DEBOUNCE_MS,
-	CHUNK_LINE_COUNT,
-	COMPLETION_TIMEOUT_MS,
-	MAX_BYTES_BEFORE_FILE,
-	MAX_LINES_BEFORE_FILE,
-	SUMMARY_LINES_TO_KEEP,
+    BUFFER_STUCK_TIMEOUT_MS,
+    CHUNK_BYTE_SIZE,
+    CHUNK_DEBOUNCE_MS,
+    CHUNK_LINE_COUNT,
+    COMPLETION_TIMEOUT_MS,
+    MAX_BYTES_BEFORE_FILE,
+    MAX_LINES_BEFORE_FILE,
+    SUMMARY_LINES_TO_KEEP,
 } from "./constants"
 import type {
-	CommandExecutorCallbacks,
-	ITerminalManager,
-	OrchestrationOptions,
-	OrchestrationResult,
-	TerminalProcessResultPromise,
+    CommandExecutorCallbacks,
+    ITerminalManager,
+    OrchestrationOptions,
+    OrchestrationResult,
+    TerminalProcessResultPromise,
 } from "./types"
 
 /**
@@ -58,6 +58,7 @@ export async function orchestrateCommandExecution(
 		timeoutSeconds,
 		onOutputLine,
 		showShellIntegrationSuggestion,
+		suppressShellIntegrationWarning,
 		onProceedWhileRunning,
 		terminalType = "vscode",
 	} = options
@@ -379,6 +380,10 @@ export async function orchestrateCommandExecution(
 	})
 
 	process.once("no_shell_integration", async () => {
+		if (suppressShellIntegrationWarning) {
+			return
+		}
+
 		if (showShellIntegrationSuggestion) {
 			await callbacks.say("shell_integration_warning_with_suggestion")
 		} else {

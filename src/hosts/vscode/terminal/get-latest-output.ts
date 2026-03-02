@@ -12,6 +12,7 @@ export async function getLatestTerminalOutput(): Promise<string> {
 	try {
 		// Select terminal content
 		await vscode.commands.executeCommand("workbench.action.terminal.selectAll")
+		await new Promise((resolve) => setTimeout(resolve, 50)) // Short delay
 
 		// Copy selection to clipboard
 		await vscode.commands.executeCommand("workbench.action.terminal.copySelection")
@@ -19,15 +20,27 @@ export async function getLatestTerminalOutput(): Promise<string> {
 		// Clear the selection
 		await vscode.commands.executeCommand("workbench.action.terminal.clearSelection")
 
-		// Get terminal contents from clipboard
-		let terminalContents = (await readTextFromClipboard()).trim()
+		// Retrieve terminal contents from clipboard with retries
+		// Windows clipboard is async, so we must wait for it to populate
+		let terminalContents = ""
+		let retries = 5
+		while (retries > 0) {
+			await new Promise((resolve) => setTimeout(resolve, 100))
+			terminalContents = (await readTextFromClipboard()).trim()
 
-		// Check if there's actually a terminal open
+			// If we got new content that isn't the original clipboard, we succeeded
+			if (terminalContents !== originalClipboard && terminalContents.length > 0) {
+				break
+			}
+			retries--
+		}
+
+		// Check if we failed to get new content
 		if (terminalContents === originalClipboard) {
 			return ""
 		}
 
-		// Clean up command separation
+		// Clean up command separation (strip out the last command line itself if it duplicated)
 		const lines = terminalContents.split("\n")
 		const lastLine = lines.pop()?.trim()
 		if (lastLine) {

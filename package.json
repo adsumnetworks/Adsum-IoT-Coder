@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "nRF AI Debugger",
 	"description": "Open-Source AI-powered debugging assistant for nRF Connect SDK development. Generates logging code, analyzes RTT/UART logs, and provides real-time BLE stack diagnostics.",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
