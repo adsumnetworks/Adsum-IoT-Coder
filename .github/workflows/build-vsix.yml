@@ -1,0 +1,33 @@
+name: Build VSIX
+on:
+  release:
+    types: [published, created]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Extension
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+
+    - run: npm install --include=optional
+    - run: cd webview-ui && npm install --include=optional
+    - run: npm run package
+
+    - name: Package VSIX
+      run: |
+        npm install -g @vscode/vsce
+        VERSION=$(node -p "require('./package.json').version")
+        vsce package --no-dependencies -o nrf-ai-debugger-v${VERSION}.vsix
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: nrf-ai-debugger-vsix
+        path: "*.vsix"
