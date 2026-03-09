@@ -108,20 +108,27 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		// ROBUST TRANSPORT DETECTION with explicit user input priority
 		if (!transport) {
 			// Step 1 (PRIORITY): Check port/devices format FIRST (explicit user intent)
-			const isRttSerial = (id: string) => /^\d{9}$/.test(id.trim())
+			const isRttSerial = (id: string) => /^\d{9,12}$/.test(id.trim())
+			const isUartPort = (id: string) => {
+				const upperId = id.toUpperCase()
+				return upperId.startsWith("COM") || upperId.includes("TTY") || upperId.includes("/DEV/")
+			}
 
 			if (port && isRttSerial(port)) {
 				transport = "rtt"
 				console.log(`[Nordic Transport] Detected RTT (serial format): ${port}`)
+			} else if (port && isUartPort(port)) {
+				transport = "uart"
+				console.log(`[Nordic Transport] Detected UART (port format): ${port}`)
 			} else if (devices && devices.split(",").some((d: string) => isRttSerial(d.split(":")[1] || ""))) {
 				transport = "rtt"
 				console.log(`[Nordic Transport] Detected RTT (serial in devices parameter)`)
-			} else if (port && (port.toUpperCase().startsWith("COM") || port.startsWith("/dev/"))) {
+			} else if (devices && devices.split(",").some((d: string) => isUartPort(d.split(":")[1] || ""))) {
 				transport = "uart"
-				console.log(`[Nordic Transport] Detected UART (COM/dev format): ${port}`)
+				console.log(`[Nordic Transport] Detected UART (port format in devices parameter)`)
 			}
 
-			// Step 2 (FALLBACK): Check project capabilities from prj.conf
+			// Step 2 (FALLBACK): Check project capabilities from prj.conf ONLY IF port format didn't lock it in
 			if (!transport && config.cwd) {
 				try {
 					const capabilities = getCachedCapabilities(config.cwd)
@@ -157,9 +164,9 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			if (!serialNumber) {
 				return formatResponse.toolError("Operation 'device_info' requires 'port' (serial number) parameter.")
 			}
-			
+
 			const cmd = `nrfutil device device-info --serial-number ${serialNumber}`
-			
+
 			await config.callbacks.say(
 				"tool",
 				JSON.stringify({
@@ -167,7 +174,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 					path: `Nordic Device Info [${serialNumber}]`,
 				}),
 			)
-			
+
 			return this.executeInNrfTerminal(config, cmd)
 		}
 
@@ -230,8 +237,10 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		// Ensure transport-specific subfolder is used
 		if (resolvedOutput && transport) {
 			const transportPath = transport.toLowerCase()
-			if (!resolvedOutput.toLowerCase().endsWith(transportPath) && 
-				!resolvedOutput.toLowerCase().endsWith(transportPath + path.sep)) {
+			if (
+				!resolvedOutput.toLowerCase().endsWith(transportPath) &&
+				!resolvedOutput.toLowerCase().endsWith(transportPath + path.sep)
+			) {
 				resolvedOutput = path.join(resolvedOutput, transportPath)
 			}
 		}
@@ -306,7 +315,6 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		// (Though python might be system wide, NRF terminal is safer for consistency)
 		return this.executeInNrfTerminal(config, cmd)
 	}
-
 
 	/**
 	 * Execute a command strictly inside the nRF terminal environment.

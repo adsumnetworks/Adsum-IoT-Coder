@@ -54,7 +54,7 @@ If unsure, tool auto-detects from prj.conf, but ALWAYS pass explicit transport f
 		required: false,
 		instruction: `Required for "test", "capture", "monitor" (unless "devices" is used). 
 - For UART: The serial port (e.g. /dev/ttyACM0, COM3).
-- For RTT: The J-Link Serial Number (e.g. 683335182).`,
+- For RTT: The J-Link Serial Number (e.g. 683335182). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.`,
 		usage: "/dev/ttyACM0",
 	},
 	{
@@ -83,7 +83,7 @@ This ensures complete boot sequence is captured.`,
 		required: false,
 		instruction: `Optional for "capture". Multi-device mapping: "name:identifier,name2:identifier2".
 - For UART: identifier is the serial port (e.g. "central:/dev/ttyACM0").
-- For RTT: identifier is the serial number (e.g. "central:683335182").`,
+- For RTT: identifier is the serial number (e.g. "central:683335182"). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.`,
 		usage: "central:683335182,peripheral:683007782",
 	},
 	{
