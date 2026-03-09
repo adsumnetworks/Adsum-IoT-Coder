@@ -373,6 +373,7 @@ trigger_nordic_action
 | Read old logs without user confirmation | User sees stale data | ALWAYS ask "Do you want me to capture fresh logs?" |
 | Use nrfjprog directly | Tool may not be installed | Use `trigger_nordic_action` (script handles gracefully) |
 | Assume RTT without checking prj.conf | Wrong logger, empty logs | ALWAYS read prj.conf first (RULE 1) |
+| Use COM or /dev/tty ports for RTT | J-Link fails to connect | ALWAYS use the 9-12 digit J-Link Serial Number for RTT (e.g. 683007782) |
 | Use `/dev/ttyACM0` on Windows | Port doesn't exist | Use `COM5` or check Device Manager |
 | Default to 60s for quick test | User waits unnecessarily | ALWAYS match duration to investigation (RULE 4) |
 | Skip pre-capture-delay for boot | Missing first startup lines | ALWAYS use pre-capture-delay for "show boot" (RULE 5) |

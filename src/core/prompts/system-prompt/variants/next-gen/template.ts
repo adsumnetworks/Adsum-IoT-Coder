@@ -151,5 +151,9 @@ export const rules_template = (context: SystemPromptContext) => `RULES
     Result: Complete boot sequence (from first line)
     MANDATORY: Use for any boot sequence capture
 
+  ⭐ RULE 6: RTT PORT FORMAT
+    FORBIDDEN: Passing a COM port (COM3) or /dev port (/dev/ttyACM0) when using transport="rtt"
+    REQUIRED: You MUST pass a 9-12 digit J-Link Serial Number instead (e.g. 683007782) when using RTT.
+
   Reference: See NORDIC_INSTRUCTION_HANDBOOK.md for detailed patterns, platform guidance, board-specific configs.
 `

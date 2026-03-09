@@ -19,7 +19,15 @@ try:
     import serial.tools.list_ports
     HAS_PYSERIAL = True
 except ImportError:
-    HAS_PYSERIAL = False
+    print("WARNING: pyserial not installed. Attempting to install automatically...")
+    try:
+        subprocess.run([sys.executable, "-m", "pip", "install", "pyserial", "--quiet"], check=True)
+        import serial.tools.list_ports
+        HAS_PYSERIAL = True
+        print("Successfully installed pyserial.")
+    except Exception as e:
+        print(f"WARNING: Failed to install pyserial automatically: {e}")
+        HAS_PYSERIAL = False
 
 
 
@@ -210,10 +218,50 @@ def list_jlink_devices() -> List[str]:
             
     return devices
 
-def reset_device(serial_number: str) -> bool:
-    """Reset device using nrfutil (preferred) or nrfjprog."""
-    serial_str = str(serial_number).lstrip('0') or str(serial_number)
+def get_device_serial(port_or_serial: str) -> str:
+    """Check if input is a COM port and map it to a J-Link serial, otherwise return it as-is."""
+    # If it's already a 9-12 digit string, it's a serial number
+    if str(port_or_serial).isdigit() and len(str(port_or_serial)) >= 8:
+        return port_or_serial
     
+    # Try nrfutil mapping first
+    try:
+        result = subprocess.run(["nrfutil", "device", "list"], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0 and result.stdout.strip():
+            lines = result.stdout.strip().split('\n')
+            for line in lines:
+                if port_or_serial in line:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        if port_or_serial in parts[0] or parts[0] in port_or_serial:
+                            if parts[1].isdigit() and len(parts[1]) >= 8:
+                                return parts[1]
+    except Exception:
+        pass
+
+    # Try pyserial COM port HWID inference if installed
+    if HAS_PYSERIAL:
+        try:
+            ports = serial.tools.list_ports.comports()
+            for p in ports:
+                if p.device == port_or_serial:
+                    if p.serial_number:
+                        return p.serial_number.lstrip('0')
+                    # Extract from HWID (USB VID:PID=... SER=123456...)
+                    if 'SER=' in p.hwid:
+                        serial_num = p.hwid.split('SER=')[1].split()[0]
+                        return serial_num.lstrip('0')
+        except Exception:
+            pass
+            
+    # If all fails, just return what they gave us and let J-Link tools throw the final error
+    return port_or_serial
+
+def reset_device(port_or_serial: str) -> bool:
+    """Reset device using nrfutil (preferred) or nrfjprog."""
+    resolved_serial = get_device_serial(port_or_serial)
+    serial_str = str(resolved_serial).lstrip('0')
+
     nrfutil_error = None
     
     # Try nrfutil first
@@ -339,7 +387,10 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
     log_dir = output_dir 
     os.makedirs(log_dir, exist_ok=True)
     
-    for name, serial in devices.items():
+    for name, raw_serial_or_port in devices.items():
+        # Resolve COM port to Serial Number if necessary
+        serial = get_device_serial(raw_serial_or_port)
+        
         # Determine role from name
         role = name if name in ["central", "peripheral"] else "device"
         

@@ -39,8 +39,16 @@ try:
     import serial
     import serial.tools.list_ports
 except ImportError:
-    print("ERROR: pyserial not installed. Run: pip install pyserial")
-    sys.exit(1)
+    print("WARNING: pyserial not installed. Attempting to install automatically...")
+    try:
+        subprocess.run([sys.executable, "-m", "pip", "install", "pyserial", "--quiet"], check=True)
+        import serial
+        import serial.tools.list_ports
+        print("Successfully installed pyserial.")
+    except Exception as e:
+        print(f"ERROR: Failed to install pyserial automatically: {e}")
+        print("Please run: pip install pyserial")
+        sys.exit(1)
 
 
 
@@ -244,6 +252,24 @@ def test_connection(port, baudrate=DEFAULT_BAUDRATE, duration=2):
 
 def get_device_serial(port):
     """Get J-Link serial number from port."""
+    # 1. Try nrfutil mapping first (often more reliable on Windows)
+    try:
+        result = subprocess.run(["nrfutil", "device", "list"], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0 and result.stdout.strip():
+            lines = result.stdout.strip().split('\n')
+            for line in lines:
+                if port in line:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        # In nrfutil output, usually parts[0] is port/identifier and parts[1] is serial number
+                        if port in parts[0] or parts[0] in port:
+                            # Verify if parts[1] looks like a J-Link serial (all digits, 9-12 chars)
+                            if parts[1].isdigit() and len(parts[1]) >= 8:
+                                return parts[1]
+    except Exception as e:
+        pass
+
+    # 2. Try pyserial COM port HWID inference
     try:
         ports = serial.tools.list_ports.comports()
         for p in ports:
