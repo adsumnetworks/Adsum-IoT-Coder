@@ -143,8 +143,16 @@ graph LR
 
 ---
 
+
 ## About Us
 **[Adsum Networks](https://github.com/adsumnetworks)** — We've been developing IoT solutions on nRF and other embedded platforms for over 7 years. We built nRF AI Debugger because we needed it ourselves to handle complex BLE debugging, and now we're sharing it to help the community build better firmware, faster.
+
+---
+
+### ⚖️ Trademark & Disclaimer
+This project is an independent, community-developed tool and is not affiliated with, endorsed by, or sponsored by **Nordic Semiconductor ASA**. 
+
+"nRF" is a registered trademark of Nordic Semiconductor ASA. All other trademarks are the property of their respective owners.
 
 ---
 
