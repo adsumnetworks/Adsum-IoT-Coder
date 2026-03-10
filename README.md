@@ -115,6 +115,22 @@ We are expanding based on community needs. If you need support for a specific pr
 
 ---
 
+## 📈 Data & Telemetry
+nRF AI Debugger collects **basic, anonymous usage data** to help us understand which features are most valuable and catch silent errors (like missing python packages or unsupported OS commands) before you even have to report them on GitHub.
+
+**What we track:**
+- Extension activations (to understand daily usage).
+- Which logger tools you trigger (e.g. `uart-logger` vs `rtt-logger`).
+- Tool execution crashes or errors.
+
+**What we DO NOT track:**
+- We NEVER collect your source code, your absolute file paths, or anything typed into the interactive AI chat.
+- We NEVER collect the raw logs coming off your firmware devices. This data is strictly private and sent only to your configured AI provider.
+
+> **Opt-Out:** We respect VS Code's global telemetry settings. If you wish to disable this tracking, simply set `telemetry.telemetryLevel` to `off` in your VS Code settings.
+
+---
+
 ## How It Works
 ```mermaid
 graph LR

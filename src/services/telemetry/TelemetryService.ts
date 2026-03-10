@@ -287,6 +287,9 @@ export class TelemetryService {
 			SUBAGENT_COMPLETED: "task.subagent_completed",
 			// Skills telemetry events
 			SKILL_USED: "task.skill_used",
+			// Nordic telemetry events
+			NORDIC_ACTION_EXECUTED: "task.nordic_action_executed",
+			NORDIC_ACTION_ERROR: "task.nordic_action_error",
 		},
 		// UI interaction events for tracking user engagement
 		UI: {
@@ -2097,6 +2100,42 @@ export class TelemetryService {
 			event: TelemetryService.EVENTS.USER.ONBOARDING_PROGRESS,
 			properties: {
 				...args,
+			},
+		})
+	}
+
+	// Nordic telemetry methods
+
+	/**
+	 * Records when a Nordic tool action completes successfully
+	 * @param ulid Task identifier
+	 * @param action The specific Nordic action (e.g. "log_device", "execute")
+	 * @param commandDetails Information about the command or operation run
+	 */
+	public captureNordicActionExecuted(ulid: string, action: string, commandDetails: any) {
+		this.capture({
+			event: TelemetryService.EVENTS.TASK.NORDIC_ACTION_EXECUTED,
+			properties: {
+				ulid,
+				action,
+				...commandDetails,
+			},
+		})
+	}
+
+	/**
+	 * Records when a Nordic tool action fails
+	 * @param ulid Task identifier
+	 * @param action The specific Nordic action
+	 * @param errorMessage The error that occurred
+	 */
+	public captureNordicActionError(ulid: string, action: string, errorMessage: string) {
+		this.capture({
+			event: TelemetryService.EVENTS.TASK.NORDIC_ACTION_ERROR,
+			properties: {
+				ulid,
+				action,
+				errorMessage: errorMessage.substring(0, MAX_ERROR_MESSAGE_LENGTH),
 			},
 		})
 	}

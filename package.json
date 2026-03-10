@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "nRF AI Debugger",
 	"description": "Open-Source AI-powered debugging assistant for nRF Connect SDK development. Generates logging code, analyzes RTT/UART logs, and provides real-time BLE stack diagnostics.",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -51,7 +51,6 @@
 				}
 			}
 		},
-
 		"viewsContainers": {
 			"activitybar": [
 				{
@@ -114,7 +113,6 @@
 				"title": "Jump to Chat Input",
 				"category": "nRF AI Debugger"
 			},
-
 			{
 				"command": "cline.explainCode",
 				"title": "Explain with nRF AI Debugger",
@@ -143,7 +141,6 @@
 				"category": "nRF AI Debugger",
 				"icon": "$(lightbulb)"
 			},
-
 			{
 				"command": "cline.reconstructTaskHistory",
 				"title": "Reconstruct Task History",
@@ -188,7 +185,6 @@
 				"linux": "ctrl+'",
 				"when": "editorHasSelection"
 			},
-
 			{
 				"command": "cline.focusChatInput",
 				"key": "cmd+'",
@@ -455,6 +451,7 @@
 		"@tailwindcss/vite": "^4.1.14",
 		"@types/uuid": "^10.0.0",
 		"@vscode/codicons": "^0.0.36",
+		"@vscode/extension-telemetry": "^1.5.1",
 		"archiver": "^7.0.1",
 		"aws4fetch": "^1.0.20",
 		"axios": "^1.12.0",

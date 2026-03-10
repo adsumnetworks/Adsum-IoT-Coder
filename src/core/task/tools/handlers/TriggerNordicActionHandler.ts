@@ -4,6 +4,7 @@ import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
 import { activateNordicTerminal } from "@/hosts/vscode/hostbridge/workspace/executeNordicCommand"
 import { getCachedCapabilities } from "@/platform/nordicProjectDetector"
+import { telemetryService } from "@/services/telemetry"
 
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
@@ -336,6 +337,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		if (!terminalName) {
 			const errorMessage =
 				"Failed to activate nRF Connect Terminal. Please ensure the 'nRF Connect' extension is installed and you can open a terminal matching 'nRF' or 'Zephyr' manually."
+			telemetryService.captureNordicActionError(config.ulid, "executeInNrfTerminal", errorMessage)
 			await config.callbacks.say("error", errorMessage)
 			return formatResponse.toolError(errorMessage)
 		}
@@ -344,6 +346,11 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		const [userRejected, result] = await config.callbacks.executeCommandTool(command, undefined, terminalName, true)
 
 		if (userRejected) {
+			telemetryService.captureNordicActionExecuted(config.ulid, "executeInNrfTerminal", { command, status: "rejected" })
+		} else if (result.error) {
+			telemetryService.captureNordicActionError(config.ulid, "executeInNrfTerminal", result.error)
+		} else {
+			telemetryService.captureNordicActionExecuted(config.ulid, "executeInNrfTerminal", { command, status: "success" })
 			config.taskState.didRejectTool = true
 		}
 
