@@ -83,7 +83,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
 	{
 		id: "about",
 		name: "About",
-		tooltipText: "About nRF AI Debugger",
+		tooltipText: "About SoC AI Debugger",
 		headerText: "About",
 		icon: Info,
 	},

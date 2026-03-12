@@ -56,7 +56,7 @@ export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlo
 		// Show notification if enabled
 		if (config.autoApprovalSettings.enableNotifications) {
 			showSystemNotification({
-				subtitle: "nRF AI Debugger has a question...",
+				subtitle: "SoC AI Debugger has a question...",
 				message: question.replace(/\n/g, " "),
 			})
 		}

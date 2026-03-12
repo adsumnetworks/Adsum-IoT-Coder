@@ -41,7 +41,7 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 		console.error("[Controller] CRITICAL: Failed to initialize StateManager - extension may not function properly:", error)
 		HostProvider.window.showMessage({
 			type: ShowMessageType.ERROR,
-			message: "Failed to initialize nRF AI Debugger's application state. Please restart the extension.",
+			message: "Failed to initialize SoC AI Debugger's application state. Please restart the extension.",
 		})
 	}
 
@@ -106,7 +106,7 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 	// Perform post-update actions if necessary
 	try {
 		if (!previousVersion || currentVersion !== previousVersion) {
-			Logger.log(`nRF AI Debugger version changed: ${previousVersion} -> ${currentVersion}. First run or update detected.`)
+			Logger.log(`SoC AI Debugger version changed: ${previousVersion} -> ${currentVersion}. First run or update detected.`)
 
 			// Check if there's a new announcement to show
 			const lastShownAnnouncementId = context.globalState.get<string>("lastShownAnnouncementId")
@@ -115,8 +115,8 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 			if (lastShownAnnouncementId !== latestAnnouncementId) {
 				// Show notification when there's a new announcement (major/minor updates or fresh installs)
 				const message = previousVersion
-					? `nRF AI Debugger has been updated to v${currentVersion}`
-					: `Welcome to nRF AI Debugger v${currentVersion}`
+					? `SoC AI Debugger has been updated to v${currentVersion}`
+					: `Welcome to SoC AI Debugger v${currentVersion}`
 				HostProvider.window.showMessage({
 					type: ShowMessageType.INFORMATION,
 					message,

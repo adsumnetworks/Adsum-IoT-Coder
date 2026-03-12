@@ -193,7 +193,7 @@ export const CommandOutputRow = memo(
 		)
 
 		const displayTitle = isSubagentCommand ? (
-			<span className="text-foreground font-bold">nRF AI Debugger wants to use a subagent:</span>
+			<span className="text-foreground font-bold">SoC AI Debugger wants to use a subagent:</span>
 		) : (
 			title
 		)

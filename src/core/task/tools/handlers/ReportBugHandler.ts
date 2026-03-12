@@ -67,8 +67,8 @@ export class ReportBugHandler implements IToolHandler, IPartialBlockHandler {
 		// Show notification if enabled
 		if (config.autoApprovalSettings.enableNotifications) {
 			showSystemNotification({
-				subtitle: "nRF AI Debugger wants to create a github issue...",
-				message: `nRF AI Debugger is suggesting to create a github issue with the title: ${title}`,
+				subtitle: "SoC AI Debugger wants to create a github issue...",
+				message: `SoC AI Debugger is suggesting to create a github issue with the title: ${title}`,
 			})
 		}
 

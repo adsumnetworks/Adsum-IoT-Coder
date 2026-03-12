@@ -1,10 +1,11 @@
 <div align="center">
 
-# <img src="assets/icons/icon.png" width="50" style="vertical-align: middle;" /> nRF AI Debugger
+# <img src="assets/icons/icon.png" width="50" style="vertical-align: middle;" /> SoC AI Debugger
+*(formerly nRF AI Debugger)*
 
-### Open-Source AI Agent for Debugging nRF Devices
+### SoC AI Debugger – for nRF
 
-Captures live logs from your connected nRF devices, analyzes applications behavior, and generates expert insights — right from VS Code.
+AI debugging agent for IoT SoCs, captures live logs from your connected nRF devices, analyzes application behavior, and generates expert insights — right from VS Code.
 
 <p>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/v/AdsumNetwork.nrf-ai-debugger?label=VS%20Code%20Marketplace&logo=visual-studio-code&color=0078d4" alt="VS Marketplace"></a>
@@ -24,14 +25,14 @@ Captures live logs from your connected nRF devices, analyzes applications behavi
 
 **Debugging firmware on nRF devices is notoriously tedious.** You flash your firmware, open a terminal, and watch raw logs (RTT/UART) scroll past. Trying to correlate timestamps between two boards, decipher hex codes, and manually search your source code to find where an error originated is a major productivity bottleneck.
 
-**nRF AI Debugger** changes that. It's an AI agent built specifically for the nRF Connect SDK ecosystem. It captures live logs directly from your boards and analyzes them in real-time, correlating firmware output with your source code to pinpoint the root cause of failures.
+**SoC AI Debugger** changes that. It's an AI agent built specifically for the nRF Connect SDK ecosystem. It captures live logs directly from your boards and analyzes them in real-time, correlating firmware output with your source code to pinpoint the root cause of failures.
 
 ---
 
 ## Features
 
 ### 📊 1. Capture & Analyze Device Logs
-The **nRF AI debugger** captures live RTT or UART logs, identifies patterns in your application's behavior, and produces structured analysis reports—covering everything from boot sequences to protocol-specific events.
+The **SoC AI Debugger** captures live RTT or UART logs, identifies patterns in your application's behavior, and produces structured analysis reports—covering everything from boot sequences to protocol-specific events.
 
 <!-- Replace with actual Feature GIF once recorded -->
 <!-- <p><img src="assets/docs/analyzer.gif" width="100%" alt="Log Analyzer Demo" /></p> -->
@@ -60,7 +61,7 @@ Before you can analyze, you need good logs. The agent reads your nRF Connect SDK
 ---
 
 ## Quick Start
-1. **Install** nRF AI Debugger from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger).
+1. **Install** SoC AI Debugger from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger).
 2. **Configure** your AI provider (We recommend **GLM-4.7** for cost-effective, high-performance analysis).
 3. **Choose** a mode: **"Analyze nRF Device Logs"** or **"Generate Logging Code"**.
 
@@ -73,7 +74,6 @@ Before you can analyze, you need good logs. The agent reads your nRF Connect SDK
 
 | Requirement | Details |
 |-------------|---------|
-| **Operating System** | **Windows 11** *(macOS/Linux planned via community)* |
 | **nRF Connect SDK** | Tested with **v3.2.1** |
 | **Extension Pack** | Requires [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) |
 | **Python** | 3.8+ (Uses the Python environment bundled with your nRF Connect Extension) |
@@ -82,11 +82,10 @@ Before you can analyze, you need good logs. The agent reads your nRF Connect SDK
 ---
 
 ## Roadmap & Compatibility
-We are expanding based on community needs. If you need support for a specific protocol or board, [join our discussions!](https://github.com/adsumnetworks/nRF-AI-Debugger/discussions)
+We are expanding based on community needs. If you need support for a specific protocol or board, [join our discussions!](https://github.com/adsumnetworks/SoC-AI-Debugger/discussions)
 
 | Category | Supported / Tested | Future Exploration (User Driven) |
 | :--- | :--- | :--- |
-| **OS** | Windows 11 | macOS, Linux |
 | **Boards** | nRF52840 DK, nRF52832 DK | nRF53, nRF91, nRF70, nRF54 |
 | **Protocols** | BLE (Bluetooth Low Energy) | WIFI, Thread, Matter, LTE-M / NB-IoT, DECT NR+ |
 | **NCS Version** | v3.2.x | v2.9.x LTS, v3.3+ |
