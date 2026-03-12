@@ -27,12 +27,15 @@ const WelcomeView = memo(() => {
 	return (
 		<div className="fixed inset-0 p-0 flex flex-col">
 			<div className="h-full px-5 overflow-auto flex flex-col gap-2.5">
-				<h2 className="text-lg font-semibold">Welcome to nRF AI Debugger</h2>
+				<h2 className="text-lg font-semibold">Welcome to SoC AI Debugger</h2>
 				<div className="flex justify-center my-5">
 					<div className="size-16 flex items-center justify-center text-4xl">🤖</div>
 				</div>
 				<p>
-					AI-powered debugging assistant for Nordic nRF Connect SDK.
+					SoC AI Debugger – for nRF
+					<br />
+					AI-powered debugging agent for Nordic nRF Connect SDK.
+					<br />
 					Configure your LLM provider to get started. Be sure to use a model with high reasoning capabilities.
 				</p>
 

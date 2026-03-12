@@ -595,7 +595,7 @@ function setupHostProvider(context: ExtensionContext) {
 	const createDiffView = () => new VscodeDiffViewProvider()
 	const createCommentReview = () => getVscodeCommentReviewController()
 	const createTerminalManager = () => new VscodeTerminalManager()
-	const outputChannel = vscode.window.createOutputChannel("nRF AI Debugger")
+	const outputChannel = vscode.window.createOutputChannel("SoC AI Debugger")
 	context.subscriptions.push(outputChannel)
 
 	const getCallbackUrl = async () => `${vscode.env.uriScheme || "vscode"}://${context.extension.id}`

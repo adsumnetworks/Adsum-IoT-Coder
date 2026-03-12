@@ -31,7 +31,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = fa
 			{isWelcome && (
 				<div className="text-center mb-4">
 					<h2 className="text-lg font-semibold mb-1" style={{ color: "var(--vscode-foreground)" }}>
-						nRF AI Debugger
+						SoC AI Debugger
 					</h2>
 					<p className="text-sm" style={{ color: "var(--vscode-descriptionForeground)" }}>
 						What would you like to do?

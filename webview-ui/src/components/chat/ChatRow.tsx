@@ -314,12 +314,12 @@ export const ChatRowContent = memo(
 				case "mistake_limit_reached":
 					return [
 						<CircleXIcon className="text-error size-2" />,
-						<span className="text-error font-bold">nRF AI Debugger is having trouble...</span>,
+						<span className="text-error font-bold">SoC AI Debugger is having trouble...</span>,
 					]
 				case "command":
 					return [
 						<TerminalIcon className="text-foreground size-2" />,
-						<span className="font-bold text-foreground">nRF AI Debugger wants to execute this command:</span>,
+						<span className="font-bold text-foreground">SoC AI Debugger wants to execute this command:</span>,
 					]
 				case "use_mcp_server":
 					const mcpServerUse = JSON.parse(message.text || "{}") as ClineAskUseMcpServer
@@ -330,7 +330,7 @@ export const ChatRowContent = memo(
 							<span className="codicon codicon-server text-foreground mb-[-1.5px]" />
 						),
 						<span className="ph-no-capture font-bold text-foreground break-words">
-							nRF AI Debugger wants to {mcpServerUse.type === "use_mcp_tool" ? "use a tool" : "access a resource"} on the{" "}
+							SoC AI Debugger wants to {mcpServerUse.type === "use_mcp_tool" ? "use a tool" : "access a resource"} on the{" "}
 							<code className="break-all">
 								{getMcpServerDisplayName(mcpServerUse.serverName, mcpMarketplaceCatalog)}
 							</code>{" "}
@@ -349,7 +349,7 @@ export const ChatRowContent = memo(
 				case "followup":
 					return [
 						<span className="codicon codicon-question text-foreground mb-[-1.5px]" />,
-						<span className="font-bold text-foreground">nRF AI Debugger has a question:</span>,
+						<span className="font-bold text-foreground">SoC AI Debugger has a question:</span>,
 					]
 				default:
 					return [null, null]
@@ -406,8 +406,8 @@ export const ChatRowContent = memo(
 					const content = tool?.content || ""
 					const isApplyingPatch = content?.startsWith("%%bash") && !content.endsWith("*** End Patch\nEOF")
 					const editToolTitle = isApplyingPatch
-						? "nRF AI Debugger is creating patches to edit this file:"
-						: "nRF AI Debugger wants to edit this file:"
+						? "SoC AI Debugger is creating patches to edit this file:"
+						: "SoC AI Debugger wants to edit this file:"
 					return (
 						<div>
 							<div className={HEADER_CLASSNAMES}>
@@ -436,7 +436,7 @@ export const ChatRowContent = memo(
 								<SquareMinusIcon className="size-2" />
 								{tool.operationIsLocatedInWorkspace === false &&
 									toolIcon("sign-out", "yellow", -90, "This file is outside of your workspace")}
-								<span style={{ fontWeight: "bold" }}>nRF AI Debugger wants to delete this file:</span>
+								<span style={{ fontWeight: "bold" }}>SoC AI Debugger wants to delete this file:</span>
 							</div>
 							<CodeAccordian
 								// isLoading={message.partial}
@@ -454,7 +454,7 @@ export const ChatRowContent = memo(
 								<FilePlus2Icon className="size-2" />
 								{tool.operationIsLocatedInWorkspace === false &&
 									toolIcon("sign-out", "yellow", -90, "This file is outside of your workspace")}
-								<span className="font-bold">nRF AI Debugger wants to create a new file:</span>
+								<span className="font-bold">SoC AI Debugger wants to create a new file:</span>
 							</div>
 							{backgroundEditEnabled && tool.path && tool.content ? (
 								<DiffEditRow patch={tool.content} path={tool.path} />
@@ -477,7 +477,7 @@ export const ChatRowContent = memo(
 								{isImage ? <ImageUpIcon className="size-2" /> : <FileCode2Icon className="size-2" />}
 								{tool.operationIsLocatedInWorkspace === false &&
 									toolIcon("sign-out", "yellow", -90, "This file is outside of your workspace")}
-								<span className="font-bold">nRF AI Debugger wants to read this file:</span>
+								<span className="font-bold">SoC AI Debugger wants to read this file:</span>
 							</div>
 							<div className="bg-code rounded-sm overflow-hidden border border-editor-group-border">
 								<div
@@ -511,8 +511,8 @@ export const ChatRowContent = memo(
 									toolIcon("sign-out", "yellow", -90, "This is outside of your workspace")}
 								<span style={{ fontWeight: "bold" }}>
 									{message.type === "ask"
-										? "nRF AI Debugger wants to view the top level files in this directory:"
-										: "nRF AI Debugger viewed the top level files in this directory:"}
+										? "SoC AI Debugger wants to view the top level files in this directory:"
+										: "SoC AI Debugger viewed the top level files in this directory:"}
 								</span>
 							</div>
 							<CodeAccordian
@@ -533,8 +533,8 @@ export const ChatRowContent = memo(
 									toolIcon("sign-out", "yellow", -90, "This is outside of your workspace")}
 								<span style={{ fontWeight: "bold" }}>
 									{message.type === "ask"
-										? "nRF AI Debugger wants to recursively view all files in this directory:"
-										: "nRF AI Debugger recursively viewed all files in this directory:"}
+										? "SoC AI Debugger wants to recursively view all files in this directory:"
+										: "SoC AI Debugger recursively viewed all files in this directory:"}
 								</span>
 							</div>
 							<CodeAccordian
@@ -555,8 +555,8 @@ export const ChatRowContent = memo(
 									toolIcon("sign-out", "yellow", -90, "This file is outside of your workspace")}
 								<span style={{ fontWeight: "bold" }}>
 									{message.type === "ask"
-										? "nRF AI Debugger wants to view source code definition names used in this directory:"
-										: "nRF AI Debugger viewed source code definition names used in this directory:"}
+										? "SoC AI Debugger wants to view source code definition names used in this directory:"
+										: "SoC AI Debugger viewed source code definition names used in this directory:"}
 								</span>
 							</div>
 							<CodeAccordian
@@ -575,7 +575,7 @@ export const ChatRowContent = memo(
 								{tool.operationIsLocatedInWorkspace === false &&
 									toolIcon("sign-out", "yellow", -90, "This is outside of your workspace")}
 								<span className="font-bold">
-									nRF AI Debugger wants to search this directory for <code className="break-all">{tool.regex}</code>:
+									SoC AI Debugger wants to search this directory for <code className="break-all">{tool.regex}</code>:
 								</span>
 							</div>
 							<SearchResultsDisplay
@@ -592,7 +592,7 @@ export const ChatRowContent = memo(
 						<div>
 							<div className={HEADER_CLASSNAMES}>
 								<FoldVerticalIcon className="size-2" />
-								<span className="font-bold">nRF AI Debugger is condensing the conversation:</span>
+								<span className="font-bold">SoC AI Debugger is condensing the conversation:</span>
 							</div>
 							<div className="bg-code overflow-hidden border border-editor-group-border rounded-[3px]">
 								<div
@@ -637,8 +637,8 @@ export const ChatRowContent = memo(
 									toolIcon("sign-out", "yellow", -90, "This URL is external")}
 								<span className="font-bold">
 									{message.type === "ask"
-										? "nRF AI Debugger wants to fetch content from this URL:"
-										: "nRF AI Debugger fetched content from this URL:"}
+										? "SoC AI Debugger wants to fetch content from this URL:"
+										: "SoC AI Debugger fetched content from this URL:"}
 								</span>
 							</div>
 							<div
@@ -666,8 +666,8 @@ export const ChatRowContent = memo(
 									toolIcon("sign-out", "yellow", -90, "This search is external")}
 								<span className="font-bold">
 									{message.type === "ask"
-										? "nRF AI Debugger wants to search the web for:"
-										: "nRF AI Debugger searched the web for:"}
+										? "SoC AI Debugger wants to search the web for:"
+										: "SoC AI Debugger searched the web for:"}
 								</span>
 							</div>
 							<div className="bg-code border border-editor-group-border overflow-hidden rounded-xs select-text py-[9px] px-2.5">
@@ -682,7 +682,7 @@ export const ChatRowContent = memo(
 						<div>
 							<div className={HEADER_CLASSNAMES}>
 								<LightbulbIcon className="size-2" />
-								<span className="font-bold">nRF AI Debugger loaded the skill:</span>
+								<span className="font-bold">SoC AI Debugger loaded the skill:</span>
 							</div>
 							<div className="bg-code border border-editor-group-border overflow-hidden rounded-xs py-[9px] px-2.5">
 								<span className="ph-no-capture font-medium">{tool.path}</span>
@@ -696,8 +696,8 @@ export const ChatRowContent = memo(
 								{toolIcon("wrench")}
 								<span className="font-bold">
 									{message.type === "ask"
-										? "nRF AI Debugger wants to trigger nRF Connect action:"
-										: "nRF AI Debugger triggered nRF Connect action:"}
+										? "SoC AI Debugger wants to trigger nRF Connect action:"
+										: "SoC AI Debugger triggered nRF Connect action:"}
 								</span>
 							</div>
 							<div className="bg-code border border-editor-group-border overflow-hidden rounded-xs py-[9px] px-2.5">
@@ -1009,7 +1009,7 @@ export const ChatRowContent = memo(
 									<span className="font-medium text-foreground">Shell Integration Unavailable</span>
 								</div>
 								<div className="text-foreground opacity-80 mt-1">
-									nRF AI Debugger won't be able to perfectly view the command's output. Please ensure you're using a
+									SoC AI Debugger won't be able to perfectly view the command's output. Please ensure you're using a
 									supported shell:
 									<ul className="list-disc ml-5 mt-1">
 										<li>Windows: PowerShell</li>

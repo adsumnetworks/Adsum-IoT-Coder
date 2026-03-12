@@ -92,7 +92,7 @@ export class AccessMcpResourceHandler implements IFullyManagedTool {
 			)
 		} else {
 			// Manual approval flow
-			const notificationMessage = `nRF AI Debugger wants to access ${uri || "unknown resource"} on ${server_name || "unknown server"}`
+			const notificationMessage = `SoC AI Debugger wants to access ${uri || "unknown resource"} on ${server_name || "unknown server"}`
 
 			// Show notification
 			showNotificationForApproval(notificationMessage, config.autoApprovalSettings.enableNotifications)

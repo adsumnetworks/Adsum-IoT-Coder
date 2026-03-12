@@ -12,7 +12,7 @@ type UserTypeSelection = {
 
 export const STEP_CONFIG = {
 	0: {
-		title: "How will you use nRF AI Debugger?",
+		title: "How will you use SoC AI Debugger?",
 		description: "Select an option below to get started.",
 		buttons: [
 			{ text: "Continue", action: "next", variant: "default" },
@@ -48,5 +48,5 @@ export const STEP_CONFIG = {
 } as const
 
 export const USER_TYPE_SELECTIONS: UserTypeSelection[] = [
-	{ title: "Bring my own API key", description: "Use nRF AI Debugger with your provider of choice", type: NEW_USER_TYPE.BYOK },
+	{ title: "Bring my own API key", description: "Use SoC AI Debugger with your provider of choice", type: NEW_USER_TYPE.BYOK },
 ]

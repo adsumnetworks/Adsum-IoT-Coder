@@ -1,6 +1,6 @@
-# Contributing to nRF AI Debugger
+# Contributing to SoC AI Debugger
 
-We're thrilled you're interested in contributing to the **nRF AI Debugger**! Whether you're fixing a bug, adding a feature, or improving our docs, every contribution helps make debugging on nRF devices smarter and easier.
+We're thrilled you're interested in contributing to the **SoC AI Debugger**! Whether you're fixing a bug, adding a feature, or improving our docs, every contribution helps make debugging on nRF devices smarter and easier.
 
 
 ## Reporting Bugs or Issues
@@ -24,12 +24,12 @@ For features and large contributions:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/adsumnetworks/nRF-AI-Debugger.git
+   git clone https://github.com/adsumnetworks/SoC-AI-Debugger.git
    ```
 
 2. **Open the project in VSCode:**
    ```bash
-   cd nRF-AI-Debugger
+   cd SoC-AI-Debugger
    code .
    ```
 
@@ -45,7 +45,7 @@ For features and large contributions:
 
 5. **Launch the Extension:**
    - Press `F5` (or go to `Run` -> `Start Debugging`) in VS Code.
-   - This will launch a new VS Code Extension Development Host window with the nRF AI Debugger loaded.
+   - This will launch a new VS Code Extension Development Host window with the SoC AI Debugger loaded.
 
 *Note: You must have the official Nordic `nRF Connect for VS Code` extension installed in your development host for all features to work correctly.*
 

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the **nRF AI Debugger** extension will be documented in this file.
+All notable changes to the **SoC AI Debugger** extension will be documented in this file.
 
 ## [0.0.2] - 2026-03-02
 
@@ -12,6 +12,6 @@ All notable changes to the **nRF AI Debugger** extension will be documented in t
 ## [0.0.1] - Initial Release
 
 ### Added
-- Initial release of nRF AI Debugger!
+- Initial release of SoC AI Debugger!
 - Seamless integration with the nRF Connect SDK terminal in VS Code.
 - AI-powered assistant for Zephyr-based projects capable of automatically analyzing UAR/RTT logs, executing Nordic toolchain commands, and debugging code.

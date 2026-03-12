@@ -1,8 +1,8 @@
 {
 	"name": "nrf-ai-debugger",
-	"displayName": "nRF AI Debugger",
+	"displayName": "SoC AI Debugger – for nRF",
 	"description": "Open-Source AI-powered debugging assistant for nRF Connect SDK development. Generates logging code, analyzes RTT/UART logs, and provides real-time BLE stack diagnostics.",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -14,9 +14,9 @@
 	"publisher": "AdsumNetwork",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/adsumnetworks/nRF-AI-Debugger"
+		"url": "https://github.com/adsumnetworks/SoC-AI-Debugger"
 	},
-	"homepage": "https://github.com/adsumnetworks/nRF-AI-Debugger",
+	"homepage": "https://github.com/adsumnetworks/SoC-AI-Debugger",
 	"categories": [
 		"AI",
 		"Debuggers",
@@ -55,7 +55,7 @@
 			"activitybar": [
 				{
 					"id": "claude-dev-ActivityBar",
-					"title": "nRF AI Debugger",
+					"title": "SoC AI Debugger",
 					"icon": "assets/icons/icon.svg"
 				}
 			]
@@ -89,62 +89,62 @@
 			{
 				"command": "cline.dev.createTestTasks",
 				"title": "Create Test Tasks",
-				"category": "nRF AI Debugger",
+				"category": "SoC AI Debugger",
 				"when": "cline.isDevMode"
 			},
 			{
 				"command": "cline.dev.expireMcpOAuthTokens",
 				"title": "Expire MCP OAuth Tokens (for testing)",
-				"category": "nRF AI Debugger",
+				"category": "SoC AI Debugger",
 				"when": "cline.isDevMode"
 			},
 			{
 				"command": "cline.addToChat",
-				"title": "Add to nRF AI Debugger",
-				"category": "nRF AI Debugger"
+				"title": "Add to SoC AI Debugger",
+				"category": "SoC AI Debugger"
 			},
 			{
 				"command": "cline.addTerminalOutputToChat",
-				"title": "Add to nRF AI Debugger",
-				"category": "nRF AI Debugger"
+				"title": "Add to SoC AI Debugger",
+				"category": "SoC AI Debugger"
 			},
 			{
 				"command": "cline.focusChatInput",
 				"title": "Jump to Chat Input",
-				"category": "nRF AI Debugger"
+				"category": "SoC AI Debugger"
 			},
 			{
 				"command": "cline.explainCode",
-				"title": "Explain with nRF AI Debugger",
-				"category": "nRF AI Debugger"
+				"title": "Explain with SoC AI Debugger",
+				"category": "SoC AI Debugger"
 			},
 			{
 				"command": "cline.improveCode",
-				"title": "Improve with nRF AI Debugger",
-				"category": "nRF AI Debugger"
+				"title": "Improve with SoC AI Debugger",
+				"category": "SoC AI Debugger"
 			},
 			{
 				"command": "cline.jupyterGenerateCell",
-				"title": "Generate Jupyter Cell with nRF AI Debugger",
-				"category": "nRF AI Debugger",
+				"title": "Generate Jupyter Cell with SoC AI Debugger",
+				"category": "SoC AI Debugger",
 				"icon": "$(sparkle)"
 			},
 			{
 				"command": "cline.jupyterExplainCell",
-				"title": "Explain Jupyter Cell with nRF AI Debugger",
-				"category": "nRF AI Debugger",
+				"title": "Explain Jupyter Cell with SoC AI Debugger",
+				"category": "SoC AI Debugger",
 				"icon": "$(question)"
 			},
 			{
 				"command": "cline.jupyterImproveCell",
-				"title": "Improve Jupyter Cell with nRF AI Debugger",
-				"category": "nRF AI Debugger",
+				"title": "Improve Jupyter Cell with SoC AI Debugger",
+				"category": "SoC AI Debugger",
 				"icon": "$(lightbulb)"
 			},
 			{
 				"command": "cline.reconstructTaskHistory",
 				"title": "Reconstruct Task History",
-				"category": "nRF AI Debugger"
+				"category": "SoC AI Debugger"
 			},
 			{
 				"command": "cline.reviewComment.reply",
@@ -286,7 +286,7 @@
 			]
 		},
 		"configuration": {
-			"title": "nRF AI Debugger",
+			"title": "SoC AI Debugger",
 			"properties": {}
 		}
 	},
