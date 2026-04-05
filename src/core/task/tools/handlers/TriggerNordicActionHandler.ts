@@ -78,23 +78,13 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			return await config.callbacks.sayAndCreateMissingParamError(this.name, "command")
 		}
 
-		// ENFORCE: Block build/flash commands — agent must NOT do these
-		const lowerCommand = command.toLowerCase().trim()
-		if (lowerCommand.includes("west build") || lowerCommand.includes("west flash")) {
-			const errorMessage =
-				"BUILD/FLASH operations are NOT allowed via this tool. " +
-				"Please tell the user: 'To build or flash, use the nRF Connect Extension directly (Build/Flash buttons in the sidebar).'"
-			await config.callbacks.say("error", errorMessage)
-			return formatResponse.toolError(errorMessage)
-		}
-
 		config.taskState.consecutiveMistakeCount = 0
 
 		// Inform the user with properly formatted tool message
 		await config.callbacks.say(
 			"tool",
 			JSON.stringify({
-				tool: "triggerNordicAction",
+				tool: "nrf_device_tool",
 				path: command,
 			}),
 		)
@@ -171,7 +161,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			await config.callbacks.say(
 				"tool",
 				JSON.stringify({
-					tool: "triggerNordicAction",
+					tool: "nrf_device_tool",
 					path: `Nordic Device Info [${serialNumber}]`,
 				}),
 			)
@@ -184,7 +174,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			await config.callbacks.say(
 				"tool",
 				JSON.stringify({
-					tool: "triggerNordicAction",
+					tool: "nrf_device_tool",
 					path: `Nordic Logger: list devices`,
 				}),
 			)
@@ -307,7 +297,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		await config.callbacks.say(
 			"tool",
 			JSON.stringify({
-				tool: "triggerNordicAction",
+				tool: "nrf_device_tool",
 				path: `Nordic Logger [${(transport || "uart").toUpperCase()}]: ${operation}`,
 			}),
 		)
@@ -351,7 +341,6 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			telemetryService.captureNordicActionError(config.ulid, "executeInNrfTerminal", result.error)
 		} else {
 			telemetryService.captureNordicActionExecuted(config.ulid, "executeInNrfTerminal", { command, status: "success" })
-			config.taskState.didRejectTool = true
 		}
 
 		return result

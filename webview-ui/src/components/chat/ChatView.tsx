@@ -209,11 +209,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				setNordicMode(mode)
 				setNordicPhase("active")
 
-				// Send a concise task instruction — NOT the full system prompt
-				const taskPrompt =
-					mode === "log_generator"
-						? "You are in Log Code Generator mode. GOAL: Add logging to ALL nRF projects. CRITICAL WORKFLOW: 1. Read environment_details for workspace roots. 2. Analyze ALL projects. 3. IF SINGLE PROJECT: Report and IMMEDIATELY generate code (no asking). 4. IF MULTI-PROJECT: Report and use ask_followup_question with options=['Add to both', 'Only Central', 'Only Peripheral']. 5. Generate code. 6. AFTER generation, suggest RTT if using UART. DO NOT create markdown files."
-						: "You are in Log Analyzer mode. CRITICAL WORKFLOW: 1. Read environment_details (Silent Analysis). 2. Detect projects and config (RTT/UART). 3. List devices and INTELLIGENTLY MATCH them to projects (e.g., 'Heart Rate Central'). 4. PROPOSE PLAN using ask_followup_question (Buttons). DO NOT ask open-ended questions."
+				// Send a concise task instruction - we rely on backend Markdown workflows for the logic
+				const taskPrompt = mode === "log_generator" ? "Generate logging code" : "Analyze device logs"
 				await messageHandlers.handleSendMessage(taskPrompt, [], [])
 			} catch (error) {
 				console.error("[ChatView] Failed to start Nordic task:", error)

@@ -17,14 +17,12 @@ describe("trigger_nordic_action tool", () => {
 		expect(generic).to.exist
 		expect(generic?.id).to.equal(ClineDefaultTool.NORDIC_ACTION)
 		expect(generic?.description).to.include("Execute commands in the nRF Connect terminal")
-		// Check for PROCESS CLEANUP section
-		expect(generic?.description).to.include("PROCESS CLEANUP")
+		// Check for CRITICAL OPERATIONAL RULES section
+		expect(generic?.description).to.include("CRITICAL OPERATIONAL RULES")
 		expect(generic?.description).to.include("pkill -9 JLink")
-		expect(generic?.description).to.include("timeout 60s")
 
-		// Check for TRANSPORT SELECTION (Replaces RTT/UART sections)
-		expect(generic?.description).to.include("TRANSPORT SELECTION")
-		expect(generic?.description).to.include("CONFIG_USE_SEGGER_RTT")
+		// Check for parameters instruction
+		expect(generic?.description).to.include("nrf52840dk_nrf52840")
 
 		if (!generic) throw new Error("Generic variant not found")
 		const commandParam = generic.parameters?.find((p) => p.name === "command")

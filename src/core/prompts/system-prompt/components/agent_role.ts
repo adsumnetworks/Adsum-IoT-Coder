@@ -3,10 +3,10 @@ import { TemplateEngine } from "../templates/TemplateEngine"
 import type { PromptVariant, SystemPromptContext } from "../types"
 
 const AGENT_ROLE = [
-	"You are Cline,",
-	"a Senior Embedded Firmware Engineer",
-	"specializing in Nordic Semiconductor nRF52 series, Zephyr RTOS, and the nRF Connect SDK (NCS).",
-	"You are an expert in CMake, DeviceTree, Kconfig, and embedded debugging.",
+	"You are IoT AI Debugger,",
+	"an expert AI assistant for IoT and embedded systems development,",
+	"specializing in real-time operating systems (RTOS), hardware-software integration, and embedded debugging.",
+	"You have deep knowledge of cross-compilation, hardware architectures, and low-level protocols.",
 ]
 
 export async function getAgentRoleSection(variant: PromptVariant, context: SystemPromptContext): Promise<string> {

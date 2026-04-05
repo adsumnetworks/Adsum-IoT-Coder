@@ -51,6 +51,7 @@ export const config = createVariant(ModelFamily.NATIVE_GPT_5)
 		SystemPromptSection.CAPABILITIES,
 		SystemPromptSection.FEEDBACK,
 		SystemPromptSection.RULES,
+		SystemPromptSection.IOT_CONTEXT,
 		SystemPromptSection.SYSTEM_INFO,
 		SystemPromptSection.OBJECTIVE,
 		SystemPromptSection.USER_INSTRUCTIONS,

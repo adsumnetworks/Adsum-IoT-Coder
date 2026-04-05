@@ -1,6 +1,6 @@
-# Contributing to SoC AI Debugger
+# Contributing to IoT AI Debugger
 
-We're thrilled you're interested in contributing to the **SoC AI Debugger**! Whether you're fixing a bug, adding a feature, or improving our docs, every contribution helps make debugging on nRF devices smarter and easier.
+We're thrilled you're interested in contributing to the **IoT AI Debugger**! Whether you're fixing a bug, adding a feature, or improving our docs, every contribution helps make debugging on nRF devices smarter and easier.
 
 
 ## Reporting Bugs or Issues
@@ -45,7 +45,7 @@ For features and large contributions:
 
 5. **Launch the Extension:**
    - Press `F5` (or go to `Run` -> `Start Debugging`) in VS Code.
-   - This will launch a new VS Code Extension Development Host window with the SoC AI Debugger loaded.
+   - This will launch a new VS Code Extension Development Host window with the IoT AI Debugger loaded.
 
 *Note: You must have the official Nordic `nRF Connect for VS Code` extension installed in your development host for all features to work correctly.*
 

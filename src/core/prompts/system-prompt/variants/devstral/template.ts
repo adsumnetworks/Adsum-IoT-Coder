@@ -42,6 +42,10 @@ export const baseTemplate = `{{${SystemPromptSection.AGENT_ROLE}}}
 
 ====
 
+{{${SystemPromptSection.IOT_CONTEXT}}}
+
+====
+
 {{${SystemPromptSection.SYSTEM_INFO}}}
 
 ====

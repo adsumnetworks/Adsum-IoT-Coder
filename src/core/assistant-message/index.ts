@@ -54,6 +54,7 @@ export const toolParamNames = [
 	"duration",
 	"devices",
 	"output",
+	"filename",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]

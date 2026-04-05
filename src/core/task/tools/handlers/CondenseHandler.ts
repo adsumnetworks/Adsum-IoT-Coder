@@ -33,8 +33,8 @@ export class CondenseHandler implements IToolHandler, IPartialBlockHandler {
 		// Show notification if enabled
 		if (config.autoApprovalSettings.enableNotifications) {
 			showSystemNotification({
-				subtitle: "SoC AI Debugger wants to condense the conversation...",
-				message: `SoC AI Debugger is suggesting to condense your conversation with: ${context}`,
+				subtitle: "IoT AI Debugger wants to condense the conversation...",
+				message: `IoT AI Debugger is suggesting to condense your conversation with: ${context}`,
 			})
 		}
 

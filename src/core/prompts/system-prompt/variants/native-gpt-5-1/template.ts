@@ -9,6 +9,10 @@ export const BASE = `{{${SystemPromptSection.AGENT_ROLE}}}
 
 ====
 
+{{${SystemPromptSection.MCP}}}
+
+====
+
 {{${SystemPromptSection.TASK_PROGRESS}}}
 
 ====
@@ -34,6 +38,10 @@ export const BASE = `{{${SystemPromptSection.AGENT_ROLE}}}
 ====
 
 {{${SystemPromptSection.RULES}}}
+
+====
+
+{{${SystemPromptSection.IOT_CONTEXT}}}
 
 ====
 

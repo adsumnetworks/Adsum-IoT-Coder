@@ -202,14 +202,7 @@ const GLM_RULES_TEMPLATE = (context: SystemPromptContext) => `RULES
 - For replace_in_file, SEARCH blocks must contain complete, exact lines (no partial matches).
 - With multiple SEARCH/REPLACE blocks, order them as they appear in the file (earlier lines first).
 - For replace_in_file markers, do not alter the format; include the closing +++++++ REPLACE. Malformed XML breaks editing.
-- After each tool use, wait for the user's response to confirm success before proceeding.{{BROWSER_WAIT_RULES}}
-
-  ## CRITICAL NORDIC DEVELOPMENT RULES
-  1. **ALWAYS use \`trigger_nordic_action\`** for ANY terminal command (compiling, flashing, logging, shell).
-  2. **NEVER** use \`execute_command\` or \`run_command\` directly. The standard shell lacks the required Zephyr/Nordic environment variables.
-  3. **Output Capture**: The \`trigger_nordic_action\` tool automatically handles environment injection and proper terminal selection ("nRF Connect"). Trust it.
-  4. **Debugging**: Use \`trigger_nordic_action\` with \`action="log_device"\` (auto-detects transport from prj.conf).
-  5. **Flash/Build**: Always use \`west build\` and \`west flash\` via the nordic tool.`
+- After each tool use, wait for the user's response to confirm success before proceeding.{{BROWSER_WAIT_RULES}}`
 
 export const glmComponentOverrides = {
 	[SystemPromptSection.OBJECTIVE]: {
