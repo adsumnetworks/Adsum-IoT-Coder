@@ -85,7 +85,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		sandbox.restore()
 	})
 
-	it("should handle 'log_device' action with 'list' operation internally", async () => {
+	it("should handle 'log_device' action with 'list' operation via nRF terminal", async () => {
 		const block: ToolUse = {
 			type: "tool_use",
 			name: ClineDefaultTool.NORDIC_ACTION,
@@ -93,32 +93,19 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 			partial: false,
 		}
 
-		// Mock successful python script execution
-		mockExecFile.yields(null, "Connected nRF Devices:\n  /dev/ttyACM0\n    Serial: 123456789", "")
-
 		const result = await handler.execute(mockTaskConfig, block)
 
-		// Verify executeCommandTool was NOT called (internal now)
-		expect(mockExecuteCommandTool.called).to.be.false
-
-		// Verify exec called with python script
-		expect(mockExecFile.calledOnce).to.be.true
-		const execFile = mockExecFile.firstCall.args[0]
-		const execArgs = mockExecFile.firstCall.args[1]
-		expect(execFile).to.equal("python3")
-		// Check that one of the arguments contains the script name (it might be a full path)
-		const scriptArg = execArgs.find((arg: string) => arg.includes("nrf_uart_logger.py"))
-		expect(scriptArg, "Arguments should include nrf_uart_logger.py").to.exist
-		expect(execArgs).to.include("--list")
+		// Verify executeCommandTool WAS called with nrfutil device list
+		expect(mockExecuteCommandTool.calledOnce).to.be.true
+		const cmd = mockExecuteCommandTool.firstCall.args[0]
+		expect(cmd).to.equal("nrfutil device list")
 
 		// Verify result format
-		expect(result).to.be.an("array")
-		expect(result[0].type).to.equal("text")
-		expect(result[0].text).to.include("/dev/ttyACM0")
-		expect(result[0].text).to.include("Serial: 123456789")
+		expect(result).to.be.an("object")
+		expect((result as any).type).to.equal("tool_result")
 	})
 
-	it("should handle 'log_device' list operation when script fails", async () => {
+	it("should handle 'log_device' list operation when nrfutil fails", async () => {
 		const block: ToolUse = {
 			type: "tool_use",
 			name: ClineDefaultTool.NORDIC_ACTION,
@@ -127,12 +114,12 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		}
 
 		// Mock failure
-		mockExecFile.yields(new Error("Script failed"), "", "stderr error")
+		mockExecuteCommandTool.resolves([false, { type: "tool_error", content: "Command failed", error: "stderr error" }])
 
 		const result = await handler.execute(mockTaskConfig, block)
 
 		expect(result.type).to.equal("tool_error")
-		expect(result.content).to.include("Failed to list devices via python script")
+		expect(result.error).to.include("stderr error")
 	})
 
 	it("should handle 'log_device' action with 'test' operation", async () => {

@@ -38,8 +38,8 @@ export class NewTaskHandler implements IToolHandler, IPartialBlockHandler {
 		// Show notification if enabled
 		if (config.autoApprovalSettings.enableNotifications) {
 			showSystemNotification({
-				subtitle: "SoC AI Debugger wants to start a new task...",
-				message: `SoC AI Debugger is suggesting to start a new task with: ${context}`,
+				subtitle: "IoT AI Debugger wants to start a new task...",
+				message: `IoT AI Debugger is suggesting to start a new task with: ${context}`,
 			})
 		}
 

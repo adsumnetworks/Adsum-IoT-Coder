@@ -180,7 +180,7 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 		} else {
 			// Manual approval flow
 			showNotificationForApproval(
-				`SoC AI Debugger wants to execute a command: ${actualCommand}`,
+				`IoT AI Debugger wants to execute a command: ${actualCommand}`,
 				config.autoApprovalSettings.enableNotifications,
 			)
 

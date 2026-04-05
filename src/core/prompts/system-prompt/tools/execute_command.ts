@@ -3,17 +3,17 @@ import { ClineDefaultTool } from "@/shared/tools"
 import type { ClineToolSpec } from "../spec"
 
 /**
- * WARNING: This tool should NOT be used for Nordic/Zephyr SDK commands.
- * For west, nrfjprog, nrfutil, cmake in nRF projects, use trigger_nordic_action.
+ * WARNING: This tool should NOT be used for hardware device commands if a specific device tool exists.
+ * For example, building firmware, flashing, resolving dependencies, etc. should use the native platform tools.
  */
-const NORDIC_WARNING = `
-⚠️ NORDIC DEVELOPMENT WARNING: Do NOT use this tool for west, nrfjprog, nrfutil, cmake commands, OR serial port access (cat /dev/ttyACM*, screen, minicom) in nRF/Zephyr projects. These MUST be run via trigger_nordic_action to ensure correct SDK environment variables are set and reliable logging.`
+const IOT_DEVICE_WARNING = `
+⚠️ IoT DEVICE WARNING: Do NOT use this tool for SDK-specific commands (build, flash, reset, log capture) or serial port access. Use the device_tool instead to ensure correct SDK environment and reliable device communication.`
 
 const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
 	id: ClineDefaultTool.BASH,
 	name: "execute_command",
-	description: `Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. You must tailor your command to the user's system and provide a clear explanation of what the command does. For command chaining, use the appropriate chaining syntax for the user's shell. Prefer to execute complex CLI commands over creating executable scripts, as they are more flexible and easier to run. Commands will be executed in the current working directory: {{CWD}}{{MULTI_ROOT_HINT}}${NORDIC_WARNING}`,
+	description: `Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. You must tailor your command to the user's system and provide a clear explanation of what the command does. For command chaining, use the appropriate chaining syntax for the user's shell. Prefer to execute complex CLI commands over creating executable scripts, as they are more flexible and easier to run. Commands will be executed in the current working directory: {{CWD}}{{MULTI_ROOT_HINT}}${IOT_DEVICE_WARNING}`,
 	parameters: [
 		{
 			name: "command",
@@ -45,7 +45,7 @@ const NATIVE_GPT_5: ClineToolSpec = {
 	variant: ModelFamily.NATIVE_GPT_5,
 	id: ClineDefaultTool.BASH,
 	name: ClineDefaultTool.BASH,
-	description: `Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task.${NORDIC_WARNING}`,
+	description: `Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task.${IOT_DEVICE_WARNING}`,
 	parameters: [
 		{
 			name: "command",
@@ -72,7 +72,7 @@ const GEMINI_3: ClineToolSpec = {
 	variant: ModelFamily.GEMINI_3,
 	id: ClineDefaultTool.BASH,
 	name: ClineDefaultTool.BASH,
-	description: `Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. When chaining commands, use the shell operator && (not the HTML entity &amp;&amp;). If using search/grep commands, be careful to not use vague search terms that may return thousands of results. When in PLAN MODE, you may use the execute_command tool, but only in a non-destructive manner and in a way that does not alter any files.${NORDIC_WARNING}`,
+	description: `Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. When chaining commands, use the shell operator && (not the HTML entity &amp;&amp;). If using search/grep commands, be careful to not use vague search terms that may return thousands of results. When in PLAN MODE, you may use the execute_command tool, but only in a non-destructive manner and in a way that does not alter any files.${IOT_DEVICE_WARNING}`,
 	parameters: [
 		{
 			name: "command",

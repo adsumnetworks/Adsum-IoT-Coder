@@ -1,9 +1,9 @@
 <div align="center">
 
-# <img src="assets/icons/icon.png" width="50" style="vertical-align: middle;" /> SoC AI Debugger
+# <img src="assets/icons/icon.png" width="50" style="vertical-align: middle;" /> IoT AI Debugger
 *(formerly nRF AI Debugger)*
 
-### SoC AI Debugger – for nRF
+### IoT AI Debugger – for nRF
 
 AI debugging agent for IoT SoCs, captures live logs from your connected nRF devices, analyzes application behavior, and generates expert insights — right from VS Code.
 
@@ -25,14 +25,14 @@ AI debugging agent for IoT SoCs, captures live logs from your connected nRF devi
 
 **Debugging firmware on nRF devices is notoriously tedious.** You flash your firmware, open a terminal, and watch raw logs (RTT/UART) scroll past. Trying to correlate timestamps between two boards, decipher hex codes, and manually search your source code to find where an error originated is a major productivity bottleneck.
 
-**SoC AI Debugger** changes that. It's an AI agent built specifically for the nRF Connect SDK ecosystem. It captures live logs directly from your boards and analyzes them in real-time, correlating firmware output with your source code to pinpoint the root cause of failures.
+**IoT AI Debugger** changes that. It's an AI agent built specifically for the nRF Connect SDK ecosystem. It captures live logs directly from your boards and analyzes them in real-time, correlating firmware output with your source code to pinpoint the root cause of failures.
 
 ---
 
 ## Features
 
 ### 📊 1. Capture & Analyze Device Logs
-The **SoC AI Debugger** captures live RTT or UART logs, identifies patterns in your application's behavior, and produces structured analysis reports—covering everything from boot sequences to protocol-specific events.
+The **IoT AI Debugger** captures live RTT or UART logs, identifies patterns in your application's behavior, and produces structured analysis reports—covering everything from boot sequences to protocol-specific events.
 
 <!-- Replace with actual Feature GIF once recorded -->
 <!-- <p><img src="assets/docs/analyzer.gif" width="100%" alt="Log Analyzer Demo" /></p> -->
@@ -61,7 +61,7 @@ Before you can analyze, you need good logs. The agent reads your nRF Connect SDK
 ---
 
 ## Quick Start
-1. **Install** SoC AI Debugger from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger).
+1. **Install** IoT AI Debugger from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger).
 2. **Configure** your AI provider (We recommend **GLM-4.7** for cost-effective, high-performance analysis).
 3. **Choose** a mode: **"Analyze nRF Device Logs"** or **"Generate Logging Code"**.
 

@@ -37,7 +37,6 @@ import {
 import { releaseTaskLock } from "@core/task/TaskLockUtils"
 import { isMultiRootEnabled } from "@core/workspace/multi-root-utils"
 import { WorkspaceRootManager } from "@core/workspace/WorkspaceRootManager"
-import { getWorkspacePaths } from "@/hosts/vscode/hostbridge/workspace/getWorkspacePaths"
 import { buildCheckpointManager, shouldUseMultiRoot } from "@integrations/checkpoints/factory"
 import { ensureCheckpointInitialized } from "@integrations/checkpoints/initializer"
 import { ICheckpointManager } from "@integrations/checkpoints/types"
@@ -72,6 +71,7 @@ import { ulid } from "ulid"
 import type { SystemPromptContext } from "@/core/prompts/system-prompt"
 import { getSystemPrompt } from "@/core/prompts/system-prompt"
 import { HostProvider } from "@/hosts/host-provider"
+import { getWorkspacePaths } from "@/hosts/vscode/hostbridge/workspace/getWorkspacePaths"
 import { FileEditProvider } from "@/integrations/editor/FileEditProvider"
 import {
 	CommandExecutor,
@@ -1815,7 +1815,7 @@ export class Task {
 			terminalExecutionMode: this.terminalExecutionMode,
 		}
 
-		const { systemPrompt, tools } = await getSystemPrompt(promptContext)
+		const { systemPrompt, tools } = await getSystemPrompt(promptContext) // =o=> (0)
 		this.useNativeToolCalls = !!tools?.length
 
 		const contextManagementMetadata = await this.contextManager.getNewContextMessagesAndMetadata(
@@ -3337,7 +3337,12 @@ export class Task {
 						details += `\n\n## Root: ${folderName} (${folderPath})`
 						try {
 							const [files, didHitLimit] = await listFiles(folderPath, true, 200)
-							const result = formatResponse.formatFilesList(folderPath, files, didHitLimit, this.clineIgnoreController)
+							const result = formatResponse.formatFilesList(
+								folderPath,
+								files,
+								didHitLimit,
+								this.clineIgnoreController,
+							)
 							details += "\n" + result
 						} catch (e) {
 							details += `\n(Error listing files for ${folderName}: ${e})`

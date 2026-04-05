@@ -16,8 +16,9 @@ export * from "./read_file"
 export * from "./replace_in_file"
 export * from "./search_files"
 export * from "./trigger_nordic_action"
-export * from "./use_mcp_tool"
-export * from "./use_skill"
 // export * from "./web_fetch" (Removed)
 // export * from "./web_search" (Removed)
+export * from "./update_project_memory"
+export * from "./use_mcp_tool"
+export * from "./use_skill"
 export * from "./write_to_file"
