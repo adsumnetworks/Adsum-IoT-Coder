@@ -34,7 +34,7 @@ export class PromptRegistry {
 			return
 		}
 
-		await Promise.all([this.loadVariants(), this.loadComponents()])
+		await Promise.all([this.loadVariants(), this.loadComponents()]) // =o=> (3)  here we load all the variants and components
 
 		// Perform health check to ensure critical variants are available
 		this.performHealthCheck()
@@ -89,7 +89,7 @@ export class PromptRegistry {
 	 * Get prompt by matching against all registered variants
 	 */
 	async get(context: SystemPromptContext): Promise<string> {
-		await this.load()
+		await this.load() // =o=> (2)
 
 		// Loop through all registered variants to find the first one that matches
 		const family = this.getModelFamily(context)
@@ -121,8 +121,8 @@ export class PromptRegistry {
 		// Hacky way to get native tools for the current variant - it's bad and ugly
 		this.nativeTools = ClineToolSet.getNativeTools(variant, context)
 
-		const builder = new PromptBuilder(variant, context, this.components)
-		return await builder.build()
+		const builder = new PromptBuilder(variant, context, this.components) // =o=> (5)
+		return await builder.build() // =o=> (5)
 	}
 
 	/**
@@ -315,7 +315,7 @@ export class PromptRegistry {
 	private async loadComponents(): Promise<void> {
 		try {
 			// Register each component function
-			const componentMappings = getSystemPromptComponents()
+			const componentMappings = getSystemPromptComponents() // =o=> (4)
 
 			for (const { id, fn } of componentMappings) {
 				if (fn) {

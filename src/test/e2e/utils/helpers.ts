@@ -82,14 +82,14 @@ export class E2ETestHelper {
 					continue
 				}
 
-			try {
-				const title = await frame.title()
-				// Sidebar title matches the view name in package.json
-				if (title.startsWith("SoC AI Debugger")) {
-					this.cachedFrame = frame
-					return frame
-				}
-			} catch (error: any) {
+				try {
+					const title = await frame.title()
+					// Sidebar title matches the view name in package.json
+					if (title.startsWith("IoT AI Debugger")) {
+						this.cachedFrame = frame
+						return frame
+					}
+				} catch (error: any) {
 					if (!error.message.includes("detached") && !error.message.includes("navigation")) {
 						throw error
 					}
@@ -129,7 +129,7 @@ export class E2ETestHelper {
 	}
 
 	public static async openClineSidebar(page: Page): Promise<void> {
-		await page.getByRole("tab", { name: "SoC AI Debugger – for nRF" }).locator("a").click()
+		await page.getByRole("tab", { name: "IoT AI Debugger – for nRF" }).locator("a").click()
 	}
 
 	public static async runCommandPalette(page: Page, command: string): Promise<void> {

@@ -153,12 +153,12 @@ return (
 </arguments>
 </use_mcp_tool>
 
-## Example 7: Capturing logs from Nordic nRF device (MUST use trigger_nordic_action, NOT execute_command)
+## Example 7: Building firmware for a device (MUST use a device_tool like nrf_device_tool, NOT execute_command)
 
-<trigger_nordic_action>
+<nrf_device_tool>
 <action>execute</action>
-<command>python nrf-tools/nrf_logger.py --port /dev/ttyACM0 --duration 30 --output logs/</command>
-</trigger_nordic_action>`
+<command>west build -b nrf52840dk_nrf52840</command>
+</nrf_device_tool>`
 
 export async function getToolUseExamplesSection(_variant: PromptVariant, context: SystemPromptContext): Promise<string> {
 	// Return the placeholder that will be replaced with actual tools

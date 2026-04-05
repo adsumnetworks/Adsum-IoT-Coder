@@ -1,8 +1,8 @@
 {
 	"name": "nrf-ai-debugger",
-	"displayName": "SoC AI Debugger – for nRF",
+	"displayName": "IoT AI Debugger",
 	"description": "Open-Source AI-powered debugging assistant for nRF Connect SDK development. Generates logging code, analyzes RTT/UART logs, and provides real-time BLE stack diagnostics.",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -54,17 +54,17 @@
 		"viewsContainers": {
 			"activitybar": [
 				{
-					"id": "claude-dev-ActivityBar",
-					"title": "SoC AI Debugger",
+					"id": "iot-ai-debugger-ActivityBar",
+					"title": "IoT AI Debugger",
 					"icon": "assets/icons/icon.svg"
 				}
 			]
 		},
 		"views": {
-			"claude-dev-ActivityBar": [
+			"iot-ai-debugger-ActivityBar": [
 				{
 					"type": "webview",
-					"id": "claude-dev.SidebarProvider",
+					"id": "iot-ai-debugger.SidebarProvider",
 					"name": "",
 					"icon": "assets/icons/icon.svg"
 				}
@@ -72,102 +72,102 @@
 		},
 		"commands": [
 			{
-				"command": "cline.plusButtonClicked",
+				"command": "iot-ai-debugger.plusButtonClicked",
 				"title": "New Task",
 				"icon": "$(add)"
 			},
 			{
-				"command": "cline.historyButtonClicked",
+				"command": "iot-ai-debugger.historyButtonClicked",
 				"title": "History",
 				"icon": "$(history)"
 			},
 			{
-				"command": "cline.settingsButtonClicked",
+				"command": "iot-ai-debugger.settingsButtonClicked",
 				"title": "Settings",
 				"icon": "$(settings-gear)"
 			},
 			{
-				"command": "cline.dev.createTestTasks",
+				"command": "iot-ai-debugger.dev.createTestTasks",
 				"title": "Create Test Tasks",
-				"category": "SoC AI Debugger",
-				"when": "cline.isDevMode"
+				"category": "IoT AI Debugger",
+				"when": "iot-ai-debugger.isDevMode"
 			},
 			{
-				"command": "cline.dev.expireMcpOAuthTokens",
+				"command": "iot-ai-debugger.dev.expireMcpOAuthTokens",
 				"title": "Expire MCP OAuth Tokens (for testing)",
-				"category": "SoC AI Debugger",
-				"when": "cline.isDevMode"
+				"category": "IoT AI Debugger",
+				"when": "iot-ai-debugger.isDevMode"
 			},
 			{
-				"command": "cline.addToChat",
-				"title": "Add to SoC AI Debugger",
-				"category": "SoC AI Debugger"
+				"command": "iot-ai-debugger.addToChat",
+				"title": "Add to IoT AI Debugger",
+				"category": "IoT AI Debugger"
 			},
 			{
-				"command": "cline.addTerminalOutputToChat",
-				"title": "Add to SoC AI Debugger",
-				"category": "SoC AI Debugger"
+				"command": "iot-ai-debugger.addTerminalOutputToChat",
+				"title": "Add to IoT AI Debugger",
+				"category": "IoT AI Debugger"
 			},
 			{
-				"command": "cline.focusChatInput",
+				"command": "iot-ai-debugger.focusChatInput",
 				"title": "Jump to Chat Input",
-				"category": "SoC AI Debugger"
+				"category": "IoT AI Debugger"
 			},
 			{
-				"command": "cline.explainCode",
-				"title": "Explain with SoC AI Debugger",
-				"category": "SoC AI Debugger"
+				"command": "iot-ai-debugger.explainCode",
+				"title": "Explain with IoT AI Debugger",
+				"category": "IoT AI Debugger"
 			},
 			{
-				"command": "cline.improveCode",
-				"title": "Improve with SoC AI Debugger",
-				"category": "SoC AI Debugger"
+				"command": "iot-ai-debugger.improveCode",
+				"title": "Improve with IoT AI Debugger",
+				"category": "IoT AI Debugger"
 			},
 			{
-				"command": "cline.jupyterGenerateCell",
-				"title": "Generate Jupyter Cell with SoC AI Debugger",
-				"category": "SoC AI Debugger",
+				"command": "iot-ai-debugger.jupyterGenerateCell",
+				"title": "Generate Jupyter Cell with IoT AI Debugger",
+				"category": "IoT AI Debugger",
 				"icon": "$(sparkle)"
 			},
 			{
-				"command": "cline.jupyterExplainCell",
-				"title": "Explain Jupyter Cell with SoC AI Debugger",
-				"category": "SoC AI Debugger",
+				"command": "iot-ai-debugger.jupyterExplainCell",
+				"title": "Explain Jupyter Cell with IoT AI Debugger",
+				"category": "IoT AI Debugger",
 				"icon": "$(question)"
 			},
 			{
-				"command": "cline.jupyterImproveCell",
-				"title": "Improve Jupyter Cell with SoC AI Debugger",
-				"category": "SoC AI Debugger",
+				"command": "iot-ai-debugger.jupyterImproveCell",
+				"title": "Improve Jupyter Cell with IoT AI Debugger",
+				"category": "IoT AI Debugger",
 				"icon": "$(lightbulb)"
 			},
 			{
-				"command": "cline.reconstructTaskHistory",
+				"command": "iot-ai-debugger.reconstructTaskHistory",
 				"title": "Reconstruct Task History",
-				"category": "SoC AI Debugger"
+				"category": "IoT AI Debugger"
 			},
 			{
-				"command": "cline.reviewComment.reply",
+				"command": "iot-ai-debugger.reviewComment.reply",
 				"title": "Reply",
-				"category": "nRF AI Debugger",
+				"category": "IoT AI Debugger",
 				"enablement": "!commentIsEmpty"
 			},
 			{
-				"command": "cline.reviewComment.addToChat",
-				"title": "Add to nRF AI Debugger Chat",
-				"category": "nRF AI Debugger",
+				"command": "iot-ai-debugger.reviewComment.addToChat",
+				"title": "Add to IoT AI Debugger Chat",
+				"category": "IoT AI Debugger",
 				"icon": "$(link-external)"
 			},
 			{
-				"command": "cline.generateGitCommitMessage",
+				"command": "iot-ai-debugger.generateGitCommitMessage",
 				"title": "Generate Commit Message",
-				"category": "nRF AI Debugger",
+				"category": "IoT AI Debugger",
 				"icon": "$(sparkle)"
 			},
 			{
-				"command": "cline.abortGitCommitMessage",
+				"command": "iot-ai-debugger.abortGitCommitMessage",
 				"title": "Abort Commit Message Generation",
-				"category": "nRF AI Debugger",
+				"category": "IoT AI Debugger",
 				"icon": "$(close)"
 			}
 		],
@@ -175,10 +175,10 @@
 			{
 				"command": "editor.action.submitComment",
 				"key": "enter",
-				"when": "commentEditorFocused && commentController == cline-ai-review && !commentIsEmpty"
+				"when": "commentEditorFocused && commentController == iot-ai-debugger-review && !commentIsEmpty"
 			},
 			{
-				"command": "cline.addToChat",
+				"command": "iot-ai-debugger.addToChat",
 				"key": "cmd+'",
 				"mac": "cmd+'",
 				"win": "ctrl+'",
@@ -186,7 +186,7 @@
 				"when": "editorHasSelection"
 			},
 			{
-				"command": "cline.focusChatInput",
+				"command": "iot-ai-debugger.focusChatInput",
 				"key": "cmd+'",
 				"mac": "cmd+'",
 				"win": "ctrl+'",
@@ -197,96 +197,96 @@
 		"menus": {
 			"view/title": [
 				{
-					"command": "cline.plusButtonClicked",
+					"command": "iot-ai-debugger.plusButtonClicked",
 					"group": "navigation@1",
-					"when": "view == claude-dev.SidebarProvider"
+					"when": "view == iot-ai-debugger.SidebarProvider"
 				},
 				{
-					"command": "cline.historyButtonClicked",
+					"command": "iot-ai-debugger.historyButtonClicked",
 					"group": "navigation@2",
-					"when": "view == claude-dev.SidebarProvider"
+					"when": "view == iot-ai-debugger.SidebarProvider"
 				},
 				{
-					"command": "cline.settingsButtonClicked",
+					"command": "iot-ai-debugger.settingsButtonClicked",
 					"group": "navigation@3",
-					"when": "view == claude-dev.SidebarProvider"
+					"when": "view == iot-ai-debugger.SidebarProvider"
 				}
 			],
 			"editor/context": [
 				{
-					"command": "cline.addToChat",
+					"command": "iot-ai-debugger.addToChat",
 					"group": "navigation",
 					"when": "editorHasSelection"
 				}
 			],
 			"terminal/context": [
 				{
-					"command": "cline.addTerminalOutputToChat",
+					"command": "iot-ai-debugger.addTerminalOutputToChat",
 					"group": "navigation"
 				}
 			],
 			"scm/title": [
 				{
-					"command": "cline.generateGitCommitMessage",
+					"command": "iot-ai-debugger.generateGitCommitMessage",
 					"group": "navigation",
-					"when": "config.git.enabled && scmProvider == git && !cline.isGeneratingCommit"
+					"when": "config.git.enabled && scmProvider == git && !iot-ai-debugger.isGeneratingCommit"
 				},
 				{
-					"command": "cline.abortGitCommitMessage",
+					"command": "iot-ai-debugger.abortGitCommitMessage",
 					"group": "navigation",
-					"when": "config.git.enabled && scmProvider == git && cline.isGeneratingCommit"
+					"when": "config.git.enabled && scmProvider == git && iot-ai-debugger.isGeneratingCommit"
 				}
 			],
 			"notebook/toolbar": [
 				{
-					"command": "cline.jupyterGenerateCell",
+					"command": "iot-ai-debugger.jupyterGenerateCell",
 					"group": "navigation/add@1",
 					"when": "notebookType == 'jupyter-notebook'"
 				}
 			],
 			"notebook/cell/title": [
 				{
-					"command": "cline.jupyterExplainCell",
+					"command": "iot-ai-debugger.jupyterExplainCell",
 					"group": "inline@1",
 					"when": "notebookType == 'jupyter-notebook'"
 				},
 				{
-					"command": "cline.jupyterImproveCell",
+					"command": "iot-ai-debugger.jupyterImproveCell",
 					"group": "inline@2",
 					"when": "notebookType == 'jupyter-notebook'"
 				}
 			],
 			"commandPalette": [
 				{
-					"command": "cline.generateGitCommitMessage",
-					"when": "config.git.enabled && !cline.isGeneratingCommit"
+					"command": "iot-ai-debugger.generateGitCommitMessage",
+					"when": "config.git.enabled && !iot-ai-debugger.isGeneratingCommit"
 				},
 				{
-					"command": "cline.abortGitCommitMessage",
-					"when": "config.git.enabled && cline.isGeneratingCommit"
+					"command": "iot-ai-debugger.abortGitCommitMessage",
+					"when": "config.git.enabled && iot-ai-debugger.isGeneratingCommit"
 				},
 				{
-					"command": "cline.reviewComment.reply",
+					"command": "iot-ai-debugger.reviewComment.reply",
 					"when": "false"
 				}
 			],
 			"comments/commentThread/context": [
 				{
-					"command": "cline.reviewComment.reply",
+					"command": "iot-ai-debugger.reviewComment.reply",
 					"group": "inline",
-					"when": "commentController == cline-ai-review"
+					"when": "commentController == iot-ai-debugger-review"
 				}
 			],
 			"comments/commentThread/title": [
 				{
-					"command": "cline.reviewComment.addToChat",
+					"command": "iot-ai-debugger.reviewComment.addToChat",
 					"group": "inline",
-					"when": "commentController == cline-ai-review"
+					"when": "commentController == iot-ai-debugger-review"
 				}
 			]
 		},
 		"configuration": {
-			"title": "SoC AI Debugger",
+			"title": "IoT AI Debugger",
 			"properties": {}
 		}
 	},

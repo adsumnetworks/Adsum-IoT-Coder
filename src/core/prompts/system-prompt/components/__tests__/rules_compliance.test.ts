@@ -8,10 +8,10 @@ import { getRulesSection } from "../rules" // Default rules function
 // Note: Imports might need adjusting based on actual exports.
 // I'll check `getRulesSection` export and also verify `variants/index.ts` loads correctly.
 
-describe("Nordic Rules Compliance", () => {
-	const rulesTextSearch = ["CRITICAL NORDIC DEVELOPMENT RULES", "trigger_nordic_action"]
+describe("IoT Development Rules Compliance", () => {
+	const rulesTextSearch = ["IoT Device Tools", "prj.conf"]
 
-	it("should include Critical Nordic Rules in the default rules (rules.ts)", async () => {
+	it("should include Critical IoT Rules in the default rules (rules.ts)", async () => {
 		// Mock context
 		const context: any = { cwd: "/tmp" }
 		const variant: any = { componentOverrides: {} }

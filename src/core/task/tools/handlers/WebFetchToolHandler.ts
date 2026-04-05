@@ -55,7 +55,7 @@ export class WebFetchToolHandler implements IFullyManagedTool {
 			const clineWebToolsEnabled = config.services.stateManager.getGlobalSettingsKey("clineWebToolsEnabled")
 			const featureFlagEnabled = featureFlagsService.getWebtoolsEnabled()
 			if (provider !== "cline" || !clineWebToolsEnabled || !featureFlagEnabled) {
-				return formatResponse.toolError("SoC AI Debugger web tools are currently disabled.")
+				return formatResponse.toolError("IoT AI Debugger web tools are currently disabled.")
 			}
 
 			// Validate required parameters
@@ -95,7 +95,7 @@ export class WebFetchToolHandler implements IFullyManagedTool {
 			} else {
 				// Manual approval flow
 				showNotificationForApproval(
-					`SoC AI Debugger wants to fetch content from ${url}`,
+					`IoT AI Debugger wants to fetch content from ${url}`,
 					config.autoApprovalSettings.enableNotifications,
 				)
 				await config.callbacks.removeLastPartialMessageIfExistsWithType("say", "tool")

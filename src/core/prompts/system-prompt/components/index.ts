@@ -5,6 +5,7 @@ import { getCapabilitiesSection } from "./capabilities"
 import { getCliSubagentsSection } from "./cli_subagents"
 import { getEditingFilesSection } from "./editing_files"
 import { getFeedbackSection } from "./feedback"
+import { getIotContextSection } from "./iot_context"
 import { getMcp } from "./mcp"
 import { getObjectiveSection } from "./objective"
 import { getRulesSection } from "./rules"
@@ -20,6 +21,7 @@ import { getUserInstructions } from "./user_instructions"
  * to make all tools available for use.
  */
 export function getSystemPromptComponents() {
+	// =o=> (4.1) here we get all the components
 	return [
 		{ id: SystemPromptSection.AGENT_ROLE, fn: getAgentRoleSection },
 		{ id: SystemPromptSection.SYSTEM_INFO, fn: getSystemInfo },
@@ -39,6 +41,7 @@ export function getSystemPromptComponents() {
 		},
 		{ id: SystemPromptSection.SKILLS, fn: getSkillsSection },
 		{ id: SystemPromptSection.RULES, fn: getRulesSection },
+		{ id: SystemPromptSection.IOT_CONTEXT, fn: getIotContextSection },
 		{ id: SystemPromptSection.OBJECTIVE, fn: getObjectiveSection },
 		{
 			id: SystemPromptSection.ACT_VS_PLAN,

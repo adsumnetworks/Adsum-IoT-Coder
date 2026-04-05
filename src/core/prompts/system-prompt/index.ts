@@ -15,7 +15,7 @@ export { validateVariant } from "./variants/variant-validator"
  */
 export async function getSystemPrompt(context: SystemPromptContext) {
 	const registry = PromptRegistry.getInstance()
-	const systemPrompt = await registry.get(context)
+	const systemPrompt = await registry.get(context) // =o=> (1)
 	const tools = context.enableNativeToolCalls ? registry.nativeTools : undefined
 	return { systemPrompt, tools }
 }

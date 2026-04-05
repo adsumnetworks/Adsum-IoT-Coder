@@ -22,7 +22,7 @@ export class PromptBuilder {
 	async build(): Promise<string> {
 		const componentSections = await this.buildComponents()
 		const placeholderValues = this.preparePlaceholders(componentSections)
-		const prompt = this.templateEngine.resolve(this.variant.baseTemplate, this.context, placeholderValues)
+		const prompt = this.templateEngine.resolve(this.variant.baseTemplate, this.context, placeholderValues) // =o=> (6) the prompt is built here
 		return this.postProcess(prompt)
 	}
 

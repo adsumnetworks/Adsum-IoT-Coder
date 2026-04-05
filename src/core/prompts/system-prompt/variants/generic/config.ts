@@ -42,6 +42,7 @@ export const config = createVariant(ModelFamily.GENERIC)
 		SystemPromptSection.CLI_SUBAGENTS,
 		SystemPromptSection.CAPABILITIES,
 		SystemPromptSection.RULES,
+		SystemPromptSection.IOT_CONTEXT,
 		SystemPromptSection.SYSTEM_INFO,
 		SystemPromptSection.OBJECTIVE,
 		SystemPromptSection.USER_INSTRUCTIONS,

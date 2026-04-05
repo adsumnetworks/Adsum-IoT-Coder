@@ -126,7 +126,7 @@ CRITICAL OPERATIONAL RULES:
 const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
 	id: ClineDefaultTool.NORDIC_ACTION,
-	name: "trigger_nordic_action",
+	name: "nrf_device_tool",
 	description: `Execute commands in the nRF Connect terminal with the correct Nordic/Zephyr SDK environment. This is the ONLY method to use for west, nrfjprog, nrfutil, and other Nordic CLI tools.
 ${TECHNICAL_REFERENCE}`,
 	parameters: PARAMETERS,

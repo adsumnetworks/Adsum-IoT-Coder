@@ -37,6 +37,7 @@ import { ReportBugHandler } from "./tools/handlers/ReportBugHandler"
 import { SearchFilesToolHandler } from "./tools/handlers/SearchFilesToolHandler"
 import { SummarizeTaskHandler } from "./tools/handlers/SummarizeTaskHandler"
 import { TriggerNordicActionHandler } from "./tools/handlers/TriggerNordicActionHandler"
+import { UpdateProjectMemoryHandler } from "./tools/handlers/UpdateProjectMemoryHandler"
 import { UseMcpToolHandler } from "./tools/handlers/UseMcpToolHandler"
 import { UseSkillToolHandler } from "./tools/handlers/UseSkillToolHandler"
 import { WriteToFileToolHandler } from "./tools/handlers/WriteToFileToolHandler"
@@ -226,6 +227,7 @@ export class ToolExecutor {
 		this.coordinator.register(new ApplyPatchHandler(validator))
 		this.coordinator.register(new GenerateExplanationToolHandler())
 		this.coordinator.register(new TriggerNordicActionHandler(this.context))
+		this.coordinator.register(new UpdateProjectMemoryHandler())
 	}
 
 	/**
