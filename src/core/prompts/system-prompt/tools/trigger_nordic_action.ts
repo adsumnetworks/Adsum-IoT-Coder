@@ -3,48 +3,80 @@ import { ClineDefaultTool } from "@/shared/tools"
 import type { ClineToolSpec } from "../spec"
 
 /**
- * Nordic Terminal Tool - Execute commands in the nRF Connect terminal
- * This is the PRIMARY method for all Nordic/Zephyr development tasks.
+ * Nordic Device Tool - Execute NCS commands in the nRF Connect terminal,
+ * and capture live logs from connected nRF devices.
+ *
+ * Two modes:
+ * 1. action="execute" → Runs any west/nrfjprog/nrfutil command in the nRF Connect terminal
+ *    (guarantees correct SDK environment — toolchain, ZEPHYR_BASE, PATH).
+ *    Use this for: west build, west flash, nrfutil device list, nrfjprog, etc.
+ *
+ * 2. action="log_device" → Runs the embedded native logger tool.
+ *    Use this for: live UART/RTT log capture only.
+ *
+ * IMPORTANT: execute_command MUST NOT be used for NCS SDK tasks.
+ *            It runs in a plain terminal without the SDK environment.
  */
+
+const TECHNICAL_REFERENCE = `
+CRITICAL OPERATIONAL RULES:
+1. BOARD NAMES: Must be full Zephyr ID (e.g., "nrf52840dk/nrf52840", NOT "nrf52840dk"). Use for example "west boards -f "{name}/{qualifiers}" | grep nrf52840" to verify.
+2. BUILD DIRS: User may have custom build dirs (e.g., build_52840, build_central). Use --build-dir (-d) to target them.
+3. MULTI-DEVICE FLASH: Use "west flash --snr <serial_number>" to target a specific device. Required when >1 device connected.
+4. PROCESS CLEANUP (run before flash or log capture):
+   - Linux/Mac: pkill -9 JLink && pkill -9 nrfutil
+   - Windows:   taskkill /F /IM JLink.exe & taskkill /F /IM nrfutil.exe
+5. PORTS: Windows uses COMx; Linux uses /dev/ttyACMx; Mac uses /dev/tty.usbmodemXXXX.
+6. DEVICE LISTING: For device enumeration, use action="log_device" operation="list". NEVER call nrfutil device list via execute_command directly.
+`
 
 const PARAMETERS = [
 	{
 		name: "action",
 		required: true,
 		instruction: `The action to perform. Options:
-- "execute": Run a generic shell command (west, nrfjprog).
-- "log_device": Run the native Nordic Logger tool (replaces external python scripts).`,
+- "execute": Run a west/nrfjprog/nrfutil command in the nRF Connect terminal (correct SDK env). Use for ALL NCS CLI operations.
+- "log_device": Run the native Nordic Logger tool. Use ONLY for live UART/RTT log capture.`,
 		usage: "execute",
 	},
 	{
 		name: "command",
 		required: false,
-		instruction: `Required if action="execute". The shell command to run in the nRF Connect terminal. Use west, nrfjprog, nrfutil commands.
+		instruction: `Required if action="execute". The shell command to run in the nRF Connect terminal.
 Examples:
-- "west boards | grep nrf52840" (Find correct board name)
-- "west build -b nrf52840dk ." (Build for specific board)
-- "west flash --erase"
-- "nrfjprog --eraseall"`,
-		usage: "west build -b nrf52840dk .",
+- "west boards | grep nrf52840"      (Find correct board name)
+- "west build -b nrf52840dk/nrf52840 ."  (Build)
+- "west build -d build_52840 --pristine -b nrf52840dk/nrf52840 ."  (Build with custom dir)
+- "west flash"                       (Flash single device)
+- "west flash --snr 683335182"       (Flash specific device)
+- "nrfjprog --recover"
+- "nrfutil device list"`,
+		usage: "west build -b nrf52840dk/nrf52840 .",
 	},
 	{
 		name: "operation",
 		required: false,
-		instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor", "device_info".`,
-		usage: "list",
+		instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor", "device_info".
+- "list": List connected nRF devices
+- "test": Quick connection test to a device
+- "capture": Capture logs for a specified duration and save to file
+- "monitor": Continuous live log monitoring (no file save)
+- "device_info": Get detailed device information`,
+		usage: "capture",
 	},
 	{
 		name: "transport",
 		required: false,
-		instruction: `IMPORTANT: Always set explicitly based on user request or prj.conf detection.
+		instruction: `Required if action="log_device". Detect from prj.conf:
 - "uart": Serial port communication (COM3, /dev/ttyACM0). DEFAULT if not specified.
-- "rtt": J-Link RTT (9-digit serial like 683335182). Only use if prj.conf shows CONFIG_USE_SEGGER_RTT=y
+- "rtt": J-Link RTT (9-digit serial like 683335182). Only if prj.conf shows CONFIG_USE_SEGGER_RTT=y
 
 EXPLICIT RULE: 
 ✓ User says "capture UART logs" → MUST set transport="uart"
 ✓ User says "show logs from RTT" → MUST set transport="rtt"  
 ✓ prj.conf shows CONFIG_LOG_BACKEND_UART=y → set transport="uart"
 ✓ prj.conf shows CONFIG_USE_SEGGER_RTT=y → set transport="rtt"
+✓ prj.conf does not show any → set transport="uart" (UART is the default).
 
 If unsure, tool auto-detects from prj.conf, but ALWAYS pass explicit transport for clarity.`,
 		usage: "uart",
@@ -53,7 +85,7 @@ If unsure, tool auto-detects from prj.conf, but ALWAYS pass explicit transport f
 		name: "port",
 		required: false,
 		instruction: `Required for "test", "capture", "monitor" (unless "devices" is used). 
-- For UART: The serial port (e.g. /dev/ttyACM0, COM3).
+- For UART: The serial port (e.g. /dev/ttyACM0, COM3, /dev/tty.usbmodem14101).
 - For RTT: The J-Link Serial Number (e.g. 683335182). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.`,
 		usage: "/dev/ttyACM0",
 	},
@@ -112,22 +144,15 @@ This ensures complete boot sequence is captured.`,
 	},
 ]
 
-const TECHNICAL_REFERENCE = `
-CRITICAL OPERATIONAL RULES:
-1. BOARD NAMES: Must be full Zephyr ID (e.g., "nrf52840dk_nrf52840", NOT "nrf52840dk"). Use "west boards" to verify.
-2. FLASHING:
-   - Single device: "west flash"
-   - Multiple devices: "west flash --snr <serial_number>" (REQUIRED to avoid ambiguity).
-3. CLEANUP: Always run "pkill -9 JLink; pkill -9 nrfutil" before "log_device" or "west flash" to prevent lockups.
-4. PORTS: Windows use COMx; Linux use /dev/ttyACMx.
-5. DEVICE LISTING: ALWAYS use trigger_nordic_action(action="log_device", operation="list"). NEVER call nrfutil device list directly. NEVER use nrfjprog --ids on Windows.
-`
-
 const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: "nrf_device_tool",
-	description: `Execute commands in the nRF Connect terminal with the correct Nordic/Zephyr SDK environment. This is the ONLY method to use for west, nrfjprog, nrfutil, and other Nordic CLI tools.
+	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
+
+USE action="execute" for ALL NCS CLI operations: west build, west flash, nrfjprog, nrfutil, etc.
+USE action="log_device" ONLY for live UART/RTT log capture.
+NEVER use execute_command for NCS SDK tasks — it runs in a plain terminal without the toolchain.
 ${TECHNICAL_REFERENCE}`,
 	parameters: PARAMETERS,
 }
@@ -136,7 +161,8 @@ const NATIVE_GPT_5: ClineToolSpec = {
 	variant: ModelFamily.NATIVE_GPT_5,
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: ClineDefaultTool.NORDIC_ACTION,
-	description: `Execute commands in nRF Connect terminal or access Native Logger. ALWAYS use this for west/nrfjprog/logging.
+	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
+USE action="execute" for ALL NCS CLI (west, nrfjprog, nrfutil). USE action="log_device" ONLY for log capture. NEVER use execute_command for NCS SDK tasks.
 ${TECHNICAL_REFERENCE}`,
 	parameters: PARAMETERS,
 }
@@ -150,7 +176,8 @@ const GEMINI_3: ClineToolSpec = {
 	variant: ModelFamily.GEMINI_3,
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: ClineDefaultTool.NORDIC_ACTION,
-	description: `Execute commands in the nRF Connect terminal or use Native Logger. ALWAYS use this for west, nrfjprog, nrfutil commands.
+	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
+USE action="execute" for ALL NCS CLI (west, nrfjprog, nrfutil). USE action="log_device" ONLY for log capture. NEVER use execute_command for NCS SDK tasks.
 ${TECHNICAL_REFERENCE}`,
 	parameters: PARAMETERS,
 }

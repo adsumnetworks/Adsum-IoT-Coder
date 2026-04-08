@@ -16,27 +16,28 @@ describe("trigger_nordic_action tool", () => {
 		const generic = trigger_nordic_action_variants.find((v) => v.variant === ModelFamily.GENERIC)
 		expect(generic).to.exist
 		expect(generic?.id).to.equal(ClineDefaultTool.NORDIC_ACTION)
-		expect(generic?.description).to.include("Execute commands in the nRF Connect terminal")
-		// Check for CRITICAL OPERATIONAL RULES section
-		expect(generic?.description).to.include("CRITICAL OPERATIONAL RULES")
-		expect(generic?.description).to.include("pkill -9 JLink")
 
-		// Check for parameters instruction
-		expect(generic?.description).to.include("nrf52840dk_nrf52840")
+		expect(generic?.description).to.include("Execute commands in the nRF Connect terminal")
+		expect(generic?.description).to.include('USE action="execute" for ALL NCS CLI')
+		expect(generic?.description).to.include("NEVER use execute_command for NCS SDK tasks")
+		expect(generic?.description).to.include("taskkill /F /IM JLink.exe")
 
 		if (!generic) throw new Error("Generic variant not found")
-		const commandParam = generic.parameters?.find((p) => p.name === "command")
-		expect(commandParam).to.exist
-		// Updated prompt no longer hardcodes these exact strings in instruction examples
-		// expect(commandParam?.instruction).to.include(`"west boards | grep nrf52840"`)
-		// expect(commandParam?.instruction).to.include(`"west build -b nrf52840dk ."`)
+
+		// Should have action and operation parameters
+		const actionParam = generic.parameters?.find((p) => p.name === "action")
+		expect(actionParam).to.exist
+
+		const operationParam = generic.parameters?.find((p) => p.name === "operation")
+		expect(operationParam).to.exist
+		expect(operationParam?.instruction).to.include("capture")
 	})
 
 	it("should have simplified description for NATIVE_GPT_5 variant", () => {
 		const nativeGpt5 = trigger_nordic_action_variants.find((v) => v.variant === ModelFamily.NATIVE_GPT_5)
 		expect(nativeGpt5).to.exist
-		expect(nativeGpt5?.description).to.include("Execute commands in nRF Connect terminal")
-		// The CLI Reference is reused, so it should have board format section
-		// expect(nativeGpt5?.description).to.include("nrf52840dk/nrf52840")
+		// Tool handles both execute and capture
+		expect(nativeGpt5?.description).to.include("Execute commands in the nRF Connect terminal")
+		expect(nativeGpt5?.description).to.include("NEVER use execute_command for NCS SDK tasks")
 	})
 })

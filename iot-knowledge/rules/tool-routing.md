@@ -1,18 +1,24 @@
 # Tool Routing Directives
 
-Due to the constraints of embedded ecosystems, standard shell terminals often lack necessary cross-compiler, toolchain, and SDK environment variables.
+Standard shell terminals on embedded development machines often lack the cross-compiler, toolchain, and SDK environment variables needed for firmware operations.
 
-## Routing Rules
-1. **Device Tools vs `execute_command`**
-   - **MUST USE Device Tools (e.g. `nrf_device_tool`)** for: 
-     - Building firmware (e.g., `west build`, `idf.py build`, `cmake`)
-     - Flashing firmware (e.g., `west flash`, `nrfjprog`)
-     - Log capture (e.g., UART, RTT listener scripts)
-     - Dependency management within the SDK workspace.
-   - **MUST USE `execute_command`** for:
-     - General host system operations (e.g., `git`, file manipulation, regex searches).
-     - Standard package managers for host software (e.g., `npm`, `apt`).
+## Global Routing Principles
 
-2. **Terminal Switching**
-   - You may switch between tools based on the task. However, NEVER assume that a command which worked in `execute_command` will correctly map to a device-specific tool, and vice-versa.
-   - Example: A `git commit` belongs in `execute_command`. A `west build` belongs in `nrf_device_tool`.
+1. **Platform Terminal for SDK Commands**
+   Each platform has a designated terminal that pre-loads its toolchain environment. All build, flash, and device-query commands MUST use that terminal.
+   - Refer to `platforms/<platform>/rules/` for which terminal to use.
+   - Refer to `platforms/<platform>/PLATFORM.md` for available CLI tools.
+
+2. **`execute_command` for Host Operations**
+   Use `execute_command` (standard terminal) for:
+   - General host system operations: `git`, file manipulation, grep, regex searches
+   - Standard package managers: `npm`, `pip`, `apt`
+   - Any operation that does not need the SDK toolchain environment
+
+3. **Dedicated Device Tools for Specialized Hardware Operations**
+   Some operations require dedicated tools that go beyond simple CLI commands (e.g., live log capture with multi-device synchronization, reset coordination, transport auto-detection).
+   - Refer to `platforms/<platform>/PLATFORM.md` for which dedicated tools are available and what they do.
+   - These tools handle complexity that shell commands alone cannot (e.g., simultaneous multi-device RTT capture with file naming).
+
+4. **Never Mix Terminals**
+   A command that works in `execute_command` may NOT work in a platform terminal, and vice-versa. Do not assume cross-compatibility.

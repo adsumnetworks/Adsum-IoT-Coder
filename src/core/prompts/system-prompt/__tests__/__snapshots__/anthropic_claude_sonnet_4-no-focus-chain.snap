@@ -208,41 +208,55 @@ Usage:
 </generate_explanation>
 
 ## nrf_device_tool
-Description: Execute commands in the nRF Connect terminal with the correct Nordic/Zephyr SDK environment. This is the ONLY method to use for west, nrfjprog, nrfutil, and other Nordic CLI tools.
+Description: Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
+
+USE action="execute" for ALL NCS CLI operations: west build, west flash, nrfjprog, nrfutil, etc.
+USE action="log_device" ONLY for live UART/RTT log capture.
+NEVER use execute_command for NCS SDK tasks — it runs in a plain terminal without the toolchain.
 
 CRITICAL OPERATIONAL RULES:
-1. BOARD NAMES: Must be full Zephyr ID (e.g., "nrf52840dk_nrf52840", NOT "nrf52840dk"). Use "west boards" to verify.
-2. FLASHING:
-   - Single device: "west flash"
-   - Multiple devices: "west flash --snr <serial_number>" (REQUIRED to avoid ambiguity).
-3. CLEANUP: Always run "pkill -9 JLink; pkill -9 nrfutil" before "log_device" or "west flash" to prevent lockups.
-4. PORTS: Windows use COMx; Linux use /dev/ttyACMx.
-5. DEVICE LISTING: ALWAYS use trigger_nordic_action(action="log_device", operation="list"). NEVER call nrfutil device list directly. NEVER use nrfjprog --ids on Windows.
+1. BOARD NAMES: Must be full Zephyr ID (e.g., "nrf52840dk/nrf52840", NOT "nrf52840dk"). Use "west boards | grep nrf" to verify.
+2. BUILD DIRS: User may have custom build dirs (e.g., build_52840, build_central). Use --build-dir (-d) to target them.
+3. MULTI-DEVICE FLASH: Use "west flash --snr <serial_number>" to target a specific device. Required when >1 device connected.
+4. PROCESS CLEANUP (run before flash or log capture):
+   - Linux/Mac: pkill -9 JLink && pkill -9 nrfutil
+   - Windows:   taskkill /F /IM JLink.exe & taskkill /F /IM nrfutil.exe
+5. PORTS: Windows uses COMx; Linux uses /dev/ttyACMx; Mac uses /dev/tty.usbmodemXXXX.
+6. DEVICE LISTING: For device enumeration, use action="log_device" operation="list". NEVER call nrfutil device list via execute_command directly.
 
 Parameters:
 - action: (required) The action to perform. Options:
-- "execute": Run a generic shell command (west, nrfjprog).
-- "log_device": Run the native Nordic Logger tool (replaces external python scripts).
-- command: (optional) Required if action="execute". The shell command to run in the nRF Connect terminal. Use west, nrfjprog, nrfutil commands.
+- "execute": Run a west/nrfjprog/nrfutil command in the nRF Connect terminal (correct SDK env). Use for ALL NCS CLI operations.
+- "log_device": Run the native Nordic Logger tool. Use ONLY for live UART/RTT log capture.
+- command: (optional) Required if action="execute". The shell command to run in the nRF Connect terminal.
 Examples:
-- "west boards | grep nrf52840" (Find correct board name)
-- "west build -b nrf52840dk ." (Build for specific board)
-- "west flash --erase"
-- "nrfjprog --eraseall"
+- "west boards | grep nrf52840"      (Find correct board name)
+- "west build -b nrf52840dk/nrf52840 ."  (Build)
+- "west build -d build_52840 --pristine -b nrf52840dk/nrf52840 ."  (Build with custom dir)
+- "west flash"                       (Flash single device)
+- "west flash --snr 683335182"       (Flash specific device)
+- "nrfjprog --recover"
+- "nrfutil device list"
 - operation: (optional) Required if action="log_device". Options: "list", "test", "capture", "monitor", "device_info".
-- transport: (optional) IMPORTANT: Always set explicitly based on user request or prj.conf detection.
+- "list": List connected nRF devices
+- "test": Quick connection test to a device
+- "capture": Capture logs for a specified duration and save to file
+- "monitor": Continuous live log monitoring (no file save)
+- "device_info": Get detailed device information
+- transport: (optional) Required if action="log_device". Detect from prj.conf:
 - "uart": Serial port communication (COM3, /dev/ttyACM0). DEFAULT if not specified.
-- "rtt": J-Link RTT (9-digit serial like 683335182). Only use if prj.conf shows CONFIG_USE_SEGGER_RTT=y
+- "rtt": J-Link RTT (9-digit serial like 683335182). Only if prj.conf shows CONFIG_USE_SEGGER_RTT=y
 
 EXPLICIT RULE: 
 ✓ User says "capture UART logs" → MUST set transport="uart"
 ✓ User says "show logs from RTT" → MUST set transport="rtt"  
 ✓ prj.conf shows CONFIG_LOG_BACKEND_UART=y → set transport="uart"
 ✓ prj.conf shows CONFIG_USE_SEGGER_RTT=y → set transport="rtt"
+✓ prj.conf does not show any → set transport="uart" (UART is the default).
 
 If unsure, tool auto-detects from prj.conf, but ALWAYS pass explicit transport for clarity.
 - port: (optional) Required for "test", "capture", "monitor" (unless "devices" is used). 
-- For UART: The serial port (e.g. /dev/ttyACM0, COM3).
+- For UART: The serial port (e.g. /dev/ttyACM0, COM3, /dev/tty.usbmodem14101).
 - For RTT: The J-Link Serial Number (e.g. 683335182). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.
 - duration: (optional) Optional for "capture". Recording duration in seconds. 
 - Quick test: 5 seconds
@@ -265,8 +279,8 @@ This ensures complete boot sequence is captured.
 Usage:
 <nrf_device_tool>
 <action>execute</action>
-<command>west build -b nrf52840dk .</command>
-<operation>list</operation>
+<command>west build -b nrf52840dk/nrf52840 .</command>
+<operation>capture</operation>
 <transport>uart</transport>
 <port>/dev/ttyACM0</port>
 <duration>30</duration>

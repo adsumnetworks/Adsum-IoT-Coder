@@ -1,133 +1,63 @@
-# Nordic nRF Connect SDK / Zephyr RTOS — Platform Knowledge
+# Nordic nRF — Platform Index
 
-## CRITICAL RULE: nRF Connect Terminal
-**ALL SDK commands MUST be executed inside the nRF Connect terminal.**
-The nRF Connect terminal (provided by the nRF Connect for VS Code extension) pre-loads
-the Zephyr/NCS toolchain environment (`ZEPHYR_BASE`, `GNUARMEMB_TOOLCHAIN_PATH`, west, etc.).
-Running commands in a regular shell will **fail** because the environment is not configured.
+This file is the entry point for all nRF platform knowledge. It lists what is available and points the agent to the right files.
 
-If the nRF Connect terminal cannot be opened, or `west --version` / `nrfutil --version` fails inside it,
-the user **must install and configure the nRF Connect for VS Code extension** before any development can proceed.
+## Platform Overview
+Nordic Semiconductor nRF SoC family — ARM Cortex-M based microcontrollers for wireless IoT applications.
 
-The agent tool `nrf_device_tool` already routes commands through the nRF Connect terminal.
-**ALWAYS use `nrf_device_tool`** for any build, flash, log, or shell operation. **NEVER** use `execute_command` directly.
+## Supported Boards
+Load the specific board file when working on a project targeting that board.
 
-## NCS Project Structure
-A standard nRF Connect SDK application contains:
-```
-<project-root>/
-├── CMakeLists.txt        # Must contain: find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-├── prj.conf              # Kconfig configuration (always present)
-├── src/
-│   └── main.c            # Application entry point
-├── boards/               # (optional) Board-specific overlays: <board>.overlay, <board>.conf
-├── sample.yaml           # (optional) Sample metadata & test definitions
-├── .overlay / .dts       # (optional) DeviceTree overlays at root level
-├── build/                # Generated build artifacts (never edit manually)
-│   ├── zephyr/zephyr.hex # Compiled firmware image
-│   └── merged.hex        # Combined image (app + bootloader if applicable)
-└── .vscode/settings.json # nRF Connect extension workspace settings
-```
+| Board Target | SoC | Board File | Key Features |
+|---|---|---|---|
+| `nrf52840dk/nrf52840` | nRF52840 | `boards/nrf52840.md` | BLE 5.0, USB, NFC, Thread, Zigbee, 802.15.4 |
+| `nrf52dk/nrf52832` | nRF52832 | `boards/nrf52832.md` | BLE 5.0, NFC (limited RAM: 64KB) |
+| `nrf5340dk/nrf5340/cpuapp` | nRF5340 | `boards/nrf5340.md` | Dual-core, BLE 5.3, TrustZone |
 
-## SDK Installation Path
-The NCS SDK is typically installed at:
-- **Linux:** `~/ncs/<version>/` (e.g. `/home/<user>/ncs/v3.2.1/`)
-- **Windows:** `C:\ncs\<version>\`
-- **macOS:** `~/ncs/<version>/`
+Board targets use the Zephyr format: `<board>/<soc>` (e.g., `nrf52840dk/nrf52840`).
 
-Inside the SDK: `nrf/`, `zephyr/`, `modules/`, `bootloader/`, `tools/`, `nrfxlib/`
-The `west.yml` manifest lives inside the SDK (`nrf/west.yml`), NOT in user projects.
+## Supported SDKs
+| SDK | File | Build System |
+|---|---|---|
+| Nordic Connect SDK (NCS) + Zephyr RTOS | `sdks/ncs/SDK.md` | `west` (CMake + Ninja) |
 
-## Supported Boards (nRF52 Series — Test Targets)
-| Board Target             | SoC        | Features                        |
-|--------------------------|------------|---------------------------------|
-| `nrf52840dk/nrf52840`    | nRF52840   | BLE 5.0, USB, NFC, Thread, Zigbee, 802.15.4 |
-| `nrf52dk/nrf52832`       | nRF52832   | BLE 5.0, NFC                    |
+## Platform Tools (nRF Connect Terminal)
+All commands below MUST run in the nRF Connect Terminal (see `rules/nrf-terminal.md`).
 
-Board targets use the format `<board>/<soc>` (e.g. `nrf52840dk/nrf52840`).
+### Device Commands
+- `nrfutil device list` — List connected J-Link devices. Best for:
+    - Port number (for UART logging)
+    - Serial number (for RTT logging and flashing)
+    - Available device traits (`serialPorts`, etc.)
+- `nrfutil device device-info` — Get detailed device info:
+    - deviceFamily, deviceName, deviceVersion
+- `nrfutil toolchain-manager list` — Show installed NCS SDK versions and paths
 
-## Key Configuration Files
-### prj.conf (Kconfig)
-Controls what subsystems and features are enabled:
-```ini
-CONFIG_BT=y                      # Enable Bluetooth
-CONFIG_LOG=y                     # Enable logging subsystem
-CONFIG_USE_SEGGER_RTT=y          # Enable RTT transport
-CONFIG_LOG_BACKEND_RTT=y         # Route logs to RTT
-CONFIG_LOG_BACKEND_UART=y        # Route logs to UART
-CONFIG_BT_PERIPHERAL=y           # BLE peripheral role
-CONFIG_BT_DEVICE_NAME="MyDevice" # BLE device name
-```
+### Auto-Install Guard
+If `nrfutil device` fails: `nrfutil install device`
+If `nrfutil toolchain-manager` fails: `nrfutil install toolchain-manager`
 
-### CMakeLists.txt
-Must always reference Zephyr:
-```cmake
-cmake_minimum_required(VERSION 3.20.0)
-find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(<app-name>)
-target_sources(app PRIVATE src/main.c)
-```
-
-### DeviceTree Overlays (.overlay)
-Board-specific hardware customization placed in `boards/` directory.
-Named `<board_target>.overlay` (e.g. `nrf52840dk_nrf52840.overlay`).
-
-## Build & Flash Workflow
-```bash
-# Build (via nrf_device_tool — runs in nRF Connect terminal)
-west build -b nrf52840dk/nrf52840
-
-# Flash (device must be connected)
-west flash
-
-# Clean build
-west build -t pristine
-```
-
-## Logging & Debugging
-### Auto-detect Log Transport from prj.conf:
-- `CONFIG_USE_SEGGER_RTT=y` → **RTT** (via J-Link / nRF Connect debugger)
-- `CONFIG_LOG_BACKEND_UART=y` → **UART** (serial port)
-- Both can be enabled simultaneously
-
-### Log Capture
-Use `nrf_device_tool` with `action="log_device"` to capture device logs.
-The tool auto-detects the transport from `prj.conf`.
-
-### Useful nRF CLI Tools (all via nRF Connect terminal)
-- `west --version` — Check west build tool version
-- `nrfutil device list` — List connected J-Link devices, best for: 
-    - get the port number to be used for UART logging
-    - get the serial number for RTT logging and flashing
-    - get the available device traits (like `serialPorts` - Device has serialports).
-- `nrfutil device device-info` — List connected J-Link devices, best for:
-    - get the device info like deviceFamily, deviceName, deviceVersion ...
-- `nrfutil toolchain-manager list` — Show installed NCS SDK versions 
+### Build & Flash Tools
+- `west build` — Build firmware (see `actions/build.md` for full reference)
+- `west flash` — Flash firmware (see `actions/flash.md` for full reference)
 - `west build -t menuconfig` — Interactive Kconfig editor
 
-IMPORTANT: If the nRF Connect terminal cannot excute `nrfutil device` the agent should install it using `nrfutil install device`.and it's CRITICAL to have nrfutil installed in the nRF Connect terminal for devices info and interactive debugging.(same thing for toolchain-manager `nrfutil install toolchain-manager`)
+### Log Capture
+Use the dedicated `nrf_device_tool` for live log capture (RTT/UART).
+See `actions/capture-logs.md` for usage and file naming conventions.
 
-## NCS Documentation Reference (SINGLE SOURCE OF TRUTH)
-When the SDK is installed, detailed documentation is absolutely critical and serves as your single source of truth.
-You MUST refer to the documentation in `/home/{user}/ncs/{version}/nrf/doc` (Should be using `nrfutil toolchain-manager list` to get the path and versions of the installed SDKs) whenever you need details on best practices, configs, or integrations.
-Subdirectories include:
-- `app_dev/` — Application development guides
-- `app_dev/config_and_build/` — Build system, Kconfig, CMake docs
-- `app_dev/device_guides/nrf52/` — nRF52 specific guides
-- `samples/` — Sample application docs
-- `protocols/` — BLE, Thread, Zigbee, Matter protocol guides
-- `libraries/` — NCS library references
-**IMPORTANT**: This documnentation has a lot of files and informations, so you should use it carfully ONLY when you need a detail that not mention in this iot-knowledge. YOU SHOULND NOT fill-up the context that yiled to bad peformence, context overflow and high cost.
+## Skill Library Index (MANDATORY READING)
+The following actions and workflows are strict, custom-built skills. **DO NOT rely on your pre-trained knowledge, assumptions, or general debugging intuition to execute these.** 
 
-## Zephyr Documentation Reference (SINGLE SOURCE OF TRUTH)
-You MUST refer to the documentation in `/home/{user}/ncs/{version}/zephyr/doc` (Should be using `nrfutil toolchain-manager list` to get the path and versions of the installed SDKs) whenever you need details on best practices, configs, or integrations.
-- 'west' documentation is in `/home/{user}/ncs/{version}/zephyr/doc/develop/west/` and for build/flash doc, you should refer to `build-flash-debug.rst` in that folder.
+**CRITICAL RULE:** If the user's request matches one of these skills, your *very first action* MUST be using the `read_file` or `view_file` tool to load the corresponding `.md` file.
 
-**IMPORTANT**: This documnentation has a lot of files and informations, so you should use it carfully ONLY when you need a detail that not mentioned in this context (IoT & Embedded Context). YOU SHOULND NOT fill-up the context that yiled to bad peformence, context overflow and high cost.
+### Actions (Atomic Operations)
+- `platforms/nrf/actions/build.md` — Building firmware
+- `platforms/nrf/actions/flash.md` — Flashing firmware to device
+- `platforms/nrf/actions/capture-logs.md` — Capturing live device logs
+- `platforms/nrf/actions/analyze-logs.md` — Analyzing captured log files
 
-
-## Debugging Workflows
-Refer to the `workflows/` directory for step-by-step instructions on:
-- **Log Generation** — Capturing device logs (RTT / UART)
-- **Log Analysis** — Parsing and interpreting device output
-- **Debug Loop** — Iterative build-flash-test cycle with safety guards
+### Workflows (Multi-Step Chains)
+- `platforms/nrf/workflows/log-generator.md` — Adding logging instrumentation to firmware
+- `platforms/nrf/workflows/log-analyzer.md` — A guided sequence to capture and analyze logs
+- `platforms/nrf/workflows/debug-loop.md` — Iterative Build/Flash/Capture/Analyze cycle
