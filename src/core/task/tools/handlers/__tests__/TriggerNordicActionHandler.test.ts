@@ -9,6 +9,9 @@ import { ClineDefaultTool } from "@/shared/tools"
  *
  * These tests verify the handler's behavior WITHOUT VS Code dependencies
  * by testing the logic paths directly.
+ *
+ * The nrf_device_tool executes commands in the nRF Connect terminal
+ * or captures live logs from connected devices.
  */
 describe("TriggerNordicActionHandler", () => {
 	let sandbox: sinon.SinonSandbox
@@ -22,56 +25,92 @@ describe("TriggerNordicActionHandler", () => {
 	})
 
 	describe("Parameter Validation", () => {
-		it("should require action='execute'", () => {
+		it("should require action='log_device'", () => {
 			const block: ToolUse = {
 				type: "tool_use",
 				name: ClineDefaultTool.NORDIC_ACTION,
-				params: { action: "build" }, // Wrong action
+				params: { action: "log_device", operation: "capture" },
 				partial: false,
 			}
 
-			// Validate the expected action
-			expect(block.params.action).to.not.equal("execute")
-			expect(["execute"]).to.not.include(block.params.action)
+			expect(block.params.action).to.equal("log_device")
 		})
 
-		it("should require command parameter when action is execute", () => {
-			const validBlock: ToolUse = {
+		it("should accept action='execute' with command", () => {
+			const block: ToolUse = {
 				type: "tool_use",
 				name: ClineDefaultTool.NORDIC_ACTION,
 				params: { action: "execute", command: "west build" },
 				partial: false,
 			}
 
-			const invalidBlock: ToolUse = {
-				type: "tool_use",
-				name: ClineDefaultTool.NORDIC_ACTION,
-				params: { action: "execute" }, // Missing command
-				partial: false,
-			}
-
-			expect(validBlock.params.command).to.exist
-			expect(invalidBlock.params.command).to.be.undefined
+			expect(block.params.action).to.equal("execute")
+			expect(block.params.command).to.equal("west build")
 		})
 
-		it("should accept common Nordic commands", () => {
-			const commands = [
-				"west build -b nrf52840dk/nrf52840 .",
-				"west flash --erase",
-				"west boards | grep nrf52",
-				"nrfjprog --eraseall",
-				"nrfjprog --recover",
-			]
+		it("should accept valid log capture operations", () => {
+			const operations = ["list", "test", "capture", "monitor", "device_info"]
 
-			for (const cmd of commands) {
+			for (const op of operations) {
 				const block: ToolUse = {
 					type: "tool_use",
 					name: ClineDefaultTool.NORDIC_ACTION,
-					params: { action: "execute", command: cmd },
+					params: { action: "log_device", operation: op },
 					partial: false,
 				}
-				expect(block.params.command).to.equal(cmd)
+				expect(block.params.operation).to.equal(op)
 			}
+		})
+
+		it("should accept transport parameter for log capture", () => {
+			const rttBlock: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: {
+					action: "log_device",
+					operation: "capture",
+					transport: "rtt",
+					port: "683335182",
+					duration: "30",
+				} as any,
+				partial: false,
+			}
+
+			const uartBlock: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: {
+					action: "log_device",
+					operation: "capture",
+					transport: "uart",
+					port: "/dev/ttyACM0",
+					duration: "15",
+				} as any,
+				partial: false,
+			}
+
+			expect((rttBlock.params as any).transport).to.equal("rtt")
+			expect(rttBlock.params.port).to.equal("683335182")
+			expect((uartBlock.params as any).transport).to.equal("uart")
+			expect(uartBlock.params.port).to.equal("/dev/ttyACM0")
+		})
+
+		it("should accept multi-device capture with devices parameter", () => {
+			const block: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: {
+					action: "log_device",
+					operation: "capture",
+					transport: "rtt",
+					devices: "central:683335182,peripheral:683007782",
+					duration: "30",
+				} as any,
+				partial: false,
+			}
+
+			expect((block.params as any).devices).to.include("central:")
+			expect((block.params as any).devices).to.include("peripheral:")
 		})
 	})
 
@@ -86,24 +125,24 @@ describe("TriggerNordicActionHandler", () => {
 			const partialBlock: ToolUse = {
 				type: "tool_use",
 				name: ClineDefaultTool.NORDIC_ACTION,
-				params: { action: "exec" }, // Incomplete
+				params: { action: "log" }, // Incomplete
 				partial: true,
 			}
 
 			expect(partialBlock.partial).to.be.true
 		})
 
-		it("should support complete blocks", () => {
+		it("should support complete log capture blocks", () => {
 			const completeBlock: ToolUse = {
 				type: "tool_use",
 				name: ClineDefaultTool.NORDIC_ACTION,
-				params: { action: "execute", command: "west build" },
+				params: { action: "log_device", operation: "capture", transport: "rtt", port: "683335182" } as any,
 				partial: false,
 			}
 
 			expect(completeBlock.partial).to.be.false
-			expect(completeBlock.params.action).to.equal("execute")
-			expect(completeBlock.params.command).to.equal("west build")
+			expect(completeBlock.params.action).to.equal("log_device")
+			expect(completeBlock.params.operation).to.equal("capture")
 		})
 	})
 })

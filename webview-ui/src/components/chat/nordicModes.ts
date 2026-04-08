@@ -1,9 +1,9 @@
 /**
- * Nordic Logging Assistant - Mode Definitions
+ * IoT Logging Assistant - Mode Definitions
  *
- * Defines the two operating modes for the Nordic Logging Assistant:
- * 1. Log Code Generator - adds LOG_* macros to C source files
- * 2. Log Analyzer - records & analyzes BLE behavior from connected nRF devices
+ * Defines the two operating modes for the IoT Logging Assistant:
+ * 1. Log Code Generator - adds logging code to C source files
+ * 2. Log Analyzer - records & analyzes BLE behavior from connected IoT devices
  *
  * NOTE: Workflow logic has been migrated to iot-knowledge/platforms/nrf/workflows/*.md
  * These prompts are intentionally minimal — the agent reads the workflow files directly.
@@ -26,9 +26,9 @@ export const NORDIC_MODES: Record<NordicModeId, NordicModeConfig> = {
 		id: "log_generator",
 		icon: "🔧",
 		title: "Generate Logging Code",
-		description: "Automatically inject professional LOG_* macros into your code following NCS best practices.",
+		description: "Automatically inject professional logging into your code following the best practices.",
 		systemPrompt: "Generate logging code",
-		initialMessage: "Analyzing all open VS Code workspace folders for nRF projects...",
+		initialMessage: "Analyzing all open VS Code workspace folders for IoT projects...",
 	},
 	log_analyzer: {
 		id: "log_analyzer",
