@@ -157,6 +157,7 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 		// Always load: Platform index + platform rules
 		iotContext += (await readKnowledgeFile("platforms/nrf/PLATFORM.md")) + "\n\n"
 		iotContext += (await readKnowledgeFile("platforms/nrf/rules/nrf-terminal.md")) + "\n\n"
+		iotContext += (await readKnowledgeFile("platforms/nrf/rules/skill-loading.md")) + "\n\n"
 
 		// Always load: NCS SDK knowledge (project structure, Kconfig, build reference)
 		iotContext += (await readKnowledgeFile("platforms/nrf/sdks/ncs/SDK.md")) + "\n\n"
@@ -175,8 +176,10 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 			const loadedBoardFiles = new Set<string>()
 
 			// Build summary for the agent
-			const buildSummary = builds.map((b) => `${b.dir} → ${b.boardTarget ?? "unknown"}`).join(", ")
-			iotContext += `#### Build Dirs Detected: ${buildSummary}\n\n`
+			const buildSummary = builds
+				.map((b) => `${b.dir}/ → board: ${b.boardTarget ?? "unknown"} (from build_info.yml)`)
+				.join(", ")
+			iotContext += `#### Existing Build Folders: ${buildSummary}\n\n`
 
 			for (const build of builds) {
 				if (!build.boardTarget) continue

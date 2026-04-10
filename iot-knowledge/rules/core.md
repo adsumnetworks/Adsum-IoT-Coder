@@ -45,7 +45,9 @@ This pattern applies to ALL platforms for actions such as:
 - **Prefer platform tools for device commands:** Use platform-specific device tools (e.g., `nrf_device_tool`) instead of `execute_command` for any SDK-related task.
 - Reserve `execute_command` (standard terminal) only for operations that genuinely require it: `git`, `pip`, `apt`, general host OS tasks.
 
-## 8. Skill Discovery Protocol (Anti-Laziness & Stateful Load Optimization)
+## 8. Skill Discovery Protocol (Architecture & Optimization)
 Advanced workflows and actions are documented as `.md` files in the `iot-knowledge` directory (indexed in `PLATFORM.md`). 
-- **Mandatory First Load:** You **MUST** proactively use `read_file` or `view_file` to load the exact skill manual from the disk before taking any first action. Do not attempt to execute complex tasks (like analyzing logs, generating code, building and flashing etc.) based on your pre-trained knowledge or general assumptions.
+
+- **Entry-Point Hierarchy (Workflows vs Actions):** Always start a task by loading a Primary Workflow. "Actions" are internal subroutines and must NEVER be loaded as the first step of a task. You may only load an Action if an active Workflow explicitly instructs you to do so.
+- **Mandatory First Load:** You **MUST** proactively use `read_file` or `view_file` to load the required skill manual from the disk before executing. Do not attempt to execute complex tasks (like analyzing logs, generating code, building and flashing etc.) based on your pre-trained knowledge or general assumptions.
 - **Context Optimization (Load Once):** If you have *already loaded* a specific skill file during the current ongoing task (for example, you are repeating an iteration in a debug loop), **DO NOT load it again**. Rely on the instructions already present in your conversational history to save context limits. Only load a file if it is missing from your immediate context.

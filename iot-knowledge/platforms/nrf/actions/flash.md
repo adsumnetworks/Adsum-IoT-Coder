@@ -11,8 +11,8 @@ Called from: Debug Loop Phase 2, or any task requiring firmware deployment to a 
 ## First-Flash Protocol
 On the **first flash** in a task/session:
 1. Run `nrfutil device list` to get connected devices (serial numbers, ports, types).
-2. Run `nrfutil device device-info` to confirm the device family matches the build target.
-3. If multiple devices are connected, ask the user to identify which device to flash. If the user provides a serial number, use `--snr <serial_number>` in your flash command.
+2. Run `nrfutil device device-info --serial-number <SN1,SN2,...>` to get `deviceFamily`, `deviceName`, `deviceVersion`. Confirm the device family matches the build target.
+3. If multiple devices are connected, ask the user to identify which device to flash. Always use `--snr <serial_number>` in your flash command.
 
 ## Execution — NCS/Zephyr (`west flash`)
 
