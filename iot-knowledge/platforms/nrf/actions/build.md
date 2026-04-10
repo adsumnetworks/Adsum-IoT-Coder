@@ -5,8 +5,33 @@ Called from: Debug Loop Phase 1, Log Generator Step 6, or any task requiring fir
 
 ## Pre-conditions
 - Project detected (CMakeLists.txt + prj.conf)
-- Board target known (from `build_info.yml` or user selection)
 - nRF Connect Terminal available
+
+## Board Target Resolution (BEFORE ANY BUILD)
+
+You have two data sources for board targets. You MUST cross-reference them before building.
+
+### Source 1: Existing Build Folders (from System Prompt)
+The system prompt injects: `Existing Build Folders: <dir>/ → board: <board_target> (from build_info.yml)`.
+This tells you what the project was **previously** built for. It is historical data, not a live state.
+
+### Source 2: Connected Devices (from Runtime Discovery)
+Run device discovery (if not already done in this task):
+1. `nrfutil device list` → serial numbers of all connected devices
+2. `nrfutil device device-info --serial-number <SN1,SN2,...>` → `deviceFamily`, `deviceName`, `deviceVersion`
+
+### Decision Matrix
+
+| Scenario | Action |
+|---|---|
+| 1 build folder + 1 matching device | Confirm: *"Build `<dir>` targets `<board>` and your connected device matches. Build for `<board>`?"* |
+| 1 build folder + device **MISMATCH** | **STOP.** Ask: *"Existing build targets `<board_A>` but connected device is `<board_B>`. Which target?"* Options: `["Build for connected device (<board_B>)", "Keep existing target (<board_A>)", "Let me explain"]` |
+| Multiple build folders + 1 device | Ask which build dir to use |
+| Multiple build folders + multiple devices | Ask user to clarify the target build + device pair |
+| No build folder + device connected | First build: confirm target derived from device info |
+| Build folder + no device connected | Warn: *"No device detected. I'll build for `<board>` from existing config. Flash will require a connected device."* |
+
+**CRITICAL:** Board target confirmation is NEVER skippable, even in Auto-Approve mode. Never silently resolve a mismatch — always confirm with the user.
 
 ## Execution — NCS/Zephyr (`west build`)
 
