@@ -1,63 +1,149 @@
-# Nordic nRF — Platform Index
+# Nordic nRF — Platform Index (`platforms/nrf/`)
 
-This file is the entry point for all nRF platform knowledge. It lists what is available and points the agent to the right files.
+This file is the master index for the `platforms/nrf/` directory. It describes everything available for Nordic nRF development and tells the agent when and how to load each resource.
 
-## Platform Overview
-Nordic Semiconductor nRF SoC family — ARM Cortex-M based microcontrollers for wireless IoT applications.
+---
 
-## Supported Boards
-Load the specific board file when working on a project targeting that board.
+## Directory Map
 
-| Board Target | SoC | Board File | Key Features |
-|---|---|---|---|
-| `nrf52840dk/nrf52840` | nRF52840 | `boards/nrf52840.md` | BLE 5.0, USB, NFC, Thread, Zigbee, 802.15.4 |
-| `nrf52dk/nrf52832` | nRF52832 | `boards/nrf52832.md` | BLE 5.0, NFC (limited RAM: 64KB) |
-| `nrf5340dk/nrf5340/cpuapp` | nRF5340 | `boards/nrf5340.md` | Dual-core, BLE 5.3, TrustZone |
+```
+platforms/nrf/
+├── PLATFORM.md              ← You are here. Master index for the nRF platform.
+├── rules/
+│   ├── nrf-terminal.md      ← CRITICAL: Terminal routing rules (when to read: always)
+│   └── skill-loading.md     ← Skill discovery & loading rules (when to read: always)
+├── boards/
+│   ├── nrf52832.md          ← nRF52832 hardware specs & constraints
+│   ├── nrf52840.md          ← nRF52840 hardware specs & constraints
+│   └── nrf5340.md           ← nRF5340 dual-core specs & constraints
+├── sdks/
+│   └── ncs/
+│       ├── SDK.md           ← NCS project structure, Kconfig, west build reference
+│       └── protocols/
+│           └── BLE.md       ← BLE stack concepts, log modules, buffer tuning
+├── scripts/                 ← Internal helper scripts (do not modify)
+├── actions/                 ← Internal subroutines (load ONLY when a Workflow instructs)
+│   ├── build.md
+│   ├── flash.md
+│   ├── capture-logs.md
+│   └── analyze-logs.md
+└── workflows/               ← Primary entry points (START HERE for each task)
+    ├── log-generator.md
+    ├── log-analyzer.md
+    └── debug-loop.md
+```
+
+---
+
+## Rules (`rules/`)
+
+Rules are platform-specific constraints that override the agent's default behavior. See `rules/skill-loading.md` for the full Skill Discovery Protocol.
+
+| File | When to Load | Purpose |
+|---|---|---|
+| `rules/nrf-terminal.md` | **Always.** | ALL NCS/SDK commands must use `nrf_device_tool`, never `execute_command`. |
+| `rules/skill-loading.md` | **Always.** | Skill hierarchy: Workflows are entry points, Actions are internal subroutines. |
+
+---
+
+## Hardware (`boards/`)
+
+Load the board file when the project targets a specific SoC. Each file documents key hardware constraints (RAM, Flash, peripherals, known limitations).
+
+| Board Target | SoC | File |
+|---|---|---|
+| `nrf52840dk/nrf52840` | nRF52840 | `boards/nrf52840.md` |
+| `nrf52dk/nrf52832` | nRF52832 | `boards/nrf52832.md` |
+| `nrf5340dk/nrf5340/cpuapp` | nRF5340 | `boards/nrf5340.md` |
 
 Board targets use the Zephyr format: `<board>/<soc>` (e.g., `nrf52840dk/nrf52840`).
 
-## Supported SDKs
-| SDK | File | Build System |
+---
+
+## SDKs (`sdks/`)
+
+| SDK | File | When to Load |
 |---|---|---|
-| Nordic Connect SDK (NCS) + Zephyr RTOS | `sdks/ncs/SDK.md` | `west` (CMake + Ninja) |
+| Nordic Connect SDK (NCS) + Zephyr RTOS | `sdks/ncs/SDK.md` | Load on first NCS project task. Contains project structure, Kconfig reference, west commands. |
+| BLE Stack | `sdks/ncs/protocols/BLE.md` | Load when the project uses BLE (`CONFIG_BT=y`) or when debugging BLE-related issues. |
 
-## Platform Tools (nRF Connect Terminal)
-All commands below MUST run in the nRF Connect Terminal (see `rules/nrf-terminal.md`).
+---
 
-### Device Commands
-- `nrfutil device list` — List connected J-Link devices. Best for:
-    - Port number (for UART logging)
-    - Serial number (for RTT logging and flashing)
-    - Available device traits (`serialPorts`, etc.)
-- `nrfutil device device-info` — Get detailed device info:
-    - deviceFamily, deviceName, deviceVersion
-- `nrfutil toolchain-manager list` — Show installed NCS SDK versions and paths
+## Platform Tools — `nrf_device_tool`
 
-### Auto-Install Guard
-If `nrfutil device` fails: `nrfutil install device`
-If `nrfutil toolchain-manager` fails: `nrfutil install toolchain-manager`
+The `nrf_device_tool` is the agent's primary interface for all hardware operations. It wraps the nRF Connect Terminal and device tools.
 
-### Build & Flash Tools
-- `west build` — Build firmware (see `actions/build.md` for full reference)
-- `west flash` — Flash firmware (see `actions/flash.md` for full reference)
-- `west build -t menuconfig` — Interactive Kconfig editor
+**Do NOT expose internal tool names to the user.** Say *"Building firmware..."* not *"Running nrf_device_tool with action=execute"*.
 
-### Log Capture
-Use the dedicated `nrf_device_tool` for live log capture (RTT/UART).
-See `actions/capture-logs.md` for usage and file naming conventions.
+### `action="execute"` — Run NCS/SDK Commands
 
-## Skill Library Index (MANDATORY READING)
-The following actions and workflows are strict, custom-built skills. **DO NOT rely on your pre-trained knowledge, assumptions, or general debugging intuition to execute these.** 
+Executes any command inside the nRF Connect Terminal (which has `ZEPHYR_BASE`, `west`, `cmake`, etc. pre-loaded). See `rules/nrf-terminal.md` for full routing rules.
 
-**CRITICAL RULE:** If the user's request matches one of these skills, your *very first action* MUST be using the `read_file` or `view_file` tool to load the corresponding `.md` file.
+**Key commands:**
+- `west build -b <board>/<soc>` — Build firmware
+- `west flash` — Flash firmware to device
+- `nrfutil toolchain-manager list` — Show installed NCS SDK versions
 
-### Actions (Atomic Operations)
-- `platforms/nrf/actions/build.md` — Building firmware
-- `platforms/nrf/actions/flash.md` — Flashing firmware to device
-- `platforms/nrf/actions/capture-logs.md` — Capturing live device logs
-- `platforms/nrf/actions/analyze-logs.md` — Analyzing captured log files
+### `action="execute"` — Device Discovery (Two-Step Sequence)
 
-### Workflows (Multi-Step Chains)
-- `platforms/nrf/workflows/log-generator.md` — Adding logging instrumentation to firmware
-- `platforms/nrf/workflows/log-analyzer.md` — A guided sequence to capture and analyze logs
-- `platforms/nrf/workflows/debug-loop.md` — Iterative Build/Flash/Capture/Analyze cycle
+Before building or flashing, the agent MUST identify the connected hardware:
+
+**Step 1:** List all connected devices
+```
+nrf_device_tool: action="execute", command="nrfutil device list"
+```
+→ Returns serial numbers, ports, and device traits.
+
+**Step 2:** Get detailed device info for board/SoC identification
+```
+nrf_device_tool: action="execute", command="nrfutil device device-info --serial-number <SN1,SN2,...,SNn>"
+```
+→ Returns `deviceFamily`, `deviceName`, `deviceVersion`. Use this to determine the correct `<board>/<soc>` target for `west build`.
+
+**Auto-Install Guard:**
+- If `nrfutil device` fails: `nrfutil install device`
+- If `nrfutil toolchain-manager` fails: `nrfutil install toolchain-manager`
+
+### `action="log_device"` — Live Log Capture
+
+Captures live device logs via RTT or UART. Used by `actions/capture-logs.md`.
+
+**Single device:**
+```
+nrf_device_tool: action="log_device", operation="capture", transport="rtt", port="<serial_number>", duration="<seconds>"
+```
+
+**Multi-device simultaneous capture:**
+```
+nrf_device_tool: action="log_device", operation="capture", transport="rtt", devices="central:<sn1>,peripheral:<sn2>", duration="<seconds>"
+```
+
+**Boot log capture (with reset):**
+```
+nrf_device_tool: action="log_device", operation="capture", transport="rtt", port="<sn>", duration="15", pre-capture-delay="3", reset="true"
+```
+
+---
+
+## Skill Library Index
+
+The workflows and actions below are strict, custom-built skills. See `rules/skill-loading.md` for the mandatory loading protocol.
+
+### Primary Entry-Point Workflows (START HERE)
+
+When starting a new task, load one of these Workflows first.
+
+| Workflow | File | Purpose |
+|---|---|---|
+| Log Generator | `workflows/log-generator.md` | Add Zephyr logging instrumentation to firmware |
+| Log Analyzer | `workflows/log-analyzer.md` | Guided sequence to capture and analyze device logs |
+| Debug Loop | `workflows/debug-loop.md` | Iterative Build → Flash → Capture → Analyze cycle |
+
+### Internal Actions (loaded by Workflows only)
+
+| Action | File | Purpose |
+|---|---|---|
+| Build | `actions/build.md` | Building firmware (`west build`) |
+| Flash | `actions/flash.md` | Flashing firmware to device (`west flash`) |
+| Capture Logs | `actions/capture-logs.md` | Capturing live RTT/UART device logs |
+| Analyze Logs | `actions/analyze-logs.md` | Analyzing a captured log file |
