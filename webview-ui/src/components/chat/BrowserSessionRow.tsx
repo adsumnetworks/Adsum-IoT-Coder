@@ -359,7 +359,7 @@ const BrowserSessionRow = memo((props: BrowserSessionRowProps) => {
 					<span className="codicon codicon-inspect" style={browserIconStyle}></span>
 				)}
 				<span style={approveTextStyle}>
-					{isAutoApproved ? "SoC AI Debugger is using the browser:" : "SoC AI Debugger wants to use the browser:"}
+					{isAutoApproved ? "IoT AI Debugger is using the browser:" : "IoT AI Debugger wants to use the browser:"}
 				</span>
 			</div>
 			<div
