@@ -202,7 +202,7 @@ USE action="log_device" ONLY for live UART/RTT log capture.
 NEVER use execute_command for NCS SDK tasks — it runs in a plain terminal without the toolchain.
 
 CRITICAL OPERATIONAL RULES:
-1. BOARD NAMES: Must be full Zephyr ID (e.g., "nrf52840dk/nrf52840", NOT "nrf52840dk"). Use "west boards | grep nrf" to verify.
+1. BOARD NAMES: Must be full Zephyr ID (e.g., "nrf52840dk/nrf52840", NOT "nrf52840dk"). Use for example "west boards -f "{name}/{qualifiers}" | grep nrf52840" to verify.
 2. BUILD DIRS: User may have custom build dirs (e.g., build_52840, build_central). Use --build-dir (-d) to target them.
 3. MULTI-DEVICE FLASH: Use "west flash --snr <serial_number>" to target a specific device. Required when >1 device connected.
 4. PROCESS CLEANUP (run before flash or log capture):
