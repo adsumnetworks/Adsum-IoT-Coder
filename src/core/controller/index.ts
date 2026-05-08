@@ -118,7 +118,7 @@ export class Controller {
 
 	constructor(readonly context: vscode.ExtensionContext) {
 		PromptRegistry.getInstance() // Ensure prompts and tools are registered
-		HostProvider.get().logToChannel("ClineProvider instantiated")
+		HostProvider.get().logToChannel("IoT AI Debugger Provider instantiated")
 		this.stateManager = StateManager.get()
 		StateManager.get().registerCallbacks({
 			onPersistenceError: async ({ error }: PersistenceErrorEvent) => {
@@ -192,7 +192,7 @@ export class Controller {
 			await this.postStateToWebview()
 			HostProvider.window.showMessage({
 				type: ShowMessageType.INFORMATION,
-				message: "Successfully logged out of Cline",
+				message: "Successfully logged out of IoT AI Debugger",
 			})
 		} catch (_error) {
 			HostProvider.window.showMessage({
@@ -539,7 +539,7 @@ export class Controller {
 			console.error("Failed to handle auth callback:", error)
 			HostProvider.window.showMessage({
 				type: ShowMessageType.ERROR,
-				message: "Failed to log in to Cline",
+				message: "Failed to log in to IoT AI Debugger",
 			})
 			// Even on login failure, we preserve any existing tokens
 			// Only clear tokens on explicit logout
