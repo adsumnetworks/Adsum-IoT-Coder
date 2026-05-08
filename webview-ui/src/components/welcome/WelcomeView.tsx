@@ -1,6 +1,7 @@
 import { BooleanRequest } from "@shared/proto/cline/common"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { memo, useEffect, useState } from "react"
+import NrfLogo from "@/assets/NrfLogo"
 import ApiOptions from "@/components/settings/ApiOptions"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { StateServiceClient } from "@/services/grpc-client"
@@ -29,7 +30,7 @@ const WelcomeView = memo(() => {
 			<div className="h-full px-5 overflow-auto flex flex-col gap-2.5">
 				<h2 className="text-lg font-semibold">Welcome to IoT AI Debugger</h2>
 				<div className="flex justify-center my-5">
-					<div className="size-16 flex items-center justify-center text-4xl">🤖</div>
+					<NrfLogo className="size-16" />
 				</div>
 				<p>
 					IoT AI Debugger – for nRF

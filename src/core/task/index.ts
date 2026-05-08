@@ -576,7 +576,7 @@ export class Task {
 	}> {
 		// Allow resume asks even when aborted to enable resume button after cancellation
 		if (this.taskState.abort && type !== "resume_task" && type !== "resume_completed_task") {
-			throw new Error("Cline instance aborted")
+			throw new Error("IoT AI Debugger instance aborted")
 		}
 		let askTs: number
 		if (partial !== undefined) {
@@ -711,7 +711,7 @@ export class Task {
 	): Promise<number | undefined> {
 		// Allow hook messages even when aborted to enable proper cleanup
 		if (this.taskState.abort && type !== "hook_status" && type !== "hook_output_stream") {
-			throw new Error("Cline instance aborted")
+			throw new Error("IoT AI Debugger instance aborted")
 		}
 
 		const providerInfo = this.getCurrentProviderInfo()

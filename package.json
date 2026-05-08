@@ -44,7 +44,14 @@
 	"contributes": {
 		"icons": {
 			"cline-icon": {
-				"description": "cline",
+				"description": "Cline",
+				"default": {
+					"fontPath": "assets/icons/cline-bot.woff",
+					"fontCharacter": "\\e900"
+				}
+			},
+			"iot-ai-debugger-icon": {
+				"description": "IoT AI Debugger",
 				"default": {
 					"fontPath": "assets/icons/cline-bot.woff",
 					"fontCharacter": "\\e900"
