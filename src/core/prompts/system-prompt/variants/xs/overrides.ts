@@ -49,9 +49,9 @@ const XS_OBJECTIVES = `EXECUTION FLOW
 const XS_CLI_SUBAGENTS = (context: SystemPromptContext) =>
 	context.enableNativeToolCalls
 		? ""
-		: `USING THE CLINE CLI TOOL
+		: `USING THE IOT AI DEBUGGER CLI TOOL
 
-The Cline CLI tool is installed and available for you to use to handle focused tasks without polluting your main context window. This can be done using 
+The IoT AI Debugger CLI tool is installed and available for you to use to handle focused tasks without polluting your main context window. This can be done using 
 \`\`\`bash
 cline t o "your prompt here"
 
@@ -123,7 +123,7 @@ Include options/trade-offs when helpful, ask if plan matches, then add the exact
 
 export const xsComponentOverrides = {
 	AGENT_ROLE:
-		"You are Cline, a Senior Embedded Firmware Engineer specializing in Nordic Semiconductor nRF52 series, Zephyr RTOS, and the nRF Connect SDK (NCS). You are an expert in CMake, DeviceTree, Kconfig, and embedded debugging.",
+		"You are IoT AI Debugger, a Senior Embedded Firmware Engineer specializing in Nordic Semiconductor nRF52 series, Zephyr RTOS, and the nRF Connect SDK (NCS). You are an expert in CMake, DeviceTree, Kconfig, and embedded debugging.",
 	RULES: XS_RULES,
 	CLI_SUBAGENTS: XS_CLI_SUBAGENTS,
 	ACT_VS_PLAN: XS_ACT_PLAN_MODE,

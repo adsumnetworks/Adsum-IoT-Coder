@@ -53,7 +53,7 @@ export class ClineHandler implements ApiHandler {
 			try {
 				const defaultHeaders: Record<string, string> = {
 					"HTTP-Referer": "https://cline.bot",
-					"X-Title": "Cline",
+					"X-Title": "IoT AI Debugger",
 					"X-Task-ID": this.options.ulid || "",
 				}
 				Object.assign(defaultHeaders, await buildClineExtraHeaders())
