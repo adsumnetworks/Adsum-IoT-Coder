@@ -4,9 +4,8 @@ import Section from "../Section"
 interface AboutSectionProps {
 	version: string
 	renderSectionHeader: (tabId: string) => JSX.Element | null
-	onResetOnboarding: () => Promise<void>
 }
-const AboutSection = ({ version, renderSectionHeader, onResetOnboarding }: AboutSectionProps) => {
+const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 	return (
 		<div>
 			{renderSectionHeader("about")}
@@ -33,11 +32,6 @@ const AboutSection = ({ version, renderSectionHeader, onResetOnboarding }: About
 							nRF Connect SDK Docs
 						</VSCodeLink>
 					</p>
-					<h3 className="text-md font-semibold">Troubleshooting</h3>
-					<p className="text-sm opacity-70 mb-2">If you need to re-run the initial setup and model configuration:</p>
-					<VSCodeButton appearance="secondary" onClick={onResetOnboarding}>
-						Reset Onboarding State
-					</VSCodeButton>
 				</div>
 			</Section>
 		</div>
