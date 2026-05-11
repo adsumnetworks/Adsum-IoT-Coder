@@ -259,7 +259,6 @@ export function convertToOpenAiMessages(
 					// @ts-expect-error
 					reasoning_details: consolidatedReasoningDetails.length > 0 ? consolidatedReasoningDetails : undefined,
 					// DeepSeek requires reasoning_content to be passed back in subsequent turns if a tool call was made
-					// @ts-expect-error
 					reasoning_content:
 						consolidatedReasoningDetails.length > 0
 							? consolidatedReasoningDetails.map((d: any) => d.text).join("")
