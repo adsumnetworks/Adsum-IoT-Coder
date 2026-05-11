@@ -190,6 +190,15 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		}
 	}, [])
 
+	const handleResetOnboarding = useCallback(async () => {
+		try {
+			await StateServiceClient.setWelcomeViewCompleted({ value: false })
+			setShowWelcome(true)
+		} catch (error) {
+			console.error("Failed to reset onboarding state:", error)
+		}
+	}, [setShowWelcome])
+
 	// Update active tab when targetSection changes
 	useEffect(() => {
 		if (targetSection) {
@@ -237,10 +246,11 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 			props.onResetState = handleResetState
 		} else if (activeTab === "about") {
 			props.version = version
+			props.onResetOnboarding = handleResetOnboarding
 		}
 
 		return <Component {...props} />
-	}, [activeTab, handleResetState, version])
+	}, [activeTab, handleResetState, version, handleResetOnboarding])
 
 	const titleColor = getEnvironmentColor(environment)
 
