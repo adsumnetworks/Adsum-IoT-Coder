@@ -1,6 +1,7 @@
 import { resolveWorkspacePath } from "@core/workspace"
 import { isMultiRootEnabled } from "@core/workspace/multi-root-utils"
 import { ClineDefaultTool } from "@shared/tools"
+import * as path from "path"
 import { StateManager } from "@/core/storage/StateManager"
 import { HostProvider } from "@/hosts/host-provider"
 import { getCwd, getDesktopDir, isLocatedInPath, isLocatedInWorkspace } from "@/utils/path"
@@ -105,6 +106,17 @@ export class AutoApprove {
 
 		let isLocalRead: boolean = false
 		if (autoApproveActionpath) {
+			// EXCEPTION: Always allow reading from the extension's iot-knowledge folder
+			if (blockname === ClineDefaultTool.FILE_READ) {
+				const extensionFsPath = HostProvider.get().extensionFsPath
+				if (extensionFsPath) {
+					const iotKnowledgePath = path.join(extensionFsPath, "iot-knowledge")
+					if (isLocatedInPath(iotKnowledgePath, autoApproveActionpath)) {
+						return true
+					}
+				}
+			}
+
 			// Use cached workspace info instead of fetching every time
 			const { isMultiRootScenario } = await this.getWorkspaceInfo()
 
