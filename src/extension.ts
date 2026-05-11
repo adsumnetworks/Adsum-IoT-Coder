@@ -56,9 +56,12 @@ https://github.com/microsoft/vscode-webview-ui-toolkit-samples/tree/main/framewo
 
 */
 
+import { TerminalRegistry } from "./hosts/vscode/terminal/VscodeTerminalRegistry"
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
+	TerminalRegistry.setExtensionUri(context.extensionUri)
 	setupHostProvider(context)
 
 	// Initialize hook discovery cache for performance optimization
