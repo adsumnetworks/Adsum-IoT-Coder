@@ -11,7 +11,7 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 			{renderSectionHeader("about")}
 			<Section>
 				<div className="flex px-4 flex-col gap-2">
-					<h2 className="text-lg font-semibold">IoT AI Debugger v{version}</h2>
+					<h2 className="text-lg font-semibold">Adsum IoT Coder v{version}</h2>
 					<p>
 						An AI-powered debugging assistant for Nordic nRF Connect SDK. It helps you analyze logs, generate
 						debugging code, and troubleshoot RTT/UART output using advanced reasoning capabilities.

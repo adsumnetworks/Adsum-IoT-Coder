@@ -83,7 +83,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
 	{
 		id: "about",
 		name: "About",
-		tooltipText: "About IoT AI Debugger",
+		tooltipText: "About Adsum IoT Coder",
 		headerText: "About",
 		icon: Info,
 	},
