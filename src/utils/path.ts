@@ -1,4 +1,5 @@
 import { workspaceResolver } from "@core/workspace"
+import * as fs from "fs"
 import os from "os"
 import * as path from "path"
 import { HostProvider } from "@/hosts/host-provider"
@@ -159,9 +160,22 @@ export function isLocatedInPath(dirPath: string, pathToCheck: string): boolean {
 	}
 
 	const resolvedDirResult = workspaceResolver.resolveWorkspacePath(dirPath, "", "Utils.path.isLocatedInPath")
-	const resolvedDir = typeof resolvedDirResult === "string" ? resolvedDirResult : resolvedDirResult.absolutePath
+	let resolvedDir = typeof resolvedDirResult === "string" ? resolvedDirResult : resolvedDirResult.absolutePath
 	const resolvedCheckResult = workspaceResolver.resolveWorkspacePath(pathToCheck, "", "Utils.path.isLocatedInPath")
-	const resolvedCheck = typeof resolvedCheckResult === "string" ? resolvedCheckResult : resolvedCheckResult.absolutePath
+	let resolvedCheck = typeof resolvedCheckResult === "string" ? resolvedCheckResult : resolvedCheckResult.absolutePath
+
+	try {
+		resolvedDir = fs.realpathSync.native(resolvedDir)
+	} catch (e) {}
+
+	try {
+		resolvedCheck = fs.realpathSync.native(resolvedCheck)
+	} catch (e) {
+		try {
+			const parent = fs.realpathSync.native(path.dirname(resolvedCheck))
+			resolvedCheck = path.join(parent, path.basename(resolvedCheck))
+		} catch (e2) {}
+	}
 
 	const relativePath = path.relative(resolvedDir, resolvedCheck)
 	if (relativePath.startsWith("..")) {
