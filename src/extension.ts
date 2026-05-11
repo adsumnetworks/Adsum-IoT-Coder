@@ -281,45 +281,45 @@ export async function activate(context: vscode.ExtensionContext) {
 					}
 
 					// Add to Cline (Always available)
-					const addAction = new vscode.CodeAction("Add to IoT AI Debugger", vscode.CodeActionKind.QuickFix)
+					const addAction = new vscode.CodeAction("Add to Adsum IoT Coder", vscode.CodeActionKind.QuickFix)
 					addAction.command = {
 						command: commands.AddToChat,
-						title: "Add to IoT AI Debugger",
+						title: "Add to Adsum IoT Coder",
 						arguments: [expandedRange, context.diagnostics],
 					}
 					actions.push(addAction)
 
 					// Explain with Cline (Always available)
 					const explainAction = new vscode.CodeAction(
-						"Explain with IoT AI Debugger",
+						"Explain with Adsum IoT Coder",
 						vscode.CodeActionKind.RefactorExtract,
 					) // Using a refactor kind
 					explainAction.command = {
 						command: commands.ExplainCode,
-						title: "Explain with IoT AI Debugger",
+						title: "Explain with Adsum IoT Coder",
 						arguments: [expandedRange],
 					}
 					actions.push(explainAction)
 
-					// Improve with IoT AI Debugger (Always available)
+					// Improve with Adsum IoT Coder (Always available)
 					const improveAction = new vscode.CodeAction(
-						"Improve with IoT AI Debugger",
+						"Improve with Adsum IoT Coder",
 						vscode.CodeActionKind.RefactorRewrite,
 					) // Using a refactor kind
 					improveAction.command = {
 						command: commands.ImproveCode,
-						title: "Improve with IoT AI Debugger",
+						title: "Improve with Adsum IoT Coder",
 						arguments: [expandedRange],
 					}
 					actions.push(improveAction)
 
-					// Fix with IoT AI Debugger (Only if diagnostics exist)
+					// Fix with Adsum IoT Coder (Only if diagnostics exist)
 					if (context.diagnostics.length > 0) {
-						const fixAction = new vscode.CodeAction("Fix with IoT AI Debugger", vscode.CodeActionKind.QuickFix)
+						const fixAction = new vscode.CodeAction("Fix with Adsum IoT Coder", vscode.CodeActionKind.QuickFix)
 						fixAction.isPreferred = true
 						fixAction.command = {
 							command: commands.FixWithCline,
-							title: "Fix with IoT AI Debugger",
+							title: "Fix with Adsum IoT Coder",
 							arguments: [expandedRange, context.diagnostics],
 						}
 						actions.push(fixAction)
@@ -601,7 +601,7 @@ function setupHostProvider(context: ExtensionContext) {
 	const createDiffView = () => new VscodeDiffViewProvider()
 	const createCommentReview = () => getVscodeCommentReviewController()
 	const createTerminalManager = () => new VscodeTerminalManager()
-	const outputChannel = vscode.window.createOutputChannel("IoT AI Debugger")
+	const outputChannel = vscode.window.createOutputChannel("Adsum IoT Coder")
 	context.subscriptions.push(outputChannel)
 
 	const getCallbackUrl = async () => `${vscode.env.uriScheme || "vscode"}://${context.extension.id}`

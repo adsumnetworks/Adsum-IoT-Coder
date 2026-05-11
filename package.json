@@ -1,6 +1,6 @@
 {
 	"name": "nrf-ai-debugger",
-	"displayName": "IoT AI Debugger",
+	"displayName": "Adsum IoT Coder – for nRF",
 	"description": "Open-Source AI-powered debugging assistant for nRF Connect SDK development. Generates logging code, analyzes RTT/UART logs, and provides real-time BLE stack diagnostics.",
 	"version": "0.0.6",
 	"icon": "assets/icons/icon.png",
@@ -50,8 +50,8 @@
 					"fontCharacter": "\\e900"
 				}
 			},
-			"iot-ai-debugger-icon": {
-				"description": "IoT AI Debugger",
+			"adsum-iot-coder-icon": {
+				"description": "Adsum IoT Coder",
 				"default": {
 					"fontPath": "assets/icons/cline-bot.woff",
 					"fontCharacter": "\\e900"
@@ -62,7 +62,7 @@
 			"activitybar": [
 				{
 					"id": "iot-ai-debugger-ActivityBar",
-					"title": "IoT AI Debugger",
+					"title": "Adsum IoT Coder",
 					"icon": "assets/icons/icon.svg"
 				}
 			]
@@ -96,85 +96,85 @@
 			{
 				"command": "iot-ai-debugger.dev.createTestTasks",
 				"title": "Create Test Tasks",
-				"category": "IoT AI Debugger",
+				"category": "Adsum IoT Coder",
 				"when": "iot-ai-debugger.isDevMode"
 			},
 			{
 				"command": "iot-ai-debugger.dev.expireMcpOAuthTokens",
 				"title": "Expire MCP OAuth Tokens (for testing)",
-				"category": "IoT AI Debugger",
+				"category": "Adsum IoT Coder",
 				"when": "iot-ai-debugger.isDevMode"
 			},
 			{
 				"command": "iot-ai-debugger.addToChat",
-				"title": "Add to IoT AI Debugger",
-				"category": "IoT AI Debugger"
+				"title": "Add to Adsum IoT Coder",
+				"category": "Adsum IoT Coder"
 			},
 			{
 				"command": "iot-ai-debugger.addTerminalOutputToChat",
-				"title": "Add to IoT AI Debugger",
-				"category": "IoT AI Debugger"
+				"title": "Add to Adsum IoT Coder",
+				"category": "Adsum IoT Coder"
 			},
 			{
 				"command": "iot-ai-debugger.focusChatInput",
 				"title": "Jump to Chat Input",
-				"category": "IoT AI Debugger"
+				"category": "Adsum IoT Coder"
 			},
 			{
 				"command": "iot-ai-debugger.explainCode",
-				"title": "Explain with IoT AI Debugger",
-				"category": "IoT AI Debugger"
+				"title": "Explain with Adsum IoT Coder",
+				"category": "Adsum IoT Coder"
 			},
 			{
 				"command": "iot-ai-debugger.improveCode",
-				"title": "Improve with IoT AI Debugger",
-				"category": "IoT AI Debugger"
+				"title": "Improve with Adsum IoT Coder",
+				"category": "Adsum IoT Coder"
 			},
 			{
 				"command": "iot-ai-debugger.jupyterGenerateCell",
-				"title": "Generate Jupyter Cell with IoT AI Debugger",
-				"category": "IoT AI Debugger",
+				"title": "Generate Jupyter Cell with Adsum IoT Coder",
+				"category": "Adsum IoT Coder",
 				"icon": "$(sparkle)"
 			},
 			{
 				"command": "iot-ai-debugger.jupyterExplainCell",
-				"title": "Explain Jupyter Cell with IoT AI Debugger",
-				"category": "IoT AI Debugger",
+				"title": "Explain Jupyter Cell with Adsum IoT Coder",
+				"category": "Adsum IoT Coder",
 				"icon": "$(question)"
 			},
 			{
 				"command": "iot-ai-debugger.jupyterImproveCell",
-				"title": "Improve Jupyter Cell with IoT AI Debugger",
-				"category": "IoT AI Debugger",
+				"title": "Improve Jupyter Cell with Adsum IoT Coder",
+				"category": "Adsum IoT Coder",
 				"icon": "$(lightbulb)"
 			},
 			{
 				"command": "iot-ai-debugger.reconstructTaskHistory",
 				"title": "Reconstruct Task History",
-				"category": "IoT AI Debugger"
+				"category": "Adsum IoT Coder"
 			},
 			{
 				"command": "iot-ai-debugger.reviewComment.reply",
 				"title": "Reply",
-				"category": "IoT AI Debugger",
+				"category": "Adsum IoT Coder",
 				"enablement": "!commentIsEmpty"
 			},
 			{
 				"command": "iot-ai-debugger.reviewComment.addToChat",
-				"title": "Add to IoT AI Debugger Chat",
-				"category": "IoT AI Debugger",
+				"title": "Add to Adsum IoT Coder Chat",
+				"category": "Adsum IoT Coder",
 				"icon": "$(link-external)"
 			},
 			{
 				"command": "iot-ai-debugger.generateGitCommitMessage",
 				"title": "Generate Commit Message",
-				"category": "IoT AI Debugger",
+				"category": "Adsum IoT Coder",
 				"icon": "$(sparkle)"
 			},
 			{
 				"command": "iot-ai-debugger.abortGitCommitMessage",
 				"title": "Abort Commit Message Generation",
-				"category": "IoT AI Debugger",
+				"category": "Adsum IoT Coder",
 				"icon": "$(close)"
 			}
 		],
@@ -293,7 +293,7 @@
 			]
 		},
 		"configuration": {
-			"title": "IoT AI Debugger",
+			"title": "Adsum IoT Coder",
 			"properties": {}
 		}
 	},

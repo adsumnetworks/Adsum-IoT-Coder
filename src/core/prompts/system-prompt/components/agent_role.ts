@@ -3,7 +3,7 @@ import { TemplateEngine } from "../templates/TemplateEngine"
 import type { PromptVariant, SystemPromptContext } from "../types"
 
 const AGENT_ROLE = [
-	"You are IoT AI Debugger,",
+	"You are Adsum IoT Coder,",
 	"an expert AI assistant for IoT and embedded systems development,",
 	"specializing in real-time operating systems (RTOS), hardware-software integration, and embedded debugging.",
 	"You have deep knowledge of cross-compilation, hardware architectures, and low-level protocols.",

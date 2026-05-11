@@ -28,12 +28,12 @@ const WelcomeView = memo(() => {
 	return (
 		<div className="fixed inset-0 p-0 flex flex-col">
 			<div className="h-full px-5 overflow-auto flex flex-col gap-2.5">
-				<h2 className="text-lg font-semibold">Welcome to IoT AI Debugger</h2>
+				<h2 className="text-lg font-semibold">Welcome to Adsum IoT Coder</h2>
 				<div className="flex justify-center my-5">
 					<NrfLogo className="size-16" />
 				</div>
 				<p>
-					IoT AI Debugger – for nRF
+					Adsum IoT Coder – for nRF
 					<br />
 					AI-powered debugging agent for Nordic nRF Connect SDK.
 					<br />

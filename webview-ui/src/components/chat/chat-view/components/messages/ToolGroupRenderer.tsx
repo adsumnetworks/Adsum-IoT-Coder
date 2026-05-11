@@ -236,5 +236,5 @@ function getToolGroupSummary(messages: ClineMessage[]): string {
 		parts.push(`performed ${counts.search} search${counts.search > 1 ? "es" : ""}`)
 	}
 
-	return parts.length === 0 ? "Context" : "IoT AI Debugger" + action + parts.join(", ")
+	return parts.length === 0 ? "Context" : "Adsum IoT Coder" + action + parts.join(", ")
 }
