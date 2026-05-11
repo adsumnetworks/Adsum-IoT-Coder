@@ -30,9 +30,9 @@ const OnboardingView = () => {
 			<div className="h-full px-5 xs:mx-10 overflow-auto flex flex-col gap-4 items-center justify-center">
 				<div className="flex flex-col items-center gap-2 flex-shrink-0 mt-8">
 					<NrfLogo className="size-24" />
-					<h2 className="text-xl font-semibold p-0">Welcome to IoT AI Debugger</h2>
+					<h2 className="text-xl font-semibold p-0">Welcome to Adsum IoT Coder</h2>
 					<p className="text-foreground/70 text-sm text-center max-w-md">
-						IoT AI Debugger – for nRF
+						Adsum IoT Coder – for nRF
 						<br />
 						Your AI-powered Debugger for nRF SoCs.
 						<br />
