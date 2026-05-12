@@ -113,10 +113,12 @@ This ensures complete boot sequence is captured.`,
 	{
 		name: "devices",
 		required: false,
-		instruction: `Optional for "capture". Multi-device mapping: "name:identifier,name2:identifier2".
-- For UART: identifier is the serial port (e.g. "central:/dev/ttyACM0").
-- For RTT: identifier is the serial number (e.g. "central:683335182"). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.`,
-		usage: "central:683335182,peripheral:683007782",
+		instruction: `Optional for "capture". Multi-device mapping: "label:identifier,label2:identifier2".
+The label is used to name the output log file. Use generic labels (device1, device2) when roles are unknown.
+Use role-specific labels (central, peripheral) ONLY when the role has been confirmed by project config or log analysis.
+- For UART: identifier is the serial port (e.g. "device1:/dev/ttyACM0").
+- For RTT: identifier is the serial number (e.g. "device1:683335182"). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.`,
+		usage: "device1:683335182,device2:683007782",
 	},
 	{
 		name: "output",

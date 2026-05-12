@@ -55,6 +55,8 @@ After a successful flash, determine if you should capture logs based on the acti
 
 If capturing: **MANDATORY SKILL LOAD:** If not already loaded during this task, you MUST use the `read_file` tool to load `platforms/nrf/actions/capture-logs.md` BEFORE capturing logs. Assume nothing from memory.
 
+**Naming reminder:** Follow `rules/device-identity.md` — use generic labels (`device1`, `device2`) if roles are unconfirmed. See `capture-logs.md` for the full naming convention.
+
 ### Phase 4: Analyze
 
 After log capture, **MANDATORY SKILL LOAD:** If not already loaded during this task, you MUST use the `read_file` tool to load `platforms/nrf/actions/analyze-logs.md` BEFORE performing the analysis.
