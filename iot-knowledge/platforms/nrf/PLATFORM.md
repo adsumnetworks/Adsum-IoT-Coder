@@ -11,7 +11,8 @@ platforms/nrf/
 ├── PLATFORM.md              ← You are here. Master index for the nRF platform.
 ├── rules/
 │   ├── nrf-terminal.md      ← CRITICAL: Terminal routing rules (when to read: always)
-│   └── skill-loading.md     ← Skill discovery & loading rules (when to read: always)
+│   ├── skill-loading.md     ← Skill discovery & loading rules (when to read: always)
+│   └── device-identity.md   ← MANDATORY: Device role assignment (never guess roles)
 ├── boards/
 │   ├── nrf52832.md          ← nRF52832 hardware specs & constraints
 │   ├── nrf52840.md          ← nRF52840 hardware specs & constraints
@@ -43,6 +44,7 @@ Rules are platform-specific constraints that override the agent's default behavi
 |---|---|---|
 | `rules/nrf-terminal.md` | **Always.** | ALL NCS/SDK commands must use `nrf_device_tool`, never `execute_command`. |
 | `rules/skill-loading.md` | **Always.** | Skill hierarchy: Workflows are entry points, Actions are internal subroutines. |
+| `rules/device-identity.md` | **Always.** | NEVER guess device roles. Use `device1`/`device2` until confirmed by config or logs. |
 
 ---
 
@@ -115,8 +117,9 @@ nrf_device_tool: action="log_device", operation="capture", transport="rtt", port
 
 **Multi-device simultaneous capture:**
 ```
-nrf_device_tool: action="log_device", operation="capture", transport="rtt", devices="central:<sn1>,peripheral:<sn2>", duration="<seconds>"
+nrf_device_tool: action="log_device", operation="capture", transport="rtt", devices="device1:<sn1>,device2:<sn2>", duration="<seconds>"
 ```
+Use generic labels (`device1`, `device2`) until roles are confirmed. See `rules/device-identity.md`.
 
 **Boot log capture (with reset):**
 ```
