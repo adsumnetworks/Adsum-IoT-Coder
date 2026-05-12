@@ -15,17 +15,23 @@ Read `environment_details` silently. For EACH workspace root:
   - **BLE role:** `CONFIG_BT_CENTRAL=y` or `CONFIG_BT_PERIPHERAL=y`.
 - Scan for build dirs (any directory containing `build_info.yml`, e.g. `build/`, `build_52840/`) to get board names.
 
-**Existing Log File Check:**
-- Check if a log file already exists in the project (e.g. `logs/`, `*.log` in the workspace).
-- If a log file exists:
-  - Check its modification time.
-  - If modified **less than 5 minutes ago** → proceed to Step 5 directly and analyze it (it is fresh).
-  - If modified **more than 5 minutes ago** → prompt the user before proceeding:
-    - Question: *"I found a log file from [time ago]. Should I analyze it, or capture fresh logs from the connected device?"*
-    - Options: `["Analyze existing log", "Capture fresh logs", "Capture fresh + analyze code"]`
-- If no log file exists → proceed to Step 2 (device discovery) to capture new logs.
+**Context budget:** Only check workspace roots from `environment_details`. Do NOT scan Desktop, home dir, or unrelated directories.
 
-Do NOT list devices or ask questions yet (unless the stale log prompt above is triggered).
+**Decision tree — based on what you found:**
+
+**Case A — NCS project found:**
+- Check for existing log files matching our naming pattern (`logs/rtt/*.log` or `logs/uart/*.log`).
+- If matching logs exist → always ask with `ask_followup_question`:
+  - If **< 5 minutes old**, note it: *"I found a recent log file ([time ago]). Analyzing it saves time and tokens. Capture fresh logs instead?"*
+  - If **> 5 minutes old**: *"I found a log file from [time ago]. Capture fresh logs or analyze existing?"*
+  - Options: `["Analyze existing log", "Capture fresh logs"]`
+- If no matching logs → proceed to Step 2 (device discovery).
+
+**Case B — No NCS project found:**
+- Primary job is fresh capture. Proceed to Step 2 (device discovery).
+- Before capturing, warn the user once: *"⚠️ No NCS project is open. I can capture and analyze logs, but without source code I can't cross-reference config or pinpoint the root cause. For full analysis, open your project folder."*
+- Do NOT block. Proceed with capture.
+- Do NOT search for random `.log` files on Desktop or home directories.
 
 ---
 
@@ -33,10 +39,10 @@ Do NOT list devices or ask questions yet (unless the stale log prompt above is t
 
 List connected devices using `nrfutil device list` and `nrfutil device device-info` in the nRF Connect Terminal (do NOT expose internal tool names).
 
-**Intelligent Matching Rules:**
-- If project name contains `central` OR config has `CONFIG_BT_CENTRAL=y` → refer to that device as **"Central"**.
-- If project name contains `peripheral` OR config has `CONFIG_BT_PERIPHERAL=y` → refer to that device as **"Peripheral"**.
-- If board is `nrf52840dk` and project is `central`, label it "Central (nRF52840 DK)".
+**Intelligent Matching Rules (see `rules/device-identity.md`):**
+- **SINGLE DEVICE:** If you have exactly one device connected AND project config has `CONFIG_BT_CENTRAL=y` (or `PERIPHERAL`), you can safely assume that device has that role.
+- **MULTI-DEVICE WARNING:** If multiple devices are connected, you CANNOT know which serial number runs which firmware. You **MUST** label them **"Device 1"** and **"Device 2"** until logs confirm their identity. Do NOT map project roles to serial numbers by guessing.
+- **NEVER** infer a role from the board type or SoC. An nRF52840 is NOT always a central.
 
 **If device listing fails:** Use `ask_followup_question`:
 - Question: *"I couldn't list connected devices. Please check USB connections."*
@@ -48,9 +54,11 @@ List connected devices using `nrfutil device list` and `nrfutil device device-in
 
 ## Step 3: Proactive Proposal
 
-After matching devices to projects, use `ask_followup_question` — never ask an open-ended question:
-- Question (example): *"I found **Heart Rate Central** (RTT, nRF52840 DK) and **Peripheral** (RTT, nRF52832 DK), and two connected devices. Capture logs from both to debug the connection?"*
-- Options: `["Capture from both devices", "Only Central", "Only Peripheral", "I already have logs — analyze them"]`
+After discovering devices, use `ask_followup_question` to propose the next step.
+- **Example (Multi-Device):** *"I found your Central and Peripheral projects, and two connected devices. Since I don't know which board runs which firmware yet, I'll label them Device 1 and Device 2. Capture logs from both to confirm?"*
+  - Options: `["Capture both (Device 1 & 2)", "Only Device 1", "Only Device 2"]`
+- **Example (Single Device):** *"I found your Central project and one connected device. Capture logs now?"*
+  - Options: `["Capture logs", "I already have logs"]`
 
 ---
 

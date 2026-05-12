@@ -256,9 +256,11 @@ Choose based on investigation goal.
 - Default: 0 (no delay)
 - Recommended: 2-3 seconds for boot logs
 This ensures complete boot sequence is captured.
-- devices: (optional) Optional for "capture". Multi-device mapping: "name:identifier,name2:identifier2".
-- For UART: identifier is the serial port (e.g. "central:/dev/ttyACM0").
-- For RTT: identifier is the serial number (e.g. "central:683335182"). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.
+- devices: (optional) Optional for "capture". Multi-device mapping: "label:identifier,label2:identifier2".
+The label is used to name the output log file. Use generic labels (device1, device2) when roles are unknown.
+Use role-specific labels (central, peripheral) ONLY when the role has been confirmed by project config or log analysis.
+- For UART: identifier is the serial port (e.g. "device1:/dev/ttyACM0").
+- For RTT: identifier is the serial number (e.g. "device1:683335182"). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.
 - output: (optional) Optional for "capture". Directory to save logs.
 - reset: (optional) Optional. Reset device(s) before capture. DEFAULT: true. Set to false ONLY for mid-runtime capture.
 - auto_detect: (optional) Optional. Auto-detect all connected nRF devices. Set to true for BLE/multi-device scenarios where you want to capture everything without specifying ports.
@@ -272,7 +274,7 @@ Usage:
 <port>/dev/ttyACM0</port>
 <duration>30</duration>
 <pre-capture-delay>3</pre-capture-delay>
-<devices>central:683335182,peripheral:683007782</devices>
+<devices>device1:683335182,device2:683007782</devices>
 <output>logs/</output>
 <reset>true</reset>
 <auto_detect>true</auto_detect>

@@ -51,3 +51,10 @@ Advanced workflows and actions are documented as `.md` files in the `iot-knowled
 - **Entry-Point Hierarchy (Workflows vs Actions):** Always start a task by loading a Primary Workflow. "Actions" are internal subroutines and must NEVER be loaded as the first step of a task. You may only load an Action if an active Workflow explicitly instructs you to do so.
 - **Mandatory First Load:** You **MUST** proactively use `read_file` or `view_file` to load the required skill manual from the disk before executing. Do not attempt to execute complex tasks (like analyzing logs, generating code, building and flashing etc.) based on your pre-trained knowledge or general assumptions.
 - **Context Optimization (Load Once):** If you have *already loaded* a specific skill file during the current ongoing task (for example, you are repeating an iteration in a debug loop), **DO NOT load it again**. Rely on the instructions already present in your conversational history to save context limits. Only load a file if it is missing from your immediate context.
+
+## 9. Context Budget Protection
+
+- **Workspace-only reads:** Only read files inside workspace roots listed in `environment_details`. NEVER scan `~/Desktop`, `~/Documents`, `~/Downloads`, or home directories.
+- **NCS files only:** Only read files matching the NCS pattern: `CMakeLists.txt`, `prj.conf`, `*.conf`, `*.overlay`, `*.c`, `*.h`, `*.dts`, `*.yml`, `*.log`. NEVER open `.py`, `.js`, `.ts`, `.json`, `.md` files outside of `iot-knowledge/`.
+- **No speculative reads:** Do NOT read files "just to understand the workspace". Read a file only when a workflow or rule explicitly instructs you to.
+- **Stop on empty workspace:** If `environment_details` shows no workspace root, or the root contains no NCS markers — stop immediately and apply the Scope Gate (see `AGENT.md`).
