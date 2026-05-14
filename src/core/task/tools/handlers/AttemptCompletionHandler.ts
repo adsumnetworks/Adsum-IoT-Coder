@@ -67,9 +67,11 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 
 		// Show notification if enabled
 		if (config.autoApprovalSettings.enableNotifications) {
+			const maxLen = 200
+			const notifyMsg = result.length > maxLen ? result.substring(0, maxLen) + "..." : result
 			showSystemNotification({
 				subtitle: "Task Completed",
-				message: result.replace(/\n/g, " "),
+				message: notifyMsg.replace(/\n/g, " "),
 			})
 		}
 

@@ -240,6 +240,89 @@ const PreWithCopyButton = ({ children, ...preProps }: React.HTMLAttributes<HTMLP
 const FILE_PATH_REGEX = /^(?!\/)[\w\-./]+(?<!\/)$/
 
 /**
+ * Custom remark plugin that converts Markdown table syntax into proper MDAST
+ * table nodes. Runs first in the plugin chain so that pipe characters in table
+ * rows are structured before other plugins (e.g. remarkUrlToLink) attempt to
+ * process them as plain text — which would otherwise throw or produce garbage.
+ */
+const remarkParseTable = () => {
+	return (tree: any) => {
+		const nodesToReplace: { index: number; parent: any; tableNode: any }[] = []
+
+		visit(tree, "paragraph", (node: any, index: number | undefined, parent: any) => {
+			if (typeof index === "undefined" || !parent) return
+
+			// Reconstruct the full text of this paragraph from its children
+			const fullText = node.children
+				?.map((c: any) => {
+					if (c.type === "text") return c.value
+					if (c.type === "strong" && c.children?.[0]?.value) return `**${c.children[0].value}**`
+					if (c.type === "emphasis" && c.children?.[0]?.value) return `*${c.children[0].value}*`
+					if (c.type === "inlineCode") return `\`${c.value}\``
+					return ""
+				})
+				.join("")
+
+			if (!fullText) return
+
+			const lines = fullText.split("\n").filter((l: string) => l.trim().length > 0)
+			if (lines.length < 2) return
+
+			const isTableLine = (line: string) => line.trim().startsWith("|") && line.trim().endsWith("|")
+			const isSeparator = (line: string) => /^\|[\s:]*-+[\s:]*(\|[\s:]*-+[\s:]*)*\|$/.test(line.trim())
+
+			if (!isTableLine(lines[0]) || !isSeparator(lines[1])) return
+
+			const parseRow = (line: string) =>
+				line
+					.trim()
+					.replace(/^\|/, "")
+					.replace(/\|$/, "")
+					.split("|")
+					.map((cell: string) => cell.trim())
+
+			const headerCells = parseRow(lines[0])
+			const bodyRows = lines.slice(2).filter(isTableLine).map(parseRow)
+
+			const buildCell = (text: string) => {
+				const children: any[] = []
+				const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+				for (const part of parts) {
+					if (part.startsWith("**") && part.endsWith("**")) {
+						children.push({ type: "strong", children: [{ type: "text", value: part.slice(2, -2) }] })
+					} else if (part.startsWith("`") && part.endsWith("`")) {
+						children.push({ type: "inlineCode", value: part.slice(1, -1) })
+					} else if (part) {
+						children.push({ type: "text", value: part })
+					}
+				}
+				return {
+					type: "tableCell",
+					children: children.length > 0 ? children : [{ type: "text", value: text }],
+				}
+			}
+
+			const tableNode = {
+				type: "table",
+				align: headerCells.map(() => null),
+				children: [
+					{ type: "tableRow", children: headerCells.map(buildCell) },
+					...bodyRows.map((row: string[]) => ({ type: "tableRow", children: row.map(buildCell) })),
+				],
+			}
+
+			nodesToReplace.push({ index, parent, tableNode })
+		})
+
+		// Replace in reverse order to preserve indices
+		for (let i = nodesToReplace.length - 1; i >= 0; i--) {
+			const { index, parent, tableNode } = nodesToReplace[i]
+			parent.children.splice(index, 1, tableNode)
+		}
+	}
+}
+
+/**
  * Custom remark plugin that marks potential file paths in inline code blocks
  * This is synchronous - actual file existence checking happens in the React component
  */
@@ -314,6 +397,7 @@ const InlineCodeWithFileCheck: React.FC<ComponentProps<"code"> & { [key: string]
 const MarkdownBlock = memo(({ markdown, compact, showCursor }: MarkdownBlockProps) => {
 	const [reactContent, setMarkdown] = useRemark({
 		remarkPlugins: [
+			remarkParseTable,
 			remarkPreventBoldFilenames,
 			remarkUrlToLink,
 			remarkHighlightActMode,

@@ -71,11 +71,11 @@ Board targets use the Zephyr format: `<board>/<soc>` (e.g., `nrf52840dk/nrf52840
 
 ---
 
-## Platform Tools — `nrf_device_tool`
+## Platform Tools — `triggerNordicAction`
 
-The `nrf_device_tool` is the agent's primary interface for all hardware operations. It wraps the nRF Connect Terminal and device tools.
+The `triggerNordicAction` is the agent's primary interface for all hardware operations. It wraps the nRF Connect Terminal and device tools.
 
-**Do NOT expose internal tool names to the user.** Say *"Building firmware..."* not *"Running nrf_device_tool with action=execute"*.
+**Do NOT expose internal tool names to the user.** Say *"Building firmware..."* not *"Running triggerNordicAction with action=execute"*.
 
 ### `action="execute"` — Run NCS/SDK Commands
 
@@ -92,13 +92,13 @@ Before building or flashing, the agent MUST identify the connected hardware:
 
 **Step 1:** List all connected devices
 ```
-nrf_device_tool: action="execute", command="nrfutil device list"
+triggerNordicAction: action="execute", command="nrfutil device list"
 ```
 → Returns serial numbers, ports, and device traits.
 
 **Step 2:** Get detailed device info for board/SoC identification
 ```
-nrf_device_tool: action="execute", command="nrfutil device device-info --serial-number <SN1,SN2,...,SNn>"
+triggerNordicAction: action="execute", command="nrfutil device device-info --serial-number <SN1,SN2,...,SNn>"
 ```
 → Returns `deviceFamily`, `deviceName`, `deviceVersion`. Use this to determine the correct `<board>/<soc>` target for `west build`.
 
@@ -112,18 +112,18 @@ Captures live device logs via RTT or UART. Used by `actions/capture-logs.md`.
 
 **Single device:**
 ```
-nrf_device_tool: action="log_device", operation="capture", transport="rtt", port="<serial_number>", duration="<seconds>"
+triggerNordicAction: action="log_device", operation="capture", transport="rtt", port="<serial_number>", duration="<seconds>"
 ```
 
 **Multi-device simultaneous capture:**
 ```
-nrf_device_tool: action="log_device", operation="capture", transport="rtt", devices="device1:<sn1>,device2:<sn2>", duration="<seconds>"
+triggerNordicAction: action="log_device", operation="capture", transport="rtt", devices="device1:<sn1>,device2:<sn2>", duration="<seconds>"
 ```
 Use generic labels (`device1`, `device2`) until roles are confirmed. See `rules/device-identity.md`.
 
 **Boot log capture (with reset):**
 ```
-nrf_device_tool: action="log_device", operation="capture", transport="rtt", port="<sn>", duration="15", pre-capture-delay="3", reset="true"
+triggerNordicAction: action="log_device", operation="capture", transport="rtt", port="<sn>", duration="15", pre-capture-delay="3", reset="true"
 ```
 
 ---
@@ -136,7 +136,7 @@ The workflows and actions below are strict, custom-built skills. See `rules/skil
 
 When starting a new task, load one of these Workflows first.
 
-| Workflow | File | Purpose |
+| Workflow Name | Documentation File (Use `read_file`) | Purpose |
 |---|---|---|
 | Log Generator | `workflows/log-generator.md` | Add Zephyr logging instrumentation to firmware |
 | Log Analyzer | `workflows/log-analyzer.md` | Guided sequence to capture and analyze device logs |

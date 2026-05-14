@@ -149,7 +149,7 @@ Use role-specific labels (central, peripheral) ONLY when the role has been confi
 const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
 	id: ClineDefaultTool.NORDIC_ACTION,
-	name: "nrf_device_tool",
+	name: "triggerNordicAction",
 	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
 
 USE action="execute" for ALL NCS CLI operations: west build, west flash, nrfjprog, nrfutil, etc.

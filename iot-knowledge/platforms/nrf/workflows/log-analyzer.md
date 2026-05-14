@@ -105,4 +105,4 @@ After the report, you MUST present the next steps.
 Based on analysis result and user choice:
 - **Code change needed** (fix a bug found in analysis) → Invoke `workflows/debug-loop.md`
 - **More logging needed** (sparse logs, need deeper BLE logs) → Invoke `workflows/log-generator.md`
-- **Analysis complete, user satisfied** (e.g., they selected "Done") → Use the `attempt_completion` tool to securely terminate the workflow.
+- **Analysis complete, user satisfied** (e.g., they selected "Done") → Use the `attempt_completion` tool to terminate. **Tip:** Include a summary of your final analysis in the `result` parameter for the user's records.
