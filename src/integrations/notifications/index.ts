@@ -58,7 +58,11 @@ async function showLinuxNotification(options: NotificationOptions): Promise<void
 
 	try {
 		await execa("notify-send", [title, fullMessage])
-	} catch (error) {
+	} catch (error: any) {
+		if (error.code === "ENOENT") {
+			console.debug("notify-send not found, skipping Linux notification")
+			return
+		}
 		throw new Error(`Failed to show Linux notification: ${error}`)
 	}
 }
