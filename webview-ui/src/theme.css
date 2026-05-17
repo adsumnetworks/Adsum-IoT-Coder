@@ -69,6 +69,7 @@
 	--color-error-icon: var(--vscode-problemsErrorIcon-foreground, #c42b2b);
 	--color-description: var(--vscode-descriptionForeground);
 	--color-success: var(--vscode-charts-green);
+	--color-brand-accent: #00a9ce;
 	--color-warning: var(--vscode-charts-yellow);
 	--font-base:
 		var(--vscode-font-family), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell,

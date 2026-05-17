@@ -11,17 +11,11 @@
  */
 
 import React from "react"
-import { aiGeneratedCodeIcon, analyseBugsIcon } from "@/assets/modeIconsBase64"
 import NrfLogo from "@/assets/NrfLogo"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
-import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
-
-const MODE_ICONS: Record<NordicModeId, string> = {
-	log_generator: aiGeneratedCodeIcon,
-	log_analyzer: analyseBugsIcon,
-}
+import { MODE_ICONS, NORDIC_MODES, type NordicModeId } from "./nordicModes"
 
 interface ModeSelectorProps {
 	onModeSelect: (mode: NordicModeId) => void

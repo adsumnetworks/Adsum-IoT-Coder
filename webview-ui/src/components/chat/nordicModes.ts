@@ -9,6 +9,8 @@
  * These prompts are intentionally minimal — the agent reads the workflow files directly.
  */
 
+import { aiGeneratedCodeIcon, analyseBugsIcon } from "@/assets/modeIconsBase64"
+
 export type NordicModeId = "log_generator" | "log_analyzer"
 export type NordicChatPhase = "awaiting_mode" | "active" | "task_complete"
 
@@ -38,6 +40,20 @@ export const NORDIC_MODES: Record<NordicModeId, NordicModeConfig> = {
 		systemPrompt: "Analyze device logs",
 		initialMessage: "Analyzing workspace and connected devices for log analysis...",
 	},
+}
+
+export const MODE_ICONS: Record<NordicModeId, string> = {
+	log_generator: aiGeneratedCodeIcon,
+	log_analyzer: analyseBugsIcon,
+}
+
+export function detectModeFromTask(task: string): NordicModeId | null {
+	for (const mode of Object.values(NORDIC_MODES)) {
+		if (mode.systemPrompt === task) {
+			return mode.id
+		}
+	}
+	return null
 }
 
 /**
