@@ -30,15 +30,14 @@ const OnboardingView = () => {
 			<div className="h-full px-5 xs:mx-10 overflow-auto flex flex-col gap-4 items-center justify-center">
 				<div className="flex flex-col items-center gap-2 flex-shrink-0 mt-8">
 					<NrfLogo className="size-24" />
-					<h2 className="text-xl font-semibold p-0">Welcome to Adsum IoT Coder</h2>
-					<p className="text-foreground/70 text-sm text-center max-w-md">
-						Adsum IoT Coder – for nRF
-						<br />
-						Your AI-powered Debugger for nRF SoCs.
-						<br />
-						Configure your API provider below to get started.
-					</p>
+					<h2 className="text-xl font-semibold p-0" style={{ textAlign: "center" }}>
+						Welcome to Adsum IoT Coder – for nRF
+					</h2>
 				</div>
+
+				<p className="w-full max-w-lg text-foreground/70 text-sm" style={{ textAlign: "center" }}>
+					Configure your API provider below to get started.
+				</p>
 
 				<div className="flex-1 w-full flex max-w-lg overflow-y-auto min-h-0 py-4">
 					<ApiConfigurationSection />

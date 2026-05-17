@@ -1,13 +1,13 @@
 import { name, publisher, version } from "../package.json"
 
-// Hardcode prefix to "iot-ai-debugger" to match package.json commands
-const prefix = "iot-ai-debugger"
+// Hardcode prefix to "adsum-iot-coder" to match package.json commands
+const prefix = "adsum-iot-coder"
 
 /**
  * List of commands with the name of the extension they are registered under.
  * These should match the command IDs defined in package.json.
  * For Nightly build, the publish script has updated all the commands to use the extension name as prefix.
- * In production, all commands are registered under "iot-ai-debugger" for consistency.
+ * In production, all commands are registered under "adsum-iot-coder" for consistency.
  */
 const ClineCommands = {
 	PlusButton: prefix + ".plusButtonClicked",
@@ -35,7 +35,7 @@ const ClineCommands = {
  * These should match the name + view IDs defined in package.json.
  */
 const ClineViewIds = {
-	Sidebar: "iot-ai-debugger.SidebarProvider", // Hardcoded to match package.json view ID
+	Sidebar: "adsum-iot-coder.SidebarProvider", // Hardcoded to match package.json view ID
 }
 
 /**

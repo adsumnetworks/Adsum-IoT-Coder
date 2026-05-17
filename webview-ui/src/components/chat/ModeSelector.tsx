@@ -11,7 +11,15 @@
  */
 
 import React from "react"
+import { aiGeneratedCodeIcon, analyseBugsIcon } from "@/assets/modeIconsBase64"
+import NrfLogo from "@/assets/NrfLogo"
+import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
+
+const MODE_ICONS: Record<NordicModeId, string> = {
+	log_generator: aiGeneratedCodeIcon,
+	log_analyzer: analyseBugsIcon,
+}
 
 interface ModeSelectorProps {
 	onModeSelect: (mode: NordicModeId) => void
@@ -21,19 +29,23 @@ interface ModeSelectorProps {
 
 const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = false, variant = "welcome" }) => {
 	const modes = Object.values(NORDIC_MODES)
+	const { isDark } = useVSCodeTheme()
+	const iconFilter = isDark ? "brightness(0) invert(1)" : "brightness(0)"
 
 	const isWelcome = variant === "welcome"
 
 	return (
 		<div
-			className={`flex flex-col gap-3 ${isWelcome ? "items-center justify-center flex-1 px-5 py-8" : "px-4 py-3"}`}
+			className={`flex flex-col gap-3 ${isWelcome ? "items-center flex-1 px-5 pt-8 pb-4" : "px-4 py-3"}`}
 			data-testid="mode-selector">
 			{isWelcome && (
-				<div className="text-center mb-4">
-					<h2 className="text-lg font-semibold mb-1" style={{ color: "var(--vscode-foreground)" }}>
-						Adsum IoT Coder
-					</h2>
-					<p className="text-sm" style={{ color: "var(--vscode-descriptionForeground)" }}>
+				<div className="text-center mb-4 w-full">
+					<div className="flex justify-center mb-4">
+						<NrfLogo className="size-24" />
+					</div>
+					<p
+						className="text-2xl font-bold mb-4"
+						style={{ textAlign: "center", width: "100%", color: "var(--vscode-foreground)", lineHeight: "1.4" }}>
 						What would you like to do?
 					</p>
 				</div>
@@ -48,7 +60,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = fa
 			<div className={`flex flex-col gap-3 w-full ${isWelcome ? "max-w-md" : ""}`}>
 				{modes.map((mode) => (
 					<button
-						className="flex items-center rounded-lg cursor-pointer transition-all duration-200"
+						className="flex items-center rounded-lg cursor-pointer transition-all duration-200 w-full"
 						data-testid={`mode-button-${mode.id}`}
 						disabled={disabled}
 						key={mode.id}
@@ -63,7 +75,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = fa
 							}
 						}}
 						onMouseLeave={(e) => {
-							e.currentTarget.style.borderColor = "var(--vscode-input-border, var(--vscode-editorGroup-border))"
+							e.currentTarget.style.borderColor = "rgba(215, 105, 71, 0.45)"
 							e.currentTarget.style.background = "var(--vscode-input-background)"
 							e.currentTarget.style.transform = "none"
 							e.currentTarget.style.boxShadow = "none"
@@ -71,17 +83,24 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = fa
 						style={{
 							padding: isWelcome ? "16px 20px" : "12px 16px",
 							background: "var(--vscode-input-background)",
-							border: "2px solid var(--vscode-input-border, var(--vscode-editorGroup-border))",
+							border: "2px solid rgba(215, 105, 71, 0.45)",
 							opacity: disabled ? 0.5 : 1,
 							pointerEvents: disabled ? "none" : "auto",
+							textAlign: "left",
 						}}
 						type="button">
-						<span
-							className="flex-shrink-0"
-							style={{ fontSize: isWelcome ? "32px" : "24px", marginRight: isWelcome ? "16px" : "12px" }}>
-							{mode.icon}
-						</span>
-						<div className="flex flex-col items-start">
+						<img
+							alt={mode.title}
+							className="flex-shrink-0 object-contain"
+							src={MODE_ICONS[mode.id]}
+							style={{
+								width: isWelcome ? "40px" : "28px",
+								height: isWelcome ? "40px" : "28px",
+								marginRight: isWelcome ? "16px" : "12px",
+								filter: iconFilter,
+							}}
+						/>
+						<div className="flex flex-col items-start flex-1">
 							<span
 								className="font-semibold"
 								style={{
