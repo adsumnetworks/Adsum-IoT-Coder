@@ -45,7 +45,7 @@ const ToDoListHeader = memo<{
 			})}>
 			<div
 				className={cn(
-					"absolute bottom-0 left-0 transition-[width] duration-300 ease-in-out pointer-events-none z-1 h-1 bg-success",
+					"absolute bottom-0 left-0 transition-[width] duration-300 ease-in-out pointer-events-none z-1 h-1 bg-brand-accent",
 					{
 						"opacity-0": progressPercentage === 0 || progressPercentage === 100,
 					},
