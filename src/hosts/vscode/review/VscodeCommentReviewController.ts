@@ -29,7 +29,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 	constructor() {
 		super()
 		// Create the comment controller
-		this.commentController = vscode.comments.createCommentController("iot-ai-debugger-review", "IoT AI Debugger Review")
+		this.commentController = vscode.comments.createCommentController("adsum-iot-coder-review", "IoT AI Debugger Review")
 
 		// Configure options for the reply input
 		this.commentController.options = {
@@ -48,14 +48,14 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 
 		// Register reply command - this is called when user clicks the Reply button
 		this.disposables.push(
-			vscode.commands.registerCommand("iot-ai-debugger.reviewComment.reply", async (reply: vscode.CommentReply) => {
+			vscode.commands.registerCommand("adsum-iot-coder.reviewComment.reply", async (reply: vscode.CommentReply) => {
 				await this.handleReply(reply)
 			}),
 		)
 
 		// Register add to chat command - sends the conversation to IoT AI Debugger's main chat
 		this.disposables.push(
-			vscode.commands.registerCommand("iot-ai-debugger.reviewComment.addToChat", async (thread: vscode.CommentThread) => {
+			vscode.commands.registerCommand("adsum-iot-coder.reviewComment.addToChat", async (thread: vscode.CommentThread) => {
 				await this.handleAddToChat(thread)
 			}),
 		)
@@ -405,7 +405,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 	}
 
 	/**
-	 * Close all tabs that use the iot-ai-debugger-diff URI scheme (both diff views and regular text documents)
+	 * Close all tabs that use the adsum-iot-coder-diff URI scheme (both diff views and regular text documents)
 	 */
 	async closeDiffViews(): Promise<void> {
 		const tabs = vscode.window.tabGroups.all
@@ -415,7 +415,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 				if (tab.input instanceof vscode.TabInputTextDiff && tab.input?.original?.scheme === DIFF_VIEW_URI_SCHEME) {
 					return true
 				}
-				// Check for regular text document tabs with iot-ai-debugger-diff scheme (opened during comment reveal)
+				// Check for regular text document tabs with adsum-iot-coder-diff scheme (opened during comment reveal)
 				if (tab.input instanceof vscode.TabInputText && tab.input?.uri?.scheme === DIFF_VIEW_URI_SCHEME) {
 					return true
 				}

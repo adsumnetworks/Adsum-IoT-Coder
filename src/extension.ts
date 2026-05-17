@@ -530,7 +530,7 @@ ${ctx.cellJson || "{}"}
 
 	context.subscriptions.push(
 		context.secrets.onDidChange(async (event) => {
-			if (event.key === "iot-ai-debugger:accountId") {
+			if (event.key === "adsum-iot-coder:accountId") {
 				// Check if the secret was removed (logout) or added/updated (login)
 				const secretValue = await context.secrets.get(event.key)
 				const activeWebview = WebviewProvider.getVisibleInstance()

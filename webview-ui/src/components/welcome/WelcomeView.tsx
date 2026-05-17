@@ -27,24 +27,24 @@ const WelcomeView = memo(() => {
 
 	return (
 		<div className="fixed inset-0 p-0 flex flex-col">
-			<div className="h-full px-5 overflow-auto flex flex-col gap-2.5">
-				<h2 className="text-lg font-semibold">Welcome to Adsum IoT Coder</h2>
-				<div className="flex justify-center my-5">
-					<NrfLogo className="size-16" />
+			<div className="h-full px-5 overflow-y-auto overflow-x-hidden flex flex-col gap-2.5">
+				<div className="flex justify-center mt-5 mb-3">
+					<NrfLogo className="size-20" />
 				</div>
-				<p>
-					Adsum IoT Coder – for nRF
-					<br />
-					AI-powered debugging agent for Nordic nRF Connect SDK.
-					<br />
-					Configure your LLM provider to get started. Be sure to use a model with high reasoning capabilities.
-				</p>
+				<div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+					<div className="text-2xl font-bold" style={{ textAlign: "center", maxWidth: "100%" }}>
+						Welcome to Adsum IoT Coder – for nRF
+					</div>
+				</div>
+				<p className="mt-4">Configure your API provider below to get started.</p>
 
-				<div className="mt-4.5">
+				<div>
 					<ApiOptions currentMode={mode} showModelOptions={false} />
-					<VSCodeButton className="mt-0.75" disabled={disableLetsGoButton} onClick={handleSubmit}>
-						Let's go!
-					</VSCodeButton>
+					<div className="flex justify-center mt-0.75">
+						<VSCodeButton disabled={disableLetsGoButton} onClick={handleSubmit}>
+							Let's go!
+						</VSCodeButton>
+					</div>
 				</div>
 			</div>
 		</div>

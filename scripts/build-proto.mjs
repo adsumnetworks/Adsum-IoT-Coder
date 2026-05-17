@@ -63,7 +63,7 @@ async function compileProtos() {
 
 	const descriptorFile = path.join(DESCRIPTOR_OUT_DIR, "descriptor_set.pb")
 	const descriptorProtocCommand = [
-		PROTOC,
+		`"${PROTOC}"`,
 		`--proto_path="${PROTO_DIR}"`,
 		`--descriptor_set_out="${descriptorFile}"`,
 		"--include_imports",
@@ -84,7 +84,7 @@ async function compileProtos() {
 async function tsProtoc(outDir, protoFiles, protoOptions) {
 	// Build the protoc command with proper path handling for cross-platform
 	const command = [
-		PROTOC,
+		`"${PROTOC}"`,
 		`--proto_path="${PROTO_DIR}"`,
 		`--plugin=protoc-gen-ts_proto="${TS_PROTO_PLUGIN}"`,
 		`--ts_proto_out="${outDir}"`,
