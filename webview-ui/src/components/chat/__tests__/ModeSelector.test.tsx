@@ -104,8 +104,38 @@ describe("ModeSelector", () => {
 
 		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
 
+		// Free-form task text renders as-is
 		expect(screen.getByText("Debug BLE connection")).toBeDefined()
-		expect(screen.getByText("Generate logging code")).toBeDefined()
+		// Mode-matched task renders the mode title, not the raw systemPrompt string
+		expect(screen.getAllByText("Generate Logging Code").length).toBeGreaterThan(0)
+	})
+
+	it("falls back to task text when mode is not detectable", () => {
+		mockTaskHistory.push({
+			id: "1",
+			task: "why is my BLE connection failing?",
+			ts: Date.now(),
+			totalCost: 0,
+			isFavorited: false,
+		})
+
+		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
+
+		expect(screen.getByText("why is my BLE connection failing?")).toBeDefined()
+	})
+
+	it("formats time as relative for recent tasks", () => {
+		mockTaskHistory.push({
+			id: "1",
+			task: "Debug BLE connection",
+			ts: Date.now() - 2 * 60 * 60 * 1000,
+			totalCost: 0,
+			isFavorited: false,
+		})
+
+		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
+
+		expect(screen.getByText("2h ago")).toBeDefined()
 	})
 
 	it("clicking a session card calls showTaskWithId", () => {
