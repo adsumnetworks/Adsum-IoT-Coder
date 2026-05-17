@@ -1,12 +1,10 @@
 import { StringRequest } from "@shared/proto/cline/common"
-import { GetTaskHistoryRequest } from "@shared/proto/cline/task"
-import { memo, useEffect, useState } from "react"
+import { memo } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { TaskServiceClient } from "@/services/grpc-client"
 
 type HistoryPreviewProps = {
 	showHistoryView: () => void
-	currentWorkspaceOnly?: boolean
 }
 
 type PreviewItem = {
@@ -17,36 +15,8 @@ type PreviewItem = {
 	isFavorited?: boolean
 }
 
-const HistoryPreview = ({ showHistoryView, currentWorkspaceOnly }: HistoryPreviewProps) => {
+const HistoryPreview = ({ showHistoryView }: HistoryPreviewProps) => {
 	const { taskHistory } = useExtensionState()
-
-	const [workspaceItems, setWorkspaceItems] = useState<PreviewItem[]>([])
-
-	useEffect(() => {
-		if (!currentWorkspaceOnly) {
-			return
-		}
-		TaskServiceClient.getTaskHistory(
-			GetTaskHistoryRequest.create({
-				currentWorkspaceOnly: true,
-				sortBy: "newest",
-			}),
-		)
-			.then((response) => {
-				const items = (response.tasks || [])
-					.filter((t: any) => t.ts && t.task)
-					.slice(0, 3)
-					.map((t: any) => ({
-						id: t.id,
-						task: t.task,
-						ts: t.ts,
-						totalCost: t.totalCost,
-						isFavorited: t.isFavorited,
-					}))
-				setWorkspaceItems(items)
-			})
-			.catch((error) => console.error("Error loading workspace history:", error))
-	}, [currentWorkspaceOnly])
 
 	const handleHistorySelect = (id: string) => {
 		TaskServiceClient.showTaskWithId(StringRequest.create({ value: id })).catch((error) =>
@@ -62,18 +32,16 @@ const HistoryPreview = ({ showHistoryView, currentWorkspaceOnly }: HistoryPrevie
 		})
 	}
 
-	const displayItems: PreviewItem[] = currentWorkspaceOnly
-		? workspaceItems
-		: taskHistory
-				.filter((item) => item.ts && item.task)
-				.slice(0, 3)
-				.map((item) => ({
-					id: item.id,
-					task: item.task,
-					ts: item.ts,
-					totalCost: item.totalCost,
-					isFavorited: item.isFavorited,
-				}))
+	const displayItems: PreviewItem[] = taskHistory
+		.filter((item) => item.ts && item.task)
+		.slice(0, 3)
+		.map((item) => ({
+			id: item.id,
+			task: item.task,
+			ts: item.ts,
+			totalCost: item.totalCost,
+			isFavorited: item.isFavorited,
+		}))
 
 	return (
 		<div style={{ flexShrink: 0 }}>

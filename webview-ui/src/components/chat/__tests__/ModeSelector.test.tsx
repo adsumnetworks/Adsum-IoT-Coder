@@ -1,20 +1,20 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { TaskServiceClient } from "@/services/grpc-client"
 import ModeSelector from "../ModeSelector"
 
 const mockNavigateToHistory = vi.fn()
+const mockTaskHistory: any[] = []
 
 vi.mock("@/context/ExtensionStateContext", () => ({
 	useExtensionState: vi.fn(() => ({
 		navigateToHistory: mockNavigateToHistory,
-		taskHistory: [],
+		taskHistory: mockTaskHistory,
 	})),
 }))
 
 vi.mock("@/services/grpc-client", () => ({
 	TaskServiceClient: {
-		getTaskHistory: vi.fn().mockResolvedValue({ tasks: [] }),
 		showTaskWithId: vi.fn().mockResolvedValue({}),
 	},
 }))
@@ -31,7 +31,7 @@ global.MutationObserver = class {
 describe("ModeSelector", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
-		vi.mocked(TaskServiceClient.getTaskHistory).mockResolvedValue({ tasks: [] } as any)
+		mockTaskHistory.length = 0
 	})
 
 	it("renders both mode buttons", () => {
@@ -90,55 +90,37 @@ describe("ModeSelector", () => {
 		expect(screen.queryByText("Recent")).toBeNull()
 	})
 
-	it("shows No recent tasks placeholder when workspace has no history", async () => {
+	it("shows No recent tasks placeholder when history is empty", () => {
 		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
 
-		await waitFor(() => {
-			expect(screen.getByText("No recent tasks")).toBeDefined()
-		})
+		expect(screen.getByText("No recent tasks")).toBeDefined()
 	})
 
-	it("renders workspace session cards when history is present", async () => {
-		vi.mocked(TaskServiceClient.getTaskHistory).mockResolvedValue({
-			tasks: [
-				{ id: "1", task: "Debug BLE connection", ts: Date.now(), totalCost: 0.05, isFavorited: false },
-				{ id: "2", task: "Generate logging code", ts: Date.now() - 1000, totalCost: 0.02, isFavorited: false },
-			],
-		} as any)
+	it("renders session cards from context taskHistory", () => {
+		mockTaskHistory.push(
+			{ id: "1", task: "Debug BLE connection", ts: Date.now(), totalCost: 0.05, isFavorited: false },
+			{ id: "2", task: "Generate logging code", ts: Date.now() - 1000, totalCost: 0.02, isFavorited: false },
+		)
 
 		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
 
-		await waitFor(() => {
-			expect(screen.getByText("Debug BLE connection")).toBeDefined()
-			expect(screen.getByText("Generate logging code")).toBeDefined()
-		})
+		expect(screen.getByText("Debug BLE connection")).toBeDefined()
+		expect(screen.getByText("Generate logging code")).toBeDefined()
 	})
 
-	it("clicking a session card calls showTaskWithId", async () => {
-		vi.mocked(TaskServiceClient.getTaskHistory).mockResolvedValue({
-			tasks: [{ id: "abc123", task: "Debug BLE connection", ts: Date.now(), totalCost: 0.05, isFavorited: false }],
-		} as any)
+	it("clicking a session card calls showTaskWithId", () => {
+		mockTaskHistory.push({ id: "abc123", task: "Debug BLE connection", ts: Date.now(), totalCost: 0.05, isFavorited: false })
 
 		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
-
-		await waitFor(() => {
-			expect(screen.getByText("Debug BLE connection")).toBeDefined()
-		})
 
 		fireEvent.click(screen.getByText("Debug BLE connection"))
 		expect(TaskServiceClient.showTaskWithId).toHaveBeenCalled()
 	})
 
-	it("clicking View All calls navigateToHistory", async () => {
-		vi.mocked(TaskServiceClient.getTaskHistory).mockResolvedValue({
-			tasks: [{ id: "abc123", task: "Debug BLE connection", ts: Date.now(), totalCost: 0.05, isFavorited: false }],
-		} as any)
+	it("clicking View All calls navigateToHistory", () => {
+		mockTaskHistory.push({ id: "abc123", task: "Debug BLE connection", ts: Date.now(), totalCost: 0.05, isFavorited: false })
 
 		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
-
-		await waitFor(() => {
-			expect(screen.getByText("View All")).toBeDefined()
-		})
 
 		fireEvent.click(screen.getByText("View All"))
 		expect(mockNavigateToHistory).toHaveBeenCalled()
