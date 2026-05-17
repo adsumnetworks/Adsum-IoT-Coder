@@ -123,7 +123,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = fa
 
 			{isWelcome && (
 				<div className="w-full max-w-md mt-3">
-					<HistoryPreview currentWorkspaceOnly showHistoryView={navigateToHistory} />
+					<HistoryPreview showHistoryView={navigateToHistory} />
 				</div>
 			)}
 		</div>
