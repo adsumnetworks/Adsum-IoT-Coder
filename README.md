@@ -1,10 +1,10 @@
 <div align="center">
 
-# <img src="assets/icons/icon.png" width="50" style="vertical-align: middle;" /> Adsum IoT Coder – for nRF
+<img src="assets/icons/icon.png" width="120" alt="Adsum IoT Coder" />
+
+# Adsum IoT Coder – for nRF
 
 Open-source AI coding agent for IoT firmware development — starting with Nordic nRF.
-
-Test. 
 
 Built on a dynamic knowledge architecture that loads nRF Connect SDK/ZephyrRTOS domain expertise on demand, scoped to the task. Evaluated on real hardware with an open benchmark. Open source under Apache 2.0.
 
