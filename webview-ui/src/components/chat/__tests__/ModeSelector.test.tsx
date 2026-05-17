@@ -1,8 +1,39 @@
-import { fireEvent, render, screen } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { TaskServiceClient } from "@/services/grpc-client"
 import ModeSelector from "../ModeSelector"
 
+const mockNavigateToHistory = vi.fn()
+
+vi.mock("@/context/ExtensionStateContext", () => ({
+	useExtensionState: vi.fn(() => ({
+		navigateToHistory: mockNavigateToHistory,
+		taskHistory: [],
+	})),
+}))
+
+vi.mock("@/services/grpc-client", () => ({
+	TaskServiceClient: {
+		getTaskHistory: vi.fn().mockResolvedValue({ tasks: [] }),
+		showTaskWithId: vi.fn().mockResolvedValue({}),
+	},
+}))
+
+// Silence MutationObserver missing in jsdom
+global.MutationObserver = class {
+	observe() {}
+	disconnect() {}
+	takeRecords() {
+		return []
+	}
+} as any
+
 describe("ModeSelector", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+		vi.mocked(TaskServiceClient.getTaskHistory).mockResolvedValue({ tasks: [] } as any)
+	})
+
 	it("renders both mode buttons", () => {
 		render(<ModeSelector onModeSelect={() => {}} />)
 
@@ -14,9 +45,11 @@ describe("ModeSelector", () => {
 		render(<ModeSelector onModeSelect={() => {}} />)
 
 		expect(screen.getByText("Generate Logging Code")).toBeDefined()
-		expect(screen.getByText("Add LOG_* macros to your C files")).toBeDefined()
+		expect(
+			screen.getByText("Automatically inject professional logging into your code following the best practices."),
+		).toBeDefined()
 		expect(screen.getByText("Analyze Device Logs")).toBeDefined()
-		expect(screen.getByText("Record & analyze BLE behavior")).toBeDefined()
+		expect(screen.getByText("Record, analyze, and generate reports from connected IoT devices.")).toBeDefined()
 	})
 
 	it("calls onModeSelect with log_generator when first button clicked", () => {
@@ -43,16 +76,71 @@ describe("ModeSelector", () => {
 		expect(onModeSelect).not.toHaveBeenCalled()
 	})
 
-	it("renders welcome variant with header", () => {
+	it("renders welcome variant with header and history section", () => {
 		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
 
-		expect(screen.getByText("Nordic Logging Assistant")).toBeDefined()
 		expect(screen.getByText("What would you like to do?")).toBeDefined()
+		expect(screen.getByText("Recent")).toBeDefined()
 	})
 
-	it("renders inline variant with different header", () => {
+	it("renders inline variant without history section", () => {
 		render(<ModeSelector onModeSelect={() => {}} variant="inline" />)
 
 		expect(screen.getByText("What would you like to do next?")).toBeDefined()
+		expect(screen.queryByText("Recent")).toBeNull()
+	})
+
+	it("shows No recent tasks placeholder when workspace has no history", async () => {
+		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
+
+		await waitFor(() => {
+			expect(screen.getByText("No recent tasks")).toBeDefined()
+		})
+	})
+
+	it("renders workspace session cards when history is present", async () => {
+		vi.mocked(TaskServiceClient.getTaskHistory).mockResolvedValue({
+			tasks: [
+				{ id: "1", task: "Debug BLE connection", ts: Date.now(), totalCost: 0.05, isFavorited: false },
+				{ id: "2", task: "Generate logging code", ts: Date.now() - 1000, totalCost: 0.02, isFavorited: false },
+			],
+		} as any)
+
+		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
+
+		await waitFor(() => {
+			expect(screen.getByText("Debug BLE connection")).toBeDefined()
+			expect(screen.getByText("Generate logging code")).toBeDefined()
+		})
+	})
+
+	it("clicking a session card calls showTaskWithId", async () => {
+		vi.mocked(TaskServiceClient.getTaskHistory).mockResolvedValue({
+			tasks: [{ id: "abc123", task: "Debug BLE connection", ts: Date.now(), totalCost: 0.05, isFavorited: false }],
+		} as any)
+
+		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
+
+		await waitFor(() => {
+			expect(screen.getByText("Debug BLE connection")).toBeDefined()
+		})
+
+		fireEvent.click(screen.getByText("Debug BLE connection"))
+		expect(TaskServiceClient.showTaskWithId).toHaveBeenCalled()
+	})
+
+	it("clicking View All calls navigateToHistory", async () => {
+		vi.mocked(TaskServiceClient.getTaskHistory).mockResolvedValue({
+			tasks: [{ id: "abc123", task: "Debug BLE connection", ts: Date.now(), totalCost: 0.05, isFavorited: false }],
+		} as any)
+
+		render(<ModeSelector onModeSelect={() => {}} variant="welcome" />)
+
+		await waitFor(() => {
+			expect(screen.getByText("View All")).toBeDefined()
+		})
+
+		fireEvent.click(screen.getByText("View All"))
+		expect(mockNavigateToHistory).toHaveBeenCalled()
 	})
 })

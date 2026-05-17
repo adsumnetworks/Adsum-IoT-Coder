@@ -13,6 +13,8 @@
 import React from "react"
 import { aiGeneratedCodeIcon, analyseBugsIcon } from "@/assets/modeIconsBase64"
 import NrfLogo from "@/assets/NrfLogo"
+import HistoryPreview from "@/components/history/HistoryPreview"
+import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
 
@@ -30,6 +32,7 @@ interface ModeSelectorProps {
 const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = false, variant = "welcome" }) => {
 	const modes = Object.values(NORDIC_MODES)
 	const { isDark } = useVSCodeTheme()
+	const { navigateToHistory } = useExtensionState()
 	const iconFilter = isDark ? "brightness(0) invert(1)" : "brightness(0)"
 
 	const isWelcome = variant === "welcome"
@@ -117,6 +120,12 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = fa
 					</button>
 				))}
 			</div>
+
+			{isWelcome && (
+				<div className="w-full max-w-md mt-3">
+					<HistoryPreview currentWorkspaceOnly showHistoryView={navigateToHistory} />
+				</div>
+			)}
 		</div>
 	)
 }

@@ -1,14 +1,53 @@
 import { StringRequest } from "@shared/proto/cline/common"
-import { memo } from "react"
+import { GetTaskHistoryRequest } from "@shared/proto/cline/task"
+import { memo, useEffect, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { TaskServiceClient } from "@/services/grpc-client"
 
 type HistoryPreviewProps = {
 	showHistoryView: () => void
+	currentWorkspaceOnly?: boolean
 }
 
-const HistoryPreview = ({ showHistoryView }: HistoryPreviewProps) => {
+type PreviewItem = {
+	id: string
+	task: string
+	ts: number
+	totalCost?: number | null
+	isFavorited?: boolean
+}
+
+const HistoryPreview = ({ showHistoryView, currentWorkspaceOnly }: HistoryPreviewProps) => {
 	const { taskHistory } = useExtensionState()
+
+	const [workspaceItems, setWorkspaceItems] = useState<PreviewItem[]>([])
+
+	useEffect(() => {
+		if (!currentWorkspaceOnly) {
+			return
+		}
+		TaskServiceClient.getTaskHistory(
+			GetTaskHistoryRequest.create({
+				currentWorkspaceOnly: true,
+				sortBy: "newest",
+			}),
+		)
+			.then((response) => {
+				const items = (response.tasks || [])
+					.filter((t: any) => t.ts && t.task)
+					.slice(0, 3)
+					.map((t: any) => ({
+						id: t.id,
+						task: t.task,
+						ts: t.ts,
+						totalCost: t.totalCost,
+						isFavorited: t.isFavorited,
+					}))
+				setWorkspaceItems(items)
+			})
+			.catch((error) => console.error("Error loading workspace history:", error))
+	}, [currentWorkspaceOnly])
+
 	const handleHistorySelect = (id: string) => {
 		TaskServiceClient.showTaskWithId(StringRequest.create({ value: id })).catch((error) =>
 			console.error("Error showing task:", error),
@@ -22,6 +61,19 @@ const HistoryPreview = ({ showHistoryView }: HistoryPreviewProps) => {
 			day: "numeric",
 		})
 	}
+
+	const displayItems: PreviewItem[] = currentWorkspaceOnly
+		? workspaceItems
+		: taskHistory
+				.filter((item) => item.ts && item.task)
+				.slice(0, 3)
+				.map((item) => ({
+					id: item.id,
+					task: item.task,
+					ts: item.ts,
+					totalCost: item.totalCost,
+					isFavorited: item.isFavorited,
+				}))
 
 	return (
 		<div style={{ flexShrink: 0 }}>
@@ -128,7 +180,7 @@ const HistoryPreview = ({ showHistoryView }: HistoryPreviewProps) => {
 						Recent
 					</span>
 				</div>
-				{taskHistory.filter((item) => item.ts && item.task).length > 0 && (
+				{displayItems.length > 0 && (
 					<button
 						aria-label="View all history"
 						className="history-view-all-btn"
@@ -140,48 +192,43 @@ const HistoryPreview = ({ showHistoryView }: HistoryPreviewProps) => {
 				)}
 			</div>
 
-			{
-				<div className="px-4">
-					{taskHistory.filter((item) => item.ts && item.task).length > 0 ? (
-						taskHistory
-							.filter((item) => item.ts && item.task)
-							.slice(0, 3)
-							.map((item) => (
-								<div className="history-preview-item" key={item.id} onClick={() => handleHistorySelect(item.id)}>
-									<div className="history-task-content">
-										{item.isFavorited && (
-											<span
-												aria-label="Favorited"
-												className="codicon codicon-star-full"
-												style={{
-													color: "var(--vscode-button-background)",
-													flexShrink: 0,
-												}}
-											/>
-										)}
-										<div className="history-task-description ph-no-capture">{item.task}</div>
-									</div>
-									<div className="history-meta-stack">
-										<span className="history-date">{formatDate(item.ts)}</span>
-										{item.totalCost != null && (
-											<span className="history-cost-chip">${item.totalCost.toFixed(2)}</span>
-										)}
-									</div>
-								</div>
-							))
-					) : (
-						<div
-							style={{
-								textAlign: "center",
-								color: "var(--vscode-descriptionForeground)",
-								fontSize: "var(--vscode-font-size)",
-								padding: "10px 0",
-							}}>
-							No recent tasks
+			<div className="px-4">
+				{displayItems.length > 0 ? (
+					displayItems.map((item) => (
+						<div className="history-preview-item" key={item.id} onClick={() => handleHistorySelect(item.id)}>
+							<div className="history-task-content">
+								{item.isFavorited && (
+									<span
+										aria-label="Favorited"
+										className="codicon codicon-star-full"
+										style={{
+											color: "var(--vscode-button-background)",
+											flexShrink: 0,
+										}}
+									/>
+								)}
+								<div className="history-task-description ph-no-capture">{item.task}</div>
+							</div>
+							<div className="history-meta-stack">
+								<span className="history-date">{formatDate(item.ts)}</span>
+								{item.totalCost != null && (
+									<span className="history-cost-chip">${item.totalCost.toFixed(2)}</span>
+								)}
+							</div>
 						</div>
-					)}
-				</div>
-			}
+					))
+				) : (
+					<div
+						style={{
+							textAlign: "center",
+							color: "var(--vscode-descriptionForeground)",
+							fontSize: "var(--vscode-font-size)",
+							padding: "10px 0",
+						}}>
+						No recent tasks
+					</div>
+				)}
+			</div>
 		</div>
 	)
 }
