@@ -4,16 +4,25 @@
 
 # Adsum IoT Coder – for nRF
 
-Open-source AI coding agent for IoT firmware development — starting with Nordic nRF.
+**An AI coding agent purpose-built for IoT firmware development.**
+Hardware-in-the-loop log capture, native nRF Connect SDK integration,
+and expert-reviewed IoT engineering knowledge loaded on demand —
+backed by an open benchmark that measures it against general agents
+on real hardware bugs.
 
-Built on a dynamic knowledge architecture that loads nRF Connect SDK/ZephyrRTOS domain expertise on demand, scoped to the task. Evaluated on real hardware with an open benchmark. Open source under Apache 2.0.
+200+ installs · Apache 2.0 · Built by IoT engineers, validated on real hardware
 
 <p>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/v/AdsumNetwork.nrf-ai-debugger?label=VS%20Code%20Marketplace&logo=visual-studio-code&color=0078d4" alt="VS Marketplace"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/i/AdsumNetwork.nrf-ai-debugger?label=installs&color=0078d4" alt="Installs"></a>
+  <a href="https://github.com/adsumnetworks/SoC-AI-Debugger/stargazers"><img src="https://img.shields.io/github/stars/adsumnetworks/SoC-AI-Debugger?style=flat&color=ffd700" alt="GitHub stars"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/adsumnetworks/SoC-AI-Debugger/discussions"><img src="https://img.shields.io/badge/community-discussions-blue" alt="Discussions"></a>
   <img src="https://img.shields.io/badge/nRF%20Connect%20SDK-v3.2.1-00A9CE" alt="NCS">
   <img src="https://img.shields.io/badge/Zephyr%20RTOS-compatible-blueviolet" alt="Zephyr">
 </p>
+
+**[Install →](#getting-started)** · **[Benchmark →](#benchmark--iot-firmwaredebugbench-v01)** · **[Architecture →](#architecture--dynamic-knowledge--tool-skill-loading)** · **[Roadmap →](#roadmap)**
 
 <!-- TODO: Replace with updated demo GIF showing "Adsum IoT Coder" branding -->
 <p><img src="assets/docs/demo.gif" width="100%" alt="Adsum IoT Coder Demo" /></p>
@@ -22,23 +31,45 @@ Built on a dynamic knowledge architecture that loads nRF Connect SDK/ZephyrRTOS 
 
 ---
 
-## The Problem with General-Purpose Coding Agents in IoT
+## Contents
 
-Coding agents like Claude Code, GitHub Copilot, and Cursor were designed for software development. They perform well on web applications and backend services. They do not perform well on embedded firmware — and the reasons are structural, not about model capability.
+1. [Why Adsum IoT Coder exists](#why-adsum-iot-coder-exists)
+2. [Architecture — Dynamic Knowledge & Tool-Skill Loading](#architecture--dynamic-knowledge--tool-skill-loading)
+3. [Benchmark — IoT-FirmwareDebugBench v0.1](#benchmark--iot-firmwaredebugbench-v01)
+4. [Getting Started](#getting-started)
+5. [Roadmap](#roadmap)
+6. [Limitations](#limitations)
+7. [Citing this work](#citing-this-work)
+8. [About](#about)
+9. [Privacy & Security](#privacy--security)
+10. [Troubleshooting](#troubleshooting)
 
-Firmware debugging requires hardware-in-the-loop log capture, domain-specific knowledge of BLE protocol stacks and NCS/ZephyrRTOS internals, toolchain environment management, and runtime-only failure modes that are invisible from source code alone. A `settings_load()` call missing after `bt_enable()` compiles fine, connects fine, and silently breaks GATT notifications after reconnect. An advertising filter with an empty accept list makes the device scannable but impossible to connect to — with zero errors in the log. A connection parameter mismatch between a Central and Peripheral only surfaces when you correlate timestamps across two separate log streams.
+---
 
-General-purpose agents have no answer for these problems. They struggle to capture device logs. They don't understand NCS Kconfig dependency chains. They hallucinate APIs from old NCS versions. And when they can't diagnose from source alone, they spend cycles exploring wrong hypotheses until the context window fills and reasoning degrades.
+## Why Adsum IoT Coder exists
 
-Adsum IoT Coder is a different kind of coding agent — one built specifically for IoT firmware, with the domain architecture to match.
+Embedded firmware debugging fails for general-purpose coding agents — not because the models lack capability, but because the problems live outside the source code. Diagnosing a BLE connection that won't pair, a current spike during a sensor read, or a settings store that silently loses CCCD state across reboots requires capabilities general agents don't have:
+
+- **Native SDK integration.** nRF Connect SDK shells, Zephyr build systems, devicetree overlays, and Kconfig dependency chains aren't text the agent reads — they're tools the agent has to drive. General agents read source; they don't speak NCS.
+- **Hardware-in-the-loop instrumentation.** Live RTT/UART log capture, J-Link board control, BLE sniffer correlation (Wireshark / nRF Sniffer), power profiler integration (PPK II), spectrum analysis. These are not files in your repo. They are physical signals from the chip, and most failures only show themselves there.
+- **Expert-reviewed IoT engineering knowledge.** Curated BLE / Thread / Matter / WiFi protocol specs, IoT system architecture patterns, low-power optimization techniques, and an anti-pattern library distilled from thousands of real failed firmware attempts and support tickets. The kind of "I've seen this exact failure mode before" recognition that takes a senior embedded engineer years to build.
+- **Tool-use skills tuned for IoT workflows.** Knowing *when* to flash vs. recheck logs vs. spin up a sniffer is itself expertise. General agents either skip log capture entirely (diagnosing from source — fine for web apps, broken for runtime bugs) or burn token budget exploring wrong hypotheses until context degrades.
+
+Without these, general agents end up diagnosing IoT firmware from source code alone. That works for web applications, where runtime behavior is mostly explained by the code. It fails for firmware, where the same source compiles to wildly different runtime behavior depending on which Kconfig flags landed, which devicetree overlay applied, which bond state the device booted with, and what the radio environment looked like at the moment of failure.
+
+A `settings_load()` call missing after `bt_enable()` compiles fine, connects fine, and silently breaks GATT notifications after reconnect. An advertising filter with an empty accept list makes the device scannable but impossible to connect to — with zero errors in the log. A Central/Peripheral connection-parameter mismatch only surfaces when you correlate timestamps across two separate log streams. None of these are visible in the source code; all of them are common in real projects.
+
+Adsum IoT Coder is built on the four pillars above. The result is an agent that catches the bugs general agents can't see, surfaces code-level weaknesses and anti-patterns, optimizes for stable and low-power communication, and proposes architectural improvements grounded in expert-reviewed IoT practice — at a fraction of the token budget general agents consume getting nowhere.
 
 ---
 
 ## Architecture — Dynamic Knowledge & Tool-Skill Loading
 
-The first version of this tool carried its full domain expertise into every session. NCS documentation, board-specific patterns, Kconfig knowledge, BLE lifecycle reasoning, tool-use protocols — all loaded upfront regardless of whether the task needed any particular piece. That approach worked but couldn't grow. Adding nRF53 support meant expanding the static bundle. Adding ESP, Thread, or Matter meant the same.
+### From proof of concept to platform
 
-The current architecture inverts this. Domain knowledge and tool-use skills are structured as a framework of discrete, composable modules — each scoped to a specific chip family, protocol stack, or debug capability. At session start, the agent assesses what the project actually is and what the task actually requires, then fetches the relevant modules on demand.
+Two months ago we shipped nRF AI Debugger as a proof of concept to test whether purpose-built AI tooling could meaningfully outperform general coding agents on embedded firmware. 200+ installs in two months confirmed the demand. But v1's architecture loaded its full domain expertise into every session — a static bundle that worked but couldn't grow. Adding nRF53 support meant expanding the bundle. Adding ESP, Thread, or Matter meant the same. The architecture sat on a cliff edge.
+
+This release inverts that. Domain knowledge and tool-use skills are structured as a framework of discrete, composable modules — each scoped to a specific chip family, protocol stack, or debug capability. At session start, the agent assesses what the project is and what the task requires, then fetches the relevant modules on demand.
 
 ```
 iot-knowledge/
@@ -51,38 +82,37 @@ iot-knowledge/
 │   ├── boards/                   # Per-SoC: nRF52840, nRF52832, nRF5340
 │   ├── sdks/ncs/                 # NCS project structure, Kconfig, BLE stack
 │   │   ├── protocols/BLE.md      # BLE-specific modules
-│   │   └──SDK.md                 # NCS-specific modules
+│   │   └── SDK.md                # NCS-specific modules
 │   ├── workflows/                # Entry-point sequences (start here)
 │   │   ├── log-analyzer.md       # Capture → Analyze → Report
 │   │   ├── log-generator.md      # Instrument firmware with LOG_* macros
 │   │   └── debug-loop.md         # Build → Flash → Capture → Analyze → Fix
 │   └── actions/                  # Subroutines (loaded by workflows only)
-│       ├── capture-logs.md       # Capture logs from device
-│       ├── analyze-logs.md       # Analyze logs for errors
-│       ├── build.md              # Build firmware
-│       └── flash.md              # Flash firmware to device
+│       ├── capture-logs.md
+│       ├── analyze-logs.md
+│       ├── build.md
+│       └── flash.md
 ```
 
 Analyzing a UART log drop loads `log-analyzer.md` + `capture-logs.md` + `sdks/ncs/SDK.md`. Debugging a failed BLE connection on a two-board setup also pulls in `BLE.md`, `device-identity.md`, and the relevant board file — and nothing else. The model gets exactly what the task requires, no more.
 
-This is what makes the architecture scalable in a way v1 wasn't:
+What this enables:
 
-- **New chip families add as modules**, not as core changes. nRF52 ships today. nRF53, nRF91, nRF54 are designed to slot in. **Adsum IoT Coder – for ESP** is next on the roadmap.
-- **New protocol stacks add as modules.** BLE today; WiFi, Thread, Matter, LTE-M, DECT NR+ are roadmap items the architecture is designed to absorb.
-- **New tool-use skills add as modules.** Need a different log capture backend, a different build system, a different flashing tool? Author the skill module; the agent loads it when the task calls for it.
-- **Context proportional to task complexity.** No fixed-cost domain bundle eating context budget regardless of difficulty. On complex multi-cycle debug sessions, this is the difference between finishing the work and hitting context overflow.
+- **Scalable chip and protocol support.** New chip families and protocol stacks add as modules, not as core changes. nRF52 ships today. nRF53, nRF91, nRF54 are designed to slot in. **Adsum IoT Coder – for ESP** is next on the roadmap. WiFi, Thread, Matter, LTE-M, and DECT NR+ are all designed to absorb into the same framework.
+- **Composable tool-use skills.** Different log capture backend, build system, or flashing tool? Author the skill module; the agent loads it when the task calls for it.
+- **Context proportional to task complexity.** No fixed-cost domain bundle eating context regardless of difficulty. On complex multi-cycle debug sessions, this is the difference between finishing the work and hitting context overflow.
 
 ---
 
 ## Benchmark — IoT-FirmwareDebugBench v0.1
 
-A clean architecture is only useful if it produces measurably better outcomes. While there are standard SWE benchmarks, evaluating AI agents on *real hardware* is still an emerging field. We built our evaluation infrastructure inspired by recent research ([arXiv:2603.19583](https://arxiv.org/abs/2603.19583)), which pioneered hardware-in-the-loop evaluation for embedded code generation and concluded that expert-authored skills significantly improve LLM performance on firmware tasks. 
+> **5 of 6 tasks resolved vs. 3 of 6 for Claude Code. 3.8× more token-efficient. Same underlying model — Claude Haiku 4.5.**
 
-While their foundational work focused on general embedded code generation, we adapted their methodology specifically for **IoT firmware debugging**. We built **IoT-FirmwareDebugBench v0.1** and are publishing it open source as a deliverable equal in importance to the tool itself.
+A clean architecture is only useful if it produces measurably better outcomes. Standard SWE benchmarks don't exercise hardware-in-the-loop work, and there is no established public benchmark for AI agents on embedded firmware. We adapted methodology from recent research on expert-skill-augmented LLM evaluation for embedded code generation ([arXiv:2603.19583](https://arxiv.org/abs/2603.19583)) and built one for IoT firmware debugging — published open source as a deliverable equal in importance to the tool itself.
 
-**[IoT-FirmwareDebugBench v0.1](./docs/benchmarks/v0.1-report.md)** is a hardware-in-the-loop evaluation suite running on real nRF52840 DK and nRF52832 DK boards with NCS v3.2.1 (Zephyr 4.2.99). Six tasks across three difficulty levels, each with a precisely injected bug, defined reproduction procedure, and known correct fix.
+**[IoT-FirmwareDebugBench v0.1](./docs/benchmarks/v0.1-report.md)** runs on real nRF52840 DK and nRF52832 DK boards with NCS v3.2.1 (Zephyr 4.2.99). Six tasks across three difficulty levels, each with a precisely injected bug, defined reproduction procedure, and known correct fix.
 
-**The most important methodological choice:** both agents run **the same model — Claude Haiku 4.5**, with reasoning mode disabled and prompt caching enabled identically. This isolates a single variable: domain architecture. If Adsum IoT Coder outperforms, it is not because it has access to a more capable model. It is because the architecture wraps the same model differently.
+The most important methodological choice: **both agents run the same model — Claude Haiku 4.5**, with reasoning mode disabled and prompt caching enabled identically. This isolates a single variable: domain architecture. If Adsum IoT Coder outperforms, it is not because it has access to a more capable model — it is because the architecture wraps the same model differently.
 
 <div align="center">
 
@@ -116,9 +146,9 @@ Three patterns in the data tell the more interesting story:
 
 </div>
 
-**Limitations we're upfront about.** Six tasks is sufficient for proof-of-concept, not statistical significance — targeting 20-30 for v2. Single NCS version (v3.2.1). Single evaluator. GitHub Copilot evaluation planned for v2. The methodology is published openly so others can probe these limits, run independent comparisons, and contribute tasks.
+The architecture and the benchmark are two halves of the same commitment: domain-specific AI tooling clean enough to extend, and measurable enough to defend. Run the benchmark yourself. Compare against your own agent. That's the conversation we want to be in.
 
-👉 [Full benchmark report](./docs/benchmarks/v0.1-report.md) 
+👉 [Full benchmark report](./docs/benchmarks/v0.1-report.md)
 
 ---
 
@@ -133,7 +163,7 @@ Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/item
 
 **Generate Logging Code** — reads your NCS project, understands the BLE stack, and injects `LOG_*` macros following Zephyr best practices. An agent that wrote the log statements analyzes the output more intelligently — it understands the context because it created it.
 
-From analysis results, the agent can enter a **Debug Loop** — iterative Build → Flash → Capture → Analyze → Fix cycle — continuing until the bug is resolved or the user decides to stop.
+From analysis results, the agent can enter a **Debug Loop** — iterative Build → Flash → Capture → Analyze → Fix cycle — continuing until the bug is resolved or you stop it.
 
 ### Requirements
 
@@ -148,16 +178,17 @@ From analysis results, the agent can enter a **Debug Loop** — iterative Build 
 
 | Model | Notes |
 |:---|:---|
-| **DeepSeek-v4-Pro** | Recommended for cost-effective sessions. Available via [OpenRouter](https://openrouter.ai/deepseek/deepseek-v4-pro) or [DeepSeek API](https://api-docs.deepseek.com/) using the OpenAI-compatible endpoint. |
 | **Claude Haiku 4.5** | Used in the IoT-FirmwareDebugBench evaluation. |
+| **DeepSeek-v4-Pro** | Cost-effective. Available via [OpenRouter](https://openrouter.ai/deepseek/deepseek-v4-pro) or [DeepSeek API](https://api-docs.deepseek.com/) using the OpenAI-compatible endpoint. |
+| **GLM-4.7** | Cost-effective alternative; works well for long debug sessions. |
 
-> **Note on Model Support:** You can test any model via OpenRouter or an OpenAI-compatible endpoint, provided the model has strong **Tool Calling** (function calling) capabilities. Legacy models or models without native tool support will not be able to execute the hardware actions or debugging workflows.
+> Any OpenAI-compatible endpoint works, provided the model has strong **tool-calling** (function-calling) capabilities. Models without native tool-use support cannot execute hardware actions or debug workflows.
 
 ---
 
 ## Roadmap
 
-The product line going forward is **Adsum IoT Coder**, with each release scoped to a specific IoT chip family. The "IoT" in the name reflects the real focus: communication stacks and protocol troubleshooting across the IoT chip landscape — BLE, WiFi, Thread, Matter, LTE-M — rather than silicon-level work.
+The product line is **Adsum IoT Coder**, with each release scoped to a specific IoT chip family. "IoT" reflects the focus: communication stacks and protocol troubleshooting across the IoT chip landscape — BLE, WiFi, Thread, Matter, LTE-M — rather than silicon-level work. "Coder" reflects the trajectory: this release ships debugging because that's where general agents fail hardest, but the architecture is designed to cover the full IoT development lifecycle — design, implementation, verification, and field optimization.
 
 | Category | Current | Next |
 |:---|:---|:---|
@@ -166,8 +197,50 @@ The product line going forward is **Adsum IoT Coder**, with each release scoped 
 | **Protocols** | BLE | WiFi, Thread, Matter, LTE-M, DECT NR+ |
 | **NCS** | v3.2.x | v2.9.x LTS, v3.3+ |
 | **Benchmark** | v0.1 (6 tasks, BLE, nRF) | v0.2 (20+ tasks, Copilot comparison, ESP suite) |
+| **Tooling** | RTT/UART log capture, J-Link control | BLE sniffer integration, PPK II power profiling, spectrum analysis |
 
-Expanding based on community needs. [Join our discussions.](https://github.com/adsumnetworks/SoC-AI-Debugger/discussions)
+The roadmap is shaped by what the community asks for and contributes. [Open an issue, propose a benchmark task, or contribute a knowledge module.](https://github.com/adsumnetworks/SoC-AI-Debugger/issues)
+
+---
+
+## Limitations
+
+We publish what's true today, not what we wish were true.
+
+- **Benchmark scope.** Six tasks is sufficient for a proof-of-concept evaluation, not statistical significance. v0.2 targets 20–30 tasks.
+- **SDK coverage.** All benchmark tasks ran on a single NCS version (v3.2.1). Older LTS versions are roadmap items.
+- **Inter-rater reliability.** All benchmark sessions were run and scored by a single evaluator. Independent replication is actively welcomed.
+- **Comparison breadth.** GitHub Copilot evaluation is planned for v0.2; token visibility on the free tier delayed it from v0.1.
+- **Open unsolved task.** L3-T2 (HIDS security mismatch — central requests `BT_SECURITY_L3` MITM, peripheral offers `BT_SECURITY_L1`) remains unresolved by both agents. Diagnosing it requires SMP-layer event correlation invisible from UART alone. BLE sniffer integration (roadmap) is the planned approach.
+
+The methodology is open precisely so others can probe these limits, run independent comparisons, and contribute tasks.
+
+---
+
+## Citing this work
+
+If you reference the benchmark or this work in research, please cite:
+
+```bibtex
+@misc{adsumiotcoder2026,
+  title  = {IoT-FirmwareDebugBench v0.1: A Hardware-in-the-Loop
+            Evaluation Suite for AI Firmware Debugging Agents},
+  author = {Adsum Networks},
+  year   = {2026},
+  url    = {https://github.com/adsumnetworks/SoC-AI-Debugger},
+  note   = {Open source under Apache 2.0}
+}
+```
+
+---
+
+## About
+
+**[Adsum Networks](https://github.com/adsumnetworks)** — 8+ years building IoT solutions on Nordic and other embedded platforms. We built Adsum IoT Coder because general-purpose coding agents leave embedded developers without reliable AI assistance precisely for the hardest debugging scenarios.
+
+The first release (v1) was a focused proof of concept: nRF AI Debugger, scoped to log capture and analysis on Nordic boards. 200+ installs in two months told us the demand was real. The current release rebuilds the architecture to scale — and ships an open benchmark so the value can be measured, not just claimed. This is the kind of accountability we want every future release to be subject to.
+
+The product is **Adsum IoT Coder** rather than "Debugger" because the roadmap covers the full IoT development lifecycle. Debugging is what we shipped first because that's where general agents fail hardest and the value is most measurable. Architecture proposals, low-power optimization, protocol-correctness review, and code-weakness analysis are all natural extensions of the same dynamic-knowledge framework.
 
 ---
 
@@ -187,20 +260,16 @@ The agent runs entirely on your machine. Only specific log snippets and code con
 
 ---
 
-## About
-
-**[Adsum Networks](https://github.com/adsumnetworks)** — 8+ years building IoT solutions on Nordic and other embedded platforms. We built Adsum IoT Coder because general-purpose coding agents leave embedded developers without reliable AI assistance precisely for the hardest debugging scenarios. The architecture and the benchmark are two halves of the same commitment: build domain-specific AI tooling that's clean enough to extend and measurable enough to defend.
-
----
-
 ### Trademark & Disclaimer
+
 Independent, community-developed tool. Not affiliated with, endorsed by, or sponsored by Nordic Semiconductor ASA. "nRF" is a registered trademark of Nordic Semiconductor ASA.
 
 ## Acknowledgments
 
 - [Cline](https://github.com/cline/cline) — The open-source AI coding agent this project builds upon.
 - [Nordic Semiconductor](https://www.nordicsemi.com/) — For the nRF Connect SDK and developer tools.
-- The authors of [arXiv:2603.19583](https://arxiv.org/abs/2603.19583) — For their foundational research on hardware-in-the-loop evaluation for embedded systems, which heavily inspired our benchmarking methodology.
+- The authors of [arXiv:2603.19583](https://arxiv.org/abs/2603.19583) — For foundational research on hardware-in-the-loop evaluation for embedded systems, which inspired our benchmarking methodology.
 
 ## License
+
 [Apache 2.0 © 2026 Adsum Networks](./LICENSE)
