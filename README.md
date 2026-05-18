@@ -13,6 +13,7 @@ Currently shipping for the **nRF5x** family with **BLE**. Open source under Apac
 200+ Marketplace installs
 
 <!-- TODO: Marketplace slug `nrf-ai-debugger` is legacy from v1; pending migration to a new slug aligned with the Adsum IoT Coder name. All marketplace links across this README and package.json should be updated together. -->
+<!-- TODO: GitHub repo slug `adsumnetworks/SoC-AI-Debugger` is legacy from v1; pending repo rename to `adsumnetworks/Adsum-IoT-Coder`. Update all github.com/adsumnetworks/SoC-AI-Debugger links in this README together. -->
 <p>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/v/AdsumNetwork.nrf-ai-debugger?label=VS%20Code%20Marketplace&logo=visual-studio-code&color=0078d4" alt="VS Marketplace"></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/i/AdsumNetwork.nrf-ai-debugger?label=installs&color=0078d4" alt="Installs"></a>
@@ -51,7 +52,7 @@ Currently shipping for the **nRF5x** family with **BLE**. Open source under Apac
 
 ## Why Adsum IoT Coder exists
 
-Adsum IoT Coder specialises in **IoT communication firmware** — wireless protocol stacks (BLE today; Wi-Fi, Thread, Matter, LTE-M on the roadmap) and the related power-budget concerns that come with them. This is not a general embedded-systems agent: it isn't trying to help you write a motor controller or a DSP pipeline. It is built for the specific class of bugs that show up in connected devices.
+Adsum IoT Coder specialises in **IoT communication firmware** — wireless protocol stacks (Bluetooth Low Energy / BLE today; Wi-Fi, Thread, Matter, LTE-M on the roadmap) and the related power-budget concerns that come with them. This is not a general embedded-systems agent: it isn't trying to help you write a motor controller or a DSP pipeline. It is built for the specific class of bugs that show up in connected devices.
 
 That class of bug fails general coding agents for structural reasons — not model capability. The problems live outside the source code:
 
@@ -117,7 +118,9 @@ iot-knowledge/
 └── platforms/esp/                # Adsum IoT Coder – for ESP (roadmap)
 ```
 
-Analyzing a UART log drop loads `log-analyzer.md` + `capture-logs.md` + `sdks/ncs/SDK.md`. Debugging a failed BLE connection on a two-board setup also pulls in `BLE.md`, `device-identity.md`, and the relevant board file — and nothing else. The model gets exactly what the task requires, no more. On complex multi-cycle debug sessions, this is the difference between finishing the work and hitting context overflow.
+Analyzing a UART log drop loads `log-analyzer.md` + `capture-logs.md` + `sdks/ncs/SDK.md`. Debugging a failed BLE connection on a two-board setup also pulls in `BLE.md`, `device-identity.md`, and the relevant board file — and nothing else. The model gets exactly what the task requires, no more.
+
+The bigger payoff isn't just avoiding context overflow — it's **context quality**. Even when a full static bundle would technically fit, loading only the relevant modules keeps domain knowledge in the model's effective working set rather than letting it get buried under unrelated material as the session grows. This is the "lost in the middle" failure mode the benchmark caught Claude Code hitting on L1-T2 — same model, full 200k window, lost the original symptom by debug cycle four.
 
 ---
 
@@ -130,6 +133,8 @@ A clean architecture is only useful if it produces measurably better outcomes. S
 **[IoT-FirmwareDebugBench v0.1](./docs/benchmarks/v0.1-report.md)** runs on real nRF52840 DK and nRF52832 DK boards with NCS v3.2.1 (Zephyr 4.2.99). Six BLE-focused tasks across three difficulty levels, each with a precisely injected bug, defined reproduction procedure, and known correct fix. The most important methodological choice: **both agents run the same model — Claude Haiku 4.5**, with reasoning mode disabled and prompt caching enabled identically. This isolates a single variable — domain architecture. If Adsum IoT Coder outperforms, it is not because it has access to a more capable model; it is because the architecture wraps the same model differently.
 
 **Difficulty levels.** **L1** — root cause readable directly from logs. **L2** — requires inference from BLE behavior or Kconfig dependencies. **L3** — requires correlating state across two devices or full session timelines.
+
+> *A "flash" in the metric table below = one agent attempt: propose a fix → build → flash to the device → re-test. BC@k = "Bug Closed within k flashes."*
 
 <div align="center">
 
@@ -148,13 +153,9 @@ A clean architecture is only useful if it produces measurably better outcomes. S
 | Total tokens consumed | **34.3M** | 78.5M |
 | Tokens per resolved task | **1.86M** | 7.15M |
 
-Three patterns in the data tell the more interesting story:
-
-**Context degradation predicted failure.** Claude Code consumed 27M tokens on L1-T2 — a Level 1 task — and still failed. Peak context hit 169k of 200k, past the threshold where models begin losing early context. By the later debug cycles, the model had lost the original symptom description, leading to circular reasoning. Adsum IoT Coder resolved the same task at 148.7k peak. Same model. The difference is what the architecture chose to keep in context.
-
 **Static Code Fix as a failure mode.** Claude Code skipped log capture on two tasks and diagnosed from source code alone — what the benchmark report classifies as **Static Code Fix (SCF)**: a methodology failure regardless of whether the resulting patch happens to compile. On L3-T1, the resulting fix was indeterminate — the root cause (bond asymmetry) is only visible through cross-device log correlation. The dynamic skill architecture eliminates this failure mode by design: log capture is a first-class step in the loaded workflow, not an optional step the agent might skip under exploration pressure.
 
-**The gap widens with task difficulty.** On L2 tasks, both agents resolve everything — Claude Haiku 4.5 is genuinely capable. On L3 multi-device tasks, Adsum IoT Coder resolved 1/2 while Claude Code resolved 0/2 and fell back to source-only analysis. Domain-specific knowledge and tooling matter most where the problems are hardest.
+Two other patterns worth noting: **context degradation predicted failure** (Claude Code burned 27M tokens on L1-T2 and lost the original symptom by the later debug cycles; Adsum IoT Coder resolved it at 148.7k peak), and **the gap widens with task difficulty** (parity at L2, Adsum 1/2 vs 0/2 at L3). Full per-task breakdown in the [benchmark report](./docs/benchmarks/v0.1-report.md).
 
 <div align="center">
 
@@ -171,11 +172,15 @@ The architecture and the benchmark are two halves of the same commitment: domain
 
 ## Getting Started
 
+Open the VS Code **Extensions** panel and search for **Adsum IoT Coder**, then click Install. Or install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) directly.
+
+CLI alternative:
+
 ```sh
 code --install-extension AdsumNetwork.nrf-ai-debugger
 ```
 
-Or install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger). See [changelog.md](./changelog.md) for release notes.
+See [changelog.md](./changelog.md) for release notes.
 
 Configure an AI provider, and open your NCS project. The agent starts with two entry-point workflows:
 
@@ -201,13 +206,12 @@ From analysis results, the agent can enter a **Debug Loop** — iterative Build 
 
 ### Tested Models
 
-Try **Claude Haiku 4.5** first — it's what the benchmark was run on. Switch to DeepSeek-v4-Pro or GLM 5.1 for cost-sensitive long sessions.
+Try **Claude Haiku 4.5** first — it's what the benchmark was run on. For cost-sensitive long sessions, **DeepSeek-V4-Pro** is our current recommendation.
 
 | Model | Best for | Notes |
 |:---|:---|:---|
 | **Claude Haiku 4.5** ⭐ | First try / production | Used in the IoT-FirmwareDebugBench evaluation |
-| **DeepSeek-v4-Pro** | Cost-sensitive sessions | Via [OpenRouter](https://openrouter.ai/deepseek/deepseek-v4-pro) or [DeepSeek API](https://api-docs.deepseek.com/) |
-| **GLM 5.1** | Long debug loops | Cost-effective alternative |
+| **DeepSeek-V4-Pro** ⭐ | Cost-sensitive long sessions | Larger context window → fewer overflow failures on long debug loops. Cheaper per million tokens than Haiku. Via [OpenRouter](https://openrouter.ai/deepseek/deepseek-v4-pro) or [DeepSeek API](https://api-docs.deepseek.com/). |
 
 > Any OpenAI-compatible endpoint works, provided the model has strong **tool-calling** (function-calling) capabilities. Models without native tool-use support cannot execute hardware actions or debug workflows.
 
@@ -239,7 +243,7 @@ We publish what's true today, not what we wish were true.
 - **Benchmark scope.** Six tasks is sufficient for a proof-of-concept evaluation, not statistical significance. v0.2 targets 20–30 tasks.
 - **SDK coverage.** All benchmark tasks ran on a single NCS version (v3.2.1). Older LTS versions are roadmap items.
 - **Inter-rater reliability.** All benchmark sessions were run and scored by a single evaluator. Independent replication is actively welcomed.
-- **Comparison breadth.** GitHub Copilot evaluation is planned for v0.2; token visibility on the free tier delayed it from v0.1.
+- **Comparison breadth.** GitHub Copilot and OpenAI Codex evaluations are planned for v0.2; token visibility on the free tier delayed Copilot from v0.1.
 - **Open unsolved task.** L3-T2 (HIDS security mismatch — central requests `BT_SECURITY_L3` MITM, peripheral offers `BT_SECURITY_L1`) remains unresolved by both agents. Diagnosing it requires SMP-layer event correlation invisible from UART alone. BLE sniffer integration (roadmap) is the planned approach.
 
 The methodology is open precisely so others can probe these limits, run independent comparisons, and contribute tasks.
@@ -279,7 +283,6 @@ We welcome new benchmark tasks, knowledge modules, and HITL tool integrations.
 
 - **Knowledge modules** are Markdown files in `iot-knowledge/` following the structure in [Architecture](#architecture--dynamic-knowledge--tool-skill-loading). Add a new protocol, board, or workflow as its own module.
 - **Benchmark tasks** follow the format in [`evals/`](./evals/). Each task ships its bug-injection patch, reproduction procedure, and known-correct fix.
-- **Tool-use skills** plug into the agent's action registry — see existing `actions/*.md` for the pattern.
 
 [Open an issue](https://github.com/adsumnetworks/SoC-AI-Debugger/issues) to discuss before larger changes, or open a PR directly for small fixes.
 
