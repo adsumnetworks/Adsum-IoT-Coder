@@ -81,13 +81,15 @@ Four capability pillars — split between what ships today and what's on the roa
 
 Adsum IoT Coder is an AI coding agent built on the open-source [Cline](https://github.com/cline/cline) foundation, with IoT-specific knowledge modules and tool-use skills layered on top. Two months ago we shipped the first version — nRF AI Debugger — as a proof of concept to test whether purpose-built AI tooling could meaningfully outperform general coding agents on embedded IoT firmware. The proof of concept got real traction, but v1's architecture loaded its full domain expertise into every session — a static bundle that worked but couldn't grow. Adding nRF9x or nRF7x support meant expanding the bundle. Adding ESP, Thread, or Matter meant the same. The architecture sat on a cliff edge.
 
+### Modules loaded on demand
+
 This release inverts that. Domain knowledge and tool-use skills are structured as a framework of discrete, composable modules — each scoped to a specific chip family, protocol stack, or debug capability. At session start, the agent assesses what the project is and what the task requires, then fetches the relevant modules on demand.
 
 ```
 User task ──► Agent assesses project ──► Loads scoped modules ──► Executes
-              (chip family,                (only what's needed
-               protocol stack,              from iot-knowledge/)
-               debug category)
+              (chip family,                (only what's needed     (Build → Flash →
+               protocol stack,              from iot-knowledge/)    Capture → Analyze
+               debug category)                                      → Fix, looped)
 ```
 
 The module tree on disk:
@@ -122,7 +124,9 @@ The bigger payoff isn't just avoiding context overflow — it's **context qualit
 
 ### Human-curated, not AI-generated
 
-A common trend in AI tooling is letting agents author and refine their own tool-use skills. For high-stakes IoT debugging, we've seen the opposite work better: every module in `iot-knowledge/` is hand-authored or hand-reviewed by senior IoT engineers. Expert-curated modules resolve more tasks at lower token cost than AI-generated equivalents — an effect we observed in our own evaluations and one documented at scale in the research that inspired our benchmarking methodology ([arXiv:2603.19583](https://arxiv.org/abs/2603.19583)). AI-generated skills accumulate plausible-but-wrong patterns faster than they accumulate validated ones; expert curation is the bottleneck that keeps the quality bar honest.
+A common trend in AI tooling is letting agents author and refine their own tool-use skills. Our own research and experimentation led us in the opposite direction for high-stakes IoT debugging. Every module in `iot-knowledge/` is hand-authored or hand-reviewed by senior IoT engineers. AI-generated skills can read fluently and still encode subtle misunderstandings of a protocol stack — failing in ways the agent can't self-detect. Expert curation is the bottleneck that keeps the quality bar honest.
+
+We don't isolate "human-curated vs. AI-generated" as a single benchmark variable — our system pairs curation with dynamic loading, and we report on the combined architecture. What that architecture demonstrates: same model on both sides, 5/6 vs 3/6 tasks resolved at 3.8× lower token cost than the general-agent baseline (full results in the [benchmark](#benchmark--iot-firmwaredebugbench-v01)). As the knowledge base grows, the benchmark is how we prove we're moving in the right direction.
 
 ---
 
@@ -166,7 +170,7 @@ Two other patterns worth noting: **context degradation predicted failure** (Clau
 
 </div>
 
-The architecture and the benchmark are two halves of the same commitment: domain-specific AI tooling clean enough to extend, and measurable enough to defend. Run the benchmark yourself. Compare against your own agent. That's the conversation we want to be in.
+The architecture and the benchmark are two halves of the same commitment: domain-specific AI tooling clean enough to extend, and measurable enough to defend. Run it yourself — that's the conversation we want to be in.
 
 → [Full benchmark report](./docs/benchmarks/v0.1-report.md)
 
@@ -191,7 +195,7 @@ Configure an AI provider, and open your NCS project. The agent starts with two e
 
 **Analyze nRF Device Logs** — captures live RTT/UART logs from connected boards, runs code-aware analysis, produces structured reports. Auto-detects boards via J-Link, supports multi-device simultaneous capture, correlates output with your source code and configuration.
 
-**Generate Logging Code** — reads your NCS project, understands the BLE stack, and injects `LOG_*` macros following Zephyr best practices. An agent that wrote the log statements analyzes the output more intelligently — it understands the context because it created it.
+**Generate Logging Code** — reads your NCS project, understands the BLE stack, and injects `LOG_*` macros following Zephyr best practices. The agent that writes the log statements knows the context when it later parses them.
 
 From analysis results, the agent can enter a **Debug Loop** — iterative Build → Flash → Capture → Analyze → Fix cycle — continuing until the bug is resolved or you stop it.
 
@@ -208,7 +212,7 @@ From analysis results, the agent can enter a **Debug Loop** — iterative Build 
 
 ### Tested Models
 
-Try **Claude Haiku 4.5** first — it's what the benchmark was run on. For cost-sensitive long sessions, **DeepSeek-V4-Pro** is our current recommendation.
+Try **Claude Haiku 4.5** first — it's the model we have IoT-specific benchmark evidence for. **DeepSeek-V4-Pro** is the cost play for long sessions where margin matters more than empirical confidence.
 
 | Model | Best for | Notes |
 |:---|:---|:---|
@@ -244,8 +248,13 @@ The roadmap is shaped by what the community asks for and contributes. [Open an i
 
 We publish what's true today, not what we wish were true.
 
+**Product**
+
 - **Scope.** Today the tool ships for the nRF5x family with BLE. Other Nordic families (nRF7x, nRF9x) and other vendors (ESP) are roadmap, not shipping. Other protocols (Wi-Fi, Thread, Matter, LTE-M) are roadmap, not shipping.
-- **Benchmark scope.** Six tasks is sufficient for a proof-of-concept evaluation, not statistical significance. v0.2 targets 20–30 tasks.
+
+**Benchmark**
+
+- **Sample size.** Six tasks is sufficient for a proof-of-concept evaluation, not statistical significance. v0.2 targets 20–30 tasks.
 - **SDK coverage.** All benchmark tasks ran on a single NCS version (v3.2.1). Older LTS versions are roadmap items.
 - **Single-evaluator scoring.** All benchmark sessions were run and scored by one person. Independent replication is actively welcomed.
 - **Comparison breadth.** GitHub Copilot and OpenAI Codex evaluations are planned for v0.2; token visibility on the free tier delayed Copilot from v0.1.
@@ -274,7 +283,7 @@ If you reference the benchmark or this work in research, please cite:
 
 ## About
 
-**[Adsum Networks](https://github.com/adsumnetworks)** — 8+ years building IoT solutions on Nordic and other embedded platforms.
+**[Adsum Networks](https://github.com/adsumnetworks)** — 8+ years building IoT solutions on Nordic and other embedded platforms. Our v1 proof of concept, nRF AI Debugger, reached 200+ installs in its first two months — enough signal to rebuild the architecture for what's next.
 
 We built Adsum IoT Coder because general coding agents leave IoT firmware developers without reliable AI assistance for the hardest debugging scenarios — protocol failures, power-budget violations, and runtime-only bugs that don't show up in source review. Our belief: domain-specific AI tooling needs to be (a) built by engineers who have lived inside the failure modes, and (b) measured against open benchmarks so the value can be defended, not just claimed. Both halves of that conviction are in this release.
 
@@ -293,7 +302,7 @@ We welcome new benchmark tasks, knowledge modules, and HITL tool integrations.
 
 ## Privacy & Security
 
-The agent runs entirely on your machine. Only what the agent explicitly needs reaches your AI provider.
+The extension's runtime runs entirely on your machine. Outbound network requests go only to the AI provider you configured, carrying only the data listed below.
 
 **Sent to the model:**
 
@@ -336,7 +345,7 @@ Still stuck? [Open a Discussion](https://github.com/adsumnetworks/SoC-AI-Debugge
 ## Acknowledgments
 
 - [Cline](https://github.com/cline/cline) — The open-source AI coding agent this project builds upon.
-- The authors of [arXiv:2603.19583](https://arxiv.org/abs/2603.19583) — For their research on expert-skill-augmented LLM evaluation for embedded code generation, which both inspired our benchmarking methodology and grounds our human-curated knowledge approach.
+- The authors of [arXiv:2603.19583](https://arxiv.org/abs/2603.19583) — For their research on expert-skill-augmented LLM evaluation for embedded code generation, which inspired our benchmarking methodology.
 
 ## License
 
