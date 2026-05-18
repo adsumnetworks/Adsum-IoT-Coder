@@ -4,19 +4,17 @@
 
 # Adsum IoT Coder – for nRF
 
-**An open-source AI coding agent that diagnoses BLE, GATT, and NCS
+**An open-source AI coding agent that diagnoses and fixes BLE, GATT, and NCS
 configuration bugs in fewer flashes — with live device-log capture,
 curated nRF Connect SDK knowledge, and an open benchmark proving it works.**
 
 Currently shipping for the **nRF5x** family with **BLE**. Open source under Apache 2.0.
 
-200+ Marketplace installs
-
 <!-- TODO: Marketplace slug `nrf-ai-debugger` is legacy from v1; pending migration to a new slug aligned with the Adsum IoT Coder name. All marketplace links across this README and package.json should be updated together. -->
 <!-- TODO: GitHub repo slug `adsumnetworks/SoC-AI-Debugger` is legacy from v1; pending repo rename to `adsumnetworks/Adsum-IoT-Coder`. Update all github.com/adsumnetworks/SoC-AI-Debugger links in this README together. -->
 <p>
-  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/v/AdsumNetwork.nrf-ai-debugger?label=VS%20Code%20Marketplace&logo=visual-studio-code&color=0078d4" alt="VS Marketplace"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/i/AdsumNetwork.nrf-ai-debugger?label=installs&color=0078d4" alt="Installs"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/badge/VS%20Code%20Marketplace-install-0078d4?logo=visual-studio-code" alt="VS Marketplace"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://vsmarketplacebadges.dev/installs-short/AdsumNetwork.nrf-ai-debugger.svg?color=0078d4" alt="Installs"></a>
   <a href="https://github.com/adsumnetworks/SoC-AI-Debugger/stargazers"><img src="https://img.shields.io/github/stars/adsumnetworks/SoC-AI-Debugger?style=flat&color=ffd700" alt="GitHub stars"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
   <a href="https://github.com/adsumnetworks/SoC-AI-Debugger/discussions"><img src="https://img.shields.io/badge/community-discussions-blue" alt="Discussions"></a>
@@ -122,6 +120,10 @@ Analyzing a UART log drop loads `log-analyzer.md` + `capture-logs.md` + `sdks/nc
 
 The bigger payoff isn't just avoiding context overflow — it's **context quality**. Even when a full static bundle would technically fit, loading only the relevant modules keeps domain knowledge in the model's effective working set rather than letting it get buried under unrelated material as the session grows. This is the "lost in the middle" failure mode the benchmark caught Claude Code hitting on L1-T2 — same model, full 200k window, lost the original symptom by debug cycle four.
 
+### Human-curated, not AI-generated
+
+A common trend in AI tooling is letting agents author and refine their own tool-use skills. For high-stakes IoT debugging, we've seen the opposite work better: every module in `iot-knowledge/` is hand-authored or hand-reviewed by senior IoT engineers. Expert-curated modules resolve more tasks at lower token cost than AI-generated equivalents — an effect we observed in our own evaluations and one documented at scale in the research that inspired our benchmarking methodology ([arXiv:2603.19583](https://arxiv.org/abs/2603.19583)). AI-generated skills accumulate plausible-but-wrong patterns faster than they accumulate validated ones; expert curation is the bottleneck that keeps the quality bar honest.
+
 ---
 
 ## Benchmark — IoT-FirmwareDebugBench v0.1
@@ -216,6 +218,8 @@ Try **Claude Haiku 4.5** first — it's what the benchmark was run on. For cost-
 
 > Any OpenAI-compatible endpoint works, provided the model has strong **tool-calling** (function-calling) capabilities. Models without native tool-use support cannot execute hardware actions or debug workflows.
 
+**Configuring a provider.** Open VS Code Settings → search for "Adsum IoT Coder" → set the API endpoint URL and key. Any OpenAI-compatible endpoint is accepted (OpenRouter, DeepSeek API, Anthropic via a compatible gateway, or a local Ollama / LM Studio server).
+
 ---
 
 ## Roadmap
@@ -243,7 +247,7 @@ We publish what's true today, not what we wish were true.
 - **Scope.** Today the tool ships for the nRF5x family with BLE. Other Nordic families (nRF7x, nRF9x) and other vendors (ESP) are roadmap, not shipping. Other protocols (Wi-Fi, Thread, Matter, LTE-M) are roadmap, not shipping.
 - **Benchmark scope.** Six tasks is sufficient for a proof-of-concept evaluation, not statistical significance. v0.2 targets 20–30 tasks.
 - **SDK coverage.** All benchmark tasks ran on a single NCS version (v3.2.1). Older LTS versions are roadmap items.
-- **Inter-rater reliability.** All benchmark sessions were run and scored by a single evaluator. Independent replication is actively welcomed.
+- **Single-evaluator scoring.** All benchmark sessions were run and scored by one person. Independent replication is actively welcomed.
 - **Comparison breadth.** GitHub Copilot and OpenAI Codex evaluations are planned for v0.2; token visibility on the free tier delayed Copilot from v0.1.
 - **Open unsolved task.** L3-T2 (HIDS security mismatch — central requests `BT_SECURITY_L3` MITM, peripheral offers `BT_SECURITY_L1`) remains unresolved by both agents. Diagnosing it requires SMP-layer event correlation invisible from UART alone. BLE sniffer integration (roadmap) is the planned approach.
 
@@ -270,11 +274,9 @@ If you reference the benchmark or this work in research, please cite:
 
 ## About
 
-**[Adsum Networks](https://github.com/adsumnetworks)** — 8+ years building IoT solutions on Nordic and other embedded platforms. We built Adsum IoT Coder because general coding agents leave IoT firmware developers without reliable AI assistance precisely for the hardest debugging scenarios — protocol failures, power-budget violations, and runtime-only bugs that don't show up in source review.
+**[Adsum Networks](https://github.com/adsumnetworks)** — 8+ years building IoT solutions on Nordic and other embedded platforms.
 
-The product is **Adsum IoT Coder** rather than "Debugger" because the roadmap covers the full IoT communication development lifecycle. Debugging is what we shipped first because that's where general agents fail hardest and the value is most measurable. Power-budget review, protocol-correctness review, architectural proposals, and low-power optimization are all natural extensions of the same dynamic-knowledge framework, and are on the roadmap.
-
-The first release (v1) was a focused proof of concept: nRF AI Debugger, scoped to BLE log capture and analysis on nRF5x boards. 200+ installs in two months told us the demand was real. The current release rebuilds the architecture to scale across chip families, protocols, and IoT-development concerns — and ships an open benchmark so the value can be measured, not just claimed. This is the kind of accountability we want every future release to be subject to.
+We built Adsum IoT Coder because general coding agents leave IoT firmware developers without reliable AI assistance for the hardest debugging scenarios — protocol failures, power-budget violations, and runtime-only bugs that don't show up in source review. Our belief: domain-specific AI tooling needs to be (a) built by engineers who have lived inside the failure modes, and (b) measured against open benchmarks so the value can be defended, not just claimed. Both halves of that conviction are in this release.
 
 ---
 
@@ -327,12 +329,14 @@ BYOK (Bring Your Own Key) — you control which model and endpoint you trust. So
 
 **Model refuses tool calls / returns plain text** — the configured model must support native tool-calling. Models without function-calling support cannot drive hardware workflows. See [Tested Models](#tested-models).
 
+Still stuck? [Open a Discussion](https://github.com/adsumnetworks/SoC-AI-Debugger/discussions) — we read every one.
+
 ---
 
 ## Acknowledgments
 
 - [Cline](https://github.com/cline/cline) — The open-source AI coding agent this project builds upon.
-- The authors of [arXiv:2603.19583](https://arxiv.org/abs/2603.19583) — For foundational research on hardware-in-the-loop evaluation for embedded systems, which inspired our benchmarking methodology.
+- The authors of [arXiv:2603.19583](https://arxiv.org/abs/2603.19583) — For their research on expert-skill-augmented LLM evaluation for embedded code generation, which both inspired our benchmarking methodology and grounds our human-curated knowledge approach.
 
 ## License
 
