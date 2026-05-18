@@ -212,6 +212,7 @@ Try **Claude Haiku 4.5** first — it's what the benchmark was run on. For cost-
 |:---|:---|:---|
 | **Claude Haiku 4.5** ⭐ | First try / production | Used in the IoT-FirmwareDebugBench evaluation |
 | **DeepSeek-V4-Pro** ⭐ | Cost-sensitive long sessions | Larger context window → fewer overflow failures on long debug loops. Cheaper per million tokens than Haiku. Via [OpenRouter](https://openrouter.ai/deepseek/deepseek-v4-pro) or [DeepSeek API](https://api-docs.deepseek.com/). |
+| **GLM 5.1** | Worth watching | Previously our cost-sensitive recommendation; DeepSeek-V4-Pro has since outpaced it on performance, context window, and price. Still works as an OpenAI-compatible endpoint. |
 
 > Any OpenAI-compatible endpoint works, provided the model has strong **tool-calling** (function-calling) capabilities. Models without native tool-use support cannot execute hardware actions or debug workflows.
 
