@@ -1,12 +1,17 @@
 import { ClineMessage, ClineSayTool } from "@shared/ExtensionMessage"
 import { StringRequest } from "@shared/proto/cline/common"
 import { memo, useCallback, useMemo, useState } from "react"
+import { ThinkingBlock } from "@/components/chat/ThinkingBlock"
 import { cleanPathPrefix } from "@/components/common/CodeAccordian"
 import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { FileServiceClient } from "@/services/grpc-client"
-import { getIconByToolName, getToolsNotInCurrentActivities, isLowStakesTool } from "../../utils/messageUtils"
+import {
+	findReasoningForApiReq,
+	getIconByToolName,
+	getToolsNotInCurrentActivities,
+	isLowStakesTool,
+} from "../../utils/messageUtils"
 
 interface ToolGroupRendererProps {
 	messages: ClineMessage[]
@@ -27,6 +32,7 @@ const EXPANDABLE_TOOLS = new Set(["listFilesTopLevel", "listFilesRecursive", "li
  */
 export const ToolGroupRenderer = memo(({ messages, allMessages }: ToolGroupRendererProps) => {
 	const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({})
+	const [isThinkingExpanded, setIsThinkingExpanded] = useState(false)
 
 	// Filter out tools in the "current activities" range (being shown in loading state)
 	const filteredMessages = useMemo(() => getToolsNotInCurrentActivities(messages, allMessages), [messages, allMessages])
@@ -35,6 +41,13 @@ export const ToolGroupRenderer = memo(({ messages, allMessages }: ToolGroupRende
 	const toolsWithReasoning = useMemo(() => buildToolsWithReasoning(filteredMessages), [filteredMessages])
 
 	const summary = getToolGroupSummary(filteredMessages)
+
+	// Reasoning from the absorbed api_req_started, shown as a ThinkingBlock above the tool list
+	const apiReqMsg = useMemo(() => messages.find((m) => m.say === "api_req_started"), [messages])
+	const thinkingData = useMemo(
+		() => (apiReqMsg ? findReasoningForApiReq(apiReqMsg.ts, allMessages) : null),
+		[apiReqMsg, allMessages],
+	)
 
 	const handleOpenFile = useCallback((filePath: string) => {
 		FileServiceClient.openFileRelativePath(StringRequest.create({ value: filePath })).catch((err) =>
@@ -53,12 +66,22 @@ export const ToolGroupRenderer = memo(({ messages, allMessages }: ToolGroupRende
 
 	return (
 		<div className={cn("px-4 py-2 text-description")}>
+			{thinkingData?.reasoning && (
+				<ThinkingBlock
+					content={thinkingData.reasoning}
+					durationMs={thinkingData.durationMs}
+					isExpanded={isThinkingExpanded}
+					isStreaming={false}
+					onToggle={() => setIsThinkingExpanded((prev) => !prev)}
+				/>
+			)}
+
 			{/* Header */}
 			<div className="text-[13px] opacity-90 mb-1">{summary}:</div>
 
-			{/* Content - files/folders with reasoning in tooltip */}
+			{/* Content - files/folders */}
 			<div className="min-w-0">
-				{toolsWithReasoning.map(({ tool, parsedTool, reasoning }) => {
+				{toolsWithReasoning.map(({ tool, parsedTool }) => {
 					const info = getToolDisplayInfo(parsedTool)
 					if (!info) {
 						return null
@@ -67,31 +90,25 @@ export const ToolGroupRenderer = memo(({ messages, allMessages }: ToolGroupRende
 					const isExpandable = EXPANDABLE_TOOLS.has(parsedTool.tool)
 					const isItemExpanded = expandedItems[tool.ts] ?? false
 					const content = parsedTool.content || null
-					const hasReasoning = !!reasoning?.length
 
 					return (
 						<div className="min-w-0" key={tool.ts}>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										className="flex items-center gap-1.5 cursor-pointer text-[13px] text-description py-0.5 hover:text-link min-w-0 max-w-full px-0"
-										onClick={() => (isExpandable ? handleItemToggle(tool.ts) : handleOpenFile(info.path))}
-										size="icon"
-										variant="text">
-										<info.icon className="opacity-70 shrink-0 size-[13px]" />
-										<span
-											className={cn(
-												"flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis text-left [direction:rtl] text-[13px]",
-												{
-													"[direction:ltr]": !!info.displayText,
-												},
-											)}>
-											{(info.displayText || cleanPathPrefix(info.path)) + "\u200E"}
-										</span>
-									</Button>
-								</TooltipTrigger>
-								{hasReasoning && <TooltipContent side="bottom">{reasoning}</TooltipContent>}
-							</Tooltip>
+							<Button
+								className="flex items-center gap-1.5 cursor-pointer text-[13px] text-description py-0.5 hover:text-link min-w-0 max-w-full px-0"
+								onClick={() => (isExpandable ? handleItemToggle(tool.ts) : handleOpenFile(info.path))}
+								size="icon"
+								variant="text">
+								<info.icon className="opacity-70 shrink-0 size-[13px]" />
+								<span
+									className={cn(
+										"flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis text-left [direction:rtl] text-[13px]",
+										{
+											"[direction:ltr]": !!info.displayText,
+										},
+									)}>
+									{(info.displayText || cleanPathPrefix(info.path)) + "\u200E"}
+								</span>
+							</Button>
 							{/* Expanded content for folders/search/definitions - raw text */}
 							{isExpandable && isItemExpanded && content && (
 								<pre className="m-1 ml-4 text-xs opacity-80 whitespace-pre-wrap break-words p-2 max-h-40 overflow-auto rounded-xs">
