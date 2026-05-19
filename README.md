@@ -8,7 +8,7 @@
 configuration bugs in fewer flashes — with live device-log capture,
 curated nRF Connect SDK knowledge, and an open benchmark proving it works.**
 
-Currently shipping for the **nRF5x** family with **BLE**. Open source under Apache 2.0.
+Currently shipping for **nRF52, nRF53, and nRF54** SoCs with **BLE**. Open source under Apache 2.0.
 
 <!-- TODO: Marketplace slug `nrf-ai-debugger` is legacy from v1; pending migration to a new slug aligned with the Adsum IoT Coder name. All marketplace links across this README and package.json should be updated together. -->
 <!-- TODO: GitHub repo slug `adsumnetworks/SoC-AI-Debugger` is legacy from v1; pending repo rename to `adsumnetworks/Adsum-IoT-Coder`. Update all github.com/adsumnetworks/SoC-AI-Debugger links in this README together. -->
@@ -70,7 +70,7 @@ Four capability pillars — split between what ships today and what's on the roa
 |:---|:---|:---|
 | **Native SDK integration**<br/>General coding agents read source; they don't drive the NCS toolchain. | nRF Connect SDK v3.2.1, Zephyr build/flash, board-aware project assessment | Older NCS LTS versions, ESP-IDF |
 | **Hardware-in-the-loop instrumentation**<br/>Most IoT failures only show in physical signals from the chip — not files in your repo. | Live RTT/UART log capture, J-Link control, multi-device simultaneous capture and correlation | BLE sniffer (Wireshark / nRF Sniffer), PPK II power profiling, spectrum analysis |
-| **Expert-reviewed IoT comms knowledge**<br/>The "I've seen this failure before" pattern recognition that takes senior engineers years to build, curated as modules. | BLE protocol stack, NCS/Zephyr internals (Kconfig, settings/bonding, BLE lifecycle traps), nRF5x board specifics, curated BLE failure-mode library | Wi-Fi, Thread, Matter, LTE-M, DECT NR+ protocol modules; power-budget analysis; low-power optimization; protocol-correctness review |
+| **Expert-reviewed IoT comms knowledge**<br/>The "I've seen this failure before" pattern recognition that takes senior engineers years to build, curated as modules. | BLE protocol stack, NCS/Zephyr internals (Kconfig, settings/bonding, BLE lifecycle traps), nRF52/53/54 board specifics, curated BLE failure-mode library | Wi-Fi, Thread, Matter, LTE-M, DECT NR+ protocol modules; power-budget analysis; low-power optimization; protocol-correctness review |
 | **Tool-use skills for IoT debugging**<br/>Knowing *when* to flash vs. recheck logs vs. spin up another tool is itself expertise. | `log-analyzer`, `log-generator`, `debug-loop` workflows; discrete `capture-logs` / `analyze-logs` / `build` / `flash` actions — each loaded only when the task calls for it | Additional workflows as new protocols and HITL tooling land |
 
 ---
@@ -102,7 +102,7 @@ iot-knowledge/
 │   └── device-identity.md        # Never guess device roles from board type
 ├── platforms/nrf/                # Adsum IoT Coder – for nRF (shipping)
 │   ├── PLATFORM.md               # Master index — what to load and when
-│   ├── boards/                   # Per-SoC: nRF52840, nRF52832 (nRF5x today)
+│   ├── boards/                   # Per-SoC: nRF52840, nRF52832, nRF5340
 │   ├── sdks/ncs/                 # NCS project structure, Kconfig, BLE stack
 │   │   ├── protocols/BLE.md      # BLE-specific modules
 │   │   └── SDK.md                # NCS-specific modules
@@ -204,7 +204,7 @@ From analysis results, the agent can enter a **Debug Loop** — iterative Build 
 | Requirement | Details |
 |:---|:---|
 | **nRF Connect SDK** | v3.2.1 |
-| **Supported SoCs** | nRF5x family (nRF52840, nRF52832) |
+| **Supported SoCs** | nRF52, nRF53, nRF54 |
 | **Supported Protocols** | BLE |
 | **VS Code Extension** | [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) |
 | **Python** | 3.8+ (bundled with nRF Connect extension) |
@@ -242,7 +242,7 @@ The product line is **Adsum IoT Coder**, with each release scoped to a specific 
 | Category | Current (shipping) | Next (roadmap) |
 |:---|:---|:---|
 | **Platform release** | Adsum IoT Coder – for nRF | Adsum IoT Coder – for ESP |
-| **SoC families** | nRF5x (nRF52840, nRF52832) | nRF7x (Wi-Fi), nRF9x (cellular), ESP32x |
+| **SoC families** | nRF52, nRF53, nRF54 | nRF7x (Wi-Fi), nRF9x (cellular), ESP32x |
 | **Protocols** | BLE | Wi-Fi, Thread, Matter, LTE-M, DECT NR+ |
 | **NCS versions** | v3.2.x | v2.9.x LTS, v3.3+ |
 | **HITL tooling** | RTT/UART log capture, J-Link multi-device control | BLE sniffer integration, PPK II power profiling, spectrum analysis |
@@ -259,7 +259,7 @@ We publish what's true today, not what we wish were true.
 
 **Product**
 
-- **Scope.** Today the tool ships for the nRF5x family with BLE. Other Nordic families (nRF7x, nRF9x) and other vendors (ESP) are roadmap, not shipping. Other protocols (Wi-Fi, Thread, Matter, LTE-M) are roadmap, not shipping.
+- **Scope.** Today the tool ships for nRF52, nRF53, and nRF54 with BLE. Other Nordic families (nRF7x, nRF9x) and other vendors (ESP) are roadmap, not shipping. Other protocols (Wi-Fi, Thread, Matter, LTE-M) are roadmap, not shipping.
 
 **Benchmark**
 
