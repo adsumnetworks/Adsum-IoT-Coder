@@ -148,6 +148,22 @@
 			transform: translateY(0);
 		}
 	}
+
+	--animate-thinking-dots: thinkingDots 1.2s steps(1, end) infinite;
+	@keyframes thinkingDots {
+		0%,
+		33% {
+			content: ".";
+		}
+		34%,
+		66% {
+			content: "..";
+		}
+		67%,
+		100% {
+			content: "...";
+		}
+	}
 }
 
 @theme inline {
@@ -359,5 +375,20 @@
 			content: "";
 			@apply inline-block w-0.5 h-[1em] ml-0.5 bg-foreground align-text-bottom animate-cursor-blink;
 		}
+	}
+}
+
+.thinking-dots::after {
+	content: ".";
+	display: inline-block;
+	min-width: 1.5em;
+	text-align: left;
+	animation: var(--animate-thinking-dots);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.thinking-dots::after {
+		animation: none;
+		content: "...";
 	}
 }

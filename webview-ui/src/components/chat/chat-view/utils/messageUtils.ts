@@ -198,15 +198,16 @@ export function shouldShowScrollButton(disableAutoScroll: boolean, isAtBottom: b
 export function findReasoningForApiReq(
 	apiReqTs: number,
 	allMessages: ClineMessage[],
-): { reasoning: string | undefined; responseStarted: boolean } {
+): { reasoning: string | undefined; responseStarted: boolean; durationMs: number | undefined } {
 	const apiReqIndex = allMessages.findIndex((m) => m.ts === apiReqTs && m.say === "api_req_started")
 	if (apiReqIndex === -1) {
-		return { reasoning: undefined, responseStarted: false }
+		return { reasoning: undefined, responseStarted: false, durationMs: undefined }
 	}
 
 	// Collect reasoning and check if response content has started
 	const reasoningParts: string[] = []
 	let responseStarted = false
+	let firstResponseTs: number | undefined
 
 	for (let i = apiReqIndex + 1; i < allMessages.length; i++) {
 		const msg = allMessages[i]
@@ -221,12 +222,16 @@ export function findReasoningForApiReq(
 		// Check if non-reasoning response content has started (text, tool calls, etc.)
 		if (msg.say === "text" || msg.say === "tool" || msg.ask === "tool" || msg.ask === "command" || msg.say === "command") {
 			responseStarted = true
+			if (firstResponseTs === undefined) {
+				firstResponseTs = msg.ts
+			}
 		}
 	}
 
 	return {
 		reasoning: reasoningParts.length > 0 ? reasoningParts.join("\n\n") : undefined,
 		responseStarted,
+		durationMs: firstResponseTs != null ? firstResponseTs - apiReqTs : undefined,
 	}
 }
 
