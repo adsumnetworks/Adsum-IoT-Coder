@@ -56,7 +56,7 @@ import QuoteButton from "./QuoteButton"
 import ReportBugPreview from "./ReportBugPreview"
 import { RequestStartRow } from "./RequestStartRow"
 import SearchResultsDisplay from "./SearchResultsDisplay"
-import { ThinkingRow } from "./ThinkingRow"
+import { ThinkingBlock } from "./ThinkingBlock"
 import UserMessage from "./UserMessage"
 
 // State type for api_req_started rendering
@@ -77,6 +77,7 @@ interface ChatRowProps {
 	onCancelCommand?: () => void
 	mode?: Mode
 	reasoningContent?: string
+	reasoningDurationMs?: number
 	responseStarted?: boolean
 	isRequestInProgress?: boolean
 }
@@ -142,6 +143,7 @@ export const ChatRowContent = memo(
 		mode,
 		isRequestInProgress,
 		reasoningContent,
+		reasoningDurationMs,
 		responseStarted,
 	}: ChatRowContentProps) => {
 		const {
@@ -831,6 +833,7 @@ export const ChatRowContent = memo(
 								message={message}
 								mode={mode}
 								reasoningContent={reasoningContent}
+								reasoningDurationMs={reasoningDurationMs}
 								responseStarted={responseStarted}
 							/>
 						)
@@ -872,12 +875,12 @@ export const ChatRowContent = memo(
 					}
 					case "reasoning": {
 						return (
-							<ThinkingRow
+							<ThinkingBlock
+								content={message.text}
+								durationMs={undefined}
 								isExpanded={isExpanded}
-								isVisible={true}
+								isStreaming={false}
 								onToggle={handleToggle}
-								reasoningContent={message.text}
-								showTitle={true}
 							/>
 						)
 					}
