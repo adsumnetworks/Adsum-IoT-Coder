@@ -224,6 +224,15 @@ Try **Claude Haiku 4.5** first — it's the model we have IoT-specific benchmark
 
 **Configuring a provider.** Open VS Code Settings → search for "Adsum IoT Coder" → set the API endpoint URL and key. Any OpenAI-compatible endpoint is accepted (OpenRouter, DeepSeek API, Anthropic via a compatible gateway, or a local Ollama / LM Studio server).
 
+**Recommended setup for Claude Haiku 4.5** — matches the benchmark configuration:
+
+| Setting | Value |
+|:---|:---|
+| API Provider | OpenRouter (or any OpenAI-compatible endpoint) |
+| Model | `anthropic/claude-haiku-4.5` |
+| Enable thinking | Off |
+| Prompt caching *(Advanced)* | On |
+
 ---
 
 ## Roadmap
