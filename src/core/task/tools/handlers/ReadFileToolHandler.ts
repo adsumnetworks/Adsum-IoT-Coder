@@ -1,3 +1,4 @@
+import fs from "node:fs/promises"
 import path from "node:path"
 import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
@@ -161,6 +162,24 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			throw error
 		}
 
+		// Pre-flight guard for nRF log captures: the model often guesses a
+		// log filename before capture has run (or before the timestamp is
+		// known). Returning the raw "File not found" makes the agent loop
+		// retrying with similar-looking paths. Surface a structured hint
+		// pointing back to the capture flow instead.
+		if (isLikelyCapturedLogPath(absolutePath)) {
+			const exists = await fileAccessible(absolutePath)
+			if (!exists) {
+				return formatResponse.toolError(
+					`Log file not found at ${displayPath}. ` +
+						`If you are trying to read freshly-captured device logs, first run nrf_device_tool ` +
+						`with action="log_device" and operation="capture", then use list_files on the ` +
+						`enclosing logs/ directory to discover the newly-created filename — timestamps in ` +
+						`filenames vary, so do not assume a path.`,
+				)
+			}
+		}
+
 		// Execute the actual file read operation
 		const supportsImages = config.api.getModel().info.supportsImages ?? false
 		const fileContent = await extractFileContent(absolutePath, supportsImages)
@@ -174,5 +193,20 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		}
 
 		return fileContent.text
+	}
+}
+
+const LOG_PATH_PATTERN = /(^|[\\/])logs[\\/](rtt|uart|hci|btmon|monitor)[\\/].+\.(log|btmon)$/i
+
+function isLikelyCapturedLogPath(absolutePath: string): boolean {
+	return LOG_PATH_PATTERN.test(absolutePath)
+}
+
+async function fileAccessible(absolutePath: string): Promise<boolean> {
+	try {
+		await fs.access(absolutePath)
+		return true
+	} catch {
+		return false
 	}
 }

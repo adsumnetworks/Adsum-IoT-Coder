@@ -61,6 +61,8 @@ If capturing: **MANDATORY SKILL LOAD:** If not already loaded during this task, 
 
 After log capture, **MANDATORY SKILL LOAD:** If not already loaded during this task, you MUST use the `read_file` tool to load `platforms/nrf/actions/analyze-logs.md` BEFORE performing the analysis.
 
+**Before reading the log file:** use `list_files` on the relevant `logs/<transport>/` directory to discover the actual captured filename. Filenames include timestamps; never guess them from the capture command output. Pick the most recently created file matching the device/transport that was just captured.
+
 Show the summary of your analysis with the important log snippets and the log file path so the user can click and view the full file.
 
 Then use `ask_followup_question`:
