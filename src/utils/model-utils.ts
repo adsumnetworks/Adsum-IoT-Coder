@@ -135,9 +135,17 @@ export function isGemini3ModelFamily(id: string): boolean {
 	return modelId.includes("gemini3") || modelId.includes("gemini-3")
 }
 
-function isDeepSeek32ModelFamily(id: string): boolean {
+function isDeepSeekNativeToolsModelFamily(id: string): boolean {
 	const modelId = normalize(id)
-	return modelId.includes("deepseek") && modelId.includes("3.2") && !modelId.includes("speciale")
+	if (!modelId.includes("deepseek")) {
+		return false
+	}
+	if (modelId.includes("speciale")) {
+		return false
+	}
+	// 3.2 and V4-class DeepSeek models expose OpenAI-compatible tool_calls;
+	// older 3.1/V3 chat models do not.
+	return modelId.includes("3.2") || modelId.includes("v4") || /(?:^|[^0-9])4\.\d/.test(modelId)
 }
 
 export function isNextGenModelFamily(id: string): boolean {
@@ -150,7 +158,7 @@ export function isNextGenModelFamily(id: string): boolean {
 		isMinimaxModelFamily(modelId) ||
 		isGemini3ModelFamily(modelId) ||
 		isNextGenOpenSourceModelFamily(modelId) ||
-		isDeepSeek32ModelFamily(modelId)
+		isDeepSeekNativeToolsModelFamily(modelId)
 	)
 }
 
