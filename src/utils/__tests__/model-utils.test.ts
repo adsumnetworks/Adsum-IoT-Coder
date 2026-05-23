@@ -1,6 +1,15 @@
 import { describe, it } from "mocha"
 import "should"
-import { isClaude4PlusModelFamily, shouldSkipReasoningForModel } from "../model-utils"
+import type { ApiProviderInfo } from "@core/api"
+import { getToolCallReliabilityTier, isClaude4PlusModelFamily, shouldSkipReasoningForModel } from "../model-utils"
+
+function fakeProviderInfo(providerId: string, modelId: string): ApiProviderInfo {
+	return {
+		providerId,
+		model: { id: modelId, info: {} as ApiProviderInfo["model"]["info"] },
+		mode: "act",
+	}
+}
 
 describe("shouldSkipReasoningForModel", () => {
 	it("should return true for grok-4 models", () => {
@@ -53,5 +62,49 @@ describe("isClaude4PlusModelFamily", () => {
 		isClaude4PlusModelFamily("gpt-4").should.equal(false)
 		isClaude4PlusModelFamily("gemini-pro").should.equal(false)
 		isClaude4PlusModelFamily("llama-3").should.equal(false)
+	})
+
+	it("should strip provider prefixes before matching (OpenRouter / Vertex)", () => {
+		isClaude4PlusModelFamily("anthropic/claude-haiku-4-5-20251001").should.equal(true)
+		isClaude4PlusModelFamily("anthropic/claude-sonnet-4-5-20250929").should.equal(true)
+		isClaude4PlusModelFamily("openrouter/anthropic/claude-opus-4-1-20250805").should.equal(true)
+		isClaude4PlusModelFamily("anthropic/claude-3.5-haiku").should.equal(false)
+	})
+
+	it('should treat "-latest" Anthropic aliases as Claude 4+', () => {
+		// Anthropic API and OpenRouter both currently resolve these to 4.x.
+		isClaude4PlusModelFamily("claude-haiku-latest").should.equal(true)
+		isClaude4PlusModelFamily("claude-sonnet-latest").should.equal(true)
+		isClaude4PlusModelFamily("anthropic/claude-haiku-latest").should.equal(true)
+		isClaude4PlusModelFamily("haiku-latest").should.equal(true)
+	})
+})
+
+describe("getToolCallReliabilityTier", () => {
+	it("returns high for Claude 4+, GPT-5, Gemini 2.5/3, Grok-4", () => {
+		getToolCallReliabilityTier(fakeProviderInfo("anthropic", "claude-sonnet-4-5-20250929")).should.equal("high")
+		getToolCallReliabilityTier(fakeProviderInfo("anthropic", "claude-haiku-4-5-20251001")).should.equal("high")
+		getToolCallReliabilityTier(fakeProviderInfo("openai", "gpt-5")).should.equal("high")
+		getToolCallReliabilityTier(fakeProviderInfo("gemini", "gemini-2.5-pro")).should.equal("high")
+		getToolCallReliabilityTier(fakeProviderInfo("gemini", "gemini-3-pro")).should.equal("high")
+		getToolCallReliabilityTier(fakeProviderInfo("xai", "grok-4")).should.equal("high")
+	})
+
+	it("returns high for Claude -latest aliases (OpenRouter routing)", () => {
+		getToolCallReliabilityTier(fakeProviderInfo("openrouter", "anthropic/claude-haiku-latest")).should.equal("high")
+	})
+
+	it("returns medium for DeepSeek-V4, GLM-4.6, Hermes-4, Kimi-K2", () => {
+		getToolCallReliabilityTier(fakeProviderInfo("deepseek", "deepseek-v4-pro")).should.equal("medium")
+		getToolCallReliabilityTier(fakeProviderInfo("zai", "glm-4.6")).should.equal("medium")
+		getToolCallReliabilityTier(fakeProviderInfo("openrouter", "nousresearch/hermes-4")).should.equal("medium")
+		getToolCallReliabilityTier(fakeProviderInfo("openrouter", "moonshot/kimi-k2")).should.equal("medium")
+	})
+
+	it("returns low for older / smaller Claudes and unknown models", () => {
+		getToolCallReliabilityTier(fakeProviderInfo("anthropic", "claude-3.5-haiku")).should.equal("low")
+		getToolCallReliabilityTier(fakeProviderInfo("anthropic", "claude-3-haiku")).should.equal("low")
+		getToolCallReliabilityTier(fakeProviderInfo("openrouter", "some-random/unknown-model-7b")).should.equal("low")
+		getToolCallReliabilityTier(fakeProviderInfo("ollama", "llama-3-8b")).should.equal("low")
 	})
 })

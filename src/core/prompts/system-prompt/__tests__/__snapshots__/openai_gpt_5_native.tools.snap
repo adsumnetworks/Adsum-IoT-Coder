@@ -338,7 +338,7 @@
   {
     "type": "function",
     "function": {
-      "name": "nrf_device_tool",
+      "name": "triggerNordicAction",
       "description": "Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.\nUSE action=\"execute\" for ALL NCS CLI (west, nrfjprog, nrfutil). USE action=\"log_device\" ONLY for log capture. NEVER use execute_command for NCS SDK tasks.\n\nCRITICAL OPERATIONAL RULES:\n1. BOARD NAMES: Must be full Zephyr ID (e.g., \"nrf52840dk/nrf52840\", NOT \"nrf52840dk\"). Use for example \"west boards -f \"{name}/{qualifiers}\" | grep nrf52840\" to verify.\n2. BUILD DIRS: User may have custom build dirs (e.g., build_52840, build_central). Use --build-dir (-d) to target them.\n3. MULTI-DEVICE FLASH: Use \"west flash --snr <serial_number>\" to target a specific device. Required when >1 device connected.\n4. PROCESS CLEANUP (run before flash or log capture):\n   - Linux/Mac: pkill -9 JLink && pkill -9 nrfutil\n   - Windows:   taskkill /F /IM JLink.exe & taskkill /F /IM nrfutil.exe\n5. PORTS: Windows uses COMx; Linux uses /dev/ttyACMx; Mac uses /dev/tty.usbmodemXXXX.\n6. DEVICE LISTING: For device enumeration, use action=\"log_device\" operation=\"list\". NEVER call nrfutil device list via execute_command directly.\n",
       "strict": false,
       "parameters": {

@@ -94,6 +94,64 @@ describe("normalizeAssistantMessage", () => {
 		})
 	})
 
+	describe("literal-template mimicry (placeholder tag names)", () => {
+		it("rewrites the exact bug-report payload (matched <tool_name>...</tool_name> close)", () => {
+			const input =
+				"<tool_name>read_file</tool_name>\n" +
+				"<parameter_name>path>/mnt/log-generator.md</parameter_name>\n" +
+				"<parameter_name>task_progress>\n- [ ] Load Log Generator Workflow\n- [ ] Analyze project configuration\n</parameter_name>\n" +
+				"</tool_name>"
+			const out = normalizeAssistantMessage(input)
+			expect(out).to.include("<read_file>")
+			expect(out).to.include("<path>/mnt/log-generator.md</path>")
+			expect(out).to.include("<task_progress>")
+			expect(out).to.include("- [ ] Load Log Generator Workflow")
+			expect(out).to.include("</read_file>")
+			expect(out).to.not.include("<tool_name>")
+			expect(out).to.not.include("<parameter_name>")
+		})
+
+		it("rewrites the second bug-report payload (mismatched </parameter_name> close on first block)", () => {
+			const input =
+				"<tool_name>read_file</parameter_name>\n" +
+				"<parameter_name>path>/mnt/log-generator.md</parameter_name>\n" +
+				"<parameter_name>task_progress>- [ ] Load workflow</parameter_name>\n" +
+				"</tool_name>"
+			const out = normalizeAssistantMessage(input)
+			expect(out).to.include("<read_file>")
+			expect(out).to.include("<path>/mnt/log-generator.md</path>")
+			expect(out).to.include("<task_progress>- [ ] Load workflow</task_progress>")
+			expect(out).to.include("</read_file>")
+			expect(out).to.not.include("<tool_name>")
+		})
+
+		it("leaves the block alone when the tool name is unknown", () => {
+			const input =
+				"<tool_name>totally_fake_tool</tool_name>\n" + "<parameter_name>path>/x</parameter_name>\n" + "</tool_name>"
+			const out = normalizeAssistantMessage(input)
+			expect(out).to.equal(input)
+		})
+
+		it("leaves the block alone when any parameter name is unknown", () => {
+			const input =
+				"<tool_name>read_file</tool_name>\n" + "<parameter_name>not_a_real_param>v</parameter_name>\n" + "</tool_name>"
+			const out = normalizeAssistantMessage(input)
+			expect(out).to.equal(input)
+		})
+
+		it("is idempotent on already-normalized output", () => {
+			const input = "<tool_name>read_file</tool_name>\n" + "<parameter_name>path>/x</parameter_name>\n" + "</tool_name>"
+			const once = normalizeAssistantMessage(input)
+			const twice = normalizeAssistantMessage(once)
+			expect(twice).to.equal(once)
+		})
+
+		it("does not rewrite a partial block missing its trailing </tool_name>", () => {
+			const partial = "<tool_name>read_file</tool_name>\n<parameter_name>path>/x</parameter_name>"
+			expect(normalizeAssistantMessage(partial)).to.equal(partial)
+		})
+	})
+
 	describe("fast path / no-op", () => {
 		it("returns plain text unchanged", () => {
 			const input = "Hello — no tools here."
@@ -124,6 +182,23 @@ describe("parseAssistantMessageV2 (with normalization integrated)", () => {
 		const tool = tools[0] as Extract<(typeof blocks)[number], { type: "tool_use" }>
 		expect(tool.name).to.equal("read_file")
 		expect(tool.params.path).to.equal("/tmp/workflow.md")
+		expect(tool.partial).to.equal(false)
+	})
+
+	it("parses a literal-template-mimic read_file as a real tool_use block", () => {
+		const input =
+			"I'll load the workflow.\n\n" +
+			"<tool_name>read_file</tool_name>\n" +
+			"<parameter_name>path>/tmp/workflow.md</parameter_name>\n" +
+			"<parameter_name>task_progress>- [ ] Step 1</parameter_name>\n" +
+			"</tool_name>"
+		const blocks = parseAssistantMessageV2(input)
+		const tools = blocks.filter((b) => b.type === "tool_use")
+		expect(tools).to.have.length(1)
+		const tool = tools[0] as Extract<(typeof blocks)[number], { type: "tool_use" }>
+		expect(tool.name).to.equal("read_file")
+		expect(tool.params.path).to.equal("/tmp/workflow.md")
+		expect(tool.params.task_progress).to.equal("- [ ] Step 1")
 		expect(tool.partial).to.equal(false)
 	})
 
