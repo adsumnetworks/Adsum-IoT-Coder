@@ -60,7 +60,13 @@ import { USER_CONTENT_TAGS } from "@shared/messages/constants"
 import { convertClineMessageToProto } from "@shared/proto-conversions/cline-message"
 import { ClineDefaultTool, READ_ONLY_TOOLS } from "@shared/tools"
 import { ClineAskResponse } from "@shared/WebviewMessage"
-import { isClaude4PlusModelFamily, isGPT5ModelFamily, isLocalModel, isNextGenModelFamily } from "@utils/model-utils"
+import {
+	getToolCallReliabilityTier,
+	isClaude4PlusModelFamily,
+	isGPT5ModelFamily,
+	isLocalModel,
+	isNextGenModelFamily,
+} from "@utils/model-utils"
 import { arePathsEqual, getDesktopDir } from "@utils/path"
 import { filterExistingFiles } from "@utils/tabFiltering"
 import cloneDeep from "clone-deep"
@@ -1624,6 +1630,37 @@ export class Task {
 		return apiLike.getLastRequestId?.() ?? apiLike.lastGenerationId
 	}
 
+	// Surface a one-time chat notice when a model with low tool-call
+	// reliability has produced "no tool used" several times in a row. The
+	// retry loop is invisible by default — without this hint the user
+	// just sees the chat freeze and may not realize the model is the
+	// problem rather than the agent.
+	private async maybeNotifyLowTierToolCallReliability(): Promise<void> {
+		if (this.taskState.didNotifyLowTierToolCallReliability) {
+			return
+		}
+		if (this.taskState.consecutiveMistakeCount < 3) {
+			return
+		}
+		try {
+			const providerInfo = this.getCurrentProviderInfo()
+			if (getToolCallReliabilityTier(providerInfo) !== "low") {
+				return
+			}
+			this.taskState.didNotifyLowTierToolCallReliability = true
+			const label = `${providerInfo.providerId}/${providerInfo.model.id}`
+			await this.say(
+				"info",
+				`The current model (${label}) has produced malformed tool calls ${this.taskState.consecutiveMistakeCount} times in a row. ` +
+					`Smaller / older models often struggle with the XML tool-call format and burn retries silently. ` +
+					`If this keeps happening, consider switching to Claude Haiku 4.5, Claude Sonnet 4.5+, GPT-5, or Gemini 2.5+ — those are the most reliable tiers. ` +
+					`You can switch from the model picker without losing this conversation.`,
+			)
+		} catch {
+			// Diagnostic only — never let this break the retry loop.
+		}
+	}
+
 	private async handleContextWindowExceededError(): Promise<void> {
 		const apiConversationHistory = this.messageStateHandler.getApiConversationHistory()
 
@@ -2893,6 +2930,7 @@ export class Task {
 						text: formatResponse.noToolsUsed(this.useNativeToolCalls),
 					})
 					this.taskState.consecutiveMistakeCount++
+					await this.maybeNotifyLowTierToolCallReliability()
 				}
 
 				// Reset auto-retry counter for each new API request

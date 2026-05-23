@@ -24,6 +24,20 @@ const DSML_TOOL_CALLS_CLOSE_RE = /\s*<\/｜｜DSML｜｜tool_calls>/g
 // Markdown code fence around tool-call XML. Lazy match so we don't span fences.
 const CODE_FENCE_RE = /```(?:xml|tool|tool_use|tool_calls)?\s*\r?\n([\s\S]*?)\r?\n[ \t]*```/g
 
+// "Literal template mimicry" — weaker models (Haiku 3.5, smaller open-source
+// models) on the generic prompt variant read the format-reminder placeholder
+// names ("tool_name", "parameter_name") as actual XML tags instead of
+// substituting them. Shape:
+//   <tool_name>NAME</tool_name>           (sometimes closes with </parameter_name>)
+//   <parameter_name>KEY>VAL</parameter_name>
+//   <parameter_name>KEY>VAL</parameter_name>
+//   </tool_name>
+// Rewriting is safe because `tool_name` and `parameter_name` are never
+// valid Cline tool/param identifiers, and we allowlist NAME/KEY against
+// the real tool/param tables before rewriting.
+const LITERAL_TEMPLATE_OUTER_RE =
+	/<tool_name>(\w+)<\/(?:tool_name|parameter_name)>\s*((?:<parameter_name>[\s\S]*?<\/parameter_name>\s*)+)<\/tool_name>/g
+
 // `toolParamNames` lives in this directory's index.ts, which forms a circular
 // import via parse-assistant-message.ts. Reading it at module-init time
 // produces `undefined`, so we resolve it lazily on first call.
@@ -86,6 +100,38 @@ function rewriteDSML(message: string): string {
 	return out
 }
 
+function rewriteLiteralTemplateMimic(message: string): string {
+	if (!message.includes("<tool_name>")) {
+		return message
+	}
+	const tools = knownToolNames()
+	const params = knownParamNames()
+
+	return message.replace(LITERAL_TEMPLATE_OUTER_RE, (match, toolName: string, paramsBlock: string) => {
+		if (!tools.has(toolName)) {
+			return match
+		}
+		// Walk each <parameter_name>KEY>VAL</parameter_name> block. The KEY>
+		// idiom is the consistent quirk of this misformat — placeholder name
+		// followed by the substituted name, separated by '>'.
+		const paramRe = /<parameter_name>(\w+)>([\s\S]*?)<\/parameter_name>/g
+		const parts: string[] = []
+		let pm: RegExpExecArray | null
+		while ((pm = paramRe.exec(paramsBlock)) !== null) {
+			const [, key, value] = pm
+			if (!params.has(key)) {
+				// Unknown param name — bail out so we don't synthesize garbage.
+				return match
+			}
+			parts.push(`<${key}>${value.trim()}</${key}>`)
+		}
+		if (parts.length === 0) {
+			return match
+		}
+		return `<${toolName}>${parts.join("")}</${toolName}>`
+	})
+}
+
 function stripCodeFencesAroundToolCalls(message: string): string {
 	if (!message.includes("```")) {
 		return message
@@ -105,5 +151,6 @@ export function normalizeAssistantMessage(message: string): string {
 		return message
 	}
 	const dsmlNormalized = rewriteDSML(message)
-	return stripCodeFencesAroundToolCalls(dsmlNormalized)
+	const templateNormalized = rewriteLiteralTemplateMimic(dsmlNormalized)
+	return stripCodeFencesAroundToolCalls(templateNormalized)
 }
