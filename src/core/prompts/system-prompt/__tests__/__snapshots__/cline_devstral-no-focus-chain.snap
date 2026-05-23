@@ -6,21 +6,32 @@ You have access to a set of tools that are executed upon the user's approval. Yo
 
 # Tool Use Formatting
 
-Tool use is formatted using XML-style tags. The tool name is enclosed in opening and closing tags, and each parameter is similarly enclosed within its own set of tags. Here's the structure:
+Tool use is formatted as XML. The tag name IS the actual tool name (e.g. `read_file`), and each parameter is its own nested tag whose tag name IS the parameter name (e.g. `path`). You must substitute the real tool and parameter names — do NOT output the literal words `tool_name`, `parameter_name`, `TOOL_NAME`, or any other placeholder text from this guide.
 
-<tool_name>
-<parameter1_name>value1</parameter1_name>
-<parameter2_name>value2</parameter2_name>
-...
-</tool_name>
-
-For example:
+Correct examples:
 
 <read_file>
 <path>src/main.js</path>
 </read_file>
 
-Always adhere to this format for the tool use to ensure proper parsing and execution.
+<execute_command>
+<command>ls -la</command>
+<requires_approval>false</requires_approval>
+</execute_command>
+
+General shape — the UPPERCASE words below are placeholders to substitute, not literal text:
+
+<TOOL_NAME>
+<FIRST_PARAM_NAME>first param value</FIRST_PARAM_NAME>
+<SECOND_PARAM_NAME>second param value</SECOND_PARAM_NAME>
+</TOOL_NAME>
+
+Common mistakes to avoid:
+- Do NOT emit `<tool_name>read_file</tool_name>` — the tag name itself must be `read_file`, not the placeholder `tool_name`.
+- Do NOT emit `<parameter_name>path>...</parameter_name>` — the tag name must be `path`, written as `<path>...</path>`.
+- Open and close tags must match exactly (`<read_file>...</read_file>`, not `<read_file>...</parameter_name>`).
+
+Always follow this format so the tool call can be parsed and executed.
 
 # Tools
 
@@ -194,7 +205,7 @@ Usage:
 <load_mcp_documentation>
 </load_mcp_documentation>
 
-## nrf_device_tool
+## triggerNordicAction
 Description: Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
 
 USE action="execute" for ALL NCS CLI operations: west build, west flash, nrfjprog, nrfutil, etc.
@@ -266,7 +277,7 @@ Use role-specific labels (central, peripheral) ONLY when the role has been confi
 - auto_detect: (optional) Optional. Auto-detect all connected nRF devices. Set to true for BLE/multi-device scenarios where you want to capture everything without specifying ports.
 - list_nrf: (optional) Optional. When true with operation="list", shows only nRF devices.
 Usage:
-<nrf_device_tool>
+<triggerNordicAction>
 <action>execute</action>
 <command>west build -b nrf52840dk/nrf52840 .</command>
 <operation>capture</operation>
@@ -279,7 +290,7 @@ Usage:
 <reset>true</reset>
 <auto_detect>true</auto_detect>
 <list_nrf>true</list_nrf>
-</nrf_device_tool>
+</triggerNordicAction>
 
 # Tool Use Examples
 
