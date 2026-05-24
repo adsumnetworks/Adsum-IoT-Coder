@@ -3,10 +3,10 @@ import type { BrowserSettings } from "@shared/BrowserSettings"
 import { ShowMessageType } from "@shared/proto/host/window"
 import type { TaskFeedbackType } from "@shared/WebviewMessage"
 import * as os from "os"
+import { ExtensionRegistryInfo } from "@/registry"
 import { ClineAccountUserInfo } from "@/services/auth/AuthService"
 import { Setting } from "@/shared/proto/index.host"
 import { Mode } from "@/shared/storage/types"
-import { version as extensionVersion } from "../../../package.json"
 import { setDistinctId } from "../logging/distinctId"
 import type { ITelemetryProvider, TelemetryProperties } from "./providers/ITelemetryProvider"
 import { TelemetryProviderFactory } from "./TelemetryProviderFactory"
@@ -66,28 +66,31 @@ export enum TerminalHangStage {
 }
 
 export type TelemetryMetadata = {
-	/**
-	 * The extension or cline-core version. JetBrains and CLI have different
-	 * versioning than the VSCode Extension, but on those platforms this will be the _cline-core version_
-	 * which uses the same as the versioning as the VSCode extension.
-	 */
+	/** Marketplace extension ID, e.g. "nrf-ai-debugger" — matches package.json `name`. */
+	extension_name: string
+	/** Marketplace publisher ID, e.g. "AdsumNetwork". */
+	extension_publisher: string
+	/** Human-readable display name shown in the Marketplace and VS Code UI. */
+	extension_display_name: string
+	/** Extension version from package.json. */
 	extension_version: string
-	/**
-	 * The type of cline distribution, e.g VSCode Extension, JetBrains Plugin or CLI. This
-	 * is different than the `platform` because there are many variants of VSCode and JetBrains but they
-	 * all use the same extension or plugin.
-	 */
-	cline_type: string
-	/** The name of the host IDE or environment e.g. VSCode, Cursor, IntelliJ Professional Edition, etc. */
+	/** True for the Adsum fork; lets us partition events vs upstream Cline if a project is ever shared. */
+	is_fork: boolean
+	/** Upstream this fork tracks, e.g. "cline". */
+	upstream: string
+	/** Host distribution type, e.g. "VSCode Extension", "JetBrains Plugin", "CLI". */
+	host_type: string
+	/** Host IDE name, e.g. "Visual Studio Code", "Cursor". */
 	platform: string
-	/** The version of the host environment */
+	/** Host IDE version. */
 	platform_version: string
-	/** The operating system type, e.g. darwin, win32. This is the value returned by os.platform() */
+	/** Result of `os.platform()`, e.g. "darwin", "win32", "linux". */
 	os_type: string
-	/** The operating system version e.g. 'Windows 10 Pro', 'Darwin Kernel Version 21.6.0...'
-	 * This is the value returned by os.version() */
+	/** Result of `os.version()`. */
 	os_version: string
-	/** Whether the extension is running in development mode */
+	/** Result of `process.arch`, e.g. "x64", "arm64". */
+	arch: string
+	/** True when the extension is running in development mode (F5). */
 	is_dev: string | undefined
 }
 
@@ -165,6 +168,7 @@ export class TelemetryService {
 			OPT_OUT: "user.opt_out",
 			TELEMETRY_ENABLED: "user.telemetry_enabled",
 			EXTENSION_ACTIVATED: "user.extension_activated",
+			EXTENSION_INSTALLED: "user.extension_installed",
 			EXTENSION_STORAGE_ERROR: "user.extension_storage_error",
 			AUTH_STARTED: "user.auth_started",
 			AUTH_SUCCEEDED: "user.auth_succeeded",
@@ -330,12 +334,18 @@ export class TelemetryService {
 		const providers = await TelemetryProviderFactory.createProviders()
 		const hostVersion = await HostProvider.env.getHostVersion({})
 		const metadata: TelemetryMetadata = {
-			extension_version: extensionVersion,
+			extension_name: ExtensionRegistryInfo.name,
+			extension_publisher: ExtensionRegistryInfo.publisher,
+			extension_display_name: ExtensionRegistryInfo.displayName,
+			extension_version: ExtensionRegistryInfo.version,
+			is_fork: true,
+			upstream: "cline",
+			host_type: hostVersion.clineType || "unknown",
 			platform: hostVersion.platform || "unknown",
 			platform_version: hostVersion.version || "unknown",
-			cline_type: hostVersion.clineType || "unknown",
 			os_type: os.platform(),
 			os_version: os.version(),
+			arch: process.arch,
 			is_dev: process.env.IS_DEV,
 		}
 		return new TelemetryService(providers, metadata)
@@ -521,6 +531,28 @@ export class TelemetryService {
 
 	public captureExtensionActivated() {
 		this.captureToProviders(TelemetryService.EVENTS.USER.EXTENSION_ACTIVATED, {}, false)
+	}
+
+	/**
+	 * Fires once per machine on the very first activation after install.
+	 * Used by PostHog to count unique installs cleanly (vs. activations,
+	 * which fire every session). Call sites are responsible for gating
+	 * on a globalState first-run flag so this only fires once.
+	 */
+	public captureExtensionInstalled() {
+		this.captureToProviders(TelemetryService.EVENTS.USER.EXTENSION_INSTALLED, {}, false)
+	}
+
+	/**
+	 * Fork-specific extension-level opt-in toggle. Drives the same provider
+	 * `setOptIn` plumbing as `updateTelemetryState`, but without the
+	 * "Cline error reporting" warning dialog — that copy is wrong for the
+	 * Adsum fork and the host-telemetry gate already covers the case.
+	 */
+	public setExtensionOptIn(optIn: boolean): void {
+		this.providers.forEach((provider) => {
+			provider.setOptIn(optIn)
+		})
 	}
 
 	public captureExtensionStorageError(errorMessage: string, eventName: string) {

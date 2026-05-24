@@ -90,6 +90,23 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	const webview = (await initialize(context)) as VscodeWebviewProvider
 
+	// Apply the Adsum-specific telemetry opt-out setting and keep it live.
+	// VS Code's global telemetry.telemetryLevel is already respected by the
+	// telemetry provider — this AND-combines the user's Adsum-level preference
+	// with it. Disabling either turns telemetry off.
+	const applyAdsumTelemetrySetting = () => {
+		const enabled = vscode.workspace.getConfiguration("adsum-iot-coder").get<boolean>("telemetry.enabled", true)
+		telemetryService.setExtensionOptIn(enabled)
+	}
+	applyAdsumTelemetrySetting()
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((event) => {
+			if (event.affectsConfiguration("adsum-iot-coder.telemetry.enabled")) {
+				applyAdsumTelemetrySetting()
+			}
+		}),
+	)
+
 	// Clean up old temp files in background (non-blocking) and start periodic cleanup every 24 hours
 	ClineTempManager.startPeriodicCleanup()
 

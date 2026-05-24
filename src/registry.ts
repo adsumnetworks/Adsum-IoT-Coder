@@ -1,4 +1,4 @@
-import { name, publisher, version } from "../package.json"
+import { displayName, name, publisher, version } from "../package.json"
 
 // Hardcode prefix to "adsum-iot-coder" to match package.json commands
 const prefix = "adsum-iot-coder"
@@ -45,6 +45,7 @@ const ClineViewIds = {
 export const ExtensionRegistryInfo = {
 	id: publisher + "." + name,
 	name,
+	displayName,
 	version,
 	publisher,
 	commands: ClineCommands,
