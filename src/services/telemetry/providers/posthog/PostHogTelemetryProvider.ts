@@ -1,5 +1,6 @@
 import { PostHog } from "posthog-node"
 import { HostProvider } from "@/hosts/host-provider"
+import { ExtensionRegistryInfo } from "@/registry"
 import { getErrorLevelFromString } from "@/services/error"
 import { getDistinctId, setDistinctId } from "@/services/logging/distinctId"
 import { Setting } from "@/shared/proto/index.host"
@@ -59,7 +60,35 @@ export class PostHogTelemetryProvider implements ITelemetryProvider {
 		}
 
 		this.telemetrySettings.level = await this.getTelemetryLevel()
+
+		// Attach fork-attribution and environment metadata as PostHog **person**
+		// properties so every subsequent event (current and historical) is
+		// queryable by extension version, fork name, platform, etc. without
+		// having to attach them per-event. Called on every activation so the
+		// version property refreshes after upgrades.
+		this.identifyAnonymousPersonProperties()
+
 		return this
+	}
+
+	private identifyAnonymousPersonProperties(): void {
+		try {
+			this.client.identify({
+				distinctId: getDistinctId(),
+				properties: {
+					extension_name: ExtensionRegistryInfo.name,
+					extension_publisher: ExtensionRegistryInfo.publisher,
+					extension_display_name: ExtensionRegistryInfo.displayName,
+					extension_version: ExtensionRegistryInfo.version,
+					is_fork: true,
+					upstream: "cline",
+					platform: process.platform,
+					arch: process.arch,
+				},
+			})
+		} catch {
+			// Best-effort — never let a metadata identify failure block telemetry init.
+		}
 	}
 
 	public log(event: string, properties?: TelemetryProperties): void {

@@ -60,12 +60,18 @@ class FakeProvider implements ITelemetryProvider {
 
 function createTelemetryService(provider: FakeProvider): TelemetryService {
 	return new TelemetryService([provider], {
+		extension_name: "nrf-ai-debugger",
+		extension_publisher: "AdsumNetwork",
+		extension_display_name: "Adsum IoT Coder – for nRF",
 		extension_version: "test",
-		cline_type: "cline-unit-tests",
+		is_fork: true,
+		upstream: "cline",
+		host_type: "VSCode Extension",
 		platform: "test-platform",
 		platform_version: "1.0.0",
 		os_type: "darwin",
 		os_version: "24",
+		arch: "x64",
 		is_dev: "true",
 	} as TelemetryMetadata)
 }

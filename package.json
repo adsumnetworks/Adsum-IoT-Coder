@@ -1,8 +1,8 @@
 {
-	"name": "adsum-iot-coder",
+	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder – for nRF",
 	"description": "Open-Source AI-powered debugging assistant for nRF Connect SDK development. Generates logging code, analyzes RTT/UART logs, and provides real-time BLE stack diagnostics.",
-	"version": "0.0.6",
+	"version": "0.1.0",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -294,7 +294,17 @@
 		},
 		"configuration": {
 			"title": "Adsum IoT Coder",
-			"properties": {}
+			"properties": {
+				"adsum-iot-coder.telemetry.enabled": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Send anonymous usage telemetry to help improve Adsum IoT Coder. Telemetry is also gated by VS Code's global `#telemetry.telemetryLevel#` setting — disabling either one stops all data collection. See [TELEMETRY.md](https://github.com/adsumnetworks/SoC-AI-Debugger/blob/main/TELEMETRY.md) for full details on what is and isn't collected.",
+					"tags": [
+						"telemetry",
+						"usesOnlineServices"
+					]
+				}
+			}
 		}
 	},
 	"scripts": {

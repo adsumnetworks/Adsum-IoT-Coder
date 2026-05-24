@@ -108,6 +108,13 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 		if (!previousVersion || currentVersion !== previousVersion) {
 			Logger.log(`Adsum IoT Coder version changed: ${previousVersion} -> ${currentVersion}. First run or update detected.`)
 
+			// First-ever activation on this machine — fire the unique-install
+			// telemetry event exactly once so PostHog can distinguish installs
+			// from session activations.
+			if (!previousVersion) {
+				telemetryService.captureExtensionInstalled()
+			}
+
 			// Check if there's a new announcement to show
 			const lastShownAnnouncementId = context.globalState.get<string>("lastShownAnnouncementId")
 			const latestAnnouncementId = getLatestAnnouncementId()
