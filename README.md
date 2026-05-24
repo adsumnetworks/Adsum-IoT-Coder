@@ -25,8 +25,7 @@ Currently shipping for **nRF52, nRF53, and nRF54** SoCs with **BLE**. Open sourc
 
 **[Install →](#getting-started)** · **[Benchmark →](#benchmark--iot-firmwaredebugbench-v01)** · **[Architecture →](#architecture--dynamic-knowledge--tool-skill-loading)** · **[Roadmap →](#roadmap)**
 
-<!-- TODO: Replace with updated demo GIF showing "Adsum IoT Coder" branding -->
-<p><img src="assets/docs/demo.gif" width="100%" alt="Adsum IoT Coder Demo" /></p>
+<p><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder Demo" /></p>
 
 </div>
 
