@@ -4,13 +4,15 @@
 
 # Adsum IoT Coder – for nRF
 
-**An open-source AI coding agent that diagnoses and fixes BLE, GATT, and NCS
-configuration bugs in fewer flashes — with live device-log capture,
-curated nRF Connect SDK knowledge, and an open benchmark proving it works.**
+**An open-source IoT coding agent that cracks the complex firmware bugs general
+agents struggle with — in less context, fewer tokens, and less time. Backed by
+live device-log capture, curated SDK knowledge, and an open benchmark on real
+nRF hardware.**
 
-Currently shipping for **nRF52, nRF53, and nRF54** SoCs with **BLE**. Open source under Apache 2.0.
+**Shipping today:** nRF52 / nRF53 / nRF54 · BLE · nRF Connect SDK (Zephyr).
+**On the [roadmap](#roadmap):** Wi-Fi · LTE-M · Matter · ESP-IDF · additional RTOS support.
 
-<!-- TODO: Marketplace slug `nrf-ai-debugger` is legacy from v1; pending migration to a new slug aligned with the Adsum IoT Coder name. All marketplace links across this README and package.json should be updated together. -->
+Open source under Apache 2.0.
 <p>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/badge/VS%20Code%20Marketplace-install-0078d4?logo=visual-studio-code" alt="VS Marketplace"></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://vsmarketplacebadges.dev/installs-short/AdsumNetwork.nrf-ai-debugger.svg?color=0078d4" alt="Installs"></a>
@@ -142,7 +144,7 @@ A clean architecture is only useful if it produces measurably better outcomes. S
 
 <div align="center">
 
-<img src="docs/benchmarks/assets/figure1.svg" width="80%" alt="BC Rate by Threshold" />
+<img src="docs/benchmarks/assets/figure1.png" width="80%" alt="BC Rate by Threshold" />
 
 </div>
 
@@ -162,7 +164,7 @@ Two other patterns worth noting: **context degradation predicted failure** (Clau
 
 <div align="center">
 
-<img src="docs/benchmarks/assets/figure3.svg" width="100%" alt="Token Consumption per Task" />
+<img src="docs/benchmarks/assets/figure3.png" width="100%" alt="Token Consumption per Task" />
 
 </div>
 

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 
-const isDark = () => document.body.classList.contains("vscode-dark") || document.body.classList.contains("vscode-high-contrast")
+const isDark = () =>
+	(document.body.classList.contains("vscode-dark") || document.body.classList.contains("vscode-high-contrast")) &&
+	!document.body.classList.contains("vscode-high-contrast-light")
 
 export const useVSCodeTheme = () => {
 	const [dark, setDark] = useState(isDark)
