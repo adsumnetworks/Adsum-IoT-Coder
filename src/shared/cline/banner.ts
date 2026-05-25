@@ -85,9 +85,9 @@ export const BANNER_DATA: BannerCardData[] = [
 	{
 		id: "info-banner-v1",
 		icon: "lightbulb",
-		title: "Use IoT AI Debugger in Right Sidebar",
+		title: "Use Adsum IoT Coder in Right Sidebar",
 		description:
-			"For the best experience, drag the IoT AI Debugger icon to your right sidebar. This keeps your file explorer and editor visible while you chat with IoT AI Debugger, making it easier to navigate your codebase and see changes in real-time. [See how →](https://docs.cline.bot/features/customization/opening-cline-in-sidebar)",
+			"For the best experience, drag the Adsum IoT Coder icon to your right sidebar. This keeps your file explorer and editor visible while you chat with Adsum IoT Coder, making it easier to navigate your codebase and see changes in real-time. [See how →](https://docs.cline.bot/features/customization/opening-cline-in-sidebar)",
 	},
 
 	// Announcement with conditional actions based on user auth state
@@ -96,7 +96,7 @@ export const BANNER_DATA: BannerCardData[] = [
 		icon: "megaphone",
 		title: "Claude Opus 4.5 Now Available",
 		description:
-			"State-of-the-art performance at 3x lower cost than Opus 4.1. Available now in the IoT AI Debugger provider.",
+			"State-of-the-art performance at 3x lower cost than Opus 4.1. Available now in the Adsum IoT Coder provider.",
 		actions: [
 			{
 				title: "Try Now",
@@ -104,7 +104,7 @@ export const BANNER_DATA: BannerCardData[] = [
 				arg: "anthropic/claude-opus-4.5",
 			},
 		],
-		isClineUserOnly: true, // Only IoT AI Debugger users see this
+		isClineUserOnly: true, // Only Adsum IoT Coder users see this
 	},
 
 	{
@@ -112,14 +112,14 @@ export const BANNER_DATA: BannerCardData[] = [
 		icon: "megaphone",
 		title: "Claude Opus 4.5 Now Available",
 		description:
-			"State-of-the-art performance at 3x lower cost than Opus 4.1. Available now in the IoT AI Debugger provider.",
+			"State-of-the-art performance at 3x lower cost than Opus 4.1. Available now in the Adsum IoT Coder provider.",
 		actions: [
 			{
 				title: "Get Started",
 				action: BannerActionType.ShowAccount,
 			},
 		],
-		isClineUserOnly: false, // Only non-IoT AI Debugger users see this
+		isClineUserOnly: false, // Only non-Adsum IoT Coder users see this
 	},
 
 	// Platform-specific banner (macOS/Linux)
@@ -129,7 +129,7 @@ export const BANNER_DATA: BannerCardData[] = [
 		title: "CLI & Subagents Available",
 		platforms: ["mac", "linux"] satisfies BannerCardData["platforms"],
 		description:
-			"Use IoT AI Debugger in your terminal and enable subagent capabilities. [Learn more](https://docs.cline.bot/cline-cli/overview)",
+			"Use Adsum IoT Coder in your terminal and enable subagent capabilities. [Learn more](https://docs.cline.bot/cline-cli/overview)",
 		actions: [
 			{
 				title: "Install",
@@ -146,7 +146,7 @@ export const BANNER_DATA: BannerCardData[] = [
 	{
 		id: "cli-info-windows-v1",
 		icon: "terminal",
-		title: "IoT AI Debugger CLI Info",
+		title: "Adsum IoT Coder CLI Info",
 		platforms: ["windows"] satisfies BannerCardData["platforms"],
 		description:
 			"Available for macOS and Linux. Coming soon to other platforms. [Learn more](https://docs.cline.bot/cline-cli/overview)",

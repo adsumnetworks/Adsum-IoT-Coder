@@ -13,6 +13,7 @@ IDE: {{ide}}
 Default Shell: {{shell}}
 Home Directory: {{homeDir}}
 {{WORKSPACE_TITLE}}: {{workingDir}}
+{{SHELL_RULES}}
 
 NORDIC DEVELOPMENT ENVIRONMENT
 When working with nRF52/Zephyr projects, verify the following:
@@ -20,6 +21,28 @@ When working with nRF52/Zephyr projects, verify the following:
 - Check for ZEPHYR_BASE environment variable
 - If 'west' is not found in the generic shell, it may still be available in the nRF Connect Terminal
 - Recommend installing the "nRF Connect Extension Pack" if not detected`
+
+/**
+ * Returns shell-specific syntax guidance to prepend to the system prompt.
+ * DeepSeek-V4-class and other models default to cmd.exe / bash conventions
+ * even when the detected shell is PowerShell, which then rejects `&` chaining,
+ * `2>nul`, etc. We give them an explicit cheat-sheet for the active shell.
+ */
+function getShellRules(shell: string): string {
+	const lower = shell.toLowerCase()
+	const isPowerShell = lower.includes("powershell") || lower.endsWith("pwsh.exe") || lower.endsWith("pwsh")
+	if (!isPowerShell) return ""
+	return `
+
+SHELL SYNTAX RULES (PowerShell)
+The active shell is PowerShell, which rejects cmd.exe-style syntax. Use these rules for every \`execute_command\` invocation:
+- Chain commands with \`;\`, not \`&\` (PowerShell reserves \`&\` as the call operator).
+- Redirect stderr with \`2>$null\`, not \`2>nul\`.
+- Use \`Write-Host\`, not \`echo\` (echo is aliased but causes confusion in pipelines).
+- To kill processes: \`Get-Process -Name JLink, nrfutil -ErrorAction SilentlyContinue | Stop-Process -Force\` — not \`taskkill /F /IM ... & ...\`.
+- For "command not found"-style continuation, use \`if ($?) { ... }\` instead of \`&&\`.
+- List serial ports: \`[System.IO.Ports.SerialPort]::GetPortNames()\`.`
+}
 
 /**
  * Get the shell that will actually be used for command execution.
@@ -97,5 +120,6 @@ export async function getSystemInfo(variant: PromptVariant, context: SystemPromp
 		homeDir: info.homeDir,
 		WORKSPACE_TITLE,
 		workingDir: workingDirInfo,
+		SHELL_RULES: getShellRules(info.shell),
 	})
 }
