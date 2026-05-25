@@ -4,7 +4,7 @@ import { CommentReviewController, type OnReplyCallback, type ReviewComment } fro
 import { DIFF_VIEW_URI_SCHEME } from "../VscodeDiffViewProvider"
 
 /**
- * IoT AI Debugger's GitHub avatar URL
+ * Adsum IoT Coder's GitHub avatar URL
  */
 const IOT_AI_DEBUGGER_AVATAR_URL = "https://avatars.githubusercontent.com/u/184127137"
 
@@ -29,12 +29,12 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 	constructor() {
 		super()
 		// Create the comment controller
-		this.commentController = vscode.comments.createCommentController("adsum-iot-coder-review", "IoT AI Debugger Review")
+		this.commentController = vscode.comments.createCommentController("adsum-iot-coder-review", "Adsum IoT Coder Review")
 
 		// Configure options for the reply input
 		this.commentController.options = {
 			placeHolder: "Ask a question about this code...",
-			prompt: "Reply to IoT AI Debugger",
+			prompt: "Reply to Adsum IoT Coder",
 		}
 
 		// Configure the commenting range provider (optional - allows commenting on any line)
@@ -53,7 +53,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 			}),
 		)
 
-		// Register add to chat command - sends the conversation to IoT AI Debugger's main chat
+		// Register add to chat command - sends the conversation to Adsum IoT Coder's main chat
 		this.disposables.push(
 			vscode.commands.registerCommand("adsum-iot-coder.reviewComment.addToChat", async (thread: vscode.CommentThread) => {
 				await this.handleAddToChat(thread)
@@ -104,7 +104,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 			body: new vscode.MarkdownString(comment.comment),
 			mode: vscode.CommentMode.Preview,
 			author: {
-				name: "IoT AI Debugger",
+				name: "Adsum IoT Coder",
 				iconPath: vscode.Uri.parse(IOT_AI_DEBUGGER_AVATAR_URL),
 			},
 		}
@@ -151,7 +151,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 			body: new vscode.MarkdownString("_Thinking..._"),
 			mode: vscode.CommentMode.Preview,
 			author: {
-				name: "IoT AI Debugger",
+				name: "Adsum IoT Coder",
 				iconPath: vscode.Uri.parse(IOT_AI_DEBUGGER_AVATAR_URL),
 			},
 		}
@@ -217,7 +217,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 			body: new vscode.MarkdownString(this.streamingContent || "_Thinking..._"),
 			mode: vscode.CommentMode.Preview,
 			author: {
-				name: "IoT AI Debugger",
+				name: "Adsum IoT Coder",
 				iconPath: vscode.Uri.parse(IOT_AI_DEBUGGER_AVATAR_URL),
 			},
 		}
@@ -239,7 +239,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 			body: new vscode.MarkdownString(finalContent),
 			mode: vscode.CommentMode.Preview,
 			author: {
-				name: "IoT AI Debugger",
+				name: "Adsum IoT Coder",
 				iconPath: vscode.Uri.parse(IOT_AI_DEBUGGER_AVATAR_URL),
 			},
 		}
@@ -330,7 +330,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 					body: new vscode.MarkdownString(content || "_Thinking..._"),
 					mode: vscode.CommentMode.Preview,
 					author: {
-						name: "IoT AI Debugger",
+						name: "Adsum IoT Coder",
 						iconPath: vscode.Uri.parse(IOT_AI_DEBUGGER_AVATAR_URL),
 					},
 				}
@@ -342,7 +342,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 				body: new vscode.MarkdownString("_Thinking..._"),
 				mode: vscode.CommentMode.Preview,
 				author: {
-					name: "IoT AI Debugger",
+					name: "Adsum IoT Coder",
 					iconPath: vscode.Uri.parse(IOT_AI_DEBUGGER_AVATAR_URL),
 				},
 			}
@@ -368,7 +368,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 						),
 						mode: vscode.CommentMode.Preview,
 						author: {
-							name: "IoT AI Debugger",
+							name: "Adsum IoT Coder",
 							iconPath: vscode.Uri.parse(IOT_AI_DEBUGGER_AVATAR_URL),
 						},
 					}
@@ -378,7 +378,7 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 	}
 
 	/**
-	 * Handle adding the thread conversation to IoT AI Debugger's main chat
+	 * Handle adding the thread conversation to Adsum IoT Coder's main chat
 	 */
 	private async handleAddToChat(thread: vscode.CommentThread): Promise<void> {
 		const filePath = this.threadFilePaths.get(thread) || thread.uri.fsPath

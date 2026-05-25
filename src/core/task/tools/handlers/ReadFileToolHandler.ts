@@ -116,7 +116,7 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			)
 		} else {
 			// Manual approval flow
-			const notificationMessage = `IoT AI Debugger wants to read ${getWorkspaceBasename(absolutePath, "ReadFileToolHandler.notification")}`
+			const notificationMessage = `Adsum IoT Coder wants to read ${getWorkspaceBasename(absolutePath, "ReadFileToolHandler.notification")}`
 
 			// Show notification
 			showNotificationForApproval(notificationMessage, config.autoApprovalSettings.enableNotifications)

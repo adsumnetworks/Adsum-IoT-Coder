@@ -118,7 +118,7 @@ export class Controller {
 
 	constructor(readonly context: vscode.ExtensionContext) {
 		PromptRegistry.getInstance() // Ensure prompts and tools are registered
-		HostProvider.get().logToChannel("IoT AI Debugger Provider instantiated")
+		HostProvider.get().logToChannel("Adsum IoT Coder Provider instantiated")
 		this.stateManager = StateManager.get()
 		StateManager.get().registerCallbacks({
 			onPersistenceError: async ({ error }: PersistenceErrorEvent) => {
@@ -192,7 +192,7 @@ export class Controller {
 			await this.postStateToWebview()
 			HostProvider.window.showMessage({
 				type: ShowMessageType.INFORMATION,
-				message: "Successfully logged out of IoT AI Debugger",
+				message: "Successfully logged out of Adsum IoT Coder",
 			})
 		} catch (_error) {
 			HostProvider.window.showMessage({
@@ -539,7 +539,7 @@ export class Controller {
 			console.error("Failed to handle auth callback:", error)
 			HostProvider.window.showMessage({
 				type: ShowMessageType.ERROR,
-				message: "Failed to log in to IoT AI Debugger",
+				message: "Failed to log in to Adsum IoT Coder",
 			})
 			// Even on login failure, we preserve any existing tokens
 			// Only clear tokens on explicit logout

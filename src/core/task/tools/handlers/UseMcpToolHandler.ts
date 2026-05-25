@@ -72,7 +72,7 @@ export class UseMcpToolHandler implements IFullyManagedTool {
 				config.taskState.consecutiveMistakeCount++
 				await config.callbacks.say(
 					"error",
-					`IoT AI Debugger tried to use ${tool_name} with an invalid JSON argument. Retrying...`,
+					`Adsum IoT Coder tried to use ${tool_name} with an invalid JSON argument. Retrying...`,
 				)
 				return formatResponse.toolError(formatResponse.invalidMcpToolArgumentError(server_name, tool_name))
 			}
@@ -110,7 +110,7 @@ export class UseMcpToolHandler implements IFullyManagedTool {
 			)
 		} else {
 			// Manual approval flow
-			const notificationMessage = `IoT AI Debugger wants to use ${tool_name || "unknown tool"} on ${server_name || "unknown server"}`
+			const notificationMessage = `Adsum IoT Coder wants to use ${tool_name || "unknown tool"} on ${server_name || "unknown server"}`
 
 			// Show notification
 			showNotificationForApproval(notificationMessage, config.autoApprovalSettings.enableNotifications)
