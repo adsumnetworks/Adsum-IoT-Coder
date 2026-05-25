@@ -25,7 +25,8 @@ CRITICAL OPERATIONAL RULES:
 3. MULTI-DEVICE FLASH: Use "west flash --snr <serial_number>" to target a specific device. Required when >1 device connected.
 4. PROCESS CLEANUP (run before flash or log capture):
    - Linux/Mac: pkill -9 JLink && pkill -9 nrfutil
-   - Windows:   taskkill /F /IM JLink.exe & taskkill /F /IM nrfutil.exe
+   - Windows:   cmd /c "taskkill /F /IM JLink.exe 2>nul & taskkill /F /IM nrfutil.exe 2>nul"
+     (always wrap in cmd /c — '&' and '2>nul' are cmd.exe syntax, but the user may be in PowerShell, which rejects them; cmd /c "..." makes it portable)
 5. PORTS: Windows uses COMx; Linux uses /dev/ttyACMx; Mac uses /dev/tty.usbmodemXXXX.
 6. DEVICE LISTING: For device enumeration, use action="log_device" operation="list". NEVER call nrfutil device list via execute_command directly.
 `
