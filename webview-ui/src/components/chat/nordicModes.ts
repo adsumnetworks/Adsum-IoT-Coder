@@ -24,21 +24,21 @@ export interface NordicModeConfig {
 }
 
 export const NORDIC_MODES: Record<NordicModeId, NordicModeConfig> = {
+	log_analyzer: {
+		id: "log_analyzer",
+		icon: "📊",
+		title: "Debug Live Device Logs",
+		description: "Stream RTT or UART logs from your nRF device — the agent finds the root cause and proposes a fix.",
+		systemPrompt: "Analyze device logs",
+		initialMessage: "Analyzing workspace and connected devices for log analysis...",
+	},
 	log_generator: {
 		id: "log_generator",
 		icon: "🔧",
 		title: "Generate Logging Code",
-		description: "Automatically inject professional logging into your code following the best practices.",
+		description: "Inject idiomatic logging where it matters — feeds straight into Debug.",
 		systemPrompt: "Generate logging code",
 		initialMessage: "Analyzing all open VS Code workspace folders for IoT projects...",
-	},
-	log_analyzer: {
-		id: "log_analyzer",
-		icon: "📊",
-		title: "Analyze Device Logs",
-		description: "Record, analyze, and generate reports from connected IoT devices.",
-		systemPrompt: "Analyze device logs",
-		initialMessage: "Analyzing workspace and connected devices for log analysis...",
 	},
 }
 

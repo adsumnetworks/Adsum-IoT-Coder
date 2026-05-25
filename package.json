@@ -14,9 +14,9 @@
 	"publisher": "AdsumNetwork",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/adsumnetworks/SoC-AI-Debugger"
+		"url": "https://github.com/adsumnetworks/Adsum-IoT-Coder"
 	},
-	"homepage": "https://github.com/adsumnetworks/SoC-AI-Debugger",
+	"homepage": "https://github.com/adsumnetworks/Adsum-IoT-Coder",
 	"categories": [
 		"AI",
 		"Debuggers",

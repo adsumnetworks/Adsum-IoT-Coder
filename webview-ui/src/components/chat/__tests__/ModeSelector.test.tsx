@@ -44,12 +44,12 @@ describe("ModeSelector", () => {
 	it("renders title and description for each mode", () => {
 		render(<ModeSelector onModeSelect={() => {}} />)
 
-		expect(screen.getByText("Generate Logging Code")).toBeDefined()
+		expect(screen.getByText("Debug Live Device Logs")).toBeDefined()
 		expect(
-			screen.getByText("Automatically inject professional logging into your code following the best practices."),
+			screen.getByText("Stream RTT or UART logs from your nRF device — the agent finds the root cause and proposes a fix."),
 		).toBeDefined()
-		expect(screen.getByText("Analyze Device Logs")).toBeDefined()
-		expect(screen.getByText("Record, analyze, and generate reports from connected IoT devices.")).toBeDefined()
+		expect(screen.getByText("Generate Logging Code")).toBeDefined()
+		expect(screen.getByText("Inject idiomatic logging where it matters — feeds straight into Debug.")).toBeDefined()
 	})
 
 	it("calls onModeSelect with log_generator when first button clicked", () => {
