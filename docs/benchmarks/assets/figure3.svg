@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 520" width="1040" height="520" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13">
+<rect x="0.5" y="0.5" width="1039" height="519" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+<pattern id="hatch-d76947" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><rect width="7" height="7" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="7" stroke="#d76947" stroke-width="3" opacity="0.55"/></pattern>
+<pattern id="hatch-475569" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><rect width="7" height="7" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="7" stroke="#475569" stroke-width="3" opacity="0.55"/></pattern>
+<text x="28" y="34" font-size="19" fill="#1f2937" font-weight="700">Token Consumption per Task</text>
+<text x="28" y="56" font-size="13" fill="#6b7280" font-weight="400">Tokens per session (millions, log scale). Hatched bars = failed task.</text>
+<rect x="776.1" y="68" width="235.9" height="24" fill="#fdf2ec" rx="12" stroke="#d76947" stroke-width="1"/><text x="894.0500000000001" y="85" font-size="12" fill="#d76947" font-weight="600" text-anchor="middle">3.8× more token-efficient overall</text>
+<line x1="80" y1="436.0" x2="1012" y2="436.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="3,3"/>
+<text x="68" y="440.0" font-size="11" fill="#6b7280" font-weight="400" text-anchor="end">0.5M</text>
+<line x1="80" y1="379.11728064680943" x2="1012" y2="379.11728064680943" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="3,3"/>
+<text x="68" y="383.11728064680943" font-size="11" fill="#6b7280" font-weight="400" text-anchor="end">1M</text>
+<line x1="80" y1="288.9603035329568" x2="1012" y2="288.9603035329568" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="3,3"/>
+<text x="68" y="292.9603035329568" font-size="11" fill="#6b7280" font-weight="400" text-anchor="end">3M</text>
+<line x1="80" y1="190.1569771138526" x2="1012" y2="190.1569771138526" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="3,3"/>
+<text x="68" y="194.1569771138526" font-size="11" fill="#6b7280" font-weight="400" text-anchor="end">10M</text>
+<line x1="80" y1="100.0" x2="1012" y2="100.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="3,3"/>
+<text x="68" y="104.0" font-size="11" fill="#6b7280" font-weight="400" text-anchor="end">30M</text>
+<line x1="390.6666666666667" y1="104" x2="390.6666666666667" y2="436" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="2,4"/>
+<line x1="701.3333333333334" y1="104" x2="701.3333333333334" y2="436" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="2,4"/>
+<text x="235.33333333333334" y="96" font-size="11" fill="#6b7280" font-weight="600" text-anchor="middle">L1</text>
+<text x="546.0" y="96" font-size="11" fill="#6b7280" font-weight="600" text-anchor="middle">L2</text>
+<text x="856.6666666666667" y="96" font-size="11" fill="#6b7280" font-weight="600" text-anchor="middle">L3</text>
+<rect x="116.66666666666669" y="388.1291736171451" width="38" height="47.87082638285489" fill="#d76947" rx="3"/>
+<rect x="160.66666666666669" y="274.6849267772316" width="38" height="161.31507322276838" fill="#475569" rx="3"/>
+<text x="135.66666666666669" y="380.1291736171451" font-size="11" fill="#1f2937" font-weight="700" text-anchor="middle">896k</text>
+<text x="179.66666666666669" y="266.6849267772316" font-size="11" fill="#1f2937" font-weight="700" text-anchor="middle">3.6M</text>
+<text x="157.66666666666669" y="458" font-size="13" fill="#1f2937" font-weight="500" text-anchor="middle">L1-T1</text>
+<rect x="272.0" y="255.68604577229476" width="38" height="180.31395422770524" fill="#d76947" rx="3"/>
+<rect x="316.0" y="108.64634930525153" width="38" height="327.35365069474847" fill="url(#hatch-475569)" rx="3"/><rect x="316.0" y="108.64634930525153" width="38" height="327.35365069474847" fill="none" stroke="#475569" stroke-width="1.5" rx="3"/>
+<text x="291.0" y="247.68604577229476" font-size="11" fill="#1f2937" font-weight="700" text-anchor="middle">4.5M</text>
+<text x="335.0" y="100.64634930525153" font-size="11" fill="#dc2626" font-weight="700" text-anchor="middle">27M FI</text>
+<text x="313.0" y="458" font-size="13" fill="#1f2937" font-weight="500" text-anchor="middle">L1-T2</text>
+<rect x="427.33333333333337" y="379.11728064680943" width="38" height="56.882719353190566" fill="#d76947" rx="3"/>
+<rect x="471.33333333333337" y="220.7271220479856" width="38" height="215.2728779520144" fill="#475569" rx="3"/>
+<text x="446.33333333333337" y="371.11728064680943" font-size="11" fill="#1f2937" font-weight="700" text-anchor="middle">1.0M</text>
+<text x="490.33333333333337" y="212.7271220479856" font-size="11" fill="#1f2937" font-weight="700" text-anchor="middle">6.9M</text>
+<text x="468.33333333333337" y="458" font-size="13" fill="#1f2937" font-weight="500" text-anchor="middle">L2-T1</text>
+<rect x="582.6666666666667" y="396.40997925731256" width="38" height="39.59002074268744" fill="#d76947" rx="3"/>
+<rect x="626.6666666666667" y="182.33540276231025" width="38" height="253.66459723768975" fill="#475569" rx="3"/>
+<text x="601.6666666666667" y="388.40997925731256" font-size="11" fill="#1f2937" font-weight="700" text-anchor="middle">810k</text>
+<text x="645.6666666666667" y="174.33540276231025" font-size="11" fill="#1f2937" font-weight="700" text-anchor="middle">11M</text>
+<text x="623.6666666666667" y="458" font-size="13" fill="#1f2937" font-weight="500" text-anchor="middle">L2-T2</text>
+<rect x="738.0" y="318.2306249097128" width="38" height="117.76937509028721" fill="#d76947" rx="3"/>
+<rect x="782.0" y="232.07758417976623" width="38" height="203.92241582023377" fill="url(#hatch-475569)" rx="3"/><rect x="782.0" y="232.07758417976623" width="38" height="203.92241582023377" fill="none" stroke="#475569" stroke-width="1.5" rx="3"/>
+<text x="757.0" y="310.2306249097128" font-size="11" fill="#1f2937" font-weight="700" text-anchor="middle">2.1M</text>
+<text x="801.0" y="224.07758417976623" font-size="11" fill="#dc2626" font-weight="700" text-anchor="middle">6.0M SCF</text>
+<text x="779.0" y="458" font-size="13" fill="#1f2937" font-weight="500" text-anchor="middle">L3-T1</text>
+<rect x="893.3333333333334" y="114.96211228727691" width="38" height="321.0378877127231" fill="url(#hatch-d76947)" rx="3"/><rect x="893.3333333333334" y="114.96211228727691" width="38" height="321.0378877127231" fill="none" stroke="#d76947" stroke-width="1.5" rx="3"/>
+<rect x="937.3333333333334" y="118.31214547338516" width="38" height="317.68785452661484" fill="url(#hatch-475569)" rx="3"/><rect x="937.3333333333334" y="118.31214547338516" width="38" height="317.68785452661484" fill="none" stroke="#475569" stroke-width="1.5" rx="3"/>
+<text x="912.3333333333334" y="106.96211228727691" font-size="11" fill="#dc2626" font-weight="700" text-anchor="middle">25M FI</text>
+<text x="956.3333333333334" y="110.31214547338516" font-size="11" fill="#dc2626" font-weight="700" text-anchor="middle">24M FI</text>
+<text x="934.3333333333334" y="458" font-size="13" fill="#1f2937" font-weight="500" text-anchor="middle">L3-T2</text>
+<rect x="80" y="465" width="16" height="13" fill="#d76947" rx="2"/><text x="104" y="476" font-size="12" fill="#6b7280" font-weight="400">Adsum IoT Coder</text>
+<rect x="260" y="465" width="16" height="13" fill="#475569" rx="2"/><text x="284" y="476" font-size="12" fill="#6b7280" font-weight="400">Claude Code</text>
+<rect x="420" y="465" width="16" height="13" fill="url(#hatch-6b7280)" rx="3"/><rect x="420" y="465" width="16" height="13" fill="none" stroke="#6b7280" stroke-width="1.5" rx="3"/><text x="444" y="476" font-size="12" fill="#6b7280" font-weight="400">hatched = failed (FI / SCF)</text>
+<text x="1012" y="502" font-size="11" fill="#6b7280" font-weight="400" text-anchor="end">Same model: Claude Haiku 4.5 · NCS v3.2.1 · n=6 BLE tasks</text>
+</svg>
