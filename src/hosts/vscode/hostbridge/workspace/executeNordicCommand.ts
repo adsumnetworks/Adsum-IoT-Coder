@@ -1,4 +1,6 @@
+import * as fs from "node:fs"
 import * as vscode from "vscode"
+import { buildJLinkArgs, getJLinkBinaryName, resolveJLinkBinary, type SupportedPlatform } from "./jlinkResolver"
 
 export interface ExecuteNordicCommandRequest {
 	command: string
@@ -251,8 +253,18 @@ export async function connectRTTPlanA(): Promise<RTTConnectionResult> {
 }
 
 /**
- * Connect to RTT using Plan B: Spawn JLinkExe directly.
- * This requires the serial number and device name.
+ * Connect to RTT using Plan B: spawn the SEGGER J-Link interactive CLI directly.
+ *
+ * Cross-platform behavior:
+ * - Windows uses `JLink.exe`, macOS/Linux use `JLinkExe` (SEGGER's naming).
+ * - We invoke the binary directly via VS Code's `createTerminal({ shellPath,
+ *   shellArgs })`. No shell wrapper (`/bin/bash`, `cmd /c`) — that means no
+ *   quoting concerns and the same code path works on every OS.
+ * - Binary location is resolved by walking deterministic install paths,
+ *   versioned SEGGER directories, then PATH. If nothing is found we fail
+ *   loudly with a useful error rather than letting VS Code silently spawn
+ *   the wrong thing.
+ *
  * @param serialNumber - Device serial number from `nrfjprog --ids`
  * @param deviceName - Target device (default: nRF52840_xxAA)
  * @param rttPort - RTT telnet port (default: 19021)
@@ -263,10 +275,8 @@ export async function connectRTTPlanB(
 	rttPort: number = 19021,
 ): Promise<RTTConnectionResult> {
 	try {
-		// Create a terminal for JLink RTT
 		const terminalName = `RTT (${serialNumber})`
 
-		// Check if we already have this RTT terminal
 		const existingTerminal = vscode.window.terminals.find((t) => t.name === terminalName)
 		if (existingTerminal) {
 			existingTerminal.show()
@@ -277,28 +287,30 @@ export async function connectRTTPlanB(
 			}
 		}
 
-		// Find JLinkExe path (common locations)
-		const jlinkPaths = [
-			"/opt/SEGGER/JLink/JLinkExe",
-			"/usr/bin/JLinkExe",
-			"JLinkExe", // Rely on PATH
-		]
+		const platform = process.platform as SupportedPlatform
+		const jlinkPath = resolveJLinkBinary(platform, process.env, fs.existsSync, (dir) => fs.readdirSync(dir))
 
-		// Create terminal with JLink command
+		if (!jlinkPath) {
+			const binaryName = getJLinkBinaryName(platform)
+			return {
+				success: false,
+				method: "plan_b",
+				error:
+					`Could not locate ${binaryName}. Install SEGGER J-Link from ` +
+					"https://www.segger.com/downloads/jlink/ or add it to PATH.",
+			}
+		}
+
 		const terminal = vscode.window.createTerminal({
 			name: terminalName,
-			shellPath: "/bin/bash",
-			shellArgs: [
-				"-c",
-				`echo "Connecting to RTT on device ${serialNumber}..." && ` +
-					`JLinkExe -device ${deviceName} -SelectEmuBySN ${serialNumber} ` +
-					`-if swd -speed auto -AutoConnect 1 -RTTTelnetPort ${rttPort}`,
-			],
+			shellPath: jlinkPath,
+			shellArgs: buildJLinkArgs({ deviceName, serialNumber, rttPort }),
 		})
 
 		terminal.show()
 
-		// Give JLink time to connect
+		// Give J-Link a moment to connect before the caller assumes the
+		// terminal is live (e.g. before issuing follow-up RTT reads).
 		await new Promise((resolve) => setTimeout(resolve, 3000))
 
 		return {
