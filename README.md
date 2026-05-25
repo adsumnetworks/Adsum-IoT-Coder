@@ -4,20 +4,21 @@
 
 # Adsum IoT Coder – for nRF
 
-**An open-source AI coding agent that diagnoses and fixes BLE, GATT, and NCS
-configuration bugs in fewer flashes — with live device-log capture,
-curated nRF Connect SDK knowledge, and an open benchmark proving it works.**
+**An open-source IoT coding agent that cracks the complex firmware bugs general
+agents struggle with — in less context, fewer tokens, and less time. Backed by
+live device-log capture, curated SDK knowledge, and an open benchmark on real
+nRF hardware.**
 
-Currently shipping for **nRF52, nRF53, and nRF54** SoCs with **BLE**. Open source under Apache 2.0.
+**Shipping today:** nRF52 / nRF53 / nRF54 · BLE · nRF Connect SDK (Zephyr).
+**On the [roadmap](#roadmap):** Wi-Fi · LTE-M · Matter · ESP-IDF · additional RTOS support.
 
-<!-- TODO: Marketplace slug `nrf-ai-debugger` is legacy from v1; pending migration to a new slug aligned with the Adsum IoT Coder name. All marketplace links across this README and package.json should be updated together. -->
-<!-- TODO: GitHub repo slug `adsumnetworks/SoC-AI-Debugger` is legacy from v1; pending repo rename to `adsumnetworks/Adsum-IoT-Coder`. Update all github.com/adsumnetworks/SoC-AI-Debugger links in this README together. -->
+Open source under Apache 2.0.
 <p>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/badge/VS%20Code%20Marketplace-install-0078d4?logo=visual-studio-code" alt="VS Marketplace"></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://vsmarketplacebadges.dev/installs-short/AdsumNetwork.nrf-ai-debugger.svg?color=0078d4" alt="Installs"></a>
-  <a href="https://github.com/adsumnetworks/SoC-AI-Debugger/stargazers"><img src="https://img.shields.io/github/stars/adsumnetworks/SoC-AI-Debugger?style=flat&color=ffd700" alt="GitHub stars"></a>
+  <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/stargazers"><img src="https://img.shields.io/github/stars/adsumnetworks/Adsum-IoT-Coder?style=flat&color=ffd700" alt="GitHub stars"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
-  <a href="https://github.com/adsumnetworks/SoC-AI-Debugger/discussions"><img src="https://img.shields.io/badge/community-discussions-blue" alt="Discussions"></a>
+  <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions"><img src="https://img.shields.io/badge/community-discussions-blue" alt="Discussions"></a>
   <img src="https://img.shields.io/badge/AI%20Agent-VS%20Code%20Extension-9663f1" alt="AI Agent">
   <img src="https://img.shields.io/badge/nRF%20Connect%20SDK-v3.2.1-00A9CE" alt="NCS">
   <img src="https://img.shields.io/badge/Zephyr%20RTOS-compatible-blueviolet" alt="Zephyr">
@@ -25,8 +26,7 @@ Currently shipping for **nRF52, nRF53, and nRF54** SoCs with **BLE**. Open sourc
 
 **[Install →](#getting-started)** · **[Benchmark →](#benchmark--iot-firmwaredebugbench-v01)** · **[Architecture →](#architecture--dynamic-knowledge--tool-skill-loading)** · **[Roadmap →](#roadmap)**
 
-<!-- TODO: Replace with updated demo GIF showing "Adsum IoT Coder" branding -->
-<p><img src="assets/docs/demo.gif" width="100%" alt="Adsum IoT Coder Demo" /></p>
+<p><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder Demo" /></p>
 
 </div>
 
@@ -144,8 +144,7 @@ A clean architecture is only useful if it produces measurably better outcomes. S
 
 <div align="center">
 
-<!-- TODO: Update chart with "Adsum IoT Coder" branding -->
-<img src="docs/benchmarks/assets/figure1.png" width="65%" alt="BC Rate by Threshold" />
+<img src="docs/benchmarks/assets/figure1.png" width="80%" alt="BC Rate by Threshold" />
 
 </div>
 
@@ -165,8 +164,7 @@ Two other patterns worth noting: **context degradation predicted failure** (Clau
 
 <div align="center">
 
-<!-- TODO: Update chart with "Adsum IoT Coder" branding -->
-<img src="docs/benchmarks/assets/figure3.png" width="90%" alt="Token Consumption per Task" />
+<img src="docs/benchmarks/assets/figure3.png" width="100%" alt="Token Consumption per Task" />
 
 </div>
 
@@ -190,7 +188,6 @@ See [changelog.md](./changelog.md) for release notes.
 
 Configure an AI provider, and open your NCS project. The agent starts with two entry-point workflows:
 
-<!-- TODO: Replace with updated screenshot showing "Adsum IoT Coder" branding -->
 <p><img src="assets/docs/home.png" width="100%" alt="Adsum IoT Coder Home" /></p>
 
 **Analyze nRF Device Logs** — captures live RTT/UART logs from connected boards, runs code-aware analysis, produces structured reports. Auto-detects boards via J-Link, supports multi-device simultaneous capture, correlates output with your source code and configuration.
@@ -249,7 +246,7 @@ The product line is **Adsum IoT Coder**, with each release scoped to a specific 
 | **Dev-lifecycle scope** | Debugging (capture → analyze → fix loop) | Power-budget review, protocol-correctness review, architectural review, low-power optimization |
 | **Benchmark** | v0.1 (6 BLE tasks on nRF5x) | v0.2 (20+ tasks, Copilot comparison, ESP suite) |
 
-The roadmap is shaped by what the community asks for and contributes. [Open an issue, propose a benchmark task, or contribute a knowledge module.](https://github.com/adsumnetworks/SoC-AI-Debugger/issues)
+The roadmap is shaped by what the community asks for and contributes. [Open an issue, propose a benchmark task, or contribute a knowledge module.](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues)
 
 ---
 
@@ -260,6 +257,7 @@ We publish what's true today, not what we wish were true.
 **Product**
 
 - **Scope.** Today the tool ships for nRF52, nRF53, and nRF54 with BLE. Other Nordic families (nRF7x, nRF9x) and other vendors (ESP) are roadmap, not shipping. Other protocols (Wi-Fi, Thread, Matter, LTE-M) are roadmap, not shipping.
+- **Trademarks.** nRF, nRF Connect SDK, and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA. This project is independently developed and not affiliated with or endorsed by Nordic Semiconductor ASA.
 
 **Benchmark**
 
@@ -283,7 +281,7 @@ If you reference the benchmark or this work in research, please cite:
             Evaluation Suite for AI IoT Firmware Debugging Agents},
   author = {Adsum Networks},
   year   = {2026},
-  url    = {https://github.com/adsumnetworks/SoC-AI-Debugger},
+  url    = {https://github.com/adsumnetworks/Adsum-IoT-Coder},
   note   = {Open source under Apache 2.0}
 }
 ```
@@ -305,7 +303,7 @@ We welcome new benchmark tasks, knowledge modules, and HITL tool integrations.
 - **Knowledge modules** are Markdown files in `iot-knowledge/` following the structure in [Architecture](#architecture--dynamic-knowledge--tool-skill-loading). Add a new protocol, board, or workflow as its own module.
 - **Benchmark tasks** follow the format in [`evals/`](./evals/). Each task ships its bug-injection patch, reproduction procedure, and known-correct fix.
 
-[Open an issue](https://github.com/adsumnetworks/SoC-AI-Debugger/issues) to discuss before larger changes, or open a PR directly for small fixes.
+[Open an issue](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues) to discuss before larger changes, or open a PR directly for small fixes.
 
 ---
 
@@ -347,7 +345,7 @@ BYOK (Bring Your Own Key) — you control which model and endpoint you trust. So
 
 **Model refuses tool calls / returns plain text** — the configured model must support native tool-calling. Models without function-calling support cannot drive hardware workflows. See [Tested Models](#tested-models).
 
-Still stuck? [Open a Discussion](https://github.com/adsumnetworks/SoC-AI-Debugger/discussions) — we read every one.
+Still stuck? [Open a Discussion](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions) — we read every one.
 
 ---
 
@@ -359,7 +357,3 @@ Still stuck? [Open a Discussion](https://github.com/adsumnetworks/SoC-AI-Debugge
 ## License
 
 [Apache 2.0 © 2026 Adsum Networks](./LICENSE)
-
----
-
-*Built by Adsum Networks. Not affiliated with Nordic Semiconductor ASA.*
