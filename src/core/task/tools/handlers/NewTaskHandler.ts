@@ -38,8 +38,8 @@ export class NewTaskHandler implements IToolHandler, IPartialBlockHandler {
 		// Show notification if enabled
 		if (config.autoApprovalSettings.enableNotifications) {
 			showSystemNotification({
-				subtitle: "IoT AI Debugger wants to start a new task...",
-				message: `IoT AI Debugger is suggesting to start a new task with: ${context}`,
+				subtitle: "Adsum IoT Coder wants to start a new task...",
+				message: `Adsum IoT Coder is suggesting to start a new task with: ${context}`,
 			})
 		}
 

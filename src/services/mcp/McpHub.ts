@@ -164,15 +164,23 @@ export class McpHub {
 			const settingsPath = await getMcpSettingsFilePathHelper(await this.getSettingsDirectoryPath())
 			const content = await fs.readFile(settingsPath, "utf-8")
 
+			// Treat empty or whitespace-only settings as "no MCP servers configured" — silent.
+			// Without this, users who never set up MCP get an alarming red popup on every activation.
+			if (content.trim() === "") {
+				return undefined
+			}
+
 			let config: any
 
 			// Parse JSON file content
 			try {
 				config = JSON.parse(content)
 			} catch (_error) {
+				// Warning, not Error — most users don't use MCP and shouldn't see a red popup
+				// for an unrelated config file. Include the path so they can find it if they care.
 				HostProvider.window.showMessage({
-					type: ShowMessageType.ERROR,
-					message: "Invalid MCP settings format. Please ensure your settings follow the correct JSON format.",
+					type: ShowMessageType.WARNING,
+					message: `MCP settings file is not valid JSON (${settingsPath}). MCP servers will be disabled until fixed.`,
 				})
 				return undefined
 			}
@@ -185,8 +193,8 @@ export class McpHub {
 			const result = McpSettingsSchema.safeParse(config)
 			if (!result.success) {
 				HostProvider.window.showMessage({
-					type: ShowMessageType.ERROR,
-					message: "Invalid MCP settings schema.",
+					type: ShowMessageType.WARNING,
+					message: `MCP settings file does not match expected schema (${settingsPath}). MCP servers will be disabled until fixed.`,
 				})
 				return undefined
 			}

@@ -1015,7 +1015,7 @@ export const ChatRowContent = memo(
 									<span className="font-medium text-foreground">Shell Integration Unavailable</span>
 								</div>
 								<div className="text-foreground opacity-80 mt-1">
-									IoT AI Debugger won't be able to perfectly view the command's output. Please ensure you're
+									Adsum IoT Coder won't be able to perfectly view the command's output. Please ensure you're
 									using a supported shell:
 									<ul className="list-disc ml-5 mt-1">
 										<li>Windows: PowerShell</li>
