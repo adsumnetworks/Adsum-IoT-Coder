@@ -257,6 +257,7 @@ We publish what's true today, not what we wish were true.
 **Product**
 
 - **Scope.** Today the tool ships for nRF52, nRF53, and nRF54 with BLE. Other Nordic families (nRF7x, nRF9x) and other vendors (ESP) are roadmap, not shipping. Other protocols (Wi-Fi, Thread, Matter, LTE-M) are roadmap, not shipping.
+- **Trademarks.** nRF, nRF Connect SDK, and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA. This project is independently developed and not affiliated with or endorsed by Nordic Semiconductor ASA.
 
 **Benchmark**
 
@@ -356,7 +357,3 @@ Still stuck? [Open a Discussion](https://github.com/adsumnetworks/Adsum-IoT-Code
 ## License
 
 [Apache 2.0 © 2026 Adsum Networks](./LICENSE)
-
----
-
-*Built by Adsum Networks. Not affiliated with Nordic Semiconductor ASA.*
