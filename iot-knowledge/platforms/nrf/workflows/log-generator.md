@@ -97,7 +97,7 @@ After all code changes are applied, you must offer the next steps.
 - Question: *"Code is ready. How would you like to proceed with Build & Flash?"*
 - Options: `["Build & Flash now (ask me each time)", "Build & Flash autonomously for this task", "I'll do it manually"]`
 
-- If user selects "Build & Flash now": start the Debug Loop (see `workflows/debug-loop.md`) in **Ask Every Time** mode.
+- If user selects "Build & Flash": start the Debug Loop in **Ask Every Time** mode.
 - If user selects "Build & Flash autonomously": start the Debug Loop in **Auto-Approve** mode.
 - If user selects manually: you may now terminate the workflow using the `attempt_completion` tool.
 

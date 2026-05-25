@@ -57,3 +57,16 @@ Advanced workflows and actions are documented as `.md` files in the `iot-knowled
 - **NCS files only:** Only read files matching the NCS pattern: `CMakeLists.txt`, `prj.conf`, `*.conf`, `*.overlay`, `*.c`, `*.h`, `*.dts`, `*.yml`, `*.log`. NEVER open `.py`, `.js`, `.ts`, `.json`, `.md` files outside of `iot-knowledge/`.
 - **No speculative reads:** Do NOT read files "just to understand the workspace". Read a file only when a workflow or rule explicitly instructs you to.
 - **Stop on empty workspace:** If `environment_details` shows no workspace root, or the root contains no NCS markers — stop immediately and apply the Scope Gate (see `AGENT.md`).
+
+## 10. No Decorative Shell Output
+
+Never invoke `execute_command` (or any shell tool) solely to print completion text, status banners, or summaries. The shell is for operations that have side effects (creating files, killing processes, capturing logs) — not for narrating the conversation.
+
+**Do NOT do this:**
+- `echo "Analysis complete. See report above."`
+- `echo "Done!"`
+- `printf "Build successful\n"`
+- `Write-Host "Cleanup done"`
+- `cmd /c "echo Task finished"`
+
+**Do this instead:** Write the completion text directly in your response as plain markdown, then call `attempt_completion` (or `ask_followup_question` if you're offering next-step buttons). A `Cleanup done`-style echo only makes sense as the *tail* of a chained shell command that actually does cleanup work — never on its own line.

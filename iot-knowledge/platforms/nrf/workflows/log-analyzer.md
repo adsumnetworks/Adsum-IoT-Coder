@@ -103,6 +103,6 @@ After the report, you MUST present the next steps.
 ## Workflow Handoff
 
 Based on analysis result and user choice:
-- **Code change needed** (fix a bug found in analysis) → Invoke `workflows/debug-loop.md`
-- **More logging needed** (sparse logs, need deeper BLE logs) → Invoke `workflows/log-generator.md`
-- **Analysis complete, user satisfied** (e.g., they selected "Done") → Use the `attempt_completion` tool to terminate. **Tip:** Include a summary of your final analysis in the `result` parameter for the user's records.
+- **Build / Flash needed** — whether the analysis surfaced a bug to fix, or the user explicitly asks to flash/reflash, or the firmware was never flashed in the first place — hand off to the Debug Loop.
+- **More logging needed** (sparse logs, need deeper BLE logs) — hand off to the Log Generator workflow.
+- **Analysis complete, user satisfied** (e.g., they selected "Done") — use the `attempt_completion` tool to terminate. **Tip:** Include a summary of your final analysis in the `result` parameter for the user's records.
