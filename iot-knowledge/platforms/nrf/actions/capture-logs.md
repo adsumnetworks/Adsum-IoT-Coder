@@ -9,7 +9,7 @@ Called from: Debug Loop Phase 3, Log Analyzer Step 4, Log Generator post-build v
 - Device serial number (for RTT) or port (for UART) is known
 - **Process Cleanup required:** Run cross-platform process cleanup before any capture.
   - Linux/Mac: `pkill -9 JLink && pkill -9 nrfutil`
-  - Windows: `taskkill /F /IM JLink.exe & taskkill /F /IM nrfutil.exe`
+  - Windows: `cmd /c "taskkill /F /IM JLink.exe 2>nul & taskkill /F /IM nrfutil.exe 2>nul"` (wrap in `cmd /c` so it works in PowerShell — `&` is reserved in PowerShell, but cmd.exe parses the quoted string natively)
 
 ## Transport Selection
 Detect from `prj.conf`:

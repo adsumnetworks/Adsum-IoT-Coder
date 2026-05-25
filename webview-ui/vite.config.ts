@@ -38,6 +38,14 @@ if (!VALID_PLATFORMS.includes(platform)) {
 console.log("Building webview for", platform)
 
 export default defineConfig({
+	// VS Code webviews load resources through `asWebviewUri()` which yields an
+	// absolute https URL like `https://file%2B.vscode-resource.vscode-cdn.net/<path>/`.
+	// If Vite leaves its default `base: "/"`, internal CSS asset references
+	// (e.g. the codicon font URL `url(/assets/codicon.ttf)`) become absolute
+	// paths rooted at the webview origin — which 404, so codicons never render.
+	// `base: "./"` makes those URLs relative to the loading CSS file, which
+	// resolves correctly under the asWebviewUri prefix.
+	base: "./",
 	optimizeDeps: {
 		force: true, // Forces re-optimization
 	},
