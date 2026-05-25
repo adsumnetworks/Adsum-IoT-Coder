@@ -154,10 +154,13 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 		isPlatformDetected = true
 		iotContext += "### Platform Detected: nRF Connect SDK / Zephyr RTOS\n\n"
 
-		// Always load: Platform index + platform rules
+		// Always load: Platform index + platform rules.
+		// All three rules under platforms/nrf/rules/ are listed as MANDATORY/Always
+		// in PLATFORM.md, so they MUST all be loaded here.
 		iotContext += (await readKnowledgeFile("platforms/nrf/PLATFORM.md")) + "\n\n"
 		iotContext += (await readKnowledgeFile("platforms/nrf/rules/nrf-terminal.md")) + "\n\n"
 		iotContext += (await readKnowledgeFile("platforms/nrf/rules/skill-loading.md")) + "\n\n"
+		iotContext += (await readKnowledgeFile("platforms/nrf/rules/device-identity.md")) + "\n\n"
 
 		// Always load: NCS SDK knowledge (project structure, Kconfig, build reference)
 		iotContext += (await readKnowledgeFile("platforms/nrf/sdks/ncs/SDK.md")) + "\n\n"
