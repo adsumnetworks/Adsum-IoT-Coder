@@ -1,4 +1,4 @@
-<div align="center">
+<div align="center" markdown="1">
 
 <img src="assets/icons/icon.png" width="120" alt="Adsum IoT Coder" />
 
@@ -142,7 +142,7 @@ A clean architecture is only useful if it produces measurably better outcomes. S
 
 > *A "flash" in the metric table below = one agent attempt: propose a fix → build → flash to the device → re-test. BC@k = "Bug Closed within k flashes."*
 
-<div align="center">
+<div align="center" markdown="1">
 
 <img src="docs/benchmarks/assets/figure1.png" width="80%" alt="BC Rate by Threshold" />
 
@@ -162,7 +162,7 @@ A clean architecture is only useful if it produces measurably better outcomes. S
 
 Two other patterns worth noting: **context degradation predicted failure** (Claude Code burned 27M tokens on L1-T2 and lost the original symptom by the later debug cycles; Adsum IoT Coder resolved it at 148.7k peak), and **the gap widens with task difficulty** (parity at L2, Adsum 1/2 vs 0/2 at L3). Full per-task breakdown in the [benchmark report](./docs/benchmarks/v0.1-report.md).
 
-<div align="center">
+<div align="center" markdown="1">
 
 <img src="docs/benchmarks/assets/figure3.png" width="100%" alt="Token Consumption per Task" />
 
