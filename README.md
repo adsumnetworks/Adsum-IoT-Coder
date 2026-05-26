@@ -178,13 +178,7 @@ The architecture and the benchmark are two halves of the same commitment: domain
 
 Open the VS Code **Extensions** panel and search for **Adsum IoT Coder**, then click Install. Or install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) directly.
 
-CLI alternative:
-
-```sh
-code --install-extension AdsumNetwork.nrf-ai-debugger
-```
-
-See [changelog.md](./changelog.md) for release notes.
+See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 
 Configure an AI provider, and open your NCS project. The agent starts with two entry-point workflows:
 
