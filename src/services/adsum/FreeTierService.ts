@@ -1,5 +1,6 @@
 import { ClineEnv } from "@/config"
 import { telemetryService } from "@/services/telemetry"
+import { setCachedFreeTokensRemaining } from "./FreeTierState"
 import { getInstallId } from "./InstallIdentity"
 
 const REGISTERED_KEY = "adsum.freeTierRegistered"
@@ -29,6 +30,10 @@ export async function registerInstallIfNeeded(globalState: {
 		})
 
 		if (res.ok) {
+			const body: { quota?: number; tokens_used?: number } = await res.json().catch(() => ({}))
+			if (body.quota !== undefined && body.tokens_used !== undefined) {
+				setCachedFreeTokensRemaining(body.quota - body.tokens_used)
+			}
 			await globalState.update(REGISTERED_KEY, true)
 			telemetryService.captureFreeTierInstallRegistered(installId)
 			console.log("[adsum] install registered with free-tier proxy")
