@@ -1,6 +1,6 @@
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import { ApiHandler, ApiProviderInfo, buildApiHandler } from "@core/api"
-import { QuotaExhaustedError } from "@core/api/providers/adsum-free"
+import { AdsumFreeHandler, QuotaExhaustedError } from "@core/api/providers/adsum-free"
 import { ApiStream } from "@core/api/transform/stream"
 import { AssistantMessageContent, parseAssistantMessageV2, ToolUse } from "@core/assistant-message"
 import { ContextManager } from "@core/context/context-management/ContextManager"
@@ -2013,6 +2013,7 @@ export class Task {
 				} else {
 					// Quota exhaustion: card already shown via streamingFailedMessage — end task cleanly
 					if (isQuotaExhausted) {
+						consumeQuotaExhausted() // clear flag so it can't stale-trigger on next task
 						return
 					}
 
@@ -2959,7 +2960,7 @@ export class Task {
 
 				const recDidEndLoop = await this.recursivelyMakeClineRequests(this.taskState.userMessageContent)
 				didEndLoop = recDidEndLoop
-			} else if (consumeQuotaExhausted()) {
+			} else if (this.api instanceof AdsumFreeHandler && consumeQuotaExhausted()) {
 				// Free-tier quota exhausted: the backend returned 402, which the OpenAI SDK
 				// can surface as an empty (but successful) stream here rather than throwing.
 				// Set the quota marker on the api_req_started message so ErrorRow renders the
