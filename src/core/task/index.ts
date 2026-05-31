@@ -2990,8 +2990,23 @@ export class Task {
 				}
 				await this.messageStateHandler.saveClineMessagesAndUpdateHistory()
 				await this.postStateToWebview()
-				await this.abortTask()
-				return false
+
+				// Park the task (do NOT abort) so it stays alive while the user adds a
+				// BYOK key. Adding a key swaps this.api via updateApiConfiguration; when
+				// the user then clicks retry, we resume the loop with the new handler.
+				const quotaAsk = await this.ask(
+					"api_req_failed",
+					JSON.stringify({
+						message: "adsum:quota_exhausted",
+						modelId: "free-default",
+						providerId: "adsum-free",
+					}),
+				)
+				if (quotaAsk.response === "yesButtonClicked") {
+					this.taskState.autoRetryAttempts = 0
+					return false // continue loop — re-attempts with the (possibly new) handler
+				}
+				return true // user dismissed — end task cleanly
 			} else {
 				// if there's no assistant_responses, that means we got no text or tool_use content blocks from API which we should assume is an error
 				const { model, providerId } = this.getCurrentProviderInfo()
