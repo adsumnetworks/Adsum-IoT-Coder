@@ -4,6 +4,7 @@ import { setCachedFreeTokensRemaining } from "./FreeTierState"
 import { getInstallId } from "./InstallIdentity"
 
 const REGISTERED_KEY = "adsum.freeTierRegistered"
+const REMAINING_KEY = "adsum.freeTokensRemaining"
 
 /**
  * Registers this install with the Adsum free-tier proxy.
@@ -32,7 +33,9 @@ export async function registerInstallIfNeeded(globalState: {
 		if (res.ok) {
 			const body: { quota?: number; tokens_used?: number } = await res.json().catch(() => ({}))
 			if (body.quota !== undefined && body.tokens_used !== undefined) {
-				setCachedFreeTokensRemaining(body.quota - body.tokens_used)
+				const remaining = body.quota - body.tokens_used
+				setCachedFreeTokensRemaining(remaining)
+				await globalState.update(REMAINING_KEY, remaining)
 			}
 			await globalState.update(REGISTERED_KEY, true)
 			telemetryService.captureFreeTierInstallRegistered(installId)
@@ -44,6 +47,17 @@ export async function registerInstallIfNeeded(globalState: {
 	} catch (err) {
 		// Network error — non-fatal, will retry next activation
 		console.warn("[adsum] register-install network error:", err)
+	}
+}
+
+/**
+ * Seeds FreeTierState from the last-persisted remaining-quota value.
+ * Call on every activation so the chip shows before the first API response.
+ */
+export function loadCachedQuota(globalState: { get: (key: string) => unknown }): void {
+	const stored = globalState.get(REMAINING_KEY)
+	if (typeof stored === "number") {
+		setCachedFreeTokensRemaining(stored)
 	}
 }
 
