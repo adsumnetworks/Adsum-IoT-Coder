@@ -116,7 +116,7 @@ describe("TriggerNordicActionHandler", () => {
 
 	describe("Tool Name", () => {
 		it("should use the correct tool name constant", () => {
-			expect(ClineDefaultTool.NORDIC_ACTION).to.equal("nrf_device_tool")
+			expect(ClineDefaultTool.NORDIC_ACTION).to.equal("triggerNordicAction")
 		})
 	})
 
