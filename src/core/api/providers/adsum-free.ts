@@ -2,7 +2,7 @@ import type { ModelInfo } from "@shared/api"
 import OpenAI from "openai"
 import type { ChatCompletionTool } from "openai/resources/chat/completions"
 import { ClineEnv } from "@/config"
-import { markQuotaExhausted, shouldFireFirstRunStarted } from "@/services/adsum/FreeTierState"
+import { markQuotaExhausted, persistCachedFreeTokensRemaining, shouldFireFirstRunStarted } from "@/services/adsum/FreeTierState"
 import { getInstallId } from "@/services/adsum/InstallIdentity"
 import { Logger } from "@/services/logging/Logger"
 import { telemetryService } from "@/services/telemetry"
@@ -108,7 +108,9 @@ export class AdsumFreeHandler implements ApiHandler {
 
 					const remaining = resp.headers.get("x-free-quota-remaining")
 					if (remaining !== null) {
-						this.remainingQuota = Number(remaining)
+						const n = Number(remaining)
+						this.remainingQuota = n
+						persistCachedFreeTokensRemaining(n)
 					}
 					return resp
 				},
