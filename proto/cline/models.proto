@@ -440,6 +440,7 @@ enum ApiProvider {
   AIHUBMIX = 38;
   NOUSRESEARCH = 39;
   OPENAI_CODEX = 40;
+  ADSUM_FREE = 41;
 }
 
 enum ApiFormat {
