@@ -1,6 +1,7 @@
 import { ClineMessage } from "@shared/ExtensionMessage"
 import { memo } from "react"
 import CreditLimitError from "@/components/chat/CreditLimitError"
+import QuotaExhaustedCard, { QUOTA_EXHAUSTED_MARKER } from "@/components/chat/QuotaExhaustedCard"
 import { Button } from "@/components/ui/button"
 import { useClineAuth, useClineSignIn } from "@/context/ClineAuthContext"
 import { ClineError, ClineErrorType } from "../../../../src/services/error/ClineError"
@@ -25,6 +26,10 @@ const ErrorRow = memo(({ message, errorType, apiRequestFailedMessage, apiReqStre
 			case "error":
 			case "mistake_limit_reached":
 				// Handle API request errors with special error parsing
+				if (rawApiError?.includes(QUOTA_EXHAUSTED_MARKER)) {
+					return <QuotaExhaustedCard />
+				}
+
 				if (rawApiError) {
 					// FIXME: ClineError parsing should not be applied to non-Cline providers, but it seems we're using clineErrorMessage below in the default error display
 					const clineError = ClineError.parse(rawApiError)

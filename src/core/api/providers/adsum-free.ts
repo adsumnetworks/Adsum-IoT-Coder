@@ -36,7 +36,8 @@ export class QuotaExhaustedError extends Error {
 	readonly next: string[]
 
 	constructor(payload: { reason: string; remaining: number; next: string[] }) {
-		super("Free tier quota exhausted.")
+		// Embed the marker so the webview detects it and renders the conversion card
+		super("adsum:quota_exhausted")
 		this.name = "QuotaExhaustedError"
 		this.reason = payload.reason
 		this.remaining = payload.remaining
