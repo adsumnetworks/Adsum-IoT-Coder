@@ -17,6 +17,7 @@ import { StateManager } from "./core/storage/StateManager"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { ExtensionRegistryInfo } from "./registry"
 import { loadCachedQuota, registerInstallIfNeeded, shouldDefaultToFreeTier } from "./services/adsum/FreeTierService"
+import { initFreeTierPersistence } from "./services/adsum/FreeTierState"
 import { initializeInstallId } from "./services/adsum/InstallIdentity"
 import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
@@ -60,6 +61,10 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	// Seed the in-memory quota cache from last-persisted value so the chip
 	// shows before the first API response on every launch (not just first registration)
 	loadCachedQuota(context.globalState)
+
+	// Capture globalState so the free-tier handler can persist its once-ever
+	// first-run funnel flag across restarts
+	initFreeTierPersistence(context.globalState)
 
 	// Initialize PostHog client provider
 	PostHogClientProvider.getInstance()
