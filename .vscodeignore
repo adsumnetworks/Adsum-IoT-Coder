@@ -56,6 +56,10 @@ webview-ui/node_modules/**
 docs/**
 old_docs/**
 
+# Ignore test coverage reports (never belong in a shipped VSIX)
+coverage/**
+**/coverage/**
+
 # Fix issue where codicons don't get packaged (https://github.com/microsoft/vscode-extension-samples/issues/692)
 !node_modules/@vscode/codicons/dist/codicon.css
 !node_modules/@vscode/codicons/dist/codicon.ttf
