@@ -23,7 +23,7 @@ const QuotaExhaustedCard = () => {
 				</p>
 			</div>
 
-			<VSCodeButton className="w-full mb-2" onClick={() => navigateToSettings("providers")}>
+			<VSCodeButton className="w-full mb-2" onClick={() => navigateToSettings("api-config")}>
 				<KeyRoundIcon className="mr-2" size={14} />
 				Add your own API key
 			</VSCodeButton>
