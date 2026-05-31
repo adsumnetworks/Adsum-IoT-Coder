@@ -7,7 +7,6 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 ### Fixed
 
 - Toolbar and chat icons showed as blank squares, and the chat send button was missing on Linux. Icons now render correctly on macOS, Windows, and Linux.
-- On a slow first launch the extension could sit on a blank black screen with no sign of progress. It now shows a loading indicator while it starts up.
 
 ### Changed
 
