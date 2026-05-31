@@ -1951,7 +1951,8 @@ export class Task {
 				let response: ClineAskResponse
 				const isQuotaExhausted =
 					error instanceof QuotaExhaustedError ||
-					(error instanceof Error && error.message.startsWith("adsum:quota_exhausted"))
+					(error instanceof Error && error.message.startsWith("adsum:quota_exhausted")) ||
+					(error as any)?.cause?.message === "adsum:quota_exhausted"
 
 				// Skip auto-retry for Cline provider insufficient credits, auth errors, or free-tier quota exhaustion
 				if (
@@ -2736,7 +2737,8 @@ export class Task {
 				if (!this.taskState.abandoned) {
 					const isQuotaExhaustedStream =
 						error instanceof QuotaExhaustedError ||
-						(error instanceof Error && error.message.startsWith("adsum:quota_exhausted"))
+						(error instanceof Error && error.message.startsWith("adsum:quota_exhausted")) ||
+						(error as any)?.cause?.message === "adsum:quota_exhausted"
 					const clineError = ErrorService.get().toClineError(error, this.api.getModel().id)
 					const errorMessage = clineError.serialize()
 					// Auto-retry for streaming failures — skip for quota exhaustion (card handles it)
