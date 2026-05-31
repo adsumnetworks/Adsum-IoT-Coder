@@ -75,12 +75,34 @@ export class AdsumFreeHandler implements ApiHandler {
 					"X-Install-ID": getInstallId(),
 					"X-Task-ID": this.options.ulid || "",
 				},
-				// Only read the quota header here — never throw from fetch.
-				// Throwing from fetch makes the SDK treat any HTTP error as a
-				// network failure and apply connection-error semantics (retry + wrap).
-				// Status codes (402, 429) are handled in createMessage via APIError.
+				// Intercept 402/429 in the fetch layer so we catch them before
+				// the SDK's streaming layer can swallow them into an "empty response".
+				// The SDK (maxRetries:0) wraps thrown errors in APIConnectionError
+				// with the original as .cause — unwrapped in createMessage's catch.
 				fetch: async (...args: Parameters<typeof fetch>) => {
 					const resp = await fetch(...args)
+
+					if (resp.status === 402) {
+						let payload: { reason: string; remaining: number; next: string[] } = {
+							reason: "quota_exhausted",
+							remaining: 0,
+							next: ["verify_email", "add_byok"],
+						}
+						try {
+							payload = await resp.clone().json()
+						} catch {
+							// use default payload
+						}
+						telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
+						throw new QuotaExhaustedError(payload)
+					}
+
+					if (resp.status === 429) {
+						throw new Error(
+							"adsum:rate_limited — Too many requests. Please wait a moment before sending another message.",
+						)
+					}
+
 					const remaining = resp.headers.get("x-free-quota-remaining")
 					if (remaining !== null) {
 						this.remainingQuota = Number(remaining)
@@ -112,24 +134,20 @@ export class AdsumFreeHandler implements ApiHandler {
 				...getOpenAIToolParams(tools),
 			})
 		} catch (err: any) {
-			// The SDK exposes HTTP errors as APIError with a .status field.
-			// Handle them here so they never surface as raw "Connection error".
+			// The SDK (maxRetries:0) wraps errors thrown from our custom fetch in
+			// APIConnectionError with the original as .cause — unwrap it here.
+			const cause = err?.cause
+			if (cause instanceof QuotaExhaustedError) {
+				throw cause
+			}
+			if (cause instanceof Error && cause.message.startsWith("adsum:rate_limited")) {
+				throw cause
+			}
+
+			// Fallback: SDK processed status codes directly as APIError
 			if (err?.status === 402) {
-				let payload: { reason: string; remaining: number; next: string[] } = {
-					reason: "quota_exhausted",
-					remaining: 0,
-					next: ["verify_email", "add_byok"],
-				}
-				try {
-					// APIError body is available on err.error
-					if (err.error) {
-						payload = { ...payload, ...err.error }
-					}
-				} catch {
-					// use default payload
-				}
 				telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
-				throw new QuotaExhaustedError(payload)
+				throw new QuotaExhaustedError({ reason: "quota_exhausted", remaining: 0, next: ["verify_email", "add_byok"] })
 			}
 			if (err?.status === 429) {
 				throw new Error("adsum:rate_limited — Too many requests. Please wait a moment before sending another message.")
