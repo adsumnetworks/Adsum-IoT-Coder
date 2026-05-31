@@ -1,5 +1,6 @@
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import { ApiHandler, ApiProviderInfo, buildApiHandler } from "@core/api"
+import { QuotaExhaustedError } from "@core/api/providers/adsum-free"
 import { ApiStream } from "@core/api/transform/stream"
 import { AssistantMessageContent, parseAssistantMessageV2, ToolUse } from "@core/assistant-message"
 import { ContextManager } from "@core/context/context-management/ContextManager"
@@ -1948,8 +1949,15 @@ export class Task {
 				})()
 
 				let response: ClineAskResponse
-				// Skip auto-retry for Cline provider insufficient credits or auth errors
-				if (!isClineProviderInsufficientCredits && !isAuthError && this.taskState.autoRetryAttempts < 3) {
+				const isQuotaExhausted = error instanceof QuotaExhaustedError
+
+				// Skip auto-retry for Cline provider insufficient credits, auth errors, or free-tier quota exhaustion
+				if (
+					!isClineProviderInsufficientCredits &&
+					!isAuthError &&
+					!isQuotaExhausted &&
+					this.taskState.autoRetryAttempts < 3
+				) {
 					// Auto-retry enabled with max 3 attempts: automatically approve the retry
 					this.taskState.autoRetryAttempts++
 

@@ -16,7 +16,7 @@ import { FileContextTracker } from "./core/context/context-tracking/FileContextT
 import { StateManager } from "./core/storage/StateManager"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { ExtensionRegistryInfo } from "./registry"
-import { registerInstallIfNeeded, shouldDefaultToFreeTier } from "./services/adsum/FreeTierService"
+import { loadCachedQuota, registerInstallIfNeeded, shouldDefaultToFreeTier } from "./services/adsum/FreeTierService"
 import { initializeInstallId } from "./services/adsum/InstallIdentity"
 import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
@@ -56,6 +56,10 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 
 	// Initialize stable anonymous install ID for Adsum free-tier proxy
 	await initializeInstallId(context)
+
+	// Seed the in-memory quota cache from last-persisted value so the chip
+	// shows before the first API response on every launch (not just first registration)
+	loadCachedQuota(context.globalState)
 
 	// Initialize PostHog client provider
 	PostHogClientProvider.getInstance()
