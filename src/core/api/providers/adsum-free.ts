@@ -59,6 +59,9 @@ export class AdsumFreeHandler implements ApiHandler {
 	/** Remaining free-tier tokens — updated from X-Free-Quota-Remaining header */
 	remainingQuota: number | undefined
 
+	/** Set in the fetch interceptor when a 402 is received; checked before iterating the stream */
+	private _quotaExhaustedError: QuotaExhaustedError | undefined
+
 	constructor(options: AdsumFreeHandlerOptions) {
 		this.options = options
 		// Seed from registration response so the chip is populated before the first call
@@ -75,10 +78,11 @@ export class AdsumFreeHandler implements ApiHandler {
 					"X-Install-ID": getInstallId(),
 					"X-Task-ID": this.options.ulid || "",
 				},
-				// Intercept 402/429 in the fetch layer so we catch them before
-				// the SDK's streaming layer can swallow them into an "empty response".
-				// The SDK (maxRetries:0) wraps thrown errors in APIConnectionError
-				// with the original as .cause — unwrapped in createMessage's catch.
+				// When the backend returns 402 (quota exhausted) we cannot simply throw
+				// from fetch — the OpenAI SDK wraps the error in APIConnectionError and
+				// the wrapping is unreliable across bundle boundaries.
+				// Instead: return a fake empty 200 SSE response so the SDK doesn't error,
+				// set a flag, then throw QuotaExhaustedError before the for-await loop.
 				fetch: async (...args: Parameters<typeof fetch>) => {
 					const resp = await fetch(...args)
 
@@ -93,11 +97,22 @@ export class AdsumFreeHandler implements ApiHandler {
 						} catch {
 							// use default payload
 						}
-						telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
-						throw new QuotaExhaustedError(payload)
+						this._quotaExhaustedError = new QuotaExhaustedError(payload)
+						// Return a synthetic empty stream so the SDK does not throw or wrap
+						const emptyBody = new ReadableStream({
+							start(controller) {
+								controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+								controller.close()
+							},
+						})
+						return new Response(emptyBody, {
+							status: 200,
+							headers: { "content-type": "text/event-stream" },
+						})
 					}
 
 					if (resp.status === 429) {
+						// Rate limit — safe to throw; SDK wraps but we detect by message below
 						throw new Error(
 							"adsum:rate_limited — Too many requests. Please wait a moment before sending another message.",
 						)
@@ -124,6 +139,7 @@ export class AdsumFreeHandler implements ApiHandler {
 			...convertToOpenAiMessages(messages),
 		]
 
+		this._quotaExhaustedError = undefined
 		let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>
 		try {
 			stream = await client.chat.completions.create({
@@ -134,22 +150,18 @@ export class AdsumFreeHandler implements ApiHandler {
 				...getOpenAIToolParams(tools),
 			})
 		} catch (err: any) {
-			// Check both err and err.cause (SDK wraps fetch throws in APIConnectionError)
+			// 429 thrown from fetch — unwrap if SDK wrapped it
 			const msgSources = [err?.message, err?.cause?.message]
-			if (msgSources.some((m) => typeof m === "string" && m === "adsum:quota_exhausted")) {
-				throw new QuotaExhaustedError({ reason: "quota_exhausted", remaining: 0, next: ["verify_email", "add_byok"] })
-			}
 			if (msgSources.some((m) => typeof m === "string" && m.startsWith("adsum:rate_limited"))) {
 				throw new Error("adsum:rate_limited — Too many requests. Please wait a moment before sending another message.")
 			}
-			if (err?.status === 402) {
-				telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
-				throw new QuotaExhaustedError({ reason: "quota_exhausted", remaining: 0, next: ["verify_email", "add_byok"] })
-			}
-			if (err?.status === 429) {
-				throw new Error("adsum:rate_limited — Too many requests. Please wait a moment before sending another message.")
-			}
 			throw err
+		}
+
+		// 402: the fetch interceptor set this flag and returned a synthetic empty stream
+		if (this._quotaExhaustedError) {
+			telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
+			throw this._quotaExhaustedError
 		}
 
 		const toolCallProcessor = new ToolCallProcessor()
