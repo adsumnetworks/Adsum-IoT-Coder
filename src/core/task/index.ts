@@ -86,6 +86,7 @@ import {
 	FullCommandExecutorConfig,
 	StandaloneTerminalManager,
 } from "@/integrations/terminal"
+import { consumeQuotaExhausted } from "@/services/adsum/FreeTierState"
 import { ClineError, ClineErrorType, ErrorService } from "@/services/error"
 import { telemetryService } from "@/services/telemetry"
 import {
@@ -2958,6 +2959,12 @@ export class Task {
 
 				const recDidEndLoop = await this.recursivelyMakeClineRequests(this.taskState.userMessageContent)
 				didEndLoop = recDidEndLoop
+			} else if (consumeQuotaExhausted()) {
+				// Free-tier quota exhausted: the backend returned 402, which surfaces as an
+				// empty stream here. The QuotaExhaustedCard is already rendered from the
+				// api_req error; just end the task cleanly with no retry/error noise.
+				await this.abortTask()
+				return false
 			} else {
 				// if there's no assistant_responses, that means we got no text or tool_use content blocks from API which we should assume is an error
 				const { model, providerId } = this.getCurrentProviderInfo()
