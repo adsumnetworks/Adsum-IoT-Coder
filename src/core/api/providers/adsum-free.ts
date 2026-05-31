@@ -48,6 +48,7 @@ export class QuotaExhaustedError extends Error {
 
 interface AdsumFreeHandlerOptions extends CommonApiHandlerOptions {
 	ulid?: string
+	initialRemainingQuota?: number
 }
 
 export class AdsumFreeHandler implements ApiHandler {
@@ -60,6 +61,8 @@ export class AdsumFreeHandler implements ApiHandler {
 
 	constructor(options: AdsumFreeHandlerOptions) {
 		this.options = options
+		// Seed from registration response so the chip is populated before the first call
+		this.remainingQuota = options.initialRemainingQuota
 	}
 
 	private ensureClient(): OpenAI {
@@ -67,43 +70,21 @@ export class AdsumFreeHandler implements ApiHandler {
 			this.client = new OpenAI({
 				baseURL: `${this._baseUrl}/v1`,
 				apiKey: getInstallId(), // install_id is the credential for the free tier
+				maxRetries: 0, // our @withRetry decorator owns retry logic for this handler
 				defaultHeaders: {
 					"X-Install-ID": getInstallId(),
 					"X-Task-ID": this.options.ulid || "",
 				},
-				// Pass the raw fetch so we can read response headers for quota
+				// Only read the quota header here — never throw from fetch.
+				// Throwing from fetch makes the SDK treat any HTTP error as a
+				// network failure and apply connection-error semantics (retry + wrap).
+				// Status codes (402, 429) are handled in createMessage via APIError.
 				fetch: async (...args: Parameters<typeof fetch>) => {
 					const resp = await fetch(...args)
-
-					// Intercept 402 (quota exhausted) before the OpenAI SDK tries to parse the body
-					if (resp.status === 402) {
-						let payload: { reason: string; remaining: number; next: string[] } = {
-							reason: "quota_exhausted",
-							remaining: 0,
-							next: ["verify_email", "add_byok"],
-						}
-						try {
-							payload = await resp.clone().json()
-						} catch {
-							// use default payload
-						}
-						telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
-						throw new QuotaExhaustedError(payload)
-					}
-
-					// Intercept 429 (rate limit) — surface a readable message instead of raw JSON
-					if (resp.status === 429) {
-						throw new Error(
-							"adsum:rate_limited — Too many requests. Please wait a moment before sending another message.",
-						)
-					}
-
-					// Update remaining quota from every response header
 					const remaining = resp.headers.get("x-free-quota-remaining")
 					if (remaining !== null) {
 						this.remainingQuota = Number(remaining)
 					}
-
 					return resp
 				},
 			})
@@ -121,13 +102,40 @@ export class AdsumFreeHandler implements ApiHandler {
 			...convertToOpenAiMessages(messages),
 		]
 
-		const stream = await client.chat.completions.create({
-			model: ADSUM_FREE_MODEL_ID,
-			messages: openAiMessages,
-			stream: true,
-			stream_options: { include_usage: true },
-			...getOpenAIToolParams(tools),
-		})
+		let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>
+		try {
+			stream = await client.chat.completions.create({
+				model: ADSUM_FREE_MODEL_ID,
+				messages: openAiMessages,
+				stream: true,
+				stream_options: { include_usage: true },
+				...getOpenAIToolParams(tools),
+			})
+		} catch (err: any) {
+			// The SDK exposes HTTP errors as APIError with a .status field.
+			// Handle them here so they never surface as raw "Connection error".
+			if (err?.status === 402) {
+				let payload: { reason: string; remaining: number; next: string[] } = {
+					reason: "quota_exhausted",
+					remaining: 0,
+					next: ["verify_email", "add_byok"],
+				}
+				try {
+					// APIError body is available on err.error
+					if (err.error) {
+						payload = { ...payload, ...err.error }
+					}
+				} catch {
+					// use default payload
+				}
+				telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
+				throw new QuotaExhaustedError(payload)
+			}
+			if (err?.status === 429) {
+				throw new Error("adsum:rate_limited — Too many requests. Please wait a moment before sending another message.")
+			}
+			throw err
+		}
 
 		const toolCallProcessor = new ToolCallProcessor()
 
