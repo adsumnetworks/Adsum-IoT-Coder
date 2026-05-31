@@ -28,6 +28,7 @@ import type * as vscode from "vscode"
 import { ClineEnv } from "@/config"
 import { HostProvider } from "@/hosts/host-provider"
 import { ExtensionRegistryInfo } from "@/registry"
+import { getCachedFreeTokensRemaining } from "@/services/adsum/FreeTierState"
 import { AuthService } from "@/services/auth/AuthService"
 import { OcaAuthService } from "@/services/auth/oca/OcaAuthService"
 import { LogoutReason } from "@/services/auth/types"
@@ -969,7 +970,10 @@ export class Controller {
 			optOutOfRemoteConfig: this.stateManager.getGlobalSettingsKey("optOutOfRemoteConfig"),
 			banners,
 			openAiCodexIsAuthenticated,
-			freeTierRemainingTokens: this.task?.api instanceof AdsumFreeHandler ? this.task.api.remainingQuota : undefined,
+			freeTierRemainingTokens:
+				this.task?.api instanceof AdsumFreeHandler
+					? (this.task.api.remainingQuota ?? getCachedFreeTokensRemaining())
+					: getCachedFreeTokensRemaining(),
 		}
 	}
 
