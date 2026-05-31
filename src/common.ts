@@ -16,7 +16,7 @@ import { FileContextTracker } from "./core/context/context-tracking/FileContextT
 import { StateManager } from "./core/storage/StateManager"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { ExtensionRegistryInfo } from "./registry"
-import { registerInstallIfNeeded } from "./services/adsum/FreeTierService"
+import { registerInstallIfNeeded, shouldDefaultToFreeTier } from "./services/adsum/FreeTierService"
 import { initializeInstallId } from "./services/adsum/InstallIdentity"
 import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
@@ -26,6 +26,7 @@ import { getDistinctId, initializeDistinctId } from "./services/logging/distinct
 import { telemetryService } from "./services/telemetry"
 import { PostHogClientProvider } from "./services/telemetry/providers/posthog/PostHogClientProvider"
 import { ShowMessageType } from "./shared/proto/host/window"
+import { FeatureFlag } from "./shared/services/feature-flags/feature-flags"
 import { syncWorker } from "./shared/services/worker/sync"
 import { getBlobStoreSettingsFromEnv } from "./shared/services/worker/worker"
 import { getLatestAnnouncementId } from "./utils/announcements"
@@ -67,6 +68,24 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	registerInstallIfNeeded(context.globalState).catch(() => {
 		// Fire-and-forget — network errors must never block extension startup
 	})
+
+	// Default fresh installs to the free tier when Stage 0 is enabled.
+	// Must run AFTER featureFlagsService.poll() above — the flag cache is cold
+	// during StateManager.initialize(), so the default computed there can't see it.
+	try {
+		const freeTierEnabled = featureFlagsService.getBooleanFlagEnabled(FeatureFlag.FREE_TIER_STAGE0)
+		const hasExistingProvider = Boolean(
+			context.globalState.get("planModeApiProvider") || context.globalState.get("actModeApiProvider"),
+		)
+		if (shouldDefaultToFreeTier(freeTierEnabled, hasExistingProvider)) {
+			const stateManager = StateManager.get()
+			stateManager.setGlobalState("planModeApiProvider", "adsum-free")
+			stateManager.setGlobalState("actModeApiProvider", "adsum-free")
+			console.log("[adsum] fresh install defaulted to free tier")
+		}
+	} catch (err) {
+		console.warn("[adsum] free-tier default check failed:", err)
+	}
 
 	// Migrate custom instructions to global Cline rules (one-time cleanup)
 	await migrateCustomInstructionsToGlobalRules(context)
