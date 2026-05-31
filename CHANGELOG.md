@@ -2,6 +2,18 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
+## [0.1.2] - 2026-05-31
+
+### Fixed
+
+- Toolbar and chat icons showed as blank squares, and the chat send button was missing on Linux. Icons now render correctly on macOS, Windows, and Linux.
+- On a slow first launch the extension could sit on a blank black screen with no sign of progress. It now shows a loading indicator while it starts up.
+
+### Changed
+
+- Reduced the extension download size by ~6 MB.
+- Improved Marketplace search keywords (nRF52/53/54, Zephyr, BLE, RTT, J-Link).
+
 ## [0.1.0] - 2026-05-26
 
 The first release built around the **skill-first architecture**: domain expertise lives in versioned Markdown modules (workflows, actions, rules, board specs) that are loaded into the system prompt on demand based on what the agent detects in your workspace — not baked into a fixed prompt. Same model, smaller context, fewer wrong turns. Backed by an open hardware-in-the-loop benchmark.
