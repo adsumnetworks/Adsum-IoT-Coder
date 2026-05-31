@@ -1,6 +1,8 @@
 import {
 	ApiConfiguration,
 	ApiProvider,
+	adsumFreeDefaultModelId,
+	adsumFreeModels,
 	anthropicDefaultModelId,
 	anthropicModels,
 	askSageDefaultModelId,
