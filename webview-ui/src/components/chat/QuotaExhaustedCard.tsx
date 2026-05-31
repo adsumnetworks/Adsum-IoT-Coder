@@ -34,8 +34,7 @@ const QuotaExhaustedCard = () => {
 				disabled
 				title="Coming soon — verify your email to unlock more free usage">
 				<MailIcon className="mr-2" size={14} />
-				Verify email for more free usage
-				<span className="ml-2 text-xs opacity-60">(coming soon)</span>
+				Verify email for more free tokens (coming soon)
 			</VSCodeButton>
 		</div>
 	)
