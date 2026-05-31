@@ -2009,6 +2009,11 @@ export class Task {
 
 					await setTimeoutPromise(delay)
 				} else {
+					// Quota exhaustion: card already shown via streamingFailedMessage — end task cleanly
+					if (isQuotaExhausted) {
+						return
+					}
+
 					// Show error_retry with failed flag to indicate all retries exhausted (but not for insufficient credits)
 					if (!isClineProviderInsufficientCredits && !isAuthError) {
 						await this.say(
