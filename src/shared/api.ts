@@ -47,6 +47,24 @@ export type ApiProvider =
 
 export const DEFAULT_API_PROVIDER = "openrouter" as ApiProvider
 
+// Adsum free-tier model. The real model is chosen server-side; the client only
+// ever references the logical "free-default" id.
+export const adsumFreeModels = {
+	"free-default": {
+		maxTokens: 8192,
+		contextWindow: 64_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 0,
+		outputPrice: 0,
+		cacheReadsPrice: 0,
+		cacheWritesPrice: 0,
+		description: "Free tier powered by Adsum — no API key required.",
+	},
+} as const satisfies Record<string, ModelInfo>
+export const adsumFreeDefaultModelId: AdsumFreeModelId = "free-default"
+export type AdsumFreeModelId = keyof typeof adsumFreeModels
+
 export interface ApiHandlerOptions extends Partial<ApiHandlerSettings> {
 	ulid?: string // Used to identify the task in API requests
 	onRetryAttempt?: (attempt: number, maxRetries: number, delay: number, error: any) => void // Callback function
