@@ -2727,10 +2727,11 @@ export class Task {
 			} catch (error) {
 				// abandoned happens when extension is no longer waiting for the cline instance to finish aborting (error is thrown here when any function in the for loop throws due to this.abort)
 				if (!this.taskState.abandoned) {
+					const isQuotaExhaustedStream = error instanceof QuotaExhaustedError
 					const clineError = ErrorService.get().toClineError(error, this.api.getModel().id)
 					const errorMessage = clineError.serialize()
-					// Auto-retry for streaming failures (always enabled)
-					if (this.taskState.autoRetryAttempts < 3) {
+					// Auto-retry for streaming failures — skip for quota exhaustion (card handles it)
+					if (!isQuotaExhaustedStream && this.taskState.autoRetryAttempts < 3) {
 						this.taskState.autoRetryAttempts++
 
 						// Calculate exponential backoff for streaming failures: 2s, 4s, 8s
@@ -2756,7 +2757,7 @@ export class Task {
 								await this.controller.task.handleWebviewAskResponse("yesButtonClicked", "", [])
 							}
 						})
-					} else if (this.taskState.autoRetryAttempts >= 3) {
+					} else if (!isQuotaExhaustedStream && this.taskState.autoRetryAttempts >= 3) {
 						// Show error_retry with failed flag to indicate all retries exhausted
 						await this.say(
 							"error_retry",
