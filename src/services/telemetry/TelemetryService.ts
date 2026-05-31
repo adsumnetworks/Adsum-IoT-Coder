@@ -176,6 +176,22 @@ export class TelemetryService {
 			AUTH_LOGGED_OUT: "user.auth_logged_out",
 			ONBOARDING_PROGRESS: "user.onboarding_progress",
 		},
+		FREE_TIER: {
+			// Anonymous install registered with the Adsum proxy
+			INSTALL_REGISTERED: "free_tier.install_registered",
+			// User's first debug cycle started on the free tier
+			FIRST_RUN_STARTED: "free_tier.first_run_started",
+			// Full debug cycle completed — the key activation event
+			DEBUG_CYCLE_COMPLETED: "free_tier.debug_cycle_completed",
+			// Free quota exhausted — conversion moment
+			QUOTA_EXHAUSTED: "free_tier.quota_exhausted",
+			// User submitted email for Stage 1 verification
+			EMAIL_SUBMITTED: "free_tier.email_submitted",
+			// User verified email — Stage 1 unlock
+			EMAIL_VERIFIED: "free_tier.email_verified",
+			// User added a BYOK key — Stage 2 conversion
+			BYOK_ADDED: "free_tier.byok_added",
+		},
 		DICTATION: {
 			// Tracks when voice recording is started
 			RECORDING_STARTED: "voice.recording_started",
@@ -554,6 +570,67 @@ export class TelemetryService {
 			provider.setOptIn(optIn)
 		})
 	}
+
+	// ── Adsum free-tier funnel events ────────────────────────────────────────
+
+	public captureFreeTierInstallRegistered(installId: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.INSTALL_REGISTERED, {
+			install_id: installId,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierFirstRunStarted(installId: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.FIRST_RUN_STARTED, {
+			install_id: installId,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierDebugCycleCompleted(installId: string, model: string, tokensUsed: number, taskLevel?: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.DEBUG_CYCLE_COMPLETED, {
+			install_id: installId,
+			tier: "anonymous",
+			model,
+			tokens_used: tokensUsed,
+			task_level: taskLevel,
+		})
+	}
+
+	public captureFreeTierQuotaExhausted(installId: string, tokensUsed: number) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.QUOTA_EXHAUSTED, {
+			install_id: installId,
+			tier: "anonymous",
+			tokens_used: tokensUsed,
+		})
+	}
+
+	/** Stage 1 — called when user submits email for verification */
+	public captureFreeTierEmailSubmitted(installId: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.EMAIL_SUBMITTED, {
+			install_id: installId,
+			tier: "anonymous",
+		})
+	}
+
+	/** Stage 1 — called after successful email verification */
+	public captureFreeTierEmailVerified(installId: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.EMAIL_VERIFIED, {
+			install_id: installId,
+			tier: "verified",
+		})
+	}
+
+	/** Stage 2 — called when user saves a BYOK provider key */
+	public captureFreeTierByokAdded(installId: string, provider: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.BYOK_ADDED, {
+			install_id: installId,
+			tier: "byok",
+			provider,
+		})
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────
 
 	public captureExtensionStorageError(errorMessage: string, eventName: string) {
 		// Truncate error message to prevent excessive data
