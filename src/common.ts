@@ -16,6 +16,7 @@ import { FileContextTracker } from "./core/context/context-tracking/FileContextT
 import { StateManager } from "./core/storage/StateManager"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { ExtensionRegistryInfo } from "./registry"
+import { initializeInstallId } from "./services/adsum/InstallIdentity"
 import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
 import { ErrorService } from "./services/error"
@@ -50,6 +51,9 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 
 	// Set the distinct ID for logging and telemetry
 	await initializeDistinctId(context)
+
+	// Initialize stable anonymous install ID for Adsum free-tier proxy
+	await initializeInstallId(context)
 
 	// Initialize PostHog client provider
 	PostHogClientProvider.getInstance()
