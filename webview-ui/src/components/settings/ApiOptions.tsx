@@ -131,9 +131,9 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 	const dropdownListRef = useRef<HTMLDivElement>(null)
 
 	const providerOptions = useMemo(() => {
-		const allowedProviders = ["openai", "openrouter"]
+		const allowedProviders = ["adsum-free", "openai", "openrouter"]
 		let providers = PROVIDERS.list.filter((p) => allowedProviders.includes(p.value))
-		
+
 		// Filter by platform
 		if (PLATFORM_CONFIG.type !== PlatformType.VSCODE) {
 			// Don't include VS Code LM API for non-VSCode platforms
