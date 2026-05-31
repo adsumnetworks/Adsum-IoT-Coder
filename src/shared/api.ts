@@ -52,14 +52,14 @@ export const DEFAULT_API_PROVIDER = "openrouter" as ApiProvider
 export const adsumFreeModels = {
 	"free-default": {
 		maxTokens: 8192,
-		contextWindow: 64_000,
+		contextWindow: 128_000,
 		supportsImages: false,
 		supportsPromptCache: true,
 		inputPrice: 0,
 		outputPrice: 0,
 		cacheReadsPrice: 0,
 		cacheWritesPrice: 0,
-		description: "Free tier powered by Adsum — no API key required.",
+		description: "Free tier powered by Adsum (DeepSeek V4-Flash) — no API key required.",
 	},
 } as const satisfies Record<string, ModelInfo>
 export const adsumFreeDefaultModelId: AdsumFreeModelId = "free-default"
