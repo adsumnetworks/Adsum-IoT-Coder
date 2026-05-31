@@ -115,6 +115,7 @@ export interface ExtensionState {
 	optOutOfRemoteConfig?: boolean
 	banners?: BannerCardData[]
 	openAiCodexIsAuthenticated?: boolean
+	freeTierRemainingTokens?: number
 }
 
 export interface ClineMessage {

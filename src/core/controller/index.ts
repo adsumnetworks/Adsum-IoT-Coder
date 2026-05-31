@@ -1,5 +1,6 @@
 import type { Anthropic } from "@anthropic-ai/sdk"
 import { buildApiHandler } from "@core/api"
+import { AdsumFreeHandler } from "@core/api/providers/adsum-free"
 import { tryAcquireTaskLockWithRetry } from "@core/task/TaskLockUtils"
 import { detectWorkspaceRoots } from "@core/workspace/detection"
 import { setupWorkspaceManager } from "@core/workspace/setup"
@@ -968,6 +969,7 @@ export class Controller {
 			optOutOfRemoteConfig: this.stateManager.getGlobalSettingsKey("optOutOfRemoteConfig"),
 			banners,
 			openAiCodexIsAuthenticated,
+			freeTierRemainingTokens: this.task?.api instanceof AdsumFreeHandler ? this.task.api.remainingQuota : undefined,
 		}
 	}
 
