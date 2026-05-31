@@ -2,6 +2,7 @@ import { ApiFormat } from "./proto/cline/models"
 import { ApiHandlerSettings } from "./storage/state-keys"
 
 export type ApiProvider =
+	| "adsum-free"
 	| "anthropic"
 	| "claude-code"
 	| "openrouter"
