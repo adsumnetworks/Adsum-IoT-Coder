@@ -1,8 +1,6 @@
 import { Empty } from "@shared/proto/cline/common"
 import { convertProtoToApiProvider } from "@shared/proto-conversions/models/api-configuration-conversion"
 import { buildApiHandler } from "@/core/api"
-import { getInstallId } from "@/services/adsum/InstallIdentity"
-import { telemetryService } from "@/services/telemetry"
 import { ApiHandlerOptions, ApiProvider } from "@/shared/api"
 import { UpdateApiConfigurationRequestNew } from "@/shared/proto/index.cline"
 import { Secrets } from "@/shared/storage/state-keys"
@@ -72,11 +70,6 @@ export async function updateApiConfiguration(controller: Controller, request: Up
 		// BEFORE any state writes below, since those update the snapshot used
 		// by the post-rebuild comparison.
 		const preUpdate = capturePreUpdateToolFormat(controller)
-
-		// Snapshot the current provider before any writes so we can detect a BYOK conversion
-		const prevApiConfig = controller.stateManager.getApiConfiguration()
-		const prevPlanProvider = prevApiConfig.planModeApiProvider
-		const prevActProvider = prevApiConfig.actModeApiProvider
 
 		const { options: protoOptions, secrets: protoSecrets } = updates
 
@@ -151,24 +144,8 @@ export async function updateApiConfiguration(controller: Controller, request: Up
 			controller.stateManager.setGlobalStateBatch(options)
 		}
 
-		// Fire BYOK conversion event — the terminal event of the free-tier funnel.
-		// "Was on free tier" is detected from BOTH the stored provider string AND
-		// the live running handler's model id. The latter matters because a default
-		// free-tier session may not have "adsum-free" persisted as the provider
-		// string (it's the effective default), so the string check alone misses the
-		// conversion — which is why byok_added never appeared in PostHog.
-		// Bundle-safe: getModel().id comparison, never instanceof.
-		const wasOnFreeTier =
-			prevPlanProvider === "adsum-free" ||
-			prevActProvider === "adsum-free" ||
-			controller.task?.api?.getModel().id === "free-default"
-		// Read the effective provider AFTER the write so we catch the conversion even
-		// when the provider was changed in a prior update and only the key arrives now.
-		const postApiConfig = controller.stateManager.getApiConfiguration()
-		const newProvider = postApiConfig.actModeApiProvider ?? postApiConfig.planModeApiProvider
-		if (wasOnFreeTier && newProvider && newProvider !== "adsum-free") {
-			telemetryService.captureFreeTierByokAdded(getInstallId(), newProvider)
-		}
+		// byok_added telemetry is handled in updateApiConfigurationProto (the code path
+		// the webview settings form actually calls for all standard providers).
 
 		// Update the task's API handler if there's an active task
 		if (controller.task) {

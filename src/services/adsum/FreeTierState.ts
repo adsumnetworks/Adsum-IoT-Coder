@@ -1,8 +1,16 @@
 /** In-memory cache of remaining free-tier tokens, seeded from register-install response. */
 let cachedRemaining: number | undefined
 
+const REMAINING_KEY = "adsum.freeTokensRemaining"
+
 export function setCachedFreeTokensRemaining(n: number) {
 	cachedRemaining = n
+}
+
+/** Updates the in-memory cache AND persists to globalState so the chip is accurate after restart. */
+export function persistCachedFreeTokensRemaining(n: number) {
+	cachedRemaining = n
+	_globalState?.update(REMAINING_KEY, n)
 }
 
 export function getCachedFreeTokensRemaining(): number | undefined {
