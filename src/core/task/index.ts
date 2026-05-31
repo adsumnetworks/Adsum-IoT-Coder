@@ -2960,9 +2960,31 @@ export class Task {
 				const recDidEndLoop = await this.recursivelyMakeClineRequests(this.taskState.userMessageContent)
 				didEndLoop = recDidEndLoop
 			} else if (consumeQuotaExhausted()) {
-				// Free-tier quota exhausted: the backend returned 402, which surfaces as an
-				// empty stream here. The QuotaExhaustedCard is already rendered from the
-				// api_req error; just end the task cleanly with no retry/error noise.
+				// Free-tier quota exhausted: the backend returned 402, which the OpenAI SDK
+				// can surface as an empty (but successful) stream here rather than throwing.
+				// Set the quota marker on the api_req_started message so ErrorRow renders the
+				// QuotaExhaustedCard, then end the task cleanly — no retry, no error noise.
+				const quotaReqIndex = findLastIndex(
+					this.messageStateHandler.getClineMessages(),
+					(m) => m.say === "api_req_started",
+				)
+				if (quotaReqIndex !== -1) {
+					const clineMessages = this.messageStateHandler.getClineMessages()
+					const currentApiReqInfo: ClineApiReqInfo = JSON.parse(clineMessages[quotaReqIndex].text || "{}")
+					await this.messageStateHandler.updateClineMessage(quotaReqIndex, {
+						text: JSON.stringify({
+							...currentApiReqInfo,
+							cancelReason: "streaming_failed",
+							streamingFailedMessage: JSON.stringify({
+								message: "adsum:quota_exhausted",
+								modelId: "free-default",
+								providerId: "adsum-free",
+							}),
+						} satisfies ClineApiReqInfo),
+					})
+				}
+				await this.messageStateHandler.saveClineMessagesAndUpdateHistory()
+				await this.postStateToWebview()
 				await this.abortTask()
 				return false
 			} else {
