@@ -2960,9 +2960,13 @@ export class Task {
 
 				const recDidEndLoop = await this.recursivelyMakeClineRequests(this.taskState.userMessageContent)
 				didEndLoop = recDidEndLoop
-			} else if (consumeQuotaExhausted()) {
+			} else if (consumeQuotaExhausted() || this.api.getModel().id === "free-default") {
 				// Free-tier quota exhausted: the backend returned 402, which the OpenAI SDK
-				// can surface as an empty (but successful) stream here rather than throwing.
+				// surfaces as an empty (but successful) stream here rather than throwing.
+				// We detect this two ways, both bundle-safe (no instanceof across the esbuild
+				// boundary): the module-level flag, OR the adsum-free model id "free-default".
+				// For the free tier an empty response always means quota — show the card.
+				consumeQuotaExhausted() // clear flag if it was set, so it can't stale-trigger later
 				// Set the quota marker on the api_req_started message so ErrorRow renders the
 				// QuotaExhaustedCard, then end the task cleanly — no retry, no error noise.
 				const quotaReqIndex = findLastIndex(
