@@ -68,10 +68,12 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	await ErrorService.initialize()
 	await featureFlagsService.poll(null)
 
-	// Register this install with the Adsum free-tier proxy (idempotent, non-fatal)
-	registerInstallIfNeeded(context.globalState).catch(() => {
-		// Fire-and-forget — network errors must never block extension startup
-	})
+	// Register this install with the Adsum free-tier proxy (idempotent upsert).
+	// Awaited with a 3s timeout so quota is in FreeTierState before postStateToWebview fires.
+	await Promise.race([
+		registerInstallIfNeeded(context.globalState),
+		new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+	]).catch(() => {})
 
 	// Default fresh installs to the free tier when Stage 0 is enabled.
 	// Must run AFTER featureFlagsService.poll() above — the flag cache is cold
