@@ -113,12 +113,31 @@ export abstract class WebviewProvider {
 					img-src ${this.getCspSource()} https: data:; 
 					script-src 'nonce-${nonce}' 'unsafe-eval';">
 				<title>Adsum IoT Coder</title>
+				<style>
+					@keyframes adsum-splash-spin { to { transform: rotate(360deg); } }
+					#adsum-splash {
+						position: fixed; inset: 0; display: flex;
+						align-items: center; justify-content: center;
+						background: var(--vscode-sideBar-background, var(--vscode-editor-background, #1e1e1e));
+					}
+					#adsum-splash .adsum-splash-ring {
+						width: 28px; height: 28px; border-radius: 50%;
+						border: 3px solid var(--vscode-progressBar-background, #0e70c0);
+						border-top-color: transparent;
+						animation: adsum-splash-spin 0.8s linear infinite;
+					}
+				</style>
 			</head>
 			<body>
 				<noscript>You need to enable JavaScript to run this app.</noscript>
-				<div id="root"></div>
+				<!-- Splash lives inside #root so React clears it automatically on mount.
+				     Gives immediate branded feedback while the bundle parses on cold
+				     cache, instead of a black screen. -->
+				<div id="root">
+					<div id="adsum-splash"><div class="adsum-splash-ring"></div></div>
+				</div>
 				<script type="module" nonce="${nonce}" src="${scriptUrl}"></script>
-				<script src="http://localhost:8097"></script> 
+				${process.env.IS_DEV ? '<script src="http://localhost:8097"></script>' : ""}
 			</body>
 		</html>
 		`
@@ -194,7 +213,11 @@ export abstract class WebviewProvider {
 
 		const csp = [
 			"default-src 'none'",
-			`font-src ${this.getCspSource()}`,
+			// `data:` allows the inlined base64 fonts from the production build/assets/index.css
+			// (which the HMR path still links). The http origins cover fonts served directly by
+			// the Vite dev server during CSS HMR. Without `data:` the codicon/azeret fonts are
+			// CSP-blocked in dev, so icons render blank even though production is fine.
+			`font-src ${this.getCspSource()} data: http://${localServerUrl} http://0.0.0.0:${localPort}`,
 			`style-src ${this.getCspSource()} 'unsafe-inline' https://* http://${localServerUrl} http://0.0.0.0:${localPort}`,
 			`img-src ${this.getCspSource()} https: data:`,
 			`script-src 'unsafe-eval' https://* http://${localServerUrl} http://0.0.0.0:${localPort} 'nonce-${nonce}'`,
