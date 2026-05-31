@@ -1,4 +1,5 @@
 import { ClineEnv } from "@/config"
+import { telemetryService } from "@/services/telemetry"
 import { getInstallId } from "./InstallIdentity"
 
 const REGISTERED_KEY = "adsum.freeTierRegistered"
@@ -29,6 +30,7 @@ export async function registerInstallIfNeeded(globalState: {
 
 		if (res.ok) {
 			await globalState.update(REGISTERED_KEY, true)
+			telemetryService.captureFreeTierInstallRegistered(installId)
 			console.log("[adsum] install registered with free-tier proxy")
 		} else {
 			// Non-fatal — will retry on next activation

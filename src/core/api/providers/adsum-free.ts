@@ -4,6 +4,7 @@ import type { ChatCompletionTool } from "openai/resources/chat/completions"
 import { ClineEnv } from "@/config"
 import { getInstallId } from "@/services/adsum/InstallIdentity"
 import { Logger } from "@/services/logging/Logger"
+import { telemetryService } from "@/services/telemetry"
 import { ClineStorageMessage } from "@/shared/messages/content"
 import { ApiHandler, CommonApiHandlerOptions } from "../"
 import { withRetry } from "../retry"
@@ -16,14 +17,14 @@ export const ADSUM_FREE_MODEL_ID = "free-default"
 export const ADSUM_FREE_MODEL_INFO: ModelInfo = {
 	name: "Adsum Free Tier",
 	maxTokens: 8192,
-	contextWindow: 64_000,
+	contextWindow: 128_000,
 	supportsImages: false,
 	supportsPromptCache: true,
 	cacheReadsPrice: 0,
 	cacheWritesPrice: 0,
 	inputPrice: 0,
 	outputPrice: 0,
-	description: "Free tier powered by Adsum — no API key required.",
+	description: "Free tier — inference is provided by Adsum Networks. No API key required.",
 }
 
 /**
@@ -86,6 +87,7 @@ export class AdsumFreeHandler implements ApiHandler {
 						} catch {
 							// use default payload
 						}
+						telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
 						throw new QuotaExhaustedError(payload)
 					}
 
@@ -104,6 +106,7 @@ export class AdsumFreeHandler implements ApiHandler {
 
 	@withRetry()
 	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: ChatCompletionTool[]): ApiStream {
+		telemetryService.captureFreeTierFirstRunStarted(getInstallId())
 		const client = this.ensureClient()
 
 		const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
