@@ -1,6 +1,8 @@
 import { Empty } from "@shared/proto/cline/common"
 import { convertProtoToApiProvider } from "@shared/proto-conversions/models/api-configuration-conversion"
 import { buildApiHandler } from "@/core/api"
+import { getInstallId } from "@/services/adsum/InstallIdentity"
+import { telemetryService } from "@/services/telemetry"
 import { ApiHandlerOptions, ApiProvider } from "@/shared/api"
 import { UpdateApiConfigurationRequestNew } from "@/shared/proto/index.cline"
 import { Secrets } from "@/shared/storage/state-keys"
@@ -70,6 +72,11 @@ export async function updateApiConfiguration(controller: Controller, request: Up
 		// BEFORE any state writes below, since those update the snapshot used
 		// by the post-rebuild comparison.
 		const preUpdate = capturePreUpdateToolFormat(controller)
+
+		// Snapshot the current provider before any writes so we can detect a BYOK conversion
+		const prevApiConfig = controller.stateManager.getApiConfiguration()
+		const prevPlanProvider = prevApiConfig.planModeApiProvider
+		const prevActProvider = prevApiConfig.actModeApiProvider
 
 		const { options: protoOptions, secrets: protoSecrets } = updates
 
@@ -142,6 +149,13 @@ export async function updateApiConfiguration(controller: Controller, request: Up
 		}
 		if (Object.keys(options).length > 0) {
 			controller.stateManager.setGlobalStateBatch(options)
+		}
+
+		// Fire BYOK conversion event if the user switched away from adsum-free
+		const wasOnFreeTier = prevPlanProvider === "adsum-free" || prevActProvider === "adsum-free"
+		const newProvider = options.planModeApiProvider ?? options.actModeApiProvider
+		if (wasOnFreeTier && newProvider && newProvider !== "adsum-free") {
+			telemetryService.captureFreeTierByokAdded(getInstallId(), newProvider)
 		}
 
 		// Update the task's API handler if there's an active task
