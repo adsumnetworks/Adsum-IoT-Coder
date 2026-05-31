@@ -2,6 +2,7 @@ import type { ModelInfo } from "@shared/api"
 import OpenAI from "openai"
 import type { ChatCompletionTool } from "openai/resources/chat/completions"
 import { ClineEnv } from "@/config"
+import { markQuotaExhausted } from "@/services/adsum/FreeTierState"
 import { getInstallId } from "@/services/adsum/InstallIdentity"
 import { Logger } from "@/services/logging/Logger"
 import { telemetryService } from "@/services/telemetry"
@@ -93,6 +94,7 @@ export class AdsumFreeHandler implements ApiHandler {
 						} catch {
 							// use default payload
 						}
+						markQuotaExhausted()
 						telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
 						throw new QuotaExhaustedError(payload)
 					}
