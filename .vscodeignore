@@ -60,6 +60,13 @@ old_docs/**
 coverage/**
 **/coverage/**
 
+# Ignore GitHub Pages / Jekyll website files (these build the project site,
+# they have no function inside the extension package)
+CNAME
+_config.yml
+_layouts/**
+_includes/**
+
 # Fix issue where codicons don't get packaged (https://github.com/microsoft/vscode-extension-samples/issues/692)
 !node_modules/@vscode/codicons/dist/codicon.css
 !node_modules/@vscode/codicons/dist/codicon.ttf
