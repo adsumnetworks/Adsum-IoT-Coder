@@ -2,7 +2,7 @@ import type { ModelInfo } from "@shared/api"
 import OpenAI from "openai"
 import type { ChatCompletionTool } from "openai/resources/chat/completions"
 import { ClineEnv } from "@/config"
-import { markQuotaExhausted } from "@/services/adsum/FreeTierState"
+import { markQuotaExhausted, shouldFireFirstRunStarted } from "@/services/adsum/FreeTierState"
 import { getInstallId } from "@/services/adsum/InstallIdentity"
 import { Logger } from "@/services/logging/Logger"
 import { telemetryService } from "@/services/telemetry"
@@ -119,7 +119,11 @@ export class AdsumFreeHandler implements ApiHandler {
 
 	@withRetry()
 	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: ChatCompletionTool[]): ApiStream {
-		telemetryService.captureFreeTierFirstRunStarted(getInstallId())
+		// Funnel-entry event — fire exactly once per install, not on every agent
+		// step or session restart (which previously inflated it ~26x per install).
+		if (await shouldFireFirstRunStarted()) {
+			telemetryService.captureFreeTierFirstRunStarted(getInstallId())
+		}
 		const client = this.ensureClient()
 
 		const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
