@@ -31,7 +31,7 @@ export async function registerInstallIfNeeded(globalState: {
 		if (res.ok) {
 			const body: { quota?: number; tokens_used?: number } = await res.json().catch(() => ({}))
 			if (body.quota !== undefined && body.tokens_used !== undefined) {
-				const remaining = body.quota - body.tokens_used
+				const remaining = Math.max(0, body.quota - body.tokens_used)
 				setCachedFreeTokensRemaining(remaining)
 				await globalState.update(REMAINING_KEY, remaining)
 			}
