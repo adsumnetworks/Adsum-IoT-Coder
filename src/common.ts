@@ -16,6 +16,7 @@ import { FileContextTracker } from "./core/context/context-tracking/FileContextT
 import { StateManager } from "./core/storage/StateManager"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { ExtensionRegistryInfo } from "./registry"
+import { registerInstallIfNeeded } from "./services/adsum/FreeTierService"
 import { initializeInstallId } from "./services/adsum/InstallIdentity"
 import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
@@ -61,6 +62,11 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	// Setup the external services
 	await ErrorService.initialize()
 	await featureFlagsService.poll(null)
+
+	// Register this install with the Adsum free-tier proxy (idempotent, non-fatal)
+	registerInstallIfNeeded(context.globalState).catch(() => {
+		// Fire-and-forget — network errors must never block extension startup
+	})
 
 	// Migrate custom instructions to global Cline rules (one-time cleanup)
 	await migrateCustomInstructionsToGlobalRules(context)
