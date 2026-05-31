@@ -35,8 +35,8 @@ export const AdsumFreeProvider = ({ currentMode: _currentMode, isPopup: _isPopup
 				)}
 			</div>
 			<p className="m-0 text-sm" style={{ color: "var(--vscode-descriptionForeground)" }}>
-				No API key required — inference is provided by Adsum. When your free usage runs out, you can add your own API key
-				(any provider) for unlimited access.
+				No API key required — inference is provided by Adsum Networks. When your free usage runs out, you can add your own
+				API key (any provider) for unlimited access.
 			</p>
 		</div>
 	)
