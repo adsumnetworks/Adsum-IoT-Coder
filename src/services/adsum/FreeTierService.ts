@@ -16,14 +16,12 @@ export async function registerInstallIfNeeded(globalState: {
 	update: (key: string, value: unknown) => Thenable<void>
 }): Promise<void> {
 	const alreadyRegistered = globalState.get(REGISTERED_KEY)
-	if (alreadyRegistered) {
-		return
-	}
-
 	const installId = getInstallId()
 	const baseUrl = ClineEnv.config().adsumApiBaseUrl
 
 	try {
+		// Always call register-install (idempotent upsert) to get fresh quota on every launch.
+		// On first call it creates the account; on subsequent calls it just returns current quota.
 		const res = await fetch(`${baseUrl}/v1/register-install`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
@@ -37,15 +35,15 @@ export async function registerInstallIfNeeded(globalState: {
 				setCachedFreeTokensRemaining(remaining)
 				await globalState.update(REMAINING_KEY, remaining)
 			}
-			await globalState.update(REGISTERED_KEY, true)
-			telemetryService.captureFreeTierInstallRegistered(installId)
-			console.log("[adsum] install registered with free-tier proxy")
+			if (!alreadyRegistered) {
+				await globalState.update(REGISTERED_KEY, true)
+				telemetryService.captureFreeTierInstallRegistered(installId)
+				console.log("[adsum] install registered with free-tier proxy")
+			}
 		} else {
-			// Non-fatal — will retry on next activation
 			console.warn(`[adsum] register-install failed: ${res.status}`)
 		}
 	} catch (err) {
-		// Network error — non-fatal, will retry next activation
 		console.warn("[adsum] register-install network error:", err)
 	}
 }
