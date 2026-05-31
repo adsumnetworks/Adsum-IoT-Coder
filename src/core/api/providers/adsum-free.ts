@@ -75,7 +75,7 @@ export class AdsumFreeHandler implements ApiHandler {
 				fetch: async (...args: Parameters<typeof fetch>) => {
 					const resp = await fetch(...args)
 
-					// Intercept 402 before the OpenAI SDK tries to parse the body
+					// Intercept 402 (quota exhausted) before the OpenAI SDK tries to parse the body
 					if (resp.status === 402) {
 						let payload: { reason: string; remaining: number; next: string[] } = {
 							reason: "quota_exhausted",
@@ -89,6 +89,13 @@ export class AdsumFreeHandler implements ApiHandler {
 						}
 						telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
 						throw new QuotaExhaustedError(payload)
+					}
+
+					// Intercept 429 (rate limit) — surface a readable message instead of raw JSON
+					if (resp.status === 429) {
+						throw new Error(
+							"adsum:rate_limited — Too many requests. Please wait a moment before sending another message.",
+						)
 					}
 
 					// Update remaining quota from every response header
