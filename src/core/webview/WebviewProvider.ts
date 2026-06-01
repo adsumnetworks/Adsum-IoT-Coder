@@ -160,9 +160,10 @@ export abstract class WebviewProvider {
 		const localPort = await this.getDevServerPort()
 		const localServerUrl = `localhost:${localPort}`
 
-		// Check if local dev server is running.
+		// Check if local dev server is running. 1s timeout so a port that accepts but
+		// never responds can't hang F5 activation forever — fall back to bundled assets.
 		try {
-			await axios.get(`http://${localServerUrl}`)
+			await axios.get(`http://${localServerUrl}`, { timeout: 1000 })
 		} catch (_error) {
 			// Only show the error message when in development mode.
 			if (process.env.IS_DEV) {
@@ -194,7 +195,11 @@ export abstract class WebviewProvider {
 
 		const csp = [
 			"default-src 'none'",
-			`font-src ${this.getCspSource()}`,
+			// `data:` allows the inlined base64 fonts from the production build/assets/index.css
+			// (which the HMR path still links). The http origins cover fonts served directly by
+			// the Vite dev server during CSS HMR. Without `data:` the codicon/azeret fonts are
+			// CSP-blocked in dev, so icons render blank even though production is fine.
+			`font-src ${this.getCspSource()} data: http://${localServerUrl} http://0.0.0.0:${localPort}`,
 			`style-src ${this.getCspSource()} 'unsafe-inline' https://* http://${localServerUrl} http://0.0.0.0:${localPort}`,
 			`img-src ${this.getCspSource()} https: data:`,
 			`script-src 'unsafe-eval' https://* http://${localServerUrl} http://0.0.0.0:${localPort} 'nonce-${nonce}'`,

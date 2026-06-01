@@ -71,7 +71,15 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 
 	// Setup the external services
 	await ErrorService.initialize()
-	await featureFlagsService.poll(null)
+	// Bound the feature-flags network poll (up to ~10 sequential PostHog round-trips)
+	// so a slow or unreachable endpoint can't block activation — and therefore the
+	// sidebar view registration — indefinitely. This was the cause of the
+	// "panel loads forever until you reload the window" bug. The poll keeps running
+	// in the background and populates the flag cache whenever it completes. Mirrors
+	// the registerInstallIfNeeded race guard a few lines below.
+	await Promise.race([featureFlagsService.poll(null), new Promise<void>((resolve) => setTimeout(resolve, 3000))]).catch(
+		() => {},
+	)
 
 	// Register this install with the Adsum free-tier proxy (idempotent upsert).
 	// Awaited with a 3s timeout so quota is in FreeTierState before postStateToWebview fires.
