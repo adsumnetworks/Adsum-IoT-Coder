@@ -16,6 +16,9 @@ import { FileContextTracker } from "./core/context/context-tracking/FileContextT
 import { StateManager } from "./core/storage/StateManager"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { ExtensionRegistryInfo } from "./registry"
+import { loadCachedQuota, registerInstallIfNeeded, shouldDefaultToFreeTier } from "./services/adsum/FreeTierService"
+import { initFreeTierPersistence } from "./services/adsum/FreeTierState"
+import { initializeInstallId } from "./services/adsum/InstallIdentity"
 import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
 import { ErrorService } from "./services/error"
@@ -24,6 +27,7 @@ import { getDistinctId, initializeDistinctId } from "./services/logging/distinct
 import { telemetryService } from "./services/telemetry"
 import { PostHogClientProvider } from "./services/telemetry/providers/posthog/PostHogClientProvider"
 import { ShowMessageType } from "./shared/proto/host/window"
+import { FeatureFlag } from "./shared/services/feature-flags/feature-flags"
 import { syncWorker } from "./shared/services/worker/sync"
 import { getBlobStoreSettingsFromEnv } from "./shared/services/worker/worker"
 import { getLatestAnnouncementId } from "./utils/announcements"
@@ -51,12 +55,56 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	// Set the distinct ID for logging and telemetry
 	await initializeDistinctId(context)
 
+	// Initialize stable anonymous install ID for Adsum free-tier proxy
+	await initializeInstallId(context)
+
+	// Seed the in-memory quota cache from last-persisted value so the chip
+	// shows before the first API response on every launch (not just first registration)
+	loadCachedQuota(context.globalState)
+
+	// Capture globalState so the free-tier handler can persist its once-ever
+	// first-run funnel flag across restarts
+	initFreeTierPersistence(context.globalState)
+
 	// Initialize PostHog client provider
 	PostHogClientProvider.getInstance()
 
 	// Setup the external services
 	await ErrorService.initialize()
-	await featureFlagsService.poll(null)
+	// Bound the feature-flags network poll (up to ~10 sequential PostHog round-trips)
+	// so a slow or unreachable endpoint can't block activation — and therefore the
+	// sidebar view registration — indefinitely. This was the cause of the
+	// "panel loads forever until you reload the window" bug. The poll keeps running
+	// in the background and populates the flag cache whenever it completes. Mirrors
+	// the registerInstallIfNeeded race guard a few lines below.
+	await Promise.race([featureFlagsService.poll(null), new Promise<void>((resolve) => setTimeout(resolve, 3000))]).catch(
+		() => {},
+	)
+
+	// Register this install with the Adsum free-tier proxy (idempotent upsert).
+	// Awaited with a 3s timeout so quota is in FreeTierState before postStateToWebview fires.
+	await Promise.race([
+		registerInstallIfNeeded(context.globalState),
+		new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+	]).catch(() => {})
+
+	// Default fresh installs to the free tier when Stage 0 is enabled.
+	// Must run AFTER featureFlagsService.poll() above — the flag cache is cold
+	// during StateManager.initialize(), so the default computed there can't see it.
+	try {
+		const freeTierEnabled = featureFlagsService.getBooleanFlagEnabled(FeatureFlag.FREE_TIER_STAGE0)
+		const hasExistingProvider = Boolean(
+			context.globalState.get("planModeApiProvider") || context.globalState.get("actModeApiProvider"),
+		)
+		if (shouldDefaultToFreeTier(freeTierEnabled, hasExistingProvider)) {
+			const stateManager = StateManager.get()
+			stateManager.setGlobalState("planModeApiProvider", "adsum-free")
+			stateManager.setGlobalState("actModeApiProvider", "adsum-free")
+			console.log("[adsum] fresh install defaulted to free tier")
+		}
+	} catch (err) {
+		console.warn("[adsum] free-tier default check failed:", err)
+	}
 
 	// Migrate custom instructions to global Cline rules (one-time cleanup)
 	await migrateCustomInstructionsToGlobalRules(context)

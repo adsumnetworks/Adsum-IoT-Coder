@@ -179,9 +179,10 @@ export abstract class WebviewProvider {
 		const localPort = await this.getDevServerPort()
 		const localServerUrl = `localhost:${localPort}`
 
-		// Check if local dev server is running.
+		// Check if local dev server is running. 1s timeout so a port that accepts but
+		// never responds can't hang F5 activation forever — fall back to bundled assets.
 		try {
-			await axios.get(`http://${localServerUrl}`)
+			await axios.get(`http://${localServerUrl}`, { timeout: 1000 })
 		} catch (_error) {
 			// Only show the error message when in development mode.
 			if (process.env.IS_DEV) {

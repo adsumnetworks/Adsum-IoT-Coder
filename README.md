@@ -32,6 +32,23 @@ Open source under Apache 2.0.
 
 ---
 
+## What's New <sup>`v0.1.3`</sup>
+
+<table>
+<tr>
+<td width="28" valign="top"><img src="assets/icons/whatsnew-free-tier.svg" width="20" alt="" /></td>
+<td><strong><a href="#free-tier--start-without-a-key">Free tier — start without an API key.</a></strong> Install and debug your firmware in the first minute; bring your own key whenever you're ready.</td>
+</tr>
+<tr>
+<td width="28" valign="top"><img src="assets/icons/whatsnew-byok.svg" width="20" alt="" /></td>
+<td><strong>Instant key switchover.</strong> Add your own provider mid-session — the running task continues, no restart.</td>
+</tr>
+</table>
+
+*Full history in the [changelog](./CHANGELOG.md).*
+
+---
+
 ## Contents
 
 1. [Why Adsum IoT Coder exists](#why-adsum-iot-coder-exists)
@@ -201,6 +218,20 @@ From analysis results, the agent can enter a **Debug Loop** — iterative Build 
 | **Python** | 3.8+ (bundled with nRF Connect extension) |
 | **AI Provider** | Any OpenAI-compatible endpoint (cloud or local — see [Tested Models](#tested-models)) |
 
+### Free tier — start without a key
+
+You told us the first step was too much work: wire up a provider, paste an API key, *then* find out if the tool helps. We cut that.
+
+Install the extension and start debugging — no key, no account, no card. Inference runs on a managed model hosted by Adsum Networks, so you can evaluate the agent on your own firmware in the first minute. When you want unlimited usage or a specific model, drop in your own key (any OpenAI-compatible provider) and the switch is instant — the session you're in keeps running, no restart.
+
+| | Free tier | Bring your own key |
+|:---|:---|:---|
+| API key | Not required | Required |
+| Model | Managed by Adsum | Any OpenAI-compatible model |
+| Good for | First run, evaluation, quick fixes | Daily driver, long debug loops, model choice |
+
+The free tier is token-metered. When you hit the limit, the agent surfaces a one-click "add your own key" prompt and the same task picks up where it left off on your provider.
+
 ### Tested Models
 
 Try **Claude Haiku 4.5** first — it's the model we have IoT-specific benchmark evidence for. **DeepSeek-V4-Pro** is the cost play for long sessions where margin matters more than empirical confidence.
@@ -251,6 +282,7 @@ We publish what's true today, not what we wish were true.
 **Product**
 
 - **Scope.** Today the tool ships for nRF52, nRF53, and nRF54 with BLE. Other Nordic families (nRF7x, nRF9x) and other vendors (ESP) are roadmap, not shipping. Other protocols (Wi-Fi, Thread, Matter, LTE-M) are roadmap, not shipping.
+- **Free-tier token counter can read stale.** Open the provider panel before your first prompt in a fresh session and the "tokens left" chip may show the prior value. It's display-only — the real balance lives in the backend and is enforced there. The chip reconciles on your next prompt.
 - **Trademarks.** nRF, nRF Connect SDK, and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA. This project is independently developed and not affiliated with or endorsed by Nordic Semiconductor ASA.
 
 **Benchmark**
