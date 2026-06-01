@@ -32,7 +32,7 @@ Open source under Apache 2.0.
 
 ---
 
-## What's New
+## What's New <sup>`v0.1.3`</sup>
 
 <table>
 <tr>
