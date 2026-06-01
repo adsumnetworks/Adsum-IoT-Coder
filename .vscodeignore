@@ -67,6 +67,31 @@ _config.yml
 _layouts/**
 _includes/**
 
+# Internal team workflow — Claude Code + Cline agent configs, release scripts,
+# and a developer .env template. None of these run at extension activation;
+# shipping them only bloats the VSIX and exposes our internal dev workflow
+# to every Marketplace user.
+.claude/**
+.cline/**
+.env.example
+package.disabled.json
+
+# Build / lint / test tooling — only useful inside the repo
+esbuild.mjs
+biome.jsonc
+update_package.mjs
+test-python-detect.js
+test-setup.js
+.nycrc.unit.json
+mocha-nordic.json
+knip.json
+.worktreeinclude
+
+# Go CLI sub-project lives in cli/ (already excluded), but its workspace
+# manifests live at the repo root and need separate entries
+go.work
+go.work.sum
+
 # Fix issue where codicons don't get packaged (https://github.com/microsoft/vscode-extension-samples/issues/692)
 !node_modules/@vscode/codicons/dist/codicon.css
 !node_modules/@vscode/codicons/dist/codicon.ttf
