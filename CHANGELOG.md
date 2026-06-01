@@ -2,7 +2,7 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
-## [Unreleased]
+## [0.1.3] - 2026-06-01
 
 ### Free tier — zero-friction onboarding
 
