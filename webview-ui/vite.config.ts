@@ -77,6 +77,14 @@ export default defineConfig({
 	build: {
 		outDir: "build",
 		reportCompressedSize: false,
+		// Inline ALL font files as base64 data URIs instead of emitting them as
+		// separate asset files. VS Code webviews load resources through
+		// `asWebviewUri()`; an external `url(/assets/codicon.ttf)` reference
+		// resolves to the webview origin root and 404s, so codicons render as
+		// blank squares and the azeret code font falls back to a system font.
+		// Inlining sidesteps URL resolution entirely (the CSP already allows
+		// `data:` in `font-src`) and removes separate font fetches from the load path.
+		assetsInlineLimit: (filePath: string) => (/\.(ttf|woff2?|eot)$/.test(filePath) ? true : undefined),
 		// Only minify in production build
 		minify: !isDevBuild,
 		// Enable inline source maps for dev build
