@@ -32,6 +32,23 @@ Open source under Apache 2.0.
 
 ---
 
+## What's New
+
+<table>
+<tr>
+<td width="28" valign="top"><img src="assets/icons/whatsnew-free-tier.svg" width="20" alt="" /></td>
+<td><strong><a href="#free-tier--start-without-a-key">Free tier — start without an API key.</a></strong> Install and debug your firmware in the first minute; bring your own key whenever you're ready.</td>
+</tr>
+<tr>
+<td width="28" valign="top"><img src="assets/icons/whatsnew-byok.svg" width="20" alt="" /></td>
+<td><strong>Instant key switchover.</strong> Add your own provider mid-session — the running task continues, no restart.</td>
+</tr>
+</table>
+
+*Full history in the [changelog](./CHANGELOG.md).*
+
+---
+
 ## Contents
 
 1. [Why Adsum IoT Coder exists](#why-adsum-iot-coder-exists)
