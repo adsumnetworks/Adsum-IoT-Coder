@@ -1,8 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk"
+import { AdsumFreeHandler } from "@core/api/providers/adsum-free"
 import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { showSystemNotification } from "@integrations/notifications"
+import { getInstallId } from "@services/adsum/InstallIdentity"
 import { telemetryService } from "@services/telemetry"
 import { findLastIndex } from "@shared/array"
 import { COMPLETION_RESULT_CHANGES_FLAG } from "@shared/ExtensionMessage"
@@ -121,6 +123,9 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 				await config.callbacks.saveCheckpoint(true, completionMessageTs)
 				await addNewChangesFlagToLastCompletionResultMessage()
 				telemetryService.captureTaskCompleted(config.ulid)
+				if (config.api instanceof AdsumFreeHandler) {
+					telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
+				}
 			} else {
 				// we already sent a command message, meaning the complete completion message has also been sent
 				await config.callbacks.saveCheckpoint(true)
@@ -151,6 +156,9 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			await config.callbacks.saveCheckpoint(true, completionMessageTs)
 			await addNewChangesFlagToLastCompletionResultMessage()
 			telemetryService.captureTaskCompleted(config.ulid)
+			if (config.api instanceof AdsumFreeHandler) {
+				telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
+			}
 		}
 
 		// we already sent completion_result says, an empty string asks relinquishes control over button and field
