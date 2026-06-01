@@ -9,6 +9,7 @@ export interface EnvironmentConfig {
 	appBaseUrl: string
 	apiBaseUrl: string
 	mcpBaseUrl: string
+	adsumApiBaseUrl: string
 }
 
 class ClineEndpoint {
@@ -55,6 +56,7 @@ class ClineEndpoint {
 					appBaseUrl: "https://staging-app.cline.bot",
 					apiBaseUrl: "https://core-api.staging.int.cline.bot",
 					mcpBaseUrl: "https://core-api.staging.int.cline.bot/v1/mcp",
+					adsumApiBaseUrl: "https://api-staging.adsumnetworks.com",
 				}
 			case Environment.local:
 				return {
@@ -62,6 +64,7 @@ class ClineEndpoint {
 					appBaseUrl: "http://localhost:3000",
 					apiBaseUrl: "http://localhost:7777",
 					mcpBaseUrl: "https://api.cline.bot/v1/mcp",
+					adsumApiBaseUrl: "http://localhost:7788",
 				}
 			default:
 				return {
@@ -69,6 +72,7 @@ class ClineEndpoint {
 					appBaseUrl: "https://app.cline.bot",
 					apiBaseUrl: "https://api.cline.bot",
 					mcpBaseUrl: "https://api.cline.bot/v1/mcp",
+					adsumApiBaseUrl: "https://api.adsumnetworks.com",
 				}
 		}
 	}

@@ -144,6 +144,9 @@ export async function updateApiConfiguration(controller: Controller, request: Up
 			controller.stateManager.setGlobalStateBatch(options)
 		}
 
+		// byok_added telemetry is handled in updateApiConfigurationProto (the code path
+		// the webview settings form actually calls for all standard providers).
+
 		// Update the task's API handler if there's an active task
 		if (controller.task) {
 			const currentMode = controller.stateManager.getGlobalSettingsKey("mode")

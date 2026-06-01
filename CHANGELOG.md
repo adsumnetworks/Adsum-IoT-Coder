@@ -2,6 +2,24 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
+## [0.1.3] - 2026-06-01
+
+### Free tier — zero-friction onboarding
+
+- **Run the agent without an API key.** New built-in free tier backed by a managed model hosted by Adsum Networks — no key, account, or card to evaluate the tool. Acted on the most-requested item from the previous release.
+- **Instant BYOK switchover.** Adding your own key swaps the provider on the live task — no restart, the in-flight session continues.
+- **Quota conversion card.** When the free quota runs out, a single-click prompt routes you to add a key and resumes the same task on your provider, instead of failing with a raw error.
+
+### Reliability
+
+- Quota exhaustion (HTTP 402) is handled cleanly — no spurious auto-retries or "Invalid API Response" noise.
+- Rate-limit (429) responses surface a readable message instead of raw JSON.
+- Free-tier usage telemetry corrected: funnel-entry fires once per install (was firing on every step), and the BYOK-conversion event now fires on the code path the settings form actually uses.
+
+### Known issues
+
+- Free-tier "tokens left" chip can briefly show a stale value until the next prompt; balance is backend-authoritative and harmless. See README → Limitations.
+
 ## [0.1.2] - 2026-05-31
 
 ### Fixed

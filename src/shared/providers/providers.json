@@ -1,6 +1,10 @@
 {
 	"list": [
 		{
+			"value": "adsum-free",
+			"label": "Adsum Free Tier"
+		},
+		{
 			"value": "cline",
 			"label": "Cline"
 		},

@@ -323,6 +323,8 @@ function convertApiProviderToProto(provider: string | undefined): ProtoApiProvid
 			return ProtoApiProvider.NOUSRESEARCH
 		case "openai-codex":
 			return ProtoApiProvider.OPENAI_CODEX
+		case "adsum-free":
+			return ProtoApiProvider.ADSUM_FREE
 		default:
 			return ProtoApiProvider.ANTHROPIC
 	}
@@ -413,6 +415,8 @@ export function convertProtoToApiProvider(provider: ProtoApiProvider): ApiProvid
 			return "nousResearch"
 		case ProtoApiProvider.OPENAI_CODEX:
 			return "openai-codex"
+		case ProtoApiProvider.ADSUM_FREE:
+			return "adsum-free"
 		default:
 			return "anthropic"
 	}

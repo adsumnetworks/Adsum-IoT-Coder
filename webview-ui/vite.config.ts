@@ -83,10 +83,10 @@ export default defineConfig({
 		// resolves to the webview origin root and 404s, so codicons render as
 		// blank squares and the azeret code font falls back to a system font.
 		// Inlining sidesteps URL resolution entirely (the CSP already allows
-		// `data:` in `font-src`) and removes 5 separate font fetches from the
-		// load path. This replaces the reverted `base: "./"` approach, which
-		// rewrote *all* asset URLs globally and caused an intermittent webview
-		// hang — inlining touches only fonts.
+		// `data:` in `font-src`) and removes separate font fetches from the load
+		// path. This replaces the reverted `base: "./"` approach, which rewrote
+		// *all* asset URLs globally and caused an intermittent webview hang —
+		// inlining touches only fonts.
 		assetsInlineLimit: (filePath: string) => (/\.(ttf|woff2?|eot)$/.test(filePath) ? true : undefined),
 		// Only minify in production build
 		minify: !isDevBuild,
