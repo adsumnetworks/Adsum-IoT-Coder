@@ -46,3 +46,17 @@
     color: #0086a3;
   }
 </style>
+<script>
+  // Open external links (different host) in a new tab. Internal anchors and
+  // same-site links keep default behaviour. GitHub strips this script in the
+  // repo view, so it only affects the published webpage.
+  document.addEventListener("DOMContentLoaded", function () {
+    var here = window.location.hostname;
+    document.querySelectorAll('.main-content a[href^="http"]').forEach(function (a) {
+      if (a.hostname && a.hostname !== here) {
+        a.setAttribute("target", "_blank");
+        a.setAttribute("rel", "noopener noreferrer");
+      }
+    });
+  });
+</script>
