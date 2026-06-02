@@ -18,12 +18,17 @@ export class PostHogClientProvider {
 	private readonly client: PostHog | null
 
 	private constructor() {
-		// Initialize PostHog client
+		// Initialize PostHog client. In dev mode (F5 / IS_DEV=true) we force
+		// immediate flushing so events appear in PostHog within ~2 seconds —
+		// otherwise the default batching (20 events / 30s) makes debugging
+		// painful because you fire an event and wait half a minute to see it.
+		const isDev = process.env.IS_DEV === "true" || process.env.CLINE_ENVIRONMENT === "local"
 		this.client = posthogConfig.apiKey
 			? new PostHog(posthogConfig.apiKey, {
 					host: posthogConfig.host,
 					enableExceptionAutocapture: false, // This is only enabled for error services
 					before_send: (event) => PostHogClientProvider.eventFilter(event),
+					...(isDev ? { flushAt: 1, flushInterval: 0 } : {}),
 				})
 			: null
 	}

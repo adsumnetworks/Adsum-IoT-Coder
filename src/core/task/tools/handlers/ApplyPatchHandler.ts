@@ -709,7 +709,7 @@ export class ApplyPatchHandler implements IFullyManagedTool {
 		}
 
 		showNotificationForApproval(
-			`IoT AI Debugger wants to edit '${message.path}'`,
+			`Adsum IoT Coder wants to edit '${message.path}'`,
 			config.autoApprovalSettings.enableNotifications,
 		)
 

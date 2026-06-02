@@ -8,6 +8,8 @@ import {
 	fromProtobufOpenAiCompatibleModelInfo,
 } from "@shared/proto-conversions/models/typeConversion"
 import { buildApiHandler } from "@/core/api"
+import { getInstallId } from "@/services/adsum/InstallIdentity"
+import { telemetryService } from "@/services/telemetry"
 import type { Controller } from "../index"
 
 /**
@@ -114,8 +116,27 @@ export async function updateApiConfigurationProto(
 			geminiActModeThinkingLevel: protoApiConfiguration.geminiActModeThinkingLevel,
 		}
 
+		// Snapshot providers before write to detect BYOK conversion
+		const prevApiConfig = controller.stateManager.getApiConfiguration()
+		const prevPlanProvider = prevApiConfig.planModeApiProvider
+		const prevActProvider = prevApiConfig.actModeApiProvider
+
 		// Update the API configuration in storage
 		controller.stateManager.setApiConfiguration(convertedApiConfigurationFromProto)
+
+		// Detect BYOK conversion: user was on free tier, now switching to a real provider.
+		// Check both the stored provider string AND the live handler model id (bundle-safe),
+		// because default free-tier sessions may not have "adsum-free" persisted as provider.
+		const wasOnFreeTier =
+			prevPlanProvider === "adsum-free" ||
+			prevActProvider === "adsum-free" ||
+			controller.task?.api?.getModel().id === "free-default"
+		const newPlanProvider = convertedApiConfigurationFromProto.planModeApiProvider
+		const newActProvider = convertedApiConfigurationFromProto.actModeApiProvider
+		const newProvider = newPlanProvider ?? newActProvider
+		if (wasOnFreeTier && newProvider && newProvider !== "adsum-free") {
+			telemetryService.captureFreeTierByokAdded(getInstallId(), newProvider)
+		}
 
 		// Update the task's API handler if there's an active task
 		if (controller.task) {

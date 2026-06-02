@@ -6,6 +6,20 @@ import * as esbuild from "esbuild"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Load secrets from .env (gitignored) into process.env so they're available
+// during the build for esbuild's `define:` substitution. Mirrors the .env
+// convention launch.json already uses for the F5 runtime — same file feeds
+// both. Shell-exported vars take precedence (only fills in missing keys).
+const envPath = path.join(__dirname, ".env")
+if (fs.existsSync(envPath)) {
+	for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
+		const match = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*?)\s*$/i)
+		if (match && !process.env[match[1]]) {
+			process.env[match[1]] = match[2].replace(/^["']|["']$/g, "")
+		}
+	}
+}
+
 const production = process.argv.includes("--production") || process.env["IS_DEBUG_BUILD"] === "false"
 const watch = process.argv.includes("--watch")
 const standalone = process.argv.includes("--standalone")
@@ -136,6 +150,9 @@ if (production) {
 // workflows from the secrets.
 if (process.env.CLINE_ENVIRONMENT) {
 	buildEnvVars["process.env.CLINE_ENVIRONMENT"] = JSON.stringify(process.env.CLINE_ENVIRONMENT)
+}
+if (process.env.ADSUM_TELEMETRY_SERVICE_API_KEY) {
+	buildEnvVars["process.env.ADSUM_TELEMETRY_SERVICE_API_KEY"] = JSON.stringify(process.env.ADSUM_TELEMETRY_SERVICE_API_KEY)
 }
 if (process.env.TELEMETRY_SERVICE_API_KEY) {
 	buildEnvVars["process.env.TELEMETRY_SERVICE_API_KEY"] = JSON.stringify(process.env.TELEMETRY_SERVICE_API_KEY)

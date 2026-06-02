@@ -1,5 +1,6 @@
 import { ClineDefaultTool, toolUseNames } from "@shared/tools"
 import { AssistantMessageContent, TextStreamContent, ToolParamName, ToolUse, toolParamNames } from "." // Assuming types are defined in index.ts or a similar file
+import { normalizeAssistantMessage } from "./normalize-assistant-message"
 
 // parseAssistantmessageV1 removed in https://github.com/cline/cline/pull/5425
 
@@ -25,6 +26,9 @@ import { AssistantMessageContent, TextStreamContent, ToolParamName, ToolUse, too
  *          Blocks that were not fully closed by the end of the input string will have their `partial` flag set to `true`.
  */
 export function parseAssistantMessageV2(assistantMessage: string): AssistantMessageContent[] {
+	// Rewrite provider-specific quirks (DeepSeek DSML tokens, markdown code fences)
+	// into Cline's canonical XML tool-call format before the main scan.
+	assistantMessage = normalizeAssistantMessage(assistantMessage)
 	const contentBlocks: AssistantMessageContent[] = []
 	let currentTextContentStart = 0 // Index where the current text block started
 	let currentTextContent: TextStreamContent | undefined

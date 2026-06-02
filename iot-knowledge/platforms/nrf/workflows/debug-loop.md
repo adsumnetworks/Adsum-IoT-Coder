@@ -55,9 +55,13 @@ After a successful flash, determine if you should capture logs based on the acti
 
 If capturing: **MANDATORY SKILL LOAD:** If not already loaded during this task, you MUST use the `read_file` tool to load `platforms/nrf/actions/capture-logs.md` BEFORE capturing logs. Assume nothing from memory.
 
+**Naming reminder:** Follow `rules/device-identity.md` — use generic labels (`device1`, `device2`) if roles are unconfirmed. See `capture-logs.md` for the full naming convention.
+
 ### Phase 4: Analyze
 
 After log capture, **MANDATORY SKILL LOAD:** If not already loaded during this task, you MUST use the `read_file` tool to load `platforms/nrf/actions/analyze-logs.md` BEFORE performing the analysis.
+
+**Before reading the log file:** use `list_files` on the relevant `logs/<transport>/` directory to discover the actual captured filename. Filenames include timestamps; never guess them from the capture command output. Pick the most recently created file matching the device/transport that was just captured.
 
 Show the summary of your analysis with the important log snippets and the log file path so the user can click and view the full file.
 
