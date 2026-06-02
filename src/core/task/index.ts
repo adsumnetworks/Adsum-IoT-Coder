@@ -1,5 +1,6 @@
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import { ApiHandler, ApiProviderInfo, buildApiHandler } from "@core/api"
+import { QuotaExhaustedError } from "@core/api/providers/adsum-free"
 import { ApiStream } from "@core/api/transform/stream"
 import { AssistantMessageContent, parseAssistantMessageV2, ToolUse } from "@core/assistant-message"
 import { ContextManager } from "@core/context/context-management/ContextManager"
@@ -60,7 +61,13 @@ import { USER_CONTENT_TAGS } from "@shared/messages/constants"
 import { convertClineMessageToProto } from "@shared/proto-conversions/cline-message"
 import { ClineDefaultTool, READ_ONLY_TOOLS } from "@shared/tools"
 import { ClineAskResponse } from "@shared/WebviewMessage"
-import { isClaude4PlusModelFamily, isGPT5ModelFamily, isLocalModel, isNextGenModelFamily } from "@utils/model-utils"
+import {
+	getToolCallReliabilityTier,
+	isClaude4PlusModelFamily,
+	isGPT5ModelFamily,
+	isLocalModel,
+	isNextGenModelFamily,
+} from "@utils/model-utils"
 import { arePathsEqual, getDesktopDir } from "@utils/path"
 import { filterExistingFiles } from "@utils/tabFiltering"
 import cloneDeep from "clone-deep"
@@ -79,6 +86,7 @@ import {
 	FullCommandExecutorConfig,
 	StandaloneTerminalManager,
 } from "@/integrations/terminal"
+import { consumeQuotaExhausted } from "@/services/adsum/FreeTierState"
 import { ClineError, ClineErrorType, ErrorService } from "@/services/error"
 import { telemetryService } from "@/services/telemetry"
 import {
@@ -576,7 +584,7 @@ export class Task {
 	}> {
 		// Allow resume asks even when aborted to enable resume button after cancellation
 		if (this.taskState.abort && type !== "resume_task" && type !== "resume_completed_task") {
-			throw new Error("Cline instance aborted")
+			throw new Error("Adsum IoT Coder instance aborted")
 		}
 		let askTs: number
 		if (partial !== undefined) {
@@ -711,7 +719,7 @@ export class Task {
 	): Promise<number | undefined> {
 		// Allow hook messages even when aborted to enable proper cleanup
 		if (this.taskState.abort && type !== "hook_status" && type !== "hook_output_stream") {
-			throw new Error("Cline instance aborted")
+			throw new Error("Adsum IoT Coder instance aborted")
 		}
 
 		const providerInfo = this.getCurrentProviderInfo()
@@ -1624,6 +1632,37 @@ export class Task {
 		return apiLike.getLastRequestId?.() ?? apiLike.lastGenerationId
 	}
 
+	// Surface a one-time chat notice when a model with low tool-call
+	// reliability has produced "no tool used" several times in a row. The
+	// retry loop is invisible by default — without this hint the user
+	// just sees the chat freeze and may not realize the model is the
+	// problem rather than the agent.
+	private async maybeNotifyLowTierToolCallReliability(): Promise<void> {
+		if (this.taskState.didNotifyLowTierToolCallReliability) {
+			return
+		}
+		if (this.taskState.consecutiveMistakeCount < 3) {
+			return
+		}
+		try {
+			const providerInfo = this.getCurrentProviderInfo()
+			if (getToolCallReliabilityTier(providerInfo) !== "low") {
+				return
+			}
+			this.taskState.didNotifyLowTierToolCallReliability = true
+			const label = `${providerInfo.providerId}/${providerInfo.model.id}`
+			await this.say(
+				"info",
+				`The current model (${label}) has produced malformed tool calls ${this.taskState.consecutiveMistakeCount} times in a row. ` +
+					`Smaller / older models often struggle with the XML tool-call format and burn retries silently. ` +
+					`If this keeps happening, consider switching to Claude Haiku 4.5, Claude Sonnet 4.5+, GPT-5, or Gemini 2.5+ — those are the most reliable tiers. ` +
+					`You can switch from the model picker without losing this conversation.`,
+			)
+		} catch {
+			// Diagnostic only — never let this break the retry loop.
+		}
+	}
+
 	private async handleContextWindowExceededError(): Promise<void> {
 		const apiConversationHistory = this.messageStateHandler.getApiConversationHistory()
 
@@ -1911,8 +1950,18 @@ export class Task {
 				})()
 
 				let response: ClineAskResponse
-				// Skip auto-retry for Cline provider insufficient credits or auth errors
-				if (!isClineProviderInsufficientCredits && !isAuthError && this.taskState.autoRetryAttempts < 3) {
+				const isQuotaExhausted =
+					error instanceof QuotaExhaustedError ||
+					(error instanceof Error && error.message.startsWith("adsum:quota_exhausted")) ||
+					(error as any)?.cause?.message === "adsum:quota_exhausted"
+
+				// Skip auto-retry for Cline provider insufficient credits, auth errors, or free-tier quota exhaustion
+				if (
+					!isClineProviderInsufficientCredits &&
+					!isAuthError &&
+					!isQuotaExhausted &&
+					this.taskState.autoRetryAttempts < 3
+				) {
 					// Auto-retry enabled with max 3 attempts: automatically approve the retry
 					this.taskState.autoRetryAttempts++
 
@@ -1962,6 +2011,12 @@ export class Task {
 
 					await setTimeoutPromise(delay)
 				} else {
+					// Quota exhaustion: card already shown via streamingFailedMessage — end task cleanly
+					if (isQuotaExhausted) {
+						consumeQuotaExhausted() // clear flag so it can't stale-trigger on next task
+						return
+					}
+
 					// Show error_retry with failed flag to indicate all retries exhausted (but not for insufficient credits)
 					if (!isClineProviderInsufficientCredits && !isAuthError) {
 						await this.say(
@@ -2682,10 +2737,14 @@ export class Task {
 			} catch (error) {
 				// abandoned happens when extension is no longer waiting for the cline instance to finish aborting (error is thrown here when any function in the for loop throws due to this.abort)
 				if (!this.taskState.abandoned) {
+					const isQuotaExhaustedStream =
+						error instanceof QuotaExhaustedError ||
+						(error instanceof Error && error.message.startsWith("adsum:quota_exhausted")) ||
+						(error as any)?.cause?.message === "adsum:quota_exhausted"
 					const clineError = ErrorService.get().toClineError(error, this.api.getModel().id)
 					const errorMessage = clineError.serialize()
-					// Auto-retry for streaming failures (always enabled)
-					if (this.taskState.autoRetryAttempts < 3) {
+					// Auto-retry for streaming failures — skip for quota exhaustion (card handles it)
+					if (!isQuotaExhaustedStream && this.taskState.autoRetryAttempts < 3) {
 						this.taskState.autoRetryAttempts++
 
 						// Calculate exponential backoff for streaming failures: 2s, 4s, 8s
@@ -2711,7 +2770,7 @@ export class Task {
 								await this.controller.task.handleWebviewAskResponse("yesButtonClicked", "", [])
 							}
 						})
-					} else if (this.taskState.autoRetryAttempts >= 3) {
+					} else if (!isQuotaExhaustedStream && this.taskState.autoRetryAttempts >= 3) {
 						// Show error_retry with failed flag to indicate all retries exhausted
 						await this.say(
 							"error_retry",
@@ -2893,6 +2952,7 @@ export class Task {
 						text: formatResponse.noToolsUsed(this.useNativeToolCalls),
 					})
 					this.taskState.consecutiveMistakeCount++
+					await this.maybeNotifyLowTierToolCallReliability()
 				}
 
 				// Reset auto-retry counter for each new API request
@@ -2900,6 +2960,53 @@ export class Task {
 
 				const recDidEndLoop = await this.recursivelyMakeClineRequests(this.taskState.userMessageContent)
 				didEndLoop = recDidEndLoop
+			} else if (consumeQuotaExhausted() || this.api.getModel().id === "free-default") {
+				// Free-tier quota exhausted: the backend returned 402, which the OpenAI SDK
+				// surfaces as an empty (but successful) stream here rather than throwing.
+				// We detect this two ways, both bundle-safe (no instanceof across the esbuild
+				// boundary): the module-level flag, OR the adsum-free model id "free-default".
+				// For the free tier an empty response always means quota — show the card.
+				consumeQuotaExhausted() // clear flag if it was set, so it can't stale-trigger later
+				// Set the quota marker on the api_req_started message so ErrorRow renders the
+				// QuotaExhaustedCard, then end the task cleanly — no retry, no error noise.
+				const quotaReqIndex = findLastIndex(
+					this.messageStateHandler.getClineMessages(),
+					(m) => m.say === "api_req_started",
+				)
+				if (quotaReqIndex !== -1) {
+					const clineMessages = this.messageStateHandler.getClineMessages()
+					const currentApiReqInfo: ClineApiReqInfo = JSON.parse(clineMessages[quotaReqIndex].text || "{}")
+					await this.messageStateHandler.updateClineMessage(quotaReqIndex, {
+						text: JSON.stringify({
+							...currentApiReqInfo,
+							cancelReason: "streaming_failed",
+							streamingFailedMessage: JSON.stringify({
+								message: "adsum:quota_exhausted",
+								modelId: "free-default",
+								providerId: "adsum-free",
+							}),
+						} satisfies ClineApiReqInfo),
+					})
+				}
+				await this.messageStateHandler.saveClineMessagesAndUpdateHistory()
+				await this.postStateToWebview()
+
+				// Park the task (do NOT abort) so it stays alive while the user adds a
+				// BYOK key. Adding a key swaps this.api via updateApiConfiguration; when
+				// the user then clicks retry, we resume the loop with the new handler.
+				const quotaAsk = await this.ask(
+					"api_req_failed",
+					JSON.stringify({
+						message: "adsum:quota_exhausted",
+						modelId: "free-default",
+						providerId: "adsum-free",
+					}),
+				)
+				if (quotaAsk.response === "yesButtonClicked") {
+					this.taskState.autoRetryAttempts = 0
+					return false // continue loop — re-attempts with the (possibly new) handler
+				}
+				return true // user dismissed — end task cleanly
 			} else {
 				// if there's no assistant_responses, that means we got no text or tool_use content blocks from API which we should assume is an error
 				const { model, providerId } = this.getCurrentProviderInfo()

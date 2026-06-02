@@ -9,7 +9,7 @@ Called from: Debug Loop Phase 3, Log Analyzer Step 4, Log Generator post-build v
 - Device serial number (for RTT) or port (for UART) is known
 - **Process Cleanup required:** Run cross-platform process cleanup before any capture.
   - Linux/Mac: `pkill -9 JLink && pkill -9 nrfutil`
-  - Windows: `taskkill /F /IM JLink.exe & taskkill /F /IM nrfutil.exe`
+  - Windows: `cmd /c "taskkill /F /IM JLink.exe 2>nul & taskkill /F /IM nrfutil.exe 2>nul"` (wrap in `cmd /c` so it works in PowerShell — `&` is reserved in PowerShell, but cmd.exe parses the quoted string natively)
 
 ## Transport Selection
 Detect from `prj.conf`:
@@ -29,8 +29,9 @@ nrf_device_tool: action="log_device", operation="capture", transport="rtt", port
 
 ### Multi-Device Simultaneous Capture
 ```
-nrf_device_tool: action="log_device", operation="capture", transport="rtt", devices="central:<sn1>,peripheral:<sn2>", duration="<seconds>"
+nrf_device_tool: action="log_device", operation="capture", transport="rtt", devices="device1:<sn1>,device2:<sn2>", duration="<seconds>"
 ```
+**CRITICAL NOTE FOR MULTI-DEVICE:** When multiple devices are connected, you do NOT know which serial number runs which firmware. Do NOT arbitrarily assign `central` or `peripheral` to serial numbers based on project config. You **MUST** use `device1:<sn1>,device2:<sn2>` for the first capture. See `rules/device-identity.md`.
 
 ### Boot Log Capture (with pre-capture delay)
 To capture the full boot sequence, use `pre-capture-delay` so listeners start before device reset:
@@ -53,27 +54,39 @@ nrf_device_tool: action="log_device", operation="capture", transport="rtt", port
 
 ## Log File Naming Convention
 
+### Two-Phase Naming System
+
+**Phase 1 — First Capture (role unknown):**
+When device roles have NOT been confirmed yet, use generic labels:
+```
+logs/rtt/device1_nrf52840_683007782_20260406_015243.log
+logs/rtt/device2_nrf52832_683007783_20260406_015243.log
+```
+
+**Phase 2 — Subsequent Captures (role confirmed):**
+After roles are confirmed by `prj.conf` analysis or log evidence, use role-specific labels:
+```
+logs/rtt/central_nrf52840_683007782_20260406_020000.log
+logs/rtt/peripheral_nrf52832_683007783_20260406_020000.log
+```
+
+**Exception:** If the role is already confirmed from `prj.conf` (e.g., `CONFIG_BT_CENTRAL=y` in the project flashed to a specific device), you may use the role name from the first capture.
+
 ### Folder Structure
 ```
 logs/
 ├── rtt/
-│   └── {device_role}_{device_type}_{sn}_{timestamp}.log
+│   └── {device_label}_{device_type}_{sn}_{timestamp}.log
 └── uart/
-    └── {device_role}_{device_type}_{port}_{timestamp}.log
+    └── {device_label}_{device_type}_{port}_{timestamp}.log
 ```
 
 ### Field Definitions
-- **`device_role`**: Application/BLE role — `central`, `peripheral`, `ibeacon`, `iot_gateway`, `parking_sensor`, etc.
+- **`device_label`**: Generic (`device1`, `device2`) or role-specific (`central`, `peripheral`, `ibeacon`, `iot_gateway`) — see Two-Phase Naming above.
 - **`device_type`**: SoC name — `nrf52840`, `nrf52832`, `nrf5340`
 - **`sn`** (RTT): J-Link serial number — e.g. `683007782`
 - **`port`** (UART): OS serial port — e.g. `ttyACM0`, `COM8` (omit the `/dev/` prefix)
 - **`timestamp`**: `YYYYMMDD_HHMMSS` — e.g. `20260406_015243`
-
-### Examples
-```
-logs/rtt/central_nrf52840_683007782_20260406_015243.log
-logs/uart/peripheral_nrf52832_ttyACM1_20260406_015500.log
-```
 
 ## Output
 Return the **absolute path** of the saved log file(s) to the user so they can click to view.

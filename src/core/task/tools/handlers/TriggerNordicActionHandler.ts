@@ -84,7 +84,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		await config.callbacks.say(
 			"tool",
 			JSON.stringify({
-				tool: "nrf_device_tool",
+				tool: "triggerNordicAction",
 				path: command,
 			}),
 		)
@@ -161,7 +161,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			await config.callbacks.say(
 				"tool",
 				JSON.stringify({
-					tool: "nrf_device_tool",
+					tool: "triggerNordicAction",
 					path: `Nordic Device Info [${serialNumber}]`,
 				}),
 			)
@@ -174,7 +174,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			await config.callbacks.say(
 				"tool",
 				JSON.stringify({
-					tool: "nrf_device_tool",
+					tool: "triggerNordicAction",
 					path: `Nordic Logger: list devices`,
 				}),
 			)
@@ -297,7 +297,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		await config.callbacks.say(
 			"tool",
 			JSON.stringify({
-				tool: "nrf_device_tool",
+				tool: "triggerNordicAction",
 				path: `Nordic Logger [${(transport || "uart").toUpperCase()}]: ${operation}`,
 			}),
 		)

@@ -40,7 +40,7 @@ async function showWindowsNotification(options: NotificationOptions): Promise<vo
     $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
     $xml.LoadXml($template)
     $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-    [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Cline").Show($toast)
+    [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Adsum IoT Coder").Show($toast)
     `
 
 	try {
@@ -58,14 +58,18 @@ async function showLinuxNotification(options: NotificationOptions): Promise<void
 
 	try {
 		await execa("notify-send", [title, fullMessage])
-	} catch (error) {
+	} catch (error: any) {
+		if (error.code === "ENOENT") {
+			console.debug("notify-send not found, skipping Linux notification")
+			return
+		}
 		throw new Error(`Failed to show Linux notification: ${error}`)
 	}
 }
 
 export async function showSystemNotification(options: NotificationOptions): Promise<void> {
 	try {
-		const { title = "Cline", message } = options
+		const { title = "Adsum IoT Coder", message } = options
 
 		if (!message) {
 			throw new Error("Message is required")

@@ -51,3 +51,5 @@ test-results
 logs/
 _test_chat/
 chat_tests/
+.agents/*
+CLAUDE.*

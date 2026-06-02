@@ -33,12 +33,18 @@ describe("Telemetry system is abstracted and can easily switch between providers
 		organizations: [],
 	}
 	const MOCK_METADATA: TelemetryMetadata = {
+		extension_name: "nrf-ai-debugger",
+		extension_publisher: "AdsumNetwork",
+		extension_display_name: "Adsum IoT Coder – for nRF",
 		extension_version: "1.2.3",
-		cline_type: "cline-unit-test",
+		is_fork: true,
+		upstream: "cline",
+		host_type: "VSCode Extension",
 		platform: "Test-IDE",
 		platform_version: "9.8.7-abc",
 		os_type: "win32",
 		os_version: "Windows 10 Pro",
+		arch: "x64",
 		is_dev: "",
 	}
 

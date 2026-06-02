@@ -35,8 +35,7 @@ This pattern applies to ALL platforms for actions such as:
 - Post-analysis next steps
 
 ## 6. Chat Formatting Rules
-- **NO markdown tables in chat messages.** Tables do not render correctly in the embedded chat UI. Use structured bullet points or numbered lists instead.
-- **No tables in Task Completed summaries.** Use clear sections with bullet points.
+- **Use Markdown Tables:** When comparing configurations, listing error codes, or summarizing device states, use Markdown tables to make the data highly scannable and easy to read.
 - **Code blocks** are fine and encouraged for commands, config, and log excerpts.
 - **Bold key terms** to make summaries scannable.
 
@@ -49,5 +48,25 @@ This pattern applies to ALL platforms for actions such as:
 Advanced workflows and actions are documented as `.md` files in the `iot-knowledge` directory (indexed in `PLATFORM.md`). 
 
 - **Entry-Point Hierarchy (Workflows vs Actions):** Always start a task by loading a Primary Workflow. "Actions" are internal subroutines and must NEVER be loaded as the first step of a task. You may only load an Action if an active Workflow explicitly instructs you to do so.
-- **Mandatory First Load:** You **MUST** proactively use `read_file` or `view_file` to load the required skill manual from the disk before executing. Do not attempt to execute complex tasks (like analyzing logs, generating code, building and flashing etc.) based on your pre-trained knowledge or general assumptions.
+- **Mandatory First Load (via `read_file`):** You **MUST** proactively use `read_file` or `view_file` to load the required skill manual from the disk before executing. Do not attempt to execute complex tasks (like analyzing logs, generating code, building and flashing etc.) based on your pre-trained knowledge or general assumptions. There is no `load_workflow` tool; "loading" simply means reading the markdown file.
 - **Context Optimization (Load Once):** If you have *already loaded* a specific skill file during the current ongoing task (for example, you are repeating an iteration in a debug loop), **DO NOT load it again**. Rely on the instructions already present in your conversational history to save context limits. Only load a file if it is missing from your immediate context.
+
+## 9. Context Budget Protection
+
+- **Workspace-only reads:** Only read files inside workspace roots listed in `environment_details`. NEVER scan `~/Desktop`, `~/Documents`, `~/Downloads`, or home directories.
+- **NCS files only:** Only read files matching the NCS pattern: `CMakeLists.txt`, `prj.conf`, `*.conf`, `*.overlay`, `*.c`, `*.h`, `*.dts`, `*.yml`, `*.log`. NEVER open `.py`, `.js`, `.ts`, `.json`, `.md` files outside of `iot-knowledge/`.
+- **No speculative reads:** Do NOT read files "just to understand the workspace". Read a file only when a workflow or rule explicitly instructs you to.
+- **Stop on empty workspace:** If `environment_details` shows no workspace root, or the root contains no NCS markers — stop immediately and apply the Scope Gate (see `AGENT.md`).
+
+## 10. No Decorative Shell Output
+
+Never invoke `execute_command` (or any shell tool) solely to print completion text, status banners, or summaries. The shell is for operations that have side effects (creating files, killing processes, capturing logs) — not for narrating the conversation.
+
+**Do NOT do this:**
+- `echo "Analysis complete. See report above."`
+- `echo "Done!"`
+- `printf "Build successful\n"`
+- `Write-Host "Cleanup done"`
+- `cmd /c "echo Task finished"`
+
+**Do this instead:** Write the completion text directly in your response as plain markdown, then call `attempt_completion` (or `ask_followup_question` if you're offering next-step buttons). A `Cleanup done`-style echo only makes sense as the *tail* of a chained shell command that actually does cleanup work — never on its own line.

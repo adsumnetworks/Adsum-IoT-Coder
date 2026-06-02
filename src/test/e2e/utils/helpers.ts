@@ -85,7 +85,7 @@ export class E2ETestHelper {
 				try {
 					const title = await frame.title()
 					// Sidebar title matches the view name in package.json
-					if (title.startsWith("IoT AI Debugger")) {
+					if (title.startsWith("Adsum IoT Coder")) {
 						this.cachedFrame = frame
 						return frame
 					}
@@ -129,7 +129,7 @@ export class E2ETestHelper {
 	}
 
 	public static async openClineSidebar(page: Page): Promise<void> {
-		await page.getByRole("tab", { name: "IoT AI Debugger – for nRF" }).locator("a").click()
+		await page.getByRole("tab", { name: "Adsum IoT Coder – for nRF" }).locator("a").click()
 	}
 
 	public static async runCommandPalette(page: Page, command: string): Promise<void> {

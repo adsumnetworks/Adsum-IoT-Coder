@@ -1,0 +1,5 @@
+theme: jekyll-theme-cayman
+title: Adsum IoT Coder
+description: An open-source IoT coding agent that solves the firmware bugs that exhaust general agents.
+readme_index:
+  enabled: true

@@ -6,7 +6,7 @@ import { useMemo } from "react"
 import { cleanPathPrefix } from "../common/CodeAccordian"
 import { getIconByToolName } from "./chat-view"
 import ErrorRow from "./ErrorRow"
-import { ThinkingRow } from "./ThinkingRow"
+import { ThinkingBlock } from "./ThinkingBlock"
 import { TypewriterText } from "./TypewriterText"
 
 interface RequestStartRowProps {
@@ -15,6 +15,7 @@ interface RequestStartRowProps {
 	apiReqStreamingFailedMessage?: string
 	cost?: number
 	reasoningContent?: string
+	reasoningDurationMs?: number
 	responseStarted?: boolean
 	clineMessages: ClineMessage[]
 	mode?: Mode
@@ -127,6 +128,7 @@ export const RequestStartRow: React.FC<RequestStartRowProps> = ({
 	apiReqStreamingFailedMessage,
 	cost,
 	reasoningContent,
+	reasoningDurationMs,
 	responseStarted,
 	clineMessages,
 	mode,
@@ -146,7 +148,6 @@ export const RequestStartRow: React.FC<RequestStartRowProps> = ({
 	// Once response content starts (any text/tool/command), collapse into a compact
 	// "🧠 Thinking" row that can be expanded to show the reasoning only.
 	const showStreamingThinking = hasReasoning && !hasResponseStarted && !hasError && !hasCost
-	const showCollapsedThinking = hasReasoning && !showStreamingThinking
 
 	// Find all exploratory tool activities that are currently in flight.
 	// Only show tools between the previous completed API request and the current incomplete one.
@@ -192,12 +193,12 @@ export const RequestStartRow: React.FC<RequestStartRowProps> = ({
 				</div>
 			)}
 			{reasoningContent && (
-				<ThinkingRow
-					isExpanded={isExpanded || showStreamingThinking || showCollapsedThinking}
-					isVisible={true}
+				<ThinkingBlock
+					content={reasoningContent}
+					durationMs={reasoningDurationMs}
+					isExpanded={isExpanded || showStreamingThinking}
+					isStreaming={showStreamingThinking}
 					onToggle={handleToggle}
-					reasoningContent={reasoningContent}
-					showTitle={false}
 				/>
 			)}
 

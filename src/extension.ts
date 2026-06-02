@@ -56,9 +56,12 @@ https://github.com/microsoft/vscode-webview-ui-toolkit-samples/tree/main/framewo
 
 */
 
+import { TerminalRegistry } from "./hosts/vscode/terminal/VscodeTerminalRegistry"
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
+	TerminalRegistry.setExtensionUri(context.extensionUri)
 	setupHostProvider(context)
 
 	// Initialize hook discovery cache for performance optimization
@@ -86,6 +89,23 @@ export async function activate(context: vscode.ExtensionContext) {
 	)
 
 	const webview = (await initialize(context)) as VscodeWebviewProvider
+
+	// Apply the Adsum-specific telemetry opt-out setting and keep it live.
+	// VS Code's global telemetry.telemetryLevel is already respected by the
+	// telemetry provider — this AND-combines the user's Adsum-level preference
+	// with it. Disabling either turns telemetry off.
+	const applyAdsumTelemetrySetting = () => {
+		const enabled = vscode.workspace.getConfiguration("adsum-iot-coder").get<boolean>("telemetry.enabled", true)
+		telemetryService.setExtensionOptIn(enabled)
+	}
+	applyAdsumTelemetrySetting()
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((event) => {
+			if (event.affectsConfiguration("adsum-iot-coder.telemetry.enabled")) {
+				applyAdsumTelemetrySetting()
+			}
+		}),
+	)
 
 	// Clean up old temp files in background (non-blocking) and start periodic cleanup every 24 hours
 	ClineTempManager.startPeriodicCleanup()
@@ -281,39 +301,45 @@ export async function activate(context: vscode.ExtensionContext) {
 					}
 
 					// Add to Cline (Always available)
-					const addAction = new vscode.CodeAction("Add to Cline", vscode.CodeActionKind.QuickFix)
+					const addAction = new vscode.CodeAction("Add to Adsum IoT Coder", vscode.CodeActionKind.QuickFix)
 					addAction.command = {
 						command: commands.AddToChat,
-						title: "Add to Cline",
+						title: "Add to Adsum IoT Coder",
 						arguments: [expandedRange, context.diagnostics],
 					}
 					actions.push(addAction)
 
 					// Explain with Cline (Always available)
-					const explainAction = new vscode.CodeAction("Explain with Cline", vscode.CodeActionKind.RefactorExtract) // Using a refactor kind
+					const explainAction = new vscode.CodeAction(
+						"Explain with Adsum IoT Coder",
+						vscode.CodeActionKind.RefactorExtract,
+					) // Using a refactor kind
 					explainAction.command = {
 						command: commands.ExplainCode,
-						title: "Explain with Cline",
+						title: "Explain with Adsum IoT Coder",
 						arguments: [expandedRange],
 					}
 					actions.push(explainAction)
 
-					// Improve with Cline (Always available)
-					const improveAction = new vscode.CodeAction("Improve with Cline", vscode.CodeActionKind.RefactorRewrite) // Using a refactor kind
+					// Improve with Adsum IoT Coder (Always available)
+					const improveAction = new vscode.CodeAction(
+						"Improve with Adsum IoT Coder",
+						vscode.CodeActionKind.RefactorRewrite,
+					) // Using a refactor kind
 					improveAction.command = {
 						command: commands.ImproveCode,
-						title: "Improve with Cline",
+						title: "Improve with Adsum IoT Coder",
 						arguments: [expandedRange],
 					}
 					actions.push(improveAction)
 
-					// Fix with Cline (Only if diagnostics exist)
+					// Fix with Adsum IoT Coder (Only if diagnostics exist)
 					if (context.diagnostics.length > 0) {
-						const fixAction = new vscode.CodeAction("Fix with Cline", vscode.CodeActionKind.QuickFix)
+						const fixAction = new vscode.CodeAction("Fix with Adsum IoT Coder", vscode.CodeActionKind.QuickFix)
 						fixAction.isPreferred = true
 						fixAction.command = {
 							command: commands.FixWithCline,
-							title: "Fix with Cline",
+							title: "Fix with Adsum IoT Coder",
 							arguments: [expandedRange, context.diagnostics],
 						}
 						actions.push(fixAction)
@@ -521,7 +547,7 @@ ${ctx.cellJson || "{}"}
 
 	context.subscriptions.push(
 		context.secrets.onDidChange(async (event) => {
-			if (event.key === "iot-ai-debugger:accountId") {
+			if (event.key === "adsum-iot-coder:accountId") {
 				// Check if the secret was removed (logout) or added/updated (login)
 				const secretValue = await context.secrets.get(event.key)
 				const activeWebview = WebviewProvider.getVisibleInstance()
@@ -595,7 +621,7 @@ function setupHostProvider(context: ExtensionContext) {
 	const createDiffView = () => new VscodeDiffViewProvider()
 	const createCommentReview = () => getVscodeCommentReviewController()
 	const createTerminalManager = () => new VscodeTerminalManager()
-	const outputChannel = vscode.window.createOutputChannel("IoT AI Debugger")
+	const outputChannel = vscode.window.createOutputChannel("Adsum IoT Coder")
 	context.subscriptions.push(outputChannel)
 
 	const getCallbackUrl = async () => `${vscode.env.uriScheme || "vscode"}://${context.extension.id}`

@@ -45,7 +45,7 @@ Common flash failures:
 - `ERROR: JLinkARM.dll: No matching device found` → Device not connected or wrong serial number
 - `ERROR: The flashing operation timed out` → J-Link busy (another process holds it). Process cleanup required:
   - Linux/Mac: `pkill -9 JLink && pkill -9 nrfutil`
-  - Windows: `taskkill /F /IM JLink.exe & taskkill /F /IM nrfutil.exe`
+  - Windows: `cmd /c "taskkill /F /IM JLink.exe 2>nul & taskkill /F /IM nrfutil.exe 2>nul"` (wrap in `cmd /c` so it works in PowerShell — `&` is reserved in PowerShell, but cmd.exe parses the quoted string natively)
 - `ERROR: An error occurred while flashing` → Check USB cable, try a different port, or power cycle the DK.
 
 On flash failure, always offer: `["Retry flash", "Check device connection", "Cancel"]`

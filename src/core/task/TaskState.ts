@@ -46,6 +46,11 @@ export class TaskState {
 	didAutomaticallyRetryFailedApiRequest = false
 	checkpointManagerErrorMessage?: string
 
+	// One-shot UX notice when a low-tier model keeps producing malformed tool
+	// calls. Set the first time we emit the "consider switching model" hint
+	// so it doesn't spam every subsequent retry in the same task.
+	didNotifyLowTierToolCallReliability: boolean = false
+
 	// Retry tracking for auto-retry feature
 	autoRetryAttempts: number = 0
 

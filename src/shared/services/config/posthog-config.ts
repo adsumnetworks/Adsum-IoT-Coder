@@ -35,9 +35,13 @@ const useDevEnv = process.env.IS_DEV === "true" || process.env.CLINE_ENVIRONMENT
  * IMPORTANT: The secrets must be added to the GitHub Secrets and matched with the environment variables names
  * defined in the .github/workflows/publish.yml workflow.
  * NOTE: The development environment variables should be retrieved from 1password shared vault.
+ *
+ * Fork attribution: when ADSUM_TELEMETRY_SERVICE_API_KEY is set at build time it takes precedence
+ * over the inherited TELEMETRY_SERVICE_API_KEY (Cline's upstream key). This routes Adsum users'
+ * telemetry into Adsum's PostHog project rather than polluting upstream's analytics.
  */
 export const posthogConfig: PostHogClientConfig = {
-	apiKey: BUILD_CONSTANTS.TELEMETRY_SERVICE_API_KEY,
+	apiKey: BUILD_CONSTANTS.ADSUM_TELEMETRY_SERVICE_API_KEY || BUILD_CONSTANTS.TELEMETRY_SERVICE_API_KEY,
 	errorTrackingApiKey: BUILD_CONSTANTS.ERROR_SERVICE_API_KEY,
 	host: "https://us.i.posthog.com", // Default PostHog EU ingest (change to us.posthog.com if on US cloud)
 	uiHost: useDevEnv ? "https://us.i.posthog.com" : "https://us.posthog.com",

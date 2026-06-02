@@ -47,7 +47,7 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
 			// Use the same message source-of-truth that `groupedMessages` is derived from.
 			return findReasoningForApiReq(messageOrGroup.ts, modifiedMessages)
 		}
-		return { reasoning: undefined, responseStarted: false }
+		return { reasoning: undefined, responseStarted: false, durationMs: undefined }
 	}, [messageOrGroup, modifiedMessages])
 
 	// Check if a text message is waiting for tool call completion
@@ -103,6 +103,7 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
 				onSetQuote={onSetQuote}
 				onToggleExpand={onToggleExpand}
 				reasoningContent={reasoningData.reasoning}
+				reasoningDurationMs={reasoningData.durationMs}
 				responseStarted={reasoningData.responseStarted}
 				sendMessageFromChatRow={messageHandlers.handleSendMessage}
 			/>

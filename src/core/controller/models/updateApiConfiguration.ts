@@ -4,6 +4,7 @@ import { buildApiHandler } from "@/core/api"
 import { ApiHandlerOptions, ApiProvider } from "@/shared/api"
 import { UpdateApiConfigurationRequestNew } from "@/shared/proto/index.cline"
 import { Secrets } from "@/shared/storage/state-keys"
+import { isNativeToolCallingConfig } from "@/utils/model-utils"
 import type { Controller } from "../index"
 
 /**
@@ -63,6 +64,12 @@ export async function updateApiConfiguration(controller: Controller, request: Up
 		if (!updateMask || updateMask.length === 0) {
 			throw new Error("Update mask is required and must contain at least one path")
 		}
+
+		// Capture pre-update tool-format class so we can warn the user if a
+		// mid-task model switch crosses the native↔XML boundary. Must be read
+		// BEFORE any state writes below, since those update the snapshot used
+		// by the post-rebuild comparison.
+		const preUpdate = capturePreUpdateToolFormat(controller)
 
 		const { options: protoOptions, secrets: protoSecrets } = updates
 
@@ -137,12 +144,17 @@ export async function updateApiConfiguration(controller: Controller, request: Up
 			controller.stateManager.setGlobalStateBatch(options)
 		}
 
+		// byok_added telemetry is handled in updateApiConfigurationProto (the code path
+		// the webview settings form actually calls for all standard providers).
+
 		// Update the task's API handler if there's an active task
 		if (controller.task) {
 			const currentMode = controller.stateManager.getGlobalSettingsKey("mode")
 			// Combine secrets and options for the API handler
 			const apiConfigForHandler = { ...secrets, ...options, ulid: controller.task.ulid }
 			controller.task.api = buildApiHandler(apiConfigForHandler, currentMode)
+
+			await maybeWarnAboutToolFormatChange(controller, preUpdate)
 		}
 
 		// Post updated state to webview
@@ -152,5 +164,68 @@ export async function updateApiConfiguration(controller: Controller, request: Up
 	} catch (error) {
 		console.error(`Failed to update API configuration: ${error}`)
 		throw error
+	}
+}
+
+interface PreUpdateToolFormat {
+	providerId: string
+	modelId: string
+	isNative: boolean
+	nativeToolCallEnabled: boolean
+}
+
+function capturePreUpdateToolFormat(controller: Controller): PreUpdateToolFormat | undefined {
+	const task = controller.task
+	if (!task) {
+		return undefined
+	}
+	try {
+		const mode = controller.stateManager.getGlobalSettingsKey("mode")
+		const apiConfig = controller.stateManager.getApiConfiguration()
+		const providerId = (mode === "plan" ? apiConfig.planModeApiProvider : apiConfig.actModeApiProvider) as string | undefined
+		if (!providerId) {
+			return undefined
+		}
+		const model = task.api.getModel()
+		const nativeToolCallEnabled = Boolean(controller.stateManager.getGlobalStateKey("nativeToolCallEnabled"))
+		const isNative = isNativeToolCallingConfig({ providerId, model, mode }, nativeToolCallEnabled)
+		return { providerId, modelId: model.id, isNative, nativeToolCallEnabled }
+	} catch {
+		// Best-effort diagnostic. Never let this block the config update.
+		return undefined
+	}
+}
+
+async function maybeWarnAboutToolFormatChange(controller: Controller, preUpdate: PreUpdateToolFormat | undefined): Promise<void> {
+	const task = controller.task
+	if (!task || !preUpdate) {
+		return
+	}
+	try {
+		const mode = controller.stateManager.getGlobalSettingsKey("mode")
+		const apiConfig = controller.stateManager.getApiConfiguration()
+		const newProviderId = (mode === "plan" ? apiConfig.planModeApiProvider : apiConfig.actModeApiProvider) as
+			| string
+			| undefined
+		if (!newProviderId) {
+			return
+		}
+		const newModel = task.api.getModel()
+		const newIsNative = isNativeToolCallingConfig(
+			{ providerId: newProviderId, model: newModel, mode },
+			preUpdate.nativeToolCallEnabled,
+		)
+		const modelChanged = preUpdate.providerId !== newProviderId || preUpdate.modelId !== newModel.id
+		if (!modelChanged || preUpdate.isNative === newIsNative) {
+			return
+		}
+		const from = `${preUpdate.providerId}/${preUpdate.modelId} (${preUpdate.isNative ? "native tool calls" : "XML tool calls"})`
+		const to = `${newProviderId}/${newModel.id} (${newIsNative ? "native tool calls" : "XML tool calls"})`
+		await task.say(
+			"info",
+			`Model switched mid-task: ${from} → ${to}. The two models use different tool-call formats; expect a couple of retries while the new model adapts. If tool calls keep failing, starting a new task is the cleanest reset.`,
+		)
+	} catch {
+		// Diagnostic only — never let this break the config update.
 	}
 }

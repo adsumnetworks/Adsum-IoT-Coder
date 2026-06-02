@@ -13,7 +13,9 @@ import {
 } from "@shared/storage/state-keys"
 import { ExtensionContext } from "vscode"
 import { Controller } from "@/core/controller"
+import { featureFlagsService } from "@/services/feature-flags"
 import { ClineRulesToggles } from "@/shared/cline-rules"
+import { FeatureFlag } from "@/shared/services/feature-flags/feature-flags"
 import { readTaskHistoryFromState } from "../disk"
 
 export async function readSecretsFromDisk(context: ExtensionContext): Promise<Secrets> {
@@ -96,7 +98,11 @@ export async function readGlobalStateFromDisk(context: ExtensionContext): Promis
  */
 async function handleComputedProperties(result: any, stateValues: Map<string, any>): Promise<void> {
 	// 1. API Provider logic - set defaults based on existing values
-	const defaultApiProvider: ApiProvider = "openrouter"
+	// Fresh installs default to adsum-free when the Stage 0 flag is on,
+	// so the user gets an instant first-run experience with no key required.
+	const isFreshInstall = !result.planModeApiProvider && !result.actModeApiProvider
+	const freeTierEnabled = featureFlagsService.getBooleanFlagEnabled(FeatureFlag.FREE_TIER_STAGE0)
+	const defaultApiProvider: ApiProvider = isFreshInstall && freeTierEnabled ? "adsum-free" : "openrouter"
 	result.planModeApiProvider = result.planModeApiProvider || defaultApiProvider
 	result.actModeApiProvider = result.actModeApiProvider || defaultApiProvider
 
