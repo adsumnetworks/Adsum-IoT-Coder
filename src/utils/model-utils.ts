@@ -56,6 +56,13 @@ export function isClaude4PlusModelFamily(id: string): boolean {
 	if (!isAnthropicModelId(modelId)) {
 		return false
 	}
+	// `-latest` aliases on the Anthropic API and OpenRouter currently resolve to
+	// Claude 4.x (e.g. `claude-haiku-latest` → Haiku 4.5). Treat them as
+	// next-gen so they don't get routed to the generic prompt variant whose
+	// format-reminder placeholders confuse smaller / older models.
+	if (modelId.endsWith("-latest") || /\b(?:sonnet|opus|haiku)-latest\b/.test(modelId)) {
+		return true
+	}
 	// Get model version number
 	const versionMatch = modelId.match(CLAUDE_VERSION_MATCH_REGEX)
 	if (!versionMatch) {
@@ -135,9 +142,17 @@ export function isGemini3ModelFamily(id: string): boolean {
 	return modelId.includes("gemini3") || modelId.includes("gemini-3")
 }
 
-function isDeepSeek32ModelFamily(id: string): boolean {
+export function isDeepSeekNativeToolsModelFamily(id: string): boolean {
 	const modelId = normalize(id)
-	return modelId.includes("deepseek") && modelId.includes("3.2") && !modelId.includes("speciale")
+	if (!modelId.includes("deepseek")) {
+		return false
+	}
+	if (modelId.includes("speciale")) {
+		return false
+	}
+	// 3.2 and V4-class DeepSeek models expose OpenAI-compatible tool_calls;
+	// older 3.1/V3 chat models do not.
+	return modelId.includes("3.2") || modelId.includes("v4") || /(?:^|[^0-9])4\.\d/.test(modelId)
 }
 
 export function isNextGenModelFamily(id: string): boolean {
@@ -150,7 +165,7 @@ export function isNextGenModelFamily(id: string): boolean {
 		isMinimaxModelFamily(modelId) ||
 		isGemini3ModelFamily(modelId) ||
 		isNextGenOpenSourceModelFamily(modelId) ||
-		isDeepSeek32ModelFamily(modelId)
+		isDeepSeekNativeToolsModelFamily(modelId)
 	)
 }
 
@@ -183,6 +198,46 @@ export function parsePrice(priceString: string | undefined): number {
  * @param enableNativeToolCalls Whether the native tool calls setting is enabled
  * @returns true if the model will use native tool calling, false otherwise
  */
+/**
+ * Coarse classification of how reliably a given model emits parseable tool
+ * calls under Cline's XML format. Used by the consecutive-mistake recovery
+ * path in Task to decide when to switch to a richer hint or surface a
+ * model-compatibility notice to the user.
+ *
+ * "high" — well-tested next-gen models with strong instruction following
+ *          (Claude 4+, GPT-5, Gemini 2.5/3, Grok-4).
+ * "medium" — known to work but with format quirks the normalizer covers
+ *          (DeepSeek 3.2/V4, GLM, Hermes, Kimi).
+ * "low" — everything else: older small models (Haiku 3.x), local Ollama /
+ *          LMStudio, unknown OpenRouter / OpenAI-compatible IDs. These are
+ *          the ones most likely to mimic the format-reminder placeholders
+ *          literally and burn retries in the noToolsUsed loop.
+ */
+export type ToolCallReliabilityTier = "high" | "medium" | "low"
+
+export function getToolCallReliabilityTier(providerInfo: ApiProviderInfo): ToolCallReliabilityTier {
+	const id = normalize(providerInfo.model.id)
+	if (
+		isClaude4PlusModelFamily(id) ||
+		isGPT5ModelFamily(id) ||
+		isGemini2dot5ModelFamily(id) ||
+		isGemini3ModelFamily(id) ||
+		isGrok4ModelFamily(id) ||
+		isMinimaxModelFamily(id)
+	) {
+		return "high"
+	}
+	if (
+		isDeepSeekNativeToolsModelFamily(id) ||
+		isNextGenOpenSourceModelFamily(id) ||
+		isGLMModelFamily(id) ||
+		isHermesModelFamily(id)
+	) {
+		return "medium"
+	}
+	return "low"
+}
+
 export function isNativeToolCallingConfig(providerInfo: ApiProviderInfo, enableNativeToolCalls: boolean): boolean {
 	if (!enableNativeToolCalls) {
 		return false
@@ -195,5 +250,12 @@ export function isNativeToolCallingConfig(providerInfo: ApiProviderInfo, enableN
 }
 
 function normalize(text: string): string {
-	return text.trim().toLowerCase()
+	let id = text.trim().toLowerCase()
+	// Strip OpenRouter / Vertex / similar "vendor/model" prefixes so downstream
+	// version regexes and substring checks work uniformly on the bare model ID.
+	const slash = id.lastIndexOf("/")
+	if (slash >= 0) {
+		id = id.slice(slash + 1)
+	}
+	return id
 }

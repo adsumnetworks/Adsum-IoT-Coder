@@ -1,35 +1,36 @@
 import { COMMAND_OUTPUT_STRING } from "@shared/combineCommandSequences"
 import {
-    ClineApiReqInfo,
-    ClineAskQuestion,
-    ClineAskUseMcpServer,
-    ClineMessage,
-    ClineSayGenerateExplanation,
-    ClineSayTool,
-    COMPLETION_RESULT_CHANGES_FLAG,
+	ClineApiReqInfo,
+	ClineAskQuestion,
+	ClineAskUseMcpServer,
+	ClineMessage,
+	ClineSayGenerateExplanation,
+	ClineSayTool,
+	COMPLETION_RESULT_CHANGES_FLAG,
 } from "@shared/ExtensionMessage"
 import { StringRequest } from "@shared/proto/cline/common"
 import { Mode } from "@shared/storage/types"
 import deepEqual from "fast-deep-equal"
 import {
-    ArrowRightIcon,
-    BellIcon,
-    CheckIcon,
-    CircleSlashIcon,
-    CircleXIcon,
-    FileCode2Icon,
-    FilePlus2Icon,
-    FoldVerticalIcon,
-    ImageUpIcon,
-    LightbulbIcon,
-    Link2Icon,
-    LoaderCircleIcon,
-    PencilIcon,
-    RefreshCwIcon,
-    SearchIcon, SquareArrowOutUpRightIcon,
-    SquareMinusIcon,
-    TerminalIcon,
-    TriangleAlertIcon
+	ArrowRightIcon,
+	BellIcon,
+	CheckIcon,
+	CircleSlashIcon,
+	CircleXIcon,
+	FileCode2Icon,
+	FilePlus2Icon,
+	FoldVerticalIcon,
+	ImageUpIcon,
+	LightbulbIcon,
+	Link2Icon,
+	LoaderCircleIcon,
+	PencilIcon,
+	RefreshCwIcon,
+	SearchIcon,
+	SquareArrowOutUpRightIcon,
+	SquareMinusIcon,
+	TerminalIcon,
+	TriangleAlertIcon,
 } from "lucide-react"
 import { MouseEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSize } from "react-use"
@@ -55,7 +56,7 @@ import QuoteButton from "./QuoteButton"
 import ReportBugPreview from "./ReportBugPreview"
 import { RequestStartRow } from "./RequestStartRow"
 import SearchResultsDisplay from "./SearchResultsDisplay"
-import { ThinkingRow } from "./ThinkingRow"
+import { ThinkingBlock } from "./ThinkingBlock"
 import UserMessage from "./UserMessage"
 
 // State type for api_req_started rendering
@@ -76,6 +77,7 @@ interface ChatRowProps {
 	onCancelCommand?: () => void
 	mode?: Mode
 	reasoningContent?: string
+	reasoningDurationMs?: number
 	responseStarted?: boolean
 	isRequestInProgress?: boolean
 }
@@ -141,6 +143,7 @@ export const ChatRowContent = memo(
 		mode,
 		isRequestInProgress,
 		reasoningContent,
+		reasoningDurationMs,
 		responseStarted,
 	}: ChatRowContentProps) => {
 		const {
@@ -314,12 +317,12 @@ export const ChatRowContent = memo(
 				case "mistake_limit_reached":
 					return [
 						<CircleXIcon className="text-error size-2" />,
-						<span className="text-error font-bold">SoC AI Debugger is having trouble...</span>,
+						<span className="text-error font-bold">Adsum IoT Coder is having trouble...</span>,
 					]
 				case "command":
 					return [
 						<TerminalIcon className="text-foreground size-2" />,
-						<span className="font-bold text-foreground">SoC AI Debugger wants to execute this command:</span>,
+						<span className="font-bold text-foreground">Adsum IoT Coder wants to execute this command:</span>,
 					]
 				case "use_mcp_server":
 					const mcpServerUse = JSON.parse(message.text || "{}") as ClineAskUseMcpServer
@@ -330,7 +333,8 @@ export const ChatRowContent = memo(
 							<span className="codicon codicon-server text-foreground mb-[-1.5px]" />
 						),
 						<span className="ph-no-capture font-bold text-foreground break-words">
-							SoC AI Debugger wants to {mcpServerUse.type === "use_mcp_tool" ? "use a tool" : "access a resource"} on the{" "}
+							Adsum IoT Coder wants to {mcpServerUse.type === "use_mcp_tool" ? "use a tool" : "access a resource"}{" "}
+							on the{" "}
 							<code className="break-all">
 								{getMcpServerDisplayName(mcpServerUse.serverName, mcpMarketplaceCatalog)}
 							</code>{" "}
@@ -349,7 +353,7 @@ export const ChatRowContent = memo(
 				case "followup":
 					return [
 						<span className="codicon codicon-question text-foreground mb-[-1.5px]" />,
-						<span className="font-bold text-foreground">SoC AI Debugger has a question:</span>,
+						<span className="font-bold text-foreground">Adsum IoT Coder has a question:</span>,
 					]
 				default:
 					return [null, null]
@@ -406,8 +410,8 @@ export const ChatRowContent = memo(
 					const content = tool?.content || ""
 					const isApplyingPatch = content?.startsWith("%%bash") && !content.endsWith("*** End Patch\nEOF")
 					const editToolTitle = isApplyingPatch
-						? "SoC AI Debugger is creating patches to edit this file:"
-						: "SoC AI Debugger wants to edit this file:"
+						? "Adsum IoT Coder is creating patches to edit this file:"
+						: "Adsum IoT Coder wants to edit this file:"
 					return (
 						<div>
 							<div className={HEADER_CLASSNAMES}>
@@ -436,7 +440,7 @@ export const ChatRowContent = memo(
 								<SquareMinusIcon className="size-2" />
 								{tool.operationIsLocatedInWorkspace === false &&
 									toolIcon("sign-out", "yellow", -90, "This file is outside of your workspace")}
-								<span style={{ fontWeight: "bold" }}>SoC AI Debugger wants to delete this file:</span>
+								<span style={{ fontWeight: "bold" }}>Adsum IoT Coder wants to delete this file:</span>
 							</div>
 							<CodeAccordian
 								// isLoading={message.partial}
@@ -454,7 +458,7 @@ export const ChatRowContent = memo(
 								<FilePlus2Icon className="size-2" />
 								{tool.operationIsLocatedInWorkspace === false &&
 									toolIcon("sign-out", "yellow", -90, "This file is outside of your workspace")}
-								<span className="font-bold">SoC AI Debugger wants to create a new file:</span>
+								<span className="font-bold">Adsum IoT Coder wants to create a new file:</span>
 							</div>
 							{backgroundEditEnabled && tool.path && tool.content ? (
 								<DiffEditRow patch={tool.content} path={tool.path} />
@@ -477,7 +481,7 @@ export const ChatRowContent = memo(
 								{isImage ? <ImageUpIcon className="size-2" /> : <FileCode2Icon className="size-2" />}
 								{tool.operationIsLocatedInWorkspace === false &&
 									toolIcon("sign-out", "yellow", -90, "This file is outside of your workspace")}
-								<span className="font-bold">SoC AI Debugger wants to read this file:</span>
+								<span className="font-bold">Adsum IoT Coder wants to read this file:</span>
 							</div>
 							<div className="bg-code rounded-sm overflow-hidden border border-editor-group-border">
 								<div
@@ -511,8 +515,8 @@ export const ChatRowContent = memo(
 									toolIcon("sign-out", "yellow", -90, "This is outside of your workspace")}
 								<span style={{ fontWeight: "bold" }}>
 									{message.type === "ask"
-										? "SoC AI Debugger wants to view the top level files in this directory:"
-										: "SoC AI Debugger viewed the top level files in this directory:"}
+										? "Adsum IoT Coder wants to view the top level files in this directory:"
+										: "Adsum IoT Coder viewed the top level files in this directory:"}
 								</span>
 							</div>
 							<CodeAccordian
@@ -533,8 +537,8 @@ export const ChatRowContent = memo(
 									toolIcon("sign-out", "yellow", -90, "This is outside of your workspace")}
 								<span style={{ fontWeight: "bold" }}>
 									{message.type === "ask"
-										? "SoC AI Debugger wants to recursively view all files in this directory:"
-										: "SoC AI Debugger recursively viewed all files in this directory:"}
+										? "Adsum IoT Coder wants to recursively view all files in this directory:"
+										: "Adsum IoT Coder recursively viewed all files in this directory:"}
 								</span>
 							</div>
 							<CodeAccordian
@@ -555,8 +559,8 @@ export const ChatRowContent = memo(
 									toolIcon("sign-out", "yellow", -90, "This file is outside of your workspace")}
 								<span style={{ fontWeight: "bold" }}>
 									{message.type === "ask"
-										? "SoC AI Debugger wants to view source code definition names used in this directory:"
-										: "SoC AI Debugger viewed source code definition names used in this directory:"}
+										? "Adsum IoT Coder wants to view source code definition names used in this directory:"
+										: "Adsum IoT Coder viewed source code definition names used in this directory:"}
 								</span>
 							</div>
 							<CodeAccordian
@@ -575,7 +579,8 @@ export const ChatRowContent = memo(
 								{tool.operationIsLocatedInWorkspace === false &&
 									toolIcon("sign-out", "yellow", -90, "This is outside of your workspace")}
 								<span className="font-bold">
-									SoC AI Debugger wants to search this directory for <code className="break-all">{tool.regex}</code>:
+									Adsum IoT Coder wants to search this directory for{" "}
+									<code className="break-all">{tool.regex}</code>:
 								</span>
 							</div>
 							<SearchResultsDisplay
@@ -592,7 +597,7 @@ export const ChatRowContent = memo(
 						<div>
 							<div className={HEADER_CLASSNAMES}>
 								<FoldVerticalIcon className="size-2" />
-								<span className="font-bold">SoC AI Debugger is condensing the conversation:</span>
+								<span className="font-bold">Adsum IoT Coder is condensing the conversation:</span>
 							</div>
 							<div className="bg-code overflow-hidden border border-editor-group-border rounded-[3px]">
 								<div
@@ -637,8 +642,8 @@ export const ChatRowContent = memo(
 									toolIcon("sign-out", "yellow", -90, "This URL is external")}
 								<span className="font-bold">
 									{message.type === "ask"
-										? "SoC AI Debugger wants to fetch content from this URL:"
-										: "SoC AI Debugger fetched content from this URL:"}
+										? "Adsum IoT Coder wants to fetch content from this URL:"
+										: "Adsum IoT Coder fetched content from this URL:"}
 								</span>
 							</div>
 							<div
@@ -666,8 +671,8 @@ export const ChatRowContent = memo(
 									toolIcon("sign-out", "yellow", -90, "This search is external")}
 								<span className="font-bold">
 									{message.type === "ask"
-										? "SoC AI Debugger wants to search the web for:"
-										: "SoC AI Debugger searched the web for:"}
+										? "Adsum IoT Coder wants to search the web for:"
+										: "Adsum IoT Coder searched the web for:"}
 								</span>
 							</div>
 							<div className="bg-code border border-editor-group-border overflow-hidden rounded-xs select-text py-[9px] px-2.5">
@@ -682,7 +687,7 @@ export const ChatRowContent = memo(
 						<div>
 							<div className={HEADER_CLASSNAMES}>
 								<LightbulbIcon className="size-2" />
-								<span className="font-bold">SoC AI Debugger loaded the skill:</span>
+								<span className="font-bold">Adsum IoT Coder loaded the skill:</span>
 							</div>
 							<div className="bg-code border border-editor-group-border overflow-hidden rounded-xs py-[9px] px-2.5">
 								<span className="ph-no-capture font-medium">{tool.path}</span>
@@ -696,8 +701,8 @@ export const ChatRowContent = memo(
 								{toolIcon("wrench")}
 								<span className="font-bold">
 									{message.type === "ask"
-										? "SoC AI Debugger wants to trigger nRF Connect action:"
-										: "SoC AI Debugger triggered nRF Connect action:"}
+										? "Adsum IoT Coder wants to trigger nRF Connect action:"
+										: "Adsum IoT Coder triggered nRF Connect action:"}
 								</span>
 							</div>
 							<div className="bg-code border border-editor-group-border overflow-hidden rounded-xs py-[9px] px-2.5">
@@ -828,6 +833,7 @@ export const ChatRowContent = memo(
 								message={message}
 								mode={mode}
 								reasoningContent={reasoningContent}
+								reasoningDurationMs={reasoningDurationMs}
 								responseStarted={responseStarted}
 							/>
 						)
@@ -869,12 +875,12 @@ export const ChatRowContent = memo(
 					}
 					case "reasoning": {
 						return (
-							<ThinkingRow
+							<ThinkingBlock
+								content={message.text}
+								durationMs={undefined}
 								isExpanded={isExpanded}
-								isVisible={true}
+								isStreaming={false}
 								onToggle={handleToggle}
-								reasoningContent={message.text}
-								showTitle={true}
 							/>
 						)
 					}
@@ -1009,8 +1015,8 @@ export const ChatRowContent = memo(
 									<span className="font-medium text-foreground">Shell Integration Unavailable</span>
 								</div>
 								<div className="text-foreground opacity-80 mt-1">
-									SoC AI Debugger won't be able to perfectly view the command's output. Please ensure you're using a
-									supported shell:
+									Adsum IoT Coder won't be able to perfectly view the command's output. Please ensure you're
+									using a supported shell:
 									<ul className="list-disc ml-5 mt-1">
 										<li>Windows: PowerShell</li>
 										<li>Mac/Linux: bash, zsh, fish</li>

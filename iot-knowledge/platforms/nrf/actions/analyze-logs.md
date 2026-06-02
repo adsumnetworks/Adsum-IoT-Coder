@@ -7,6 +7,18 @@ Called from: Debug Loop Phase 4, Log Analyzer Step 5, or post-capture verificati
 - Log file exists (captured via `actions/capture-logs.md` or provided by user)
 - Source code and `prj.conf` for the project are accessible for correlation
 
+## MANDATORY: Resolve the log file path before reading
+
+**Never guess a log filename.** Captured filenames embed timestamps (e.g. `device_683451822_20260521_153438.log`) that depend on the device clock and capture moment. If you `read_file` a path the capture step did not just return, the read will fail with `File not found` and you will burn retries.
+
+**Required order before any `read_file` on a `logs/**/*.log` path:**
+
+1. Use `list_files` on the enclosing log directory (e.g. `logs/rtt/`, `logs/uart/`).
+2. Pick the **most recently created** file matching the expected device/transport pattern.
+3. Use that exact absolute path in `read_file`.
+
+If the directory is empty or does not exist, the capture step did not produce a log — invoke `actions/capture-logs.md` first; do NOT loop on `read_file` retries.
+
 ## Analysis Approach
 
 ### 1. Structural Scan — What to Look For

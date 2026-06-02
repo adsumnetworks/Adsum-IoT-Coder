@@ -1,8 +1,8 @@
 {
 	"name": "nrf-ai-debugger",
-	"displayName": "IoT AI Debugger",
+	"displayName": "Adsum IoT Coder – for nRF",
 	"description": "Open-Source AI-powered debugging assistant for nRF Connect SDK development. Generates logging code, analyzes RTT/UART logs, and provides real-time BLE stack diagnostics.",
-	"version": "0.0.5",
+	"version": "0.1.3",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -14,9 +14,9 @@
 	"publisher": "AdsumNetwork",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/adsumnetworks/SoC-AI-Debugger"
+		"url": "https://github.com/adsumnetworks/Adsum-IoT-Coder"
 	},
-	"homepage": "https://github.com/adsumnetworks/SoC-AI-Debugger",
+	"homepage": "https://github.com/adsumnetworks/Adsum-IoT-Coder",
 	"categories": [
 		"AI",
 		"Debuggers",
@@ -24,16 +24,35 @@
 	],
 	"keywords": [
 		"nrf",
+		"nrf52",
+		"nrf53",
+		"nrf54",
 		"nordic",
+		"nordic-semiconductor",
+		"ncs",
+		"nrf-connect-sdk",
 		"zephyr",
+		"zephyr-rtos",
 		"rtos",
 		"ble",
+		"bluetooth",
+		"bluetooth-low-energy",
 		"debugging",
+		"firmware",
+		"firmware-debugging",
+		"embedded",
+		"embedded-debugging",
+		"embedded-systems",
 		"logging",
 		"rtt",
-		"embedded",
+		"rtt-logger",
+		"j-link",
 		"ai",
-		"agent"
+		"agent",
+		"ai-agent",
+		"coding-agent",
+		"copilot-alternative",
+		"vscode-ai"
 	],
 	"activationEvents": [
 		"onLanguage",
@@ -44,7 +63,14 @@
 	"contributes": {
 		"icons": {
 			"cline-icon": {
-				"description": "cline",
+				"description": "Cline",
+				"default": {
+					"fontPath": "assets/icons/cline-bot.woff",
+					"fontCharacter": "\\e900"
+				}
+			},
+			"adsum-iot-coder-icon": {
+				"description": "Adsum IoT Coder",
 				"default": {
 					"fontPath": "assets/icons/cline-bot.woff",
 					"fontCharacter": "\\e900"
@@ -54,17 +80,17 @@
 		"viewsContainers": {
 			"activitybar": [
 				{
-					"id": "iot-ai-debugger-ActivityBar",
-					"title": "IoT AI Debugger",
+					"id": "adsum-iot-coder-ActivityBar",
+					"title": "Adsum IoT Coder",
 					"icon": "assets/icons/icon.svg"
 				}
 			]
 		},
 		"views": {
-			"iot-ai-debugger-ActivityBar": [
+			"adsum-iot-coder-ActivityBar": [
 				{
 					"type": "webview",
-					"id": "iot-ai-debugger.SidebarProvider",
+					"id": "adsum-iot-coder.SidebarProvider",
 					"name": "",
 					"icon": "assets/icons/icon.svg"
 				}
@@ -72,102 +98,102 @@
 		},
 		"commands": [
 			{
-				"command": "iot-ai-debugger.plusButtonClicked",
+				"command": "adsum-iot-coder.plusButtonClicked",
 				"title": "New Task",
 				"icon": "$(add)"
 			},
 			{
-				"command": "iot-ai-debugger.historyButtonClicked",
+				"command": "adsum-iot-coder.historyButtonClicked",
 				"title": "History",
 				"icon": "$(history)"
 			},
 			{
-				"command": "iot-ai-debugger.settingsButtonClicked",
+				"command": "adsum-iot-coder.settingsButtonClicked",
 				"title": "Settings",
 				"icon": "$(settings-gear)"
 			},
 			{
-				"command": "iot-ai-debugger.dev.createTestTasks",
+				"command": "adsum-iot-coder.dev.createTestTasks",
 				"title": "Create Test Tasks",
-				"category": "IoT AI Debugger",
-				"when": "iot-ai-debugger.isDevMode"
+				"category": "Adsum IoT Coder",
+				"when": "adsum-iot-coder.isDevMode"
 			},
 			{
-				"command": "iot-ai-debugger.dev.expireMcpOAuthTokens",
+				"command": "adsum-iot-coder.dev.expireMcpOAuthTokens",
 				"title": "Expire MCP OAuth Tokens (for testing)",
-				"category": "IoT AI Debugger",
-				"when": "iot-ai-debugger.isDevMode"
+				"category": "Adsum IoT Coder",
+				"when": "adsum-iot-coder.isDevMode"
 			},
 			{
-				"command": "iot-ai-debugger.addToChat",
-				"title": "Add to IoT AI Debugger",
-				"category": "IoT AI Debugger"
+				"command": "adsum-iot-coder.addToChat",
+				"title": "Add to Adsum IoT Coder",
+				"category": "Adsum IoT Coder"
 			},
 			{
-				"command": "iot-ai-debugger.addTerminalOutputToChat",
-				"title": "Add to IoT AI Debugger",
-				"category": "IoT AI Debugger"
+				"command": "adsum-iot-coder.addTerminalOutputToChat",
+				"title": "Add to Adsum IoT Coder",
+				"category": "Adsum IoT Coder"
 			},
 			{
-				"command": "iot-ai-debugger.focusChatInput",
+				"command": "adsum-iot-coder.focusChatInput",
 				"title": "Jump to Chat Input",
-				"category": "IoT AI Debugger"
+				"category": "Adsum IoT Coder"
 			},
 			{
-				"command": "iot-ai-debugger.explainCode",
-				"title": "Explain with IoT AI Debugger",
-				"category": "IoT AI Debugger"
+				"command": "adsum-iot-coder.explainCode",
+				"title": "Explain with Adsum IoT Coder",
+				"category": "Adsum IoT Coder"
 			},
 			{
-				"command": "iot-ai-debugger.improveCode",
-				"title": "Improve with IoT AI Debugger",
-				"category": "IoT AI Debugger"
+				"command": "adsum-iot-coder.improveCode",
+				"title": "Improve with Adsum IoT Coder",
+				"category": "Adsum IoT Coder"
 			},
 			{
-				"command": "iot-ai-debugger.jupyterGenerateCell",
-				"title": "Generate Jupyter Cell with IoT AI Debugger",
-				"category": "IoT AI Debugger",
+				"command": "adsum-iot-coder.jupyterGenerateCell",
+				"title": "Generate Jupyter Cell with Adsum IoT Coder",
+				"category": "Adsum IoT Coder",
 				"icon": "$(sparkle)"
 			},
 			{
-				"command": "iot-ai-debugger.jupyterExplainCell",
-				"title": "Explain Jupyter Cell with IoT AI Debugger",
-				"category": "IoT AI Debugger",
+				"command": "adsum-iot-coder.jupyterExplainCell",
+				"title": "Explain Jupyter Cell with Adsum IoT Coder",
+				"category": "Adsum IoT Coder",
 				"icon": "$(question)"
 			},
 			{
-				"command": "iot-ai-debugger.jupyterImproveCell",
-				"title": "Improve Jupyter Cell with IoT AI Debugger",
-				"category": "IoT AI Debugger",
+				"command": "adsum-iot-coder.jupyterImproveCell",
+				"title": "Improve Jupyter Cell with Adsum IoT Coder",
+				"category": "Adsum IoT Coder",
 				"icon": "$(lightbulb)"
 			},
 			{
-				"command": "iot-ai-debugger.reconstructTaskHistory",
+				"command": "adsum-iot-coder.reconstructTaskHistory",
 				"title": "Reconstruct Task History",
-				"category": "IoT AI Debugger"
+				"category": "Adsum IoT Coder"
 			},
 			{
-				"command": "iot-ai-debugger.reviewComment.reply",
+				"command": "adsum-iot-coder.reviewComment.reply",
 				"title": "Reply",
-				"category": "IoT AI Debugger",
+				"category": "Adsum IoT Coder",
 				"enablement": "!commentIsEmpty"
 			},
 			{
-				"command": "iot-ai-debugger.reviewComment.addToChat",
-				"title": "Add to IoT AI Debugger Chat",
-				"category": "IoT AI Debugger",
+				"command": "adsum-iot-coder.reviewComment.addToChat",
+				"title": "Add to Adsum IoT Coder Chat",
+				"category": "Adsum IoT Coder",
 				"icon": "$(link-external)"
 			},
 			{
-				"command": "iot-ai-debugger.generateGitCommitMessage",
+				"command": "adsum-iot-coder.generateGitCommitMessage",
 				"title": "Generate Commit Message",
-				"category": "IoT AI Debugger",
+				"category": "Adsum IoT Coder",
 				"icon": "$(sparkle)"
 			},
 			{
-				"command": "iot-ai-debugger.abortGitCommitMessage",
+				"command": "adsum-iot-coder.abortGitCommitMessage",
 				"title": "Abort Commit Message Generation",
-				"category": "IoT AI Debugger",
+				"category": "Adsum IoT Coder",
 				"icon": "$(close)"
 			}
 		],
@@ -175,10 +201,10 @@
 			{
 				"command": "editor.action.submitComment",
 				"key": "enter",
-				"when": "commentEditorFocused && commentController == iot-ai-debugger-review && !commentIsEmpty"
+				"when": "commentEditorFocused && commentController == adsum-iot-coder-review && !commentIsEmpty"
 			},
 			{
-				"command": "iot-ai-debugger.addToChat",
+				"command": "adsum-iot-coder.addToChat",
 				"key": "cmd+'",
 				"mac": "cmd+'",
 				"win": "ctrl+'",
@@ -186,7 +212,7 @@
 				"when": "editorHasSelection"
 			},
 			{
-				"command": "iot-ai-debugger.focusChatInput",
+				"command": "adsum-iot-coder.focusChatInput",
 				"key": "cmd+'",
 				"mac": "cmd+'",
 				"win": "ctrl+'",
@@ -197,97 +223,107 @@
 		"menus": {
 			"view/title": [
 				{
-					"command": "iot-ai-debugger.plusButtonClicked",
+					"command": "adsum-iot-coder.plusButtonClicked",
 					"group": "navigation@1",
-					"when": "view == iot-ai-debugger.SidebarProvider"
+					"when": "view == adsum-iot-coder.SidebarProvider"
 				},
 				{
-					"command": "iot-ai-debugger.historyButtonClicked",
+					"command": "adsum-iot-coder.historyButtonClicked",
 					"group": "navigation@2",
-					"when": "view == iot-ai-debugger.SidebarProvider"
+					"when": "view == adsum-iot-coder.SidebarProvider"
 				},
 				{
-					"command": "iot-ai-debugger.settingsButtonClicked",
+					"command": "adsum-iot-coder.settingsButtonClicked",
 					"group": "navigation@3",
-					"when": "view == iot-ai-debugger.SidebarProvider"
+					"when": "view == adsum-iot-coder.SidebarProvider"
 				}
 			],
 			"editor/context": [
 				{
-					"command": "iot-ai-debugger.addToChat",
+					"command": "adsum-iot-coder.addToChat",
 					"group": "navigation",
 					"when": "editorHasSelection"
 				}
 			],
 			"terminal/context": [
 				{
-					"command": "iot-ai-debugger.addTerminalOutputToChat",
+					"command": "adsum-iot-coder.addTerminalOutputToChat",
 					"group": "navigation"
 				}
 			],
 			"scm/title": [
 				{
-					"command": "iot-ai-debugger.generateGitCommitMessage",
+					"command": "adsum-iot-coder.generateGitCommitMessage",
 					"group": "navigation",
-					"when": "config.git.enabled && scmProvider == git && !iot-ai-debugger.isGeneratingCommit"
+					"when": "config.git.enabled && scmProvider == git && !adsum-iot-coder.isGeneratingCommit"
 				},
 				{
-					"command": "iot-ai-debugger.abortGitCommitMessage",
+					"command": "adsum-iot-coder.abortGitCommitMessage",
 					"group": "navigation",
-					"when": "config.git.enabled && scmProvider == git && iot-ai-debugger.isGeneratingCommit"
+					"when": "config.git.enabled && scmProvider == git && adsum-iot-coder.isGeneratingCommit"
 				}
 			],
 			"notebook/toolbar": [
 				{
-					"command": "iot-ai-debugger.jupyterGenerateCell",
+					"command": "adsum-iot-coder.jupyterGenerateCell",
 					"group": "navigation/add@1",
 					"when": "notebookType == 'jupyter-notebook'"
 				}
 			],
 			"notebook/cell/title": [
 				{
-					"command": "iot-ai-debugger.jupyterExplainCell",
+					"command": "adsum-iot-coder.jupyterExplainCell",
 					"group": "inline@1",
 					"when": "notebookType == 'jupyter-notebook'"
 				},
 				{
-					"command": "iot-ai-debugger.jupyterImproveCell",
+					"command": "adsum-iot-coder.jupyterImproveCell",
 					"group": "inline@2",
 					"when": "notebookType == 'jupyter-notebook'"
 				}
 			],
 			"commandPalette": [
 				{
-					"command": "iot-ai-debugger.generateGitCommitMessage",
-					"when": "config.git.enabled && !iot-ai-debugger.isGeneratingCommit"
+					"command": "adsum-iot-coder.generateGitCommitMessage",
+					"when": "config.git.enabled && !adsum-iot-coder.isGeneratingCommit"
 				},
 				{
-					"command": "iot-ai-debugger.abortGitCommitMessage",
-					"when": "config.git.enabled && iot-ai-debugger.isGeneratingCommit"
+					"command": "adsum-iot-coder.abortGitCommitMessage",
+					"when": "config.git.enabled && adsum-iot-coder.isGeneratingCommit"
 				},
 				{
-					"command": "iot-ai-debugger.reviewComment.reply",
+					"command": "adsum-iot-coder.reviewComment.reply",
 					"when": "false"
 				}
 			],
 			"comments/commentThread/context": [
 				{
-					"command": "iot-ai-debugger.reviewComment.reply",
+					"command": "adsum-iot-coder.reviewComment.reply",
 					"group": "inline",
-					"when": "commentController == iot-ai-debugger-review"
+					"when": "commentController == adsum-iot-coder-review"
 				}
 			],
 			"comments/commentThread/title": [
 				{
-					"command": "iot-ai-debugger.reviewComment.addToChat",
+					"command": "adsum-iot-coder.reviewComment.addToChat",
 					"group": "inline",
-					"when": "commentController == iot-ai-debugger-review"
+					"when": "commentController == adsum-iot-coder-review"
 				}
 			]
 		},
 		"configuration": {
-			"title": "IoT AI Debugger",
-			"properties": {}
+			"title": "Adsum IoT Coder",
+			"properties": {
+				"adsum-iot-coder.telemetry.enabled": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Send anonymous usage telemetry to help improve Adsum IoT Coder. Telemetry is also gated by VS Code's global `#telemetry.telemetryLevel#` setting — disabling either one stops all data collection. See [TELEMETRY.md](https://github.com/adsumnetworks/SoC-AI-Debugger/blob/main/TELEMETRY.md) for full details on what is and isn't collected.",
+					"tags": [
+						"telemetry",
+						"usesOnlineServices"
+					]
+				}
+			}
 		}
 	},
 	"scripts": {

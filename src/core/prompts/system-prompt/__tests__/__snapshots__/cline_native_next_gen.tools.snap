@@ -408,8 +408,8 @@
   {
     "type": "function",
     "function": {
-      "name": "nrf_device_tool",
-      "description": "Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.\nUSE action=\"execute\" for ALL NCS CLI (west, nrfjprog, nrfutil). USE action=\"log_device\" ONLY for log capture. NEVER use execute_command for NCS SDK tasks.\n\nCRITICAL OPERATIONAL RULES:\n1. BOARD NAMES: Must be full Zephyr ID (e.g., \"nrf52840dk/nrf52840\", NOT \"nrf52840dk\"). Use \"west boards | grep nrf\" to verify.\n2. BUILD DIRS: User may have custom build dirs (e.g., build_52840, build_central). Use --build-dir (-d) to target them.\n3. MULTI-DEVICE FLASH: Use \"west flash --snr <serial_number>\" to target a specific device. Required when >1 device connected.\n4. PROCESS CLEANUP (run before flash or log capture):\n   - Linux/Mac: pkill -9 JLink && pkill -9 nrfutil\n   - Windows:   taskkill /F /IM JLink.exe & taskkill /F /IM nrfutil.exe\n5. PORTS: Windows uses COMx; Linux uses /dev/ttyACMx; Mac uses /dev/tty.usbmodemXXXX.\n6. DEVICE LISTING: For device enumeration, use action=\"log_device\" operation=\"list\". NEVER call nrfutil device list via execute_command directly.\n",
+      "name": "triggerNordicAction",
+      "description": "Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.\nUSE action=\"execute\" for ALL NCS CLI (west, nrfjprog, nrfutil). USE action=\"log_device\" ONLY for log capture. NEVER use execute_command for NCS SDK tasks.\n\nCRITICAL OPERATIONAL RULES:\n1. BOARD NAMES: Must be full Zephyr ID (e.g., \"nrf52840dk/nrf52840\", NOT \"nrf52840dk\"). Use for example \"west boards -f \"{name}/{qualifiers}\" | grep nrf52840\" to verify.\n2. BUILD DIRS: User may have custom build dirs (e.g., build_52840, build_central). Use --build-dir (-d) to target them.\n3. MULTI-DEVICE FLASH: Use \"west flash --snr <serial_number>\" to target a specific device. Required when >1 device connected.\n4. PROCESS CLEANUP (run before flash or log capture):\n   - Linux/Mac: pkill -9 JLink && pkill -9 nrfutil\n   - Windows:   cmd /c \"taskkill /F /IM JLink.exe 2>nul & taskkill /F /IM nrfutil.exe 2>nul\"\n     (always wrap in cmd /c — '&' and '2>nul' are cmd.exe syntax, but the user may be in PowerShell, which rejects them; cmd /c \"...\" makes it portable)\n5. PORTS: Windows uses COMx; Linux uses /dev/ttyACMx; Mac uses /dev/tty.usbmodemXXXX.\n6. DEVICE LISTING: For device enumeration, use action=\"log_device\" operation=\"list\". NEVER call nrfutil device list via execute_command directly.\n",
       "strict": false,
       "parameters": {
         "type": "object",
@@ -444,7 +444,7 @@
           },
           "devices": {
             "type": "string",
-            "description": "Optional for \"capture\". Multi-device mapping: \"name:identifier,name2:identifier2\".\n- For UART: identifier is the serial port (e.g. \"central:/dev/ttyACM0\").\n- For RTT: identifier is the serial number (e.g. \"central:683335182\"). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers."
+            "description": "Optional for \"capture\". Multi-device mapping: \"label:identifier,label2:identifier2\".\nThe label is used to name the output log file. Use generic labels (device1, device2) when roles are unknown.\nUse role-specific labels (central, peripheral) ONLY when the role has been confirmed by project config or log analysis.\n- For UART: identifier is the serial port (e.g. \"device1:/dev/ttyACM0\").\n- For RTT: identifier is the serial number (e.g. \"device1:683335182\"). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers."
           },
           "output": {
             "type": "string",

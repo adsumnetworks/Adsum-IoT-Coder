@@ -19,12 +19,19 @@ export interface TerminalInfo {
 export class TerminalRegistry {
 	private static terminals: TerminalInfo[] = []
 	private static nextTerminalId = 1
+	private static extensionUri: vscode.Uri | undefined
+
+	static setExtensionUri(uri: vscode.Uri) {
+		TerminalRegistry.extensionUri = uri
+	}
 
 	static createTerminal(cwd?: string | vscode.Uri | undefined, shellPath?: string): TerminalInfo {
 		const terminalOptions: vscode.TerminalOptions = {
 			cwd,
-			name: "Cline",
-			iconPath: new vscode.ThemeIcon("cline-icon"),
+			name: "Adsum IoT Coder",
+			iconPath: TerminalRegistry.extensionUri
+				? vscode.Uri.joinPath(TerminalRegistry.extensionUri, "assets", "icons", "icon.svg")
+				: new vscode.ThemeIcon("adsum-iot-coder-icon"),
 			env: {
 				CLINE_ACTIVE: "true",
 			},

@@ -322,9 +322,8 @@ export const Onboarding: Story = {
 		const canvas = within(canvasElement)
 
 		// Step 0: User type selection should be visible
-		const title = canvas.getByText("Welcome to SoC AI Debugger")
+		const title = canvas.getByText("Welcome to Adsum IoT Coder")
 		await expect(title).toBeInTheDocument()
-
 	},
 }
 export const EmptyState: Story = {

@@ -19,6 +19,11 @@ Read `environment_details` (provided automatically). For EACH VS Code workspace 
 
 Do NOT ask questions during this step (except the board conflict question). Gather all context silently.
 
+**No project found → STOP.** If no workspace root has `CMakeLists.txt` + `prj.conf` + `src/`, use `ask_followup_question`:
+- *"I can't find an nRF Connect SDK project in the current workspace. Please open your project folder in VS Code first."*
+- Options: `["I'll open my project now", "Help me find my project"]`
+Do NOT proceed to Step 2.
+
 ---
 
 ## Step 2: Decision Point — Single vs Multi-Project
@@ -92,19 +97,31 @@ After all code changes are applied, you must offer the next steps.
 - Question: *"Code is ready. How would you like to proceed with Build & Flash?"*
 - Options: `["Build & Flash now (ask me each time)", "Build & Flash autonomously for this task", "I'll do it manually"]`
 
-- If user selects "Build & Flash now": start the Debug Loop (see `workflows/debug-loop.md`) in **Ask Every Time** mode.
+- If user selects "Build & Flash": start the Debug Loop in **Ask Every Time** mode.
 - If user selects "Build & Flash autonomously": start the Debug Loop in **Auto-Approve** mode.
 - If user selects manually: you may now terminate the workflow using the `attempt_completion` tool.
 
 ---
 
-## Workflow Handoff
+## Workflow Handoff — Verification Capture
 
 After the debug-loop completes a successful Build & Flash:
-1. **Verification Capture Permission:** Use `ask_followup_question`:
-   - Question: *"Code flashed. Shall I capture a 15-second verification log to ensure logging works?"*
-   - Options: `["Capture verification logs", "Skip verification"]`
-2. If capturing: **MANDATORY SKILL LOAD:** If not already loaded during this task, you MUST use the `read_file` tool to load `platforms/nrf/actions/capture-logs.md` BEFORE capturing the 15-second log.
-3. Check that `LOG_MODULE_REGISTER` output appears in the captured logs.
-   - **If logs verified:** Use the `ask_followup_question` tool to offer the full Analyzer workflow: *"Logging is working. Would you like a full log analysis?"* → Options: `["Yes, start Log Analyzer", "No, I'm done"]`. (If user says "No", terminate using `attempt_completion`).
-   - **If logs missing:** Re-examine the code injection — the `LOG_MODULE_REGISTER` call may be missing or the module name may be wrong. Fix and re-flash.
+
+### Permission
+Use `ask_followup_question`:
+- Question: *"Code flashed. Shall I capture a 15-second verification log to ensure logging works?"*
+- Options: `["Capture verification logs", "Skip verification"]`
+
+If user selects "Skip verification": terminate using `attempt_completion`.
+
+### Capture
+
+**MANDATORY SKILL LOAD:** If not already loaded during this task, you MUST use the `read_file` tool to load `platforms/nrf/actions/capture-logs.md` BEFORE capturing. Do not proceed without it — the naming convention and capture parameters are defined there.
+
+Capture a 15-second verification log following the instructions in `capture-logs.md`.
+
+### Verify & Next Steps
+Check that `LOG_MODULE_REGISTER` output appears in the captured logs.
+
+- **If logs verified:** Use `ask_followup_question`: *"Logging is working. Would you like a full log analysis?"* → Options: `["Yes, start Log Analyzer", "No, I'm done"]`. (If user says "No", terminate using `attempt_completion`).
+- **If logs missing:** Re-examine the code injection — the `LOG_MODULE_REGISTER` call may be missing or the module name may be wrong. Fix and re-flash.

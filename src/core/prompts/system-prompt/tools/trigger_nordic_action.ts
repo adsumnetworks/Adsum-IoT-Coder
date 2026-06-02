@@ -25,7 +25,8 @@ CRITICAL OPERATIONAL RULES:
 3. MULTI-DEVICE FLASH: Use "west flash --snr <serial_number>" to target a specific device. Required when >1 device connected.
 4. PROCESS CLEANUP (run before flash or log capture):
    - Linux/Mac: pkill -9 JLink && pkill -9 nrfutil
-   - Windows:   taskkill /F /IM JLink.exe & taskkill /F /IM nrfutil.exe
+   - Windows:   cmd /c "taskkill /F /IM JLink.exe 2>nul & taskkill /F /IM nrfutil.exe 2>nul"
+     (always wrap in cmd /c — '&' and '2>nul' are cmd.exe syntax, but the user may be in PowerShell, which rejects them; cmd /c "..." makes it portable)
 5. PORTS: Windows uses COMx; Linux uses /dev/ttyACMx; Mac uses /dev/tty.usbmodemXXXX.
 6. DEVICE LISTING: For device enumeration, use action="log_device" operation="list". NEVER call nrfutil device list via execute_command directly.
 `
@@ -113,10 +114,12 @@ This ensures complete boot sequence is captured.`,
 	{
 		name: "devices",
 		required: false,
-		instruction: `Optional for "capture". Multi-device mapping: "name:identifier,name2:identifier2".
-- For UART: identifier is the serial port (e.g. "central:/dev/ttyACM0").
-- For RTT: identifier is the serial number (e.g. "central:683335182"). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.`,
-		usage: "central:683335182,peripheral:683007782",
+		instruction: `Optional for "capture". Multi-device mapping: "label:identifier,label2:identifier2".
+The label is used to name the output log file. Use generic labels (device1, device2) when roles are unknown.
+Use role-specific labels (central, peripheral) ONLY when the role has been confirmed by project config or log analysis.
+- For UART: identifier is the serial port (e.g. "device1:/dev/ttyACM0").
+- For RTT: identifier is the serial number (e.g. "device1:683335182"). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.`,
+		usage: "device1:683335182,device2:683007782",
 	},
 	{
 		name: "output",
@@ -147,7 +150,7 @@ This ensures complete boot sequence is captured.`,
 const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
 	id: ClineDefaultTool.NORDIC_ACTION,
-	name: "nrf_device_tool",
+	name: "triggerNordicAction",
 	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
 
 USE action="execute" for ALL NCS CLI operations: west build, west flash, nrfjprog, nrfutil, etc.

@@ -258,6 +258,11 @@ export function convertToOpenAiMessages(
 					// Only include reasoning_details when non-empty; sending [] can trigger provider validation issues.
 					// @ts-expect-error
 					reasoning_details: consolidatedReasoningDetails.length > 0 ? consolidatedReasoningDetails : undefined,
+					// DeepSeek requires reasoning_content to be passed back in subsequent turns if a tool call was made
+					reasoning_content:
+						consolidatedReasoningDetails.length > 0
+							? consolidatedReasoningDetails.map((d: any) => d.text).join("")
+							: undefined,
 				})
 			}
 		}

@@ -60,6 +60,14 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 		clearExpandedRows()
 	}, [task?.ts, clearExpandedRows])
 
+	// When loading a historical or completed task (messages already exist),
+	// transition nordicPhase out of "awaiting_mode" so the input is not frozen.
+	useEffect(() => {
+		if (nordicPhase === "awaiting_mode" && messages.length > 1) {
+			setNordicPhase("active")
+		}
+	}, [messages.length, nordicPhase])
+
 	return {
 		// State values
 		inputValue,

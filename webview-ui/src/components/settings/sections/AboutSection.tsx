@@ -11,10 +11,10 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 			{renderSectionHeader("about")}
 			<Section>
 				<div className="flex px-4 flex-col gap-2">
-					<h2 className="text-lg font-semibold">SoC AI Debugger v{version}</h2>
+					<h2 className="text-lg font-semibold">Adsum IoT Coder v{version}</h2>
 					<p>
-						An AI-powered debugging assistant for Nordic nRF Connect SDK. It helps you analyze logs, generate debugging code, 
-						and troubleshoot RTT/UART output using advanced reasoning capabilities.
+						An AI-powered debugging assistant for Nordic nRF Connect SDK. It helps you analyze logs, generate
+						debugging code, and troubleshoot RTT/UART output using advanced reasoning capabilities.
 					</p>
 
 					<h3 className="text-md font-semibold">Community & Support</h3>
@@ -28,7 +28,9 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 					<p>
 						<VSCodeLink href="https://www.nordicsemi.com">Nordic Semiconductor</VSCodeLink>
 						{" • "}
-						<VSCodeLink href="https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/index.html">nRF Connect SDK Docs</VSCodeLink>
+						<VSCodeLink href="https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/index.html">
+							nRF Connect SDK Docs
+						</VSCodeLink>
 					</p>
 				</div>
 			</Section>

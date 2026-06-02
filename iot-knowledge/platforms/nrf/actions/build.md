@@ -48,12 +48,12 @@ west build
 If a previous build exists with the same board, `west build` rebuilds incrementally.
 
 ### Pristine Build (REQUIRED after config changes)
-If `prj.conf`, any `.conf` overlay, or any DeviceTree file (`.overlay`, `.dts`) has been modified:
+If `prj.conf`, any `.conf` overlay, or any DeviceTree file (`.overlay`, `.dts`) has been modified, use the `-p` (pristine) flag::
 ```bash
-west build -t pristine
-west build -b <board>/<soc>
-# Example: west build -b nrf52dk/nrf52832 -t pristine
+west build -p -b <board>/<soc>
+# Example: west build -p -b nrf52840dk/nrf52840
 ```
+**Note:** `west build -p` is equivalent to `west build --pristine=always`. It ensures a clean build system generation from scratch.
 **CRITICAL:** Failing to do a pristine build after Kconfig/DT changes causes stale config bugs that are extremely hard to diagnose.
 
 ### Multi-Build Directory
