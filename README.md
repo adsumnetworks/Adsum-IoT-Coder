@@ -27,7 +27,7 @@ Open source under Apache 2.0.
 
 **[Watch the demo →](https://www.youtube.com/watch?v=67tUybg1phk)** · **[Install →](#getting-started)** · **[Benchmark →](#benchmark--iot-firmwaredebugbench-v01)** · **[Architecture →](#architecture--dynamic-knowledge--tool-skill-loading)** · **[Roadmap →](#roadmap)**
 
-<a href="https://www.youtube.com/watch?v=67tUybg1phk"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder — watch the demo" /></a>
+<a href="https://youtu.be/Zl6oCT9I4b0"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder — watch the demo" /></a>
 
 </div>
 
