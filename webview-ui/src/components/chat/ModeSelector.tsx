@@ -15,7 +15,7 @@ import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
-import { MODE_ICONS, NORDIC_MODES, type NordicModeId } from "./nordicModes"
+import { ACTIVE_MODES, MODE_ICONS, type NordicModeId } from "./nordicModes"
 
 interface ModeSelectorProps {
 	onModeSelect: (mode: NordicModeId) => void
@@ -24,7 +24,7 @@ interface ModeSelectorProps {
 }
 
 const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = false, variant = "welcome" }) => {
-	const modes = Object.values(NORDIC_MODES)
+	const modes = ACTIVE_MODES
 	const { isDark } = useVSCodeTheme()
 	const { navigateToHistory } = useExtensionState()
 	const iconFilter = isDark ? "brightness(0) invert(1)" : "brightness(0)"

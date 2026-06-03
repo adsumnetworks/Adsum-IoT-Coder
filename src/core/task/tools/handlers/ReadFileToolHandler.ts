@@ -5,6 +5,7 @@ import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
+import { HostProvider } from "@/hosts/host-provider"
 import { telemetryService } from "@/services/telemetry"
 import { ClineSayTool } from "@/shared/ExtensionMessage"
 import { ClineDefaultTool } from "@/shared/tools"
@@ -178,6 +179,21 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 						`filenames vary, so do not assume a path.`,
 				)
 			}
+		}
+
+		// No-double-load guard: iot-knowledge skill files don't change during a task,
+		// and many are pre-loaded into the system prompt (see the "Already Loaded"
+		// manifest). If the agent re-reads a knowledge file it already pulled this
+		// task, return a short stub instead of the full text to save context.
+		const knowledgeRoot = path.join(HostProvider.get().extensionFsPath, "iot-knowledge")
+		if (absolutePath.startsWith(knowledgeRoot + path.sep)) {
+			if (config.taskState.loadedKnowledgeFiles.has(absolutePath)) {
+				return (
+					`${displayPath} is already in your context (loaded earlier this task) — not re-reading. ` +
+					`Refer to the copy already above; iot-knowledge files do not change during a task.`
+				)
+			}
+			config.taskState.loadedKnowledgeFiles.add(absolutePath)
 		}
 
 		// Execute the actual file read operation

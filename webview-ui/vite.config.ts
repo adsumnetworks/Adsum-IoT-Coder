@@ -126,6 +126,9 @@ export default defineConfig({
 	},
 	define: {
 		__PLATFORM__: JSON.stringify(platform),
+		// IoT platform variant (nrf | esp) — selects the welcome-screen mode set,
+		// branding accent and copy. Baked at build time; default nrf.
+		__IOT_PLATFORM__: JSON.stringify(process.env.IOT_PLATFORM || "nrf"),
 		process: JSON.stringify({
 			platform: JSON.stringify(process?.platform),
 			env: {
