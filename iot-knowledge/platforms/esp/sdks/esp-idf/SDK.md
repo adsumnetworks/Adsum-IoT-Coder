@@ -1,47 +1,61 @@
-# SDK Reference: ESP-IDF v5.5 (sdks/esp-idf/SDK.md)
+# ESP-IDF — SDK Knowledge (sdks/esp-idf/SDK.md)
 
-ESP-IDF (Espressif IoT Development Framework) is the official development framework for ESP32 chips.
+## Overview
+ESP-IDF is Espressif's official SDK for the ESP32 family, built on **FreeRTOS**. Build/flash/monitor are driven by **`idf.py`** (a CMake + esptool front end). **Baseline: ESP-IDF v5.x.** Run everything through `triggerEspAction` (see `rules/esp-terminal.md`) — never source paths by hand.
 
-## Build System (CMake & `idf.py`)
-
-ESP-IDF utilizes CMake as its build system, but wraps it in the Python utility `idf.py`.
-
-### Project Structure (Typical)
-```text
-my-project/
-├── CMakeLists.txt         ← Project-level CMake (project name)
-├── sdkconfig              ← Auto-generated configuration (do not edit manually)
-└── main/
-    ├── CMakeLists.txt     ← Component-level CMake (source files, dependencies)
-    └── main.c             ← Application entry point (app_main)
+## Project Structure
+```
+<project-root>/
+├── CMakeLists.txt          # top-level: include($ENV{IDF_PATH}/tools/cmake/project.cmake); project(<name>)
+├── main/
+│   ├── CMakeLists.txt      # idf_component_register(SRCS "main.c" REQUIRES ... PRIV_REQUIRES ...)
+│   ├── main.c              # entry point: void app_main(void)
+│   └── idf_component.yml   # (optional) managed component dependencies
+├── components/<name>/      # (optional) custom components / drivers
+├── sdkconfig               # generated Kconfig config (target, PSRAM, flash size, …) — do not hand-edit blindly
+├── sdkconfig.defaults      # checked-in config overrides applied on first configure
+├── partitions.csv          # (optional) custom partition table
+└── build/                  # generated; build/project_description.json records the target & paths
 ```
 
-### Essential `idf.py` Usage
-Always remember to source the environment first (see `rules/esp-terminal.md`).
+## idf.py — the core commands (all via `triggerEspAction`)
+| Command | Action | Purpose |
+|---|---|---|
+| `idf.py set-target esp32s3` | execute | Select the chip (implies fullclean). Do once, confirm first. |
+| `idf.py build` | build | Configure + compile. |
+| `idf.py -p <port> flash` | flash | Write bootloader + partition table + app. |
+| `idf.py monitor` | monitor | Serial console + automatic panic backtrace decode. (Use action="monitor".) |
+| `idf.py menuconfig` | execute | Interactive Kconfig (headless: edit `sdkconfig.defaults` + `reconfigure`). |
+| `idf.py reconfigure` | execute | Re-run CMake after config/CMakeLists changes. |
+| `idf.py fullclean` | execute | Wipe `build/` when the build is in a bad state. |
+| `idf.py size` / `size-components` | execute | Static Flash / IRAM / DRAM usage. |
 
-1. **Set Target:** `idf.py set-target esp32` (Ensures the correct toolchain and SDK configurations are used).
-2. **Configure:** `idf.py menuconfig` (Use headless/scripted config for agents unless user requests CLI UI).
-3. **Build:** `idf.py build` (See `actions/build.md`).
-4. **Flash:** `idf.py -p <PORT> flash` (See `actions/flash.md`).
-5. **Monitor:** `idf.py -p <PORT> monitor` (See `actions/capture-logs.md`).
-6. **Full Chain:** `idf.py -p <PORT> flash monitor`
+## Device introspection (know your hardware — see `rules/device-identity.md`)
+- `esptool.py flash_id` → chip type, revision, features (WiFi/BLE), **flash (ROM) size**.
+- `idf.py --version` → ESP-IDF version.
+- `python -m serial.tools.list_ports` → connected serial ports.
+- PSRAM: `sdkconfig` `CONFIG_SPIRAM*`, confirmed by boot log `Found NMB SPI RAM device`.
 
-## FreeRTOS Foundation
+## sdkconfig — the usual suspects
+```ini
+CONFIG_IDF_TARGET="esp32s3"          # build target
+CONFIG_ESPTOOLPY_FLASHSIZE="8MB"     # must not exceed the real flash (from flash_id)
+CONFIG_SPIRAM=y                      # external PSRAM enabled
+CONFIG_FREERTOS_HZ=1000              # tick rate
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=3584 # app_main stack
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=5      # task watchdog timeout
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y      # global log verbosity
+```
+**Rule:** after editing `sdkconfig.defaults`, run `idf.py reconfigure` (or a fresh `build`) so changes take effect. A stale `sdkconfig` is a classic source of "my change did nothing" bugs.
 
-ESP-IDF is built entirely around an SMP (Symmetric Multiprocessing) capable version of **FreeRTOS**.
-- The main entry point is `void app_main(void)`.
-- `app_main` is executed by the main FreeRTOS task. It can return (the task will be deleted), meaning you must spin off child tasks via `xTaskCreate` or `xTaskCreatePinnedToCore` for background loops.
-- Avoid placing `while(1)` inside `app_main` without `vTaskDelay`, or the watchdog will kill the task.
+## Logging subsystem
+- `#include "esp_log.h"`; `static const char *TAG = "app";`
+- `ESP_LOGE/W/I/D/V(TAG, "fmt", …)` — Error/Warn/Info/Debug/Verbose.
+- Per-tag runtime level: `esp_log_level_set("wifi", ESP_LOG_WARN);`
+- Default level via `CONFIG_LOG_DEFAULT_LEVEL_*`. Output format: `I (12345) TAG: message` (level, ms-since-boot, tag).
 
-## Configuration (Kconfig)
-
-Configuration is managed via `Kconfig`. 
-To modify configurations programmatically without interacting with the terminal UI:
-- Directly write to `sdkconfig.defaults` and run `idf.py reconfigure`.
-- Example for enabling Wi-Fi AP support: create `sdkconfig.defaults` with `CONFIG_ESP_WIFI_SOFTAP_SUPPORT=y`
-
-## Event Loop Library
-
-ESP-IDF uses a centralized Event Loop (`esp_event.h`) for handling system events (Wi-Fi connected, IP acquired, etc.).
-- You MUST initialize it via `esp_event_loop_create_default()` early in `app_main()`.
-- Use `esp_event_handler_instance_register()` to subscribe to events.
+## Documentation Reference (Single Source of Truth)
+These are large — consult only when the knowledge files lack the detail; do NOT read preemptively.
+- ESP-IDF Programming Guide: https://docs.espressif.com/projects/esp-idf/en/stable/
+- API reference (Wi-Fi, BLE, FreeRTOS, storage): under `/api-reference/`
+- esptool: https://docs.espressif.com/projects/esptool/

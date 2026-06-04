@@ -1,32 +1,38 @@
-# Action: Capture Logs (actions/capture-logs.md)
+# Action: Capture Device Logs (actions/capture-logs.md)
 
 ## When Used
-Used to view UART serial logs coming from the ESP32 to diagnose application logic, Wi-Fi connections, crashes, and core panics.
+Called from: Debug Loop Phase 3, or whenever you need the serial output to diagnose boot, Wi-Fi, crashes or coredumps. Run via `triggerEspAction` action="monitor".
 
-## The Problem with `idf.py monitor`
-Running `idf.py monitor` takes over the active terminal. Because you are an AI agent, if you run it synchronously, it will freeze your terminal session indefinitely and you will be unable to escape it using standard keyboard shortcuts (`Ctrl+]`).
+## Why action="monitor" (never run `idf.py monitor` directly)
+`idf.py monitor` takes over the terminal and runs until `Ctrl+]`, which you cannot send — it would hang the session. `action="monitor"` wraps it: it runs for a bounded **duration**, saves the output to a correctly-named log file, then stops cleanly. Because it *is* `idf.py monitor`, **panic backtraces are already decoded to `file:line`** in the captured file (the whole reason to capture on ESP).
 
-## Background Capture Protocol (MANDATORY)
-
-You must ALWAYS run the monitor in the background and pipe its output to a `.log` file, just like you do in the nRF platform.
-
-### Step 1: Execute the background task
-```bash
-mkdir -p logs/uart
-. /home/omar/esp/v5.5.2/esp-idf/export.sh && idf.py monitor > logs/uart/esp32_monitor_$(date +%s).log 2>&1 &
+## Execution
 ```
-*Note: If you know the specific port, append `-p <port>` before `monitor`.*
-
-### Step 2: Wait for data accretion
-Wait roughly 5 to 10 seconds for the device to boot, initialize Wi-Fi, and print its logs.
-
-### Step 3: Stop the monitor
-To stop capturing, you must kill the background `idf.py` process.
-```bash
-killall -9 idf.py
-# If that fails, find the PID via `jobs -l` or `ps aux | grep idf.py` and kill it.
+triggerEspAction  action="monitor"  duration="10"  name="boot"
 ```
+- `duration` — seconds to capture (see table).
+- `name` — optional label for the filename (e.g. `boot`, `wifi`, `crash`).
+- `port` — only when several boards are connected.
+- `reset` — defaults to **true** (resets the board first, capturing the full boot sequence). Pass `reset="false"` for **mid-runtime** capture (e.g. you want to observe steady-state without rebooting).
 
-### Step 4: Examine the output
-Use your file viewing tools to open and read the generated `.log` file in `logs/uart/`.
-Look for `app_main` entry, Wi-Fi IP address acquisition, or any `Guru Meditation Error` (Crash). (See `analyze-logs.md`).
+The board must already be flashed with the current firmware, and a build must exist (the `.elf` is what decodes the backtrace).
+
+## Recommended Durations
+| Scenario | Duration |
+|---|---|
+| Crash / boot / panic | 10 s |
+| Wi-Fi connect / reconnect | 20–30 s |
+| Stability / leak watch | 60+ s |
+
+## Log File Naming
+The tool writes to:
+```
+logs/uart/<name>_<chip>_<port>_<YYYYMMDD_HHMMSS>.log
+# e.g. logs/uart/crash_esp32s3_ttyUSB0_20260604_142231.log
+```
+- `name` — your label (defaults to the chip name).
+- `chip` — read from `build/project_description.json` (what the firmware was built for).
+- `port` — sanitized serial port (`/dev/` stripped) or `auto`.
+
+## Output
+The tool prints a one-line summary (line count + any detected markers: *Guru Meditation, panic backtrace, Task watchdog, brownout, …*) and the **absolute log path**. Before reading the file, the workflow uses `list_files` on `logs/uart/` to get the exact captured filename (it embeds a timestamp — never guess it), then hands the most recent file to `actions/analyze-logs.md`.

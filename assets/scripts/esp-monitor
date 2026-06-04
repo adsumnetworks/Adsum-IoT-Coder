@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# ESP-IDF Monitor Capture Wrapper
+# Hides the internal Python script path from user-facing surfaces and isolates
+# the interpreter from user-site .pth conflicts (PYTHONNOUSERSITE=1).
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+exec env PYTHONNOUSERSITE=1 python3 "${SCRIPT_DIR}/esp_monitor_logger.py" "$@"

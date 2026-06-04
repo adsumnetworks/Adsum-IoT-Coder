@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { TaskServiceClient } from "@/services/grpc-client"
 import ModeSelector from "../ModeSelector"
+import { ACTIVE_MODES } from "../nordicModes"
 
 const mockNavigateToHistory = vi.fn()
 const mockTaskHistory: any[] = []
@@ -34,45 +35,50 @@ describe("ModeSelector", () => {
 		mockTaskHistory.length = 0
 	})
 
-	it("renders both mode buttons", () => {
+	// These assertions are platform-agnostic: the welcome selector renders the
+	// active platform's mode set (ACTIVE_MODES), which is nRF's 2 modes or ESP's
+	// 3 depending on the IOT_PLATFORM the build/test env targets.
+	it("renders a button for each active mode", () => {
 		render(<ModeSelector onModeSelect={() => {}} />)
 
-		expect(screen.getByTestId("mode-button-log_generator")).toBeDefined()
-		expect(screen.getByTestId("mode-button-log_analyzer")).toBeDefined()
+		expect(ACTIVE_MODES.length).toBeGreaterThan(0)
+		for (const mode of ACTIVE_MODES) {
+			expect(screen.getByTestId(`mode-button-${mode.id}`)).toBeDefined()
+		}
 	})
 
-	it("renders title and description for each mode", () => {
+	it("renders title and description for each active mode", () => {
 		render(<ModeSelector onModeSelect={() => {}} />)
 
-		expect(screen.getByText("Debug Live Device Logs")).toBeDefined()
-		expect(
-			screen.getByText("Stream RTT or UART logs from your nRF device — the agent finds the root cause and proposes a fix."),
-		).toBeDefined()
-		expect(screen.getByText("Generate Logging Code")).toBeDefined()
-		expect(screen.getByText("Inject idiomatic logging where it matters — feeds straight into Debug.")).toBeDefined()
+		for (const mode of ACTIVE_MODES) {
+			expect(screen.getByText(mode.title)).toBeDefined()
+			expect(screen.getByText(mode.description)).toBeDefined()
+		}
 	})
 
-	it("calls onModeSelect with log_generator when first button clicked", () => {
+	it("calls onModeSelect with the first active mode id when its button is clicked", () => {
 		const onModeSelect = vi.fn()
 		render(<ModeSelector onModeSelect={onModeSelect} />)
 
-		fireEvent.click(screen.getByTestId("mode-button-log_generator"))
-		expect(onModeSelect).toHaveBeenCalledWith("log_generator")
+		const first = ACTIVE_MODES[0]
+		fireEvent.click(screen.getByTestId(`mode-button-${first.id}`))
+		expect(onModeSelect).toHaveBeenCalledWith(first.id)
 	})
 
-	it("calls onModeSelect with log_analyzer when second button clicked", () => {
+	it("calls onModeSelect with the second active mode id when its button is clicked", () => {
 		const onModeSelect = vi.fn()
 		render(<ModeSelector onModeSelect={onModeSelect} />)
 
-		fireEvent.click(screen.getByTestId("mode-button-log_analyzer"))
-		expect(onModeSelect).toHaveBeenCalledWith("log_analyzer")
+		const second = ACTIVE_MODES[1]
+		fireEvent.click(screen.getByTestId(`mode-button-${second.id}`))
+		expect(onModeSelect).toHaveBeenCalledWith(second.id)
 	})
 
 	it("does not call onModeSelect when disabled", () => {
 		const onModeSelect = vi.fn()
 		render(<ModeSelector disabled onModeSelect={onModeSelect} />)
 
-		fireEvent.click(screen.getByTestId("mode-button-log_generator"))
+		fireEvent.click(screen.getByTestId(`mode-button-${ACTIVE_MODES[0].id}`))
 		expect(onModeSelect).not.toHaveBeenCalled()
 	})
 

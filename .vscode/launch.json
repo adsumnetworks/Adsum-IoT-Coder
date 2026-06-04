@@ -6,6 +6,56 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Run Extension — nRF",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--disable-workspace-trust",
+				"--disable-extension",
+				"saoudrizwan.claude-dev",
+				"--disable-extension",
+				"saoudrizwan.cline-nightly",
+				"${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],
+			"preLaunchTask": "${defaultBuildTask}",
+			"envFile": "${workspaceFolder}/.env",
+			"env": {
+				"IS_DEV": "true",
+				"IOT_PLATFORM": "nrf",
+				"DEV_WORKSPACE_FOLDER": "${workspaceFolder}",
+				"CLINE_ENVIRONMENT": "production"
+			}
+		},
+		{
+			"name": "Run Extension — ESP",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--disable-workspace-trust",
+				"--disable-extension",
+				"saoudrizwan.claude-dev",
+				"--disable-extension",
+				"saoudrizwan.cline-nightly",
+				"${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],
+			"preLaunchTask": "${defaultBuildTask}",
+			"envFile": "${workspaceFolder}/.env",
+			"env": {
+				"IS_DEV": "true",
+				"IOT_PLATFORM": "esp",
+				"DEV_WORKSPACE_FOLDER": "${workspaceFolder}",
+				"CLINE_ENVIRONMENT": "production"
+			}
+		},
+		{
 			"name": "Run Extension (production)",
 			"type": "extensionHost",
 			"request": "launch",

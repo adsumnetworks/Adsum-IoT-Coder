@@ -18,6 +18,13 @@ import type { ClineToolSpec } from "../spec"
  *            It runs in a plain terminal without the SDK environment.
  */
 
+/**
+ * Platform gate. IOT_PLATFORM is baked at build time by esbuild's `define`
+ * (defaults to "nrf"). The nRF tool is emitted only in the nRF build, so the
+ * ESP build's prompt never advertises a tool its knowledge base doesn't use.
+ */
+const isNrfBuild = (): boolean => (process.env.IOT_PLATFORM || "nrf").toLowerCase() !== "esp"
+
 const TECHNICAL_REFERENCE = `
 CRITICAL OPERATIONAL RULES:
 1. BOARD NAMES: Must be full Zephyr ID (e.g., "nrf52840dk/nrf52840", NOT "nrf52840dk"). Use for example "west boards -f "{name}/{qualifiers}" | grep nrf52840" to verify.
@@ -151,6 +158,7 @@ const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: "triggerNordicAction",
+	contextRequirements: isNrfBuild,
 	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
 
 USE action="execute" for ALL NCS CLI operations: west build, west flash, nrfjprog, nrfutil, etc.
@@ -164,6 +172,7 @@ const NATIVE_GPT_5: ClineToolSpec = {
 	variant: ModelFamily.NATIVE_GPT_5,
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: ClineDefaultTool.NORDIC_ACTION,
+	contextRequirements: isNrfBuild,
 	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
 USE action="execute" for ALL NCS CLI (west, nrfjprog, nrfutil). USE action="log_device" ONLY for log capture. NEVER use execute_command for NCS SDK tasks.
 ${TECHNICAL_REFERENCE}`,
@@ -179,6 +188,7 @@ const GEMINI_3: ClineToolSpec = {
 	variant: ModelFamily.GEMINI_3,
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: ClineDefaultTool.NORDIC_ACTION,
+	contextRequirements: isNrfBuild,
 	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
 USE action="execute" for ALL NCS CLI (west, nrfjprog, nrfutil). USE action="log_device" ONLY for log capture. NEVER use execute_command for NCS SDK tasks.
 ${TECHNICAL_REFERENCE}`,

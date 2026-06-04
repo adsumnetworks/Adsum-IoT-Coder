@@ -1,33 +1,40 @@
 # Action: Build Firmware (actions/build.md)
 
 ## When Used
-Called from: Debug Loop, Application Generator, or any workflow requiring firmware compilation.
+Called from: Debug Loop Phase 1, App Generator, or any task requiring a firmware build. Run via `triggerEspAction` action="build".
 
 ## Pre-conditions
-- CMake/ESP-IDF project detected.
+- ESP-IDF project detected (`CMakeLists.txt` referencing IDF + `main/`).
 - Code is saved.
 
 ## Target Resolution (BEFORE BUILDING)
-Before calling `idf.py build`, you must ensure the device target is set correctly.
-1. Check `sdkconfig` (if it exists) for `CONFIG_IDF_TARGET="esp32"`.
-2. If `sdkconfig` does not exist or target is missing, run:
-   ```bash
-   . /home/omar/esp/v5.5.2/esp-idf/export.sh && idf.py set-target <target_name>
-   ```
-   (e.g., `idf.py set-target esp32`).
+You must build for the chip that is actually connected. Cross-reference the three sources from `rules/device-identity.md`:
+1. **sdkconfig** → `CONFIG_IDF_TARGET` (what the project is configured for).
+2. **build/project_description.json** → `target` (what was last built).
+3. **Connected chip** → `triggerEspAction` action="execute" command="`esptool.py flash_id`".
+
+| Situation | Action |
+|---|---|
+| All three agree | Build directly. |
+| No `sdkconfig`/build yet | First build: `triggerEspAction` action="execute" command="`idf.py set-target <chip>`", confirm the chip with the user, then build. |
+| Config target ≠ connected chip | **STOP** and ask which target (re-target wipes the build). See `rules/device-identity.md`. |
+| No board connected | Warn, build from config; flashing will need a board. |
 
 ## Execution
-
-To build the firmware, execute the following in a shell:
-```bash
-. /home/omar/esp/v5.5.2/esp-idf/export.sh && idf.py build
 ```
+triggerEspAction  action="build"
+```
+This runs `idf.py build` in the IDF environment. After a config change (edited `sdkconfig.defaults`, `CMakeLists.txt`, or `partitions.csv`), first run `triggerEspAction` action="execute" command="`idf.py reconfigure`" — or it may build stale.
 
 ## Error Handling
-On failure, `idf.py` will print CMake or Ninja errors.
-- Read the terminal output and identify the **exact compiler error line**.
-- Common compilation errors: syntax in `.c` files, missing includes, undefined references.
-- Missing Kconfig variables: If the user requests a feature (like Wi-Fi AP) but the code fails stating `CONFIG_ESP_WIFI_SOFTAP_SUPPORT` is not defined, you must add it to `sdkconfig.defaults` and run `idf.py reconfigure`.
+Extract the **key error line** — do not dump raw output.
+- `undefined reference to '<sym>'` → missing source in `SRCS`, or a missing/incorrect `REQUIRES`/`PRIV_REQUIRES` in the component's `CMakeLists.txt`.
+- `fatal error: <header>.h: No such file` → component not in `REQUIRES`, or include path missing.
+- `... is not defined` for a `CONFIG_*` symbol → the Kconfig option isn't enabled; add it to `sdkconfig.defaults` and `reconfigure`.
+- `region 'iram0_0_seg' overflowed` / `DRAM segment data does not fit` → too much in IRAM/DRAM; move buffers to PSRAM (`MALLOC_CAP_SPIRAM`) or reduce static allocation.
+- `Flash size ... larger than ...` → `CONFIG_ESPTOOLPY_FLASHSIZE` exceeds real flash (check `flash_id`).
+
+On build failure, fix the root cause (do NOT blindly retry the same code). When offering choices, use `ask_followup_question`: `["Apply the fix and rebuild", "Show the full error", "Cancel"]`.
 
 ## Output
-If successful, the build produces binary files in the `build/` directory, ready to be flashed.
+Success → binaries in `build/` (`<project>.bin`, `bootloader/bootloader.bin`, `partition_table/`), ready to flash. `build/project_description.json` records the target.
