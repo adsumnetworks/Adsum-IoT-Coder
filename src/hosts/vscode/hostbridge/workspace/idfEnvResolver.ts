@@ -120,15 +120,51 @@ export function resolveIdfPath(
 }
 
 /**
- * Build the single shell command that sources the IDF environment and then runs
- * `idf.py <args>` against the given project directory. The command is shaped for
- * the target shell:
- *   - cmd.exe:    "<export.bat>" && idf.py -C "<proj>" <args>
- *   - PowerShell: . "<export.ps1>"; idf.py -C "<proj>" <args>
- *   - bash / zsh: . "<export.sh>" && idf.py -C "<proj>" <args>
+ * Wrap an arbitrary command `body` so it runs with the ESP-IDF environment
+ * available, shaped for the target shell. This is the general primitive behind
+ * the device tool: the body can be `idf.py …`, `esptool.py …`, a capture-script
+ * invocation, or any other command that needs the IDF toolchain on PATH.
+ *
+ * Two tiers:
+ *   - `needsSourcing: false` (Tier 1) — the terminal is already an ESP-IDF
+ *     terminal (the Espressif extension sourced it for us). Run `body` as-is.
+ *   - `needsSourcing: true` (Tier 2) — a plain terminal: prepend the matching
+ *     export script so the env is live for `body`, in one chained line:
+ *       cmd.exe:    "<export.bat>" && <body>
+ *       PowerShell: . "<export.ps1>"; <body>
+ *       bash / zsh: . "<export.sh>" && <body>
  *
  * Sourcing (`.`) runs in the current shell so the exported env persists for the
- * idf.py call. Project dir and script are quoted to tolerate spaces.
+ * command. The export script is quoted to tolerate spaces. `idfPath` is required
+ * only when `needsSourcing` is true.
+ */
+export function buildEspShellCommand(opts: {
+	platform: SupportedPlatform
+	shell: SupportedShell
+	needsSourcing: boolean
+	body: string
+	idfPath?: string
+}): string {
+	const { platform, shell, needsSourcing, body, idfPath } = opts
+	if (!needsSourcing) {
+		return body
+	}
+	const exportScript = joinFor(platform, idfPath ?? "", getExportScriptName(shell))
+	if (shell === "cmd") {
+		return `"${exportScript}" && ${body}`
+	}
+	if (shell === "powershell") {
+		return `. "${exportScript}"; ${body}`
+	}
+	// bash / zsh
+	return `. "${exportScript}" && ${body}`
+}
+
+/**
+ * Build the single shell command that sources the IDF environment and then runs
+ * `idf.py <args>` against the given project directory (`-C "<proj>"`). Thin
+ * convenience over {@link buildEspShellCommand} for the common build/flash case;
+ * always sources (Tier 2).
  */
 export function buildIdfCommand(opts: {
 	platform: SupportedPlatform
@@ -138,16 +174,8 @@ export function buildIdfCommand(opts: {
 	idfArgs: string[]
 }): string {
 	const { platform, shell, idfPath, projectDir, idfArgs } = opts
-	const exportScript = joinFor(platform, idfPath, getExportScriptName(shell))
-	const idf = `idf.py -C "${projectDir}" ${idfArgs.join(" ")}`.trim()
-	if (shell === "cmd") {
-		return `"${exportScript}" && ${idf}`
-	}
-	if (shell === "powershell") {
-		return `. "${exportScript}"; ${idf}`
-	}
-	// bash / zsh
-	return `. "${exportScript}" && ${idf}`
+	const body = `idf.py -C "${projectDir}" ${idfArgs.join(" ")}`.trim()
+	return buildEspShellCommand({ platform, shell, needsSourcing: true, body, idfPath })
 }
 
 /** Human-readable, actionable error when IDF_PATH can't be resolved. */

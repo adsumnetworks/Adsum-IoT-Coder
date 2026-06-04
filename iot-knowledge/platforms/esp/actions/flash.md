@@ -1,36 +1,36 @@
 # Action: Flash Firmware (actions/flash.md)
 
 ## When Used
-Called from: Debug Loop, or whenever the user instructs to flash the device.
+Called from: Debug Loop Phase 2, or any task deploying firmware to a board. Run via `triggerEspAction` action="flash".
 
 ## Pre-conditions
-- Build succeeded (`idf.py build` completed without errors).
-- The ESP device is connected via USB.
+- Build succeeded (binaries exist in `build/`).
+- The ESP board is connected via USB.
 
-## Device Port Discovery (First-Flash Protocol)
-
-Before flashing, you must find the serial port the ESP32 is attached to.
-Typically, on Linux, this is `/dev/ttyUSB0` or `/dev/ttyACM0`.
-
-**To auto-detect and flash:**
-In most cases, ESP-IDF can auto-detect the port natively. Try this first:
-```bash
-. /home/omar/esp/v5.5.2/esp-idf/export.sh && idf.py flash
+## Port Discovery (First-Flash Protocol)
+ESP-IDF usually auto-detects the port — try a plain flash first:
 ```
-
-**If auto-detection fails or there are multiple devices:**
-1. List available serial ports:
-   ```bash
-   python -m serial.tools.list_ports
+triggerEspAction  action="flash"
+```
+If auto-detect fails or **multiple boards** are connected:
+1. Enumerate ports: `triggerEspAction` action="execute" command="`python -m serial.tools.list_ports`".
+   - Linux: `/dev/ttyUSB*` (UART bridge) or `/dev/ttyACM*` (native USB-Serial-JTAG).
+   - macOS: `/dev/cu.usbserial-*` or `/dev/cu.usbmodem*`. Windows: `COMx`.
+2. Confirm with the user which port is the target, then:
    ```
-2. Ask the user which port corresponds to the target device.
-3. Pass the port explicitly:
-   ```bash
-   . /home/omar/esp/v5.5.2/esp-idf/export.sh && idf.py -p <port> flash
+   triggerEspAction  action="flash"  port="/dev/ttyUSB0"
    ```
 
-## Execution Details
-- Flashing will write the bootloader, partition table, and the application binary.
-- Do not interrupt the flash process.
-- If flashing fails with "Permission denied: '/dev/ttyUSB0'", advise the user they need `dialout` group permissions or `sudo chmod a+rw /dev/ttyUSB0` (Linux typically).
-- If flashing fails to connect/sync, advise the user to hold the `BOOT` button on their board when the "Connecting..." prompt begins.
+## What flash does
+Writes the **bootloader + partition table + app** together (never flash just the app with raw esptool — you'll get a mismatched layout). The board resets and runs the new firmware automatically.
+
+## Error Handling
+- `Permission denied: '/dev/ttyUSB0'` (Linux) → the user must join the `dialout` group (`sudo usermod -aG dialout $USER`, then re-login) or `sudo chmod a+rw /dev/ttyUSB0`. Advise; do not sudo silently.
+- `Failed to connect to ESP32: ... Wrong boot mode detected` / stuck at `Connecting....___` → advise holding the **BOOT** button while flashing begins (then release), or check the USB cable/port.
+- `A fatal error occurred: ... timed out waiting for packet` → another process holds the port (a running monitor). Stop it and retry.
+- `Flash size ... does not fit` → flash image larger than the chip's flash; fix `CONFIG_ESPTOOLPY_FLASHSIZE` / partition table.
+
+On failure, offer via `ask_followup_question`: `["Retry flash", "Pick a different port", "Cancel"]`.
+
+## Post-Flash
+The board resets into the new firmware. Proceed to log capture (`actions/capture-logs.md`) when the workflow needs verification or you're debugging a runtime issue.

@@ -281,9 +281,12 @@ export async function detectEspFeatures(cwd: string): Promise<{ hasBle: boolean;
 async function getEspPlatformContext(cwd: string, load: TrackedLoad): Promise<string> {
 	let ctx = "### Platform Detected: Espressif ESP32 / ESP-IDF\n\n"
 	// Always: platform index + mandatory rules + SDK reference (esp-idf auto-selected).
+	// All three rules under platforms/esp/rules/ are listed as MANDATORY/Always in
+	// PLATFORM.md, so they MUST all be loaded here (mirrors the nRF rule set).
 	ctx += (await load("platforms/esp/PLATFORM.md")) + "\n\n"
 	ctx += (await load("platforms/esp/rules/esp-terminal.md")) + "\n\n"
 	ctx += (await load("platforms/esp/rules/skill-loading.md")) + "\n\n"
+	ctx += (await load("platforms/esp/rules/device-identity.md")) + "\n\n"
 	ctx += (await load("platforms/esp/sdks/esp-idf/SDK.md")) + "\n\n"
 
 	// On-demand: protocols, loaded only when config/usage shows them (no hardcoding).

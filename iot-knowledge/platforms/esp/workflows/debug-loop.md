@@ -1,36 +1,59 @@
-# Workflow: Debug Loop (workflows/debug-loop.md)
+# Autonomous Debug Loop (workflows/debug-loop.md)
 
-## Description
-This is the core iterative loop for compiling, testing, and debugging ESP-IDF code. When the user says "Debug the project" or "Compile and test", load and follow this workflow.
+**Triggered by:** "build and flash", "debug my device", "why does it crash/reset", a code fix that needs verifying, or a handoff from another workflow.
 
-## Required Skills (Do NOT skip)
-Load these Actions sequentially as you step through the phases.
-- `MANDATORY SKILL LOAD`: `actions/build.md`
-- `MANDATORY SKILL LOAD`: `actions/flash.md`
-- `MANDATORY SKILL LOAD`: `actions/capture-logs.md`
-- `MANDATORY SKILL LOAD`: `actions/analyze-logs.md`
+The core iterative cycle: **Build → Flash → Capture → Analyze → Fix**, on real hardware. This Workflow orchestrates the Actions in `platforms/esp/actions/`.
 
-## The Loop
+---
+
+## Step 0: Identify the hardware (first iteration only)
+Before the first build, establish the target per `rules/device-identity.md`: read `sdkconfig` (`CONFIG_IDF_TARGET`, PSRAM, flash size), and identify the connected chip with `triggerEspAction` action="execute" command="`esptool.py flash_id`" (+ `idf.py --version`). Reconcile mismatches with the user. Do not skip — flashing the wrong target fails or boot-loops.
+
+## Pre-Loop: Permission Mode
+Use `ask_followup_question`:
+- *"Ready to start the Build & Flash cycle. How should I handle permissions?"*
+- Options: `["Ask me before each Build & Flash", "Auto-approve for this entire task"]`
+
+Store it for the task: **Ask Every Time** → confirm before each Build and each Flash. **Auto-Approve** → proceed without interrupting (safety guards below still apply).
+
+---
+
+## Loop Phases
 
 ### Phase 1: Build
-1. Use `actions/build.md` to compile the firmware.
-2. If the build fails:
-   - Identify the C/Kconfig syntax errors.
-   - Fix the code.
-   - Restart **Phase 1**.
-3. If the build succeeds, proceed to **Phase 2**.
+**MANDATORY SKILL LOAD:** if not already loaded this task, `read_file` `platforms/esp/actions/build.md` before proceeding.
+- Ask Every Time → `ask_followup_question`: *"Build `<project>` for `<chip>`. Proceed?"* → `["Build now", "Skip build", "Cancel"]`.
+- Auto-Approve → build directly.
+- On failure: follow `build.md` error handling. Fix the root cause — never silently retry identical code.
 
 ### Phase 2: Flash
-1. Use `actions/flash.md` to identify the device and write the binary to the ESP32.
-2. If flashing fails (e.g. timeout, permission denied), advise the user. Check the target port again.
-3. If flashing succeeds, proceed to **Phase 3**.
+Only if the build succeeded. **MANDATORY SKILL LOAD:** `platforms/esp/actions/flash.md` (if not loaded).
+- Ask Every Time → *"Build succeeded ✅. Flash to the connected board now?"* → `["Flash now", "Skip flash", "Cancel"]`.
+- Auto-Approve → flash directly. On failure: follow `flash.md`.
 
-### Phase 3: Monitor & Analyze
-1. Use `actions/capture-logs.md` to start `idf.py monitor` in the BACKGROUND and redirect to a `.log` file. wait ~5-10 seconds.
-2. Kill the monitor background process.
-3. Use `actions/analyze-logs.md` to read the log file.
-4. **Analysis Decision:**
-   - **Success:** Application boots, Wi-Fi connects, no crashes. Job complete!
-   - **Crash/Bug:** Look for Core Panics or WDT resets. Identify the line causing the failure.
-5. Apply fixes to the source code based on your analysis.
-6. Restart the loop at **Phase 1**.
+### Phase 3: Capture Logs
+After a successful flash. **MANDATORY SKILL LOAD:** `platforms/esp/actions/capture-logs.md` (if not loaded).
+- Ask Every Time → *"Flashed ✅. Capture the serial log now?"* → `["Capture logs", "Skip — I'll check manually"]`.
+- Auto-Approve → capture automatically (`action="monitor"`, default duration 10 s, reset before capture).
+- Pick duration by goal (crash 10 s · Wi-Fi 20–30 s · stability 60 s+).
+
+### Phase 4: Analyze
+**MANDATORY SKILL LOAD:** `platforms/esp/actions/analyze-logs.md` (if not loaded).
+- First `list_files` `logs/uart/` and pick the most recent file (timestamps — never guess).
+- Produce the structured report inline, with decoded backtrace `file:line` / WDT task / reset cause and the clickable log path.
+- Then `ask_followup_question` (not `attempt_completion`): *"Analyzed. What next?"* → options like `["Apply the fix and re-run", "Capture again (longer)", "Enable deeper logging", "Stop here"]`.
+
+### Phase 5: Fix & Repeat
+If a root cause is found: propose it, apply the fix to the source/`sdkconfig`, and return to **Phase 1** (same permission mode). A `sdkconfig.defaults`/CMake change requires a `reconfigure` (build.md covers it).
+
+---
+
+## Safety Guards (Auto-Approve mode)
+- **Max 5 full iterations** without resolution → stop and report.
+- **Stuck-loop detection:** identical build error twice with no code change → stop immediately.
+- **Halt & report** via `ask_followup_question`: *"I've tried `<N>` iterations without resolving it. What next?"* → `["Show a summary of attempts", "Try a different approach", "Stop and I'll investigate"]`.
+
+## Handoff
+- **Fixed** → `<!--TASK_COMPLETE-->`.
+- **Logs too sparse to diagnose** → `workflows/log-generator.md`.
+- **More code/features needed** → loop back to Phase 1.

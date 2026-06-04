@@ -1,6 +1,7 @@
 import { expect } from "chai"
 import { describe, it } from "mocha"
 import {
+	buildEspShellCommand,
 	buildIdfCommand,
 	detectShell,
 	getExportScriptName,
@@ -138,6 +139,48 @@ describe("idfEnvResolver", () => {
 		it("joins multiple idf args", () => {
 			const cmd = buildIdfCommand({ platform: "linux", shell: "bash", ...base, idfArgs: ["-p", "/dev/ttyUSB0", "flash"] })
 			expect(cmd).to.contain('idf.py -C "/work/my proj" -p /dev/ttyUSB0 flash')
+		})
+	})
+
+	describe("buildEspShellCommand", () => {
+		it("returns the body verbatim when the terminal is already sourced (Tier 1)", () => {
+			const cmd = buildEspShellCommand({
+				platform: "linux",
+				shell: "bash",
+				needsSourcing: false,
+				body: "esptool.py flash_id",
+			})
+			expect(cmd).to.equal("esptool.py flash_id")
+		})
+		it("sources export.sh with && for an arbitrary body on bash/zsh (Tier 2)", () => {
+			const cmd = buildEspShellCommand({
+				platform: "linux",
+				shell: "bash",
+				needsSourcing: true,
+				idfPath: "/home/dev/esp/esp-idf",
+				body: "esptool.py flash_id",
+			})
+			expect(cmd).to.equal('. "/home/dev/esp/esp-idf/export.sh" && esptool.py flash_id')
+		})
+		it("uses ; on PowerShell and export.bat on cmd", () => {
+			expect(
+				buildEspShellCommand({
+					platform: "linux",
+					shell: "powershell",
+					needsSourcing: true,
+					idfPath: "/home/dev/esp/esp-idf",
+					body: "idf.py --version",
+				}),
+			).to.equal('. "/home/dev/esp/esp-idf/export.ps1"; idf.py --version')
+			expect(
+				buildEspShellCommand({
+					platform: "win32",
+					shell: "cmd",
+					needsSourcing: true,
+					idfPath: "C:\\esp\\esp-idf",
+					body: "idf.py size",
+				}),
+			).to.equal('"C:\\esp\\esp-idf\\export.bat" && idf.py size')
 		})
 	})
 
