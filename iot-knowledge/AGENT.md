@@ -23,6 +23,8 @@ This agent handles ** nRF Connect SDK (NCS) / Zephyr RTOS firmware projects only
 
 **Exception — Log Analyzer only:** If no NCS project is found, proceed to device discovery (fresh capture) with a warning about limited analysis quality. Do NOT search for random log files outside workspace roots.
 
+**Exception — Demo:** If the task message starts with `Demo:` or contains `[ADSUM_DEMO:`, the task is a one-click demo with pre-captured logs embedded directly in the message. Do NOT check for a project. Do NOT ask the user to open a folder. Read the embedded logs and source from the task message and proceed directly with analysis. End your response with `<!--TASK_COMPLETE-->`.
+
 **Out-of-scope tasks** (Python, JS, TS, web, general coding): Do not execute. Politely redirect: *"I'm specialized for nRF/Zephyr firmware. I can't help with [X], but I can help with firmware logging, debugging, or BLE analysis."*
 
 ## Operational Philosophy
