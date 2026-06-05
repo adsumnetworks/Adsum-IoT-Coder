@@ -23,9 +23,17 @@ interface ModeSelectorProps {
 	onStartDemo?: (scenarioId: string) => void
 	disabled?: boolean
 	variant?: "welcome" | "inline"
+	/** Inline-variant heading override (e.g. the post-demo handover line). */
+	heading?: string
 }
 
-const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, onStartDemo, disabled = false, variant = "welcome" }) => {
+const ModeSelector: React.FC<ModeSelectorProps> = ({
+	onModeSelect,
+	onStartDemo,
+	disabled = false,
+	variant = "welcome",
+	heading,
+}) => {
 	const modes = Object.values(NORDIC_MODES)
 	const { isDark } = useVSCodeTheme()
 	const { navigateToHistory } = useExtensionState()
@@ -59,8 +67,8 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, onStartDemo, 
 				)}
 
 				{!isWelcome && (
-					<p className="text-sm font-medium" style={{ color: "var(--vscode-descriptionForeground)" }}>
-						What would you like to do next?
+					<p className="text-sm font-medium text-center" style={{ color: "var(--vscode-descriptionForeground)" }}>
+						{heading ?? "What would you like to do next?"}
 					</p>
 				)}
 
