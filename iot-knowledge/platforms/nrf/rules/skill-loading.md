@@ -25,6 +25,7 @@ This table is organized by what you, the agent, are about to *do* — not by wha
 
 | About to do (the operation) | Workflow to load first |
 |---|---|
+| **One-click demo** — task starts with `Demo:` or contains `[ADSUM_DEMO:` — pre-captured logs embedded in the task message | **Do NOT load any workflow.** Analyze the inline logs and source directly from the task message. Do not connect to devices. End with `<!--TASK_COMPLETE-->`. |
 | Build firmware · Flash firmware · run the Build → Flash → Capture → Analyze → Fix iteration cycle | `platforms/nrf/workflows/debug-loop.md` |
 | Capture device logs (UART/RTT) · perform log analysis · diagnose runtime behaviour from logs | `platforms/nrf/workflows/log-analyzer.md` |
 | Inject `LOG_*` macros into source · configure the log backend in `prj.conf` · enable deep BLE stack logging · prepare a project for future log capture | `platforms/nrf/workflows/log-generator.md` |

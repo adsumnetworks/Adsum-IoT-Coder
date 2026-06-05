@@ -57,6 +57,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		userInfo,
 		currentFocusChainChecklist,
 		hooksEnabled,
+		setExpandTaskHeader,
 	} = useExtensionState()
 	const isProdHostedApp = userInfo?.apiBaseUrl === "https://app.cline.bot"
 	const shouldShowQuickWins = false
@@ -207,7 +208,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	const handleModeSelect = useCallback(
 		async (mode: "log_generator" | "log_analyzer") => {
 			try {
-				const modeConfig = NORDIC_MODES[mode]
+				const _modeConfig = NORDIC_MODES[mode]
+				setIsDemoRun(false)
 				setNordicMode(mode)
 				setNordicPhase("active")
 
@@ -219,7 +221,6 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				// Reset state to avoid stuck UI
 				setNordicPhase("awaiting_mode")
 				setNordicMode(null)
-				// Optional: Show error to user via window.showErrorMessage if available, but console log + UI reset is sufficient to unblock
 			}
 		},
 		[messageHandlers, setNordicMode, setNordicPhase],
@@ -232,6 +233,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			try {
 				setIsDemoRun(true)
 				setNordicPhase("active")
+				setExpandTaskHeader(false)
 				await messageHandlers.handleSendMessage(scenario.taskPrompt, [], [])
 			} catch (error) {
 				console.error("[ChatView] Demo run failed:", error)
@@ -239,7 +241,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				setNordicPhase("awaiting_mode")
 			}
 		},
-		[messageHandlers, setNordicPhase],
+		[messageHandlers, setNordicPhase, setExpandTaskHeader],
 	)
 
 	const { selectedModelInfo } = useMemo(() => {
@@ -438,7 +440,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				)}
 				{nordicPhase === "task_complete" && <ModeSelector onModeSelect={handleModeSelect} variant="inline" />}
 			</div>
-			{task && nordicPhase !== "task_complete" && (
+			{task && (nordicPhase !== "task_complete" || isDemoRun) && (
 				<footer className="bg-(--vscode-sidebar-background)" style={{ gridRow: "2" }}>
 					<AutoApproveBar />
 					<ActionButtons
