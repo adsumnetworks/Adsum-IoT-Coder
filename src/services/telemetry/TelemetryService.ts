@@ -199,6 +199,12 @@ export class TelemetryService {
 			DEMO_USER_INTERACTED: "free_tier.demo_user_interacted",
 			// User started a non-demo task (crossed from demo to real use)
 			FIRST_REAL_TASK_STARTED: "free_tier.first_real_task_started",
+			// Upgrade card shown to dormant user after version bump
+			UPGRADE_PROMPT_SHOWN: "free_tier.upgrade_prompt_shown",
+			// Dormant user clicked "See it live" on the upgrade card
+			UPGRADE_PROMPT_DEMO_CLICKED: "free_tier.upgrade_prompt_demo_clicked",
+			// Dormant user dismissed the upgrade card without acting
+			UPGRADE_PROMPT_DISMISSED: "free_tier.upgrade_prompt_dismissed",
 		},
 		DICTATION: {
 			// Tracks when voice recording is started
@@ -664,6 +670,30 @@ export class TelemetryService {
 	public captureFreeTierFirstRealTaskStarted(installId: string) {
 		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.FIRST_REAL_TASK_STARTED, {
 			install_id: installId,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierUpgradePromptShown(installId: string, version: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.UPGRADE_PROMPT_SHOWN, {
+			install_id: installId,
+			version,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierUpgradePromptDemoClicked(installId: string, version: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.UPGRADE_PROMPT_DEMO_CLICKED, {
+			install_id: installId,
+			version,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierUpgradePromptDismissed(installId: string, version: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.UPGRADE_PROMPT_DISMISSED, {
+			install_id: installId,
+			version,
 			tier: "anonymous",
 		})
 	}
