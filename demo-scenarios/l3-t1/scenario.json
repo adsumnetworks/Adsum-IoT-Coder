@@ -5,8 +5,8 @@
 	"platform": "nrf52840",
 	"protocol": "BLE NUS",
 	"logFiles": [
-		"logs/central.log",
-		"logs/peripheral.log"
+		"captures/central.log",
+		"captures/peripheral.log"
 	],
 	"sourceFiles": [
 		"src/main_snippet.c"
