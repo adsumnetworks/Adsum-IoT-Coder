@@ -15,6 +15,7 @@ import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
+import { BRAND_CORAL, BRAND_CYAN_600, brandAlpha, brandSubtle } from "./brandColors"
 import DemoCard from "./DemoCard"
 import { MODE_ICONS, NORDIC_MODES, type NordicModeId } from "./nordicModes"
 
@@ -84,30 +85,23 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({
 							onClick={() => onModeSelect(mode.id)}
 							onMouseEnter={(e) => {
 								if (!disabled) {
-									e.currentTarget.style.borderColor = "#00a9ce"
-									e.currentTarget.style.background =
-										"color-mix(in srgb, #00a9ce 8%, var(--vscode-input-background))"
+									e.currentTarget.style.borderColor = BRAND_CYAN_600
+									e.currentTarget.style.background = brandSubtle(BRAND_CYAN_600, 8)
 									e.currentTarget.style.transform = "translateY(-2px)"
-									e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 169, 206, 0.15)"
+									e.currentTarget.style.boxShadow = `0 4px 12px ${brandAlpha(BRAND_CYAN_600, 0.15)}`
 								}
 							}}
 							onMouseLeave={(e) => {
-								e.currentTarget.style.borderColor =
-									idx === 0 ? "rgba(215, 105, 71, 0.75)" : "rgba(215, 105, 71, 0.45)"
+								e.currentTarget.style.borderColor = brandAlpha(BRAND_CORAL, idx === 0 ? 0.75 : 0.45)
 								e.currentTarget.style.background =
-									idx === 0
-										? "color-mix(in srgb, #d76947 5%, var(--vscode-input-background))"
-										: "var(--vscode-input-background)"
+									idx === 0 ? brandSubtle(BRAND_CORAL, 5) : "var(--vscode-input-background)"
 								e.currentTarget.style.transform = "none"
 								e.currentTarget.style.boxShadow = "none"
 							}}
 							style={{
 								padding: isWelcome ? "16px 20px" : "12px 16px",
-								background:
-									idx === 0
-										? "color-mix(in srgb, #d76947 5%, var(--vscode-input-background))"
-										: "var(--vscode-input-background)",
-								border: `2px solid ${idx === 0 ? "rgba(215, 105, 71, 0.75)" : "rgba(215, 105, 71, 0.45)"}`,
+								background: idx === 0 ? brandSubtle(BRAND_CORAL, 5) : "var(--vscode-input-background)",
+								border: `2px solid ${brandAlpha(BRAND_CORAL, idx === 0 ? 0.75 : 0.45)}`,
 								opacity: disabled ? 0.5 : 1,
 								pointerEvents: disabled ? "none" : "auto",
 								textAlign: "left",
