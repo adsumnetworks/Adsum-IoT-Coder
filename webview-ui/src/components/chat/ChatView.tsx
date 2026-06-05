@@ -6,7 +6,7 @@ import { combineHookSequences } from "@shared/combineHookSequences"
 import type { ClineApiReqInfo, ClineMessage } from "@shared/ExtensionMessage"
 import { getApiMetrics } from "@shared/getApiMetrics"
 import { BooleanRequest, StringRequest } from "@shared/proto/cline/common"
-import { useCallback, useEffect, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useMount } from "react-use"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -30,6 +30,7 @@ import {
 	useMessageHandlers,
 	useScrollBehavior,
 } from "./chat-view"
+import { DEMO_SCENARIOS } from "./demoScenarios"
 import ModeSelector from "./ModeSelector"
 import { NORDIC_MODES, TASK_COMPLETE_MARKER } from "./nordicModes"
 
@@ -107,6 +108,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	} = chatState
 
 	const { nordicPhase, setNordicPhase, nordicMode, setNordicMode } = chatState
+	const [isDemoRun, setIsDemoRun] = useState(false)
 
 	useEffect(() => {
 		const handleCopy = async (e: ClipboardEvent) => {
@@ -221,6 +223,23 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			}
 		},
 		[messageHandlers, setNordicMode, setNordicPhase],
+	)
+
+	const handleStartDemo = useCallback(
+		async (scenarioId: string) => {
+			const scenario = DEMO_SCENARIOS[scenarioId]
+			if (!scenario) return
+			try {
+				setIsDemoRun(true)
+				setNordicPhase("active")
+				await messageHandlers.handleSendMessage(scenario.taskPrompt, [], [])
+			} catch (error) {
+				console.error("[ChatView] Demo run failed:", error)
+				setIsDemoRun(false)
+				setNordicPhase("awaiting_mode")
+			}
+		},
+		[messageHandlers, setNordicPhase],
 	)
 
 	const { selectedModelInfo } = useMemo(() => {
@@ -394,7 +413,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						task={task}
 					/>
 				) : (
-					<ModeSelector onModeSelect={handleModeSelect} variant="welcome" />
+					<ModeSelector onModeSelect={handleModeSelect} onStartDemo={handleStartDemo} variant="welcome" />
 				)}
 				{task && (
 					<MessagesArea
@@ -405,6 +424,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						scrollBehavior={scrollBehavior}
 						task={task}
 					/>
+				)}
+				{nordicPhase === "task_complete" && isDemoRun && (
+					<p
+						style={{
+							padding: "10px 16px 0",
+							fontSize: "13px",
+							color: "var(--vscode-descriptionForeground)",
+							textAlign: "center",
+						}}>
+						Your turn — ask anything about this bug, or start a real task below.
+					</p>
 				)}
 				{nordicPhase === "task_complete" && <ModeSelector onModeSelect={handleModeSelect} variant="inline" />}
 			</div>
