@@ -95,7 +95,9 @@ static uint8_t discovery_complete(struct bt_gatt_dm *dm, void *ctx)
 }`
 
 function buildDemoPrompt(): string {
-	return `[ADSUM_DEMO:l3-t1] You are running the Adsum IoT Coder one-click demo. Analyze the pre-captured BLE RTT logs below and find the root cause of the one-directional NUS communication bug. No hardware is needed — the logs were captured from a real nRF52840 setup.
+	return `Demo: BLE NUS one-directional bug — no setup needed
+
+[ADSUM_DEMO:l3-t1] Analyze the pre-captured BLE RTT logs below and find the root cause of the one-directional NUS communication bug. No hardware is needed — the logs were captured from a real nRF52840 setup.
 
 --- Central device RTT log ---
 ${CENTRAL_LOG}
