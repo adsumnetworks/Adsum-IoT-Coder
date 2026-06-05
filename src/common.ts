@@ -13,6 +13,7 @@ import "./utils/path" // necessary to have access to String.prototype.toPosix
 
 import { HostProvider } from "@/hosts/host-provider"
 import { FileContextTracker } from "./core/context/context-tracking/FileContextTracker"
+import { initDemoManager } from "./core/demos/DemoManager"
 import { StateManager } from "./core/storage/StateManager"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { ExtensionRegistryInfo } from "./registry"
@@ -65,6 +66,7 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	// Capture globalState so the free-tier handler can persist its once-ever
 	// first-run funnel flag across restarts
 	initFreeTierPersistence(context.globalState)
+	initDemoManager(context.extensionPath, context.globalStorageUri.fsPath)
 
 	// Initialize PostHog client provider
 	PostHogClientProvider.getInstance()

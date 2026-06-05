@@ -1,3 +1,4 @@
+import { buildDemoPrompt, DEMO_TRIGGER, prepareDemoWorkspace } from "@core/demos/DemoManager"
 import { String } from "@shared/proto/cline/common"
 import { PlanActMode, OpenaiReasoningEffort as ProtoOpenaiReasoningEffort } from "@shared/proto/cline/state"
 import { NewTaskRequest } from "@shared/proto/cline/task"
@@ -97,6 +98,19 @@ export async function newTask(controller: Controller, request: NewTaskRequest): 
 		}).filter(([_, value]) => value !== undefined),
 	)
 
-	const taskId = await controller.initTask(request.text, request.images, request.files, undefined, filteredTaskSettings)
+	// Demo intercept: replace the lightweight trigger with a real prompt pointing
+	// at actual source files and RTT logs copied into globalStorage.
+	let taskText = request.text
+	if (taskText.includes(DEMO_TRIGGER)) {
+		try {
+			const ws = await prepareDemoWorkspace()
+			taskText = buildDemoPrompt(ws)
+		} catch (err) {
+			console.error("[Demo] workspace preparation failed, falling back to original prompt:", err)
+			// taskText stays as-is; the inline fallback logs in demoScenarios.ts still work
+		}
+	}
+
+	const taskId = await controller.initTask(taskText, request.images, request.files, undefined, filteredTaskSettings)
 	return String.create({ value: taskId || "" })
 }
