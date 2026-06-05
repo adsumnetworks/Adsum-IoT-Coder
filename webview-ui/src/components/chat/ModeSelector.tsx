@@ -15,15 +15,17 @@ import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
+import DemoCard from "./DemoCard"
 import { MODE_ICONS, NORDIC_MODES, type NordicModeId } from "./nordicModes"
 
 interface ModeSelectorProps {
 	onModeSelect: (mode: NordicModeId) => void
+	onStartDemo?: (scenarioId: string) => void
 	disabled?: boolean
 	variant?: "welcome" | "inline"
 }
 
-const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = false, variant = "welcome" }) => {
+const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, onStartDemo, disabled = false, variant = "welcome" }) => {
 	const modes = Object.values(NORDIC_MODES)
 	const { isDark } = useVSCodeTheme()
 	const { navigateToHistory } = useExtensionState()
@@ -61,6 +63,8 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ onModeSelect, disabled = fa
 						What would you like to do next?
 					</p>
 				)}
+
+				{isWelcome && onStartDemo && <DemoCard disabled={disabled} onStartDemo={onStartDemo} />}
 
 				<div className="flex flex-col gap-4 w-full">
 					{modes.map((mode, idx) => (
