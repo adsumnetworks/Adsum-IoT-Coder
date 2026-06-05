@@ -17,28 +17,36 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import { BRAND_CORAL, BRAND_CYAN_600, brandAlpha, brandSubtle } from "./brandColors"
 import DemoCard from "./DemoCard"
+import { DEFAULT_DEMO_SCENARIO_ID } from "./demoScenarios"
 import { MODE_ICONS, NORDIC_MODES, type NordicModeId } from "./nordicModes"
+import UpgradeCard from "./UpgradeCard"
 
 interface ModeSelectorProps {
 	onModeSelect: (mode: NordicModeId) => void
 	onStartDemo?: (scenarioId: string) => void
+	onUpgradeDismiss?: () => void
 	disabled?: boolean
 	variant?: "welcome" | "inline"
 	/** Inline-variant heading override (e.g. the post-demo handover line). */
 	heading?: string
+	showUpgradeCard?: boolean
 }
 
 const ModeSelector: React.FC<ModeSelectorProps> = ({
 	onModeSelect,
 	onStartDemo,
+	onUpgradeDismiss,
 	disabled = false,
 	variant = "welcome",
 	heading,
+	showUpgradeCard = false,
 }) => {
 	const modes = Object.values(NORDIC_MODES)
 	const { isDark } = useVSCodeTheme()
-	const { navigateToHistory } = useExtensionState()
+	const { navigateToHistory, version, workspaceRoots } = useExtensionState()
 	const iconFilter = isDark ? "brightness(0) invert(1)" : "brightness(0)"
+	const hasWorkspace = workspaceRoots && workspaceRoots.length > 0
+	const projectName = hasWorkspace ? (workspaceRoots[0].name ?? workspaceRoots[0].path.split("/").pop()) : null
 
 	const isWelcome = variant === "welcome"
 
@@ -73,7 +81,27 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({
 					</p>
 				)}
 
+				{/* Upgrade card — shown once per version for users who have not yet activated */}
+				{isWelcome && showUpgradeCard && onUpgradeDismiss && (
+					<UpgradeCard
+						onDismiss={onUpgradeDismiss}
+						onStartDemo={() => onStartDemo?.(DEFAULT_DEMO_SCENARIO_ID)}
+						version={version ?? ""}
+					/>
+				)}
+
 				{isWelcome && onStartDemo && <DemoCard disabled={disabled} onStartDemo={onStartDemo} />}
+
+				{/* Workspace context — guides users based on whether a project is open */}
+				{isWelcome && (
+					<p
+						className="text-xs text-center w-full"
+						style={{ color: "var(--vscode-descriptionForeground)", marginTop: "-8px", marginBottom: "4px" }}>
+						{hasWorkspace
+							? `Working on: ${projectName}`
+							: "No project open — try the demo, or open your nRF project folder first."}
+					</p>
+				)}
 
 				<div className="flex flex-col gap-4 w-full">
 					{modes.map((mode, idx) => (

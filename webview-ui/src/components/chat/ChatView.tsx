@@ -415,7 +415,13 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						task={task}
 					/>
 				) : (
-					<ModeSelector onModeSelect={handleModeSelect} onStartDemo={handleStartDemo} variant="welcome" />
+					<ModeSelector
+						onModeSelect={handleModeSelect}
+						onStartDemo={handleStartDemo}
+						onUpgradeDismiss={hideAnnouncement}
+						showUpgradeCard={showAnnouncement}
+						variant="welcome"
+					/>
 				)}
 				{task && (
 					<MessagesArea
