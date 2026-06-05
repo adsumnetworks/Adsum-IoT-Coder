@@ -427,18 +427,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						task={task}
 					/>
 				)}
-				{nordicPhase === "task_complete" && isDemoRun && (
-					<p
-						style={{
-							padding: "10px 16px 0",
-							fontSize: "13px",
-							color: "var(--vscode-descriptionForeground)",
-							textAlign: "center",
-						}}>
-						Your turn — ask anything about this bug, or start a real task below.
-					</p>
+				{nordicPhase === "task_complete" && (
+					<div className="flex-shrink-0">
+						<ModeSelector
+							heading={
+								isDemoRun ? "Your turn — ask anything about this bug, or start a real task below." : undefined
+							}
+							onModeSelect={handleModeSelect}
+							variant="inline"
+						/>
+					</div>
 				)}
-				{nordicPhase === "task_complete" && <ModeSelector onModeSelect={handleModeSelect} variant="inline" />}
 			</div>
 			{task && (nordicPhase !== "task_complete" || isDemoRun) && (
 				<footer className="bg-(--vscode-sidebar-background)" style={{ gridRow: "2" }}>
