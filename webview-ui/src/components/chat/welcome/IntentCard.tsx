@@ -56,15 +56,16 @@ const IntentCard: React.FC<IntentCardProps> = ({
 			}}
 			type="button">
 			<div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
-				<span
+				<i
+					className={`codicon codicon-${icon}`}
 					style={{
-						fontSize: "20px",
+						fontSize: "18px",
 						flexShrink: 0,
 						lineHeight: 1,
-						marginTop: "1px",
-					}}>
-					{icon}
-				</span>
+						marginTop: "2px",
+						color: "var(--vscode-foreground)",
+					}}
+				/>
 				<div style={{ flex: 1 }}>
 					<div
 						style={{

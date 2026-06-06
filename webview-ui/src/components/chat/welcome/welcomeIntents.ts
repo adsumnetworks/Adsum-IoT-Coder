@@ -51,7 +51,7 @@ export function buildIntentPrompt(id: IntentId, projectName?: string): string {
 export const NO_PROJECT_INTENTS: IntentDef[] = [
 	{
 		id: "prototype",
-		icon: "🔧",
+		icon: "tools",
 		title: "Start a prototype",
 		description: "Tell me what you're building — I'll scaffold from the right verified Nordic sample.",
 	},
@@ -60,26 +60,26 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 export const PROJECT_INTENTS: IntentDef[] = [
 	{
 		id: "addFeature",
-		icon: "➕",
+		icon: "add",
 		title: "Add a feature",
 		description: "Zephyr shell, BLE service, or NVS — I'll wire it into your build.",
 		primary: true,
 	},
 	{
 		id: "debug",
-		icon: "🔍",
+		icon: "bug",
 		title: "Debug this device",
 		description: "Stream RTT/UART logs and find the root cause — I'll add logging first if it's missing.",
 	},
 	{
 		id: "buildFlash",
-		icon: "⚡",
+		icon: "zap",
 		title: "Build & flash",
 		description: "Run the loop — build, flash, and watch it come up.",
 	},
 	{
 		id: "testValidate",
-		icon: "✅",
+		icon: "check-all",
 		title: "Test & validate",
 		description: "Prove it works — host tests with native_sim, on-hardware checks when boards are connected.",
 	},

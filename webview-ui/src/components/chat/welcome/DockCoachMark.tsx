@@ -44,7 +44,10 @@ const DockCoachMark: React.FC<DockCoachMarkProps> = ({ hasProject }) => {
 				gap: "8px",
 				position: "relative",
 			}}>
-			<span style={{ fontSize: "14px", flexShrink: 0, marginTop: "1px" }}>💡</span>
+			<i
+				className="codicon codicon-lightbulb"
+				style={{ fontSize: "14px", flexShrink: 0, marginTop: "1px", color: "var(--vscode-foreground)" }}
+			/>
 			<p
 				style={{
 					margin: 0,

@@ -30,7 +30,7 @@ const StatusHeader: React.FC<StatusHeaderProps> = ({ projectName }) => {
 						alignItems: "center",
 						gap: "6px",
 					}}>
-					<span>📂</span>
+					<i className="codicon codicon-folder" style={{ fontSize: "13px", color: "var(--vscode-foreground)" }} />
 					<span
 						style={{
 							fontWeight: 600,
