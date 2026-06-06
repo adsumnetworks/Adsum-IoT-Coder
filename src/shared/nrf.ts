@@ -13,6 +13,8 @@ export interface NrfEnvironment {
 	/** Extension version — labeled as extension version, never as SDK version. */
 	extensionVersion?: string
 	nrfutilPresent: boolean
+	/** NCS SDK versions installed on this machine, e.g. ["v3.2.1"]. Global fact, not workspace-bound. */
+	installedSdkVersions?: string[]
 	boards: NrfBoard[]
 	lastDetectedAt?: number
 }

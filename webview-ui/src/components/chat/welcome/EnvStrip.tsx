@@ -22,6 +22,9 @@ const EnvStrip: React.FC = () => {
 
 	const envLabel = env.extensionPresent ? `nRF Connect ext v${env.extensionVersion ?? "?"}` : "nRF Connect not detected"
 
+	const sdkVersions = env.installedSdkVersions ?? []
+	const sdkLabel = sdkVersions.length > 0 ? `NCS ${sdkVersions.join(", ")}` : null
+
 	let boardsLabel: string
 	if (env.status === "unknown" || env.status === "detecting") {
 		boardsLabel = "detecting…"
@@ -58,6 +61,17 @@ const EnvStrip: React.FC = () => {
 			</span>
 
 			<span style={{ opacity: 0.4 }}>·</span>
+
+			{/* Installed NCS SDK line (global fact; shown only when an SDK is installed) */}
+			{sdkLabel && (
+				<>
+					<span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+						<i className="codicon codicon-package" style={{ fontSize: "12px" }} />
+						{sdkLabel}
+					</span>
+					<span style={{ opacity: 0.4 }}>·</span>
+				</>
+			)}
 
 			{/* Boards line */}
 			<span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>

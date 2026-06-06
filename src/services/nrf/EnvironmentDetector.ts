@@ -134,6 +134,34 @@ export function parseDeviceInfo(stdout: string): Partial<NrfBoard> {
 	return { deviceFamily: family, deviceName: name, deviceVersion: version }
 }
 
+/**
+ * Pure parser for `nrfutil sdk-manager list --json` stdout. Exported for unit tests.
+ * Returns installed NCS SDK version strings (e.g. ["v3.2.1"]).
+ */
+export function parseSdkList(stdout: string): string[] {
+	const events = parseJsonLines(stdout)
+	for (const ev of events) {
+		const e = ev as any
+		const versions = e?.data?.versions ?? e?.versions
+		if (Array.isArray(versions)) {
+			return versions
+				.filter((v) => (v?.sdkStatus ?? v?.sdk_status ?? "installed") === "installed")
+				.map((v) => v?.version as string)
+				.filter(Boolean)
+		}
+	}
+	return []
+}
+
+async function probeSdks(nrfutil: string): Promise<string[]> {
+	try {
+		const result = await execAsync(`"${nrfutil}" sdk-manager list --json`, { timeout: 8000 })
+		return parseSdkList(result.stdout)
+	} catch {
+		return []
+	}
+}
+
 async function probeBoards(): Promise<{ nrfutilPresent: boolean; boards: NrfBoard[] }> {
 	const nrfutil = resolveNrfutilCommand()
 	try {
@@ -166,13 +194,18 @@ async function probeBoards(): Promise<{ nrfutilPresent: boolean; boards: NrfBoar
 export async function detectNrfEnvironment(): Promise<NrfEnvironment> {
 	_cache = { ...getCachedNrfEnvironment(), status: "detecting" }
 
-	const boardsResult = await probeBoards().catch(() => ({ nrfutilPresent: false, boards: [] as NrfBoard[] }))
+	const nrfutil = resolveNrfutilCommand()
+	const [boardsResult, installedSdkVersions] = await Promise.all([
+		probeBoards().catch(() => ({ nrfutilPresent: false, boards: [] as NrfBoard[] })),
+		probeSdks(nrfutil).catch(() => [] as string[]),
+	])
 
 	_cache = {
 		status: "ready",
 		extensionPresent: _extensionInfo.present,
 		extensionVersion: _extensionInfo.version,
 		nrfutilPresent: boardsResult.nrfutilPresent,
+		installedSdkVersions,
 		boards: boardsResult.boards,
 		lastDetectedAt: Date.now(),
 	}
