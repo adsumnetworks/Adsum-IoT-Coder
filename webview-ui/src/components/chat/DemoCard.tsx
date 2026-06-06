@@ -43,7 +43,7 @@ const DemoCard: React.FC<DemoCardProps> = ({ onStartDemo, disabled = false }) =>
 				}}
 				type="button">
 				<div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
-					{/* Play icon */}
+					{/* Launch icon (▶ is reserved for recorded video) */}
 					<div
 						style={{
 							flexShrink: 0,
@@ -54,10 +54,9 @@ const DemoCard: React.FC<DemoCardProps> = ({ onStartDemo, disabled = false }) =>
 							display: "flex",
 							alignItems: "center",
 							justifyContent: "center",
-							fontSize: "18px",
 							color: "#fff",
 						}}>
-						▶
+						<i className="codicon codicon-rocket" style={{ fontSize: "18px" }} />
 					</div>
 
 					<div style={{ flex: 1 }}>
@@ -69,7 +68,7 @@ const DemoCard: React.FC<DemoCardProps> = ({ onStartDemo, disabled = false }) =>
 								marginBottom: "4px",
 								lineHeight: "1.3",
 							}}>
-							Watch it debug a real bug
+							See it debug a real bug
 						</div>
 						<div
 							style={{
