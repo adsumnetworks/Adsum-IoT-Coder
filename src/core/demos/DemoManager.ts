@@ -64,8 +64,8 @@ export async function prepareDemoWorkspace(): Promise<DemoWorkspace> {
 
 /** Builds the full agent task prompt pointing at real files in globalStorage. */
 export function buildDemoPrompt(ws: DemoWorkspace): string {
-	const centralLog = path.join(ws.centralPath, "logs", "rtt", "central_683907940_20260602_023145.log")
-	const peripheralLog = path.join(ws.peripheralPath, "logs", "rtt", "peripheral_960167369_20260602_023145.log")
+	const centralLog = path.join(ws.centralPath, "logs", "rtt", "central_683907940_20260606_162933.log")
+	const peripheralLog = path.join(ws.peripheralPath, "logs", "rtt", "peripheral_960167369_20260606_162933.log")
 	const centralSrc = path.join(ws.centralPath, "src", "main.c")
 	const peripheralSrc = path.join(ws.peripheralPath, "src", "main.c")
 
