@@ -8,25 +8,29 @@ Files are pre-captured from real hardware. Do NOT attempt device discovery, buil
 
 ## Reading and narration
 
-**Open directly on the investigation.** Do NOT preface with "this is a demo," "I'll read the files,"
-or "loading six files in order." Your very first words are the Central-log insight. The machinery of
-reading is invisible; the user is watching an engineer think, not a script run.
+**Open with a hook, then read.** Before the reads, write a short intro (2–3 sentences) *to the developer*:
+frame the mission — a real, subtle one-directional BLE NUS bug captured from two physical Nordic boards —
+name the evidence you're bringing in (the RTT logs from both boards, both firmware sources, the NUS
+protocol reference), and invite them to follow you to the fix and the live compile proof at the end.
+Describe the evidence you're gathering, **not the act of reading files**: say "let me pull the RTT logs
+from both boards and both firmware sources," never "I'll read six files" or "I'll read silently." Keep it
+credible for an embedded engineer — no hype. Name the evidence by **role only**; say nothing about what any
+file *contains*. This intro is the only text before the reads.
 
-Read all six files listed in the task, in order. After each read output **at most one taut line** — a
-question or an observation that *deepens the mystery*. The live reads BUILD tension; they do not solve it.
-**The reveal — naming `bt_nus_subscribe_receive()` — belongs to the five beats below, not to the reads.**
+**Keep every finding and reaction for the beats.** The six reads render to the user as a single collapsed
+"read 6 files" step. A *finding* stated before that step appears *above* it and reads backwards, as if you
+concluded before opening the files. The intro (framing) belongs before the reads; everything you *found*
+(the silence, the failed sends, the topology, the cause) belongs to the beats. Your first output after the
+reads is Beat 1.
 
-| File | What to say during the read (your words, same meaning) |
-|---|---|
-| Debugging guide | *(no output — internalize silently)* |
-| Central RTT log | The central connected, discovered the NUS service, then went silent — e.g. **"Connected, paired, discovered services… then nothing. The central never receives a byte. Why?"** Honestly note these are real RTT logs captured from a two-board setup. |
-| Peripheral RTT log | The peripheral is failing in the *other* direction — e.g. **"The peripheral receives fine, but every send back fails. One direction is dead — and the two logs don't agree on why."** |
-| BLE protocol ref | *(no output — consult silently. You now understand the mechanism, but do NOT announce it. Let the source confirm it in Beat 4.)* |
-| Central `main.c` | Point at the gap **without naming the fix** — e.g. **"The handshake in `discovery_complete()` is incomplete. The central assigns the handles… and then stops short. Let me show you exactly where."** Do not name the missing function here. |
-| Peripheral `main.c` | One line clearing the peripheral — e.g. **"The peripheral code is correct. The fault is entirely on the central side."** |
+**Never name `bt_nus_subscribe_receive()` (or "the fix") before Beat 3.** You already know the answer from
+these instructions — the developer must still watch you derive it from the evidence across Beats 1–2 before
+you name it in Beat 3. Only cite API names that appear verbatim in the source. Leading with the answer kills
+the demo.
 
-**Do not assume the bug before reading.** Only cite API names that appear verbatim in the source — and
-save the missing one for Beat 3/4, where the diagram and the source prove it.
+**Present the five beats immediately after the reads** — no "Ready to present?", no "Want to see the raw
+logs?", no confirmation gate or button choices before the beats. The "read 6 files" step is the run-up;
+Beat 1 follows it directly.
 
 ---
 
@@ -36,7 +40,8 @@ save the missing one for Beat 3/4, where the diagram and the source prove it.
 
 ### Beat 1 — The Setup
 
-Open with the topology. Reproduce this diagram exactly:
+Lead with the topology diagram, not prose — don't restate the intro's framing. This mermaid diagram is
+**required** — render it, do not describe it in words:
 
 ```mermaid
 flowchart LR
@@ -53,7 +58,8 @@ One sentence: what the demo shows and why a one-directional failure in BLE NUS i
 
 ### Beat 2 — The Symptom (evidence first, conclusion later)
 
-Quote the exact log lines verbatim from the files you read.
+Quote the exact log lines verbatim from the files you read. Use plain code fences (no language tag) for
+log lines — they are RTT output, not source code.
 
 **Central** — last line before silence:
 ```
@@ -76,7 +82,7 @@ This is where the missing call is named for the first time. State the cross-devi
 > *The peripheral is not the bug — `bt_nus_send()` can only succeed if a client subscribed to
 > notifications. The fault is on the central side. Let's check what it did after discovery.*
 
-Then show the broken handshake — the diagram below is the reveal. Reproduce it exactly:
+Then show the broken handshake — this mermaid diagram is the reveal and is **required**; render it, do not describe it in prose:
 
 ```mermaid
 sequenceDiagram
@@ -123,9 +129,14 @@ One sentence: why this single call restores bidirectional communication.
 
 ## Step 4: End the task
 
-End your final message with exactly — nothing after it:
+End your final message with `<!--TASK_COMPLETE-->` (exactly — nothing after it).
 
-<!--TASK_COMPLETE-->
+When you call `attempt_completion`, the result must be **one sentence only** — the root-cause verdict.
+Example: *"Root cause: `bt_nus_subscribe_receive()` is never called in `discovery_complete()` — the
+central never writes the CCCD, so the peripheral has no subscriber and every `bt_nus_send()` fails."*
+
+Do NOT re-state the five beats in the completion result. They are already rendered in the conversation
+stream; repeating them in the green box creates triple-presentation that confuses the developer.
 
 ---
 
