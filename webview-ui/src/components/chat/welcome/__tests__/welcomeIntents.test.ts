@@ -1,22 +1,21 @@
-import { describe, it } from "mocha"
-import "should"
+import { describe, expect, it } from "vitest"
 import { buildIntentPrompt, getTenure, type IntentId, NO_PROJECT_INTENTS, PROJECT_INTENTS } from "../welcomeIntents"
 
 describe("getTenure", () => {
 	it("taskCount=0, showAnnouncement=false → new", () => {
-		getTenure({ taskCount: 0, showAnnouncement: false }).should.equal("new")
+		expect(getTenure({ taskCount: 0, showAnnouncement: false })).toBe("new")
 	})
 	it("taskCount=0, showAnnouncement=true → new (new wins over dormant)", () => {
-		getTenure({ taskCount: 0, showAnnouncement: true }).should.equal("new")
+		expect(getTenure({ taskCount: 0, showAnnouncement: true })).toBe("new")
 	})
 	it("taskCount=3, showAnnouncement=true → dormant", () => {
-		getTenure({ taskCount: 3, showAnnouncement: true }).should.equal("dormant")
+		expect(getTenure({ taskCount: 3, showAnnouncement: true })).toBe("dormant")
 	})
 	it("taskCount=3, showAnnouncement=false → returning", () => {
-		getTenure({ taskCount: 3, showAnnouncement: false }).should.equal("returning")
+		expect(getTenure({ taskCount: 3, showAnnouncement: false })).toBe("returning")
 	})
 	it("taskCount=1, showAnnouncement=false → returning (1 task is not new)", () => {
-		getTenure({ taskCount: 1, showAnnouncement: false }).should.equal("returning")
+		expect(getTenure({ taskCount: 1, showAnnouncement: false })).toBe("returning")
 	})
 })
 
@@ -24,75 +23,76 @@ describe("buildIntentPrompt", () => {
 	const ids: IntentId[] = ["prototype", "addFeature", "debug", "buildFlash", "testValidate", "demo"]
 	for (const id of ids) {
 		it(`${id} returns a non-empty string`, () => {
-			buildIntentPrompt(id).should.be.a.String().and.not.equal("")
+			expect(buildIntentPrompt(id)).toBeTypeOf("string")
+			expect(buildIntentPrompt(id)).not.toBe("")
 		})
 	}
 
 	it("addFeature interpolates projectName", () => {
-		buildIntentPrompt("addFeature", "my_app").should.containEql("my_app")
+		expect(buildIntentPrompt("addFeature", "my_app")).toContain("my_app")
 	})
 
 	it("buildFlash interpolates projectName", () => {
-		buildIntentPrompt("buildFlash", "my_app").should.containEql("my_app")
+		expect(buildIntentPrompt("buildFlash", "my_app")).toContain("my_app")
 	})
 
 	it("testValidate interpolates projectName", () => {
-		buildIntentPrompt("testValidate", "my_app").should.containEql("my_app")
+		expect(buildIntentPrompt("testValidate", "my_app")).toContain("my_app")
 	})
 
 	it("addFeature falls back gracefully when projectName omitted (no undefined in string)", () => {
 		const result = buildIntentPrompt("addFeature")
-		result.should.not.containEql("undefined")
-		result.should.be.a.String()
+		expect(result).toBeTypeOf("string")
+		expect(result).not.toContain("undefined")
 	})
 
 	it("buildFlash falls back gracefully when projectName omitted", () => {
-		buildIntentPrompt("buildFlash").should.not.containEql("undefined")
+		expect(buildIntentPrompt("buildFlash")).not.toContain("undefined")
 	})
 
 	it("testValidate falls back gracefully when projectName omitted", () => {
-		buildIntentPrompt("testValidate").should.not.containEql("undefined")
+		expect(buildIntentPrompt("testValidate")).not.toContain("undefined")
 	})
 
 	it("prototype does not change with projectName (it is not project-scoped)", () => {
-		buildIntentPrompt("prototype").should.equal(buildIntentPrompt("prototype", "irrelevant"))
+		expect(buildIntentPrompt("prototype")).toBe(buildIntentPrompt("prototype", "irrelevant"))
 	})
 })
 
 describe("NO_PROJECT_INTENTS", () => {
 	it("excludes project-only intent ids", () => {
 		const ids = NO_PROJECT_INTENTS.map((d) => d.id)
-		ids.should.not.containEql("addFeature")
-		ids.should.not.containEql("debug")
-		ids.should.not.containEql("buildFlash")
-		ids.should.not.containEql("testValidate")
+		expect(ids).not.toContain("addFeature")
+		expect(ids).not.toContain("debug")
+		expect(ids).not.toContain("buildFlash")
+		expect(ids).not.toContain("testValidate")
 	})
 
 	it("includes prototype", () => {
-		NO_PROJECT_INTENTS.map((d) => d.id).should.containEql("prototype")
+		expect(NO_PROJECT_INTENTS.map((d) => d.id)).toContain("prototype")
 	})
 })
 
 describe("PROJECT_INTENTS", () => {
 	it("has exactly one primary intent", () => {
-		const primaries = PROJECT_INTENTS.filter((d) => d.primary)
-		primaries.length.should.equal(1)
+		expect(PROJECT_INTENTS.filter((d) => d.primary)).toHaveLength(1)
 	})
 
 	it("addFeature is the primary", () => {
-		PROJECT_INTENTS.find((d) => d.primary)?.id.should.equal("addFeature")
+		expect(PROJECT_INTENTS.find((d) => d.primary)?.id).toBe("addFeature")
 	})
 
 	it("includes all four project-state intents", () => {
 		const ids = PROJECT_INTENTS.map((d) => d.id)
-		ids.should.containEql("addFeature")
-		ids.should.containEql("debug")
-		ids.should.containEql("buildFlash")
-		ids.should.containEql("testValidate")
+		expect(ids).toContain("addFeature")
+		expect(ids).toContain("debug")
+		expect(ids).toContain("buildFlash")
+		expect(ids).toContain("testValidate")
 	})
 
 	it("excludes no-project intents", () => {
-		PROJECT_INTENTS.map((d) => d.id).should.not.containEql("prototype")
-		PROJECT_INTENTS.map((d) => d.id).should.not.containEql("openProject")
+		const ids = PROJECT_INTENTS.map((d) => d.id)
+		expect(ids).not.toContain("prototype")
+		expect(ids).not.toContain("openProject")
 	})
 })

@@ -89,6 +89,9 @@ export async function prepareDemoWorkspace(): Promise<DemoWorkspace> {
  * No file paths, no five-beat framing, no escalation copy, no SDK version, no build steps —
  * just the human framing a developer would actually see when launching the demo.
  */
+// NOTE: the leading "Debug a real BLE NUS bug" must stay in sync with DEMO_HISTORY_MATCH
+// (webview-ui/src/components/chat/demoScenarios.ts) — the webview detects a prior demo run by
+// matching this prefix in task history to demote the welcome demo card to a secondary "Re-run".
 export function buildDemoDisplayText(): string {
 	return (
 		"Debug a real BLE NUS bug — Central→Peripheral works, but Peripheral→Central is silently dropped. " +
@@ -133,6 +136,12 @@ handshake); the first time you may name bt_nus_subscribe_receive() is Beat 3. Le
 destroys the demo — this is the single most important rule.
 - The central source is the buggy version and is intentionally missing the fix; that is expected — do not \
 flag it as already-fixed.
+- The verdict is EARNED by the reads and beats, never recited from these instructions. If the developer \
+interrupts, skips ahead, or asks you to wrap up / mark the task complete BEFORE you have actually read the \
+six files and worked through Beats 1–3, do NOT state a root cause, do NOT name bt_nus_subscribe_receive(), \
+and do NOT call attempt_completion with a diagnosis. Say plainly that the analysis didn't get to run and \
+offer to start it from the top. A diagnosis you produce without having opened the files reads as pre-canned \
+and destroys the developer's trust — the whole point is that the answer comes from the evidence in session.
 
 Files (read all six silently, in order):
 1. Debugging guide:    ${workflowFile}
@@ -147,9 +156,11 @@ no confirmation step, no button choices before the beats. The reads are the run-
 Beats 1 and 3 each REQUIRE their mermaid diagram, reproduced verbatim from the workflow — never replace a \
 diagram with prose. Be direct and educational — you are showing a developer a real nRF bug.
 
-When you call attempt_completion, the result must be one sentence only: the root-cause verdict. \
-Do NOT repeat the five beats in the completion result — they are already in the conversation stream. \
-Re-rendering them in the green box creates triple-presentation that confuses the developer.
+When you call attempt_completion — and only AFTER you have done the reads and presented the beats — the \
+result must be one sentence only: the root-cause verdict. Do NOT repeat the five beats in the completion \
+result — they are already in the conversation stream. Re-rendering them in the green box creates \
+triple-presentation that confuses the developer. (If the flow was cut short per the rule above, there is \
+no verdict to give — say the analysis didn't run rather than completing with a canned diagnosis.)
 ${escalation}
 End your final message with exactly — nothing after it: <!--TASK_COMPLETE-->`
 }
