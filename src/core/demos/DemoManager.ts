@@ -64,6 +64,8 @@ export async function prepareDemoWorkspace(): Promise<DemoWorkspace> {
 
 /** Builds the full agent task prompt pointing at real files in globalStorage. */
 export function buildDemoPrompt(ws: DemoWorkspace): string {
+	const workflowFile = path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "workflows", "demo-debug.md")
+	const bleFile = path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "sdks", "ncs", "protocols", "BLE.md")
 	const centralLog = path.join(ws.centralPath, "logs", "rtt", "central_683907940_20260606_162933.log")
 	const peripheralLog = path.join(ws.peripheralPath, "logs", "rtt", "peripheral_960167369_20260606_162933.log")
 	const centralSrc = path.join(ws.centralPath, "src", "main.c")
@@ -72,21 +74,18 @@ export function buildDemoPrompt(ws: DemoWorkspace): string {
 	return `Demo: BLE NUS one-directional bug — no setup needed
 
 [ADSUM_DEMO:nus-uart] You are running the Adsum IoT Coder one-click demo on a real NCS workspace. \
-Use read_file to load the files below — do NOT skip the reads. \
+Use read_file to load all six files below — do NOT skip any read. \
 No hardware is needed; logs were captured from real nRF52840DK (central) + nRF5340DK (peripheral) hardware.
 
-Files to read:
-- Central RTT log:     ${centralLog}
-- Peripheral RTT log:  ${peripheralLog}
-- Central source:      ${centralSrc}
-- Peripheral source:   ${peripheralSrc}
+Files to read (in order — read all before forming any conclusion):
+1. Demo workflow:       ${workflowFile}
+2. BLE protocol ref:   ${bleFile}
+3. Central RTT log:    ${centralLog}
+4. Peripheral RTT log: ${peripheralLog}
+5. Central source:     ${centralSrc}
+6. Peripheral source:  ${peripheralSrc}
 
-After reading all four files:
-1. State the symptom (what the logs show is going wrong)
-2. Identify the root cause — name the exact function and what's missing
-3. Show the minimal fix as a code snippet
-4. Explain in one sentence why the fix works
-
+After reading all six files, follow the structure defined in the demo workflow.
 Be direct and educational — you are showing a developer a real nRF bug.
 
 End your final message with exactly: <!--TASK_COMPLETE-->

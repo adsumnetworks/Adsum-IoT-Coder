@@ -25,8 +25,10 @@ The task message lists four file paths. Read them all with `read_file` before fo
 Cross-reference the logs and the source:
 
 - **Logs:** what connects, what fails, what is silent.
-- **Source:** locate the function where BLE service discovery completes and handles assigned.
+- **Source:** locate the function where BLE service discovery completes and handles are assigned.
   Look for missing calls that would be needed to receive notifications from the peripheral.
+
+**When the peripheral cannot send:** The sender is not the bug — it can only notify subscribed clients. Check which subscription calls the central made after discovery. Only cite API names that appear verbatim in the source — do not invent function names.
 
 **Do not assume the bug before reading.** Let the files speak.
 
