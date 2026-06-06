@@ -275,6 +275,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		globalSkillsToggles: {},
 		localSkillsToggles: {},
 
+		openFolderPaths: [],
 		// NEW: Add workspace information with defaults
 		workspaceRoots: [],
 		primaryRootIndex: 0,

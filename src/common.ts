@@ -142,6 +142,9 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	// Check if this workspace was opened from worktree quick launch
 	await checkWorktreeAutoOpen(context)
 
+	// Reveal Adsum sidebar if this window was opened via the "Open my nRF project" card
+	await checkAdsumRevealAfterOpen(context)
+
 	// Initialize banner service (TEMPORARILY DISABLED - not fetching banners to prevent API hammering)
 	BannerService.initialize(webview.controller)
 	// DISABLED: .getActiveBanners(true)
@@ -224,6 +227,32 @@ async function checkWorktreeAutoOpen(context: vscode.ExtensionContext): Promise<
 		}
 	} catch (error) {
 		Logger.error("Error checking worktree auto-open", error)
+	}
+}
+
+/**
+ * Reveals the Adsum sidebar if the window was opened via the "Open my nRF project" card.
+ * Mirrors checkWorktreeAutoOpen — reads the flag set by openFolder.ts before the window reload.
+ */
+async function checkAdsumRevealAfterOpen(context: vscode.ExtensionContext): Promise<void> {
+	try {
+		const { ADSUM_REVEAL_SIDEBAR_KEY } = await import("./core/controller/file/openFolder")
+		const revealPath = context.globalState.get<string>(ADSUM_REVEAL_SIDEBAR_KEY)
+		if (!revealPath) {
+			return
+		}
+
+		const workspacePaths = (await HostProvider.workspace.getWorkspacePaths({})).paths
+		if (workspacePaths.length === 0) {
+			return
+		}
+
+		if (arePathsEqual(workspacePaths[0], revealPath)) {
+			await context.globalState.update(ADSUM_REVEAL_SIDEBAR_KEY, undefined)
+			await HostProvider.workspace.openClineSidebarPanel({})
+		}
+	} catch (error) {
+		Logger.error("Error checking Adsum reveal after open", error)
 	}
 }
 
