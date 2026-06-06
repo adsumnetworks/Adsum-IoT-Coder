@@ -34,6 +34,11 @@ export function buildStatusBarTooltip(env?: NrfEnvironment): string {
 	const extLine = env.extensionPresent ? `nRF Connect ext v${env.extensionVersion ?? "?"}` : "nRF Connect not detected"
 	lines.push(`$(server-environment) ${extLine}`)
 
+	const sdkVersions = env.installedSdkVersions ?? []
+	if (sdkVersions.length > 0) {
+		lines.push(`$(package) NCS ${sdkVersions.join(", ")}`)
+	}
+
 	if (env.status === "detecting") {
 		lines.push("$(plug) detecting boards…")
 	} else if (!env.nrfutilPresent) {
