@@ -40,8 +40,10 @@ import { VscodeTerminalManager } from "./hosts/vscode/terminal/VscodeTerminalMan
 import { VscodeDiffViewProvider } from "./hosts/vscode/VscodeDiffViewProvider"
 import { VscodeWebviewProvider } from "./hosts/vscode/VscodeWebviewProvider"
 import { ExtensionRegistryInfo } from "./registry"
+import { getCachedFreeTokensRemaining, onFreeTokensChanged } from "./services/adsum/FreeTierState"
 import { AuthService } from "./services/auth/AuthService"
 import { LogoutReason } from "./services/auth/types"
+import { createAdsumStatusBar, refreshAdsumStatusBar } from "./services/statusbar/AdsumStatusBar"
 import { telemetryService } from "./services/telemetry"
 import { ClineTempManager } from "./services/temp"
 import { SharedUriHandler } from "./services/uri/SharedUriHandler"
@@ -89,6 +91,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	)
 
 	const webview = (await initialize(context)) as VscodeWebviewProvider
+
+	// Status-bar ▲ Adsum button — always visible, reveals the view from any dock.
+	createAdsumStatusBar(context, vscode)
+	refreshAdsumStatusBar(getCachedFreeTokensRemaining())
+	context.subscriptions.push({ dispose: onFreeTokensChanged(refreshAdsumStatusBar) })
 
 	// Apply the Adsum-specific telemetry opt-out setting and keep it live.
 	// VS Code's global telemetry.telemetryLevel is already respected by the
