@@ -110,16 +110,31 @@ export function buildDemoPrompt(ws: DemoWorkspace, capability: DemoCapability = 
 	return `Demo: BLE NUS one-directional bug — no setup needed
 
 [ADSUM_DEMO:nus-uart] You are debugging a real NCS workspace. \
-Use read_file to load all six files below — do NOT skip any read. \
 Logs were captured from real nRF52840DK (central) + nRF5340DK (peripheral) hardware.
 
-IMPORTANT — open directly on the investigation. Your very first words must be your reaction to the \
-evidence (the central log). Do NOT preface with "this is a demo", "no project check needed", \
-"I'll load the files", or "in order" — the reader must never see the file-loading machinery. \
-The central source you read is the buggy version and is intentionally missing the fix; that is expected — \
-do not flag it as already-fixed.
+CRITICAL — read this before doing anything:
 
-Files to read (in order — read all before forming any conclusion):
+- Open with a hook, then read. Write a short intro (2–3 sentences) TO the developer before the reads: \
+frame the mission — a real, subtle one-directional BLE NUS bug captured from two physical Nordic boards — \
+name the evidence you're bringing in (the RTT logs from both boards, both firmware sources, and the NUS \
+protocol reference), and invite them to follow you to the fix and the live compile proof at the end. \
+Describe the evidence you're gathering, NOT the act of reading files: "let me pull the RTT logs from both \
+boards and both firmware sources", never "I'll read six files" / "I'll read silently". Keep it credible \
+for an embedded engineer — no hype, no "get ready to be amazed". Name the evidence by ROLE only; state \
+nothing about what any file CONTAINS. This intro is the only text before the reads.
+- Keep every finding, reaction, and the topology for the beats — never react to a file before the reads \
+finish. The six reads render to the user as a single collapsed "read 6 files" step; a finding stated \
+before that step appears ABOVE it and reads backwards, as if you concluded before opening the files. Your \
+first output AFTER the reads is Beat 1.
+- Do NOT name the missing function or the fix before Beat 3. The escalation/build section near the end of \
+these instructions spells out the exact fix — that text exists ONLY for the build step, AFTER the reveal. \
+Across Beats 1–2 you build from evidence alone (silence after discovery, failed sends, an incomplete \
+handshake); the first time you may name bt_nus_subscribe_receive() is Beat 3. Leading with the answer \
+destroys the demo — this is the single most important rule.
+- The central source is the buggy version and is intentionally missing the fix; that is expected — do not \
+flag it as already-fixed.
+
+Files (read all six silently, in order):
 1. Debugging guide:    ${workflowFile}
 2. Central RTT log:    ${centralLog}
 3. Peripheral RTT log: ${peripheralLog}
@@ -127,8 +142,14 @@ Files to read (in order — read all before forming any conclusion):
 5. Central source:     ${centralSrc}
 6. Peripheral source:  ${peripheralSrc}
 
-After reading all six files, walk the developer through what you found — set the scene, show the evidence, trace the cause, and present the fix.
-Be direct and educational — you are showing a developer a real nRF bug.
+After reading all six files, present the five beats immediately — no ask-gate, no "Ready to present?", \
+no confirmation step, no button choices before the beats. The reads are the run-up; Beat 1 follows directly.
+Beats 1 and 3 each REQUIRE their mermaid diagram, reproduced verbatim from the workflow — never replace a \
+diagram with prose. Be direct and educational — you are showing a developer a real nRF bug.
+
+When you call attempt_completion, the result must be one sentence only: the root-cause verdict. \
+Do NOT repeat the five beats in the completion result — they are already in the conversation stream. \
+Re-rendering them in the green box creates triple-presentation that confuses the developer.
 ${escalation}
 End your final message with exactly — nothing after it: <!--TASK_COMPLETE-->`
 }
@@ -146,7 +167,7 @@ After your five-beat analysis, add this section before ending the task:
 **Want proof the fix is real — not something I made up?**
 You have ${sdkVersion} installed. I'll apply the one-line fix right now and compile the central firmware on your machine. A clean build proves \`bt_nus_subscribe_receive()\` is a genuine NCS API — not a hallucination. No boards needed.
 
-Type **"build it"** to see it compile. Or use the cards below.
+Type **"build it"** and I'll compile it on your machine right now.
 
 If the user types "build it", do the following steps in order. Do NOT edit the demo source in place —
 work on a throwaway copy in /tmp so the demo stays pristine for the next run:
@@ -181,7 +202,7 @@ After your five-beat analysis, add this section before ending the task:
 **Want to reproduce it live on your hardware?**
 You have ${boardWord} connected. I can flash the buggy firmware, capture real RTT logs from your hardware, verify the failure — then apply the fix and confirm it works end-to-end.
 
-Type **"flash it"** to proceed. If you'd rather explore something else, use the cards below.
+Type **"flash it"** and I'll run it on your hardware.
 
 If the user accepts:
 1. Flash central_uart (buggy) and peripheral_uart to the connected board(s)
