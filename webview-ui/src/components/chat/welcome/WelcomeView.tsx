@@ -1,19 +1,18 @@
-import { StringRequest } from "@shared/proto/cline/common"
 import React from "react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
-import { FileServiceClient } from "@/services/grpc-client"
 import DemoCard from "../DemoCard"
-import { DEFAULT_DEMO_SCENARIO_ID } from "../demoScenarios"
+import { DEFAULT_DEMO_SCENARIO_ID, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
 import DockCoachMark from "./DockCoachMark"
 import IntentCard from "./IntentCard"
+import { runIntent } from "./runIntent"
 import StatusHeader from "./StatusHeader"
 import TenureNudge from "./TenureNudge"
-import { buildIntentPrompt, getTenure, NO_PROJECT_INTENTS, PROJECT_INTENTS } from "./welcomeIntents"
+import { getTenure, intentDescription, NO_PROJECT_INTENTS, PROJECT_INTENTS } from "./welcomeIntents"
 
 interface WelcomeViewProps {
 	onSelectMode: (mode: NordicModeId) => void
@@ -42,16 +41,9 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	})
 
 	const intents = hasWorkspace ? PROJECT_INTENTS : NO_PROJECT_INTENTS
-
-	const handleIntentClick = (id: string) => {
-		if (id === "debug") {
-			onSelectMode("log_analyzer")
-		} else if (id === "openProject") {
-			void FileServiceClient.openFolder(StringRequest.create({ value: "" }))
-		} else {
-			void onStartTask(buildIntentPrompt(id as Parameters<typeof buildIntentPrompt>[0], projectName ?? undefined))
-		}
-	}
+	// Once the demo has run at least once, it stops being the hero — intents lead, demo demotes to a
+	// quiet "Re-run demo" at the bottom. First-run users still get the prominent cyan hero.
+	const demoDone = hasRunDemo(taskHistory)
 
 	return (
 		<div
@@ -81,27 +73,36 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 					/>
 				)}
 
-				{/* Hero demo — always the bulletproof floor */}
-				<DemoCard onStartDemo={onStartDemo} />
+				{/* Hero demo — the bulletproof floor, until the user has run it once */}
+				{!demoDone && <DemoCard onStartDemo={onStartDemo} />}
 
 				{/* Adaptive intent cards */}
 				<div className="flex flex-col gap-3 w-full">
 					{intents.map((intent) => (
 						<IntentCard
-							description={
-								intent.id === "addFeature" && projectName
-									? `Add a Zephyr shell, BLE service, or NVS to ${projectName} — I'll wire it into your build.`
-									: intent.description
-							}
+							description={intentDescription(intent, projectName ?? undefined)}
 							icon={intent.icon}
 							key={intent.id}
-							onClick={() => handleIntentClick(intent.id)}
+							onClick={() =>
+								runIntent(intent.id, {
+									onSelectMode,
+									onStartTask,
+									projectName: projectName ?? undefined,
+								})
+							}
 							primary={intent.primary}
 							testId={`intent-card-${intent.id}`}
 							title={intent.title}
 						/>
 					))}
 				</div>
+
+				{/* Demoted demo — quiet "Re-run demo" once it has been seen */}
+				{demoDone && (
+					<div className="w-full">
+						<DemoCard onStartDemo={onStartDemo} variant="rerun" />
+					</div>
+				)}
 
 				{/* Dock coach mark — once, when project is open */}
 				<DockCoachMark hasProject={!!hasWorkspace} />

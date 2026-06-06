@@ -32,8 +32,8 @@ import {
 } from "./chat-view"
 import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
-import ModeSelector from "./ModeSelector"
 import { NORDIC_MODES, TASK_COMPLETE_MARKER } from "./nordicModes"
+import NextStepChooser from "./welcome/NextStepChooser"
 import WelcomeView from "./welcome/WelcomeView"
 
 interface ChatViewProps {
@@ -455,12 +455,11 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				)}
 				{task && nordicPhase === "task_complete" && (
 					<div className="flex-shrink-0">
-						<ModeSelector
-							heading={
-								isDemoRun ? "Your turn — ask anything about this bug, or start a real task below." : undefined
-							}
-							onModeSelect={handleModeSelect}
-							variant="inline"
+						<NextStepChooser
+							isDemoRun={isDemoRun}
+							onSelectMode={handleModeSelect}
+							onStartDemo={handleStartDemo}
+							onStartTask={handleStartTask}
 						/>
 					</div>
 				)}

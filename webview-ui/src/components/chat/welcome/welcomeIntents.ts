@@ -48,6 +48,14 @@ export function buildIntentPrompt(id: IntentId, projectName?: string): string {
 	}
 }
 
+/** Card description with project-name interpolation where relevant (e.g. "Add a feature to <proj>"). */
+export function intentDescription(intent: IntentDef, projectName?: string): string {
+	if (intent.id === "addFeature" && projectName) {
+		return `Add a Zephyr shell, BLE service, or NVS to ${projectName} — I'll wire it into your build.`
+	}
+	return intent.description
+}
+
 export const NO_PROJECT_INTENTS: IntentDef[] = [
 	{
 		id: "prototype",

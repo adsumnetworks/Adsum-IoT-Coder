@@ -28,3 +28,15 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 }
 
 export const DEFAULT_DEMO_SCENARIO_ID = "nus-uart"
+
+/**
+ * Stable prefix of the demo's chat-bubble display text (see DemoManager.buildDemoDisplayText).
+ * Task history stores that bubble text as the item's `task` field, so a demo that has been run
+ * at least once is detectable by this prefix. Keep in sync with buildDemoDisplayText().
+ */
+export const DEMO_HISTORY_MATCH = "Debug a real BLE NUS bug"
+
+/** True once the user has run the demo at least once (persists via task history). */
+export function hasRunDemo(tasks: ReadonlyArray<{ task: string }> | undefined): boolean {
+	return !!tasks?.some((t) => t.task?.startsWith(DEMO_HISTORY_MATCH))
+}
