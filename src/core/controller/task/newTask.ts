@@ -105,6 +105,14 @@ export async function newTask(controller: Controller, request: NewTaskRequest): 
 		try {
 			const ws = await prepareDemoWorkspace()
 			taskText = buildDemoPrompt(ws)
+			// Demo files live in globalStorage (outside the workspace) — auto-approve reads for this
+			// task only. Does not touch the user's global auto-approval settings.
+			const existingApproval =
+				filteredTaskSettings.autoApprovalSettings ?? controller.stateManager.getGlobalSettingsKey("autoApprovalSettings")
+			filteredTaskSettings.autoApprovalSettings = {
+				...existingApproval,
+				actions: { ...existingApproval.actions, readFilesExternally: true },
+			}
 		} catch (err) {
 			console.error("[Demo] workspace preparation failed, falling back to original prompt:", err)
 			// taskText stays as-is; the inline fallback logs in demoScenarios.ts still work
