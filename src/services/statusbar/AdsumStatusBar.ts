@@ -41,7 +41,12 @@ export function buildStatusBarTooltip(env?: NrfEnvironment): string {
 	} else if (env.boards.length === 0) {
 		lines.push("$(plug) no boards connected")
 	} else {
-		const names = env.boards.map((b) => b.deviceName ?? b.deviceFamily ?? b.serialNumber).join(", ")
+		const names = env.boards
+			.map((b) => {
+				const name = b.deviceName ?? b.deviceFamily ?? b.serialNumber
+				return b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name
+			})
+			.join(", ")
 		lines.push(`$(plug) ${env.boards.length} board${env.boards.length > 1 ? "s" : ""}: ${names}`)
 	}
 

@@ -3,6 +3,8 @@ export interface NrfBoard {
 	deviceFamily?: string
 	deviceName?: string
 	deviceVersion?: string
+	/** Nordic DK board number, e.g. "PCA10056" — the label developers recognize. */
+	boardVersion?: string
 }
 
 export interface NrfEnvironment {
