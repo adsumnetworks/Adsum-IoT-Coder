@@ -1,5 +1,4 @@
 import type { NrfEnvironment } from "@shared/nrf"
-import { fileExistsAtPath } from "@utils/fs"
 import fs from "fs/promises"
 import * as path from "path"
 import { ExtensionRegistryInfo } from "@/registry"
@@ -76,11 +75,11 @@ export async function prepareDemoWorkspace(): Promise<DemoWorkspace> {
 	const centralPath = path.join(demoRoot, "central_uart")
 	const peripheralPath = path.join(demoRoot, "peripheral_uart")
 
-	// Copy once per extension version; reuse on subsequent runs so prior builds persist.
-	if (!(await fileExistsAtPath(demoRoot))) {
-		const bundledRoot = path.join(_extensionPath, "demo-scenarios", SCENARIO_ID)
-		await copyDir(bundledRoot, demoRoot)
-	}
+	// Always re-copy the bundled assets so the demo is pristine (bug present) on every run.
+	// The build escalation works on a throwaway /tmp copy, so it never mutates these files —
+	// but re-copying is self-healing against any prior corruption (e.g. a fix written in place).
+	const bundledRoot = path.join(_extensionPath, "demo-scenarios", SCENARIO_ID)
+	await copyDir(bundledRoot, demoRoot)
 
 	return { rootPath: demoRoot, centralPath, peripheralPath }
 }
@@ -131,20 +130,22 @@ You have ${sdkVersion} installed. I'll apply the one-line fix right now and comp
 
 Type **"build it"** to see it compile. Or use the cards below.
 
-If the user types "build it", do the following steps in order:
-1. In the file \`${ws.centralPath}/src/main.c\`, in the \`discovery_complete()\` function, add this line immediately after \`bt_nus_handles_assign(dm, nus);\`:
+If the user types "build it", do the following steps in order. Do NOT edit the demo source in place —
+work on a throwaway copy in /tmp so the demo stays pristine for the next run:
+
+1. Copy the central project to a clean build location. This also avoids CMake's space-in-path bug:
+   \`\`\`
+   rm -rf /tmp/adsum_demo_central /tmp/adsum_demo_build && cp -R "${ws.centralPath}" /tmp/adsum_demo_central
+   \`\`\`
+2. Apply the fix in the COPY only. In \`/tmp/adsum_demo_central/src/main.c\`, inside \`discovery_complete()\`, add this line immediately after \`bt_nus_handles_assign(dm, nus);\`:
    \`\`\`c
    bt_nus_subscribe_receive(nus);
    \`\`\`
-2. Create a symlink to avoid CMake path issues (the path contains spaces):
-   \`\`\`
-   ln -sfn "${ws.centralPath}" /tmp/adsum_demo_central
-   \`\`\`
-3. Build with west:
+   (The demo source you analyzed is the buggy version and is missing this line — that is expected. Add it to the /tmp copy.)
+3. Build with west from inside the NCS workspace:
    \`\`\`
    west build -s /tmp/adsum_demo_central -b nrf52840dk/nrf52840 -d /tmp/adsum_demo_build
    \`\`\`
-   (Run west from inside the NCS workspace — use the path from your environment if needed.)
 4. If it compiles clean: tell the developer "The fix compiles on NCS ${sdkVersion}. \`bt_nus_subscribe_receive()\` is a real SDK API — the diagnosis was accurate. Connect two boards to see it run live." Then end the task with \`<!--TASK_COMPLETE-->\`.
 5. If it fails: show the compiler error verbatim and explain what it means. Then end the task with \`<!--TASK_COMPLETE-->\`.
 
