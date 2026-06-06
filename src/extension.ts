@@ -43,7 +43,8 @@ import { ExtensionRegistryInfo } from "./registry"
 import { getCachedFreeTokensRemaining, onFreeTokensChanged } from "./services/adsum/FreeTierState"
 import { AuthService } from "./services/auth/AuthService"
 import { LogoutReason } from "./services/auth/types"
-import { createAdsumStatusBar, refreshAdsumStatusBar } from "./services/statusbar/AdsumStatusBar"
+import { clearNrfEnvironmentCache, detectNrfEnvironment, setNrfExtensionInfo } from "./services/nrf/EnvironmentDetector"
+import { createAdsumStatusBar, refreshAdsumStatusBar, setAdsumStatusBarTooltip } from "./services/statusbar/AdsumStatusBar"
 import { telemetryService } from "./services/telemetry"
 import { ClineTempManager } from "./services/temp"
 import { SharedUriHandler } from "./services/uri/SharedUriHandler"
@@ -96,6 +97,37 @@ export async function activate(context: vscode.ExtensionContext) {
 	createAdsumStatusBar(context, vscode)
 	refreshAdsumStatusBar(getCachedFreeTokensRemaining())
 	context.subscriptions.push({ dispose: onFreeTokensChanged(refreshAdsumStatusBar) })
+
+	// Probe nRF Connect extension once here (vscode call allowed in extension.ts).
+	// Extension install/uninstall always requires a window reload, so this stays fresh.
+	try {
+		const ext = vscode.extensions.getExtension("nordic-semiconductor.nrf-connect")
+		setNrfExtensionInfo(ext ? { present: true, version: ext.packageJSON?.version as string | undefined } : { present: false })
+	} catch {
+		setNrfExtensionInfo({ present: false })
+	}
+
+	// Fire-and-forget initial nRF env detection — never blocks activation.
+	// Webview shows "detecting…" state until the cache populates and postStateToWebview fires.
+	void detectNrfEnvironment()
+		.then((env) => {
+			setAdsumStatusBarTooltip(env)
+			return webview.controller.postStateToWebview()
+		})
+		.catch(() => {})
+
+	// Re-detect nRF environment when workspace folders change (user opens/closes a project).
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeWorkspaceFolders(() => {
+			clearNrfEnvironmentCache()
+			void detectNrfEnvironment()
+				.then((env) => {
+					setAdsumStatusBarTooltip(env)
+					return webview.controller.postStateToWebview()
+				})
+				.catch(() => {})
+		}),
+	)
 
 	// Apply the Adsum-specific telemetry opt-out setting and keep it live.
 	// VS Code's global telemetry.telemetryLevel is already respected by the

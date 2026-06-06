@@ -276,6 +276,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		localSkillsToggles: {},
 
 		openFolderPaths: [],
+		nrfEnvironment: { status: "unknown", extensionPresent: false, nrfutilPresent: false, boards: [] },
 		// NEW: Add workspace information with defaults
 		workspaceRoots: [],
 		primaryRootIndex: 0,

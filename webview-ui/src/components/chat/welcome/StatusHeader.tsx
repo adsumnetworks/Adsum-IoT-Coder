@@ -1,17 +1,11 @@
 import React from "react"
+import EnvStrip from "./EnvStrip"
 
 interface StatusHeaderProps {
 	projectName: string | null
 }
 
-/** Project strip + EnvStrip seam (stub returns null until Inc. 3 wires NCS/board data). */
 const StatusHeader: React.FC<StatusHeaderProps> = ({ projectName }) => {
-	const EnvStrip = null // seam for Increment 3
-
-	if (!projectName && !EnvStrip) {
-		return null
-	}
-
 	return (
 		<div
 			style={{
@@ -43,7 +37,7 @@ const StatusHeader: React.FC<StatusHeaderProps> = ({ projectName }) => {
 					</span>
 				</div>
 			)}
-			{EnvStrip}
+			<EnvStrip />
 		</div>
 	)
 }
