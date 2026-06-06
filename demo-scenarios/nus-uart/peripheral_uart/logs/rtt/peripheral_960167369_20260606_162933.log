@@ -2,6 +2,20 @@
 # Started: 2026-06-06T16:29:35.564779
 # Interface: SWD, Speed: 4000 kHz, Channel: 0
 ------------------------------------------------------------
+[16:29:35.617] [00:00:00.451,477] [0m<inf> fs_nvs: 2 Sectors of 4096 bytes[0m
+[16:29:35.617] [00:00:00.451,507] [0m<inf> fs_nvs: alloc wra: 0, fe8[0m
+[16:29:35.617] [00:00:00.451,507] [0m<inf> fs_nvs: data wra: 0, 0[0m
+[16:29:35.617] [00:00:00.472,381] [0m<inf> bt_hci_core: HW Platform: Nordic Semiconductor (0x0002)[0m
+[16:29:35.617] [00:00:00.472,412] [0m<inf> bt_hci_core: HW Variant: nRF53x (0x0003)[0m
+[16:29:35.617] [00:00:00.472,442] [0m<inf> bt_hci_core: Firmware: Standard Bluetooth controller (0x00) Version 155.44175 Build 2923568579[0m
+[16:29:35.617] [00:00:00.473,327] [0m<inf> bt_hci_core: No ID address. App must call settings_load()[0m
+[16:29:35.617] [00:00:00.473,358] [0m<inf> peripheral_uart: Bluetooth initialized[0m
+[16:29:35.617] [00:00:00.474,884] [0m<inf> bt_hci_core: HCI transport: IPC[0m
+[16:29:35.617] [00:00:00.474,975] [0m<inf> bt_hci_core: Identity: DB:96:E9:19:7C:47 (random)[0m
+[16:29:35.617] [00:00:00.475,006] [0m<inf> bt_hci_core: HCI: version 6.2 (0x10) revision 0x2020, manufacturer 0x0059[0m
+[16:29:35.617] [00:00:00.475,036] [0m<inf> bt_hci_core: LMP: version 6.2 (0x10) subver 0x2020[0m
+[16:29:35.617] [00:00:00.480,377] [0m<inf> per0m
+[16:29:35.617] 
 [16:29:35.669] [00:00:00.296,081] [0m<inf> fs_nvs: 2 Sectors of 4096 bytes[0m
 [16:29:35.669] [00:00:00.296,112] [0m<inf> fs_nvs: alloc wra: 0, fb8[0m
 [16:29:35.669] [00:00:00.296,112] [0m<inf> fs_nvs: data wra: 0, 6c[0m
