@@ -32,15 +32,15 @@ export function buildIntentPrompt(id: IntentId, projectName?: string): string {
 	const proj = projectName ?? "my project"
 	switch (id) {
 		case "prototype":
-			return "Tell me what you're building — I'll scaffold it from the right verified Nordic sample."
+			return "Start a new nRF/Zephyr prototype — tell me what you're building and I'll scaffold it from the right verified Nordic sample."
 		case "addFeature":
 			return `Add a feature to ${proj} — tell me what you need (Zephyr shell, BLE service, NVS, etc.) and I'll wire it into your build.`
 		case "debug":
 			return "Stream RTT or UART logs and find the root cause — I'll add logging first if it's missing."
 		case "buildFlash":
-			return `Run the build-flash loop for ${proj} — build, flash, and watch it come up.`
+			return `Build and flash ${proj} — run the loop, build, flash, and watch it come up.`
 		case "testValidate":
-			return `Prove ${proj} works — host tests with native_sim, on-hardware checks when boards are connected.`
+			return `Test and validate ${proj} — host tests with native_sim, on-hardware checks when boards are connected.`
 		case "demo":
 			return "Demo: BLE NUS one-directional bug — no setup needed\n\n[ADSUM_DEMO:nus-uart]"
 		case "openProject":
