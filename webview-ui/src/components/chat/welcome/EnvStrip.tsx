@@ -30,7 +30,12 @@ const EnvStrip: React.FC = () => {
 	} else if (env.boards.length === 0) {
 		boardsLabel = "no boards connected"
 	} else {
-		const names = env.boards.map((b: NrfBoard) => b.deviceName ?? b.deviceFamily ?? b.serialNumber).join(", ")
+		const names = env.boards
+			.map((b: NrfBoard) => {
+				const name = b.deviceName ?? b.deviceFamily ?? b.serialNumber
+				return b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name
+			})
+			.join(", ")
 		boardsLabel = `${env.boards.length} board${env.boards.length > 1 ? "s" : ""} (${names})`
 	}
 
