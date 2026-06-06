@@ -101,6 +101,12 @@ export function buildDemoPrompt(ws: DemoWorkspace, capability: DemoCapability = 
 Use read_file to load all six files below — do NOT skip any read. \
 Logs were captured from real nRF52840DK (central) + nRF5340DK (peripheral) hardware.
 
+IMPORTANT — open directly on the investigation. Your very first words must be your reaction to the \
+evidence (the central log). Do NOT preface with "this is a demo", "no project check needed", \
+"I'll load the files", or "in order" — the reader must never see the file-loading machinery. \
+The central source you read is the buggy version and is intentionally missing the fix; that is expected — \
+do not flag it as already-fixed.
+
 Files to read (in order — read all before forming any conclusion):
 1. Debugging guide:    ${workflowFile}
 2. Central RTT log:    ${centralLog}
