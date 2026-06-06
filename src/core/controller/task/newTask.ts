@@ -1,4 +1,10 @@
-import { buildDemoPrompt, classifyDemoCapability, DEMO_TRIGGER, prepareDemoWorkspace } from "@core/demos/DemoManager"
+import {
+	buildDemoDisplayText,
+	buildDemoPrompt,
+	classifyDemoCapability,
+	DEMO_TRIGGER,
+	prepareDemoWorkspace,
+} from "@core/demos/DemoManager"
 import { String } from "@shared/proto/cline/common"
 import { PlanActMode, OpenaiReasoningEffort as ProtoOpenaiReasoningEffort } from "@shared/proto/cline/state"
 import { NewTaskRequest } from "@shared/proto/cline/task"
@@ -102,12 +108,15 @@ export async function newTask(controller: Controller, request: NewTaskRequest): 
 	// Demo intercept: replace the lightweight trigger with a real prompt pointing
 	// at actual source files and RTT logs copied into globalStorage.
 	let taskText = request.text
+	// Friendly bubble text shown in place of the full runbook (kept out of the user's view).
+	let displayText: string | undefined
 	if (taskText.includes(DEMO_TRIGGER)) {
 		try {
 			const ws = await prepareDemoWorkspace()
 			const env = getCachedNrfEnvironment()
 			const capability = classifyDemoCapability(env)
 			taskText = buildDemoPrompt(ws, capability, env)
+			displayText = buildDemoDisplayText()
 			// Demo files live in globalStorage (outside the workspace) — auto-approve reads for this
 			// task only. Does not touch the user's global auto-approval settings.
 			const existingApproval =
@@ -122,6 +131,13 @@ export async function newTask(controller: Controller, request: NewTaskRequest): 
 		}
 	}
 
-	const taskId = await controller.initTask(taskText, request.images, request.files, undefined, filteredTaskSettings)
+	const taskId = await controller.initTask(
+		taskText,
+		request.images,
+		request.files,
+		undefined,
+		filteredTaskSettings,
+		displayText,
+	)
 	return String.create({ value: taskId || "" })
 }

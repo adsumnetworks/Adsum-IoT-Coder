@@ -232,6 +232,7 @@ export class Controller {
 		files?: string[],
 		historyItem?: HistoryItem,
 		taskSettings?: Partial<Settings>,
+		displayText?: string,
 	) {
 		// Fire-and-forget: We intentionally don't await fetchRemoteConfig here.
 		// Remote config is already fetched in startRemoteConfigTimer() which runs in the constructor,
@@ -320,6 +321,7 @@ export class Controller {
 			stateManager: this.stateManager,
 			workspaceManager: this.workspaceManager,
 			task,
+			displayText,
 			images,
 			files,
 			historyItem,

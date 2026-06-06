@@ -84,6 +84,18 @@ export async function prepareDemoWorkspace(): Promise<DemoWorkspace> {
 	return { rootPath: demoRoot, centralPath, peripheralPath }
 }
 
+/**
+ * Short, honest one-liner shown in the chat bubble in place of the full runbook.
+ * No file paths, no five-beat framing, no escalation copy, no SDK version, no build steps —
+ * just the human framing a developer would actually see when launching the demo.
+ */
+export function buildDemoDisplayText(): string {
+	return (
+		"Debug a real BLE NUS bug — Central→Peripheral works, but Peripheral→Central is silently dropped. " +
+		"RTT logs captured from real nRF52840DK + nRF5340DK hardware."
+	)
+}
+
 /** Builds the full agent task prompt pointing at real files in globalStorage. */
 export function buildDemoPrompt(ws: DemoWorkspace, capability: DemoCapability = "canned", env?: NrfEnvironment): string {
 	const workflowFile = path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "workflows", "demo-debug.md")
