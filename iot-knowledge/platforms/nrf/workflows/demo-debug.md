@@ -8,19 +8,25 @@ Files are pre-captured from real hardware. Do NOT attempt device discovery, buil
 
 ## Reading and narration
 
-Read all six files listed in the task, in order. After each read output **one line of insight** — not a
-status update. The user is watching a live investigation unfold, not a file-reader run.
+**Open directly on the investigation.** Do NOT preface with "this is a demo," "I'll read the files,"
+or "loading six files in order." Your very first words are the Central-log insight. The machinery of
+reading is invisible; the user is watching an engineer think, not a script run.
 
-| File | Narrate this insight (your words, same meaning) |
+Read all six files listed in the task, in order. After each read output **at most one taut line** — a
+question or an observation that *deepens the mystery*. The live reads BUILD tension; they do not solve it.
+**The reveal — naming `bt_nus_subscribe_receive()` — belongs to the five beats below, not to the reads.**
+
+| File | What to say during the read (your words, same meaning) |
 |---|---|
-| Debugging guide | *(this file — internalize silently, no output)* |
-| Central RTT log | State what the central reveals and the question it raises — e.g. **"Central connected, discovered the NUS service, then went completely silent. Why?"** |
-| Peripheral RTT log | State what the peripheral experienced — e.g. **"The peripheral tried to send and failed every time. One direction is dead."** |
-| BLE protocol ref | *(internalize silently — you now have the symptom; use this reference to explain it in the analysis, do not pre-announce the cause)* |
-| Central `main.c` | State what you found (or didn't find) in `discovery_complete()`. |
-| Peripheral `main.c` | One sentence confirming the peripheral code is correct and where the fault lies. |
+| Debugging guide | *(no output — internalize silently)* |
+| Central RTT log | The central connected, discovered the NUS service, then went silent — e.g. **"Connected, paired, discovered services… then nothing. The central never receives a byte. Why?"** Honestly note these are real RTT logs captured from a two-board setup. |
+| Peripheral RTT log | The peripheral is failing in the *other* direction — e.g. **"The peripheral receives fine, but every send back fails. One direction is dead — and the two logs don't agree on why."** |
+| BLE protocol ref | *(no output — consult silently. You now understand the mechanism, but do NOT announce it. Let the source confirm it in Beat 4.)* |
+| Central `main.c` | Point at the gap **without naming the fix** — e.g. **"The handshake in `discovery_complete()` is incomplete. The central assigns the handles… and then stops short. Let me show you exactly where."** Do not name the missing function here. |
+| Peripheral `main.c` | One line clearing the peripheral — e.g. **"The peripheral code is correct. The fault is entirely on the central side."** |
 
-**Do not assume the bug before reading.** Only cite API names that appear verbatim in the source.
+**Do not assume the bug before reading.** Only cite API names that appear verbatim in the source — and
+save the missing one for Beat 3/4, where the diagram and the source prove it.
 
 ---
 
@@ -63,14 +69,14 @@ One sentence: what the logs show is going wrong (observable behaviour only — n
 
 ---
 
-### Beat 3 — The Investigation
+### Beat 3 — The Investigation (the reveal)
 
-State the cross-device pivot explicitly:
+This is where the missing call is named for the first time. State the cross-device pivot explicitly:
 
 > *The peripheral is not the bug — `bt_nus_send()` can only succeed if a client subscribed to
 > notifications. The fault is on the central side. Let's check what it did after discovery.*
 
-Then show the broken handshake. Reproduce this diagram exactly:
+Then show the broken handshake — the diagram below is the reveal. Reproduce it exactly:
 
 ```mermaid
 sequenceDiagram
@@ -86,9 +92,10 @@ sequenceDiagram
 
 ---
 
-### Beat 4 — The Revelation
+### Beat 4 — Proof in the source
 
-Show the exact gap in `discovery_complete()`. Quote the surrounding lines verbatim from the source:
+The diagram named it; now prove it in the developer's actual code. Show the exact gap in
+`discovery_complete()`, quoting the surrounding lines verbatim from the source:
 
 ```c
 /* central_uart/src/main.c — discovery_complete() */
