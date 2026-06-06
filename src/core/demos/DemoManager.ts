@@ -35,14 +35,18 @@ export type DemoCapability = "canned" | "build" | "hardware"
  * bulletproof floor never degrades. Consumes the Increment 3 env cache directly.
  */
 export function classifyDemoCapability(env: NrfEnvironment | undefined): DemoCapability {
-	if (!env || env.status !== "ready" || !env.nrfutilPresent) {
+	if (!env || env.status !== "ready") {
 		return "canned"
 	}
 	const hasNcs = !!env.projectSdk || (env.installedSdkVersions?.length ?? 0) > 0
 	if (!hasNcs) {
 		return "canned"
 	}
-	return env.boards.length >= 1 ? "hardware" : "build"
+	// nrfutil + boards required for flash/capture; NCS alone is enough for west build.
+	if (env.nrfutilPresent && env.boards.length >= 1) {
+		return "hardware"
+	}
+	return "build"
 }
 
 export interface DemoWorkspace {
