@@ -43,7 +43,12 @@ import { ExtensionRegistryInfo } from "./registry"
 import { getCachedFreeTokensRemaining, onFreeTokensChanged } from "./services/adsum/FreeTierState"
 import { AuthService } from "./services/auth/AuthService"
 import { LogoutReason } from "./services/auth/types"
-import { clearNrfEnvironmentCache, detectNrfEnvironment, setNrfExtensionInfo } from "./services/nrf/EnvironmentDetector"
+import {
+	clearNrfEnvironmentCache,
+	detectNrfEnvironment,
+	setNrfExtensionInfo,
+	setNrfWorkspaceRoots,
+} from "./services/nrf/EnvironmentDetector"
 import { createAdsumStatusBar, refreshAdsumStatusBar, setAdsumStatusBarTooltip } from "./services/statusbar/AdsumStatusBar"
 import { telemetryService } from "./services/telemetry"
 import { ClineTempManager } from "./services/temp"
@@ -107,6 +112,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		setNrfExtensionInfo({ present: false })
 	}
 
+	// Inject open workspace folder paths so the detector can resolve the project-bound SDK
+	// (it can't call vscode.* itself — grit forbids it outside extension.ts).
+	const collectWorkspaceRoots = () => (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath)
+	setNrfWorkspaceRoots(collectWorkspaceRoots())
+
 	// Fire-and-forget initial nRF env detection — never blocks activation.
 	// Webview shows "detecting…" state until the cache populates and postStateToWebview fires.
 	void detectNrfEnvironment()
@@ -120,6 +130,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeWorkspaceFolders(() => {
 			clearNrfEnvironmentCache()
+			setNrfWorkspaceRoots(collectWorkspaceRoots())
 			void detectNrfEnvironment()
 				.then((env) => {
 					setAdsumStatusBarTooltip(env)

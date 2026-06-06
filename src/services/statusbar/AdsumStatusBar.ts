@@ -23,6 +23,11 @@ export function formatStatusText(tokens?: number): string {
 	return `${ICON} Adsum Coder · $(zap) ${formatTokens(tokens)}`
 }
 
+/** Ensures a single leading "v" on a version string. */
+function withV(v: string): string {
+	return v.startsWith("v") ? v : `v${v}`
+}
+
 /** Builds a multi-line tooltip that includes nRF Connect + board facts when available. */
 export function buildStatusBarTooltip(env?: NrfEnvironment): string {
 	if (!env || env.status === "unknown") {
@@ -34,9 +39,14 @@ export function buildStatusBarTooltip(env?: NrfEnvironment): string {
 	const extLine = env.extensionPresent ? `nRF Connect ext v${env.extensionVersion ?? "?"}` : "nRF Connect not detected"
 	lines.push(`$(server-environment) ${extLine}`)
 
-	const sdkVersions = env.installedSdkVersions ?? []
-	if (sdkVersions.length > 0) {
-		lines.push(`$(package) NCS ${sdkVersions.join(", ")}`)
+	if (env.projectSdk) {
+		const where = env.projectSdk.source === "build" ? "this build" : "workspace"
+		lines.push(`$(package) NCS ${withV(env.projectSdk.version)} · ${where}`)
+	} else {
+		const sdkVersions = env.installedSdkVersions ?? []
+		if (sdkVersions.length > 0) {
+			lines.push(`$(package) NCS ${sdkVersions.map(withV).join(", ")} installed`)
+		}
 	}
 
 	if (env.status === "detecting") {
