@@ -22,8 +22,20 @@ const EnvStrip: React.FC = () => {
 
 	const envLabel = env.extensionPresent ? `nRF Connect ext v${env.extensionVersion ?? "?"}` : "nRF Connect not detected"
 
-	const sdkVersions = env.installedSdkVersions ?? []
-	const sdkLabel = sdkVersions.length > 0 ? `NCS ${sdkVersions.join(", ")}` : null
+	// Prefer the project-bound SDK ("we understand this project"); fall back to installed SDKs.
+	const withV = (v: string) => (v.startsWith("v") ? v : `v${v}`)
+	const project = env.projectSdk
+	const installed = env.installedSdkVersions ?? []
+	let sdkLabel: string | null = null
+	let sdkTitle: string | undefined
+	if (project) {
+		const where = project.source === "build" ? "this build" : "workspace"
+		sdkLabel = `NCS ${withV(project.version)} · ${where}`
+		sdkTitle = `Project SDK resolved from the ${project.source === "build" ? "build artifact" : "west manifest"} (${project.topology})`
+	} else if (installed.length > 0) {
+		sdkLabel = `NCS ${installed.map(withV).join(", ")} installed`
+		sdkTitle = "NCS SDK versions installed on this machine (no project SDK resolved)"
+	}
 
 	let boardsLabel: string
 	if (env.status === "unknown" || env.status === "detecting") {
@@ -62,10 +74,10 @@ const EnvStrip: React.FC = () => {
 
 			<span style={{ opacity: 0.4 }}>·</span>
 
-			{/* Installed NCS SDK line (global fact; shown only when an SDK is installed) */}
+			{/* NCS SDK line: project-bound version when resolved, else installed SDKs. */}
 			{sdkLabel && (
 				<>
-					<span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+					<span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }} title={sdkTitle}>
 						<i className="codicon codicon-package" style={{ fontSize: "12px" }} />
 						{sdkLabel}
 					</span>

@@ -1,12 +1,12 @@
-import type { NrfBoard, NrfEnvironment } from "@shared/nrf"
+import type { NrfBoard, NrfEnvironment, ProjectSdk } from "@shared/nrf"
 import { exec } from "child_process"
-import { existsSync } from "fs"
+import { existsSync, readdirSync, readFileSync, statSync } from "fs"
 import { homedir } from "os"
-import { join } from "path"
+import { dirname, join } from "path"
 import { promisify } from "util"
 import { telemetryService } from "@/services/telemetry"
 
-export type { NrfBoard, NrfEnvironment }
+export type { NrfBoard, NrfEnvironment, ProjectSdk }
 
 const execAsync = promisify(exec)
 
@@ -21,6 +21,13 @@ let _cache: NrfEnvironment | undefined
 // Extension info is set once at activation from extension.ts (which has vscode in scope).
 // Extension install/uninstall always requires a window reload, so this stays fresh.
 let _extensionInfo: { present: boolean; version?: string } = { present: false }
+// Workspace folder paths injected from extension.ts (grit forbids vscode.* here).
+let _workspaceRoots: string[] = []
+
+/** Called from extension.ts with the open workspace folder paths (re-set on folder change). */
+export function setNrfWorkspaceRoots(roots: string[]): void {
+	_workspaceRoots = roots
+}
 
 export function getCachedNrfEnvironment(): NrfEnvironment {
 	return _cache ?? { ...EMPTY_ENV }
@@ -191,10 +198,160 @@ async function probeBoards(): Promise<{ nrfutilPresent: boolean; boards: NrfBoar
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Project-bound SDK detection (offline file reads only — no `west`, no env).
+// ---------------------------------------------------------------------------
+
+/** Extracts NCS_VERSION_STRING from a generated ncs_version.h. Pure; exported for tests. */
+export function parseNcsVersionHeader(content: string): string | undefined {
+	const m = content.match(/#define\s+NCS_VERSION_STRING\s+"([^"]+)"/)
+	return m?.[1] || undefined
+}
+
+/** Parses a VERSION file: single-line "3.2.1" (sdk-nrf) or KConfig-style. Pure; exported for tests. */
+export function parseVersionFile(content: string): string | undefined {
+	const trimmed = content.trim()
+	if (/^\d+\.\d+\.\d+/.test(trimmed)) {
+		return trimmed.split(/\s/)[0]
+	}
+	const major = content.match(/VERSION_MAJOR\s*=\s*(\d+)/)?.[1]
+	const minor = content.match(/VERSION_MINOR\s*=\s*(\d+)/)?.[1]
+	const patch = content.match(/PATCHLEVEL\s*=\s*(\d+)/)?.[1]
+	if (major && minor && patch) {
+		return `${major}.${minor}.${patch}`
+	}
+	return undefined
+}
+
+/** Extracts the manifest repo path from a .west/config (e.g. "nrf"). Pure; exported for tests. */
+export function parseWestManifestPath(content: string): string | undefined {
+	const m = content.match(/\[manifest\][^[]*?\bpath\s*=\s*(\S+)/s)
+	return m?.[1] || undefined
+}
+
+/** Walks up from a directory looking for a `.west` workspace; returns the topdir or undefined. */
+function findWestTopdir(start: string): string | undefined {
+	let dir = start
+	for (let i = 0; i < 12; i++) {
+		if (existsSync(join(dir, ".west", "config"))) {
+			return dir
+		}
+		const parent = dirname(dir)
+		if (parent === dir) {
+			break
+		}
+		dir = parent
+	}
+	return undefined
+}
+
+/** Bounded recursive search for the newest ncs_version.h under build* dirs. Returns its content + mtime. */
+function findNewestNcsVersionHeader(root: string): { content: string; mtimeMs: number } | undefined {
+	let best: { content: string; mtimeMs: number } | undefined
+	const SKIP = new Set(["node_modules", ".git", ".west"])
+
+	const walk = (dir: string, depth: number) => {
+		if (depth > 9) {
+			return
+		}
+		let entries: string[]
+		try {
+			entries = readdirSync(dir)
+		} catch {
+			return
+		}
+		for (const entry of entries) {
+			const full = join(dir, entry)
+			let isDir = false
+			try {
+				isDir = statSync(full).isDirectory()
+			} catch {
+				continue
+			}
+			if (isDir) {
+				if (SKIP.has(entry)) {
+					continue
+				}
+				walk(full, depth + 1)
+			} else if (entry === "ncs_version.h" && full.includes(join("zephyr", "include", "generated"))) {
+				try {
+					const mtimeMs = statSync(full).mtimeMs
+					if (!best || mtimeMs > best.mtimeMs) {
+						best = { content: readFileSync(full, "utf8"), mtimeMs }
+					}
+				} catch {
+					// unreadable — skip
+				}
+			}
+		}
+	}
+
+	// Only descend into build* dirs to keep the scan cheap.
+	let topEntries: string[]
+	try {
+		topEntries = readdirSync(root)
+	} catch {
+		return undefined
+	}
+	for (const entry of topEntries) {
+		if (!entry.startsWith("build")) {
+			continue
+		}
+		const full = join(root, entry)
+		try {
+			if (statSync(full).isDirectory()) {
+				walk(full, 0)
+			}
+		} catch {
+			// skip
+		}
+	}
+	return best
+}
+
+/**
+ * Resolves the SDK version bound to the open project, offline. Prefers the west manifest pin
+ * (authoritative for a workspace app + the artifact migration rewrites); falls back to the build
+ * artifact (what was actually compiled — the only signal a freestanding app exposes).
+ */
+export function detectProjectSdk(roots: string[]): ProjectSdk | undefined {
+	for (const root of roots) {
+		// Tier 2 — west manifest pin (workspace topology).
+		const topdir = findWestTopdir(root)
+		if (topdir) {
+			try {
+				const manifestPath = parseWestManifestPath(readFileSync(join(topdir, ".west", "config"), "utf8"))
+				if (manifestPath) {
+					const versionFile = join(topdir, manifestPath, "VERSION")
+					if (existsSync(versionFile)) {
+						const version = parseVersionFile(readFileSync(versionFile, "utf8"))
+						if (version) {
+							return { version, source: "manifest", topology: "workspace" }
+						}
+					}
+				}
+			} catch {
+				// fall through to build artifact
+			}
+		}
+
+		// Tier 1 — build artifact (freestanding or workspace without a readable pin).
+		const header = findNewestNcsVersionHeader(root)
+		if (header) {
+			const version = parseNcsVersionHeader(header.content)
+			if (version) {
+				return { version, source: "build", topology: topdir ? "workspace" : "freestanding" }
+			}
+		}
+	}
+	return undefined
+}
+
 export async function detectNrfEnvironment(): Promise<NrfEnvironment> {
 	_cache = { ...getCachedNrfEnvironment(), status: "detecting" }
 
 	const nrfutil = resolveNrfutilCommand()
+	const projectSdk = detectProjectSdk(_workspaceRoots)
 	const [boardsResult, installedSdkVersions] = await Promise.all([
 		probeBoards().catch(() => ({ nrfutilPresent: false, boards: [] as NrfBoard[] })),
 		probeSdks(nrfutil).catch(() => [] as string[]),
@@ -206,6 +363,7 @@ export async function detectNrfEnvironment(): Promise<NrfEnvironment> {
 		extensionVersion: _extensionInfo.version,
 		nrfutilPresent: boardsResult.nrfutilPresent,
 		installedSdkVersions,
+		projectSdk,
 		boards: boardsResult.boards,
 		lastDetectedAt: Date.now(),
 	}
