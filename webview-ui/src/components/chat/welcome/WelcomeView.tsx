@@ -1,8 +1,10 @@
+import { StringRequest } from "@shared/proto/cline/common"
 import React from "react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
+import { FileServiceClient } from "@/services/grpc-client"
 import DemoCard from "../DemoCard"
 import { DEFAULT_DEMO_SCENARIO_ID } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
@@ -44,6 +46,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	const handleIntentClick = (id: string) => {
 		if (id === "debug") {
 			onSelectMode("log_analyzer")
+		} else if (id === "openProject") {
+			void FileServiceClient.openFolder(StringRequest.create({ value: "" }))
 		} else {
 			void onStartTask(buildIntentPrompt(id as Parameters<typeof buildIntentPrompt>[0], projectName ?? undefined))
 		}

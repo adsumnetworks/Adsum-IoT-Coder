@@ -55,6 +55,12 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 		title: "Start a prototype",
 		description: "Tell me what you're building — I'll scaffold from the right verified Nordic sample.",
 	},
+	{
+		id: "openProject",
+		icon: "folder-opened",
+		title: "Open my nRF project",
+		description: "Point me at your firmware folder — I'll build it, debug live logs, and add features to your real code.",
+	},
 ]
 
 export const PROJECT_INTENTS: IntentDef[] = [
