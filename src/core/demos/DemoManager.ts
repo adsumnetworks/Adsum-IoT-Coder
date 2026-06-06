@@ -194,6 +194,8 @@ work on a throwaway copy in /tmp so the demo stays pristine for the next run:
 	if (capability === "hardware") {
 		const boardCount = env?.boards?.length ?? 1
 		const boardWord = boardCount >= 2 ? `${boardCount} boards` : "a board"
+		const flashDoc = path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "flash.md")
+		const captureDoc = path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "capture-logs.md")
 		return `
 After your five-beat analysis, add this section before ending the task:
 
@@ -204,16 +206,67 @@ You have ${boardWord} connected. I can flash the buggy firmware, capture real RT
 
 Type **"flash it"** and I'll run it on your hardware.
 
-If the user accepts:
-1. Flash central_uart (buggy) and peripheral_uart to the connected board(s)
-2. Capture RTT logs from the device(s)
-3. Confirm the same "Failed to send" symptom appears live
-4. Apply the fix (add \`bt_nus_subscribe_receive(nus)\` in \`discovery_complete\`)
-5. Rebuild, reflash, re-capture, confirm the symptom is gone
+If the user types "flash it", reproduce it live using the project's REAL flash and capture actions — do NOT
+improvise with raw shell, and do NOT hand-roll RTT capture. Read and follow these two action guides first:
+- Flash:   ${flashDoc}
+- Capture: ${captureDoc}
 
-Projects are at:
-- Central:    ${ws.centralPath}
-- Peripheral: ${ws.peripheralPath}
+Then do the following in order:
+
+1. Process cleanup, then list devices to get the two J-Link serial numbers (per the flash guide):
+   \`\`\`
+   pkill -9 JLink 2>/dev/null; pkill -9 nrfutil 2>/dev/null
+   nrfutil device list
+   \`\`\`
+   Confirm each device's family with \`nrfutil device device-info --serial-number <SN>\` before flashing it —
+   the nRF52840DK runs central_uart, the nRF5340DK runs peripheral_uart. Do not guess which serial is which.
+
+2. Build BOTH projects (buggy, unfixed) on throwaway /tmp copies. Never build inside the globalStorage path
+   and never symlink — copying to /tmp is what avoids CMake's space-in-path failure:
+   \`\`\`
+   rm -rf /tmp/adsum_demo_central /tmp/adsum_demo_peripheral
+   cp -R "${ws.centralPath}" /tmp/adsum_demo_central
+   cp -R "${ws.peripheralPath}" /tmp/adsum_demo_peripheral
+   west build -s /tmp/adsum_demo_central    -b nrf52840dk/nrf52840    -d /tmp/adsum_demo_central/build
+   west build -s /tmp/adsum_demo_peripheral -b nrf5340dk/nrf5340/cpuapp -d /tmp/adsum_demo_peripheral/build
+   \`\`\`
+
+3. Flash each board by serial (per the flash guide — always use --snr so the right board gets the right image):
+   \`\`\`
+   west flash -d /tmp/adsum_demo_central/build    --snr <central_sn>
+   west flash -d /tmp/adsum_demo_peripheral/build --snr <peripheral_sn>
+   \`\`\`
+
+4. Set up the live proof — this is hands-on for the developer, so teach them first and WAIT. The broken
+   direction (peripheral -> central) only happens when the peripheral has UART input to forward, and the
+   central does NOT log received data (it forwards it to its own UART). So the proof is what the developer
+   SEES in two serial terminals, backed by the peripheral's RTT. From the device list, identify each board's
+   application UART — the nRF52840DK central's VCOM, and the nRF5340DK peripheral's FIRST VCOM (vcom0) — then
+   tell the developer exactly what to do and give them as long as they need:
+   - "Open a serial terminal to each board at 115200 8N1 — the nRF Connect Serial Terminal app, or
+     \`tio <port> -b 115200\`:"
+       - Peripheral (you'll TYPE here): <peripheral vcom0 port>
+       - Central (you'll WATCH here):   <central vcom port>
+   - Tell them the peripheral waits for DTR, so the terminal must actually open the port (most do by default).
+   - Ask them to confirm once BOTH terminals are open. Do NOT start capturing or ask them to type until they
+     say they are ready — give them time to figure out the serial terminal.
+
+5. Buggy run: start an RTT capture on the peripheral (generous duration, ~30s) and ask the developer to type
+   a short message (e.g. "hello") into the PERIPHERAL terminal. With the bug, the peripheral RTT logs
+   "Failed to send data over BLE connection" and nothing arrives in the central terminal. Point both out.
+
+6. Apply the fix to the /tmp central copy only — add \`bt_nus_subscribe_receive(nus);\` immediately after
+   \`bt_nus_handles_assign(dm, nus);\` in \`discovery_complete()\` — then rebuild and reflash central by serial.
+   Leave the developer's terminals open.
+
+7. Fixed run: ask the developer to type another message into the PERIPHERAL terminal. Now it appears in the
+   CENTRAL terminal, and a fresh peripheral RTT capture shows the "Failed to send" failures are gone. That
+   round-trip — typed on one board, seen on the other — is the proof the fix works on real hardware. Then
+   end the task with \`<!--TASK_COMPLETE-->\`.
+
+All RTT/UART capture uses the real capture action (log_device) exactly as the capture guide specifies — do
+NOT shell out to JLinkRTTLogger or similar. If any step fails, show the real error and stop — do not fall
+back to ad-hoc workarounds.
 
 `
 	}
