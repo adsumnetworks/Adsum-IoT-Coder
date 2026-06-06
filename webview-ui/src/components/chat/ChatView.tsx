@@ -31,6 +31,7 @@ import {
 	useScrollBehavior,
 } from "./chat-view"
 import { DEMO_SCENARIOS } from "./demoScenarios"
+import FreeTierStrip from "./FreeTierStrip"
 import ModeSelector from "./ModeSelector"
 import { NORDIC_MODES, TASK_COMPLETE_MARKER } from "./nordicModes"
 
@@ -402,6 +403,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		<ChatLayout isHidden={isHidden}>
 			<div className="flex flex-col flex-1 overflow-hidden">
 				{showNavbar && <Navbar />}
+				<FreeTierStrip />
 				{task ? (
 					<TaskSection
 						apiMetrics={apiMetrics}
