@@ -126,16 +126,27 @@ After your five-beat analysis, add this section before ending the task:
 
 ---
 
-**Want to see it built on your machine?**
-You have ${sdkVersion} installed but no boards connected. I can build both projects right now with \`west build\` — proving your toolchain compiles this exact firmware. No hardware needed.
+**Want proof the fix is real — not something I made up?**
+You have ${sdkVersion} installed. I'll apply the one-line fix right now and compile the central firmware on your machine. A clean build proves \`bt_nus_subscribe_receive()\` is a genuine NCS API — not a hallucination. No boards needed.
 
-Type **"build it"** to proceed. If you'd rather explore something else, use the cards below.
+Type **"build it"** to see it compile. Or use the cards below.
 
-If the user accepts, build both projects at:
-- Central:    ${ws.centralPath}
-- Peripheral: ${ws.peripheralPath}
-
-Run \`west build\` for each. Report success or any build errors. Then end the task.
+If the user types "build it", do the following steps in order:
+1. In the file \`${ws.centralPath}/src/main.c\`, in the \`discovery_complete()\` function, add this line immediately after \`bt_nus_handles_assign(dm, nus);\`:
+   \`\`\`c
+   bt_nus_subscribe_receive(nus);
+   \`\`\`
+2. Create a symlink to avoid CMake path issues (the path contains spaces):
+   \`\`\`
+   ln -sfn "${ws.centralPath}" /tmp/adsum_demo_central
+   \`\`\`
+3. Build with west:
+   \`\`\`
+   west build -s /tmp/adsum_demo_central -b nrf52840dk/nrf52840 -d /tmp/adsum_demo_build
+   \`\`\`
+   (Run west from inside the NCS workspace — use the path from your environment if needed.)
+4. If it compiles clean: tell the developer "The fix compiles on NCS ${sdkVersion}. \`bt_nus_subscribe_receive()\` is a real SDK API — the diagnosis was accurate. Connect two boards to see it run live." Then end the task with \`<!--TASK_COMPLETE-->\`.
+5. If it fails: show the compiler error verbatim and explain what it means. Then end the task with \`<!--TASK_COMPLETE-->\`.
 
 `
 	}
