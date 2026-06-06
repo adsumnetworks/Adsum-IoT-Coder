@@ -1,25 +1,11 @@
+import type { NrfBoard, NrfEnvironment } from "@shared/nrf"
 import { exec } from "child_process"
 import { promisify } from "util"
 import { telemetryService } from "@/services/telemetry"
 
+export type { NrfBoard, NrfEnvironment }
+
 const execAsync = promisify(exec)
-
-export interface NrfBoard {
-	serialNumber: string
-	deviceFamily?: string
-	deviceName?: string
-	deviceVersion?: string
-}
-
-export interface NrfEnvironment {
-	status: "unknown" | "detecting" | "ready"
-	extensionPresent: boolean
-	/** Extension version — labeled as extension version, never as SDK version. */
-	extensionVersion?: string
-	nrfutilPresent: boolean
-	boards: NrfBoard[]
-	lastDetectedAt?: number
-}
 
 const EMPTY_ENV: NrfEnvironment = {
 	status: "unknown",
