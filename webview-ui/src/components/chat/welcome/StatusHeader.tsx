@@ -1,0 +1,51 @@
+import React from "react"
+
+interface StatusHeaderProps {
+	projectName: string | null
+}
+
+/** Project strip + EnvStrip seam (stub returns null until Inc. 3 wires NCS/board data). */
+const StatusHeader: React.FC<StatusHeaderProps> = ({ projectName }) => {
+	const EnvStrip = null // seam for Increment 3
+
+	if (!projectName && !EnvStrip) {
+		return null
+	}
+
+	return (
+		<div
+			style={{
+				width: "100%",
+				display: "flex",
+				flexDirection: "column",
+				gap: "4px",
+				marginBottom: "8px",
+			}}>
+			{projectName && (
+				<div
+					style={{
+						fontSize: "12px",
+						color: "var(--vscode-descriptionForeground)",
+						display: "flex",
+						alignItems: "center",
+						gap: "6px",
+					}}>
+					<span>📂</span>
+					<span
+						style={{
+							fontWeight: 600,
+							color: "var(--vscode-foreground)",
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							whiteSpace: "nowrap",
+						}}>
+						{projectName}
+					</span>
+				</div>
+			)}
+			{EnvStrip}
+		</div>
+	)
+}
+
+export default StatusHeader
