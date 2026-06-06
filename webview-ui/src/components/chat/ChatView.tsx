@@ -34,6 +34,7 @@ import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
 import ModeSelector from "./ModeSelector"
 import { NORDIC_MODES, TASK_COMPLETE_MARKER } from "./nordicModes"
+import WelcomeView from "./welcome/WelcomeView"
 
 interface ChatViewProps {
 	isHidden: boolean
@@ -245,6 +246,14 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		[messageHandlers, setNordicPhase, setExpandTaskHeader],
 	)
 
+	const handleStartTask = useCallback(
+		async (text: string) => {
+			setNordicPhase("active")
+			await messageHandlers.handleSendMessage(text, [], [])
+		},
+		[messageHandlers, setNordicPhase],
+	)
+
 	const { selectedModelInfo } = useMemo(() => {
 		return normalizeApiConfiguration(apiConfiguration, mode)
 	}, [apiConfiguration, mode])
@@ -417,12 +426,12 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						task={task}
 					/>
 				) : (
-					<ModeSelector
-						onModeSelect={handleModeSelect}
+					<WelcomeView
+						onSelectMode={handleModeSelect}
 						onStartDemo={handleStartDemo}
+						onStartTask={handleStartTask}
 						onUpgradeDismiss={hideAnnouncement}
 						showUpgradeCard={showAnnouncement}
-						variant="welcome"
 					/>
 				)}
 				{task && (
