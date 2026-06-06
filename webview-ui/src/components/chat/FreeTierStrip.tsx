@@ -1,5 +1,16 @@
 import { useExtensionState } from "@/context/ExtensionStateContext"
-import { BRAND_CYAN_300, BRAND_CYAN_600, brandAlpha } from "./brandColors"
+import { BRAND_CORAL, BRAND_CYAN_300, BRAND_CYAN_600, brandAlpha } from "./brandColors"
+
+/** Compact token label: ≥1M → one decimal (e.g. 1.3M), ≥1K → rounded K, else raw. */
+const formatTokens = (n: number): string => {
+	if (n >= 1_000_000) {
+		return `${Math.round(n / 100_000) / 10}M`
+	}
+	if (n >= 1000) {
+		return `${Math.round(n / 1000)}K`
+	}
+	return `${n}`
+}
 
 /**
  * Persistent strip shown while the user is on the Adsum free tier.
@@ -15,8 +26,7 @@ const FreeTierStrip = () => {
 		return null
 	}
 
-	const tokensLabel =
-		freeTierRemainingTokens >= 1000 ? `${Math.round(freeTierRemainingTokens / 1000)}K` : `${freeTierRemainingTokens}`
+	const tokensLabel = formatTokens(freeTierRemainingTokens)
 
 	return (
 		<div
@@ -31,9 +41,12 @@ const FreeTierStrip = () => {
 				background: brandAlpha(BRAND_CYAN_600, 0.08),
 				borderBottom: `1px solid ${brandAlpha(BRAND_CYAN_600, 0.22)}`,
 			}}>
-			<span>
-				⚡ <strong style={{ color: "var(--vscode-foreground)" }}>Free tier</strong> · AI inference by Adsum Networks ·{" "}
-				<strong style={{ color: "var(--vscode-foreground)" }}>{tokensLabel}</strong> tokens left
+			<span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+				<i className="codicon codicon-zap" style={{ fontSize: "12px", color: BRAND_CORAL }} />
+				<span>
+					<strong style={{ color: "var(--vscode-foreground)" }}>Free tier</strong> · AI inference by Adsum Networks ·{" "}
+					<strong style={{ color: "var(--vscode-foreground)" }}>{tokensLabel}</strong> tokens left
+				</span>
 			</span>
 			<button
 				onClick={() => navigateToSettings("api-config")}

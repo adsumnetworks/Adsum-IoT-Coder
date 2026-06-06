@@ -30,8 +30,11 @@ describe("formatStatusText", () => {
 		formatStatusText(486499).should.equal(`${ICON} Adsum Coder · $(zap) 486K`) // rounds down
 	})
 
-	it("handles large values", () => {
-		formatStatusText(1_000_000).should.equal(`${ICON} Adsum Coder · $(zap) 1000K`)
+	it("formats values at or above 1M with one decimal", () => {
+		formatStatusText(1_000_000).should.equal(`${ICON} Adsum Coder · $(zap) 1M`)
+		formatStatusText(1_300_000).should.equal(`${ICON} Adsum Coder · $(zap) 1.3M`)
+		formatStatusText(1_250_000).should.equal(`${ICON} Adsum Coder · $(zap) 1.3M`) // rounds up
+		formatStatusText(2_500_000).should.equal(`${ICON} Adsum Coder · $(zap) 2.5M`)
 	})
 })
 
@@ -49,13 +52,16 @@ describe("formatStatusText — BYOK regression (no credit shown off free tier)",
 })
 
 describe("formatStatusText — consistency with FreeTierStrip", () => {
-	// FreeTierStrip rule: tokens >= 1000 ? `${Math.round(tokens/1000)}K` : `${tokens}`
+	// FreeTierStrip formatTokens rule: ≥1M → one decimal M, ≥1K → rounded K, else raw.
 	// Both must use identical rounding. This test acts as a regression guard.
 	function freeTierStripRule(n: number): string {
+		if (n >= 1_000_000) {
+			return `${Math.round(n / 100_000) / 10}M`
+		}
 		return n >= 1000 ? `${Math.round(n / 1000)}K` : `${n}`
 	}
 
-	const samples = [0, 1, 999, 1000, 1499, 1500, 10000, 100000, 487000, 500000, 999999]
+	const samples = [0, 1, 999, 1000, 1499, 1500, 10000, 100000, 487000, 500000, 999999, 1_000_000, 1_300_000, 2_500_000]
 	for (const n of samples) {
 		it(`token count ${n}: status bar and strip use identical label`, () => {
 			const stripLabel = freeTierStripRule(n)
