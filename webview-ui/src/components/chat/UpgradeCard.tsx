@@ -62,10 +62,10 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 					marginBottom: "12px",
 					lineHeight: 1.5,
 				}}>
-				Real-workspace debugging on live nRF hardware — with a free tier, no key needed to start.
+				Debug real nRF firmware on real device logs — free tier, no key, no setup.
 			</div>
 
-			<div style={{ display: "flex", gap: "8px" }}>
+			<div style={{ display: "flex", alignItems: "center" }}>
 				<button
 					onClick={onStartDemo}
 					onMouseEnter={(e) => {
@@ -75,32 +75,25 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 						e.currentTarget.style.background = BRAND_CYAN_700
 					}}
 					style={{
+						display: "inline-flex",
+						alignItems: "center",
+						gap: "6px",
+						flexShrink: 0,
+						whiteSpace: "nowrap",
 						background: BRAND_CYAN_700,
 						color: "#fff",
 						border: "none",
 						borderRadius: "6px",
-						padding: "6px 12px",
+						padding: "6px 14px",
 						fontSize: "12px",
 						fontWeight: 600,
 						cursor: "pointer",
 					}}
+					title="Run the agent in your editor on real device logs with live AI — no setup"
 					type="button">
-					▶ See it live
+					<i className="codicon codicon-rocket" style={{ fontSize: "13px" }} />
+					Try the live demo
 				</button>
-				<a
-					href="https://www.youtube.com/@adsumnetworks"
-					rel="noopener noreferrer"
-					style={{
-						display: "inline-flex",
-						alignItems: "center",
-						fontSize: "12px",
-						color: "var(--vscode-descriptionForeground)",
-						textDecoration: "none",
-						padding: "6px 0",
-					}}
-					target="_blank">
-					Watch 60s video ↗
-				</a>
 			</div>
 		</div>
 	)
