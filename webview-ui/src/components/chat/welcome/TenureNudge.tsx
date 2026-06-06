@@ -20,7 +20,7 @@ const TenureNudge: React.FC<TenureNudgeProps> = ({ onStartDemo }) => {
 				alignItems: "center",
 				gap: "10px",
 			}}>
-			<span style={{ fontSize: "18px", flexShrink: 0 }}>👋</span>
+			<i className="codicon codicon-star-empty" style={{ fontSize: "16px", flexShrink: 0, color: BRAND_CYAN_600 }} />
 			<div style={{ flex: 1 }}>
 				<div
 					style={{
