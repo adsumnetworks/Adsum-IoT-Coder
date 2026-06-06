@@ -95,6 +95,10 @@ export interface ExtensionState {
 	customPrompt?: string
 	autoCondenseThreshold?: number
 	favoritedModelIds: string[]
+	// Authoritative VS Code folder list — populated from vscode.workspace.workspaceFolders,
+	// never has the desktop-fallback that workspaceRoots uses during task init.
+	// Use this (not workspaceRoots) to decide "is a real project folder open" in the welcome screen.
+	openFolderPaths: string[]
 	// NEW: Add workspace information
 	workspaceRoots: WorkspaceRoot[]
 	primaryRootIndex: number

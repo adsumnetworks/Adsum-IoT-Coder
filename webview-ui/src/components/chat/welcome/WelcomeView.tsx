@@ -31,10 +31,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	showUpgradeCard,
 }) => {
 	const { isDark } = useVSCodeTheme()
-	const { navigateToHistory, version, workspaceRoots, taskHistory } = useExtensionState()
+	const { navigateToHistory, version, openFolderPaths, taskHistory } = useExtensionState()
 
-	const hasWorkspace = workspaceRoots && workspaceRoots.length > 0
-	const projectName = hasWorkspace ? (workspaceRoots[0].name ?? workspaceRoots[0].path.split("/").pop() ?? null) : null
+	const hasWorkspace = openFolderPaths.length > 0
+	const projectName = hasWorkspace ? (openFolderPaths[0].split("/").pop() ?? null) : null
 
 	const tenure = getTenure({
 		taskCount: taskHistory?.length ?? 0,

@@ -941,6 +941,7 @@ export class Controller {
 			autoCondenseThreshold,
 			backgroundCommandRunning: this.backgroundCommandRunning,
 			backgroundCommandTaskId: this.backgroundCommandTaskId,
+			openFolderPaths: (await HostProvider.workspace.getWorkspacePaths({})).paths ?? [],
 			// NEW: Add workspace information
 			workspaceRoots: this.workspaceManager?.getRoots() ?? [],
 			primaryRootIndex: this.workspaceManager?.getPrimaryIndex() ?? 0,
