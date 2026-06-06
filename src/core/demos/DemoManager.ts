@@ -73,24 +73,22 @@ export function buildDemoPrompt(ws: DemoWorkspace): string {
 
 	return `Demo: BLE NUS one-directional bug — no setup needed
 
-[ADSUM_DEMO:nus-uart] You are running the Adsum IoT Coder one-click demo on a real NCS workspace. \
+[ADSUM_DEMO:nus-uart] You are debugging a real NCS workspace. \
 Use read_file to load all six files below — do NOT skip any read. \
-No hardware is needed; logs were captured from real nRF52840DK (central) + nRF5340DK (peripheral) hardware.
+Logs were captured from real nRF52840DK (central) + nRF5340DK (peripheral) hardware.
 
 Files to read (in order — read all before forming any conclusion):
-1. Demo workflow:       ${workflowFile}
-2. BLE protocol ref:   ${bleFile}
-3. Central RTT log:    ${centralLog}
-4. Peripheral RTT log: ${peripheralLog}
+1. Debugging guide:    ${workflowFile}
+2. Central RTT log:    ${centralLog}
+3. Peripheral RTT log: ${peripheralLog}
+4. BLE protocol ref:   ${bleFile}
 5. Central source:     ${centralSrc}
 6. Peripheral source:  ${peripheralSrc}
 
-After reading all six files, follow the structure defined in the demo workflow.
+After reading all six files, walk the developer through what you found — set the scene, show the evidence, trace the cause, and present the fix.
 Be direct and educational — you are showing a developer a real nRF bug.
 
-End your final message with exactly: <!--TASK_COMPLETE-->
-
-After the marker add: "Your turn — ask me anything about this bug, or connect your own boards to debug a live issue."`
+End your final message with exactly — nothing after it: <!--TASK_COMPLETE-->`
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
