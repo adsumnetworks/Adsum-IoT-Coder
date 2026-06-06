@@ -408,6 +408,15 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		}
 	}, [modifiedMessages, setNordicPhase, nordicPhase])
 
+	// Reset post-task phase when returning to the welcome screen so stale state
+	// doesn't bleed onto the next task or the home view.
+	useEffect(() => {
+		if (!task && nordicPhase === "task_complete") {
+			setNordicPhase("awaiting_mode")
+			setIsDemoRun(false)
+		}
+	}, [task, nordicPhase, setNordicPhase])
+
 	return (
 		<ChatLayout isHidden={isHidden}>
 			<div className="flex flex-col flex-1 overflow-hidden">
@@ -444,7 +453,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						task={task}
 					/>
 				)}
-				{nordicPhase === "task_complete" && (
+				{task && nordicPhase === "task_complete" && (
 					<div className="flex-shrink-0">
 						<ModeSelector
 							heading={

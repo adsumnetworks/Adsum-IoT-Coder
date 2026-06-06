@@ -56,7 +56,7 @@ const TenureNudge: React.FC<TenureNudgeProps> = ({ onStartDemo }) => {
 					transition: "background 0.15s, color 0.15s",
 				}}
 				type="button">
-				▶ Watch
+				Show me ›
 			</button>
 		</div>
 	)
