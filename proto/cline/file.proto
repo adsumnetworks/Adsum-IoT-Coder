@@ -96,6 +96,9 @@ service FileService {
 
   // Deletes an existing skill directory
   rpc deleteSkillFile(DeleteSkillRequest) returns (SkillsToggles);
+
+  // Clears nRF environment cache and re-runs detection; posts updated state to webview
+  rpc refreshNrfEnvironment(EmptyRequest) returns (Empty);
 }
 
 // Response for refreshRules operation

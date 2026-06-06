@@ -206,6 +206,9 @@ export class TelemetryService {
 			// Dormant user dismissed the upgrade card without acting
 			UPGRADE_PROMPT_DISMISSED: "free_tier.upgrade_prompt_dismissed",
 		},
+		NRF: {
+			ENV_DETECTED: "nrf.env_detected",
+		},
 		DICTATION: {
 			// Tracks when voice recording is started
 			RECORDING_STARTED: "voice.recording_started",
@@ -2443,6 +2446,17 @@ export class TelemetryService {
 				workspaceCount,
 				totalCount: globalCount + workspaceCount,
 				timestamp: new Date().toISOString(),
+			},
+		})
+	}
+
+	public captureNrfEnvDetected(args: { extensionPresent: boolean; nrfutilPresent: boolean; boardCount: number }) {
+		this.capture({
+			event: TelemetryService.EVENTS.NRF.ENV_DETECTED,
+			properties: {
+				extensionPresent: args.extensionPresent,
+				nrfutilPresent: args.nrfutilPresent,
+				boardCount: args.boardCount,
 			},
 		})
 	}

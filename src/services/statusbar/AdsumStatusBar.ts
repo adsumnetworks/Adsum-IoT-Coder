@@ -1,4 +1,5 @@
 import type * as vscode from "vscode"
+import type { NrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 
 const FOCUS_COMMAND = "adsum-iot-coder.SidebarProvider.focus"
 const ICON = "$(adsum-iot-coder-icon)"
@@ -22,7 +23,33 @@ export function formatStatusText(tokens?: number): string {
 	return `${ICON} Adsum Coder · $(zap) ${formatTokens(tokens)}`
 }
 
+/** Builds a multi-line tooltip that includes nRF Connect + board facts when available. */
+export function buildStatusBarTooltip(env?: NrfEnvironment): string {
+	if (!env || env.status === "unknown") {
+		return "Open Adsum IoT Coder"
+	}
+
+	const lines: string[] = ["Open Adsum IoT Coder", ""]
+
+	const extLine = env.extensionPresent ? `nRF Connect ext v${env.extensionVersion ?? "?"}` : "nRF Connect not detected"
+	lines.push(`$(server-environment) ${extLine}`)
+
+	if (env.status === "detecting") {
+		lines.push("$(plug) detecting boards…")
+	} else if (!env.nrfutilPresent) {
+		lines.push("$(plug) nrfutil not found")
+	} else if (env.boards.length === 0) {
+		lines.push("$(plug) no boards connected")
+	} else {
+		const names = env.boards.map((b) => b.deviceName ?? b.deviceFamily ?? b.serialNumber).join(", ")
+		lines.push(`$(plug) ${env.boards.length} board${env.boards.length > 1 ? "s" : ""}: ${names}`)
+	}
+
+	return lines.join("\n")
+}
+
 let _item: vscode.StatusBarItem | undefined
+let _vscodeApi: typeof vscode | undefined
 
 /** Creates and shows the status-bar item, pushing disposal onto context.subscriptions. */
 export function createAdsumStatusBar(context: vscode.ExtensionContext, vscodeApi: typeof vscode): vscode.StatusBarItem {
@@ -30,6 +57,7 @@ export function createAdsumStatusBar(context: vscode.ExtensionContext, vscodeApi
 	item.command = FOCUS_COMMAND
 	item.tooltip = "Open Adsum IoT Coder"
 	_item = item
+	_vscodeApi = vscodeApi
 	context.subscriptions.push(item)
 	return item
 }
@@ -43,7 +71,18 @@ export function refreshAdsumStatusBar(tokens?: number): void {
 	_item.show()
 }
 
+/** Enriches the status-bar tooltip with nRF environment facts (non-breaking if env absent). */
+export function setAdsumStatusBarTooltip(env: NrfEnvironment): void {
+	if (!_item || !_vscodeApi) {
+		return
+	}
+	const md = new _vscodeApi.MarkdownString(buildStatusBarTooltip(env), true)
+	md.isTrusted = true
+	_item.tooltip = md
+}
+
 /** Resets the singleton (used in tests to avoid cross-test leakage). */
 export function resetAdsumStatusBarForTest(): void {
 	_item = undefined
+	_vscodeApi = undefined
 }

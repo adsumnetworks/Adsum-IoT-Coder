@@ -36,6 +36,7 @@ import { BannerService } from "@/services/banner/BannerService"
 import { featureFlagsService } from "@/services/feature-flags"
 import { getDistinctId } from "@/services/logging/distinctId"
 import { Logger } from "@/services/logging/Logger"
+import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { telemetryService } from "@/services/telemetry"
 import { BannerCardData } from "@/shared/cline/banner"
 import { getAxiosSettings } from "@/shared/net"
@@ -975,6 +976,7 @@ export class Controller {
 				this.task?.api instanceof AdsumFreeHandler
 					? (this.task.api.remainingQuota ?? getFreeTierTokensForDisplay())
 					: getFreeTierTokensForDisplay(),
+			nrfEnvironment: getCachedNrfEnvironment(),
 		}
 	}
 

@@ -1,5 +1,6 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
 
+import { NrfEnvironment } from "@services/nrf/EnvironmentDetector"
 import { WorkspaceRoot } from "@shared/multi-root/types"
 import { RemoteConfigFields } from "@shared/storage/state-keys"
 import type { Environment } from "../config"
@@ -120,6 +121,7 @@ export interface ExtensionState {
 	banners?: BannerCardData[]
 	openAiCodexIsAuthenticated?: boolean
 	freeTierRemainingTokens?: number
+	nrfEnvironment?: NrfEnvironment
 }
 
 export interface ClineMessage {
