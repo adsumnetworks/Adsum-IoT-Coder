@@ -87,6 +87,9 @@ const GLOBAL_STATE_FIELDS = {
 	dismissedBanners: { default: [] as Array<{ bannerId: string; dismissedAt: number }> },
 	// Path to worktree that should auto-open Cline sidebar when launched
 	worktreeAutoOpenPath: { default: undefined as string | undefined },
+	// Set before a demo-triggered workspace reload; checkDemoAutoStart reads and clears it on activation.
+	// Shape: { scenarioId, capability, workspacePath } serialised as JSON string.
+	demoAutoStart: { default: undefined as string | undefined },
 } satisfies FieldDefinitions
 
 // Fields that map directly to ApiHandlerOptions in @shared/api.ts

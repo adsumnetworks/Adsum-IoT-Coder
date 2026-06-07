@@ -31,7 +31,11 @@ platforms/nrf/
 └── workflows/               ← Primary entry points (START HERE for each task)
     ├── log-generator.md
     ├── log-analyzer.md
-    └── debug-loop.md
+    ├── debug-loop.md
+    ├── demo-debug.md
+    ├── prototype.md         ← SCAFFOLD: new project from verified Nordic sample
+    ├── add-feature.md       ← SCAFFOLD: add a Zephyr feature to existing project
+    └── test-validate.md     ← SCAFFOLD: native_sim + on-hardware validation
 ```
 
 ---
@@ -141,6 +145,9 @@ When starting a new task, load one of these Workflows first.
 | Log Generator | `workflows/log-generator.md` | Add Zephyr logging instrumentation to firmware |
 | Log Analyzer | `workflows/log-analyzer.md` | Guided sequence to capture and analyze device logs |
 | Debug Loop | `workflows/debug-loop.md` | Iterative Build → Flash → Capture → Analyze cycle |
+| Prototype | `workflows/prototype.md` | Scaffold a new nRF project from a verified Nordic sample (SCAFFOLD) |
+| Add Feature | `workflows/add-feature.md` | Add a Zephyr feature to an existing project (SCAFFOLD) |
+| Test & Validate | `workflows/test-validate.md` | native_sim host tests + on-hardware validation (SCAFFOLD) |
 
 ### Internal Actions (loaded by Workflows only)
 

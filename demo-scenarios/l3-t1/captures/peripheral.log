@@ -1,0 +1,19 @@
+[00:00:00.000,000] <inf> bt_hci_core: HW Platform: Nordic Semiconductor (0x0002)
+[00:00:00.000,000] <inf> bt_hci_core: HW Variant: nRF52840 (0x0008)
+[00:00:00.001,000] <inf> bt_hci_core: Firmware: Standard Bluetooth controller (0x00) Version 3.3 Build 99
+[00:00:00.100,000] <inf> main: Starting BLE NUS Peripheral
+[00:00:00.110,000] <inf> main: Bluetooth initialized
+[00:00:00.120,000] <inf> main: Advertising started as "Nordic_NUS_Periph"
+[00:00:02.580,000] <inf> connected_cb: Connected to E8:B2:44:AA:BB:CC (Central)
+[00:00:03.010,000] <inf> nus_receive_cb: Received "Hello from Central" from central
+[00:00:03.020,000] <inf> nus_send_cb: Sending "ACK: Hello from Central" to central
+[00:00:03.030,000] <err> nus_send_cb: bt_nus_send failed, err=-5 (ENOTCONN)
+[00:00:05.010,000] <inf> nus_receive_cb: Received "ping" from central
+[00:00:05.020,000] <inf> nus_send_cb: Sending "pong" to central
+[00:00:05.030,000] <err> nus_send_cb: bt_nus_send failed, err=-5 (ENOTCONN)
+[00:00:09.010,000] <inf> nus_receive_cb: Received "ping" from central
+[00:00:09.020,000] <inf> nus_send_cb: Sending "pong" to central
+[00:00:09.030,000] <err> nus_send_cb: bt_nus_send failed, err=-5 (ENOTCONN)
+[00:00:13.010,000] <inf> nus_receive_cb: Received "ping" from central
+[00:00:13.020,000] <inf> nus_send_cb: Sending "pong" to central
+[00:00:13.030,000] <err> nus_send_cb: bt_nus_send failed, err=-5 (ENOTCONN)
