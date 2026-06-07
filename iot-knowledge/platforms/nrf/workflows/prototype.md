@@ -1,76 +1,71 @@
 # Prototype Workflow (workflows/prototype.md)
 
-> **SCAFFOLD — co-founder to author.** Placeholders below mark every decision that requires
-> a curated verified-sample index and real testing. Do NOT invent protocol specifics.
-
 **Triggered by:** Task text contains `scaffold a new nRF prototype` or `Start a new nRF/Zephyr prototype`
 
-This workflow guides the user from zero to a buildable nRF/Zephyr scaffold selected from a
-curated list of verified Nordic samples. No project folder is required at entry — the workflow
-asks the user where to create the project before writing any files.
+Take the user from zero to a buildable nRF/Zephyr app. This workflow's specialty is **composing one
+app from one or more verified Nordic samples** — each Nordic sample shows a single feature, so a real
+prototype is usually a *base* sample plus features ported from others. No project folder is required
+at entry.
 
 ---
 
 ## Step 0: Scope gate (prototype exception)
-
-This workflow is explicitly exempt from the Scope Gate's "project must exist" check.
-Proceed without requiring `CMakeLists.txt`, `prj.conf`, or `src/` in the workspace.
+Exempt from the "project must exist" check — proceed without `CMakeLists.txt`/`prj.conf`/`src/`.
 
 ---
 
-## Step 1: Ask what the user is building
+## Step 1: Decompose the request into capabilities
+Ask what they're building if unclear:
+> "What are you building? e.g. 'BLE peripheral that streams BME280 sensor data and stores settings'."
 
-Use `ask_followup_question`:
-
-> "What are you building? Give me a brief description — e.g. 'BLE peripheral that streams sensor
-> data', 'Thread border router', 'USB HID device'. I'll match it to the right Nordic sample."
-
----
-
-## Step 2: Match to a verified sample
-
-<!-- TODO (co-founder): populate the verified sample index -->
-<!-- Map user intent → official Nordic sample repo path, confirmed to build on NCS <version> -->
-
-| User intent (examples) | Verified sample | NCS version confirmed |
-|---|---|---|
-| TODO | TODO | TODO |
-
-If no sample matches, tell the user clearly:
-> "I don't have a verified sample for that combination yet. The safest path is to open a Nordic
-> sample yourself in nRF Connect for Desktop, then open that folder here and ask me to add features."
-
-Do NOT invent a sample path or guess at Kconfig values.
+Break the answer into discrete capabilities (e.g. *BLE peripheral* + *BME280 sensor* + *NVS storage*)
+and tell the user the capability list you parsed.
 
 ---
 
-## Step 3: Ask where to create the project
-
-Use `ask_followup_question`:
-
-> "Where should I create the project? Give me a parent folder path — I'll create a subdirectory
-> there named after your project."
-
-Validate that the path exists with `list_files` before proceeding.
+## Step 2: Find a sample for each capability
+**MANDATORY SKILL LOAD:** `read_file` → `platforms/nrf/actions/find-sample.md` and follow it to map
+**each** capability to a verified sample (or a `samples/common` module). Do not invent paths.
 
 ---
 
-## Step 4: Scaffold the project
+## Step 3: Choose the base and plan the compose
+- **One capability / one sample covers it** → that sample is the base; no merge needed.
+- **Multiple capabilities** → base = the most infrastructure-heavy sample (usually the connectivity
+  one, e.g. `peripheral_uart`/`peripheral_lbs`); the rest become **ports**. If no sample dominates,
+  use a **blank app** as the base and port every capability in.
 
-<!-- TODO (co-founder): define exact scaffold steps per sample -->
-<!-- Minimum: copy verified sample source, update project name in CMakeLists.txt, confirm build -->
-
-Steps (placeholder):
-1. Copy verified sample files to the chosen location.
-2. Update `CMakeLists.txt` `project()` name.
-3. Confirm the directory structure with `list_files`.
-4. Offer to open the new folder: *"Project created. Want me to open it in VS Code now?"*
+Confirm the plan with a quick **Mermaid component diagram** (base + the modules to add) so the user
+verifies the architecture *before* any files are written:
+> *"Here's the planned architecture — base = `<sample>`, then I add `<cap2>`, `<cap3>`. Scaffold it?"*
 
 ---
 
-## Step 5: Offer the next step
+## Step 4: Scaffold the base (nRF Connect extension)
+Use the **nRF Connect for VS Code** create-new-application flow — it wires the manifest + NCS version.
+- **Sample base:** command **"nRF Connect: New Application from Sample"** (`nrf-connect.app.createFromSample`)
+  — tell the user the exact sample to select + a destination folder/name.
+- **Blank base:** command **"nRF Connect: Create a blank app"**, or create the 4-file freestanding app:
+  `CMakeLists.txt` with `target_sources(app PRIVATE src/main.c)`, an empty `prj.conf`, and a minimal
+  `src/main.c`.
 
-On completion, hand off to the Debug Loop workflow:
-> "Scaffold is ready. Want me to build it now to confirm everything compiles?"
+After creation, confirm the folder with `list_files`. Do **not** add license headers (user's job).
 
-If the user agrees, load `platforms/nrf/workflows/debug-loop.md` and follow it.
+---
+
+## Step 5: Port the remaining capabilities (compose)
+For **each** remaining capability from Step 3, one at a time:
+- **MANDATORY SKILL LOAD:** `read_file` → `platforms/nrf/workflows/add-feature.md` and follow it to
+  port that capability's sample into the base (C module + `prj.conf` Kconfig + overlay).
+
+Build between ports if the user wants early validation.
+
+---
+
+## Step 6: Build, flash & iterate
+Hand off to the Debug Loop to prove the scaffold compiles and runs:
+> "Scaffold ready. Want me to build and flash it to confirm it runs on your board?"
+
+- **MANDATORY SKILL LOAD:** if the user agrees, `read_file` → `platforms/nrf/workflows/debug-loop.md`
+  and follow it (build → flash → capture).
+- Then invite the next loop: *"Want to add another feature on top of this?"* → `add-feature.md`.

@@ -56,3 +56,9 @@ _test_chat/
 chat_tests/
 .agents/*
 CLAUDE.*
+
+# Internal planning repo — cloned here for agent context only; has its own remote.
+# Never tracked by the code repo (strategy/docs stay out of code history).
+Adsum-Planning/
+.clangd
+.mcp.json
