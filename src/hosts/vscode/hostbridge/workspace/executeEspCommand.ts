@@ -1,34 +1,48 @@
 /**
  * ESP-IDF terminal execution — the ESP analogue of executeNordicCommand.
  *
- * It gives TriggerEspActionHandler a terminal in which `idf.py` (and esptool,
- * the IDF python venv, the Xtensa/RISC-V toolchain) work. Two tiers, mirroring
- * how the nRF side trusts the nRF Connect extension's terminal:
+ * It gives TriggerEspActionHandler a terminal in which `idf.py` / `esptool.py`
+ * (and the IDF python venv + toolchain) work, AND that VS Code can actually read.
  *
- *   Tier 1 — Espressif "ESP-IDF" VS Code extension is installed: reuse (or ask
- *   it to create) its already-sourced ESP-IDF terminal and run bare `idf.py …`.
- *   We never depend on the extension's *internal* APIs for correctness — if its
- *   terminal command is unavailable we fall through to Tier 2.
+ * Why we run in OUR OWN terminal, not the Espressif extension's:
+ *   The Espressif "ESP-IDF" extension creates its terminal in a way that never
+ *   gets VS Code *shell integration*. Without shell integration the command
+ *   pipeline can't capture output and falls back to grabbing the whole terminal
+ *   buffer after a fixed delay — so the agent ends up "screenshotting" the
+ *   terminal and mis-reading build/flash results. A terminal we create with
+ *   `createTerminal` runs the user's normal shell (zsh/bash/pwsh/fish), which
+ *   VS Code *does* integrate — so command output is captured cleanly.
  *
- *   Tier 2 — no extension: create our own terminal and make every command
- *   self-sourcing (`. "$IDF_PATH/export.sh" && …`) via idfEnvResolver, resolving
- *   IDF_PATH from the extension setting → IDF_PATH env → well-known dirs. If
- *   IDF_PATH can't be resolved we return an actionable error rather than launch
- *   a broken terminal (the nRF lesson).
- *
- * Like the nRF handler, this bypasses CommandExecutor's shell-integration
- * pipeline by running in a dedicated named terminal.
+ * So: we create our own named terminal and make every command self-sourcing
+ * (`. "$IDF_PATH/export.sh" && …`) via idfEnvResolver, resolving IDF_PATH from
+ * the extension's `idf.espIdfPath` setting → `IDF_PATH` env → well-known dirs.
+ * We still *read* the extension's setting; we just never run in its terminal.
+ * If IDF_PATH can't be resolved we return an actionable error rather than launch
+ * a broken terminal (the nRF lesson).
  */
 
 import * as fs from "node:fs"
 import * as vscode from "vscode"
 import { buildEspShellCommand, detectShell, idfNotFoundMessage, resolveIdfPath, type SupportedPlatform } from "./idfEnvResolver"
 
-const ESP_TERMINAL_NAME = "ESP-IDF"
-/** Marketplace id of the official Espressif ESP-IDF VS Code extension. */
-const ESP_IDF_EXTENSION_ID = "espressif.esp-idf-extension"
-/** Command the extension contributes to open an env-sourced ESP-IDF terminal. */
-const ESP_IDF_CREATE_TERMINAL_CMD = "espIdf.createIdfTerminal"
+/** Distinct name so we only ever reuse OUR terminal, never the extension's. */
+const ESP_TERMINAL_NAME = "Adsum ESP-IDF"
+
+/**
+ * Terminals we've already sourced the IDF env in. The env persists across
+ * commands in the same integrated shell, so after the first `. export.sh && …`
+ * we run subsequent commands bare (no re-sourcing — faster and cleaner). Keyed
+ * by terminal reference and evicted on close, so a reopened terminal re-sources.
+ */
+const sourcedTerminals = new Set<vscode.Terminal>()
+let closeListenerRegistered = false
+function ensureCloseListener(): void {
+	if (closeListenerRegistered) {
+		return
+	}
+	closeListenerRegistered = true
+	vscode.window.onDidCloseTerminal((t) => sourcedTerminals.delete(t))
+}
 
 /** Narrow the host's `process.platform` to the resolver's supported set. */
 export function hostPlatform(): SupportedPlatform {
@@ -37,31 +51,20 @@ export function hostPlatform(): SupportedPlatform {
 	return "linux"
 }
 
-/** Whether a terminal name looks like one of ours / an ESP-IDF terminal. */
-function isEspTerminalName(name: string): boolean {
-	const n = name.toLowerCase()
-	return n.includes("esp-idf") || n.includes("espressif") || n === "esp" || n.startsWith("esp ")
-}
-
-/** First existing ESP-IDF terminal, or undefined (we never fall back to a random shell). */
-export function findEspTerminal(): vscode.Terminal | undefined {
+/** Our own ESP-IDF terminal, matched by exact name (not the extension's). */
+export function findOurEspTerminal(): vscode.Terminal | undefined {
 	for (const t of vscode.window.terminals) {
-		if (isEspTerminalName(t.name)) {
+		if (t.name === ESP_TERMINAL_NAME) {
 			return t
 		}
 	}
 	return undefined
 }
 
-/** Whether the official Espressif ESP-IDF extension is installed. */
-export function isEspIdfExtensionInstalled(): boolean {
-	return !!vscode.extensions.getExtension(ESP_IDF_EXTENSION_ID)
-}
-
 /**
  * Resolve IDF_PATH on the host: the Espressif extension's `idf.espIdfPath`
  * setting (Tier 1 hint) → `IDF_PATH` env → well-known install dirs. We read the
- * extension's setting but never invoke its commands here.
+ * extension's setting but never invoke its commands or use its terminal.
  */
 export function resolveHostIdfPath(): string | undefined {
 	const platform = hostPlatform()
@@ -72,52 +75,35 @@ export function resolveHostIdfPath(): string | undefined {
 }
 
 export interface PreparedEspTerminal {
+	terminal: vscode.Terminal
 	terminalName: string
-	/** True when the terminal is NOT pre-sourced, so commands must self-source. */
+	/** True only until the IDF env has been sourced in this terminal once. */
 	needsSourcing: boolean
 }
 
 /**
- * Get a terminal to run ESP-IDF commands in, choosing the tier:
- *  - Tier 1 (extension installed): reuse an existing ESP-IDF terminal, else ask
- *    the extension to create one. Commands run bare (the terminal is sourced).
- *  - Tier 2 (no extension, or Tier-1 creation failed): our own terminal, with
- *    `needsSourcing: true` so each command self-sources.
+ * Get our own ESP-IDF terminal (reuse if present, else create). `needsSourcing`
+ * is true only for a terminal we haven't sourced yet; after the first sourced
+ * command the caller marks it via {@link markEspTerminalSourced} and subsequent
+ * commands run bare (the env persists in the shell session).
  */
 export async function prepareEspTerminal(): Promise<PreparedEspTerminal> {
-	// Tier 1: prefer the Espressif extension's already-sourced terminal.
-	if (isEspIdfExtensionInstalled()) {
-		const existing = findEspTerminal()
-		if (existing) {
-			existing.show()
-			return { terminalName: existing.name, needsSourcing: false }
-		}
-		try {
-			await vscode.commands.executeCommand(ESP_IDF_CREATE_TERMINAL_CMD)
-			// Poll for the terminal the extension creates (it sources env on startup).
-			for (let i = 0; i < 20; i++) {
-				await new Promise((r) => setTimeout(r, 500))
-				const created = findEspTerminal()
-				if (created) {
-					created.show()
-					return { terminalName: created.name, needsSourcing: false }
-				}
-			}
-		} catch (e) {
-			console.warn("[ESP] espIdf.createIdfTerminal unavailable, falling back to self-sourced terminal:", e)
-		}
-		// Fall through to Tier 2 if the extension couldn't give us a terminal.
+	ensureCloseListener()
+	let terminal = findOurEspTerminal()
+	if (!terminal) {
+		terminal = vscode.window.createTerminal({ name: ESP_TERMINAL_NAME })
 	}
-
-	// Tier 2: our own terminal; commands self-source the IDF env.
-	const existing = findEspTerminal()
-	if (existing) {
-		existing.show()
-		return { terminalName: existing.name, needsSourcing: true }
-	}
-	const terminal = vscode.window.createTerminal({ name: ESP_TERMINAL_NAME })
 	terminal.show()
-	return { terminalName: terminal.name, needsSourcing: true }
+	return { terminal, terminalName: terminal.name, needsSourcing: !sourcedTerminals.has(terminal) }
+}
+
+/**
+ * Record that the IDF env has been sourced in this terminal. Call ONLY after a
+ * sourced command actually ran (IDF_PATH resolved), so a failed first command
+ * re-sources next time rather than running bare in an unsourced shell.
+ */
+export function markEspTerminalSourced(terminal: vscode.Terminal): void {
+	sourcedTerminals.add(terminal)
 }
 
 export interface BuiltEspCommand {
@@ -128,8 +114,9 @@ export interface BuiltEspCommand {
 /**
  * Shape a raw command `body` (e.g. `idf.py -C "<proj>" build`, `esptool.py
  * flash_id`, a capture-script invocation) for the prepared terminal. When the
- * terminal isn't pre-sourced, resolve IDF_PATH and prepend the export script;
- * on resolution failure return an actionable error instead of a broken command.
+ * terminal isn't pre-sourced (always, for our terminal), resolve IDF_PATH and
+ * prepend the export script; on resolution failure return an actionable error
+ * instead of a broken command.
  */
 export function wrapEspCommand(body: string, needsSourcing: boolean): BuiltEspCommand {
 	const platform = hostPlatform()

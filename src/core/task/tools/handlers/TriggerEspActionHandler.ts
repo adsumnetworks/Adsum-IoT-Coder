@@ -2,7 +2,7 @@ import * as path from "node:path"
 import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
-import { prepareEspTerminal, wrapEspCommand } from "@/hosts/vscode/hostbridge/workspace/executeEspCommand"
+import { markEspTerminalSourced, prepareEspTerminal, wrapEspCommand } from "@/hosts/vscode/hostbridge/workspace/executeEspCommand"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
@@ -11,10 +11,10 @@ import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 
 /**
  * Handler for ESP-IDF hardware actions. The ESP counterpart of
- * TriggerNordicActionHandler — runs the ESP-IDF toolchain in a terminal that has
- * the IDF environment available (see executeEspCommand for the two-tier terminal
- * strategy). Like the nRF handler it bypasses CommandExecutor's shell-integration
- * pipeline by running in a dedicated named terminal.
+ * TriggerNordicActionHandler — runs the ESP-IDF toolchain in our own integrated
+ * terminal, sourcing the IDF env once per terminal (see executeEspCommand). The
+ * terminal is a normal shell so VS Code shell integration captures output
+ * cleanly, unlike the Espressif extension's terminal.
  *
  * Actions:
  *   - build    → `idf.py -C <proj> build`
@@ -87,8 +87,9 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 
 		config.taskState.consecutiveMistakeCount = 0
 
-		// Pick a terminal (Tier 1 extension terminal, else our own) and shape the
-		// command for it (bare when the terminal is sourced, else self-sourcing).
+		// Get our integrated terminal and shape the command: source the IDF env
+		// only on the first command in that terminal (the env persists after),
+		// bare on subsequent commands.
 		const prepared = await prepareEspTerminal()
 		const built = wrapEspCommand(body, prepared.needsSourcing)
 		if (built.error || !built.command) {
@@ -106,6 +107,11 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 		)
 
 		const [, result] = await config.callbacks.executeCommandTool(built.command, undefined, prepared.terminalName, true)
+		// The env is now sourced in this terminal — subsequent commands run bare.
+		// Mark only after the sourced command ran (built.command existed ⇒ IDF_PATH resolved).
+		if (prepared.needsSourcing) {
+			markEspTerminalSourced(prepared.terminal)
+		}
 		return result
 	}
 

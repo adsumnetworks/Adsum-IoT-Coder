@@ -27,6 +27,7 @@ A plain terminal has no ESP-IDF environment (`IDF_PATH`, the Xtensa/RISC-V toolc
 ## Commands that DO NOT use this tool
 - `git`, file manipulation, host package managers (`pip`, `apt`) → `execute_command`.
 - Reading/searching project files → the built-in `read_file` / `search_files` / `list_files` tools, never `cat`/`grep` in a shell.
+- **Checking whether a build / artifact exists** → `list_files` on `build/` (or `read_file` `build/project_description.json`), **never** `ls .../build/*.bin` in `execute_command`. A shell `ls` can line-wrap, run in the wrong directory, or report a false "no build", and it pointlessly uses a terminal.
 
 ## If the environment can't be found
 If `triggerEspAction` reports that the ESP-IDF environment could not be located, tell the user to either install the official **Espressif ESP-IDF** VS Code extension (it sets `idf.espIdfPath`) or set the `IDF_PATH` environment variable to their ESP-IDF checkout, then retry. Do NOT fall back to `execute_command`.
