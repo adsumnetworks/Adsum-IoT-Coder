@@ -19,14 +19,15 @@ Open source under Apache 2.0.
   <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/stargazers"><img src="https://img.shields.io/github/stars/adsumnetworks/Adsum-IoT-Coder?style=flat&color=ffd700" alt="GitHub stars"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
   <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions"><img src="https://img.shields.io/badge/community-discussions-blue" alt="Discussions"></a>
+  <a href="https://www.youtube.com/@adsumnetworks"><img src="https://img.shields.io/badge/YouTube-watch-FF0000?logo=youtube&logoColor=white" alt="YouTube"></a>
   <img src="https://img.shields.io/badge/AI%20Agent-VS%20Code%20Extension-9663f1" alt="AI Agent">
   <img src="https://img.shields.io/badge/nRF%20Connect%20SDK-v3.2.1-00A9CE" alt="NCS">
   <img src="https://img.shields.io/badge/Zephyr%20RTOS-compatible-blueviolet" alt="Zephyr">
 </p>
 
-**[Install →](#getting-started)** · **[Benchmark →](#benchmark--iot-firmwaredebugbench-v01)** · **[Architecture →](#architecture--dynamic-knowledge--tool-skill-loading)** · **[Roadmap →](#roadmap)**
+**[Watch the demo →](https://www.youtube.com/watch?v=67tUybg1phk)** · **[Install →](#getting-started)** · **[Benchmark →](#benchmark--iot-firmwaredebugbench-v01)** · **[Architecture →](#architecture--dynamic-knowledge--tool-skill-loading)** · **[Roadmap →](#roadmap)**
 
-<p><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder Demo" /></p>
+<a href="https://youtu.be/Zl6oCT9I4b0"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder — watch the demo" /></a>
 
 </div>
 
