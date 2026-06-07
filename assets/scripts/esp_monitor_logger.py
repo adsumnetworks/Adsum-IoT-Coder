@@ -35,6 +35,11 @@ from datetime import datetime
 
 DEFAULT_DURATION = 10
 
+# Strip ANSI color/escape sequences from the saved log so the file the agent
+# reads is clean text (idf.py monitor colorizes its output). Terminal echo keeps
+# the colors.
+ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
+
 # Markers worth surfacing in the one-line summary so the agent gets an instant
 # signal without re-reading the whole file.
 CRASH_MARKERS = [
@@ -71,6 +76,48 @@ def sanitize_port(port: str | None) -> str:
     return token or "auto"
 
 
+def find_usb_serial_port() -> str | None:
+    """
+    Best-effort: return the first ESP-like USB serial port so we never let
+    idf.py/esptool scan every /dev/ttyS* (slow, noisy — 30+ failed opens).
+    Prefers pyserial's port enumeration (always available in the IDF env),
+    falling back to globbing the usual device nodes.
+    """
+    # USB-CDC / USB-UART nodes, in preference order, per platform.
+    if sys.platform == "darwin":
+        patterns = ["/dev/cu.usbmodem*", "/dev/cu.usbserial*", "/dev/cu.wchusbserial*", "/dev/cu.SLAB*"]
+    elif os.name == "nt":
+        patterns = []  # handled via pyserial below; globbing COM* isn't a filesystem op
+    else:
+        patterns = ["/dev/ttyACM*", "/dev/ttyUSB*"]
+
+    try:
+        from serial.tools import list_ports  # provided by pyserial (ships with ESP-IDF)
+
+        ports = list(list_ports.comports())
+        # Prefer ports whose description names a known ESP USB bridge / native USB.
+        hints = ("cp210", "ch340", "ch910", "usb jtag", "usb-serial", "espressif", "usb single serial")
+        for p in ports:
+            text = f"{p.description} {p.hwid}".lower()
+            if any(h in text for h in hints):
+                return p.device
+        # Otherwise the first non-built-in serial port (skip Linux /dev/ttyS*).
+        for p in ports:
+            dev = p.device
+            if os.name == "nt" or dev.startswith("/dev/ttyACM") or dev.startswith("/dev/ttyUSB") or "usb" in dev.lower():
+                return dev
+    except Exception:
+        pass
+
+    import glob
+
+    for pat in patterns:
+        matches = sorted(glob.glob(pat))
+        if matches:
+            return matches[0]
+    return None
+
+
 def build_log_path(output: str, name: str, chip: str, port: str | None) -> str:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     uart_dir = os.path.join(output, "uart")
@@ -93,9 +140,9 @@ def stream_to_file(proc: subprocess.Popen, log_file, stop: threading.Event) -> N
     """Read the monitor's combined output line by line; tee to file + stdout."""
     assert proc.stdout is not None
     for line in proc.stdout:
-        log_file.write(line)
+        log_file.write(ANSI_RE.sub("", line))  # clean text in the file
         log_file.flush()
-        sys.stdout.write(line)
+        sys.stdout.write(line)  # keep colors on screen
         sys.stdout.flush()
         if stop.is_set():
             break
@@ -165,8 +212,12 @@ def main() -> int:
     project_dir = os.path.abspath(args.project)
     chip = resolve_chip(project_dir, args.chip)
     name = args.name or chip
-    log_path = build_log_path(args.output, name, chip, args.port)
-    cmd = build_monitor_cmd(project_dir, args.port, args.no_reset)
+    # Resolve the port up front so idf.py monitor doesn't scan every /dev/ttyS*.
+    port = args.port or find_usb_serial_port()
+    if not args.port:
+        print(f"[esp-monitor] auto-selected port: {port or 'none found (idf.py will auto-detect)'}")
+    log_path = build_log_path(args.output, name, chip, port)
+    cmd = build_monitor_cmd(project_dir, port, args.no_reset)
 
     print(f"[esp-monitor] capturing {args.duration}s → {log_path}")
     print(f"[esp-monitor] {' '.join(cmd)}")

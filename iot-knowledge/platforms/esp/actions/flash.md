@@ -7,19 +7,17 @@ Called from: Debug Loop Phase 2, or any task deploying firmware to a board. Run 
 - Build succeeded (binaries exist in `build/`).
 - The ESP board is connected via USB.
 
-## Port Discovery (First-Flash Protocol)
-ESP-IDF usually auto-detects the port — try a plain flash first:
-```
-triggerEspAction  action="flash"
-```
-If auto-detect fails or **multiple boards** are connected:
-1. Enumerate ports: `triggerEspAction` action="execute" command="`python -m serial.tools.list_ports`".
+## Port: discover once, then ALWAYS pass it
+**Do NOT flash without a port.** A portless `idf.py flash` makes esptool open every serial device on the machine (`/dev/ttyS0`…`ttyS31` on Linux) one by one — 30+ failed attempts before it finds the board. It also picks the wrong board when two are connected.
+
+1. If you don't already have the port from device discovery (`rules/device-identity.md`), get it: `triggerEspAction` action="execute" command="`python -m serial.tools.list_ports`".
    - Linux: `/dev/ttyUSB*` (UART bridge) or `/dev/ttyACM*` (native USB-Serial-JTAG).
    - macOS: `/dev/cu.usbserial-*` or `/dev/cu.usbmodem*`. Windows: `COMx`.
-2. Confirm with the user which port is the target, then:
+2. Flash with the explicit port (reuse it for the rest of the task):
    ```
-   triggerEspAction  action="flash"  port="/dev/ttyUSB0"
+   triggerEspAction  action="flash"  port="/dev/ttyACM0"
    ```
+3. If `list_ports` shows two ESP ports, ask the user which board to target before flashing.
 
 ## What flash does
 Writes the **bootloader + partition table + app** together (never flash just the app with raw esptool — you'll get a mismatched layout). The board resets and runs the new firmware automatically.

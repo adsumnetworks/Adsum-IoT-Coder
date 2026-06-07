@@ -207,6 +207,7 @@ export interface ClineSayTool {
 		| "summarizeTask"
 		| "useSkill"
 		| "triggerNordicAction"
+		| "triggerEspAction"
 	path?: string
 	diff?: string
 	content?: string

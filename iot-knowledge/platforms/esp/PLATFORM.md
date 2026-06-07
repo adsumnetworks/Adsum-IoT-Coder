@@ -97,9 +97,10 @@ See `rules/skill-loading.md` for the mandatory loading protocol.
 | Action | File | Purpose |
 |---|---|---|
 | Build | `actions/build.md` | `idf.py build`; target resolution & error handling. |
-| Flash | `actions/flash.md` | `idf.py flash`; port discovery. |
+| Flash | `actions/flash.md` | `idf.py flash`; discover port once, always pass it. |
 | Capture Logs | `actions/capture-logs.md` | Serial capture via `action="monitor"`; naming convention. |
 | Analyze Logs | `actions/analyze-logs.md` | Decode panics/WDT/brownout/heap; structured report. |
+| Configure | `actions/configure.md` | Change a Kconfig value (Wi-Fi creds, pins, broker, sizes) the right way — `sdkconfig` vs `sdkconfig.defaults`. |
 
 ---
 

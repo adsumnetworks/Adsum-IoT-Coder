@@ -12,7 +12,7 @@ triggerEspAction  action="monitor"  duration="10"  name="boot"
 ```
 - `duration` — seconds to capture (see table).
 - `name` — optional label for the filename (e.g. `boot`, `wifi`, `crash`).
-- `port` — only when several boards are connected.
+- `port` — **pass the port you discovered** (`rules/device-identity.md`). Without it the monitor tries to auto-pick; the capture script will pick the first USB serial port to avoid scanning every `/dev/ttyS*`, but the explicit port is correct and required when two boards are connected.
 - `reset` — defaults to **true** (resets the board first, capturing the full boot sequence). Pass `reset="false"` for **mid-runtime** capture (e.g. you want to observe steady-state without rebooting).
 
 The board must already be flashed with the current firmware, and a build must exist (the `.elf` is what decodes the backtrace).
