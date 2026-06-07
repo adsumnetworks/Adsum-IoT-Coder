@@ -6,7 +6,7 @@ import { combineHookSequences } from "@shared/combineHookSequences"
 import type { ClineApiReqInfo, ClineMessage } from "@shared/ExtensionMessage"
 import { getApiMetrics } from "@shared/getApiMetrics"
 import { BooleanRequest, StringRequest } from "@shared/proto/cline/common"
-import { useCallback, useEffect, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useMount } from "react-use"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -30,8 +30,11 @@ import {
 	useMessageHandlers,
 	useScrollBehavior,
 } from "./chat-view"
-import ModeSelector from "./ModeSelector"
+import { DEMO_SCENARIOS } from "./demoScenarios"
+import FreeTierStrip from "./FreeTierStrip"
 import { NORDIC_MODES, TASK_COMPLETE_MARKER } from "./nordicModes"
+import NextStepChooser from "./welcome/NextStepChooser"
+import WelcomeView from "./welcome/WelcomeView"
 
 interface ChatViewProps {
 	isHidden: boolean
@@ -56,6 +59,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		userInfo,
 		currentFocusChainChecklist,
 		hooksEnabled,
+		setExpandTaskHeader,
 	} = useExtensionState()
 	const isProdHostedApp = userInfo?.apiBaseUrl === "https://app.cline.bot"
 	const shouldShowQuickWins = false
@@ -107,6 +111,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	} = chatState
 
 	const { nordicPhase, setNordicPhase, nordicMode, setNordicMode } = chatState
+	const [isDemoRun, setIsDemoRun] = useState(false)
 
 	useEffect(() => {
 		const handleCopy = async (e: ClipboardEvent) => {
@@ -205,7 +210,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	const handleModeSelect = useCallback(
 		async (mode: "log_generator" | "log_analyzer") => {
 			try {
-				const modeConfig = NORDIC_MODES[mode]
+				const _modeConfig = NORDIC_MODES[mode]
+				setIsDemoRun(false)
 				setNordicMode(mode)
 				setNordicPhase("active")
 
@@ -217,10 +223,35 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				// Reset state to avoid stuck UI
 				setNordicPhase("awaiting_mode")
 				setNordicMode(null)
-				// Optional: Show error to user via window.showErrorMessage if available, but console log + UI reset is sufficient to unblock
 			}
 		},
 		[messageHandlers, setNordicMode, setNordicPhase],
+	)
+
+	const handleStartDemo = useCallback(
+		async (scenarioId: string) => {
+			const scenario = DEMO_SCENARIOS[scenarioId]
+			if (!scenario) return
+			try {
+				setIsDemoRun(true)
+				setNordicPhase("active")
+				setExpandTaskHeader(false)
+				await messageHandlers.handleSendMessage(scenario.taskPrompt, [], [])
+			} catch (error) {
+				console.error("[ChatView] Demo run failed:", error)
+				setIsDemoRun(false)
+				setNordicPhase("awaiting_mode")
+			}
+		},
+		[messageHandlers, setNordicPhase, setExpandTaskHeader],
+	)
+
+	const handleStartTask = useCallback(
+		async (text: string) => {
+			setNordicPhase("active")
+			await messageHandlers.handleSendMessage(text, [], [])
+		},
+		[messageHandlers, setNordicPhase],
 	)
 
 	const { selectedModelInfo } = useMemo(() => {
@@ -377,10 +408,20 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		}
 	}, [modifiedMessages, setNordicPhase, nordicPhase])
 
+	// Reset post-task phase when returning to the welcome screen so stale state
+	// doesn't bleed onto the next task or the home view.
+	useEffect(() => {
+		if (!task && nordicPhase === "task_complete") {
+			setNordicPhase("awaiting_mode")
+			setIsDemoRun(false)
+		}
+	}, [task, nordicPhase, setNordicPhase])
+
 	return (
 		<ChatLayout isHidden={isHidden}>
 			<div className="flex flex-col flex-1 overflow-hidden">
 				{showNavbar && <Navbar />}
+				<FreeTierStrip />
 				{task ? (
 					<TaskSection
 						apiMetrics={apiMetrics}
@@ -394,7 +435,13 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						task={task}
 					/>
 				) : (
-					<ModeSelector onModeSelect={handleModeSelect} variant="welcome" />
+					<WelcomeView
+						onSelectMode={handleModeSelect}
+						onStartDemo={handleStartDemo}
+						onStartTask={handleStartTask}
+						onUpgradeDismiss={hideAnnouncement}
+						showUpgradeCard={showAnnouncement}
+					/>
 				)}
 				{task && (
 					<MessagesArea
@@ -406,9 +453,18 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						task={task}
 					/>
 				)}
-				{nordicPhase === "task_complete" && <ModeSelector onModeSelect={handleModeSelect} variant="inline" />}
+				{task && nordicPhase === "task_complete" && (
+					<div className="flex-shrink-0">
+						<NextStepChooser
+							isDemoRun={isDemoRun}
+							onSelectMode={handleModeSelect}
+							onStartDemo={handleStartDemo}
+							onStartTask={handleStartTask}
+						/>
+					</div>
+				)}
 			</div>
-			{task && nordicPhase !== "task_complete" && (
+			{task && (nordicPhase !== "task_complete" || isDemoRun) && (
 				<footer className="bg-(--vscode-sidebar-background)" style={{ gridRow: "2" }}>
 					<AutoApproveBar />
 					<ActionButtons

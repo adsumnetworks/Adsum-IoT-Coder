@@ -72,7 +72,7 @@
 			"adsum-iot-coder-icon": {
 				"description": "Adsum IoT Coder",
 				"default": {
-					"fontPath": "assets/icons/cline-bot.woff",
+					"fontPath": "assets/icons/adsum-icon.woff",
 					"fontCharacter": "\\e900"
 				}
 			}

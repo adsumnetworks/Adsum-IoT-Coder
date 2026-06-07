@@ -70,6 +70,14 @@
 	--color-description: var(--vscode-descriptionForeground);
 	--color-success: var(--vscode-charts-green);
 	--color-brand-accent: #d76947;
+	/* Adsum brand palette — Direction A (dual-brand). Centered on logo cyan. */
+	--color-brand-primary: #00a9ce;
+	--color-brand-primary-light: #6fd2e6;
+	--color-brand-primary-hover: #19b6d8;
+	--color-brand-primary-active: #0089a8;
+	--color-brand-secondary: #d76947;
+	--color-brand-secondary-hover: #e07d5f;
+	--color-brand-secondary-active: #c0542f;
 	--color-warning: var(--vscode-charts-yellow);
 	--font-base:
 		var(--vscode-font-family), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell,

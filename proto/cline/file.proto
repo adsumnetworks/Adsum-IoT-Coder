@@ -58,6 +58,9 @@ service FileService {
   // Opens a task's conversation history file on disk
   rpc openDiskConversationHistory(StringRequest) returns (Empty);
 
+  // Opens a folder in VS Code (empty value shows native folder picker)
+  rpc openFolder(StringRequest) returns (Empty);
+
   // Toggles a workflow on or off
   rpc toggleWorkflow(ToggleWorkflowRequest) returns (ClineRulesToggles);
 
@@ -93,6 +96,9 @@ service FileService {
 
   // Deletes an existing skill directory
   rpc deleteSkillFile(DeleteSkillRequest) returns (SkillsToggles);
+
+  // Clears nRF environment cache and re-runs detection; posts updated state to webview
+  rpc refreshNrfEnvironment(EmptyRequest) returns (Empty);
 }
 
 // Response for refreshRules operation
