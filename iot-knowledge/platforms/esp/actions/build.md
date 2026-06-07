@@ -30,7 +30,7 @@ This runs `idf.py build` in the IDF environment. After a config change (edited `
 Extract the **key error line** — do not dump raw output.
 - `undefined reference to '<sym>'` → missing source in `SRCS`, or a missing/incorrect `REQUIRES`/`PRIV_REQUIRES` in the component's `CMakeLists.txt`.
 - `fatal error: <header>.h: No such file` → component not in `REQUIRES`, or include path missing.
-- `... is not defined` for a `CONFIG_*` symbol → the Kconfig option isn't enabled; add it to `sdkconfig.defaults` and `reconfigure`.
+- `... is not defined` for a `CONFIG_*` symbol → the Kconfig option isn't enabled. Use `actions/configure.md` to set it (in `sdkconfig` AND `sdkconfig.defaults`, then rebuild) — editing `sdkconfig.defaults` alone won't apply if `sdkconfig` already exists.
 - `region 'iram0_0_seg' overflowed` / `DRAM segment data does not fit` → too much in IRAM/DRAM; move buffers to PSRAM (`MALLOC_CAP_SPIRAM`) or reduce static allocation.
 - `Flash size ... larger than ...` → `CONFIG_ESPTOOLPY_FLASHSIZE` exceeds real flash (check `flash_id`).
 

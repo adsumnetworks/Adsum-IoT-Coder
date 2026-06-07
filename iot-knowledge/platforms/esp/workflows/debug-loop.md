@@ -44,7 +44,9 @@ After a successful flash. **MANDATORY SKILL LOAD:** `platforms/esp/actions/captu
 - Then `ask_followup_question` (not `attempt_completion`): *"Analyzed. What next?"* → options like `["Apply the fix and re-run", "Capture again (longer)", "Enable deeper logging", "Stop here"]`.
 
 ### Phase 5: Fix & Repeat
-If a root cause is found: propose it, apply the fix to the source/`sdkconfig`, and return to **Phase 1** (same permission mode). A `sdkconfig.defaults`/CMake change requires a `reconfigure` (build.md covers it).
+If a root cause is found: propose it, apply the fix, and return to **Phase 1** (same permission mode).
+- **Code fix** → edit the source.
+- **Config value** (Wi-Fi creds, pins, broker URL, stack size, flash/PSRAM, log level): **MANDATORY SKILL LOAD** `platforms/esp/actions/configure.md` and follow it — editing `sdkconfig.defaults` alone will NOT change an existing `sdkconfig` (the most common "my change did nothing" trap). Never invent credentials; ask the user.
 
 ---
 
