@@ -18,6 +18,13 @@ export async function showOpenDialogue(request: ShowOpenDialogueRequest): Promis
 		}
 	}
 
+	if (request.canSelectFolders !== undefined) {
+		options.canSelectFolders = request.canSelectFolders
+		if (request.canSelectFolders) {
+			options.canSelectFiles = false
+		}
+	}
+
 	const selectedResources = await vscode.window.showOpenDialog(options)
 
 	// Convert back to path format

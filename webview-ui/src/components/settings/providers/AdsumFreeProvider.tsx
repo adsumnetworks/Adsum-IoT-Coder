@@ -1,4 +1,5 @@
 import { Mode } from "@shared/storage/types"
+import { BRAND_CORAL, brandAlpha } from "@/components/chat/brandColors"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 
 interface AdsumFreeProviderProps {
@@ -18,7 +19,10 @@ export const AdsumFreeProvider = ({ currentMode: _currentMode, isPopup: _isPopup
 	return (
 		<div
 			className="p-3 rounded-md"
-			style={{ background: "var(--vscode-textBlockQuote-background)", border: "1px solid rgba(215, 105, 71, 0.4)" }}>
+			style={{
+				background: "var(--vscode-textBlockQuote-background)",
+				border: `1px solid ${brandAlpha(BRAND_CORAL, 0.4)}`,
+			}}>
 			<div className="flex items-center justify-between mb-1">
 				<p className="m-0 font-semibold" style={{ color: "var(--vscode-foreground)" }}>
 					You're on the Adsum free tier

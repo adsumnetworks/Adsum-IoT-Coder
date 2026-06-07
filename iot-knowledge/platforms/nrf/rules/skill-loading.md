@@ -25,6 +25,10 @@ This table is organized by what you, the agent, are about to *do* — not by wha
 
 | About to do (the operation) | Workflow to load first |
 |---|---|
+| **One-click demo** — task starts with `Demo:` or contains `[ADSUM_DEMO:` | Load `platforms/nrf/workflows/demo-debug.md` and follow it. The task message provides real file paths — use `read_file` on each. Do not connect to devices. |
+| **Scaffold a new nRF prototype** — task contains `scaffold a new nRF prototype` or `Start a new nRF/Zephyr prototype` | `platforms/nrf/workflows/prototype.md` |
+| **Add a feature to an existing project** — task contains `add a feature` or `Add a feature to` | `platforms/nrf/workflows/add-feature.md` |
+| **Test or validate firmware** — task contains `test and validate` or `Prove` + `works` | `platforms/nrf/workflows/test-validate.md` |
 | Build firmware · Flash firmware · run the Build → Flash → Capture → Analyze → Fix iteration cycle | `platforms/nrf/workflows/debug-loop.md` |
 | Capture device logs (UART/RTT) · perform log analysis · diagnose runtime behaviour from logs | `platforms/nrf/workflows/log-analyzer.md` |
 | Inject `LOG_*` macros into source · configure the log backend in `prj.conf` · enable deep BLE stack logging · prepare a project for future log capture | `platforms/nrf/workflows/log-generator.md` |

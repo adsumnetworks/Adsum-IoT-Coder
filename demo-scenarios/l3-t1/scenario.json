@@ -1,0 +1,16 @@
+{
+	"id": "l3-t1",
+	"title": "BLE NUS one-directional communication",
+	"description": "Central can send to Peripheral but receives nothing back. Real RTT logs from two nRF52840 DKs.",
+	"platform": "nrf52840",
+	"protocol": "BLE NUS",
+	"logFiles": [
+		"captures/central.log",
+		"captures/peripheral.log"
+	],
+	"sourceFiles": [
+		"src/main_snippet.c"
+	],
+	"honestLabel": "Logs pre-captured for this demo — connect a board to capture live.",
+	"bugSummary": "Missing bt_gatt_subscribe call in discovery_complete — central never subscribes to NUS TX notifications, so peripheral→central data is silently dropped."
+}

@@ -1,6 +1,7 @@
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { KeyRoundIcon, MailIcon } from "lucide-react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { BRAND_CORAL, brandAlpha } from "./brandColors"
 
 /**
  * Conversion card shown when the Adsum free-tier quota is exhausted (HTTP 402).
@@ -13,7 +14,10 @@ const QuotaExhaustedCard = () => {
 	return (
 		<div
 			className="p-3 rounded-md mb-2"
-			style={{ background: "var(--vscode-textBlockQuote-background)", border: "1px solid rgba(215, 105, 71, 0.4)" }}>
+			style={{
+				background: "var(--vscode-textBlockQuote-background)",
+				border: `1px solid ${brandAlpha(BRAND_CORAL, 0.4)}`,
+			}}>
 			<div className="mb-3">
 				<p className="m-0 mb-1 font-semibold" style={{ color: "var(--vscode-foreground)" }}>
 					Free tier quota reached
