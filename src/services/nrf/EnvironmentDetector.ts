@@ -20,7 +20,9 @@ const EMPTY_ENV: NrfEnvironment = {
 let _cache: NrfEnvironment | undefined
 // Extension info is set once at activation from extension.ts (which has vscode in scope).
 // Extension install/uninstall always requires a window reload, so this stays fresh.
-let _extensionInfo: { present: boolean; version?: string } = { present: false }
+// `extensionPath` is the nRF Connect extension's install dir — used to locate its
+// bundled nrfutil binaries (see resolveNrfutilCommands).
+let _extensionInfo: { present: boolean; version?: string; extensionPath?: string } = { present: false }
 // Workspace folder paths injected from extension.ts (grit forbids vscode.* here).
 let _workspaceRoots: string[] = []
 
@@ -38,53 +40,109 @@ export function clearNrfEnvironmentCache(): void {
 }
 
 /** Called from extension.ts (plugin-exempt) with the vscode.extensions probe result. */
-export function setNrfExtensionInfo(info: { present: boolean; version?: string }): void {
+export function setNrfExtensionInfo(info: { present: boolean; version?: string; extensionPath?: string }): void {
 	_extensionInfo = info
 }
 
-/**
- * Resolves the nrfutil binary path. nrfutil is installed by the nRF Connect tooling at
- * ~/.nrfutil/bin/nrfutil and is typically NOT on PATH — and on macOS a GUI-launched VS Code
- * doesn't inherit the login shell PATH anyway. So we check the canonical location first, then
- * fall back to a bare "nrfutil" (resolved via PATH) for non-standard installs.
- */
-export function resolveNrfutilCommand(): string {
-	const isWin = process.platform === "win32"
-	const binName = isWin ? "nrfutil.exe" : "nrfutil"
-	const candidates: string[] = []
+/** How to invoke nrfutil's `device` and `sdk-manager` commands, already shell-quoted. */
+export interface NrfutilCommands {
+	/** Command prefix for device ops — append e.g. ` list --json`. */
+	devicePrefix: string
+	/** Command prefix for sdk-manager ops — append e.g. ` list --json`. */
+	sdkManagerPrefix: string
+	/** Where the binaries were resolved from (diagnostics/telemetry). */
+	source: "launcher" | "extension" | "path-fallback"
+}
 
-	// 1. NRFUTIL_HOME — nrfutil's own env var; the nRF Connect tooling commonly sets it to a sandbox.
-	if (process.env.NRFUTIL_HOME) {
-		candidates.push(join(process.env.NRFUTIL_HOME, "bin", binName))
+/**
+ * Resolves how to invoke nrfutil. It ships in two layouts:
+ *
+ *  - **Launcher** — a single `nrfutil` binary that dispatches subcommands, invoked as
+ *    `nrfutil device …` / `nrfutil sdk-manager …`. This is the canonical standalone install at
+ *    `~/.nrfutil/bin/nrfutil`, which is what macOS/Linux developers typically have.
+ *  - **Split per-command binaries** — separate `nrfutil-device` / `nrfutil-sdk-manager`
+ *    executables that take the subcommand args directly (`nrfutil-device list …`). This is how the
+ *    nRF Connect VS Code extension bundles nrfutil, under `<ext>/platform/nrfutil/bin/`. On a stock
+ *    Windows install this is the ONLY nrfutil present — there is no launcher anywhere — which is why
+ *    detection previously returned "nrfutil not found" and the home screen showed no boards.
+ *
+ * Resolution order is deliberately **launcher-first**: if a launcher exists we use it exactly as
+ * before, so macOS/Linux behaviour is unchanged. The extension-bundled split binaries are only used
+ * when no launcher is found (the Windows case). A bare-command PATH form is the last resort.
+ *
+ * `existsSyncFn` is injected for unit tests.
+ */
+export function resolveNrfutilCommands(
+	opts: { platform?: NodeJS.Platform; env?: NodeJS.ProcessEnv; home?: string; extensionPath?: string } = {},
+	existsSyncFn: (p: string) => boolean = existsSync,
+): NrfutilCommands {
+	const platform = opts.platform ?? process.platform
+	const env = opts.env ?? process.env
+	const home = opts.home ?? homedir()
+	const isWin = platform === "win32"
+	const exe = (base: string): string => (isWin ? `${base}.exe` : base)
+	const quote = (p: string): string => `"${p}"`
+
+	// 1. Launcher locations — unchanged from the previous resolver. Keeping these FIRST guarantees
+	//    macOS/Linux (and any standalone-launcher Windows install) behave exactly as before.
+	const launcherCandidates: string[] = []
+	if (env.NRFUTIL_HOME) {
+		launcherCandidates.push(join(env.NRFUTIL_HOME, "bin", exe("nrfutil")))
 	}
-	// 2. Canonical install location (works on macOS/Linux; also the Windows default for ~/.nrfutil).
-	candidates.push(join(homedir(), ".nrfutil", "bin", binName))
-	// 3. Windows-specific install locations (nRF Connect for Desktop / standalone downloads). The
-	//    nrfutil binary on Windows frequently is NOT under ~/.nrfutil/bin, which is why detection
-	//    fell back to a bare "nrfutil" that VS Code's PATH can't resolve → "nrfutil not found".
+	launcherCandidates.push(join(home, ".nrfutil", "bin", exe("nrfutil")))
 	if (isWin) {
-		const localAppData = process.env.LOCALAPPDATA
-		const programFiles = process.env.ProgramFiles
+		const localAppData = env.LOCALAPPDATA
+		const programFiles = env.ProgramFiles
 		if (localAppData) {
-			candidates.push(join(localAppData, "Programs", "nrfutil", binName))
-			candidates.push(join(localAppData, "Nordic Semiconductor", "nrfutil", "bin", binName))
-			candidates.push(join(localAppData, "nrfutil", "bin", binName))
+			launcherCandidates.push(join(localAppData, "Programs", "nrfutil", exe("nrfutil")))
+			launcherCandidates.push(join(localAppData, "Nordic Semiconductor", "nrfutil", "bin", exe("nrfutil")))
+			launcherCandidates.push(join(localAppData, "nrfutil", "bin", exe("nrfutil")))
 		}
 		if (programFiles) {
-			candidates.push(join(programFiles, "Nordic Semiconductor", "nrfutil", binName))
+			launcherCandidates.push(join(programFiles, "Nordic Semiconductor", "nrfutil", exe("nrfutil")))
+		}
+	}
+	for (const launcher of launcherCandidates) {
+		if (existsSyncFn(launcher)) {
+			console.log(`[adsum][nrf] nrfutil launcher resolved to: ${launcher}`)
+			return {
+				devicePrefix: `${quote(launcher)} device`,
+				sdkManagerPrefix: `${quote(launcher)} sdk-manager`,
+				source: "launcher",
+			}
 		}
 	}
 
-	for (const candidate of candidates) {
-		if (existsSync(candidate)) {
-			console.log(`[adsum][nrf] nrfutil resolved to: ${candidate}`)
-			return candidate
+	// 2. nRF Connect extension-bundled split binaries — the only nrfutil on a stock Windows install.
+	//    The layout `<ext>/platform/nrfutil/bin/nrfutil-{device,sdk-manager}` is consistent across
+	//    platforms (only the .exe suffix differs), so this also covers macOS/Linux users who have the
+	//    extension but no standalone launcher.
+	if (opts.extensionPath) {
+		const binDir = join(opts.extensionPath, "platform", "nrfutil", "bin")
+		const deviceBin = join(binDir, exe("nrfutil-device"))
+		const sdkBin = join(binDir, exe("nrfutil-sdk-manager"))
+		if (existsSyncFn(deviceBin)) {
+			console.log(`[adsum][nrf] nrfutil (nRF Connect extension bundle) resolved at: ${binDir}`)
+			return {
+				devicePrefix: quote(deviceBin),
+				// sdk-manager isn't guaranteed in every extension build; only use the split binary if
+				// it's actually there, otherwise fall back to a bare launcher form on PATH.
+				sdkManagerPrefix: existsSyncFn(sdkBin) ? quote(sdkBin) : `${exe("nrfutil")} sdk-manager`,
+				source: "extension",
+			}
 		}
 	}
-	// Fall back to a bare command resolved via PATH/PATHEXT by the shell. On Windows this only
-	// works if nrfutil is on VS Code's PATH (often it is not — hence the diagnostics above/below).
-	console.log(`[adsum][nrf] nrfutil not found at known locations; falling back to PATH. Checked: ${candidates.join(" | ")}`)
-	return binName
+
+	// 3. Last resort — bare command on PATH (launcher form). Works only if nrfutil is on VS Code's
+	//    PATH, which on Windows it usually is not — hence the diagnostics above.
+	console.log(
+		`[adsum][nrf] nrfutil not found at known locations; falling back to PATH. Checked launchers: ${launcherCandidates.join(" | ")}`,
+	)
+	return {
+		devicePrefix: `${exe("nrfutil")} device`,
+		sdkManagerPrefix: `${exe("nrfutil")} sdk-manager`,
+		source: "path-fallback",
+	}
 }
 
 /** Parse newline-delimited JSON (nrfutil's --json output is one event object per line). */
@@ -188,19 +246,18 @@ export function parseSdkList(stdout: string): string[] {
 	return []
 }
 
-async function probeSdks(nrfutil: string): Promise<string[]> {
+async function probeSdks(sdkManagerPrefix: string): Promise<string[]> {
 	try {
-		const result = await execAsync(`"${nrfutil}" sdk-manager list --json`, { timeout: 8000 })
+		const result = await execAsync(`${sdkManagerPrefix} list --json`, { timeout: 8000 })
 		return parseSdkList(result.stdout)
 	} catch {
 		return []
 	}
 }
 
-async function probeBoards(): Promise<{ nrfutilPresent: boolean; boards: NrfBoard[] }> {
-	const nrfutil = resolveNrfutilCommand()
+async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: boolean; boards: NrfBoard[] }> {
 	try {
-		const listResult = await execAsync(`"${nrfutil}" device list --json`, { timeout: 8000 })
+		const listResult = await execAsync(`${devicePrefix} list --json`, { timeout: 8000 })
 		const serials = parseDeviceList(listResult.stdout)
 
 		if (serials.length === 0) {
@@ -210,7 +267,7 @@ async function probeBoards(): Promise<{ nrfutilPresent: boolean; boards: NrfBoar
 		const boards = await Promise.all(
 			serials.map(async (serialNumber) => {
 				try {
-					const infoResult = await execAsync(`"${nrfutil}" device device-info --serial-number ${serialNumber} --json`, {
+					const infoResult = await execAsync(`${devicePrefix} device-info --serial-number ${serialNumber} --json`, {
 						timeout: 8000,
 					})
 					return { serialNumber, ...parseDeviceInfo(infoResult.stdout) }
@@ -226,7 +283,7 @@ async function probeBoards(): Promise<{ nrfutilPresent: boolean; boards: NrfBoar
 		// ENOENT/'is not recognized' = binary not on PATH; a non-zero exit = nrfutil ran but
 		// the subcommand failed (e.g. `nrfutil device` not installed).
 		const msg = err instanceof Error ? err.message : String(err)
-		console.warn(`[adsum][nrf] nrfutil probe failed (cmd="${nrfutil}"): ${msg}`)
+		console.warn(`[adsum][nrf] nrfutil probe failed (cmd="${devicePrefix}"): ${msg}`)
 		return { nrfutilPresent: false, boards: [] }
 	}
 }
@@ -383,11 +440,11 @@ export function detectProjectSdk(roots: string[]): ProjectSdk | undefined {
 export async function detectNrfEnvironment(): Promise<NrfEnvironment> {
 	_cache = { ...getCachedNrfEnvironment(), status: "detecting" }
 
-	const nrfutil = resolveNrfutilCommand()
+	const cmds = resolveNrfutilCommands({ extensionPath: _extensionInfo.extensionPath })
 	const projectSdk = detectProjectSdk(_workspaceRoots)
 	const [boardsResult, installedSdkVersions] = await Promise.all([
-		probeBoards().catch(() => ({ nrfutilPresent: false, boards: [] as NrfBoard[] })),
-		probeSdks(nrfutil).catch(() => [] as string[]),
+		probeBoards(cmds.devicePrefix).catch(() => ({ nrfutilPresent: false, boards: [] as NrfBoard[] })),
+		probeSdks(cmds.sdkManagerPrefix).catch(() => [] as string[]),
 	])
 
 	_cache = {
