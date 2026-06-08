@@ -35,7 +35,7 @@ platforms/nrf/
     ├── demo-debug.md
     ├── prototype.md         ← SCAFFOLD: new project from verified Nordic sample
     ├── add-feature.md       ← SCAFFOLD: add a Zephyr feature to existing project
-    └── test-validate.md     ← SCAFFOLD: native_sim + on-hardware validation
+    └── test-validate.md     ← SCAFFOLD: simulator (native_sim/QEMU, OS-aware) + on-hardware validation
 ```
 
 ---
@@ -147,7 +147,7 @@ When starting a new task, load one of these Workflows first.
 | Debug Loop | `workflows/debug-loop.md` | Iterative Build → Flash → Capture → Analyze cycle |
 | Prototype | `workflows/prototype.md` | Scaffold a new nRF project from a verified Nordic sample (SCAFFOLD) |
 | Add Feature | `workflows/add-feature.md` | Add a Zephyr feature to an existing project (SCAFFOLD) |
-| Test & Validate | `workflows/test-validate.md` | native_sim host tests + on-hardware validation (SCAFFOLD) |
+| Test & Validate | `workflows/test-validate.md` | host sim tests (native_sim on Linux, QEMU on Windows/macOS) + on-hardware validation (SCAFFOLD) |
 
 ### Internal Actions (loaded by Workflows only)
 

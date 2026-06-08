@@ -61,4 +61,7 @@ CLAUDE.*
 # Never tracked by the code repo (strategy/docs stay out of code history).
 Adsum-Planning/
 .clangd
+
+# Local MCP server config (Nordic MCP etc.) — per-developer, keep out of repo history
 .mcp.json
+.vscode/mcp.json
