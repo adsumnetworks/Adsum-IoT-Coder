@@ -20,6 +20,7 @@ import { ExtensionRegistryInfo } from "./registry"
 import { loadCachedQuota, registerInstallIfNeeded, shouldDefaultToFreeTier } from "./services/adsum/FreeTierService"
 import { initFreeTierPersistence, setFreeTierActive } from "./services/adsum/FreeTierState"
 import { initializeInstallId } from "./services/adsum/InstallIdentity"
+import { maybeShowReengagementNudge } from "./services/adsum/ReengagementNudge"
 import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
 import { ErrorService } from "./services/error"
@@ -108,6 +109,9 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 			const stateManager = StateManager.get()
 			stateManager.setGlobalState("planModeApiProvider", "adsum-free")
 			stateManager.setGlobalState("actModeApiProvider", "adsum-free")
+			// Skip the model-select gate — free tier is already chosen, sending a fresh
+			// install through a provider-selection screen before they see the demo adds friction.
+			stateManager.setGlobalState("welcomeViewCompleted", true)
 			console.log("[adsum] fresh install defaulted to free tier")
 		}
 	} catch (err) {
@@ -138,6 +142,7 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	const webview = HostProvider.get().createWebviewProvider()
 
 	await showVersionUpdateAnnouncement(context)
+	await maybeShowReengagementNudge()
 
 	// Check if this workspace was opened from worktree quick launch
 	await checkWorktreeAutoOpen(context)
@@ -179,14 +184,19 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 			const latestAnnouncementId = getLatestAnnouncementId()
 
 			if (lastShownAnnouncementId !== latestAnnouncementId) {
-				// Show notification when there's a new announcement (major/minor updates or fresh installs)
-				const message = previousVersion
-					? `Adsum IoT Coder has been updated to v${currentVersion}`
-					: `Welcome to Adsum IoT Coder v${currentVersion}`
-				HostProvider.window.showMessage({
+				const isNewInstall = !previousVersion
+				const message = isNewInstall
+					? `Welcome to Adsum IoT Coder v${currentVersion}`
+					: `Adsum IoT Coder has been updated to v${currentVersion}`
+				const cta = isNewInstall ? "See it debug a real bug (30s)" : "What's new — see it"
+				const { selectedOption } = await HostProvider.window.showMessage({
 					type: ShowMessageType.INFORMATION,
 					message,
+					options: { items: [cta] },
 				})
+				if (selectedOption === cta) {
+					await HostProvider.workspace.openClineSidebarPanel({})
+				}
 			}
 			// Always update the main version tracker for the next launch.
 			await context.globalState.update("nrfAiDebuggerVersion", currentVersion)

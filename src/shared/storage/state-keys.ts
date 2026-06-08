@@ -90,6 +90,8 @@ const GLOBAL_STATE_FIELDS = {
 	// Set before a demo-triggered workspace reload; checkDemoAutoStart reads and clears it on activation.
 	// Shape: { scenarioId, capability, workspacePath } serialised as JSON string.
 	demoAutoStart: { default: undefined as string | undefined },
+	// Unix-ms timestamp of the last re-engagement nudge shown to a dormant (no-wow) user.
+	reengagementNudgeLastShown: { default: undefined as number | undefined },
 } satisfies FieldDefinitions
 
 // Fields that map directly to ApiHandlerOptions in @shared/api.ts

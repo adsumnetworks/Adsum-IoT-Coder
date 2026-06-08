@@ -5,6 +5,8 @@ import {
 	DEMO_TRIGGER,
 	prepareDemoWorkspace,
 } from "@core/demos/DemoManager"
+import { getInstallId } from "@services/adsum/InstallIdentity"
+import { telemetryService } from "@services/telemetry"
 import { String } from "@shared/proto/cline/common"
 import { PlanActMode, OpenaiReasoningEffort as ProtoOpenaiReasoningEffort } from "@shared/proto/cline/state"
 import { NewTaskRequest } from "@shared/proto/cline/task"
@@ -117,6 +119,7 @@ export async function newTask(controller: Controller, request: NewTaskRequest): 
 			const capability = classifyDemoCapability(env)
 			taskText = buildDemoPrompt(ws, capability, env)
 			displayText = buildDemoDisplayText()
+			telemetryService.captureFreeTierDemoRunStarted(getInstallId(), "nus-uart")
 			// Demo files live in globalStorage (outside the workspace) — auto-approve reads for this
 			// task only. Does not touch the user's global auto-approval settings.
 			const existingApproval =
