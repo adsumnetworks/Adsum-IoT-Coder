@@ -1,5 +1,6 @@
 import { StringRequest } from "@shared/proto/cline/common"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import { TicketIcon } from "lucide-react"
 import { useState } from "react"
 import { AdsumServiceClient } from "@/services/grpc-client"
 
@@ -45,10 +46,10 @@ const InviteCodeField = () => {
 	if (state === "idle") {
 		return (
 			<button
-				className="mt-2 text-sm bg-transparent border-none p-0 cursor-pointer"
+				className="mt-2 text-sm bg-transparent border-none p-0 cursor-pointer inline-flex items-center gap-1"
 				onClick={open}
 				style={{ color: "var(--vscode-descriptionForeground)", textDecoration: "underline" }}>
-				🎟 Have an invite code?
+				<TicketIcon size={14} /> Have an invite code?
 			</button>
 		)
 	}
