@@ -284,7 +284,7 @@ We publish what's true today, not what we wish were true.
 **Product**
 
 - **Scope.** Today the tool ships for nRF52, nRF53, and nRF54 with BLE. Other Nordic families (nRF7x, nRF9x) and other vendors (ESP) are roadmap, not shipping. Other protocols (Wi-Fi, Thread, Matter, LTE-M) are roadmap, not shipping.
-- **Free-tier token counter can read stale.** Open the provider panel before your first prompt in a fresh session and the "tokens left" chip may show the prior value. It's display-only — the real balance lives in the backend and is enforced there. The chip reconciles on your next prompt.
+- **Free-tier token counter.** The "tokens left" chip decrements by each request's real usage and shows 0 the moment your quota is exhausted. On a cold start it briefly shows the last-known balance until it re-syncs with the backend (a second or two); the real balance always lives in the backend and is enforced there.
 - **Trademarks.** nRF, nRF Connect SDK, and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA. This project is independently developed and not affiliated with or endorsed by Nordic Semiconductor ASA.
 
 **Benchmark**
