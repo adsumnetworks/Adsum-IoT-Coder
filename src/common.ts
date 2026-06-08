@@ -125,6 +125,11 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 			stateManager.setGlobalState("planModeApiProvider", "adsum-free")
 			stateManager.setGlobalState("actModeApiProvider", "adsum-free")
 			stateManager.setGlobalState("welcomeViewCompleted", true)
+			// This block sets the provider to adsum-free AFTER the setFreeTierActive() call above
+			// (which read the pre-default provider and gated display OFF). Flip the gate ON here so
+			// the token chip + free-tier strip show on first launch — otherwise they stay hidden
+			// until the user toggles providers (which re-runs setFreeTierActive via StateManager).
+			setFreeTierActive(true)
 			// Write-through to raw globalState so the StateManager cache (read by the webview) and
 			// the next launch stay consistent.
 			await context.globalState.update("welcomeViewCompleted", true)
