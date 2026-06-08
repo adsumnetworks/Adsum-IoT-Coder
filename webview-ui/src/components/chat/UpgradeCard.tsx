@@ -62,7 +62,7 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 					marginBottom: "12px",
 					lineHeight: 1.5,
 				}}>
-				Debug real nRF firmware on real device logs — free tier, no key, no setup.
+				See it debug a real BLE bug in 30 seconds — no board, no key, no setup. Then point it at your own firmware.
 			</div>
 
 			<div style={{ display: "flex", alignItems: "center" }}>
