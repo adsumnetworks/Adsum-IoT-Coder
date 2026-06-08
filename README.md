@@ -41,7 +41,7 @@ Open source under Apache 2.0.
 
 <img src="assets/icons/whatsnew-free-tier.png" width="18" valign="middle" alt="" /> &nbsp;**Zero-config first run.** Install and you land straight on something that works — no provider-selection screen standing between you and the agent. The [free tier](#free-tier--start-without-a-key) is already on; bring your own key whenever you're ready.
 
-<img src="assets/icons/whatsnew-guide.png" width="18" valign="middle" alt="" /> &nbsp;**A home screen that guides the next step.** When a project is open, the agent reads what it is and offers the right moves — *Build, flash & debug*, *Add a feature*, *Test & validate* — one click each. After any task finishes, it suggests where to go next instead of leaving you at a blank prompt.
+<img src="assets/icons/whatsnew-guide.png" width="18" valign="middle" alt="" /> &nbsp;**A home screen that guides the next step.** With a project open, the agent reads what it is and offers the right moves as one-click **workflow cards** — *Build, flash & debug*, *Add a feature*, *Test & validate* — with *SDK migration* and *board bring-up* on the way. After any task finishes, it suggests where to go next instead of leaving you at a blank prompt; with no project open, it points you to *start a prototype* or *open your nRF project*.
 
 <img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Instant key switchover.** Add your own provider mid-session — the running task continues, no restart.
 
