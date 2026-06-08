@@ -159,8 +159,10 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 
 	const webview = HostProvider.get().createWebviewProvider()
 
-	await showVersionUpdateAnnouncement(context)
-	await maybeShowReengagementNudge()
+	// Show the version/update toast first; if it fired, suppress the re-engagement nudge this launch
+	// so a version-bump launch never double-toasts.
+	const announcementShown = await showVersionUpdateAnnouncement(context)
+	await maybeShowReengagementNudge(announcementShown)
 
 	// Check if this workspace was opened from worktree quick launch
 	await checkWorktreeAutoOpen(context)
@@ -181,8 +183,10 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	return webview
 }
 
-async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
-	// Version checking for autoupdate notification
+async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext): Promise<boolean> {
+	// Version checking for autoupdate notification. Returns true if the toast was displayed this
+	// launch (caller suppresses the re-engagement nudge so we never double-toast).
+	let shown = false
 	const currentVersion = ExtensionRegistryInfo.version
 	const previousVersion = context.globalState.get<string>("nrfAiDebuggerVersion")
 	// Perform post-update actions if necessary
@@ -202,6 +206,7 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 			const latestAnnouncementId = getLatestAnnouncementId()
 
 			if (lastShownAnnouncementId !== latestAnnouncementId) {
+				shown = true
 				const isNewInstall = !previousVersion
 				const message = isNewInstall
 					? `Welcome to Adsum IoT Coder v${currentVersion}`
@@ -242,6 +247,7 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
 		console.error(`Error during post-update actions: ${errorMessage}, Stack trace: ${error.stack}`)
 	}
+	return shown
 }
 
 /**
