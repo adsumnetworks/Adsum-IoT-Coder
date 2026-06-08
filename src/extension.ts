@@ -107,7 +107,17 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Extension install/uninstall always requires a window reload, so this stays fresh.
 	try {
 		const ext = vscode.extensions.getExtension("nordic-semiconductor.nrf-connect")
-		setNrfExtensionInfo(ext ? { present: true, version: ext.packageJSON?.version as string | undefined } : { present: false })
+		setNrfExtensionInfo(
+			ext
+				? {
+						present: true,
+						version: ext.packageJSON?.version as string | undefined,
+						// The extension bundles nrfutil at <extensionPath>/platform/nrfutil/bin — the
+						// detector needs this to find nrfutil on Windows, where no standalone launcher exists.
+						extensionPath: ext.extensionPath,
+					}
+				: { present: false },
+		)
 	} catch {
 		setNrfExtensionInfo({ present: false })
 	}
