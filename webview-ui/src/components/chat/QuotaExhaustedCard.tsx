@@ -1,12 +1,13 @@
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
-import { KeyRoundIcon, MailIcon } from "lucide-react"
+import { KeyRoundIcon } from "lucide-react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { BRAND_CORAL, brandAlpha } from "./brandColors"
+import InviteCodeField from "./InviteCodeField"
 
 /**
  * Conversion card shown when the Adsum free-tier quota is exhausted (HTTP 402).
- * Presents two paths: verify email for more free tokens (Phase 1, placeholder)
- * or add a BYOK provider key and switch to unlimited.
+ * Offers two paths: add a BYOK key for unlimited access, or redeem an invite code
+ * for extra free-tier tokens.
  */
 const QuotaExhaustedCard = () => {
 	const { navigateToSettings } = useExtensionState()
@@ -27,19 +28,12 @@ const QuotaExhaustedCard = () => {
 				</p>
 			</div>
 
-			<VSCodeButton className="w-full mb-2" onClick={() => navigateToSettings("api-config")}>
+			<VSCodeButton className="w-full" onClick={() => navigateToSettings("api-config")}>
 				<KeyRoundIcon className="mr-2" size={14} />
 				Add your own API key
 			</VSCodeButton>
 
-			<VSCodeButton
-				appearance="secondary"
-				className="w-full"
-				disabled
-				title="Coming soon — verify your email to unlock more free usage">
-				<MailIcon className="mr-2" size={14} />
-				Verify email for more free tokens (coming soon)
-			</VSCodeButton>
+			<InviteCodeField />
 		</div>
 	)
 }

@@ -1,5 +1,6 @@
 import { Mode } from "@shared/storage/types"
 import { BRAND_CORAL, brandAlpha } from "@/components/chat/brandColors"
+import InviteCodeField from "@/components/chat/InviteCodeField"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 
 interface AdsumFreeProviderProps {
@@ -42,6 +43,7 @@ export const AdsumFreeProvider = ({ currentMode: _currentMode, isPopup: _isPopup
 				No API key required — inference is provided by Adsum Networks. When your free usage runs out, you can add your own
 				API key (any provider) for unlimited access.
 			</p>
+			<InviteCodeField />
 		</div>
 	)
 }
