@@ -102,30 +102,50 @@ describe("buildDemoPrompt", () => {
 		})
 	})
 
-	describe("escalation block scales with capability", () => {
-		it("canned → no build/flash escalation", () => {
+	describe("escalation ends with a button choice (ask_followup_question) per capability", () => {
+		it("canned → buttons: one-line fix + wrap-up; no build/flash actions, no legacy 'type' invite", () => {
 			const p = buildDemoPrompt(ws, "canned")
+			expect(p).to.contain("ask_followup_question")
+			expect(p).to.contain("Show me the one-line fix")
+			expect(p).to.contain("I've seen enough — wrap up")
 			expect(p).to.not.contain('Type **"build it"**')
-			expect(p).to.not.contain('Type **"flash it"**')
+			expect(p).to.not.contain("west build")
+			expect(p).to.not.contain("west flash")
 		})
 
-		it("build → offers 'build it' and the one-line fix, no flashing", () => {
+		it("build → buttons: 'Build it' + the one-line fix; no flashing", () => {
 			const p = buildDemoPrompt(ws, "build", env({ installedSdkVersions: ["v3.2.1"] }))
-			expect(p).to.contain('Type **"build it"**')
+			expect(p).to.contain("ask_followup_question")
+			expect(p).to.contain("Build it — prove the fix compiles")
 			expect(p).to.contain("bt_nus_subscribe_receive(nus);")
 			expect(p).to.contain("west build")
-			expect(p).to.not.contain('Type **"flash it"**')
+			expect(p).to.not.contain("west flash")
+			expect(p).to.not.contain('Type **"build it"**')
 		})
 
-		it("hardware → offers 'flash it' with real flash/capture flow", () => {
+		it("hardware → buttons: live flash + build-only fallback + wrap-up", () => {
 			const p = buildDemoPrompt(
 				ws,
 				"hardware",
 				env({ installedSdkVersions: ["v3.2.1"], nrfutilPresent: true, boards: [board("683907940")] }),
 			)
-			expect(p).to.contain('Type **"flash it"**')
+			expect(p).to.contain("ask_followup_question")
+			expect(p).to.contain("Flash & run it live on my boards")
+			expect(p).to.contain("Just build it — no boards needed")
 			expect(p).to.contain("west flash")
 			expect(p).to.contain("--snr")
+			expect(p).to.not.contain('Type **"flash it"**')
+		})
+
+		it("every tier offers the wrap-up / stop option that completes the task", () => {
+			const envFull = env({ installedSdkVersions: ["v3.2.1"], nrfutilPresent: true, boards: [board("1")] })
+			for (const cap of ["canned", "build", "hardware"] as const) {
+				expect(buildDemoPrompt(ws, cap, envFull), cap).to.contain("I've seen enough — wrap up")
+			}
+		})
+
+		it("the close is gated behind the verdict (no completion before reads + beats)", () => {
+			expect(buildDemoPrompt(ws, "canned")).to.contain("only AFTER you have done the reads and presented the beats")
 		})
 	})
 
