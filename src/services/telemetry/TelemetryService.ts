@@ -209,6 +209,10 @@ export class TelemetryService {
 			INVITE_CODE_REDEEMED: "free_tier.invite_code_redeemed",
 			// User attempted to redeem an invite code but it failed (with reason)
 			INVITE_CODE_FAILED: "free_tier.invite_code_failed",
+			// Dormant-user re-engagement nudge shown on reopen (cohort + days_dormant)
+			REENGAGEMENT_SHOWN: "free_tier.reengagement_shown",
+			// User clicked the CTA on the re-engagement nudge
+			REENGAGEMENT_CLICKED: "free_tier.reengagement_clicked",
 		},
 		NRF: {
 			ENV_DETECTED: "nrf.env_detected",
@@ -719,6 +723,23 @@ export class TelemetryService {
 		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.INVITE_CODE_FAILED, {
 			install_id: installId,
 			reason,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierReengagementShown(installId: string, cohort: string, daysDormant: number) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.REENGAGEMENT_SHOWN, {
+			install_id: installId,
+			cohort,
+			days_dormant: daysDormant,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierReengagementClicked(installId: string, cohort: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.REENGAGEMENT_CLICKED, {
+			install_id: installId,
+			cohort,
 			tier: "anonymous",
 		})
 	}

@@ -1,43 +1,104 @@
 import { expect } from "chai"
 import { describe, it } from "mocha"
-import { REENGAGEMENT_MIN_INTERVAL_MS, shouldShowReengagementNudge } from "../ReengagementNudge"
+import {
+	buildReengagementMessage,
+	classifyReengagement,
+	REENGAGEMENT_DORMANT_MS,
+	REENGAGEMENT_MAX_SHOWS,
+	REENGAGEMENT_MIN_INTERVAL_MS,
+} from "../ReengagementNudge"
 
 const NOW = 1_000_000_000_000
-const DEMO_TASK = { task: "Debug a real BLE NUS bug — Central→Peripheral works, but Peripheral→Central is silently dropped." }
-const REAL_TASK = { task: "Add a BLE battery service to my_app" }
+const DAY = 24 * 60 * 60 * 1000
+const dormantTs = NOW - REENGAGEMENT_DORMANT_MS - DAY // comfortably past the dormancy threshold
+const recentTs = NOW - DAY // active: 1 day ago
 
-describe("shouldShowReengagementNudge", () => {
-	it("brand-new install (no history) → no nudge (announcement CTA owns first-run)", () => {
-		expect(shouldShowReengagementNudge([], 0, NOW)).to.equal(false)
-		expect(shouldShowReengagementNudge(undefined, 0, NOW)).to.equal(false)
+const demo = (ts: number) => ({
+	task: "Debug a real BLE NUS bug — Central→Peripheral works, but Peripheral→Central is silently dropped.",
+	ts,
+})
+const work = (ts: number) => ({ task: "Add a BLE battery service to my_app", ts })
+
+describe("classifyReengagement", () => {
+	it("brand-new install (no history) → null (install toast owns first-run)", () => {
+		expect(classifyReengagement([], 0, 0, NOW)).to.equal(null)
+		expect(classifyReengagement(undefined, 0, 0, NOW)).to.equal(null)
 	})
 
-	it("user who already completed the demo → never nag", () => {
-		expect(shouldShowReengagementNudge([REAL_TASK, DEMO_TASK], 0, NOW)).to.equal(false)
+	it("active user (recent task) → null, never nag", () => {
+		expect(classifyReengagement([work(recentTs)], 0, 0, NOW)).to.equal(null)
 	})
 
-	it("dormant user (has tasks, no demo, never nudged) → show", () => {
-		expect(shouldShowReengagementNudge([REAL_TASK], 0, NOW)).to.equal(true)
+	it("dormant, demo-only → demo_no_work", () => {
+		const d = classifyReengagement([demo(dormantTs)], 0, 0, NOW)
+		expect(d?.cohort).to.equal("demo_no_work")
 	})
 
-	it("rate-limited: nudged inside the interval → no nudge", () => {
+	it("dormant, has real work → did_work (even if a demo also exists)", () => {
+		expect(classifyReengagement([work(dormantTs)], 0, 0, NOW)?.cohort).to.equal("did_work")
+		expect(classifyReengagement([demo(dormantTs), work(dormantTs)], 0, 0, NOW)?.cohort).to.equal("did_work")
+	})
+
+	it("dormancy measured from the MOST RECENT task", () => {
+		// One old demo, but a recent real task ⇒ still active ⇒ null.
+		expect(classifyReengagement([demo(dormantTs), work(recentTs)], 0, 0, NOW)).to.equal(null)
+	})
+
+	it("rate-limited inside the interval → null", () => {
 		const lastShown = NOW - (REENGAGEMENT_MIN_INTERVAL_MS - 1)
-		expect(shouldShowReengagementNudge([REAL_TASK], lastShown, NOW)).to.equal(false)
+		expect(classifyReengagement([work(dormantTs)], lastShown, 0, NOW)).to.equal(null)
 	})
 
 	it("interval elapsed → nudge again", () => {
 		const lastShown = NOW - REENGAGEMENT_MIN_INTERVAL_MS
-		expect(shouldShowReengagementNudge([REAL_TASK], lastShown, NOW)).to.equal(true)
+		expect(classifyReengagement([work(dormantTs)], lastShown, 0, NOW)?.cohort).to.equal("did_work")
 	})
 
-	it("demo-completion check wins over the rate-limit reset", () => {
-		// Even if the interval has elapsed, a user who has seen the demo is never nudged.
-		const lastShown = NOW - 10 * REENGAGEMENT_MIN_INTERVAL_MS
-		expect(shouldShowReengagementNudge([DEMO_TASK], lastShown, NOW)).to.equal(false)
+	it("hard cap reached → null (respect the no)", () => {
+		expect(classifyReengagement([work(dormantTs)], 0, REENGAGEMENT_MAX_SHOWS, NOW)).to.equal(null)
+		expect(classifyReengagement([work(dormantTs)], 0, REENGAGEMENT_MAX_SHOWS - 1, NOW)?.cohort).to.equal("did_work")
 	})
 
-	it("matches the demo task by prefix (display text varies after the prefix)", () => {
-		const prefixOnly = [{ task: "Debug a real BLE NUS bug" }]
-		expect(shouldShowReengagementNudge(prefixOnly, 0, NOW)).to.equal(false)
+	it("reports days dormant", () => {
+		const d = classifyReengagement([work(NOW - 10 * DAY)], 0, 0, NOW)
+		expect(d?.daysDormant).to.equal(10)
+	})
+
+	it("test-mode thresholds collapse the time gates", () => {
+		// Recent task + just nudged would normally be null; zeroed thresholds + infinite cap ⇒ shows.
+		const d = classifyReengagement([demo(recentTs)], NOW, 99, NOW, {
+			dormantMs: 0,
+			intervalMs: 0,
+			maxShows: Number.POSITIVE_INFINITY,
+		})
+		expect(d?.cohort).to.equal("demo_no_work")
+	})
+})
+
+describe("buildReengagementMessage", () => {
+	it("demo_no_work with a project names it and offers to debug firmware", () => {
+		const c = buildReengagementMessage("demo_no_work", { hasProject: true, projectName: "central_uart" })
+		expect(c.message).to.contain("central_uart")
+		expect(c.cta).to.equal("Debug my firmware")
+	})
+
+	it("demo_no_work without a project invites opening one", () => {
+		const c = buildReengagementMessage("demo_no_work", { hasProject: false })
+		expect(c.cta).to.equal("Open my project")
+	})
+
+	it("did_work with a project offers to resume it", () => {
+		const c = buildReengagementMessage("did_work", { hasProject: true, projectName: "my_app" })
+		expect(c.message).to.contain("my_app")
+		expect(c.cta).to.equal("Resume")
+	})
+
+	it("appends a free-token hint only when a positive balance is known", () => {
+		const withHint = buildReengagementMessage("did_work", { hasProject: true, projectName: "p", freeTokens: 2_000_000 })
+		expect(withHint.message).to.contain("2,000,000 free tokens")
+		const noHint = buildReengagementMessage("did_work", { hasProject: true, projectName: "p", freeTokens: 0 })
+		expect(noHint.message).to.not.contain("free tokens")
+		const undefinedHint = buildReengagementMessage("did_work", { hasProject: true, projectName: "p" })
+		expect(undefinedHint.message).to.not.contain("free tokens")
 	})
 })
