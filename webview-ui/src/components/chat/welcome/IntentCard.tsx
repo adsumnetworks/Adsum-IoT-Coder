@@ -1,93 +1,149 @@
 import React from "react"
-import { BRAND_CORAL, BRAND_CYAN_600, brandAlpha, brandSubtle } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha, brandSubtle } from "../brandColors"
 
 interface IntentCardProps {
 	icon: string
 	title: string
 	description: string
 	primary?: boolean
+	/** Small pill next to the title (e.g. "Start here"). Coming-soon cards show "Coming soon" automatically. */
+	pill?: string
+	/** Roadmap card: dashed/dimmed, non-interactive. */
+	comingSoon?: boolean
 	disabled?: boolean
 	onClick: () => void
 	testId?: string
 }
+
+// Neutral surfaces for the disabled "coming soon" roadmap cards.
+const SOON_BORDER = "color-mix(in srgb, var(--vscode-foreground) 18%, transparent)"
+const SOON_ICON_BG = "color-mix(in srgb, var(--vscode-foreground) 14%, transparent)"
 
 const IntentCard: React.FC<IntentCardProps> = ({
 	icon,
 	title,
 	description,
 	primary = false,
+	pill,
+	comingSoon = false,
 	disabled = false,
 	onClick,
 	testId,
 }) => {
-	const baseBg = primary ? brandSubtle(BRAND_CORAL, 5) : "var(--vscode-input-background)"
-	const baseBorder = primary ? brandAlpha(BRAND_CORAL, 0.75) : brandAlpha(BRAND_CORAL, 0.45)
+	const inert = disabled || comingSoon
+
+	// Visual tier: hero (cyan) → coral (live) → neutral dashed (coming soon).
+	const border = comingSoon ? SOON_BORDER : primary ? BRAND_CYAN_600 : brandAlpha(BRAND_CORAL, 0.6)
+	const bg = comingSoon
+		? "var(--vscode-input-background)"
+		: primary
+			? brandSubtle(BRAND_CYAN_600, 9)
+			: "var(--vscode-input-background)"
+	const iconBg = comingSoon ? SOON_ICON_BG : primary ? BRAND_CYAN_700 : BRAND_CORAL
+	const iconColor = comingSoon ? "var(--vscode-descriptionForeground)" : "#fff"
+	const pillText = comingSoon ? "Coming soon" : pill
 
 	return (
 		<button
 			data-testid={testId}
-			disabled={disabled}
-			onClick={onClick}
+			disabled={inert}
+			onClick={inert ? undefined : onClick}
 			onMouseEnter={(e) => {
-				if (!disabled) {
-					e.currentTarget.style.borderColor = BRAND_CYAN_600
-					e.currentTarget.style.background = brandSubtle(BRAND_CYAN_600, 8)
+				if (!inert) {
 					e.currentTarget.style.transform = "translateY(-2px)"
-					e.currentTarget.style.boxShadow = `0 4px 12px ${brandAlpha(BRAND_CYAN_600, 0.15)}`
+					e.currentTarget.style.boxShadow = `0 4px 12px ${brandAlpha(primary ? BRAND_CYAN_600 : BRAND_CORAL, 0.18)}`
 				}
 			}}
 			onMouseLeave={(e) => {
-				e.currentTarget.style.borderColor = baseBorder
-				e.currentTarget.style.background = baseBg
 				e.currentTarget.style.transform = "none"
 				e.currentTarget.style.boxShadow = "none"
 			}}
 			style={{
 				width: "100%",
-				padding: "16px 20px",
-				background: baseBg,
-				border: `2px solid ${baseBorder}`,
-				borderRadius: "8px",
-				cursor: disabled ? "default" : "pointer",
-				opacity: disabled ? 0.5 : 1,
-				pointerEvents: disabled ? "none" : "auto",
+				padding: "14px 15px",
+				background: bg,
+				border: `2px ${comingSoon ? "dashed" : "solid"} ${border}`,
+				borderRadius: "10px",
+				cursor: inert ? "default" : "pointer",
+				opacity: comingSoon ? 0.55 : 1,
 				textAlign: "left",
-				transition: "transform 0.15s, box-shadow 0.15s, background 0.15s, border-color 0.15s",
+				display: "flex",
+				gap: "12px",
+				alignItems: "flex-start",
+				transition: "transform 0.12s, box-shadow 0.12s",
 			}}
 			type="button">
-			<div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
-				<i
-					className={`codicon codicon-${icon}`}
+			<div
+				style={{
+					flexShrink: 0,
+					width: "36px",
+					height: "36px",
+					borderRadius: "50%",
+					background: iconBg,
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					color: iconColor,
+				}}>
+				<i className={`codicon codicon-${icon}`} style={{ fontSize: "16px" }} />
+			</div>
+
+			<div style={{ flex: 1, minWidth: 0 }}>
+				<div
 					style={{
-						fontSize: "18px",
-						flexShrink: 0,
-						lineHeight: 1,
-						marginTop: "2px",
+						fontSize: "13.5px",
+						fontWeight: 700,
 						color: "var(--vscode-foreground)",
-					}}
-				/>
-				<div style={{ flex: 1 }}>
-					<div
-						style={{
-							fontSize: "15px",
-							fontWeight: primary ? 700 : 600,
-							color: "var(--vscode-foreground)",
-							marginBottom: "3px",
-						}}>
-						{title}
-					</div>
-					<div
-						style={{
-							fontSize: "12px",
-							color: "var(--vscode-descriptionForeground)",
-							lineHeight: 1.5,
-						}}>
-						{description}
-					</div>
+						marginBottom: "3px",
+						display: "flex",
+						alignItems: "center",
+						gap: "7px",
+					}}>
+					{title}
+					{pillText && <Pill text={pillText} variant={comingSoon ? "soon" : "primary"} />}
+				</div>
+				<div
+					style={{
+						fontSize: "11.5px",
+						color: "var(--vscode-descriptionForeground)",
+						lineHeight: 1.45,
+					}}>
+					{description}
 				</div>
 			</div>
 		</button>
 	)
 }
+
+const Pill: React.FC<{ text: string; variant: "primary" | "soon" }> = ({ text, variant }) => (
+	<span
+		style={
+			variant === "primary"
+				? {
+						fontSize: "9px",
+						fontWeight: 700,
+						padding: "2px 7px",
+						borderRadius: "999px",
+						background: BRAND_CYAN_600,
+						color: "#04222b",
+						letterSpacing: "0.04em",
+						flexShrink: 0,
+					}
+				: {
+						fontSize: "9px",
+						fontWeight: 700,
+						padding: "2px 7px",
+						borderRadius: "999px",
+						background: "color-mix(in srgb, var(--vscode-foreground) 12%, transparent)",
+						color: "var(--vscode-descriptionForeground)",
+						border: SOON_BORDER,
+						textTransform: "uppercase",
+						letterSpacing: "0.04em",
+						flexShrink: 0,
+					}
+		}>
+		{text}
+	</span>
+)
 
 export default IntentCard
