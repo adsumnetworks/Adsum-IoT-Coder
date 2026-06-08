@@ -33,13 +33,9 @@ Open source under Apache 2.0.
 
 ---
 
-## What's New <sup>`v0.1.5`</sup>
+## What's New <sup>`v0.1.3`</sup>
 
-**▶ &nbsp;See it crack a real bug — in 30 seconds, before you set anything up.** A new first-run demo debugs a real BLE bug on firmware bundled with the extension. No board, no API key, no project of your own required — watch the capture-analyze-fix loop on a genuine failure, then run it on your own firmware.
-
-<img src="assets/icons/whatsnew-free-tier.png" width="18" valign="middle" alt="" /> &nbsp;**Zero-config first run.** Install and you land straight on something that works — no provider-selection screen standing between you and the agent. The [free tier](#free-tier--start-without-a-key) is already on; bring your own key whenever you're ready.
-
-**🧭 &nbsp;A home screen that guides the next step.** When a project is open, the agent reads what it is and offers the right moves — *Build, flash & debug*, *Add a feature*, *Test & validate* — one click each. After any task finishes, it suggests where to go next instead of leaving you at a blank prompt.
+<img src="assets/icons/whatsnew-free-tier.png" width="18" valign="middle" alt="" /> &nbsp;**[Free tier — start without an API key.](#free-tier--start-without-a-key)** Install and debug your firmware in the first minute; bring your own key whenever you're ready.
 
 <img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Instant key switchover.** Add your own provider mid-session — the running task continues, no restart.
 
@@ -195,19 +191,15 @@ Open the VS Code **Extensions** panel and search for **Adsum IoT Coder**, then c
 
 See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 
-Install it and you can start immediately — the [free tier](#free-tier--start-without-a-key) runs on a managed model, so there's no provider screen to clear first. Add your own key whenever you want.
+Configure an AI provider, and open your NCS project. The agent starts with two entry-point workflows:
 
 <p><img src="assets/docs/home.png" width="100%" alt="Adsum IoT Coder Home" /></p>
 
-**Start with the 30-second demo.** The home screen leads with a live demo that debugs a real BLE bug on firmware bundled with the extension — capture → analyze → fix on a genuine failure, with no board or project of your own needed. It's the fastest way to see how the agent works before pointing it at your code.
+**Analyze nRF Device Logs** — captures live RTT/UART logs from connected boards, runs code-aware analysis, produces structured reports. Auto-detects boards via J-Link, supports multi-device simultaneous capture, correlates output with your source code and configuration.
 
-**Then the home screen adapts to your project.** Open your NCS project and the agent reads what it is, then offers the right next moves as one-click actions:
+**Generate Logging Code** — reads your NCS project, understands the BLE stack, and injects `LOG_*` macros following Zephyr best practices. The agent that writes the log statements knows the context when it later parses them.
 
-- **Build, flash & debug** — the full loop: build your code, flash it, capture live RTT/UART logs, find the issue, and iterate (Build → Flash → Capture → Analyze → Fix) until it's resolved or you stop it. Boards auto-detect via J-Link, with multi-device simultaneous capture and source-aware correlation.
-- **Add a feature** — wire a new capability (a Zephyr shell, a BLE service, NVS storage…) into your actual project, not a throwaway sample.
-- **Test & validate** — exercise your firmware with host tests and on-hardware checks.
-
-After any task finishes, the agent suggests where to go next, so you're never left at a blank prompt.
+From analysis results, the agent can enter a **Debug Loop** — iterative Build → Flash → Capture → Analyze → Fix cycle — continuing until the bug is resolved or you stop it.
 
 ### Requirements
 
