@@ -170,25 +170,31 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 
 		// "Don't show again" is the one-click silence-forever escape hatch (retention red-line rule).
 		const silence = "Don't show again"
-		const { selectedOption } = await HostProvider.window.showMessage({
-			type: ShowMessageType.INFORMATION,
-			message,
-			options: { items: [cta, silence] },
-		})
-
-		if (selectedOption === cta) {
-			// Engaged — reset the ignore streak so a returning, useful nudge isn't capped out.
-			stateManager.setGlobalState("reengagementNudgeIgnores", 0)
-			telemetryService.captureFreeTierReengagementClicked(installId, decision.cohort)
-			await HostProvider.workspace.openClineSidebarPanel({})
-		} else if (selectedOption === silence) {
-			stateManager.setGlobalState("reengagementNudgeSilenced", true)
-			telemetryService.captureFreeTierReengagementSilenced(installId, decision.cohort)
-		} else {
-			// Ignored (closed/auto-dismissed) — advance the decay counter; 3 in a row and we stop.
-			stateManager.setGlobalState("reengagementNudgeIgnores", ignoreCount + 1)
-			telemetryService.captureFreeTierReengagementDismissed(installId, decision.cohort)
-		}
+		// FIRE-AND-FORGET: do NOT await the toast. showMessage resolves only when the user clicks or
+		// dismisses it, and this runs inside activate() — awaiting here blocks the extension host from
+		// starting (the "Extension host did not start in 10 seconds" stall). Handle the outcome in .then.
+		void HostProvider.window
+			.showMessage({
+				type: ShowMessageType.INFORMATION,
+				message,
+				options: { items: [cta, silence] },
+			})
+			.then(async ({ selectedOption }) => {
+				if (selectedOption === cta) {
+					// Engaged — reset the ignore streak so a returning, useful nudge isn't capped out.
+					stateManager.setGlobalState("reengagementNudgeIgnores", 0)
+					telemetryService.captureFreeTierReengagementClicked(installId, decision.cohort)
+					await HostProvider.workspace.openClineSidebarPanel({})
+				} else if (selectedOption === silence) {
+					stateManager.setGlobalState("reengagementNudgeSilenced", true)
+					telemetryService.captureFreeTierReengagementSilenced(installId, decision.cohort)
+				} else {
+					// Ignored (closed/auto-dismissed) — advance the decay counter; 3 in a row and we stop.
+					stateManager.setGlobalState("reengagementNudgeIgnores", ignoreCount + 1)
+					telemetryService.captureFreeTierReengagementDismissed(installId, decision.cohort)
+				}
+			})
+			.catch(() => {})
 	} catch {
 		// Non-critical — never block startup.
 	}
