@@ -35,9 +35,16 @@ Open source under Apache 2.0.
 
 ## What's New <sup>`v0.1.5`</sup>
 
-<img src="assets/icons/whatsnew-redesign.png" width="18" valign="middle" alt="" /> &nbsp;**A full UI redesign — rebuilt around how you actually start.** Early users told us the hardest part wasn't the agent, it was the cold start. So we rebuilt the entire first-run experience: see the tool work *before* any setup, land on something useful immediately, and always have a clear next step. The highlights:
+<img src="assets/icons/whatsnew-redesign.png" width="18" valign="middle" alt="" /> &nbsp;**A full UI redesign — rebuilt around how you actually start.** Early users told us the hardest part wasn't the agent, it was the cold start. So we rebuilt the entire first-run experience: see the tool work *before* any setup, land on something useful immediately, and always have a clear next step.
 
-<img src="assets/icons/whatsnew-demo.png" width="18" valign="middle" alt="" /> &nbsp;**See it crack a real bug — in 30 seconds, before you set anything up.** A new first-run demo debugs a real BLE bug on firmware bundled with the extension. No board, no API key, no project of your own required — watch the capture-analyze-fix loop on a genuine failure, then run it on your own firmware.
+<p align="center">
+  <img src="assets/docs/home-project-open.png" width="47%" alt="Home with a project open — Build/flash & debug, Add a feature, Test & validate workflow cards, plus a roadmap of coming-soon cards" />
+  &nbsp;&nbsp;
+  <img src="assets/docs/home-project-closed.png" width="47%" alt="Home with no project — Start a prototype or Open my nRF project, with recent tasks" />
+</p>
+<p align="center"><sub>The new home — context-aware <b>workflow cards</b> when a project is open (left), and a clear starting point when one isn't (right).</sub></p>
+
+<img src="assets/icons/whatsnew-demo.png" width="18" valign="middle" alt="" /> &nbsp;**See it debug a real bug — in 30 seconds, before you set anything up.** A new first-run demo debugs a real BLE bug on firmware bundled with the extension. No board, no API key, no project of your own required — watch the capture-analyze-fix loop on a genuine failure, then run it on your own firmware.
 
 <img src="assets/icons/whatsnew-free-tier.png" width="18" valign="middle" alt="" /> &nbsp;**Zero-config first run.** Install and you land straight on something that works — no provider-selection screen standing between you and the agent. The [free tier](#free-tier--start-without-a-key) is already on; bring your own key whenever you're ready.
 
