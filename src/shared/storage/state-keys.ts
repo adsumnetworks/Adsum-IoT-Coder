@@ -94,6 +94,8 @@ const GLOBAL_STATE_FIELDS = {
 	reengagementNudgeLastShown: { default: undefined as number | undefined },
 	// How many re-engagement nudges have been shown ever (hard-capped so we stop after a few).
 	reengagementNudgeCount: { default: undefined as number | undefined },
+	// User clicked "Don't show again" on a re-engagement nudge — silence it forever.
+	reengagementNudgeSilenced: { default: undefined as boolean | undefined },
 } satisfies FieldDefinitions
 
 // Fields that map directly to ApiHandlerOptions in @shared/api.ts
