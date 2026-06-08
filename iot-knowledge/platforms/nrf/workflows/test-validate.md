@@ -2,11 +2,16 @@
 
 **Triggered by:** Task text contains `test and validate` or `Prove` + `works`
 
-Proves a firmware project behaves correctly — **host-side first** (`native_sim`/`ztest`, no
-hardware, fast, everyday), **on-hardware second** (build → flash → capture → assert, for the
-checks a simulator can't make: real radio, real sensor, real timing). Scope Gate applies. Frame
-this as the dev's everyday "did I just break it?" loop, not a pre-release/fleet gate — that's
-parked (see `OVERVIEW.md` north star).
+Proves a firmware project behaves correctly — **host-side first** (a simulator, no hardware, fast,
+everyday), **on-hardware second** (build → flash → capture → assert, for the checks a simulator can't
+make: real radio, real sensor, real timing). Scope Gate applies. Frame this as the dev's everyday
+"did I just break it?" loop, not a pre-release/fleet gate — that's parked (see `OVERVIEW.md` north star).
+
+> ⚠️ **The host simulator is OS-specific — do not assume `native_sim`.** `native_sim` is supported
+> **only on Linux**. On **Windows and macOS** the host tier is **QEMU** (`qemu_cortex_m3`, or
+> `mps2/an521` for Cortex-M33 parts). Picking the wrong one is the top cause of "tests won't run."
+> `actions/run-twister.md` Step 0 owns the full OS→target table and the Windows QEMU setup guide —
+> let it resolve the target; never hardcode `native_sim` from this workflow.
 
 ---
 
@@ -19,22 +24,32 @@ in `AGENT.md`.
 
 ## Step 2: Determine test tier
 
-Use `ask_followup_question` (Rule 5 — proactive buttons):
+Use `ask_followup_question` (Rule 5 — proactive buttons). Label the host tier by the **actual host
+OS** (read the `Operating System:` line in SYSTEM INFORMATION) so the button is truthful — don't say
+"native_sim" on a Windows/macOS machine:
 
 > "Which validation do you want?
-> - Host tests (native_sim) — no hardware needed, fast, run this often
+> - Host logic tests (simulator) — no hardware needed, fast, run this often
 > - On-hardware checks — requires a connected nRF board
 > - Both (host first, then hardware)"
 
+On Linux the simulator is `native_sim`; on Windows/macOS it's QEMU (`run-twister.md` resolves it).
+
 ---
 
-## Step 3: Host tests (native_sim / Twister)
+## Step 3: Host tests (simulator / Twister)
 
 1. Check for a `tests/` directory containing `testcase.yaml` with `list_files` /
    `search_files` (`file_pattern=testcase.yaml`).
 2. If found: **MANDATORY SKILL LOAD** — `read_file` `platforms/nrf/actions/run-twister.md` before
-   running anything. Execute exactly as it describes (Twister on `native_sim`); report the
-   PASS/FAIL summary it defines.
+   running anything. Execute exactly as it describes — its **Step 0 resolves the OS-aware sim target**
+   (`native_sim` on Linux, QEMU on Windows/macOS); report the PASS/FAIL summary it defines.
+   - **Windows pre-check:** if the host OS is Windows and the first run errors on QEMU /
+     `qemu-system-arm` / `QEMU_BIN_PATH`, do NOT retry on `native_sim`. Walk the user through
+     `run-twister.md`'s **one-time QEMU setup** (install + `QEMU_BIN_PATH`) once, then re-run.
+   - **Honesty:** a simulator pass proves **logic only** (parsers, state machines, algorithms). It
+     cannot prove the radio, an I²C/SPI sensor, or real timing — those belong to Step 4 (hardware) or
+     BabbleSim (Linux). Don't call a peripheral path "validated" from a sim run.
 3. If none exists, offer to scaffold:
    > "No test suite found in this project. Want me to scaffold a basic Zephyr test module?"
    - On yes: `run-twister.md`'s **Scaffolding** section has the minimal 4-file `ztest` layout —
