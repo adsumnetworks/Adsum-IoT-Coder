@@ -205,6 +205,10 @@ export class TelemetryService {
 			UPGRADE_PROMPT_DEMO_CLICKED: "free_tier.upgrade_prompt_demo_clicked",
 			// Dormant user dismissed the upgrade card without acting
 			UPGRADE_PROMPT_DISMISSED: "free_tier.upgrade_prompt_dismissed",
+			// User successfully redeemed an invite code for extra free-tier tokens
+			INVITE_CODE_REDEEMED: "free_tier.invite_code_redeemed",
+			// User attempted to redeem an invite code but it failed (with reason)
+			INVITE_CODE_FAILED: "free_tier.invite_code_failed",
 		},
 		NRF: {
 			ENV_DETECTED: "nrf.env_detected",
@@ -697,6 +701,24 @@ export class TelemetryService {
 		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.UPGRADE_PROMPT_DISMISSED, {
 			install_id: installId,
 			version,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierInviteCodeRedeemed(installId: string, code: string, grantedTokens: number, sourceLabel: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.INVITE_CODE_REDEEMED, {
+			install_id: installId,
+			code,
+			granted_tokens: grantedTokens,
+			source_label: sourceLabel,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierInviteCodeFailed(installId: string, reason: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.INVITE_CODE_FAILED, {
+			install_id: installId,
+			reason,
 			tier: "anonymous",
 		})
 	}
