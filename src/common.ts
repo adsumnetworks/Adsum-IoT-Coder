@@ -203,11 +203,12 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 
 			if (lastShownAnnouncementId !== latestAnnouncementId) {
 				const isNewInstall = !previousVersion
-				// $(rocket) renders as a theme-colored (monochrome) codicon in the notification
-				// message — toast action buttons are plain text and can't show a themed icon.
+				// showMessage renders plain text only — it does NOT interpret $(codicon) syntax (that
+				// works in the status bar, tree items, MarkdownString, etc., not notification text). So
+				// the rocket has to be an emoji; notifications can't theme/monochrome it.
 				const message = isNewInstall
-					? `$(rocket) Welcome to Adsum IoT Coder v${currentVersion}`
-					: `$(rocket) Adsum IoT Coder has been updated to v${currentVersion}`
+					? `🚀 Welcome to Adsum IoT Coder v${currentVersion}`
+					: `🚀 Adsum IoT Coder has been updated to v${currentVersion}`
 				const cta = isNewInstall ? "See it debug a real bug (30s)" : "What's new — see it"
 				// Fire-and-forget: do NOT await the toast. showMessage resolves only when the user
 				// clicks or dismisses it, and this function is awaited in activate() — awaiting here
