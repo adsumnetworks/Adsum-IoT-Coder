@@ -42,6 +42,9 @@ export const COMMAND_CANCEL_TOKEN = "__cline_command_cancel__"
 export interface ExtensionState {
 	isNewUser: boolean
 	welcomeViewCompleted: boolean
+	/** When set (a demo scenario id), the webview auto-starts that demo once — e.g. from the
+	 *  first-run announcement toast CTA. Cleared host-side when the demo task fires. */
+	demoAutoStart?: string
 	onboardingModels: OnboardingModelGroup | undefined
 	apiConfiguration?: ApiConfiguration
 	autoApprovalSettings: AutoApprovalSettings
