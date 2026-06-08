@@ -213,6 +213,10 @@ export class TelemetryService {
 			REENGAGEMENT_SHOWN: "free_tier.reengagement_shown",
 			// User clicked the CTA on the re-engagement nudge
 			REENGAGEMENT_CLICKED: "free_tier.reengagement_clicked",
+			// User dismissed the re-engagement nudge (closed/ignored without acting)
+			REENGAGEMENT_DISMISSED: "free_tier.reengagement_dismissed",
+			// User clicked "Don't show again" — the red-line signal to watch
+			REENGAGEMENT_SILENCED: "free_tier.reengagement_silenced",
 		},
 		NRF: {
 			ENV_DETECTED: "nrf.env_detected",
@@ -738,6 +742,22 @@ export class TelemetryService {
 
 	public captureFreeTierReengagementClicked(installId: string, cohort: string) {
 		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.REENGAGEMENT_CLICKED, {
+			install_id: installId,
+			cohort,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierReengagementDismissed(installId: string, cohort: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.REENGAGEMENT_DISMISSED, {
+			install_id: installId,
+			cohort,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierReengagementSilenced(installId: string, cohort: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.REENGAGEMENT_SILENCED, {
 			install_id: installId,
 			cohort,
 			tier: "anonymous",
