@@ -34,7 +34,7 @@ describe("runIntent — shared intent routing", () => {
 		expect(onSelectMode).not.toHaveBeenCalled()
 	})
 
-	it.each(["addFeature", "buildFlash", "testValidate", "prototype", "demo"] as const)(
+	it.each(["addFeature", "buildFlashDebug", "buildFlash", "testValidate", "prototype", "demo"] as const)(
 		"%s → starts a task with its built prompt",
 		(id) => {
 			runIntent(id, { onSelectMode, onStartTask })
@@ -53,5 +53,12 @@ describe("runIntent — shared intent routing", () => {
 	it("demo intent carries the ADSUM_DEMO trigger so the host intercepts it", () => {
 		runIntent("demo", { onSelectMode, onStartTask })
 		expect(onStartTask.mock.calls[0][0]).toContain("[ADSUM_DEMO:nus-uart]")
+	})
+
+	it.each(["sdkMigration", "boardBringUp"] as const)("roadmap id %s never routes", (id) => {
+		runIntent(id, { onSelectMode, onStartTask })
+		expect(onStartTask).not.toHaveBeenCalled()
+		expect(onSelectMode).not.toHaveBeenCalled()
+		expect(openFolder).not.toHaveBeenCalled()
 	})
 })

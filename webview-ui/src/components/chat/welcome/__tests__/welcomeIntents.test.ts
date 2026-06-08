@@ -78,16 +78,26 @@ describe("PROJECT_INTENTS", () => {
 		expect(PROJECT_INTENTS.filter((d) => d.primary)).toHaveLength(1)
 	})
 
-	it("addFeature is the primary", () => {
-		expect(PROJECT_INTENTS.find((d) => d.primary)?.id).toBe("addFeature")
+	it("buildFlashDebug is the primary", () => {
+		expect(PROJECT_INTENTS.find((d) => d.primary)?.id).toBe("buildFlashDebug")
 	})
 
-	it("includes all four project-state intents", () => {
+	it("includes the live project intents (build/flash/debug merged) + roadmap cards", () => {
 		const ids = PROJECT_INTENTS.map((d) => d.id)
+		expect(ids).toContain("buildFlashDebug")
 		expect(ids).toContain("addFeature")
-		expect(ids).toContain("debug")
-		expect(ids).toContain("buildFlash")
 		expect(ids).toContain("testValidate")
+		// roadmap
+		expect(ids).toContain("sdkMigration")
+		expect(ids).toContain("boardBringUp")
+		// standalone build/flash + debug were merged away
+		expect(ids).not.toContain("buildFlash")
+		expect(ids).not.toContain("debug")
+	})
+
+	it("roadmap cards are flagged comingSoon; live cards are not", () => {
+		const soon = PROJECT_INTENTS.filter((d) => d.comingSoon).map((d) => d.id)
+		expect(soon).toEqual(["sdkMigration", "boardBringUp"])
 	})
 
 	it("excludes no-project intents", () => {
