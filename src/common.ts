@@ -198,10 +198,12 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 
 			if (lastShownAnnouncementId !== latestAnnouncementId) {
 				const isNewInstall = !previousVersion
+				// $(rocket) renders as a theme-colored (monochrome) codicon in the notification
+				// message — toast action buttons are plain text and can't show a themed icon.
 				const message = isNewInstall
-					? `Welcome to Adsum IoT Coder v${currentVersion}`
-					: `Adsum IoT Coder has been updated to v${currentVersion}`
-				const cta = isNewInstall ? "🚀 See it debug a real bug (30s)" : "🚀 What's new — see it"
+					? `$(rocket) Welcome to Adsum IoT Coder v${currentVersion}`
+					: `$(rocket) Adsum IoT Coder has been updated to v${currentVersion}`
+				const cta = isNewInstall ? "See it debug a real bug (30s)" : "What's new — see it"
 				// Fire-and-forget: do NOT await the toast. showMessage resolves only when the user
 				// clicks or dismisses it, and this function is awaited in activate() — awaiting here
 				// would block activation (and the version-tracker write below) until the user reacts.
@@ -211,13 +213,19 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 						message,
 						options: { items: [cta] },
 					})
-					.then(({ selectedOption }) => {
-						if (selectedOption === cta) {
-							// Queue the demo to auto-start, then reveal the sidebar. The webview's
-							// ChatView consumes demoAutoStart and runs it via handleStartDemo (only if
-							// no task is active); newTask clears the flag when the demo task fires.
-							StateManager.get().setGlobalState("demoAutoStart", "nus-uart")
-							void HostProvider.workspace.openClineSidebarPanel({})
+					.then(async ({ selectedOption }) => {
+						if (selectedOption !== cta) {
+							return
+						}
+						// Queue the demo, reveal the sidebar, then PUSH state — setGlobalState alone
+						// does not broadcast, so an already-open webview wouldn't see demoAutoStart.
+						// ChatView consumes it and runs the demo via handleStartDemo; newTask clears it.
+						StateManager.get().setGlobalState("demoAutoStart", "nus-uart")
+						await HostProvider.workspace.openClineSidebarPanel({})
+						try {
+							await WebviewProvider.getInstance().controller.postStateToWebview()
+						} catch {
+							// Webview not ready yet — it will pick up demoAutoStart on its next state sync.
 						}
 					})
 					.catch(() => {})
