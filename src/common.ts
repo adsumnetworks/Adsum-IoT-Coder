@@ -25,7 +25,7 @@ import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
 import { ErrorService } from "./services/error"
 import { featureFlagsService } from "./services/feature-flags"
-import { getDistinctId, initializeDistinctId } from "./services/logging/distinctId"
+import { getDistinctId, initializeDistinctId, setDistinctId } from "./services/logging/distinctId"
 import { telemetryService } from "./services/telemetry"
 import { PostHogClientProvider } from "./services/telemetry/providers/posthog/PostHogClientProvider"
 import { ShowMessageType } from "./shared/proto/host/window"
@@ -58,7 +58,16 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	await initializeDistinctId(context)
 
 	// Initialize stable anonymous install ID for Adsum free-tier proxy
-	await initializeInstallId(context)
+	const installId = await initializeInstallId(context)
+
+	// Unify the telemetry/feature-flag person key on the Adsum install_id so the host
+	// client funnel joins the backend's install_id person-space in PostHog. Host events
+	// were previously keyed by machineId (with install_id only as an event property),
+	// which made the install→demo→activation funnel unjoinable across client and backend.
+	// free-tier-stage0 is the only feature flag and is a 100% rollout, so re-keying does
+	// not change flag eligibility. On Cline sign-in, identifyUser() switches to the
+	// account id (recording install_id as an alias property), preserving that path.
+	setDistinctId(installId)
 
 	// Seed the in-memory quota cache from last-persisted value so the chip
 	// shows before the first API response on every launch (not just first registration)
