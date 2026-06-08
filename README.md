@@ -38,9 +38,9 @@ Open source under Apache 2.0.
 <img src="assets/icons/whatsnew-redesign.png" width="18" valign="middle" alt="" /> &nbsp;**A full UI redesign — rebuilt around how you actually start.** Early users told us the hardest part wasn't the agent, it was the cold start. So we rebuilt the entire first-run experience: see the tool work *before* any setup, land on something useful immediately, and always have a clear next step.
 
 <p align="center">
-  <img src="assets/docs/home-project-open.png" width="47%" alt="Home with a project open — Build/flash & debug, Add a feature, Test & validate workflow cards, plus a roadmap of coming-soon cards" />
+  <img src="assets/docs/home-project-open.png" width="300" alt="Home with a project open — Build/flash & debug, Add a feature, Test & validate workflow cards, plus a roadmap of coming-soon cards" />
   &nbsp;&nbsp;
-  <img src="assets/docs/home-project-closed.png" width="47%" alt="Home with no project — Start a prototype or Open my nRF project, with recent tasks" />
+  <img src="assets/docs/home-project-closed.png" width="300" alt="Home with no project — Start a prototype or Open my nRF project, with recent tasks" />
 </p>
 <p align="center"><sub>The new home — context-aware <b>workflow cards</b> when a project is open (left), and a clear starting point when one isn't (right).</sub></p>
 
