@@ -29,7 +29,11 @@ Store the user's selection for the duration of the task:
   - Options: `["Build now", "Skip build", "Cancel task"]`
 - If **Auto-Approve** mode: run the build directly.
 
-On **build failure:** follow the error handling in `actions/build.md`. Do NOT silently retry with the same code.
+On **build failure:** treat it as a first-class diagnosis, not a blocker to "real" debugging — for
+most everyday issues (Kconfig typo, missing overlay symbol, overflow), **the build error IS the
+bug**. Go straight into `actions/build.md`'s error-handling table (key-line extraction + pattern
+match), propose the fix, and loop — do NOT ask the user to "fix the build first and come back to
+debug." Do NOT silently retry with the same code.
 
 ### Phase 2: Flash
 
@@ -62,6 +66,8 @@ If capturing: **MANDATORY SKILL LOAD:** If not already loaded during this task, 
 After log capture, **MANDATORY SKILL LOAD:** If not already loaded during this task, you MUST use the `read_file` tool to load `platforms/nrf/actions/analyze-logs.md` BEFORE performing the analysis.
 
 **Before reading the log file:** use `list_files` on the relevant `logs/<transport>/` directory to discover the actual captured filename. Filenames include timestamps; never guess them from the capture command output. Pick the most recently created file matching the device/transport that was just captured.
+
+**If the log contains a fault signature** (`>>> ZEPHYR FATAL ERROR`, `***** USAGE/BUS/MPU/HARD FAULT *****`, `Stack overflow`, `SecureFault` — see `actions/decode-fault.md` for the full list): **MANDATORY SKILL LOAD** — `read_file` `platforms/nrf/actions/decode-fault.md` and decode the PC/LR to `file:line` before reporting. A raw register dump is not an analysis.
 
 Show the summary of your analysis with the important log snippets and the log file path so the user can click and view the full file.
 
