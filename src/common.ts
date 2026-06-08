@@ -201,7 +201,7 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 				const message = isNewInstall
 					? `Welcome to Adsum IoT Coder v${currentVersion}`
 					: `Adsum IoT Coder has been updated to v${currentVersion}`
-				const cta = isNewInstall ? "See it debug a real bug (30s)" : "What's new — see it"
+				const cta = isNewInstall ? "🚀 See it debug a real bug (30s)" : "🚀 What's new — see it"
 				// Fire-and-forget: do NOT await the toast. showMessage resolves only when the user
 				// clicks or dismisses it, and this function is awaited in activate() — awaiting here
 				// would block activation (and the version-tracker write below) until the user reacts.
@@ -213,6 +213,10 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 					})
 					.then(({ selectedOption }) => {
 						if (selectedOption === cta) {
+							// Queue the demo to auto-start, then reveal the sidebar. The webview's
+							// ChatView consumes demoAutoStart and runs it via handleStartDemo (only if
+							// no task is active); newTask clears the flag when the demo task fires.
+							StateManager.get().setGlobalState("demoAutoStart", "nus-uart")
 							void HostProvider.workspace.openClineSidebarPanel({})
 						}
 					})

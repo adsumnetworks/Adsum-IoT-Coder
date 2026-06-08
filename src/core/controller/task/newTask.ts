@@ -120,6 +120,9 @@ export async function newTask(controller: Controller, request: NewTaskRequest): 
 			taskText = buildDemoPrompt(ws, capability, env)
 			displayText = buildDemoDisplayText()
 			telemetryService.captureFreeTierDemoRunStarted(getInstallId(), "nus-uart")
+			// Consume the one-shot auto-start flag (set by the announcement toast CTA) so the demo
+			// doesn't re-trigger on the next launch.
+			controller.stateManager.setGlobalState("demoAutoStart", undefined)
 			// Demo files live in globalStorage (outside the workspace) — auto-approve reads for this
 			// task only. Does not touch the user's global auto-approval settings.
 			const existingApproval =
