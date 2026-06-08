@@ -130,10 +130,16 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 
 		// Dev test-mode (set ADSUM_REENGAGE_TEST=1 in the launch config) collapses the time gates so
 		// the nudge can be exercised under F5 without waiting 7 days. No effect in production.
-		const thresholds: ReengagementThresholds | undefined =
-			process.env.ADSUM_REENGAGE_TEST === "1"
-				? { dormantMs: 0, intervalMs: 0, maxShows: Number.POSITIVE_INFINITY }
-				: undefined
+		const testMode = process.env.ADSUM_REENGAGE_TEST === "1"
+
+		// Silenced forever ("Don't show again") — the hard opt-out. Test-mode ignores it so it can be re-run.
+		if (!testMode && stateManager.getGlobalStateKey("reengagementNudgeSilenced")) {
+			return
+		}
+
+		const thresholds: ReengagementThresholds | undefined = testMode
+			? { dormantMs: 0, intervalMs: 0, maxShows: Number.POSITIVE_INFINITY }
+			: undefined
 
 		const decision = classifyReengagement(history, lastShown, shownCount, Date.now(), thresholds)
 		if (!decision) {
@@ -160,15 +166,23 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 		const installId = getInstallId()
 		telemetryService.captureFreeTierReengagementShown(installId, decision.cohort, decision.daysDormant)
 
+		// "Don't show again" is the one-click silence-forever escape hatch (retention red-line rule).
+		const silence = "Don't show again"
 		const { selectedOption } = await HostProvider.window.showMessage({
 			type: ShowMessageType.INFORMATION,
 			message,
-			options: { items: [cta] },
+			options: { items: [cta, silence] },
 		})
 
 		if (selectedOption === cta) {
 			telemetryService.captureFreeTierReengagementClicked(installId, decision.cohort)
 			await HostProvider.workspace.openClineSidebarPanel({})
+		} else if (selectedOption === silence) {
+			stateManager.setGlobalState("reengagementNudgeSilenced", true)
+			telemetryService.captureFreeTierReengagementSilenced(installId, decision.cohort)
+		} else {
+			// Closed/auto-dismissed without acting — watch this rate vs uninstalls.
+			telemetryService.captureFreeTierReengagementDismissed(installId, decision.cohort)
 		}
 	} catch {
 		// Non-critical — never block startup.
