@@ -17,7 +17,7 @@ import { initDemoManager } from "./core/demos/DemoManager"
 import { StateManager } from "./core/storage/StateManager"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { ExtensionRegistryInfo } from "./registry"
-import { loadCachedQuota, registerInstallIfNeeded, shouldDefaultToFreeTier } from "./services/adsum/FreeTierService"
+import { loadCachedQuota, registerInstallIfNeeded } from "./services/adsum/FreeTierService"
 import { initFreeTierPersistence, setFreeTierActive } from "./services/adsum/FreeTierState"
 import { initializeInstallId } from "./services/adsum/InstallIdentity"
 import { maybeShowReengagementNudge } from "./services/adsum/ReengagementNudge"
@@ -106,36 +106,29 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 		new Promise<void>((resolve) => setTimeout(resolve, 3000)),
 	]).catch(() => {})
 
-	// Default fresh installs to the free tier when Stage 0 is enabled.
-	// Must run AFTER featureFlagsService.poll() above — the flag cache is cold
-	// during StateManager.initialize(), so the default computed there can't see it.
+	// One-time: set welcomeViewCompleted from existing API keys. Runs BEFORE the free-tier default
+	// below so that block can use welcomeViewCompleted as the "user already configured real
+	// inference" signal (migrate sets it true iff a real key/account exists).
+	await migrateWelcomeViewCompleted(context)
+
+	// Default fresh, unconfigured installs to the free tier (Stage 0) and skip the model-select
+	// gate so they land on the demo. The provider enum is NOT a reliable "configured" signal:
+	// state-helpers computes a default ("openrouter") during StateManager.initialize(), before the
+	// flag cache is warm, so a brand-new install already reads planModeApiProvider="openrouter".
+	// Key off welcomeViewCompleted instead (false here = no real key, per migrate just above).
+	// The flag cache is warm by now (featureFlagsService.poll() ran above).
 	try {
-		// getBooleanFlagEnabled is cache-only: if the bounded 3s poll above lost its race the
-		// flag cache is empty and this returns false, which wrongly sends a fresh free-tier
-		// install through the model-select gate. Fall back to a bounded live flag check so the
-		// gate-skip never depends on the poll having won that race (PostHog /decide is fast).
-		let freeTierEnabled = featureFlagsService.getBooleanFlagEnabled(FeatureFlag.FREE_TIER_STAGE0)
-		if (!freeTierEnabled) {
-			freeTierEnabled = await Promise.race([
-				featureFlagsService.isFeatureFlagEnabled(FeatureFlag.FREE_TIER_STAGE0),
-				new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2500)),
-			]).catch(() => false)
-		}
-		const hasExistingProvider = Boolean(
-			context.globalState.get("planModeApiProvider") || context.globalState.get("actModeApiProvider"),
-		)
-		if (shouldDefaultToFreeTier(freeTierEnabled, hasExistingProvider)) {
+		const freeTierEnabled = featureFlagsService.getBooleanFlagEnabled(FeatureFlag.FREE_TIER_STAGE0)
+		const alreadyConfigured = !!context.globalState.get("welcomeViewCompleted")
+		if (freeTierEnabled && !alreadyConfigured) {
 			const stateManager = StateManager.get()
 			stateManager.setGlobalState("planModeApiProvider", "adsum-free")
 			stateManager.setGlobalState("actModeApiProvider", "adsum-free")
-			// Skip the model-select gate — free tier is already chosen, sending a fresh
-			// install through a provider-selection screen before they see the demo adds friction.
 			stateManager.setGlobalState("welcomeViewCompleted", true)
-			// Write-through to raw globalState too: migrateWelcomeViewCompleted (below) reads
-			// raw state and, before the StateManager cache persists, would otherwise re-set this
-			// to false (no API keys) — re-showing the gate on the next launch.
+			// Write-through to raw globalState so the StateManager cache (read by the webview) and
+			// the next launch stay consistent.
 			await context.globalState.update("welcomeViewCompleted", true)
-			console.log("[adsum] fresh install defaulted to free tier")
+			console.log("[adsum] fresh install defaulted to free tier + model-select gate skipped")
 		}
 	} catch (err) {
 		console.warn("[adsum] free-tier default check failed:", err)
@@ -143,9 +136,6 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 
 	// Migrate custom instructions to global Cline rules (one-time cleanup)
 	await migrateCustomInstructionsToGlobalRules(context)
-
-	// Migrate welcomeViewCompleted setting based on existing API keys (one-time cleanup)
-	await migrateWelcomeViewCompleted(context)
 
 	// Migrate workspace storage values back to global storage (reverting previous migration)
 	await migrateWorkspaceToGlobalStorage(context)
