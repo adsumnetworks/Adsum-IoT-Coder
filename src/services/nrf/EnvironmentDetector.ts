@@ -49,14 +49,42 @@ export function setNrfExtensionInfo(info: { present: boolean; version?: string }
  * fall back to a bare "nrfutil" (resolved via PATH) for non-standard installs.
  */
 export function resolveNrfutilCommand(): string {
-	const binName = process.platform === "win32" ? "nrfutil.exe" : "nrfutil"
-	const candidates = [join(homedir(), ".nrfutil", "bin", binName)]
+	const isWin = process.platform === "win32"
+	const binName = isWin ? "nrfutil.exe" : "nrfutil"
+	const candidates: string[] = []
+
+	// 1. NRFUTIL_HOME — nrfutil's own env var; the nRF Connect tooling commonly sets it to a sandbox.
+	if (process.env.NRFUTIL_HOME) {
+		candidates.push(join(process.env.NRFUTIL_HOME, "bin", binName))
+	}
+	// 2. Canonical install location (works on macOS/Linux; also the Windows default for ~/.nrfutil).
+	candidates.push(join(homedir(), ".nrfutil", "bin", binName))
+	// 3. Windows-specific install locations (nRF Connect for Desktop / standalone downloads). The
+	//    nrfutil binary on Windows frequently is NOT under ~/.nrfutil/bin, which is why detection
+	//    fell back to a bare "nrfutil" that VS Code's PATH can't resolve → "nrfutil not found".
+	if (isWin) {
+		const localAppData = process.env.LOCALAPPDATA
+		const programFiles = process.env.ProgramFiles
+		if (localAppData) {
+			candidates.push(join(localAppData, "Programs", "nrfutil", binName))
+			candidates.push(join(localAppData, "Nordic Semiconductor", "nrfutil", "bin", binName))
+			candidates.push(join(localAppData, "nrfutil", "bin", binName))
+		}
+		if (programFiles) {
+			candidates.push(join(programFiles, "Nordic Semiconductor", "nrfutil", binName))
+		}
+	}
+
 	for (const candidate of candidates) {
 		if (existsSync(candidate)) {
+			console.log(`[adsum][nrf] nrfutil resolved to: ${candidate}`)
 			return candidate
 		}
 	}
-	return "nrfutil"
+	// Fall back to a bare command resolved via PATH/PATHEXT by the shell. On Windows this only
+	// works if nrfutil is on VS Code's PATH (often it is not — hence the diagnostics above/below).
+	console.log(`[adsum][nrf] nrfutil not found at known locations; falling back to PATH. Checked: ${candidates.join(" | ")}`)
+	return binName
 }
 
 /** Parse newline-delimited JSON (nrfutil's --json output is one event object per line). */
@@ -193,7 +221,12 @@ async function probeBoards(): Promise<{ nrfutilPresent: boolean; boards: NrfBoar
 		)
 
 		return { nrfutilPresent: true, boards }
-	} catch {
+	} catch (err) {
+		// Surface WHY detection failed so Windows "nrfutil not found" can be diagnosed:
+		// ENOENT/'is not recognized' = binary not on PATH; a non-zero exit = nrfutil ran but
+		// the subcommand failed (e.g. `nrfutil device` not installed).
+		const msg = err instanceof Error ? err.message : String(err)
+		console.warn(`[adsum][nrf] nrfutil probe failed (cmd="${nrfutil}"): ${msg}`)
 		return { nrfutilPresent: false, boards: [] }
 	}
 }
