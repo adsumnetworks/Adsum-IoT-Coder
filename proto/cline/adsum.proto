@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package cline;
+
+import "cline/common.proto";
+
+option go_package = "github.com/cline/grpc-go/cline";
+option java_multiple_files = true;
+option java_package = "bot.cline.proto";
+
+// Adsum-specific services (free-tier invite codes, etc.) — not part of upstream Cline.
+service AdsumService {
+  // Redeems an invite code for extra free-tier tokens.
+  // Request value is the raw code; response value is a JSON-encoded
+  // { grantedTokens, newQuota, sourceLabel }.
+  rpc redeemInviteCode(StringRequest) returns (String);
+}
