@@ -84,10 +84,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						<div style={{ fontSize: "11.5px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
 							{projectName ? (
 								<>
-									Working on <b>{projectName}</b> — pick a step, or just type below.
+									Working on <b>{projectName}</b> — pick a step.
 								</>
 							) : (
-								"Pick a step, or just type below."
+								"Pick a step."
 							)}
 						</div>
 					</div>
