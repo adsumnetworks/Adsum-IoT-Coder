@@ -203,18 +203,12 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 
 			if (lastShownAnnouncementId !== latestAnnouncementId) {
 				const isNewInstall = !previousVersion
-				// showMessage renders plain text only — it does NOT interpret $(codicon) syntax (that
-				// works in the status bar, tree items, MarkdownString, etc., not notification text), so
-				// an icon here must be an emoji. ⚡ (gold lightning) matches the free-tier "⚡ Free tier"
-				// branding and reads more professionally than a rocket.
 				const message = isNewInstall
-					? `⚡ Welcome to Adsum IoT Coder v${currentVersion}`
-					: `⚡ Adsum IoT Coder has been updated to v${currentVersion}`
-				// Notification buttons are plain text (no codicons/themed icons), and there is no
-				// monochrome rocket character — so the only monochrome icon option is a text-style
-				// glyph. ▶︎ is a play triangle forced to text presentation (︎), so it follows
-				// the button's text colour (monochrome) and reads as "watch the demo".
-				const cta = isNewInstall ? "▶︎ See it debug a real bug (30s)" : "▶︎ What's new — see it"
+					? `Welcome to Adsum IoT Coder v${currentVersion}`
+					: `Adsum IoT Coder has been updated to v${currentVersion}`
+				// ⚡ (gold lightning) on the CTA matches the free-tier "⚡ Free tier" branding. Notification
+				// buttons are plain text (no codicons/themed icons), so this is the colour emoji.
+				const cta = isNewInstall ? "⚡ See it debug a real bug (30s)" : "⚡ What's new — see it"
 				// Fire-and-forget: do NOT await the toast. showMessage resolves only when the user
 				// clicks or dismisses it, and this function is awaited in activate() — awaiting here
 				// would block activation (and the version-tracker write below) until the user reacts.
