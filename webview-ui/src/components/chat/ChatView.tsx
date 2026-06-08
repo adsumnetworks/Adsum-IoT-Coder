@@ -6,7 +6,7 @@ import { combineHookSequences } from "@shared/combineHookSequences"
 import type { ClineApiReqInfo, ClineMessage } from "@shared/ExtensionMessage"
 import { getApiMetrics } from "@shared/getApiMetrics"
 import { BooleanRequest, StringRequest } from "@shared/proto/cline/common"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useMount } from "react-use"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -60,6 +60,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		currentFocusChainChecklist,
 		hooksEnabled,
 		setExpandTaskHeader,
+		demoAutoStart,
 	} = useExtensionState()
 	const isProdHostedApp = userInfo?.apiBaseUrl === "https://app.cline.bot"
 	const shouldShowQuickWins = false
@@ -253,6 +254,18 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		},
 		[messageHandlers, setNordicPhase],
 	)
+
+	// Auto-start the demo once when the host requests it (e.g. the first-run announcement toast CTA
+	// set demoAutoStart, then revealed the sidebar). Goes through the normal handleStartDemo so
+	// isDemoRun / nordicPhase are set correctly. The host clears demoAutoStart when the demo task
+	// fires; the ref guards against a double-fire within this session.
+	const demoAutoStartFiredRef = useRef(false)
+	useEffect(() => {
+		if (demoAutoStart && !task && !demoAutoStartFiredRef.current) {
+			demoAutoStartFiredRef.current = true
+			void handleStartDemo(demoAutoStart)
+		}
+	}, [demoAutoStart, task, handleStartDemo])
 
 	const { selectedModelInfo } = useMemo(() => {
 		return normalizeApiConfiguration(apiConfiguration, mode)
