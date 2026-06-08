@@ -92,8 +92,9 @@ const GLOBAL_STATE_FIELDS = {
 	demoAutoStart: { default: undefined as string | undefined },
 	// Unix-ms timestamp of the last re-engagement nudge shown to a dormant user.
 	reengagementNudgeLastShown: { default: undefined as number | undefined },
-	// How many re-engagement nudges have been shown ever (hard-capped so we stop after a few).
-	reengagementNudgeCount: { default: undefined as number | undefined },
+	// Consecutive times a re-engagement nudge was ignored (dismissed without acting). Reset to 0 on
+	// engagement (CTA click); when it reaches the cap we stop nudging (decay — "ignored 3× → stop").
+	reengagementNudgeIgnores: { default: undefined as number | undefined },
 	// User clicked "Don't show again" on a re-engagement nudge — silence it forever.
 	reengagementNudgeSilenced: { default: undefined as boolean | undefined },
 } satisfies FieldDefinitions
