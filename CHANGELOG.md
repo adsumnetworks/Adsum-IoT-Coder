@@ -14,6 +14,11 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 
 - The previous two-button home (*Analyze Logs* / *Generate Logging Code*) is replaced by the demo + context-aware actions above; the same capabilities are reachable through *Build, flash & debug*.
 
+### Reliability
+
+- **Free-tier "tokens left" counter is now accurate.** It decrements by each request's real usage and shows **0** the moment the quota is exhausted — fixing the prior behavior where the chip could plateau (e.g. "~20k left") even after the free tier ran out. Resolves the 0.1.3 known issue.
+- **Invite codes.** Redeem a code in the free-tier panel (or the quota-exhausted card) for extra free-tier tokens.
+
 ## [0.1.3] - 2026-06-01
 
 ### Free tier — zero-friction onboarding
@@ -30,7 +35,7 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 
 ### Known issues
 
-- Free-tier "tokens left" chip can briefly show a stale value until the next prompt; balance is backend-authoritative and harmless. See README → Limitations.
+- Free-tier "tokens left" chip can briefly show a stale value until the next prompt; balance is backend-authoritative and harmless. See README → Limitations. *(Fixed in 0.1.5 — the chip now decrements live and shows 0 on exhaustion.)*
 
 ## [0.1.2] - 2026-05-31
 
