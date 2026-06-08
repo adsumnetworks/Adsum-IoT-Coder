@@ -2,6 +2,7 @@ import { String as ProtoString, StringRequest } from "@shared/proto/cline/common
 import { createHash } from "crypto"
 import { machineId } from "node-machine-id"
 import { ClineEnv } from "@/config"
+import { AdsumFreeHandler } from "@/core/api/providers/adsum-free"
 import { persistCachedFreeTokensRemaining } from "@/services/adsum/FreeTierState"
 import { getInstallId } from "@/services/adsum/InstallIdentity"
 import { telemetryService } from "@/services/telemetry"
@@ -74,6 +75,12 @@ export async function redeemInviteCode(controller: Controller, request: StringRe
 	// otherwise only re-syncs on the next state push (e.g. an inference) — so the top "tokens left"
 	// counter would stay stale after a redeem. Push explicitly so it updates immediately.
 	persistCachedFreeTokensRemaining(newQuota)
+	// When a free-tier task is active (e.g. a completed demo still held in controller.task), the
+	// webview badge reads the handler's remainingQuota — NOT the cache (see getStateToPostToWebview).
+	// Update it too, otherwise the chip stays stuck on the task's pre-redeem value.
+	if (controller.task?.api instanceof AdsumFreeHandler) {
+		controller.task.api.remainingQuota = newQuota
+	}
 	try {
 		await controller.postStateToWebview()
 	} catch {
