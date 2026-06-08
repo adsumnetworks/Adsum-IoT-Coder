@@ -35,11 +35,13 @@ Open source under Apache 2.0.
 
 ## What's New <sup>`v0.1.5`</sup>
 
-**▶ &nbsp;See it crack a real bug — in 30 seconds, before you set anything up.** A new first-run demo debugs a real BLE bug on firmware bundled with the extension. No board, no API key, no project of your own required — watch the capture-analyze-fix loop on a genuine failure, then run it on your own firmware.
+<img src="assets/icons/whatsnew-redesign.png" width="18" valign="middle" alt="" /> &nbsp;**A full UI redesign — rebuilt around how you actually start.** Early users told us the hardest part wasn't the agent, it was the cold start. So we rebuilt the entire first-run experience: see the tool work *before* any setup, land on something useful immediately, and always have a clear next step. The highlights:
+
+<img src="assets/icons/whatsnew-demo.png" width="18" valign="middle" alt="" /> &nbsp;**See it crack a real bug — in 30 seconds, before you set anything up.** A new first-run demo debugs a real BLE bug on firmware bundled with the extension. No board, no API key, no project of your own required — watch the capture-analyze-fix loop on a genuine failure, then run it on your own firmware.
 
 <img src="assets/icons/whatsnew-free-tier.png" width="18" valign="middle" alt="" /> &nbsp;**Zero-config first run.** Install and you land straight on something that works — no provider-selection screen standing between you and the agent. The [free tier](#free-tier--start-without-a-key) is already on; bring your own key whenever you're ready.
 
-**🧭 &nbsp;A home screen that guides the next step.** When a project is open, the agent reads what it is and offers the right moves — *Build, flash & debug*, *Add a feature*, *Test & validate* — one click each. After any task finishes, it suggests where to go next instead of leaving you at a blank prompt.
+<img src="assets/icons/whatsnew-guide.png" width="18" valign="middle" alt="" /> &nbsp;**A home screen that guides the next step.** When a project is open, the agent reads what it is and offers the right moves — *Build, flash & debug*, *Add a feature*, *Test & validate* — one click each. After any task finishes, it suggests where to go next instead of leaving you at a blank prompt.
 
 <img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Instant key switchover.** Add your own provider mid-session — the running task continues, no restart.
 
