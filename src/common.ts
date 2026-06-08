@@ -110,7 +110,17 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	// Must run AFTER featureFlagsService.poll() above — the flag cache is cold
 	// during StateManager.initialize(), so the default computed there can't see it.
 	try {
-		const freeTierEnabled = featureFlagsService.getBooleanFlagEnabled(FeatureFlag.FREE_TIER_STAGE0)
+		// getBooleanFlagEnabled is cache-only: if the bounded 3s poll above lost its race the
+		// flag cache is empty and this returns false, which wrongly sends a fresh free-tier
+		// install through the model-select gate. Fall back to a bounded live flag check so the
+		// gate-skip never depends on the poll having won that race (PostHog /decide is fast).
+		let freeTierEnabled = featureFlagsService.getBooleanFlagEnabled(FeatureFlag.FREE_TIER_STAGE0)
+		if (!freeTierEnabled) {
+			freeTierEnabled = await Promise.race([
+				featureFlagsService.isFeatureFlagEnabled(FeatureFlag.FREE_TIER_STAGE0),
+				new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2500)),
+			]).catch(() => false)
+		}
 		const hasExistingProvider = Boolean(
 			context.globalState.get("planModeApiProvider") || context.globalState.get("actModeApiProvider"),
 		)
@@ -121,6 +131,10 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 			// Skip the model-select gate — free tier is already chosen, sending a fresh
 			// install through a provider-selection screen before they see the demo adds friction.
 			stateManager.setGlobalState("welcomeViewCompleted", true)
+			// Write-through to raw globalState too: migrateWelcomeViewCompleted (below) reads
+			// raw state and, before the StateManager cache persists, would otherwise re-set this
+			// to false (no API keys) — re-showing the gate on the next launch.
+			await context.globalState.update("welcomeViewCompleted", true)
 			console.log("[adsum] fresh install defaulted to free tier")
 		}
 	} catch (err) {
