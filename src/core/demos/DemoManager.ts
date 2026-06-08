@@ -156,31 +156,36 @@ no confirmation step, no button choices before the beats. The reads are the run-
 Beats 1 and 3 each REQUIRE their mermaid diagram, reproduced verbatim from the workflow — never replace a \
 diagram with prose. Be direct and educational — you are showing a developer a real nRF bug.
 
-When you call attempt_completion — and only AFTER you have done the reads and presented the beats — the \
-result must be one sentence only: the root-cause verdict. Do NOT repeat the five beats in the completion \
-result — they are already in the conversation stream. Re-rendering them in the green box creates \
-triple-presentation that confuses the developer. (If the flow was cut short per the rule above, there is \
-no verdict to give — say the analysis didn't run rather than completing with a canned diagnosis.)
-${escalation}
-End your final message with exactly — nothing after it: <!--TASK_COMPLETE-->`
+You may call attempt_completion only AFTER you have done the reads and presented the beats — never before. \
+State the root-cause verdict in ONE sentence as a normal message (do NOT repeat the five beats — they are \
+already in the conversation stream, and re-rendering them creates a confusing triple-presentation). Then do \
+NOT call attempt_completion yet: present the next-step choice in the section below as a button question, using \
+the ask_followup_question tool with real option buttons, and complete the task only once the developer has \
+chosen. (If the flow was cut short per the rule above, there is no verdict and no choice to offer — say the \
+analysis didn't run rather than completing with a canned diagnosis.)
+${escalation}`
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
 
 function buildEscalationBlock(capability: DemoCapability, ws: DemoWorkspace, env?: NrfEnvironment): string {
+	// Shared across all tiers: the always-present "stop" path and the invitation to ask instead of pick.
+	const wrapUp = `If the developer picks "I've seen enough — wrap up" (or says they are done): reply with a brief two-sentence conclusion — recap the root cause in one line, then invite them to point Adsum at their own nRF firmware — and call attempt_completion with that conclusion. End the final message with exactly, nothing after it: <!--TASK_COMPLETE-->`
+	const askAnything = `The buttons are suggestions, not a cage — the developer can also just type a question (about this bug, the one-line fix, the NUS protocol, or NCS in general). If they ask instead of choosing, answer it concisely from the evidence already on screen, then offer the same choice again rather than completing.`
+
 	if (capability === "build") {
 		const sdkVersion = env?.installedSdkVersions?.[0] ?? "NCS"
 		return `
-After your five-beat analysis, add this section before ending the task:
+After your five-beat analysis and one-sentence verdict, present the next step as BUTTONS using the ask_followup_question tool (never as "type this" free text). Ask exactly this:
 
----
+Question: "That's the bug. Want proof the fix is real — not something I made up? You have ${sdkVersion} installed, so I can apply the one-line fix and compile the central firmware right here — no boards needed."
+Options:
+- "Build it — prove the fix compiles"
+- "I've seen enough — wrap up"
 
-**Want proof the fix is real — not something I made up?**
-You have ${sdkVersion} installed. I'll apply the one-line fix right now and compile the central firmware on your machine. A clean build proves \`bt_nus_subscribe_receive()\` is a genuine NCS API — not a hallucination. No boards needed.
+${askAnything}
 
-Type **"build it"** and I'll compile it on your machine right now.
-
-If the user types "build it", do the following steps in order. Do NOT edit the demo source in place —
+If the developer picks "Build it — prove the fix compiles", do the following steps in order. Do NOT edit the demo source in place —
 work on a throwaway copy in /tmp so the demo stays pristine for the next run:
 
 1. Copy the central project to a clean build location. This also avoids CMake's space-in-path bug:
@@ -199,6 +204,7 @@ work on a throwaway copy in /tmp so the demo stays pristine for the next run:
 4. If it compiles clean: tell the developer "The fix compiles on NCS ${sdkVersion}. \`bt_nus_subscribe_receive()\` is a real SDK API — the diagnosis was accurate. Connect two boards to see it run live." Then end the task with \`<!--TASK_COMPLETE-->\`.
 5. If it fails: show the compiler error verbatim and explain what it means. Then end the task with \`<!--TASK_COMPLETE-->\`.
 
+${wrapUp}
 `
 	}
 
@@ -208,16 +214,17 @@ work on a throwaway copy in /tmp so the demo stays pristine for the next run:
 		const flashDoc = path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "flash.md")
 		const captureDoc = path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "capture-logs.md")
 		return `
-After your five-beat analysis, add this section before ending the task:
+After your five-beat analysis and one-sentence verdict, present the next step as BUTTONS using the ask_followup_question tool (never as "type this" free text). Ask exactly this:
 
----
+Question: "That's the bug. Want to see it fail and then pass on your own hardware? You have ${boardWord} connected — I can flash the buggy firmware, capture real RTT, reproduce the failure, then apply the fix and confirm it end-to-end."
+Options:
+- "Flash & run it live on my boards"
+- "Just build it — no boards needed"
+- "I've seen enough — wrap up"
 
-**Want to reproduce it live on your hardware?**
-You have ${boardWord} connected. I can flash the buggy firmware, capture real RTT logs from your hardware, verify the failure — then apply the fix and confirm it works end-to-end.
+${askAnything}
 
-Type **"flash it"** and I'll run it on your hardware.
-
-If the user types "flash it", reproduce it live using the project's REAL flash and capture actions — do NOT
+If the developer picks "Flash & run it live on my boards", reproduce it live using the project's REAL flash and capture actions — do NOT
 improvise with raw shell, and do NOT hand-roll RTT capture. Read and follow these two action guides first:
 - Flash:   ${flashDoc}
 - Capture: ${captureDoc}
@@ -279,10 +286,34 @@ All RTT/UART capture uses the real capture action (log_device) exactly as the ca
 NOT shell out to JLinkRTTLogger or similar. If any step fails, show the real error and stop — do not fall
 back to ad-hoc workarounds.
 
+If the developer picks "Just build it — no boards needed", prove the fix compiles without flashing. Work on a throwaway /tmp copy (this also avoids CMake's space-in-path bug):
+   \`\`\`
+   rm -rf /tmp/adsum_demo_central /tmp/adsum_demo_build && cp -R "${ws.centralPath}" /tmp/adsum_demo_central
+   \`\`\`
+In \`/tmp/adsum_demo_central/src/main.c\`, inside \`discovery_complete()\`, add \`bt_nus_subscribe_receive(nus);\` immediately after \`bt_nus_handles_assign(dm, nus);\`, then build from inside the NCS workspace:
+   \`\`\`
+   west build -s /tmp/adsum_demo_central -b nrf52840dk/nrf52840 -d /tmp/adsum_demo_build
+   \`\`\`
+On a clean build, tell the developer the fix compiles and \`bt_nus_subscribe_receive()\` is a real NCS API — the diagnosis was accurate. Then call attempt_completion and end with \`<!--TASK_COMPLETE-->\`.
+
+${wrapUp}
 `
 	}
 
-	return "\n"
+	return `
+After your five-beat analysis and one-sentence verdict, present the next step as BUTTONS using the ask_followup_question tool (never as "type this" free text). Ask exactly this:
+
+Question: "That's the bug — diagnosed entirely from the captured logs and the two firmware sources. Where to next?"
+Options:
+- "Show me the one-line fix"
+- "I've seen enough — wrap up"
+
+${askAnything}
+
+If the developer picks "Show me the one-line fix": show the fix in context — in \`discovery_complete()\`, add \`bt_nus_subscribe_receive(nus);\` immediately after \`bt_nus_handles_assign(dm, nus);\` — and explain in one or two sentences why that single line restores the dropped peripheral->central path. Then call attempt_completion with a one-line conclusion and end the final message with \`<!--TASK_COMPLETE-->\`.
+
+${wrapUp}
+`
 }
 
 /** Recursively copy a directory. */
