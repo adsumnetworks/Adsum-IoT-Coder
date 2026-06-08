@@ -21,8 +21,9 @@ const DAY_MS = 24 * 60 * 60 * 1000
 export const REENGAGEMENT_DORMANT_MS = 7 * DAY_MS
 /** Never nudge more often than this, so reopens don't spam. */
 export const REENGAGEMENT_MIN_INTERVAL_MS = 14 * DAY_MS
-/** Hard cap — after this many nudges, stop. Respect the "no". */
-export const REENGAGEMENT_MAX_SHOWS = 3
+/** Decay (retention rule): stop after this many *consecutive ignores* (dismissed without acting).
+ *  Clicking the CTA resets the streak — engaged users are never capped, the disengaged are left alone. */
+export const REENGAGEMENT_MAX_IGNORES = 3
 
 export type ReengagementCohort = "demo_no_work" | "did_work"
 
@@ -34,7 +35,7 @@ export interface ReengagementDecision {
 interface ReengagementThresholds {
 	dormantMs?: number
 	intervalMs?: number
-	maxShows?: number
+	maxIgnores?: number
 }
 
 /**
@@ -47,20 +48,21 @@ interface ReengagementThresholds {
 export function classifyReengagement(
 	history: ReadonlyArray<{ task?: string; ts?: number }> | undefined,
 	lastShownMs: number,
-	shownCount: number,
+	ignoreCount: number,
 	nowMs: number,
 	thresholds?: ReengagementThresholds,
 ): ReengagementDecision | null {
 	const dormantMs = thresholds?.dormantMs ?? REENGAGEMENT_DORMANT_MS
 	const intervalMs = thresholds?.intervalMs ?? REENGAGEMENT_MIN_INTERVAL_MS
-	const maxShows = thresholds?.maxShows ?? REENGAGEMENT_MAX_SHOWS
+	const maxIgnores = thresholds?.maxIgnores ?? REENGAGEMENT_MAX_IGNORES
 
 	// Brand-new install (no history): the welcome hero + install toast own first-run.
 	if (!history || history.length === 0) {
 		return null
 	}
-	// Respect the "no" — stop after the cap.
-	if (shownCount >= maxShows) {
+	// Decay: stop after repeated ignores. The caller resets ignoreCount to 0 on engagement (click),
+	// so this only fires for users who keep dismissing — the disengaged are left alone.
+	if (ignoreCount >= maxIgnores) {
 		return null
 	}
 	// Rate limit so reopens within the window don't spam.
@@ -126,7 +128,7 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 		const history = await readTaskHistoryFromState()
 		const stateManager = StateManager.get()
 		const lastShown = stateManager.getGlobalStateKey("reengagementNudgeLastShown") ?? 0
-		const shownCount = stateManager.getGlobalStateKey("reengagementNudgeCount") ?? 0
+		const ignoreCount = stateManager.getGlobalStateKey("reengagementNudgeIgnores") ?? 0
 
 		// Dev test-mode (set ADSUM_REENGAGE_TEST=1 in the launch config) collapses the time gates so
 		// the nudge can be exercised under F5 without waiting 7 days. No effect in production.
@@ -138,10 +140,10 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 		}
 
 		const thresholds: ReengagementThresholds | undefined = testMode
-			? { dormantMs: 0, intervalMs: 0, maxShows: Number.POSITIVE_INFINITY }
+			? { dormantMs: 0, intervalMs: 0, maxIgnores: Number.POSITIVE_INFINITY }
 			: undefined
 
-		const decision = classifyReengagement(history, lastShown, shownCount, Date.now(), thresholds)
+		const decision = classifyReengagement(history, lastShown, ignoreCount, Date.now(), thresholds)
 		if (!decision) {
 			return
 		}
@@ -159,9 +161,9 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 		const freeTokens = getFreeTierTokensForDisplay()
 		const { message, cta } = buildReengagementMessage(decision.cohort, { hasProject, projectName, freeTokens })
 
-		// Persist BEFORE showing so an ignored nudge still counts against the cap/interval.
+		// Stamp the rate-limit clock before showing; the ignore-streak is updated by the OUTCOME below
+		// (reset on engage, incremented on dismiss) so engaged users are never capped.
 		stateManager.setGlobalState("reengagementNudgeLastShown", Date.now())
-		stateManager.setGlobalState("reengagementNudgeCount", shownCount + 1)
 
 		const installId = getInstallId()
 		telemetryService.captureFreeTierReengagementShown(installId, decision.cohort, decision.daysDormant)
@@ -175,13 +177,16 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 		})
 
 		if (selectedOption === cta) {
+			// Engaged — reset the ignore streak so a returning, useful nudge isn't capped out.
+			stateManager.setGlobalState("reengagementNudgeIgnores", 0)
 			telemetryService.captureFreeTierReengagementClicked(installId, decision.cohort)
 			await HostProvider.workspace.openClineSidebarPanel({})
 		} else if (selectedOption === silence) {
 			stateManager.setGlobalState("reengagementNudgeSilenced", true)
 			telemetryService.captureFreeTierReengagementSilenced(installId, decision.cohort)
 		} else {
-			// Closed/auto-dismissed without acting — watch this rate vs uninstalls.
+			// Ignored (closed/auto-dismissed) — advance the decay counter; 3 in a row and we stop.
+			stateManager.setGlobalState("reengagementNudgeIgnores", ignoreCount + 1)
 			telemetryService.captureFreeTierReengagementDismissed(installId, decision.cohort)
 		}
 	} catch {

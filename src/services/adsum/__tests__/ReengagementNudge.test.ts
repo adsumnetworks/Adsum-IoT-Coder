@@ -4,7 +4,7 @@ import {
 	buildReengagementMessage,
 	classifyReengagement,
 	REENGAGEMENT_DORMANT_MS,
-	REENGAGEMENT_MAX_SHOWS,
+	REENGAGEMENT_MAX_IGNORES,
 	REENGAGEMENT_MIN_INTERVAL_MS,
 } from "../ReengagementNudge"
 
@@ -54,9 +54,9 @@ describe("classifyReengagement", () => {
 		expect(classifyReengagement([work(dormantTs)], lastShown, 0, NOW)?.cohort).to.equal("did_work")
 	})
 
-	it("hard cap reached → null (respect the no)", () => {
-		expect(classifyReengagement([work(dormantTs)], 0, REENGAGEMENT_MAX_SHOWS, NOW)).to.equal(null)
-		expect(classifyReengagement([work(dormantTs)], 0, REENGAGEMENT_MAX_SHOWS - 1, NOW)?.cohort).to.equal("did_work")
+	it("decay: ignored up to the cap → stop (respect the no)", () => {
+		expect(classifyReengagement([work(dormantTs)], 0, REENGAGEMENT_MAX_IGNORES, NOW)).to.equal(null)
+		expect(classifyReengagement([work(dormantTs)], 0, REENGAGEMENT_MAX_IGNORES - 1, NOW)?.cohort).to.equal("did_work")
 	})
 
 	it("reports days dormant", () => {
@@ -65,11 +65,12 @@ describe("classifyReengagement", () => {
 	})
 
 	it("test-mode thresholds collapse the time gates", () => {
-		// Recent task + just nudged would normally be null; zeroed thresholds + infinite cap ⇒ shows.
+		// Recent task + just nudged + many ignores would normally be null; zeroed thresholds + infinite
+		// ignore cap ⇒ shows.
 		const d = classifyReengagement([demo(recentTs)], NOW, 99, NOW, {
 			dormantMs: 0,
 			intervalMs: 0,
-			maxShows: Number.POSITIVE_INFINITY,
+			maxIgnores: Number.POSITIVE_INFINITY,
 		})
 		expect(d?.cohort).to.equal("demo_no_work")
 	})
