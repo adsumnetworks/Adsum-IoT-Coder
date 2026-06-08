@@ -38,14 +38,30 @@ describe("NextStepChooser — context-aware cards", () => {
 			/>,
 		)
 
-	it("project open → renders the four project intents", () => {
+	it("project open → renders the live project intents + roadmap cards", () => {
 		mockState(["/Users/me/central_uart"])
 		renderChooser(false)
+		// live
+		expect(screen.getByTestId("next-step-buildFlashDebug")).toBeInTheDocument()
 		expect(screen.getByTestId("next-step-addFeature")).toBeInTheDocument()
-		expect(screen.getByTestId("next-step-debug")).toBeInTheDocument()
-		expect(screen.getByTestId("next-step-buildFlash")).toBeInTheDocument()
 		expect(screen.getByTestId("next-step-testValidate")).toBeInTheDocument()
+		// roadmap (coming soon)
+		expect(screen.getByTestId("next-step-sdkMigration")).toBeInTheDocument()
+		expect(screen.getByTestId("next-step-boardBringUp")).toBeInTheDocument()
+		// merged-away standalone cards are gone
+		expect(screen.queryByTestId("next-step-debug")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("next-step-buildFlash")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("next-step-prototype")).not.toBeInTheDocument()
+	})
+
+	it("roadmap cards are disabled and never route", () => {
+		mockState(["/Users/me/central_uart"])
+		renderChooser(false)
+		const soon = screen.getByTestId("next-step-sdkMigration") as HTMLButtonElement
+		expect(soon.disabled).toBe(true)
+		fireEvent.click(soon)
+		expect(onStartTask).not.toHaveBeenCalled()
+		expect(onSelectMode).not.toHaveBeenCalled()
 	})
 
 	it("no project → renders the no-project intents", () => {
@@ -71,12 +87,12 @@ describe("NextStepChooser — context-aware cards", () => {
 		expect(screen.getByText("What would you like to do next?")).toBeInTheDocument()
 	})
 
-	it("clicking Debug routes to log_analyzer mode (not a free-text task)", () => {
+	it("clicking the primary Build/flash/debug starts a project-scoped task", () => {
 		mockState(["/Users/me/central_uart"])
 		renderChooser(false)
-		fireEvent.click(screen.getByTestId("next-step-debug"))
-		expect(onSelectMode).toHaveBeenCalledWith("log_analyzer")
-		expect(onStartTask).not.toHaveBeenCalled()
+		fireEvent.click(screen.getByTestId("next-step-buildFlashDebug"))
+		expect(onStartTask).toHaveBeenCalledTimes(1)
+		expect(onStartTask.mock.calls[0][0]).toContain("central_uart")
 	})
 
 	it("clicking Add a feature starts a task with the project-scoped prompt", () => {

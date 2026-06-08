@@ -8,11 +8,10 @@ import { DEFAULT_DEMO_SCENARIO_ID, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
 import DockCoachMark from "./DockCoachMark"
-import IntentCard from "./IntentCard"
-import { runIntent } from "./runIntent"
+import IntentList from "./IntentList"
 import StatusHeader from "./StatusHeader"
 import TenureNudge from "./TenureNudge"
-import { getTenure, intentDescription, NO_PROJECT_INTENTS, PROJECT_INTENTS } from "./welcomeIntents"
+import { getTenure, NO_PROJECT_INTENTS, PROJECT_INTENTS } from "./welcomeIntents"
 
 interface WelcomeViewProps {
 	onSelectMode: (mode: NordicModeId) => void
@@ -76,26 +75,32 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				{/* Hero demo — the bulletproof floor, until the user has run it once */}
 				{!demoDone && <DemoCard onStartDemo={onStartDemo} />}
 
+				{/* "What would you like to do?" — only when a project is open (the chooser context) */}
+				{hasWorkspace && (
+					<div className="w-full">
+						<div style={{ fontSize: "13px", fontWeight: 700, color: "var(--vscode-foreground)" }}>
+							What would you like to do?
+						</div>
+						<div style={{ fontSize: "11.5px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
+							{projectName ? (
+								<>
+									Working on <b>{projectName}</b> — pick a step, or just type below.
+								</>
+							) : (
+								"Pick a step, or just type below."
+							)}
+						</div>
+					</div>
+				)}
+
 				{/* Adaptive intent cards */}
-				<div className="flex flex-col gap-3 w-full">
-					{intents.map((intent) => (
-						<IntentCard
-							description={intentDescription(intent, projectName ?? undefined)}
-							icon={intent.icon}
-							key={intent.id}
-							onClick={() =>
-								runIntent(intent.id, {
-									onSelectMode,
-									onStartTask,
-									projectName: projectName ?? undefined,
-								})
-							}
-							primary={intent.primary}
-							testId={`intent-card-${intent.id}`}
-							title={intent.title}
-						/>
-					))}
-				</div>
+				<IntentList
+					intents={intents}
+					onSelectMode={onSelectMode}
+					onStartTask={onStartTask}
+					projectName={projectName ?? undefined}
+					testIdPrefix="intent-card"
+				/>
 
 				{/* Demoted demo — quiet "Re-run demo" once it has been seen */}
 				{demoDone && (

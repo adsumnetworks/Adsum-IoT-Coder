@@ -67,11 +67,13 @@ describe("WelcomeView — context-aware intent cards", () => {
 		vi.mocked(useExtensionState).mockReset()
 	})
 
-	it("project open → project intents", () => {
+	it("project open → project intents (merged primary + roadmap)", () => {
 		mockState({ openFolderPaths: ["/Users/me/central_uart"], taskHistory: [] })
 		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("intent-card-buildFlashDebug")).toBeInTheDocument()
 		expect(screen.getByTestId("intent-card-addFeature")).toBeInTheDocument()
-		expect(screen.getByTestId("intent-card-debug")).toBeInTheDocument()
+		expect(screen.getByTestId("intent-card-sdkMigration")).toBeInTheDocument()
+		expect(screen.queryByTestId("intent-card-debug")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("intent-card-prototype")).not.toBeInTheDocument()
 	})
 
@@ -86,6 +88,6 @@ describe("WelcomeView — context-aware intent cards", () => {
 	it("interpolates the project name into the Add a feature card", () => {
 		mockState({ openFolderPaths: ["/Users/me/central_uart"], taskHistory: [] })
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.getByText(/central_uart/)).toBeInTheDocument()
+		expect(screen.getByTestId("intent-card-addFeature").textContent).toContain("central_uart")
 	})
 })

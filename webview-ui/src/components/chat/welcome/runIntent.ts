@@ -14,6 +14,10 @@ export interface IntentActionHandlers {
  * screen and the post-task NextStepChooser so both route identically.
  */
 export function runIntent(id: IntentId, handlers: IntentActionHandlers): void {
+	// Roadmap placeholders are rendered disabled and never route.
+	if (id === "sdkMigration" || id === "boardBringUp") {
+		return
+	}
 	if (id === "debug") {
 		handlers.onSelectMode("log_analyzer")
 	} else if (id === "openProject") {

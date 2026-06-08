@@ -2,9 +2,8 @@ import React from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import DemoCard from "../DemoCard"
 import type { NordicModeId } from "../nordicModes"
-import IntentCard from "./IntentCard"
-import { runIntent } from "./runIntent"
-import { intentDescription, NO_PROJECT_INTENTS, PROJECT_INTENTS } from "./welcomeIntents"
+import IntentList from "./IntentList"
+import { NO_PROJECT_INTENTS, PROJECT_INTENTS } from "./welcomeIntents"
 
 interface NextStepChooserProps {
 	isDemoRun: boolean
@@ -32,23 +31,13 @@ const NextStepChooser: React.FC<NextStepChooserProps> = ({ isDemoRun, onSelectMo
 				{heading}
 			</div>
 
-			{intents.map((intent) => (
-				<IntentCard
-					description={intentDescription(intent, projectName)}
-					icon={intent.icon}
-					key={intent.id}
-					onClick={() =>
-						runIntent(intent.id, {
-							onSelectMode,
-							onStartTask,
-							projectName,
-						})
-					}
-					primary={intent.primary}
-					testId={`next-step-${intent.id}`}
-					title={intent.title}
-				/>
-			))}
+			<IntentList
+				intents={intents}
+				onSelectMode={onSelectMode}
+				onStartTask={onStartTask}
+				projectName={projectName}
+				testIdPrefix="next-step"
+			/>
 
 			{isDemoRun && <DemoCard onStartDemo={onStartDemo} variant="rerun" />}
 		</div>
