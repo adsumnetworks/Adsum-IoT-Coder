@@ -21,7 +21,7 @@ export interface RedeemResult {
  * Returns a JSON-encoded RedeemResult on success; throws a human-readable
  * message on failure (mapped from backend error codes).
  */
-export async function redeemInviteCode(_controller: Controller, request: StringRequest): Promise<ProtoString> {
+export async function redeemInviteCode(controller: Controller, request: StringRequest): Promise<ProtoString> {
 	const code = request.value?.trim() ?? ""
 	if (!code) {
 		throw new Error("Enter an invite code.")
@@ -69,8 +69,16 @@ export async function redeemInviteCode(_controller: Controller, request: StringR
 	const newQuota = body.new_quota ?? 0
 	const sourceLabel = body.source_label ?? ""
 
-	// Immediately refresh the in-memory + persisted quota so the token chip updates.
+	// Refresh the in-memory + persisted quota, then PUSH state to the webview. persistCached…
+	// updates the status-bar listener but NOT the webview's freeTierRemainingTokens badge, which
+	// otherwise only re-syncs on the next state push (e.g. an inference) — so the top "tokens left"
+	// counter would stay stale after a redeem. Push explicitly so it updates immediately.
 	persistCachedFreeTokensRemaining(newQuota)
+	try {
+		await controller.postStateToWebview()
+	} catch {
+		// Webview not ready — the badge refreshes on the next state sync.
+	}
 
 	telemetryService.captureFreeTierInviteCodeRedeemed(installId, code, grantedTokens, sourceLabel)
 
