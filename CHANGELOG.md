@@ -2,6 +2,18 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
+## [0.1.5] - 2026-06-08
+
+### See it work before you set anything up
+
+- **30-second first-run demo.** A new home-screen demo debugs a real BLE bug on firmware bundled with the extension — capture → analyze → fix on a genuine failure, with no board, API key, or project of your own required. Run it on your own firmware right after.
+- **Zero-config first run.** Fresh installs land directly on a working home screen — no provider-selection gate before you can try the agent. The free tier is on by default; bring your own key anytime.
+- **Guided home screen.** With a project open, the agent reads what it is and offers the right next moves as one-click actions — *Build, flash & debug*, *Add a feature*, *Test & validate*. After any task finishes, it suggests the next step instead of leaving a blank prompt.
+
+### Notes
+
+- The previous two-button home (*Analyze Logs* / *Generate Logging Code*) is replaced by the demo + context-aware actions above; the same capabilities are reachable through *Build, flash & debug*.
+
 ## [0.1.3] - 2026-06-01
 
 ### Free tier — zero-friction onboarding
