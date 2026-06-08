@@ -1,61 +1,173 @@
+import { basename } from "path"
 import { HostProvider } from "@/hosts/host-provider"
+import { telemetryService } from "@/services/telemetry"
 import { readTaskHistoryFromState } from "../../core/storage/disk"
 import { StateManager } from "../../core/storage/StateManager"
 import { ShowMessageType } from "../../shared/proto/host/window"
+import { getFreeTierTokensForDisplay } from "./FreeTierState"
+import { getInstallId } from "./InstallIdentity"
 
-// Fires at most once per interval, only for users who installed and ran at least one
-// task but never completed the demo ("wow" moment). Dormant = has tasks, no demo.
-// New installs (zero tasks) get nothing here — the announcement CTA handles them.
+// Re-engages DORMANT users when they reopen VS Code. In-editor toasts can only reach users who
+// come back to the editor — the truly churned (uninstalled / not opening VS Code) need email,
+// which is a separate channel. Two reachable cohorts (history is non-empty here, so a user has
+// always done *something* — either the demo or a real task):
+//   • demo_no_work — ran the demo, never used it on real firmware → invite to try their own.
+//   • did_work     — ran ≥1 real task, went idle → invite to pick up where they left off.
 
 const DEMO_TASK_PREFIX = "Debug a real BLE NUS bug"
-// At most one nudge every 3 days so re-opens don't spam the user.
-export const REENGAGEMENT_MIN_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000
+const DAY_MS = 24 * 60 * 60 * 1000
 
-/**
- * Pure decision: should the dormant-user re-engagement nudge be shown?
- * Extracted so the gating logic is unit-testable without VS Code / PostHog singletons.
- *
- * @param history     task history (undefined/empty ⇒ brand-new install)
- * @param lastShownMs unix-ms of the last nudge shown (0 ⇒ never)
- * @param nowMs       current unix-ms
- */
-export function shouldShowReengagementNudge(
-	history: ReadonlyArray<{ task?: string }> | undefined,
-	lastShownMs: number,
-	nowMs: number,
-): boolean {
-	// Brand-new install: the welcome demo hero + announcement CTA already cover them.
-	if (!history || history.length === 0) {
-		return false
-	}
-	// Already had the wow moment — never nag.
-	if (history.some((h) => h.task?.startsWith(DEMO_TASK_PREFIX))) {
-		return false
-	}
-	// Rate limit so re-opens within the window don't spam.
-	return nowMs - lastShownMs >= REENGAGEMENT_MIN_INTERVAL_MS
+/** Idle for this long (since the last task) before we consider a user dormant. */
+export const REENGAGEMENT_DORMANT_MS = 7 * DAY_MS
+/** Never nudge more often than this, so reopens don't spam. */
+export const REENGAGEMENT_MIN_INTERVAL_MS = 14 * DAY_MS
+/** Hard cap — after this many nudges, stop. Respect the "no". */
+export const REENGAGEMENT_MAX_SHOWS = 3
+
+export type ReengagementCohort = "demo_no_work" | "did_work"
+
+export interface ReengagementDecision {
+	cohort: ReengagementCohort
+	daysDormant: number
 }
 
-export async function maybeShowReengagementNudge(): Promise<void> {
-	try {
-		const history = await readTaskHistoryFromState()
-		const stateManager = StateManager.get()
-		const lastShown = stateManager.getGlobalStateKey("reengagementNudgeLastShown") ?? 0
+interface ReengagementThresholds {
+	dormantMs?: number
+	intervalMs?: number
+	maxShows?: number
+}
 
-		if (!shouldShowReengagementNudge(history, lastShown, Date.now())) {
+/**
+ * Pure decision: should a dormant-user re-engagement nudge be shown, and for which cohort?
+ * Extracted so the gating is unit-testable without VS Code / PostHog singletons. Thresholds are
+ * injectable so tests (and a dev test-mode) can override them.
+ *
+ * @returns the cohort + how long they've been dormant, or null if no nudge should show.
+ */
+export function classifyReengagement(
+	history: ReadonlyArray<{ task?: string; ts?: number }> | undefined,
+	lastShownMs: number,
+	shownCount: number,
+	nowMs: number,
+	thresholds?: ReengagementThresholds,
+): ReengagementDecision | null {
+	const dormantMs = thresholds?.dormantMs ?? REENGAGEMENT_DORMANT_MS
+	const intervalMs = thresholds?.intervalMs ?? REENGAGEMENT_MIN_INTERVAL_MS
+	const maxShows = thresholds?.maxShows ?? REENGAGEMENT_MAX_SHOWS
+
+	// Brand-new install (no history): the welcome hero + install toast own first-run.
+	if (!history || history.length === 0) {
+		return null
+	}
+	// Respect the "no" — stop after the cap.
+	if (shownCount >= maxShows) {
+		return null
+	}
+	// Rate limit so reopens within the window don't spam.
+	if (nowMs - lastShownMs < intervalMs) {
+		return null
+	}
+	// Dormancy is measured from the most recent task; active users are left alone.
+	const lastTaskMs = history.reduce((max, h) => Math.max(max, h.ts ?? 0), 0)
+	if (lastTaskMs === 0 || nowMs - lastTaskMs < dormantMs) {
+		return null
+	}
+
+	const daysDormant = Math.floor((nowMs - lastTaskMs) / DAY_MS)
+	// Any non-demo task counts as real work. With non-empty history, !hasWork ⇒ demo-only.
+	const hasWork = history.some((h) => !!h.task && !h.task.startsWith(DEMO_TASK_PREFIX))
+	return { cohort: hasWork ? "did_work" : "demo_no_work", daysDormant }
+}
+
+export interface ReengagementCopy {
+	message: string
+	cta: string
+}
+
+/** Context-aware copy for a cohort. Names the project when one is open; hints free balance. */
+export function buildReengagementMessage(
+	cohort: ReengagementCohort,
+	ctx: { hasProject: boolean; projectName?: string; freeTokens?: number },
+): ReengagementCopy {
+	const quotaHint =
+		ctx.freeTokens && ctx.freeTokens > 0 ? ` You still have ${ctx.freeTokens.toLocaleString()} free tokens.` : ""
+
+	if (cohort === "demo_no_work") {
+		return ctx.hasProject
+			? {
+					message: `You've seen Adsum debug a BLE bug — point it at ${ctx.projectName} and try it on your own firmware.${quotaHint}`,
+					cta: "Debug my firmware",
+				}
+			: {
+					message: `Ready to try Adsum on your own nRF firmware? Open your project and I'll debug it live.${quotaHint}`,
+					cta: "Open my project",
+				}
+	}
+	// did_work
+	return ctx.hasProject
+		? { message: `Pick up where you left off on ${ctx.projectName}?${quotaHint}`, cta: "Resume" }
+		: {
+				message: `Welcome back to Adsum IoT Coder — open your nRF project and let's keep going.${quotaHint}`,
+				cta: "Open my project",
+			}
+}
+
+/**
+ * Shows the dormant re-engagement nudge if warranted. Never throws (must not block activation).
+ * @param announcementShown true if the version/update toast already showed this launch — if so we
+ *   skip, so a version-bump launch never double-toasts.
+ */
+export async function maybeShowReengagementNudge(announcementShown: boolean): Promise<void> {
+	try {
+		if (announcementShown) {
 			return
 		}
 
-		stateManager.setGlobalState("reengagementNudgeLastShown", Date.now())
+		const history = await readTaskHistoryFromState()
+		const stateManager = StateManager.get()
+		const lastShown = stateManager.getGlobalStateKey("reengagementNudgeLastShown") ?? 0
+		const shownCount = stateManager.getGlobalStateKey("reengagementNudgeCount") ?? 0
 
-		const cta = "See it now (30s)"
+		// Dev test-mode (set ADSUM_REENGAGE_TEST=1 in the launch config) collapses the time gates so
+		// the nudge can be exercised under F5 without waiting 7 days. No effect in production.
+		const thresholds: ReengagementThresholds | undefined =
+			process.env.ADSUM_REENGAGE_TEST === "1"
+				? { dormantMs: 0, intervalMs: 0, maxShows: Number.POSITIVE_INFINITY }
+				: undefined
+
+		const decision = classifyReengagement(history, lastShown, shownCount, Date.now(), thresholds)
+		if (!decision) {
+			return
+		}
+
+		// Context for the copy.
+		let hasProject = false
+		let projectName: string | undefined
+		try {
+			const roots = (await HostProvider.workspace.getWorkspacePaths({})).paths
+			hasProject = roots.length > 0
+			projectName = hasProject ? basename(roots[0]) : undefined
+		} catch {
+			// No workspace info — fall back to the no-project copy.
+		}
+		const freeTokens = getFreeTierTokensForDisplay()
+		const { message, cta } = buildReengagementMessage(decision.cohort, { hasProject, projectName, freeTokens })
+
+		// Persist BEFORE showing so an ignored nudge still counts against the cap/interval.
+		stateManager.setGlobalState("reengagementNudgeLastShown", Date.now())
+		stateManager.setGlobalState("reengagementNudgeCount", shownCount + 1)
+
+		const installId = getInstallId()
+		telemetryService.captureFreeTierReengagementShown(installId, decision.cohort, decision.daysDormant)
+
 		const { selectedOption } = await HostProvider.window.showMessage({
 			type: ShowMessageType.INFORMATION,
-			message: "Adsum can debug a real BLE bug live — want to see it?",
+			message,
 			options: { items: [cta] },
 		})
 
 		if (selectedOption === cta) {
+			telemetryService.captureFreeTierReengagementClicked(installId, decision.cohort)
 			await HostProvider.workspace.openClineSidebarPanel({})
 		}
 	} catch {
