@@ -37,13 +37,6 @@ Open source under Apache 2.0.
 
 <img src="assets/icons/whatsnew-redesign.png" width="18" valign="middle" alt="" /> &nbsp;**A full UI redesign — rebuilt around how you actually start.** Early users told us the hardest part wasn't the agent, it was the cold start. So we rebuilt the entire first-run experience: see the tool work *before* any setup, land on something useful immediately, and always have a clear next step.
 
-<p align="center">
-  <img src="assets/docs/home-project-open.png" width="300" alt="Home with a project open — Build/flash & debug, Add a feature, Test & validate workflow cards, plus a roadmap of coming-soon cards" />
-  &nbsp;&nbsp;
-  <img src="assets/docs/home-project-closed.png" width="300" alt="Home with no project — Start a prototype or Open my nRF project, with recent tasks" />
-</p>
-<p align="center"><sub>The new home — context-aware <b>workflow cards</b> when a project is open (left), and a clear starting point when one isn't (right).</sub></p>
-
 <img src="assets/icons/whatsnew-demo.png" width="18" valign="middle" alt="" /> &nbsp;**See it debug a real bug — in 30 seconds, before you set anything up.** A new first-run demo debugs a real BLE bug on firmware bundled with the extension. No board, no API key, no project of your own required — watch the capture-analyze-fix loop on a genuine failure, then run it on your own firmware.
 
 <img src="assets/icons/whatsnew-free-tier.png" width="18" valign="middle" alt="" /> &nbsp;**Zero-config first run.** Install and you land straight on something that works — no provider-selection screen standing between you and the agent. The [free tier](#free-tier--start-without-a-key) is already on; bring your own key whenever you're ready.
@@ -206,7 +199,12 @@ See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 
 Install it and you can start immediately — the [free tier](#free-tier--start-without-a-key) runs on a managed model, so there's no provider screen to clear first. Add your own key whenever you want.
 
-<p><img src="assets/docs/home.png" width="100%" alt="Adsum IoT Coder Home" /></p>
+<p align="center">
+  <img src="assets/docs/home-project-closed.png" width="320" alt="First run with no project open — Start a prototype or Open my nRF project" />
+  &nbsp;&nbsp;
+  <img src="assets/docs/home-project-open.png" width="320" alt="With an nRF project open — Build/flash & debug, Add a feature, Test & validate workflow cards" />
+</p>
+<p align="center"><sub>The home on first run (left) and after opening an nRF project (right) — it adapts to what you're working on.</sub></p>
 
 **Start with the 30-second demo.** The home screen leads with a live demo that debugs a real BLE bug on firmware bundled with the extension — capture → analyze → fix on a genuine failure, with no board or project of your own needed. It's the fastest way to see how the agent works before pointing it at your code.
 
@@ -364,7 +362,7 @@ BYOK (Bring Your Own Key) — you control which model and endpoint you trust. So
 
 > **Local models work.** Any OpenAI-compatible endpoint can be configured, including locally-hosted models via Ollama, LM Studio, or llama.cpp's built-in server — useful for privacy-sensitive projects where data cannot leave the developer's machine. A model with strong native tool-calling is required; small local models often fall short.
 
-**Telemetry.** Anonymous extension activations, tool triggers, and execution errors. Never source code, file paths, chat content, or device logs. Opt out: set `telemetry.telemetryLevel` to `off` in VS Code settings.
+**Telemetry.** Anonymous product analytics — installs, activations, feature and free-tier usage, and execution errors, keyed to a random install ID. Never source code, file paths, chat content, or device logs. Opt out: set `telemetry.telemetryLevel` to `off` in VS Code settings.
 
 ---
 
