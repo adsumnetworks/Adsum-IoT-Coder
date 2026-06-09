@@ -24,6 +24,14 @@ Early users told us the hardest part wasn't the agent, it was the cold start. So
 - **Windows: better nRF tooling detection.** `nrfutil` is now found in more install locations (`NRFUTIL_HOME` and common Windows paths), fixing a spurious "nrfutil not found".
 - **"What's new" re-appears on updates.** Patch releases (e.g. 0.1.3 → 0.1.5) now show the what's-new note to existing users, not only fresh installs.
 
+### Smarter workflows behind the cards
+
+The one-click workflow cards now hold up across platforms and harder projects:
+
+- **Test & validate works on Windows and macOS — not just Linux.** It picks the right path for your machine: a host simulator where one fits, or running the **same tests on your connected board** with no extra install. It's also honest about what a simulator can and can't prove (logic vs. real radio, sensor, and timing), and walks you through the one-time QEMU setup only when you actually need board-free runs.
+- **Prototyping handles two-device and sensor builds.** Ask for a central ↔ peripheral system and it scaffolds **both** apps from the matching Nordic samples and flashes each to its own board; ask for an I²C sensor and it wires the devicetree overlay correctly — the parts that usually trip people up. It builds the files for you instead of pointing you at a sample to open, and sketches the architecture (and a two-device timeline) first.
+- **Debug a board that's already running — no reflash.** *Build, flash & debug* can now skip straight to capturing and analyzing logs when your device is already running the firmware you want to inspect.
+
 ## [0.1.3] - 2026-06-01
 
 ### Free tier — zero-friction onboarding

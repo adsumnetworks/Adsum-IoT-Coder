@@ -151,9 +151,13 @@ describe("buildDemoPrompt", () => {
 
 	it("references all six evidence files by their real paths", () => {
 		const p = buildDemoPrompt(ws, "canned")
-		expect(p).to.contain("demo-debug.md")
-		expect(p).to.contain("BLE.md")
-		expect(p).to.contain(ws.centralPath)
-		expect(p).to.contain(ws.peripheralPath)
+		// buildDemoPrompt composes the evidence paths with path.join, which emits backslashes on
+		// Windows; the fixture paths are POSIX. Compare separator-agnostically so the assertion holds
+		// on every OS (the product uses native paths at runtime — only this string check needs it).
+		const norm = p.replace(/\\/g, "/")
+		expect(norm).to.contain("demo-debug.md")
+		expect(norm).to.contain("BLE.md")
+		expect(norm).to.contain(ws.centralPath)
+		expect(norm).to.contain(ws.peripheralPath)
 	})
 })
