@@ -4,15 +4,17 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 
 ## [0.1.5] - 2026-06-08
 
-### See it work before you set anything up
+### A full UI redesign — rebuilt around how you start
 
-- **30-second first-run demo.** A new home-screen demo debugs a real BLE bug on firmware bundled with the extension — capture → analyze → fix on a genuine failure, with no board, API key, or project of your own required. Run it on your own firmware right after.
+Early users told us the hardest part wasn't the agent, it was the cold start. So we rebuilt the entire first-run experience: see it work *before* any setup, land on something useful immediately, and always have a clear next step.
+
+- **See it debug a real bug — in 30 seconds, before you set anything up.** A new first-run demo debugs a real BLE bug on firmware bundled with the extension — capture → analyze → fix on a genuine failure, with no board, API key, or project of your own required. Run it on your own firmware right after.
 - **Zero-config first run.** Fresh installs land directly on a working home screen — no provider-selection gate before you can try the agent. The free tier is on by default; bring your own key anytime.
-- **Guided home screen.** With a project open, the agent reads what it is and offers the right next moves as one-click actions — *Build, flash & debug*, *Add a feature*, *Test & validate*. After any task finishes, it suggests the next step instead of leaving a blank prompt.
+- **A home screen that guides the next step.** With a project open, the agent reads what it is and offers one-click **workflow cards** — *Build, flash & debug*, *Add a feature*, *Test & validate* — with *SDK migration* and *board bring-up* on the way. With no project open, it points you to *start a prototype* or *open your nRF project*. After any task finishes, it suggests where to go next instead of leaving a blank prompt.
 
 ### Notes
 
-- The previous two-button home (*Analyze Logs* / *Generate Logging Code*) is replaced by the demo + context-aware actions above; the same capabilities are reachable through *Build, flash & debug*.
+- The previous two-button home (*Analyze Logs* / *Generate Logging Code*) is replaced by the demo + context-aware workflow cards above; the same capabilities are reachable through *Build, flash & debug*.
 
 ### Reliability
 
