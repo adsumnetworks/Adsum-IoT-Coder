@@ -1,8 +1,33 @@
 # Autonomous Debug Loop (workflows/debug-loop.md)
 
-**Triggered by:** Log Generator Step 6, Log Analyzer recommendation, code modifications, or explicit user request to "build and flash".
+**Triggered by:** Log Generator Step 6, Log Analyzer recommendation, code modifications, or explicit user request to "build and flash". This is also the workflow behind the **"Build, flash & debug"** home card.
 
 The Debug Loop is an iterative process to **Build**, **Flash**, **Capture Logs**, and **Analyze** firmware until an issue is resolved. This workflow orchestrates the actions defined in `actions/`.
+
+---
+
+## Step 0: Entry — (re)flash, or is the firmware already running?
+
+Many "debug my device" requests are about a board that is **already running** the firmware — there,
+rebuilding and reflashing is wasted effort (and risk). Settle this one thing before the loop.
+
+**Skip the question when the answer is obvious:**
+- You just made a code change, or the user explicitly said "build and flash" / "build, flash & debug"
+  → go straight to the loop (Pre-Loop below).
+- The user said "my device is misbehaving" / "check the logs" / "what do the logs say" with **no code
+  change** → default to the analyze-only path.
+
+Otherwise ask with `ask_followup_question`:
+- Question: *"Is the firmware you want to debug already running on the board, or should I build & flash it first?"*
+- Options: `["It's already running — just capture & analyze logs", "Build & flash first, then debug"]`
+
+**Routing:**
+- **Already running → analyze only (no reflash):** **MANDATORY SKILL LOAD:** `read_file` →
+  `platforms/nrf/workflows/log-analyzer.md` and follow it — it owns device discovery, backend
+  detection (RTT/UART), capture, and code-aware root-cause for a board you did **not** just flash
+  (debug-loop's own capture phase assumes the device it flashed; log-analyzer does the discovery).
+  Come back to the loop only if its analysis surfaces a fix to build & flash.
+- **Build & flash first:** continue to Pre-Loop below.
 
 ---
 
