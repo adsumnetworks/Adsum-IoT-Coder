@@ -227,10 +227,14 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext): 
 						if (selectedOption !== cta) {
 							return
 						}
-						// Queue the demo, reveal the sidebar, then PUSH state — setGlobalState alone
-						// does not broadcast, so an already-open webview wouldn't see demoAutoStart.
-						// ChatView consumes it and runs the demo via handleStartDemo; newTask clears it.
-						StateManager.get().setGlobalState("demoAutoStart", "nus-uart")
+						// New install → auto-start the demo (push them straight to the wow). On an UPDATE,
+						// "What's new — see it" should just open the home (which shows the What's New card +
+						// the demo hero) and let the returning user choose — NOT force-run the demo, which
+						// the button label doesn't promise. setGlobalState alone doesn't broadcast, so we
+						// also push state; ChatView consumes demoAutoStart and runs the demo via handleStartDemo.
+						if (isNewInstall) {
+							StateManager.get().setGlobalState("demoAutoStart", "nus-uart")
+						}
 						await HostProvider.workspace.openClineSidebarPanel({})
 						try {
 							await WebviewProvider.getInstance().controller.postStateToWebview()
