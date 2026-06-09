@@ -65,3 +65,6 @@ Adsum-Planning/
 # Local MCP server config (Nordic MCP etc.) — per-developer, keep out of repo history
 .mcp.json
 .vscode/mcp.json
+
+# Tooling/agent artifact (holds local prod context) — never commit
+.embedder/
