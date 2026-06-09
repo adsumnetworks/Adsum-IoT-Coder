@@ -32,11 +32,22 @@ matters** — `nrf/…` are Nordic-authored, `zephyr/…` are upstream Zephyr.
 | connect to a peripheral / NUS client | Central UART | `nrf/samples/bluetooth/central_uart` |
 | scan for nearby devices / observe | Observer | `zephyr/samples/bluetooth/observer` |
 
+> **Two-device prototypes — pick a MATCHED PAIR, not one sample.** A "central talks to peripheral"
+> request is **two apps**, each flashed to its own board. Pair the roles from the same family so the
+> GATT service lines up: `central_uart` ↔ `peripheral_uart` (NUS, the canonical pair),
+> `central_uart`/`peripheral_lbs` only if you intend a custom service. Return **both** paths and tell
+> the caller this is a two-app, two-board build (see `prototype.md` two-device handling).
+
 **Sensors / shell**
-| Capability | Sample | Path |
-|---|---|---|
-| read temp / humidity / pressure | BME280 | `zephyr/samples/sensor/bme280` |
-| CLI / shell over BLE | NUS shell | `nrf/samples/bluetooth/shell_bt_nus` |
+| Capability | Sample | Path | Note |
+|---|---|---|---|
+| read temp / humidity / pressure | BME280 | `zephyr/samples/sensor/bme280` | uses the Zephyr **sensor driver** (`compatible = "bosch,bme280"`, Sensor API) |
+| generic sensor-channel polling pattern | Sensor shell / Generic | `zephyr/samples/sensor/*` | copy the fetch/get loop, not board pins |
+| CLI / shell over BLE | NUS shell | `nrf/samples/bluetooth/shell_bt_nus` | |
+
+> **An I²C sensor is devicetree-first, not just a sample copy.** The sample shows the *read loop*; the
+> board-specific part (which `&i2cN`, the overlay, the 7-bit address, the nRF52 `nrf-twim` gotcha) is
+> the **I²C sensor recipe in `add-feature.md`** — route there to actually wire it up.
 
 ### 2. Search the installed NCS tree (anything not in the index)
 Resolve the NCS root (from `build_info.yml` `west.topdir`, or `nrfutil sdk-manager list --all-fields`),

@@ -1,8 +1,11 @@
 # Action: Run Host Tests via Twister (actions/run-twister.md)
 
 ## When Used
-Called from `workflows/test-validate.md` Step 3 (host-tier validation, no hardware required). Builds
-and runs a project's Zephyr/`ztest` test applications **in a simulator** and reports PASS/FAIL.
+Called from `workflows/test-validate.md` — **Tier A** (simulator ztest, no board) and **Tier B**
+(on-hardware ztest via `--device-testing`). Builds and runs a project's Zephyr/`ztest` suites and
+reports PASS/FAIL. Same suites either way; the only difference is *where* they run — a simulator
+(`native_sim`/QEMU) or the real SoC. **If a board is connected, Tier B needs no QEMU** — prefer it
+over pushing a QEMU install.
 
 ## Pre-conditions
 - A `tests/` directory containing `testcase.yaml` (or legacy `sample.yaml`) exists in the project —
@@ -44,22 +47,32 @@ is **no nRF RADIO, no nRF UARTE, no I²C/SPI sensor, no real timing**. So:
   `type: unit` suite — the everyday "did I just break it?" tier.
 - ❌ Cannot prove anything touching nRF peripherals, the radio, an I²C sensor, or real timing. Those
   need **BabbleSim** (`nrf52_bsim` / `nrf5340bsim` — high-fidelity but **Linux-only**) or the
-  **on-hardware** tier (`test-validate.md` Step 4). Say so honestly; do not claim a sensor/BLE path is
-  "validated" from a QEMU run.
+  **on-hardware** tiers (Tier B/C in `test-validate.md`). Say so honestly; do not claim a sensor/BLE
+  path is "validated" from a QEMU run.
 
-## Windows: one-time QEMU setup (the install guide)
-If the host is Windows and QEMU is missing, **STOP and walk the user through this once** — do NOT fall
-back to `native_sim` and do NOT flail. Detect "missing" from a run that fails with QEMU/`qemu-system-arm`
-not found, or proactively check `qemu-system-arm --version`.
+## Windows: one-time QEMU setup (ONLY for board-free / Tier A runs)
+QEMU is **not** bundled in the nRF Connect SDK on Windows (it ships inside the Zephyr SDK on
+Linux/macOS only). It is needed **solely** for the simulator tier. So:
+
+- **If a board is connected → do NOT install QEMU.** Use **Tier B** (`--device-testing`, below) — it
+  runs the same suites on the real SoC with zero install. Only offer the QEMU install when the user
+  genuinely wants board-free / CI runs.
+- **Detect "missing" cleanly.** Prefer letting Twister report it (a `BLOCK`/`ERROR` naming
+  `qemu-system-arm` / `QEMU_BIN_PATH`). If you probe proactively, use a **shell-correct** form — the
+  nRF terminal may be PowerShell or cmd, so never use the cmd-only `echo %VAR%` / `&&` / `2>nul`
+  (it errors in PowerShell). PowerShell: `if (Get-Command qemu-system-arm -EA SilentlyContinue) {...}`.
+
+When the user opts into the install:
 
 1. **Install QEMU.** The NCS toolchain ships Chocolatey, so the simplest path is
    `choco install qemu` (run in the nRF Connect terminal). Otherwise download the Windows installer
    from `https://www.qemu.org/download/#windows` and install it.
 2. **Note the install folder**, e.g. `C:\Program Files\qemu`.
 3. **Add it to `PATH`**, and set `QEMU_BIN_PATH` to that same folder (Twister reads `QEMU_BIN_PATH`
-   on Windows to find the emulator). Set it persistently, or for the session in the nRF terminal:
-   `setx QEMU_BIN_PATH "C:\Program Files\qemu"` (new terminal) — or add it to `%userprofile%/zephyrrc.cmd`.
-4. **Verify:** `qemu-system-arm --version` prints a version.
+   on Windows to find the emulator). `setx QEMU_BIN_PATH "C:\Program Files\qemu"` works in both
+   PowerShell and cmd, but only affects **new** terminals — or add it to `%userprofile%/zephyrrc.cmd`.
+4. **Verify:** `qemu-system-arm --version` prints a version (or `$env:QEMU_BIN_PATH` is set in a fresh
+   terminal).
 5. Re-run the test command. (On Linux/macOS QEMU is already inside the Zephyr SDK — no install needed.)
 
 ## Run the tests
@@ -92,6 +105,28 @@ the terminal pre-loads `ZEPHYR_BASE`), passing the **target resolved in Step 0**
 **Equivalent single-app shortcut** (one test app, no Twister filtering needed) — same target rule:
 `west build -b <target> -t run` from the test app directory (`-b native_sim` on Linux, `-b qemu_cortex_m3`
 / `-b mps2/an521` on Windows/macOS). To stop a QEMU run: `Ctrl-a` then `x`.
+
+## Run on hardware (Tier B — no QEMU, no native_sim)
+When a board is connected, run the **same** suites on the real SoC with Twister's device-testing mode.
+This is the lowest-friction "with hardware" path — no simulator, no QEMU install, works identically on
+Windows/macOS/Linux:
+
+```bash
+<ZEPHYR_BASE>/scripts/twister --device-testing --device-serial <COM/tty> --device-serial-baud 115200 -p <board>/<soc> -T <path/to/tests> -i
+```
+
+> **One line, OS-aware invocation.** The command is a single line — the `\`-continuation form is
+> bash-only. On Windows call twister as `python <ZEPHYR_BASE>\scripts\twister …` (extension-less Python
+> script, backslashes); in PowerShell use backtick `` ` `` if you must wrap. Same rule as Tier A.
+
+- `--device-serial` — the board's serial port: `COMx` (Windows), `/dev/ttyACMx` (Linux),
+  `/dev/tty.usbmodem*` (macOS). Resolve it from `nrfutil device list`.
+- `-p <board>/<soc>` — the **real** board target (e.g. `nrf52840dk/nrf52840`), **not** a sim target.
+- Twister builds → flashes → runs each suite on the device → harvests PASS/FAIL over serial.
+- Multiple boards connected: also pass `--device-serial` per board, or use a hardware map; confirm the
+  board↔suite match with the user first (never assume which serial is which).
+- Read results with the same table below. The `native_sim`/QEMU `platform_allow` filter doesn't apply —
+  here the suite just needs `platform_allow` to include the real board (or no platform restriction).
 
 ## Reading the result
 Twister writes `twister.json` / `twister.xml` to `twister-out/` (or `--outdir` if passed). Don't parse
