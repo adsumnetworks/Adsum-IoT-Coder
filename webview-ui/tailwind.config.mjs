@@ -13,6 +13,15 @@ export default {
 				"azeret-mono": ['"Azeret Mono"', "monospace"],
 			},
 			colors: {
+				brand: {
+					DEFAULT: "var(--color-brand-primary)",
+					light: "var(--color-brand-primary-light)",
+					hover: "var(--color-brand-primary-hover)",
+					active: "var(--color-brand-primary-active)",
+					secondary: "var(--color-brand-secondary)",
+					"secondary-hover": "var(--color-brand-secondary-hover)",
+					"secondary-active": "var(--color-brand-secondary-active)",
+				},
 				background: "var(--vscode-editor-background)",
 				border: {
 					DEFAULT: "var(--vscode-focusBorder)",

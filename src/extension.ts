@@ -40,8 +40,16 @@ import { VscodeTerminalManager } from "./hosts/vscode/terminal/VscodeTerminalMan
 import { VscodeDiffViewProvider } from "./hosts/vscode/VscodeDiffViewProvider"
 import { VscodeWebviewProvider } from "./hosts/vscode/VscodeWebviewProvider"
 import { ExtensionRegistryInfo } from "./registry"
+import { getCachedFreeTokensRemaining, onFreeTokensChanged } from "./services/adsum/FreeTierState"
 import { AuthService } from "./services/auth/AuthService"
 import { LogoutReason } from "./services/auth/types"
+import {
+	clearNrfEnvironmentCache,
+	detectNrfEnvironment,
+	setNrfExtensionInfo,
+	setNrfWorkspaceRoots,
+} from "./services/nrf/EnvironmentDetector"
+import { createAdsumStatusBar, refreshAdsumStatusBar, setAdsumStatusBarTooltip } from "./services/statusbar/AdsumStatusBar"
 import { telemetryService } from "./services/telemetry"
 import { ClineTempManager } from "./services/temp"
 import { SharedUriHandler } from "./services/uri/SharedUriHandler"
@@ -89,6 +97,58 @@ export async function activate(context: vscode.ExtensionContext) {
 	)
 
 	const webview = (await initialize(context)) as VscodeWebviewProvider
+
+	// Status-bar ▲ Adsum button — always visible, reveals the view from any dock.
+	createAdsumStatusBar(context, vscode)
+	refreshAdsumStatusBar(getCachedFreeTokensRemaining())
+	context.subscriptions.push({ dispose: onFreeTokensChanged(refreshAdsumStatusBar) })
+
+	// Probe nRF Connect extension once here (vscode call allowed in extension.ts).
+	// Extension install/uninstall always requires a window reload, so this stays fresh.
+	try {
+		const ext = vscode.extensions.getExtension("nordic-semiconductor.nrf-connect")
+		setNrfExtensionInfo(
+			ext
+				? {
+						present: true,
+						version: ext.packageJSON?.version as string | undefined,
+						// The extension bundles nrfutil at <extensionPath>/platform/nrfutil/bin — the
+						// detector needs this to find nrfutil on Windows, where no standalone launcher exists.
+						extensionPath: ext.extensionPath,
+					}
+				: { present: false },
+		)
+	} catch {
+		setNrfExtensionInfo({ present: false })
+	}
+
+	// Inject open workspace folder paths so the detector can resolve the project-bound SDK
+	// (it can't call vscode.* itself — grit forbids it outside extension.ts).
+	const collectWorkspaceRoots = () => (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath)
+	setNrfWorkspaceRoots(collectWorkspaceRoots())
+
+	// Fire-and-forget initial nRF env detection — never blocks activation.
+	// Webview shows "detecting…" state until the cache populates and postStateToWebview fires.
+	void detectNrfEnvironment()
+		.then((env) => {
+			setAdsumStatusBarTooltip(env)
+			return webview.controller.postStateToWebview()
+		})
+		.catch(() => {})
+
+	// Re-detect nRF environment when workspace folders change (user opens/closes a project).
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeWorkspaceFolders(() => {
+			clearNrfEnvironmentCache()
+			setNrfWorkspaceRoots(collectWorkspaceRoots())
+			void detectNrfEnvironment()
+				.then((env) => {
+					setAdsumStatusBarTooltip(env)
+					return webview.controller.postStateToWebview()
+				})
+				.catch(() => {})
+		}),
+	)
 
 	// Apply the Adsum-specific telemetry opt-out setting and keep it live.
 	// VS Code's global telemetry.telemetryLevel is already respected by the

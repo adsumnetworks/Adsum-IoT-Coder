@@ -4,7 +4,8 @@
 Called from: Debug Loop Phase 2, or any task requiring firmware deployment to a device.
 
 ## Pre-conditions
-- Build succeeded (`build/zephyr/zephyr.hex` exists)
+- Build succeeded — resolve the artifact from the build tree (sysbuild puts it at
+  `<build_dir>/<app-folder>/zephyr/zephyr.hex` or `<build_dir>/merged.hex`; see `build.md` Output)
 - Device is physically connected via USB/J-Link
 - nRF Connect Terminal available
 
@@ -12,7 +13,7 @@ Called from: Debug Loop Phase 2, or any task requiring firmware deployment to a 
 On the **first flash** in a task/session:
 1. Run `nrfutil device list` to get connected devices (serial numbers, ports, types).
 2. Run `nrfutil device device-info --serial-number <SN1,SN2,...>` to get `deviceFamily`, `deviceName`, `deviceVersion`. Confirm the device family matches the build target.
-3. If multiple devices are connected, ask the user to identify which device to flash. Always use `--snr <serial_number>` in your flash command.
+3. If multiple devices are connected, ask the user to identify which device to flash. Always select it explicitly: prefer `--dev-id <serial_number>` (current). `--snr` is **deprecated** — recent `west flash` prints a deprecation warning and may stop accepting it.
 
 ## Execution — NCS/Zephyr (`west flash`)
 
@@ -29,10 +30,17 @@ west flash -d <build_directory>
 
 ### Multi-Device Flash (multiple J-Link devices connected)
 ```bash
-west flash --snr <serial_number>
-# Example: west flash --snr 683007782
+west flash --dev-id <serial_number>
+# Example: west flash --dev-id 683007782
 ```
-**CRITICAL:** If multiple devices are connected and `--snr` is not specified, `west flash` may flash the wrong device or fail with an ambiguity error, so the best practice is to use `--snr` always.
+**CRITICAL:** If multiple devices are connected and `--dev-id` is not specified, `west flash` may flash the wrong device or fail with an ambiguity error, so the best practice is to pass `--dev-id` always. (`--snr` is the deprecated form of this flag.)
+
+### Alternative — direct programming via nrfutil
+When you have a specific HEX/ZIP artifact, or want a runner-independent path:
+```bash
+nrfutil device program --serial-number <serial_number> --firmware <abs-path-to-zephyr.hex>
+# Program all J-Link devices: nrfutil device program --traits jlink --firmware <hex>
+```
 
 ### Flash with Erase
 ```bash

@@ -150,7 +150,12 @@ export const ExtensionStateContextProvider: React.FC<{
 	const hideHistory = useCallback(() => setShowHistory(false), [setShowHistory])
 	const hideAccount = useCallback(() => setShowAccount(false), [setShowAccount])
 	const hideWorktrees = useCallback(() => setShowWorktrees(false), [setShowWorktrees])
-	const hideAnnouncement = useCallback(() => setShowAnnouncement(false), [setShowAnnouncement])
+	const hideAnnouncement = useCallback(() => {
+		setShowAnnouncement(false)
+		UiServiceClient.onDidShowAnnouncement(EmptyRequest.create({})).catch((err) =>
+			console.error("Failed to persist announcement dismissal:", err),
+		)
+	}, [setShowAnnouncement])
 	const hideChatModelSelector = useCallback(() => setShowChatModelSelector(false), [setShowChatModelSelector])
 
 	// Navigation functions
@@ -270,6 +275,8 @@ export const ExtensionStateContextProvider: React.FC<{
 		globalSkillsToggles: {},
 		localSkillsToggles: {},
 
+		openFolderPaths: [],
+		nrfEnvironment: { status: "unknown", extensionPresent: false, nrfutilPresent: false, boards: [] },
 		// NEW: Add workspace information with defaults
 		workspaceRoots: [],
 		primaryRootIndex: 0,
@@ -362,6 +369,11 @@ export const ExtensionStateContextProvider: React.FC<{
 								autoApprovalSettings: shouldUpdateAutoApproval
 									? stateData.autoApprovalSettings
 									: prevState.autoApprovalSettings,
+							}
+
+							// Sync announcement flag from extension host (computed there based on lastShownAnnouncementId)
+							if (newState.shouldShowAnnouncement) {
+								setShowAnnouncement(true)
 							}
 
 							// Update welcome screen state based on API configuration if welcome view not in progress

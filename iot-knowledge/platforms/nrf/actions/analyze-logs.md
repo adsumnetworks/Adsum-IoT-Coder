@@ -62,15 +62,14 @@ For every significant error found in logs:
 
 ### 3. Fault Trace Decoding (Zephyr)
 
-When a Zephyr Fatal Error is logged:
-```
-FATAL EXCEPTION: <fault_type>
-Current thread: <thread_name> (0x<addr>)
-r0/a1: 0x<val>  r1/a2: 0x<val>  ...
-pc: 0x<val>  lr: 0x<val>
-```
-- The **PC** (program counter) value can be mapped to a function using `addr2line` on the `.elf` file.
-- The **fault type** indicates the class of error (e.g., BUS FAULT = invalid memory access).
+When a fault signature appears (`>>> ZEPHYR FATAL ERROR`, `***** USAGE/BUS/MPU/HARD FAULT *****`,
+`Stack overflow`, `FATAL ERROR: SecureFault` — the full list lives in `actions/decode-fault.md`):
+
+**MANDATORY SKILL LOAD:** `read_file` `platforms/nrf/actions/decode-fault.md` BEFORE attempting to
+resolve the address. It defines the exact `addr2line` invocation (toolchain path, `.elf` resolution
+via the sysbuild-aware rule in `build.md`), the special-case handling (stack overflow ≠ "decode it",
+core dumps), and the rules for reporting a `file:line` honestly. Do not eyeball a register dump and
+guess the function — a wrong-but-confident answer here is worse than "I need to decode this first."
 
 ### 4. Sparse Log Detection
 

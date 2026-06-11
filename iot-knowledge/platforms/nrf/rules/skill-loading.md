@@ -25,6 +25,10 @@ This table is organized by what you, the agent, are about to *do* — not by wha
 
 | About to do (the operation) | Workflow to load first |
 |---|---|
+| **One-click demo** — task starts with `Demo:` or contains `[ADSUM_DEMO:` | Load `platforms/nrf/workflows/demo-debug.md` and follow it. The task message provides real file paths — use `read_file` on each. Do not connect to devices. |
+| **Scaffold a new nRF prototype** — task contains `scaffold a new nRF prototype` or `Start a new nRF/Zephyr prototype` | `platforms/nrf/workflows/prototype.md` |
+| **Add a feature to an existing project** — task contains `add a feature` or `Add a feature to` | `platforms/nrf/workflows/add-feature.md` |
+| **Test or validate firmware** — task contains `test and validate` or `Prove` + `works` | `platforms/nrf/workflows/test-validate.md` |
 | Build firmware · Flash firmware · run the Build → Flash → Capture → Analyze → Fix iteration cycle | `platforms/nrf/workflows/debug-loop.md` |
 | Capture device logs (UART/RTT) · perform log analysis · diagnose runtime behaviour from logs | `platforms/nrf/workflows/log-analyzer.md` |
 | Inject `LOG_*` macros into source · configure the log backend in `prj.conf` · enable deep BLE stack logging · prepare a project for future log capture | `platforms/nrf/workflows/log-generator.md` |
@@ -36,7 +40,36 @@ If an upcoming operation does not match any row, you are not in a Workflow's sco
 ## Workflows vs Actions (Hierarchy)
 
 - **Workflows** are the **only** valid entry points. They orchestrate multi-step protocols and are loaded by *you* via this rule.
-- **Actions** (`platforms/nrf/actions/*.md`) are atomic subroutines invoked *by an active Workflow* through a `MANDATORY SKILL LOAD` directive. You are **STRICTLY FORBIDDEN** from loading an Action as the first read of a task. Read an Action only when the Workflow you are currently executing explicitly instructs you to.
+- **Actions** (`platforms/nrf/actions/*.md`) are atomic subroutines invoked *by an active Workflow* through a `MANDATORY SKILL LOAD` directive. You are **STRICTLY FORBIDDEN** from loading an Action as the first read of a task. Read an Action only when the Workflow you are currently executing explicitly instructs you to — **or when the Command Gate below fires**.
+
+---
+
+## The Command Gate (HARD RULE — fires at the moment of execution)
+
+The Operation-Gating table above fires on *intent*. This gate fires on the *act*: the instant you are
+about to issue one of these commands or operations, the matching Action file MUST already be in your
+context. If it is not, **STOP and `read_file` it first** — no exceptions, regardless of which Workflow
+you are in, how you entered it, or how confident you feel.
+
+| About to do (any phrasing, any entry path) | Action file that MUST be in context |
+|---|---|
+| `west build` (any variant) | `platforms/nrf/actions/build.md` |
+| `west flash` / `nrfutil device program` / any flashing | `platforms/nrf/actions/flash.md` |
+| Capture device logs (`log_device`, any logger script) | `platforms/nrf/actions/capture-logs.md` |
+| Open / read / interpret a captured log under `logs/` | `platforms/nrf/actions/analyze-logs.md` |
+| A fault signature appears in a log | `platforms/nrf/actions/decode-fault.md` |
+| Run `twister` (simulator or `--device-testing`) | `platforms/nrf/actions/run-twister.md` |
+| Pick a Nordic sample to copy or port from | `platforms/nrf/actions/find-sample.md` |
+| Create/edit a CI workflow for firmware tests | `platforms/nrf/actions/setup-ci.md` |
+
+**Why this is non-negotiable:** these files contain hardware-verified rules you cannot derive from
+general knowledge — sysbuild artifact paths, `--dev-id` (not the deprecated `--snr`), per-DK VCOM
+mapping, the DTR tri-state rule, OS-aware Twister targets, pristine-build triggers. Running these
+operations by trial-and-error is the **#1 documented field failure** of this agent. One `read_file`
+is always cheaper than a failed flash or a misleading capture.
+
+**Capture without analysis is an unfinished operation.** After any log capture, the analyze step
+(per `analyze-logs.md`) is part of the same operation — never end at "logs captured".
 
 ---
 
@@ -58,3 +91,4 @@ The same load-once rule applies to Action files: once an Action has been loaded 
 3. **Mid-conversation in `log-analyzer`, you discover the firmware was never flashed and the capture returned nothing useful** — you are about to flash → read `workflows/debug-loop.md`.
 4. **You're inside `debug-loop` and it tells you to load `actions/build.md` via a `MANDATORY SKILL LOAD` directive** — the Workflow is invoking an Action; obey the directive.
 5. **User asks an embedded question that doesn't match any operation in the table** (e.g., "explain what `CONFIG_BT_MAX_CONN` does") — no Workflow load needed; answer from your knowledge with the `AGENT.md` Scope Gate applied.
+6. **You're deep in `prototype.md` and the scaffold is ready to build** — the Command Gate fires four times in sequence: `build.md` before `west build`, `flash.md` before flashing, `capture-logs.md` before capturing, `analyze-logs.md` before reading the captured file. Skipping any of these because "the prototype workflow is already loaded" is the failure this gate exists to prevent.

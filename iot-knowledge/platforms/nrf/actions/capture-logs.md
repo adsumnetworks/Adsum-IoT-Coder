@@ -17,6 +17,23 @@ Detect from `prj.conf`:
 - `CONFIG_LOG_BACKEND_UART=y` (or no explicit backend — UART is default) → **UART**
 - Both can be enabled — prefer RTT for development (faster, no cable needed beyond J-Link)
 
+### UART Port (VCOM) Selection — which port carries logs
+Nordic DKs expose **multiple VCOM ports** via the on-board J-Link. The `zephyr,console` chosen node
+decides which UART carries app logs (default `&uart0`), and the OS-port mapping is **not** uniform:
+| DK | App logs on |
+|---|---|
+| nRF52840 DK | Serial Port 0 (`uart0`) |
+| nRF5340 DK | Serial Port 0 (`uart0`, app core); Port 1 = net core (`uart1`, PCB "VCOM2" label may be wrong) |
+| nRF54L15 DK | **Serial Port 1** (`uart1`) — Port 0 is secondary |
+
+If no logs appear on the first port, try the next and reset to recapture boot logs. An overlay can
+reassign `zephyr,console`, shifting which VCOM carries logs — don't assume the default.
+
+### DTR requirement (UART "opens but no data")
+Nordic DK UART lines are **tri-stated until the terminal asserts DTR**. If the port opens but stays
+silent even after a board reset, the capture path is not asserting DTR — the first thing to check
+when a user reports a silent UART.
+
 ## Execution
 Use `nrf_device_tool` with `action="log_device"` and `operation="capture"`.
 
