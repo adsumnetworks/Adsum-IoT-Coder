@@ -28,7 +28,7 @@ import type * as vscode from "vscode"
 import { ClineEnv } from "@/config"
 import { HostProvider } from "@/hosts/host-provider"
 import { ExtensionRegistryInfo } from "@/registry"
-import { getCachedFreeTokensRemaining } from "@/services/adsum/FreeTierState"
+import { getFreeTierTokensForDisplay } from "@/services/adsum/FreeTierState"
 import { AuthService } from "@/services/auth/AuthService"
 import { OcaAuthService } from "@/services/auth/oca/OcaAuthService"
 import { LogoutReason } from "@/services/auth/types"
@@ -36,6 +36,7 @@ import { BannerService } from "@/services/banner/BannerService"
 import { featureFlagsService } from "@/services/feature-flags"
 import { getDistinctId } from "@/services/logging/distinctId"
 import { Logger } from "@/services/logging/Logger"
+import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { telemetryService } from "@/services/telemetry"
 import { BannerCardData } from "@/shared/cline/banner"
 import { getAxiosSettings } from "@/shared/net"
@@ -231,6 +232,7 @@ export class Controller {
 		files?: string[],
 		historyItem?: HistoryItem,
 		taskSettings?: Partial<Settings>,
+		displayText?: string,
 	) {
 		// Fire-and-forget: We intentionally don't await fetchRemoteConfig here.
 		// Remote config is already fetched in startRemoteConfigTimer() which runs in the constructor,
@@ -319,6 +321,7 @@ export class Controller {
 			stateManager: this.stateManager,
 			workspaceManager: this.workspaceManager,
 			task,
+			displayText,
 			images,
 			files,
 			historyItem,
@@ -839,6 +842,7 @@ export class Controller {
 		const isNewUser = this.stateManager.getGlobalStateKey("isNewUser")
 		// Can be undefined but is set to either true or false by the migration that runs on extension launch in extension.ts
 		const welcomeViewCompleted = !!this.stateManager.getGlobalStateKey("welcomeViewCompleted")
+		const demoAutoStart = this.stateManager.getGlobalStateKey("demoAutoStart")
 
 		const customPrompt = this.stateManager.getGlobalSettingsKey("customPrompt")
 		const mcpResponsesCollapsed = this.stateManager.getGlobalStateKey("mcpResponsesCollapsed")
@@ -929,6 +933,7 @@ export class Controller {
 			defaultTerminalProfile,
 			isNewUser,
 			welcomeViewCompleted,
+			demoAutoStart,
 			onboardingModels,
 			mcpResponsesCollapsed,
 			terminalOutputLineLimit,
@@ -941,6 +946,7 @@ export class Controller {
 			autoCondenseThreshold,
 			backgroundCommandRunning: this.backgroundCommandRunning,
 			backgroundCommandTaskId: this.backgroundCommandTaskId,
+			openFolderPaths: (await HostProvider.workspace.getWorkspacePaths({})).paths ?? [],
 			// NEW: Add workspace information
 			workspaceRoots: this.workspaceManager?.getRoots() ?? [],
 			primaryRootIndex: this.workspaceManager?.getPrimaryIndex() ?? 0,
@@ -972,8 +978,9 @@ export class Controller {
 			openAiCodexIsAuthenticated,
 			freeTierRemainingTokens:
 				this.task?.api instanceof AdsumFreeHandler
-					? (this.task.api.remainingQuota ?? getCachedFreeTokensRemaining())
-					: getCachedFreeTokensRemaining(),
+					? (this.task.api.remainingQuota ?? getFreeTierTokensForDisplay())
+					: getFreeTierTokensForDisplay(),
+			nrfEnvironment: getCachedNrfEnvironment(),
 		}
 	}
 

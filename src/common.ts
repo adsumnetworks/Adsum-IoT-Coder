@@ -13,17 +13,19 @@ import "./utils/path" // necessary to have access to String.prototype.toPosix
 
 import { HostProvider } from "@/hosts/host-provider"
 import { FileContextTracker } from "./core/context/context-tracking/FileContextTracker"
+import { initDemoManager } from "./core/demos/DemoManager"
 import { StateManager } from "./core/storage/StateManager"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { ExtensionRegistryInfo } from "./registry"
-import { loadCachedQuota, registerInstallIfNeeded, shouldDefaultToFreeTier } from "./services/adsum/FreeTierService"
-import { initFreeTierPersistence } from "./services/adsum/FreeTierState"
+import { loadCachedQuota, registerInstallIfNeeded } from "./services/adsum/FreeTierService"
+import { initFreeTierPersistence, setFreeTierActive } from "./services/adsum/FreeTierState"
 import { initializeInstallId } from "./services/adsum/InstallIdentity"
+import { maybeShowReengagementNudge } from "./services/adsum/ReengagementNudge"
 import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
 import { ErrorService } from "./services/error"
 import { featureFlagsService } from "./services/feature-flags"
-import { getDistinctId, initializeDistinctId } from "./services/logging/distinctId"
+import { getDistinctId, initializeDistinctId, setDistinctId } from "./services/logging/distinctId"
 import { telemetryService } from "./services/telemetry"
 import { PostHogClientProvider } from "./services/telemetry/providers/posthog/PostHogClientProvider"
 import { ShowMessageType } from "./shared/proto/host/window"
@@ -56,15 +58,31 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	await initializeDistinctId(context)
 
 	// Initialize stable anonymous install ID for Adsum free-tier proxy
-	await initializeInstallId(context)
+	const installId = await initializeInstallId(context)
+
+	// Unify the telemetry/feature-flag person key on the Adsum install_id so the host
+	// client funnel joins the backend's install_id person-space in PostHog. Host events
+	// were previously keyed by machineId (with install_id only as an event property),
+	// which made the install→demo→activation funnel unjoinable across client and backend.
+	// free-tier-stage0 is the only feature flag and is a 100% rollout, so re-keying does
+	// not change flag eligibility. On Cline sign-in, identifyUser() switches to the
+	// account id (recording install_id as an alias property), preserving that path.
+	setDistinctId(installId)
 
 	// Seed the in-memory quota cache from last-persisted value so the chip
 	// shows before the first API response on every launch (not just first registration)
 	loadCachedQuota(context.globalState)
 
+	// Gate all token display on whether the user is actually on the free tier.
+	// Reads the persisted provider so the status bar and FreeTierStrip show
+	// nothing when the user has switched to their own key (BYOK).
+	const activeProvider = context.globalState.get("actModeApiProvider")
+	setFreeTierActive(activeProvider === "adsum-free")
+
 	// Capture globalState so the free-tier handler can persist its once-ever
 	// first-run funnel flag across restarts
 	initFreeTierPersistence(context.globalState)
+	initDemoManager(context.extensionPath, context.globalStorageUri.fsPath)
 
 	// Initialize PostHog client provider
 	PostHogClientProvider.getInstance()
@@ -88,19 +106,34 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 		new Promise<void>((resolve) => setTimeout(resolve, 3000)),
 	]).catch(() => {})
 
-	// Default fresh installs to the free tier when Stage 0 is enabled.
-	// Must run AFTER featureFlagsService.poll() above — the flag cache is cold
-	// during StateManager.initialize(), so the default computed there can't see it.
+	// One-time: set welcomeViewCompleted from existing API keys. Runs BEFORE the free-tier default
+	// below so that block can use welcomeViewCompleted as the "user already configured real
+	// inference" signal (migrate sets it true iff a real key/account exists).
+	await migrateWelcomeViewCompleted(context)
+
+	// Default fresh, unconfigured installs to the free tier (Stage 0) and skip the model-select
+	// gate so they land on the demo. The provider enum is NOT a reliable "configured" signal:
+	// state-helpers computes a default ("openrouter") during StateManager.initialize(), before the
+	// flag cache is warm, so a brand-new install already reads planModeApiProvider="openrouter".
+	// Key off welcomeViewCompleted instead (false here = no real key, per migrate just above).
+	// The flag cache is warm by now (featureFlagsService.poll() ran above).
 	try {
 		const freeTierEnabled = featureFlagsService.getBooleanFlagEnabled(FeatureFlag.FREE_TIER_STAGE0)
-		const hasExistingProvider = Boolean(
-			context.globalState.get("planModeApiProvider") || context.globalState.get("actModeApiProvider"),
-		)
-		if (shouldDefaultToFreeTier(freeTierEnabled, hasExistingProvider)) {
+		const alreadyConfigured = !!context.globalState.get("welcomeViewCompleted")
+		if (freeTierEnabled && !alreadyConfigured) {
 			const stateManager = StateManager.get()
 			stateManager.setGlobalState("planModeApiProvider", "adsum-free")
 			stateManager.setGlobalState("actModeApiProvider", "adsum-free")
-			console.log("[adsum] fresh install defaulted to free tier")
+			stateManager.setGlobalState("welcomeViewCompleted", true)
+			// This block sets the provider to adsum-free AFTER the setFreeTierActive() call above
+			// (which read the pre-default provider and gated display OFF). Flip the gate ON here so
+			// the token chip + free-tier strip show on first launch — otherwise they stay hidden
+			// until the user toggles providers (which re-runs setFreeTierActive via StateManager).
+			setFreeTierActive(true)
+			// Write-through to raw globalState so the StateManager cache (read by the webview) and
+			// the next launch stay consistent.
+			await context.globalState.update("welcomeViewCompleted", true)
+			console.log("[adsum] fresh install defaulted to free tier + model-select gate skipped")
 		}
 	} catch (err) {
 		console.warn("[adsum] free-tier default check failed:", err)
@@ -108,9 +141,6 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 
 	// Migrate custom instructions to global Cline rules (one-time cleanup)
 	await migrateCustomInstructionsToGlobalRules(context)
-
-	// Migrate welcomeViewCompleted setting based on existing API keys (one-time cleanup)
-	await migrateWelcomeViewCompleted(context)
 
 	// Migrate workspace storage values back to global storage (reverting previous migration)
 	await migrateWorkspaceToGlobalStorage(context)
@@ -129,10 +159,16 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 
 	const webview = HostProvider.get().createWebviewProvider()
 
-	await showVersionUpdateAnnouncement(context)
+	// Show the version/update toast first; if it fired, suppress the re-engagement nudge this launch
+	// so a version-bump launch never double-toasts.
+	const announcementShown = await showVersionUpdateAnnouncement(context)
+	await maybeShowReengagementNudge(announcementShown)
 
 	// Check if this workspace was opened from worktree quick launch
 	await checkWorktreeAutoOpen(context)
+
+	// Reveal Adsum sidebar if this window was opened via the "Open my nRF project" card
+	await checkAdsumRevealAfterOpen(context)
 
 	// Initialize banner service (TEMPORARILY DISABLED - not fetching banners to prevent API hammering)
 	BannerService.initialize(webview.controller)
@@ -147,8 +183,10 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	return webview
 }
 
-async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
-	// Version checking for autoupdate notification
+async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext): Promise<boolean> {
+	// Version checking for autoupdate notification. Returns true if the toast was displayed this
+	// launch (caller suppresses the re-engagement nudge so we never double-toast).
+	let shown = false
 	const currentVersion = ExtensionRegistryInfo.version
 	const previousVersion = context.globalState.get<string>("nrfAiDebuggerVersion")
 	// Perform post-update actions if necessary
@@ -168,14 +206,43 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 			const latestAnnouncementId = getLatestAnnouncementId()
 
 			if (lastShownAnnouncementId !== latestAnnouncementId) {
-				// Show notification when there's a new announcement (major/minor updates or fresh installs)
-				const message = previousVersion
-					? `Adsum IoT Coder has been updated to v${currentVersion}`
-					: `Welcome to Adsum IoT Coder v${currentVersion}`
-				HostProvider.window.showMessage({
-					type: ShowMessageType.INFORMATION,
-					message,
-				})
+				shown = true
+				const isNewInstall = !previousVersion
+				const message = isNewInstall
+					? `Welcome to Adsum IoT Coder v${currentVersion}`
+					: `Adsum IoT Coder has been updated to v${currentVersion}`
+				// ⚡ (gold lightning) on the CTA matches the free-tier "⚡ Free tier" branding. Notification
+				// buttons are plain text (no codicons/themed icons), so this is the colour emoji.
+				const cta = isNewInstall ? "⚡ See it debug a real bug (30s)" : "⚡ What's new — see it"
+				// Fire-and-forget: do NOT await the toast. showMessage resolves only when the user
+				// clicks or dismisses it, and this function is awaited in activate() — awaiting here
+				// would block activation (and the version-tracker write below) until the user reacts.
+				void HostProvider.window
+					.showMessage({
+						type: ShowMessageType.INFORMATION,
+						message,
+						options: { items: [cta] },
+					})
+					.then(async ({ selectedOption }) => {
+						if (selectedOption !== cta) {
+							return
+						}
+						// New install → auto-start the demo (push them straight to the wow). On an UPDATE,
+						// "What's new — see it" should just open the home (which shows the What's New card +
+						// the demo hero) and let the returning user choose — NOT force-run the demo, which
+						// the button label doesn't promise. setGlobalState alone doesn't broadcast, so we
+						// also push state; ChatView consumes demoAutoStart and runs the demo via handleStartDemo.
+						if (isNewInstall) {
+							StateManager.get().setGlobalState("demoAutoStart", "nus-uart")
+						}
+						await HostProvider.workspace.openClineSidebarPanel({})
+						try {
+							await WebviewProvider.getInstance().controller.postStateToWebview()
+						} catch {
+							// Webview not ready yet — it will pick up demoAutoStart on its next state sync.
+						}
+					})
+					.catch(() => {})
 			}
 			// Always update the main version tracker for the next launch.
 			await context.globalState.update("nrfAiDebuggerVersion", currentVersion)
@@ -184,6 +251,7 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
 		console.error(`Error during post-update actions: ${errorMessage}, Stack trace: ${error.stack}`)
 	}
+	return shown
 }
 
 /**
@@ -216,6 +284,32 @@ async function checkWorktreeAutoOpen(context: vscode.ExtensionContext): Promise<
 		}
 	} catch (error) {
 		Logger.error("Error checking worktree auto-open", error)
+	}
+}
+
+/**
+ * Reveals the Adsum sidebar if the window was opened via the "Open my nRF project" card.
+ * Mirrors checkWorktreeAutoOpen — reads the flag set by openFolder.ts before the window reload.
+ */
+async function checkAdsumRevealAfterOpen(context: vscode.ExtensionContext): Promise<void> {
+	try {
+		const { ADSUM_REVEAL_SIDEBAR_KEY } = await import("./core/controller/file/openFolder")
+		const revealPath = context.globalState.get<string>(ADSUM_REVEAL_SIDEBAR_KEY)
+		if (!revealPath) {
+			return
+		}
+
+		const workspacePaths = (await HostProvider.workspace.getWorkspacePaths({})).paths
+		if (workspacePaths.length === 0) {
+			return
+		}
+
+		if (arePathsEqual(workspacePaths[0], revealPath)) {
+			await context.globalState.update(ADSUM_REVEAL_SIDEBAR_KEY, undefined)
+			await HostProvider.workspace.openClineSidebarPanel({})
+		}
+	} catch (error) {
+		Logger.error("Error checking Adsum reveal after open", error)
 	}
 }
 

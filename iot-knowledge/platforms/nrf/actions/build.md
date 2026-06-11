@@ -84,5 +84,13 @@ west build -t menuconfig
   - `region 'RAM' overflowed` → reduce stack sizes or disable features
 - On build failure, always offer: `["Attempt auto-fix", "Show full error", "Cancel"]`
 
-## Output
-Build succeeds → `build/zephyr/zephyr.hex` (or `<build_dir>/zephyr/zephyr.hex`) is ready for flashing.
+## Output — artifact paths (sysbuild-aware)
+Sysbuild is the **default since NCS 2.7**, so the build tree is multi-image. **Resolve the artifact by
+listing the build tree** (`list_files`) — never assume it from `project()` or memory:
+- **Sysbuild:** app artifacts at `<build_dir>/<app-folder-name>/zephyr/zephyr.{hex,elf,bin}`. The
+  child folder is the application **directory** name, not the CMake `project()` name.
+- **Multi-image** (MCUboot + app, or app + net-core): a combined `<build_dir>/merged.hex` exists —
+  flash that one.
+- **Non-sysbuild (legacy):** `<build_dir>/zephyr/zephyr.{hex,elf}`.
+
+Default `<build_dir>` is `build/` unless `-d` was passed.

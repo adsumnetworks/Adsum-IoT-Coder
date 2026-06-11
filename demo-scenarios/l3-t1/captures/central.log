@@ -1,0 +1,25 @@
+[00:00:00.000,000] <inf> bt_hci_core: HW Platform: Nordic Semiconductor (0x0002)
+[00:00:00.000,000] <inf> bt_hci_core: HW Variant: nRF52840 (0x0008)
+[00:00:00.001,000] <inf> bt_hci_core: Firmware: Standard Bluetooth controller (0x00) Version 3.3 Build 99
+[00:00:00.100,000] <inf> main: Starting BLE NUS Central
+[00:00:00.110,000] <inf> main: Bluetooth initialized
+[00:00:00.120,000] <inf> main: Scanning started
+[00:00:02.340,000] <inf> scan_cb: Found device Nordic_NUS_Periph addr=E4:F3:A2:11:22:33
+[00:00:02.350,000] <inf> main: Connecting to Nordic_NUS_Periph
+[00:00:02.580,000] <inf> main: Connected to E4:F3:A2:11:22:33
+[00:00:02.590,000] <inf> gatt_discover_cb: Starting service discovery
+[00:00:02.610,000] <inf> gatt_discover_cb: NUS service found, handle=0x0010
+[00:00:02.620,000] <inf> gatt_discover_cb: NUS TX characteristic found, handle=0x0012
+[00:00:02.630,000] <inf> gatt_discover_cb: NUS RX characteristic found, handle=0x0015
+[00:00:02.640,000] <inf> gatt_discover_cb: Discovery complete
+[00:00:03.000,000] <inf> main: Sending "Hello from Central" to peripheral
+[00:00:03.010,000] <inf> nus_client_send: Write to RX characteristic succeeded
+[00:00:05.000,000] <inf> main: Sending "ping" to peripheral
+[00:00:05.010,000] <inf> nus_client_send: Write to RX characteristic succeeded
+[00:00:07.000,000] <wrn> main: No response received from peripheral (waited 4s)
+[00:00:09.000,000] <inf> main: Sending "ping" to peripheral
+[00:00:09.010,000] <inf> nus_client_send: Write to RX characteristic succeeded
+[00:00:11.000,000] <wrn> main: No response received from peripheral (waited 4s)
+[00:00:13.000,000] <inf> main: Sending "ping" to peripheral
+[00:00:13.010,000] <inf> nus_client_send: Write to RX characteristic succeeded
+[00:00:15.000,000] <wrn> main: No response received from peripheral (waited 4s)

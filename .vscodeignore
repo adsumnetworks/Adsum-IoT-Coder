@@ -76,6 +76,23 @@ _includes/**
 .env.example
 package.disabled.json
 
+# CONFIDENTIAL — internal-only, MUST never reach the public Marketplace VSIX.
+# Adsum-Planning is our private team planning repo (cloned here for agent context,
+# gitignored); .mcp.json / .embedder are per-developer local tooling artifacts.
+Adsum-Planning/**
+.mcp.json
+.vscode/mcp.json
+.embedder/**
+
+# Build/dev-only — not used at extension runtime (the VSIX ships dist/). Excluding
+# slims the package and keeps internal tooling (incl. build scripts) out of it.
+scripts/**
+testing-platform/**
+nrf-doc/**
+archive/**
+tests/**
+**/__pycache__/**
+
 # Build / lint / test tooling — only useful inside the repo
 esbuild.mjs
 biome.jsonc

@@ -1,6 +1,7 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
 
 import { WorkspaceRoot } from "@shared/multi-root/types"
+import type { NrfEnvironment } from "@shared/nrf"
 import { RemoteConfigFields } from "@shared/storage/state-keys"
 import type { Environment } from "../config"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
@@ -41,6 +42,9 @@ export const COMMAND_CANCEL_TOKEN = "__cline_command_cancel__"
 export interface ExtensionState {
 	isNewUser: boolean
 	welcomeViewCompleted: boolean
+	/** When set (a demo scenario id), the webview auto-starts that demo once — e.g. from the
+	 *  first-run announcement toast CTA. Cleared host-side when the demo task fires. */
+	demoAutoStart?: string
 	onboardingModels: OnboardingModelGroup | undefined
 	apiConfiguration?: ApiConfiguration
 	autoApprovalSettings: AutoApprovalSettings
@@ -95,6 +99,10 @@ export interface ExtensionState {
 	customPrompt?: string
 	autoCondenseThreshold?: number
 	favoritedModelIds: string[]
+	// Authoritative VS Code folder list — populated from vscode.workspace.workspaceFolders,
+	// never has the desktop-fallback that workspaceRoots uses during task init.
+	// Use this (not workspaceRoots) to decide "is a real project folder open" in the welcome screen.
+	openFolderPaths: string[]
 	// NEW: Add workspace information
 	workspaceRoots: WorkspaceRoot[]
 	primaryRootIndex: number
@@ -116,6 +124,7 @@ export interface ExtensionState {
 	banners?: BannerCardData[]
 	openAiCodexIsAuthenticated?: boolean
 	freeTierRemainingTokens?: number
+	nrfEnvironment?: NrfEnvironment
 }
 
 export interface ClineMessage {

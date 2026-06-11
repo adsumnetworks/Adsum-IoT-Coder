@@ -136,8 +136,11 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
+				// Fresh, isolated VS Code data dir (wiped each launch by the clean-tmp-user preLaunchTask)
+				// gives true fresh-install state. NOTE: do NOT add --profile-temp here — the ephemeral
+				// profile breaks the debugger's reattach on window reload (close folder / reload window),
+				// so the extension wouldn't come back without killing the whole debug instance.
 				"--user-data-dir=${workspaceFolder}/dist/tmp/user",
-				"--profile-temp",
 				"--sync=off",
 				"--disable-extension",
 				"saoudrizwan.claude-dev", // Avoid conflicts with installed Cline

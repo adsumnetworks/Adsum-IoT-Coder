@@ -87,6 +87,16 @@ const GLOBAL_STATE_FIELDS = {
 	dismissedBanners: { default: [] as Array<{ bannerId: string; dismissedAt: number }> },
 	// Path to worktree that should auto-open Cline sidebar when launched
 	worktreeAutoOpenPath: { default: undefined as string | undefined },
+	// Set before a demo-triggered workspace reload; checkDemoAutoStart reads and clears it on activation.
+	// Shape: { scenarioId, capability, workspacePath } serialised as JSON string.
+	demoAutoStart: { default: undefined as string | undefined },
+	// Unix-ms timestamp of the last re-engagement nudge shown to a dormant user.
+	reengagementNudgeLastShown: { default: undefined as number | undefined },
+	// Consecutive times a re-engagement nudge was ignored (dismissed without acting). Reset to 0 on
+	// engagement (CTA click); when it reaches the cap we stop nudging (decay — "ignored 3× → stop").
+	reengagementNudgeIgnores: { default: undefined as number | undefined },
+	// User clicked "Don't show again" on a re-engagement nudge — silence it forever.
+	reengagementNudgeSilenced: { default: undefined as boolean | undefined },
 } satisfies FieldDefinitions
 
 // Fields that map directly to ApiHandlerOptions in @shared/api.ts

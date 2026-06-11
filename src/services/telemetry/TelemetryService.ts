@@ -191,6 +191,35 @@ export class TelemetryService {
 			EMAIL_VERIFIED: "free_tier.email_verified",
 			// User added a BYOK key — Stage 2 conversion
 			BYOK_ADDED: "free_tier.byok_added",
+			// One-click demo started
+			DEMO_RUN_STARTED: "free_tier.demo_run_started",
+			// Demo agent completed with TASK_COMPLETE_MARKER
+			DEMO_RUN_COMPLETED: "free_tier.demo_run_completed",
+			// User posted a message after the demo completed (strongest activation signal)
+			DEMO_USER_INTERACTED: "free_tier.demo_user_interacted",
+			// User started a non-demo task (crossed from demo to real use)
+			FIRST_REAL_TASK_STARTED: "free_tier.first_real_task_started",
+			// Upgrade card shown to dormant user after version bump
+			UPGRADE_PROMPT_SHOWN: "free_tier.upgrade_prompt_shown",
+			// Dormant user clicked "See it live" on the upgrade card
+			UPGRADE_PROMPT_DEMO_CLICKED: "free_tier.upgrade_prompt_demo_clicked",
+			// Dormant user dismissed the upgrade card without acting
+			UPGRADE_PROMPT_DISMISSED: "free_tier.upgrade_prompt_dismissed",
+			// User successfully redeemed an invite code for extra free-tier tokens
+			INVITE_CODE_REDEEMED: "free_tier.invite_code_redeemed",
+			// User attempted to redeem an invite code but it failed (with reason)
+			INVITE_CODE_FAILED: "free_tier.invite_code_failed",
+			// Dormant-user re-engagement nudge shown on reopen (cohort + days_dormant)
+			REENGAGEMENT_SHOWN: "free_tier.reengagement_shown",
+			// User clicked the CTA on the re-engagement nudge
+			REENGAGEMENT_CLICKED: "free_tier.reengagement_clicked",
+			// User dismissed the re-engagement nudge (closed/ignored without acting)
+			REENGAGEMENT_DISMISSED: "free_tier.reengagement_dismissed",
+			// User clicked "Don't show again" — the red-line signal to watch
+			REENGAGEMENT_SILENCED: "free_tier.reengagement_silenced",
+		},
+		NRF: {
+			ENV_DETECTED: "nrf.env_detected",
 		},
 		DICTATION: {
 			// Tracks when voice recording is started
@@ -627,6 +656,111 @@ export class TelemetryService {
 			install_id: installId,
 			tier: "byok",
 			provider,
+		})
+	}
+
+	public captureFreeTierDemoRunStarted(installId: string, scenarioId: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.DEMO_RUN_STARTED, {
+			install_id: installId,
+			scenario_id: scenarioId,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierDemoRunCompleted(installId: string, scenarioId: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.DEMO_RUN_COMPLETED, {
+			install_id: installId,
+			scenario_id: scenarioId,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierDemoUserInteracted(installId: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.DEMO_USER_INTERACTED, {
+			install_id: installId,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierFirstRealTaskStarted(installId: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.FIRST_REAL_TASK_STARTED, {
+			install_id: installId,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierUpgradePromptShown(installId: string, version: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.UPGRADE_PROMPT_SHOWN, {
+			install_id: installId,
+			version,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierUpgradePromptDemoClicked(installId: string, version: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.UPGRADE_PROMPT_DEMO_CLICKED, {
+			install_id: installId,
+			version,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierUpgradePromptDismissed(installId: string, version: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.UPGRADE_PROMPT_DISMISSED, {
+			install_id: installId,
+			version,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierInviteCodeRedeemed(installId: string, code: string, grantedTokens: number, sourceLabel: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.INVITE_CODE_REDEEMED, {
+			install_id: installId,
+			code,
+			granted_tokens: grantedTokens,
+			source_label: sourceLabel,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierInviteCodeFailed(installId: string, reason: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.INVITE_CODE_FAILED, {
+			install_id: installId,
+			reason,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierReengagementShown(installId: string, cohort: string, daysDormant: number) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.REENGAGEMENT_SHOWN, {
+			install_id: installId,
+			cohort,
+			days_dormant: daysDormant,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierReengagementClicked(installId: string, cohort: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.REENGAGEMENT_CLICKED, {
+			install_id: installId,
+			cohort,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierReengagementDismissed(installId: string, cohort: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.REENGAGEMENT_DISMISSED, {
+			install_id: installId,
+			cohort,
+			tier: "anonymous",
+		})
+	}
+
+	public captureFreeTierReengagementSilenced(installId: string, cohort: string) {
+		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.REENGAGEMENT_SILENCED, {
+			install_id: installId,
+			cohort,
+			tier: "anonymous",
 		})
 	}
 
@@ -2375,6 +2509,17 @@ export class TelemetryService {
 				workspaceCount,
 				totalCount: globalCount + workspaceCount,
 				timestamp: new Date().toISOString(),
+			},
+		})
+	}
+
+	public captureNrfEnvDetected(args: { extensionPresent: boolean; nrfutilPresent: boolean; boardCount: number }) {
+		this.capture({
+			event: TelemetryService.EVENTS.NRF.ENV_DETECTED,
+			properties: {
+				extensionPresent: args.extensionPresent,
+				nrfutilPresent: args.nrfutilPresent,
+				boardCount: args.boardCount,
 			},
 		})
 	}

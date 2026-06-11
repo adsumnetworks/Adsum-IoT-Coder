@@ -19,22 +19,29 @@ Open source under Apache 2.0.
   <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/stargazers"><img src="https://img.shields.io/github/stars/adsumnetworks/Adsum-IoT-Coder?style=flat&color=ffd700" alt="GitHub stars"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
   <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions"><img src="https://img.shields.io/badge/community-discussions-blue" alt="Discussions"></a>
+  <a href="https://www.youtube.com/@adsumnetworks"><img src="https://img.shields.io/badge/YouTube-watch-FF0000?logo=youtube&logoColor=white" alt="YouTube"></a>
   <img src="https://img.shields.io/badge/AI%20Agent-VS%20Code%20Extension-9663f1" alt="AI Agent">
   <img src="https://img.shields.io/badge/nRF%20Connect%20SDK-v3.2.1-00A9CE" alt="NCS">
   <img src="https://img.shields.io/badge/Zephyr%20RTOS-compatible-blueviolet" alt="Zephyr">
 </p>
 
-**[Install →](#getting-started)** · **[Benchmark →](#benchmark--iot-firmwaredebugbench-v01)** · **[Architecture →](#architecture--dynamic-knowledge--tool-skill-loading)** · **[Roadmap →](#roadmap)**
+**[Watch the demo →](https://www.youtube.com/watch?v=67tUybg1phk)** · **[Install →](#getting-started)** · **[Benchmark →](#benchmark--iot-firmwaredebugbench-v01)** · **[Architecture →](#architecture--dynamic-knowledge--tool-skill-loading)** · **[Roadmap →](#roadmap)**
 
-<p><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder Demo" /></p>
+<a href="https://youtu.be/Zl6oCT9I4b0"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder — watch the demo" /></a>
 
 </div>
 
 ---
 
-## What's New <sup>`v0.1.3`</sup>
+## What's New <sup>`v0.1.5`</sup>
 
-<img src="assets/icons/whatsnew-free-tier.png" width="18" valign="middle" alt="" /> &nbsp;**[Free tier — start without an API key.](#free-tier--start-without-a-key)** Install and debug your firmware in the first minute; bring your own key whenever you're ready.
+<img src="assets/icons/whatsnew-redesign.png" width="18" valign="middle" alt="" /> &nbsp;**A full UI redesign — rebuilt around how you actually start.** Early users told us the hardest part wasn't the agent, it was the cold start. So we rebuilt the entire first-run experience: see the tool work *before* any setup, land on something useful immediately, and always have a clear next step.
+
+<img src="assets/icons/whatsnew-demo.png" width="18" valign="middle" alt="" /> &nbsp;**See it debug a real bug — in 30 seconds, before you set anything up.** A new first-run demo debugs a real BLE bug on firmware bundled with the extension. No board, no API key, no project of your own required — watch the capture-analyze-fix loop on a genuine failure, then run it on your own firmware.
+
+<img src="assets/icons/whatsnew-free-tier.png" width="18" valign="middle" alt="" /> &nbsp;**Zero-config first run.** Install and you land straight on something that works — no provider-selection screen standing between you and the agent. The [free tier](#free-tier--start-without-a-key) is already on; bring your own key whenever you're ready.
+
+<img src="assets/icons/whatsnew-guide.png" width="18" valign="middle" alt="" /> &nbsp;**A home screen that guides the next step.** With a project open, the agent reads what it is and offers the right moves as one-click **workflow cards** — *Build, flash & debug*, *Add a feature*, *Test & validate* — with *SDK migration* and *board bring-up* on the way. After any task finishes, it suggests where to go next instead of leaving you at a blank prompt; with no project open, it points you to *start a prototype* or *open your nRF project*.
 
 <img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Instant key switchover.** Add your own provider mid-session — the running task continues, no restart.
 
@@ -190,15 +197,24 @@ Open the VS Code **Extensions** panel and search for **Adsum IoT Coder**, then c
 
 See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 
-Configure an AI provider, and open your NCS project. The agent starts with two entry-point workflows:
+Install it and you can start immediately — the [free tier](#free-tier--start-without-a-key) runs on a managed model, so there's no provider screen to clear first. Add your own key whenever you want.
 
-<p><img src="assets/docs/home.png" width="100%" alt="Adsum IoT Coder Home" /></p>
+<p align="center">
+  <img src="assets/docs/home-project-closed.png" width="320" alt="First run with no project open — Start a prototype or Open my nRF project" />
+  &nbsp;&nbsp;
+  <img src="assets/docs/home-project-open.png" width="320" alt="With an nRF project open — Build/flash & debug, Add a feature, Test & validate workflow cards" />
+</p>
+<p align="center"><sub>The home on first run (left) and after opening an nRF project (right) — it adapts to what you're working on.</sub></p>
 
-**Analyze nRF Device Logs** — captures live RTT/UART logs from connected boards, runs code-aware analysis, produces structured reports. Auto-detects boards via J-Link, supports multi-device simultaneous capture, correlates output with your source code and configuration.
+**Start with the 30-second demo.** The home screen leads with a live demo that debugs a real BLE bug on firmware bundled with the extension — capture → analyze → fix on a genuine failure, with no board or project of your own needed. It's the fastest way to see how the agent works before pointing it at your code.
 
-**Generate Logging Code** — reads your NCS project, understands the BLE stack, and injects `LOG_*` macros following Zephyr best practices. The agent that writes the log statements knows the context when it later parses them.
+**Then the home screen adapts to your project.** Open your NCS project and the agent reads what it is, then offers the right next moves as one-click actions:
 
-From analysis results, the agent can enter a **Debug Loop** — iterative Build → Flash → Capture → Analyze → Fix cycle — continuing until the bug is resolved or you stop it.
+- **Build, flash & debug** — the full loop: build your code, flash it, capture live RTT/UART logs, find the issue, and iterate (Build → Flash → Capture → Analyze → Fix) until it's resolved or you stop it. Boards auto-detect via J-Link, with multi-device simultaneous capture and source-aware correlation.
+- **Add a feature** — wire a new capability (a Zephyr shell, a BLE service, NVS storage…) into your actual project, not a throwaway sample.
+- **Test & validate** — exercise your firmware with host tests and on-hardware checks.
+
+After any task finishes, the agent suggests where to go next, so you're never left at a blank prompt.
 
 ### Requirements
 
@@ -275,7 +291,7 @@ We publish what's true today, not what we wish were true.
 **Product**
 
 - **Scope.** Today the tool ships for nRF52, nRF53, and nRF54 with BLE. Other Nordic families (nRF7x, nRF9x) and other vendors (ESP) are roadmap, not shipping. Other protocols (Wi-Fi, Thread, Matter, LTE-M) are roadmap, not shipping.
-- **Free-tier token counter can read stale.** Open the provider panel before your first prompt in a fresh session and the "tokens left" chip may show the prior value. It's display-only — the real balance lives in the backend and is enforced there. The chip reconciles on your next prompt.
+- **Free-tier token counter.** The "tokens left" chip decrements by each request's real usage and shows 0 the moment your quota is exhausted. On a cold start it briefly shows the last-known balance until it re-syncs with the backend (a second or two); the real balance always lives in the backend and is enforced there.
 - **Trademarks.** nRF, nRF Connect SDK, and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA. This project is independently developed and not affiliated with or endorsed by Nordic Semiconductor ASA.
 
 **Benchmark**
@@ -346,7 +362,7 @@ BYOK (Bring Your Own Key) — you control which model and endpoint you trust. So
 
 > **Local models work.** Any OpenAI-compatible endpoint can be configured, including locally-hosted models via Ollama, LM Studio, or llama.cpp's built-in server — useful for privacy-sensitive projects where data cannot leave the developer's machine. A model with strong native tool-calling is required; small local models often fall short.
 
-**Telemetry.** Anonymous extension activations, tool triggers, and execution errors. Never source code, file paths, chat content, or device logs. Opt out: set `telemetry.telemetryLevel` to `off` in VS Code settings.
+**Telemetry.** Anonymous product analytics — installs, activations, feature and free-tier usage, and execution errors, keyed to a random install ID. Never source code, file paths, chat content, or device logs. Opt out: set `telemetry.telemetryLevel` to `off` in VS Code settings.
 
 ---
 
