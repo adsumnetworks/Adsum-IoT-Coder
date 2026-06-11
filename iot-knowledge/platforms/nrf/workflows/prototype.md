@@ -110,13 +110,15 @@ Build between ports if the user wants early validation.
 
 ---
 
-## Step 6: Build, flash & iterate
+## Step 6: Build, flash & iterate — through the Debug Loop ONLY, never freehand
 Hand off to the Debug Loop to prove the scaffold compiles and runs:
 > "Scaffold ready. Want me to build and flash it to confirm it runs on your board?"
 
 - **MANDATORY SKILL LOAD:** if the user agrees, `read_file` → `platforms/nrf/workflows/debug-loop.md`
-  and follow it (build → flash → capture). An overlay/Kconfig change needs a **pristine** build
-  (`actions/build.md`).
+  and run the **whole** loop — Build → Flash → **Capture → Analyze** — loading each phase's Action per
+  the Command Gate. Never issue `west build`/`west flash`/a capture from memory because "the prototype
+  is simple" — that try-and-error path is the documented failure mode. A capture you never analyze
+  proves nothing; an overlay/Kconfig change needs a **pristine** build (`actions/build.md`).
 - **Two-device build & flash:** build each app into its **own build dir** (`west build -d`), and flash
   each to its **own board by serial number** — resolve serials with `nrfutil device list`, then flash by
   `--dev-id <serial>` (per `actions/flash.md`; `--snr` is deprecated). Confirm the central/peripheral
