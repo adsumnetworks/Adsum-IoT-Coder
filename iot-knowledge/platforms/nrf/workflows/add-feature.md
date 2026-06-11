@@ -102,10 +102,16 @@ incremental build will silently keep the old devicetree and the sensor stays inv
 
 ---
 
-## Step 5: Build, flash & offer the next feature
-Hand off to the Debug Loop (build → flash → capture proves the feature actually runs):
-> "Feature applied. Want me to build and flash it to confirm it runs?"
+## Step 5: Verify the feature through the FULL Debug Loop (not just build+flash)
+A feature is **proven** only by a captured log showing it running — never by a successful flash.
+> "Feature applied. Want me to build, flash, and watch the logs to confirm it actually works?"
 
-- **MANDATORY SKILL LOAD:** if yes, `read_file` → `platforms/nrf/workflows/debug-loop.md` and follow
-  it. A config/DT change requires a **pristine** build (see `actions/build.md`).
-- Once it runs, invite the next iteration: *"Want to add another feature on top?"* (loop here).
+- **MANDATORY SKILL LOAD:** if yes, `read_file` → `platforms/nrf/workflows/debug-loop.md` and run the
+  **whole** loop: Build → Flash → **Capture → Analyze** (each phase loads its own Action per the
+  Command Gate). Stopping after flash is an unfinished verification — do not end the task there.
+  A config/DT change requires a **pristine** build (see `actions/build.md`).
+- **Know what "working" looks like before you capture:** from the code you just added, note the
+  `LOG_INF`/`printk` lines that mark the feature's success (e.g. a sensor reading, `"Service
+  registered"`). In Analyze, check the captured log for them — if they're absent or a fault appears,
+  that's a failed verification: propose the fix and loop, don't declare success.
+- Once the log confirms it, invite the next iteration: *"Want to add another feature on top?"* (loop here).

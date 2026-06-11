@@ -58,8 +58,9 @@ iot-knowledge/
         ├── sdks/ncs/
         │   ├── SDK.md               ← NCS project structure, Kconfig, build reference
         │   └── protocols/BLE.md     ← BLE stack, log modules, buffer tuning
-        ├── actions/                  ← **Internal Subroutines** (load ONLY when instructed by a Workflow)
-        │   └── build.md, flash.md, capture-logs.md, analyze-logs.md
+        ├── actions/                  ← **Internal Subroutines** (load when a Workflow instructs, or the Command Gate fires)
+        │   └── build.md, flash.md, capture-logs.md, analyze-logs.md,
+        │       find-sample.md, run-twister.md, decode-fault.md, setup-ci.md
         └── workflows/               ← **Primary Entry Points** (START HERE for each task)
             └── log-generator.md, log-analyzer.md, debug-loop.md, demo-debug.md
                 prototype.md, add-feature.md, test-validate.md

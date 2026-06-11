@@ -45,14 +45,17 @@ Store the user's selection for the duration of the task:
 
 ## Loop Phases
 
+> **An iteration ends at Phase 4 (Analyze) — never at Flash.** A successful flash only proves the
+> image transferred, not that the firmware works. After every flash, continue to Capture and then
+> Analyze unless the user explicitly opts out via the Phase 3 buttons. Ending the task right after
+> a flash is an unfinished loop — the user came here to see the firmware *running*.
+
 ### Phase 1: Build
 
 **MANDATORY SKILL LOAD:** If not already loaded during this task, you MUST use the `read_file` tool to load `platforms/nrf/actions/build.md` BEFORE proceeding. Do not attempt this action from memory. Execute the built action exactly as described.
 
-- If **Ask Every Time** mode: use `ask_followup_question`:
-  - Question: *"Ready to build `<project>` for `<board>`. Proceed?"*
-  - Options: `["Build now", "Skip build", "Cancel task"]`
-- If **Auto-Approve** mode: run the build directly.
+- **Ask Every Time** → `ask_followup_question`: *"Ready to build `<project>` for `<board>`. Proceed?"* — Options: `["Build now", "Skip build", "Cancel task"]`
+- **Auto-Approve** → run the build directly.
 
 On **build failure:** treat it as a first-class diagnosis, not a blocker to "real" debugging — for
 most everyday issues (Kconfig typo, missing overlay symbol, overflow), **the build error IS the
@@ -66,21 +69,17 @@ Only proceed if the build succeeded.
 
 **MANDATORY SKILL LOAD:** If not already loaded during this task, you MUST use the `read_file` tool to load `platforms/nrf/actions/flash.md` BEFORE proceeding. Do not execute from memory.
 
-- If **Ask Every Time** mode: use `ask_followup_question`:
-  - Question: *"Build succeeded ✅. Flash to the connected device now?"*
-  - Options: `["Flash now", "Skip flash", "Cancel task"]`
-- If **Auto-Approve** mode: flash directly.
+- **Ask Every Time** → `ask_followup_question`: *"Build succeeded ✅. Flash to the connected device now?"* — Options: `["Flash now", "Skip flash", "Cancel task"]`
+- **Auto-Approve** → flash directly.
 
 On **flash failure:** follow the error handling in `actions/flash.md`.
 
 ### Phase 3: Capture Logs
 
-After a successful flash, determine if you should capture logs based on the active permission mode:
+After a successful flash, capture is the default continuation — only the confirmation style depends on the permission mode:
 
-- If **Ask Every Time** mode: use `ask_followup_question`:
-  - Question: *"Device flashed ✅. Capture logs now?"*
-  - Options: `["Capture RTT logs", "Capture UART logs", "Skip — I'll check manually"]`
-- If **Auto-Approve** mode: capture automatically (default to RTT if supported).
+- **Ask Every Time** → `ask_followup_question`: *"Device flashed ✅. Capture logs now?"* — Options: `["Capture RTT logs", "Capture UART logs", "Skip — I'll check manually"]`
+- **Auto-Approve** → capture automatically (default to RTT if supported).
 
 If capturing: **MANDATORY SKILL LOAD:** If not already loaded during this task, you MUST use the `read_file` tool to load `platforms/nrf/actions/capture-logs.md` BEFORE capturing logs. Assume nothing from memory.
 

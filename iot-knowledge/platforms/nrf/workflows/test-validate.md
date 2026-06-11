@@ -100,8 +100,22 @@ actual board it will ship on.
 Report a concise pass/fail summary:
 - Which tier(s) ran, on what (simulator target / board serial), and the scenario/check counts
 - Any failures — with the specific assertion or missing pattern, not a vague "something failed"
-- Suggested next step: fix-and-retest (→ `debug-loop.md`) or "looks good"
+- Suggested next step: fix-and-retest (→ `debug-loop.md`), "looks good", or make it durable (→ Step 8)
 
 Do NOT claim the firmware is "validated" if any check failed, was skipped, or its expectations were
 never confirmed with the user. A Tier A/B pass proves **logic**; only Tier C proves the radio/sensor
 path actually works.
+
+---
+
+## Step 8: Offer the durable setup — CI on GitHub
+After a green run (any tier), offer to make it permanent — as buttons, per Rule 5:
+> "Want this to run automatically on GitHub? Every PR would build the firmware and run the suite —
+> no board, no local install needed."
+
+- **MANDATORY SKILL LOAD:** if yes, `read_file` → `platforms/nrf/actions/setup-ci.md` and follow it.
+- Especially recommend CI when the repo is on GitHub **and** the user is on Win/mac — the CI
+  container is Linux, so `native_sim` runs there with zero local setup, sidestepping the local QEMU
+  install entirely.
+- If anything in the setup is outside your reach (repo permissions, secrets, a first `git push`),
+  apply core Rule 11 — say exactly what the user must do and how to verify it.
