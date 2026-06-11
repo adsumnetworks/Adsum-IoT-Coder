@@ -18,6 +18,7 @@ import {
 import chokidar, { FSWatcher } from "chokidar"
 import type { ExtensionContext } from "vscode"
 import { HostProvider } from "@/hosts/host-provider"
+import { setFreeTierActive } from "@/services/adsum/FreeTierState"
 import { Logger } from "@/services/logging/Logger"
 import { ShowMessageType } from "@/shared/proto/index.host"
 import {
@@ -536,6 +537,11 @@ export class StateManager {
 		// Batch update secrets
 		if (Object.keys(secretsUpdates).length > 0) {
 			this.setSecretsBatch(secretsUpdates)
+		}
+
+		// Keep the free-tier display gate in sync whenever the provider changes.
+		if (apiConfiguration.actModeApiProvider !== undefined) {
+			setFreeTierActive(apiConfiguration.actModeApiProvider === "adsum-free")
 		}
 	}
 

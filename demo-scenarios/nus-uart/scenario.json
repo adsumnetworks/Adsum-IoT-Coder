@@ -1,0 +1,15 @@
+{
+	"id": "nus-uart",
+	"title": "BLE NUS — one-directional communication",
+	"description": "Central (nRF52840DK) connects to Peripheral (nRF5340DK). Communication is one-directional: Central→Peripheral works; Peripheral→Central is silently dropped. Real firmware from NCS peripheral_uart + central_uart samples.",
+	"platform": "nrf52840 + nrf5340",
+	"protocol": "BLE NUS (Nordic UART Service)",
+	"projects": [
+		"central_uart",
+		"peripheral_uart"
+	],
+	"bugFile": "central_uart/src/main.c",
+	"bugFunction": "discovery_complete",
+	"bugSummary": "bt_nus_handles_assign() is called but bt_nus_subscribe_receive() is never called — central never subscribes to NUS TX notifications so peripheral→central data is silently dropped.",
+	"honestLabel": "Logs pre-captured from real nRF52840DK + nRF5340DK hardware."
+}

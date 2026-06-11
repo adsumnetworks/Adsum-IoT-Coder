@@ -1,7 +1,17 @@
+import {
+	buildDemoDisplayText,
+	buildDemoPrompt,
+	classifyDemoCapability,
+	DEMO_TRIGGER,
+	prepareDemoWorkspace,
+} from "@core/demos/DemoManager"
+import { getInstallId } from "@services/adsum/InstallIdentity"
+import { telemetryService } from "@services/telemetry"
 import { String } from "@shared/proto/cline/common"
 import { PlanActMode, OpenaiReasoningEffort as ProtoOpenaiReasoningEffort } from "@shared/proto/cline/state"
 import { NewTaskRequest } from "@shared/proto/cline/task"
 import { Settings } from "@shared/storage/state-keys"
+import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { convertProtoToApiProvider } from "@/shared/proto-conversions/models/api-configuration-conversion"
 import { DEFAULT_BROWSER_SETTINGS } from "../../../shared/BrowserSettings"
 import { Controller } from ".."
@@ -97,6 +107,43 @@ export async function newTask(controller: Controller, request: NewTaskRequest): 
 		}).filter(([_, value]) => value !== undefined),
 	)
 
-	const taskId = await controller.initTask(request.text, request.images, request.files, undefined, filteredTaskSettings)
+	// Demo intercept: replace the lightweight trigger with a real prompt pointing
+	// at actual source files and RTT logs copied into globalStorage.
+	let taskText = request.text
+	// Friendly bubble text shown in place of the full runbook (kept out of the user's view).
+	let displayText: string | undefined
+	if (taskText.includes(DEMO_TRIGGER)) {
+		try {
+			const ws = await prepareDemoWorkspace()
+			const env = getCachedNrfEnvironment()
+			const capability = classifyDemoCapability(env)
+			taskText = buildDemoPrompt(ws, capability, env)
+			displayText = buildDemoDisplayText()
+			telemetryService.captureFreeTierDemoRunStarted(getInstallId(), "nus-uart")
+			// Consume the one-shot auto-start flag (set by the announcement toast CTA) so the demo
+			// doesn't re-trigger on the next launch.
+			controller.stateManager.setGlobalState("demoAutoStart", undefined)
+			// Demo files live in globalStorage (outside the workspace) — auto-approve reads for this
+			// task only. Does not touch the user's global auto-approval settings.
+			const existingApproval =
+				filteredTaskSettings.autoApprovalSettings ?? controller.stateManager.getGlobalSettingsKey("autoApprovalSettings")
+			filteredTaskSettings.autoApprovalSettings = {
+				...existingApproval,
+				actions: { ...existingApproval.actions, readFilesExternally: true },
+			}
+		} catch (err) {
+			console.error("[Demo] workspace preparation failed, falling back to original prompt:", err)
+			// taskText stays as-is; the inline fallback logs in demoScenarios.ts still work
+		}
+	}
+
+	const taskId = await controller.initTask(
+		taskText,
+		request.images,
+		request.files,
+		undefined,
+		filteredTaskSettings,
+		displayText,
+	)
 	return String.create({ value: taskId || "" })
 }

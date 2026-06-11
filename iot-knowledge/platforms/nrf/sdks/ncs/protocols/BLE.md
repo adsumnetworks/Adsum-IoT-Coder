@@ -67,6 +67,19 @@ CONFIG_BT_CTLR_DATA_LENGTH_MAX=251  # Controller DLE max
 | **Multi-conn: one drops** | `BT_CONN_LOG_LEVEL`, `MPSL_LOG_LEVEL`, `SDC_LOG_LEVEL` | `mpsl: timeslot denied/cancelled`, `num_complete_packets` stuck at 0 |
 | **Controller assertion crash** | `BT_HCI_CORE_LOG_LEVEL`, `MPSL_LOG_LEVEL`, `SDC_LOG_LEVEL` + `CONFIG_BT_CTLR_ASSERT_HANDLER=y` | `ASSERTION FAIL @ lll.c` — use RTT only, never UART in ISR context |
 
+### NUS Client Protocol (central_uart)
+
+The NUS client (central role, `central_uart`) must complete two calls in `discovery_complete()`:
+
+1. `bt_nus_handles_assign(dm, nus_client)` — stores the discovered GATT handles
+2. `bt_nus_subscribe_receive(nus_client)` — writes the NUS TX characteristic CCCD so the peripheral can notify
+
+**If `bt_nus_subscribe_receive()` is not called**, the peripheral's `bt_nus_send()` fails on every call — it has no subscriber. The `ccc_changed` event (see table above) will be absent because no client ever wrote the CCCD.
+
+Log signature for this bug:
+- Central: silent after `Service discovery completed` — no further BLE activity
+- Peripheral: `Failed to send data over BLE connection` on every notification attempt, starting seconds after connection
+
 ### Deep Stack Logging — RTT Drop Prevention
 
 When enabling multiple BLE modules at DBG level, default buffers will quickly overflow, causing dropped messages. Tune the buffers according to the SoC's available RAM and the number of modules enabled.

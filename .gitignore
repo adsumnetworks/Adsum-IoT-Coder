@@ -49,7 +49,22 @@ test-results
 .vscode/settings.json
 .vscode/settings.json
 logs/
+# Demo RTT captures are bundled assets, not runtime output — they must ship.
+!demo-scenarios/**/logs/
+!demo-scenarios/**/logs/**
 _test_chat/
 chat_tests/
 .agents/*
 CLAUDE.*
+
+# Internal planning repo — cloned here for agent context only; has its own remote.
+# Never tracked by the code repo (strategy/docs stay out of code history).
+Adsum-Planning/
+.clangd
+
+# Local MCP server config (Nordic MCP etc.) — per-developer, keep out of repo history
+.mcp.json
+.vscode/mcp.json
+
+# Tooling/agent artifact (holds local prod context) — never commit
+.embedder/

@@ -135,6 +135,8 @@ type TaskParams = {
 	stateManager: StateManager
 	workspaceManager?: WorkspaceRootManager
 	task?: string
+	/** Optional friendlier text to render in the chat bubble instead of `task` (e.g. demo flows). */
+	displayText?: string
 	images?: string[]
 	files?: string[]
 	historyItem?: HistoryItem
@@ -147,6 +149,8 @@ export class Task {
 	readonly taskId: string
 	readonly ulid: string
 	private taskIsFavorited?: boolean
+	/** Optional friendlier text shown in the chat bubble in place of the full task prompt. */
+	private displayText?: string
 	private cwd: string
 	private taskInitializationStartTime: number
 
@@ -268,6 +272,7 @@ export class Task {
 			stateManager,
 			workspaceManager,
 			task,
+			displayText,
 			images,
 			files,
 			historyItem,
@@ -277,6 +282,7 @@ export class Task {
 
 		this.taskInitializationStartTime = performance.now()
 		this.taskState = new TaskState()
+		this.displayText = displayText
 		this.controller = controller
 		this.mcpHub = mcpHub
 		this.updateTaskHistory = updateTaskHistory
@@ -953,7 +959,9 @@ export class Task {
 
 		await this.postStateToWebview()
 
-		await this.say("text", task, images, files)
+		// Render the friendlier displayText in the chat bubble when provided (e.g. demo flows),
+		// while the agent still receives the full `task` prompt in userContent below.
+		await this.say("text", this.displayText ?? task, images, files)
 
 		this.taskState.isInitialized = true
 

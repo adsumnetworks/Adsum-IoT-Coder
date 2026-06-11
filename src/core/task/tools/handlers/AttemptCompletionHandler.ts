@@ -16,6 +16,13 @@ import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 
+const DEMO_TASK_PREFIX = "Debug a real BLE NUS bug"
+
+function isCompletingDemoTask(config: TaskConfig): boolean {
+	const msgs = config.messageState.getClineMessages()
+	return msgs.some((m) => m.type === "say" && m.say === "text" && m.text?.startsWith(DEMO_TASK_PREFIX))
+}
+
 export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHandler {
 	readonly name = ClineDefaultTool.ATTEMPT
 
@@ -126,6 +133,9 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 				if (config.api instanceof AdsumFreeHandler) {
 					telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
 				}
+				if (isCompletingDemoTask(config)) {
+					telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), "nus-uart")
+				}
 			} else {
 				// we already sent a command message, meaning the complete completion message has also been sent
 				await config.callbacks.saveCheckpoint(true)
@@ -158,6 +168,9 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			telemetryService.captureTaskCompleted(config.ulid)
 			if (config.api instanceof AdsumFreeHandler) {
 				telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
+			}
+			if (isCompletingDemoTask(config)) {
+				telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), "nus-uart")
 			}
 		}
 

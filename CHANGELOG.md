@@ -2,6 +2,36 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
+## [0.1.5] - 2026-06-08
+
+### A full UI redesign — rebuilt around how you start
+
+Early users told us the hardest part wasn't the agent, it was the cold start. So we rebuilt the entire first-run experience: see it work *before* any setup, land on something useful immediately, and always have a clear next step.
+
+- **See it debug a real bug — in 30 seconds, before you set anything up.** A new first-run demo debugs a real BLE bug on firmware bundled with the extension — capture → analyze → fix on a genuine failure, with no board, API key, or project of your own required. Run it on your own firmware right after.
+- **Zero-config first run.** Fresh installs land directly on a working home screen — no provider-selection gate before you can try the agent. The free tier is on by default; bring your own key anytime.
+- **A home screen that guides the next step.** With a project open, the agent reads what it is and offers one-click **workflow cards** — *Build, flash & debug*, *Add a feature*, *Test & validate* — with *SDK migration* and *board bring-up* on the way. With no project open, it points you to *start a prototype* or *open your nRF project*. After any task finishes, it suggests where to go next instead of leaving a blank prompt.
+
+### Notes
+
+- The previous two-button home (*Analyze Logs* / *Generate Logging Code*) is replaced by the demo + context-aware workflow cards above; the same capabilities are reachable through *Build, flash & debug*.
+
+### Reliability
+
+- **Free-tier "tokens left" counter is now accurate.** It decrements by each request's real usage and shows **0** the moment the quota is exhausted — fixing the prior behavior where the chip could plateau (e.g. "~20k left") even after the free tier ran out. Resolves the 0.1.3 known issue.
+- **Token counter shows on first launch.** The free-tier balance now appears immediately on a fresh install, instead of only after switching providers and back.
+- **Invite codes.** Redeem a code in the free-tier panel (or the quota-exhausted card) for extra free-tier tokens.
+- **Windows: better nRF tooling detection.** `nrfutil` is now found in more install locations (`NRFUTIL_HOME` and common Windows paths), fixing a spurious "nrfutil not found".
+- **"What's new" re-appears on updates.** Patch releases (e.g. 0.1.3 → 0.1.5) now show the what's-new note to existing users, not only fresh installs.
+
+### Smarter workflows behind the cards
+
+The one-click workflow cards now hold up across platforms and harder projects:
+
+- **Test & validate works on Windows and macOS — not just Linux.** It picks the right path for your machine: a host simulator where one fits, or running the **same tests on your connected board** with no extra install. It's also honest about what a simulator can and can't prove (logic vs. real radio, sensor, and timing), and walks you through the one-time QEMU setup only when you actually need board-free runs.
+- **Prototyping handles two-device and sensor builds.** Ask for a central ↔ peripheral system and it scaffolds **both** apps from the matching Nordic samples and flashes each to its own board; ask for an I²C sensor and it wires the devicetree overlay correctly — the parts that usually trip people up. It builds the files for you instead of pointing you at a sample to open, and sketches the architecture (and a two-device timeline) first.
+- **Debug a board that's already running — no reflash.** *Build, flash & debug* can now skip straight to capturing and analyzing logs when your device is already running the firmware you want to inspect.
+
 ## [0.1.3] - 2026-06-01
 
 ### Free tier — zero-friction onboarding
@@ -18,7 +48,7 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 
 ### Known issues
 
-- Free-tier "tokens left" chip can briefly show a stale value until the next prompt; balance is backend-authoritative and harmless. See README → Limitations.
+- Free-tier "tokens left" chip can briefly show a stale value until the next prompt; balance is backend-authoritative and harmless. See README → Limitations. *(Fixed in 0.1.5 — the chip now decrements live and shows 0 on exhaustion.)*
 
 ## [0.1.2] - 2026-05-31
 

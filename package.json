@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder – for nRF",
 	"description": "Open-Source AI-powered debugging assistant for nRF Connect SDK development. Generates logging code, analyzes RTT/UART logs, and provides real-time BLE stack diagnostics.",
-	"version": "0.1.3",
+	"version": "0.1.5",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -72,7 +72,7 @@
 			"adsum-iot-coder-icon": {
 				"description": "Adsum IoT Coder",
 				"default": {
-					"fontPath": "assets/icons/cline-bot.woff",
+					"fontPath": "assets/icons/adsum-icon.woff",
 					"fontCharacter": "\\e900"
 				}
 			}

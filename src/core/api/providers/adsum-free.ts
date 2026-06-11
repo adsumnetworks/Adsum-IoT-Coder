@@ -95,6 +95,12 @@ export class AdsumFreeHandler implements ApiHandler {
 						} catch {
 							// use default payload
 						}
+						// Quota is gone — zero the displayed remaining NOW. The success path only updates
+						// the chip from the (pre-request) X-Free-Quota-Remaining header, so without this the
+						// chip stays stuck at the last header value (~one request's worth) — the
+						// "still shows ~20k tokens when exhausted" bug.
+						this.remainingQuota = 0
+						persistCachedFreeTokensRemaining(0)
 						markQuotaExhausted()
 						telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
 						throw new QuotaExhaustedError(payload)
@@ -187,6 +193,16 @@ export class AdsumFreeHandler implements ApiHandler {
 					cacheReadTokens: cached,
 					cacheWriteTokens: 0,
 					totalCost: 0, // free tier, no cost to the user
+				}
+				// Decrement the displayed remaining by THIS request's actual usage. The backend's
+				// X-Free-Quota-Remaining header is the PRE-request balance, so without this the chip
+				// lags a full request behind and never reaches 0 on the request that exhausts quota.
+				// Matches the backend's deduction (prompt + completion, including cached); the next
+				// request's header re-syncs it authoritatively, so this can't drift.
+				const usedTokens = (chunk.usage.prompt_tokens || 0) + (chunk.usage.completion_tokens || 0)
+				if (this.remainingQuota !== undefined && usedTokens > 0) {
+					this.remainingQuota = Math.max(0, this.remainingQuota - usedTokens)
+					persistCachedFreeTokensRemaining(this.remainingQuota)
 				}
 			}
 		}

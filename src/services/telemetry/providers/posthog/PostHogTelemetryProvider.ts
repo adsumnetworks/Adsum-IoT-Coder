@@ -106,7 +106,7 @@ export class PostHogTelemetryProvider implements ITelemetryProvider {
 		this.client.capture({
 			distinctId: getDistinctId(),
 			event,
-			properties,
+			properties: { app_version: ExtensionRegistryInfo.version, ...properties },
 		})
 	}
 
@@ -115,8 +115,9 @@ export class PostHogTelemetryProvider implements ITelemetryProvider {
 			distinctId: getDistinctId(),
 			event,
 			properties: {
+				app_version: ExtensionRegistryInfo.version,
 				...properties,
-				_required: true, // Mark as required event
+				_required: true,
 			},
 		})
 	}

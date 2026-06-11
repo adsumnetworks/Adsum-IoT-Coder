@@ -61,6 +61,7 @@ message ShowOpenDialogueRequest {
   optional bool can_select_many = 2;
   optional string open_label = 3;
   optional ShowOpenDialogueFilterOption filters = 4;
+  optional bool can_select_folders = 5;
 }
 
 message ShowOpenDialogueFilterOption {

@@ -1,0 +1,43 @@
+# RTT Log from peripheral (960167369)
+# Started: 2026-06-06T16:29:35.564779
+# Interface: SWD, Speed: 4000 kHz, Channel: 0
+------------------------------------------------------------
+[16:29:35.617] [00:00:00.451,477] [0m<inf> fs_nvs: 2 Sectors of 4096 bytes[0m
+[16:29:35.617] [00:00:00.451,507] [0m<inf> fs_nvs: alloc wra: 0, fe8[0m
+[16:29:35.617] [00:00:00.451,507] [0m<inf> fs_nvs: data wra: 0, 0[0m
+[16:29:35.617] [00:00:00.472,381] [0m<inf> bt_hci_core: HW Platform: Nordic Semiconductor (0x0002)[0m
+[16:29:35.617] [00:00:00.472,412] [0m<inf> bt_hci_core: HW Variant: nRF53x (0x0003)[0m
+[16:29:35.617] [00:00:00.472,442] [0m<inf> bt_hci_core: Firmware: Standard Bluetooth controller (0x00) Version 155.44175 Build 2923568579[0m
+[16:29:35.617] [00:00:00.473,327] [0m<inf> bt_hci_core: No ID address. App must call settings_load()[0m
+[16:29:35.617] [00:00:00.473,358] [0m<inf> peripheral_uart: Bluetooth initialized[0m
+[16:29:35.617] [00:00:00.474,884] [0m<inf> bt_hci_core: HCI transport: IPC[0m
+[16:29:35.617] [00:00:00.474,975] [0m<inf> bt_hci_core: Identity: DB:96:E9:19:7C:47 (random)[0m
+[16:29:35.617] [00:00:00.475,006] [0m<inf> bt_hci_core: HCI: version 6.2 (0x10) revision 0x2020, manufacturer 0x0059[0m
+[16:29:35.617] [00:00:00.475,036] [0m<inf> bt_hci_core: LMP: version 6.2 (0x10) subver 0x2020[0m
+[16:29:35.617] [00:00:00.480,377] [0m<inf> per0m
+[16:29:35.617] 
+[16:29:35.669] [00:00:00.296,081] [0m<inf> fs_nvs: 2 Sectors of 4096 bytes[0m
+[16:29:35.669] [00:00:00.296,112] [0m<inf> fs_nvs: alloc wra: 0, fb8[0m
+[16:29:35.669] [00:00:00.296,112] [0m<inf> fs_nvs: data wra: 0, 6c[0m
+[16:29:35.724] [00:00:00.316,680] [0m<inf> bt_hci_core: HW Platform: Nordic Semiconductor (0x0002)[0m
+[16:29:35.724] [00:00:00.316,711] [0m<inf> bt_hci_core: HW Variant: nRF53x (0x0003)[0m
+[16:29:35.724] [00:00:00.316,741] [0m<inf> bt_hci_core: Firmware: Standard Bluetooth controller (0x00) Version 155.44175 Build 2923568579[0m
+[16:29:35.724] [00:00:00.317,596] [0m<inf> bt_hci_core: No ID address. App must call settings_load()[0m
+[16:29:35.724] [00:00:00.317,626] [0m<inf> peripheral_uart: Bluetooth initialized[0m
+[16:29:35.724] [00:00:00.319,305] [0m<inf> bt_hci_core: HCI transport: IPC[0m
+[16:29:35.724] [00:00:00.319,396] [0m<inf> bt_hci_core: Identity: DB:96:E9:19:7C:47 (random)[0m
+[16:29:35.724] [00:00:00.319,427] [0m<inf> bt_hci_core: HCI: version 6.2 (0x10) revision 0x2020, manufacturer 0x0059[0m
+[16:29:35.724] [00:00:00.319,458] [0m<inf> bt_hci_core: LMP: version 6.2 (0x10) subver 0x2020[0m
+[16:29:35.724] [00:00:00.324,005] [0m<inf> peripheral_uart: Advertising successfully started[0m
+[16:29:36.828] [00:00:00.438,781] [0m<inf> peripheral_uart: Connected E0:FC:7D:AC:F4:FA (random)[0m
+[16:29:36.828] [00:00:00.790,130] [0m<inf> peripheral_uart: Security changed: E0:FC:7D:AC:F4:FA (random) level 2[0m
+[16:29:49.449] [00:00:13.090,515] [0m<inf> peripheral_uart: Received data from: E0:FC:7D:AC:F4:FA (random)[0m
+[16:29:53.937] [00:00:17.565,032] [1;33m<wrn> peripheral_uart: Failed to send data over BLE connection[0m
+[16:30:00.612] [00:00:24.240,936] [0m<inf> peripheral_uart: Received data from: E0:FC:7D:AC:F4:FA (random)[0m
+[16:30:00.612] [00:00:24.490,875] [0m<inf> peripheral_uart: Received data from: E0:FC:7D:AC:F4:FA (random)[0m
+[16:30:09.058] [00:00:32.677,886] [1;33m<wrn> peripheral_uart: Failed to send data over BLE connection[0m
+[16:30:16.349] [00:00:39.991,455] [0m<inf> peripheral_uart: Received data from: E0:FC:7D:AC:F4:FA (random)[0m
+[16:30:18.225] [00:00:41.841,491] [0m<inf> peripheral_uart: Received data from: E0:FC:7D:AC:F4:FA (random)[0m
+[16:30:30.626] [00:00:54.270,874] [1;33m<wrn> peripheral_uart: Failed to send data over BLE connection[0m
+[16:30:30.627] [00:00:55.144,439] [1;33m<wrn> peripheral_uart: Failed to send data over BLE connection[0m
+[16:30:34.842] [00:00:58.492,034] [0m<inf> peripheral_uart: Received data from: E0:FC:7D:AC:F4:FA (random)[0m

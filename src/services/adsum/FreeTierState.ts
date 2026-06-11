@@ -1,16 +1,62 @@
 /** In-memory cache of remaining free-tier tokens, seeded from register-install response. */
 let cachedRemaining: number | undefined
 
+/** Whether the user is currently configured to use the Adsum free tier. */
+let _isOnFreeTier = false
+
 const REMAINING_KEY = "adsum.freeTokensRemaining"
+
+/**
+ * Called by the controller whenever the configured API provider changes.
+ * Gates all token display so BYOK users never see a stale credit number.
+ */
+export function setFreeTierActive(active: boolean): void {
+	_isOnFreeTier = active
+	_notifyListeners()
+}
+
+/**
+ * Returns the token count for display — undefined when not on the free tier,
+ * so callers (status bar, FreeTierStrip) hide the credit automatically.
+ */
+export function getFreeTierTokensForDisplay(): number | undefined {
+	if (!_isOnFreeTier) {
+		return undefined
+	}
+	return cachedRemaining
+}
+
+type TokensListener = (tokens: number | undefined) => void
+const _tokensListeners: TokensListener[] = []
+
+/** Subscribe to token changes. Returns an unsubscribe function. */
+export function onFreeTokensChanged(listener: TokensListener): () => void {
+	_tokensListeners.push(listener)
+	return () => {
+		const idx = _tokensListeners.indexOf(listener)
+		if (idx !== -1) {
+			_tokensListeners.splice(idx, 1)
+		}
+	}
+}
+
+function _notifyListeners() {
+	const display = getFreeTierTokensForDisplay()
+	for (const l of _tokensListeners) {
+		l(display)
+	}
+}
 
 export function setCachedFreeTokensRemaining(n: number) {
 	cachedRemaining = n
+	_notifyListeners()
 }
 
 /** Updates the in-memory cache AND persists to globalState so the chip is accurate after restart. */
 export function persistCachedFreeTokensRemaining(n: number) {
 	cachedRemaining = n
 	_globalState?.update(REMAINING_KEY, n)
+	_notifyListeners()
 }
 
 export function getCachedFreeTokensRemaining(): number | undefined {

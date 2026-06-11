@@ -32,7 +32,7 @@ export const NORDIC_MODES: Record<NordicModeId, NordicModeConfig> = {
 		id: "log_analyzer",
 		icon: "📊",
 		title: "Debug Live Device Logs",
-		description: "Stream RTT or UART logs from your nRF device — the agent finds the root cause and proposes a fix.",
+		description: "Stream RTT or UART logs from your nRF device and find the root cause fast — I'll propose the fix.",
 		systemPrompt: "Analyze device logs",
 		initialMessage: "Analyzing workspace and connected devices for log analysis...",
 	},

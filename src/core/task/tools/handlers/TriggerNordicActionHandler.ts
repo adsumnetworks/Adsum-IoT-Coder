@@ -210,10 +210,11 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			}
 		}
 
-		// On Windows, quote the path if it contains spaces
-		if (isWindows && wrapperPath.includes(" ")) {
-			wrapperPath = `"${wrapperPath}"`
-		}
+		// Quote any argument that contains a space — on ALL platforms. A workspace path like
+		// ".../Adsum IoT Coder/..." otherwise lets the shell split the command, so a relative
+		// "./Adsum IoT Coder/.../rtt-logger" runs as `./Adsum` → "no such file or directory".
+		const quoteIfNeeded = (s: string): string => (s.includes(" ") ? `"${s}"` : s)
+		wrapperPath = quoteIfNeeded(wrapperPath)
 
 		const args = [wrapperPath]
 
@@ -275,7 +276,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 				}
 
 				if (duration) args.push("--duration", duration.toString())
-				if (resolvedOutput) args.push("--output", resolvedOutput)
+				if (resolvedOutput) args.push("--output", quoteIfNeeded(resolvedOutput))
 				break
 			case "monitor":
 				// Monitor maps to undefined (default behavior of script if no duration?)

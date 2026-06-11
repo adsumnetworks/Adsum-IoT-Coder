@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "central_uart",
+			"path": "central_uart"
+		},
+		{
+			"name": "peripheral_uart",
+			"path": "peripheral_uart"
+		}
+	],
+	"settings": {}
+}
