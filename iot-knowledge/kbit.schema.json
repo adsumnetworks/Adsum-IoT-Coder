@@ -1,0 +1,163 @@
+{
+	"$ref": "#/definitions/KBitMeta",
+	"definitions": {
+		"KBitMeta": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^[a-z0-9]+(?:[/-][a-z0-9]+)*$"
+				},
+				"title": {
+					"type": "string",
+					"minLength": 1
+				},
+				"type": {
+					"type": "string",
+					"enum": [
+						"workflow",
+						"action",
+						"knowledge"
+					]
+				},
+				"version": {
+					"type": "string",
+					"pattern": "^\\d+\\.\\d+\\.\\d+$"
+				},
+				"owner": {
+					"type": "string",
+					"enum": [
+						"adsum-core",
+						"adsum-extended",
+						"community",
+						"partner"
+					]
+				},
+				"author": {
+					"type": "string",
+					"minLength": 1
+				},
+				"license": {
+					"type": "string",
+					"minLength": 1
+				},
+				"tier": {
+					"type": "string",
+					"enum": [
+						"community",
+						"certified"
+					]
+				},
+				"delivery": {
+					"type": "string",
+					"enum": [
+						"bundled",
+						"downloaded"
+					]
+				},
+				"domain": {
+					"type": "string",
+					"minLength": 1
+				},
+				"platform": {
+					"type": "string",
+					"enum": [
+						"nrf",
+						"esp",
+						"universal"
+					]
+				},
+				"triggers": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"soc": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"sdk": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sdk_version": {
+					"type": "string",
+					"minLength": 1
+				},
+				"requires": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"pattern": "^[a-z0-9]+(?:[/-][a-z0-9]+)*$"
+					}
+				},
+				"loaded_by": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"pattern": "^[a-z0-9]+(?:[/-][a-z0-9]+)*$"
+					}
+				},
+				"last_verified": {
+					"type": "object",
+					"properties": {
+						"date": {
+							"type": "string",
+							"pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+						},
+						"env": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": [
+						"date",
+						"env"
+					],
+					"additionalProperties": false
+				},
+				"safety": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"enum": [
+							"shell",
+							"flash",
+							"erase",
+							"network",
+							"fs-write",
+							"process-kill",
+							"long-running"
+						]
+					}
+				},
+				"supersedes": {
+					"type": "string",
+					"pattern": "^[a-z0-9]+(?:[/-][a-z0-9]+)*$"
+				},
+				"content_hash": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"title",
+				"type",
+				"version",
+				"owner",
+				"author",
+				"license",
+				"tier",
+				"delivery",
+				"domain"
+			],
+			"additionalProperties": false
+		}
+	},
+	"$schema": "http://json-schema.org/draft-07/schema#"
+}
