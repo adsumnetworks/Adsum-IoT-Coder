@@ -1,3 +1,17 @@
+---
+id: adsum/nrf/rules/device-identity
+title: "Device Identity Rule"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+---
+
 # Device Identity Rule (rules/device-identity.md)
 
 **STRICT — Always enforced. No exceptions.**

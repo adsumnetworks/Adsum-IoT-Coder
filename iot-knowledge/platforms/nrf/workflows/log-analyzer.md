@@ -1,3 +1,21 @@
+---
+id: adsum/nrf/workflows/log-analyzer
+title: "Log Analyzer Workflow"
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+triggers: ["Analyze device logs", "Check logs", "What do the logs say", "I want to debug my device"]
+requires:
+  - adsum/nrf/actions/analyze-logs
+  - adsum/nrf/actions/capture-logs
+---
+
 # Log Analyzer Workflow (workflows/log-analyzer.md)
 
 **Triggered by:** Prompts like "Analyze device logs", "Check logs", "What do the logs say", "I want to debug my device"

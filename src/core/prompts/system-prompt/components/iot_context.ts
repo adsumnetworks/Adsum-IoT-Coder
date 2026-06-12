@@ -1,6 +1,7 @@
 import fs from "fs/promises"
 import path from "path"
 import { HostProvider } from "@/hosts/host-provider"
+import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 import { fileExistsAtPath } from "@/utils/fs"
 // import { IotProjectMemoryManager } from "../../../memory/IotProjectMemoryManager"
 import { SystemPromptSection } from "../templates/placeholders"
@@ -12,7 +13,8 @@ async function readKnowledgeFile(relativePath: string): Promise<string> {
 		const extPath = HostProvider.get().extensionFsPath
 		const fullPath = path.join(extPath, "iot-knowledge", relativePath)
 		if (await fileExistsAtPath(fullPath)) {
-			return await fs.readFile(fullPath, "utf-8")
+			// Strip any K-bit frontmatter so a migrated bit's YAML metadata never enters the prompt.
+			return stripFrontmatter(await fs.readFile(fullPath, "utf-8"))
 		}
 	} catch (e) {
 		console.error(`Failed to read IoT knowledge file: ${relativePath}`, e)

@@ -1,3 +1,18 @@
+---
+id: adsum/nrf/platform
+title: "Nordic nRF — Platform Index"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+safety: [flash]
+---
+
 # Nordic nRF — Platform Index (`platforms/nrf/`)
 
 This file is the master index for the `platforms/nrf/` directory. It describes everything available for Nordic nRF development and tells the agent when and how to load each resource.

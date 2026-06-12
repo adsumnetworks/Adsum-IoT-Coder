@@ -1,0 +1,481 @@
+{
+	"manifestVersion": 1,
+	"count": 26,
+	"bits": [
+		{
+			"id": "adsum/agent",
+			"title": "Identity & Persona",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "universal",
+			"path": "AGENT.md",
+			"content_hash": "cebe9795e0d530f125f9399d66b868666077d9855e3449d22803a2e46adfa356"
+		},
+		{
+			"id": "adsum/nrf/actions/analyze-logs",
+			"title": "Action: Analyze Device Logs",
+			"type": "action",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"requires": [
+				"adsum/nrf/actions/capture-logs",
+				"adsum/nrf/actions/decode-fault"
+			],
+			"path": "platforms/nrf/actions/analyze-logs.md",
+			"content_hash": "e17fa1954342e6b6f3bc0a416a3d0af4d52d220babbb6e7a23addb27340a33c3"
+		},
+		{
+			"id": "adsum/nrf/actions/build",
+			"title": "Action: Build Firmware",
+			"type": "action",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/actions/build.md",
+			"content_hash": "0f0656144eb73d62ebd924533acc473dee59cd16ced0828221ecb9e9a35fd938"
+		},
+		{
+			"id": "adsum/nrf/actions/capture-logs",
+			"title": "Action: Capture Device Logs",
+			"type": "action",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [
+				"process-kill"
+			],
+			"path": "platforms/nrf/actions/capture-logs.md",
+			"content_hash": "ed01076abac0f0d70c68eff8b249fe574ec1560e5ab6057bf45ef1d300a54680"
+		},
+		{
+			"id": "adsum/nrf/actions/decode-fault",
+			"title": "Action: Decode a Fatal Error / Fault",
+			"type": "action",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/actions/decode-fault.md",
+			"content_hash": "5856f501b62db44046504fb31d11e848a681c1ece429dc9e9c680d676288340f"
+		},
+		{
+			"id": "adsum/nrf/actions/find-sample",
+			"title": "Action: Find a Sample",
+			"type": "action",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/actions/find-sample.md",
+			"content_hash": "4cf34e01a419db15906822688787244360a1fc03164ae9b344f50f21839a1a99"
+		},
+		{
+			"id": "adsum/nrf/actions/flash",
+			"title": "Action: Flash Firmware",
+			"type": "action",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [
+				"flash",
+				"erase",
+				"process-kill"
+			],
+			"path": "platforms/nrf/actions/flash.md",
+			"content_hash": "6054830200400021ec4ea778b58d2ad1c9633912a89eb10b35dfecd631647053"
+		},
+		{
+			"id": "adsum/nrf/actions/run-twister",
+			"title": "Action: Run Host Tests via Twister",
+			"type": "action",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/actions/run-twister.md",
+			"content_hash": "78bdf42b8a73949cc63262ded164b802ac85ff9f32be632909220743f2adb4ba"
+		},
+		{
+			"id": "adsum/nrf/boards/nrf52832",
+			"title": "nRF52832 — Board Knowledge",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/boards/nrf52832.md",
+			"content_hash": "c4f5f5aeb59a389123f0810ef48976b25494d41bf8db626351ba9b41ff7039c1"
+		},
+		{
+			"id": "adsum/nrf/boards/nrf52840",
+			"title": "nRF52840 — Board Knowledge",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/boards/nrf52840.md",
+			"content_hash": "551016d1d6b5adf809753588b8abe0a20a2754e0ec0b0859eb15d7b8cf7d6713"
+		},
+		{
+			"id": "adsum/nrf/boards/nrf5340",
+			"title": "nRF5340 — Board Knowledge",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/boards/nrf5340.md",
+			"content_hash": "7130236648b82e0856fd3fb17f01ffe0189e744e8c3f30f6d22be93292204c3b"
+		},
+		{
+			"id": "adsum/nrf/platform",
+			"title": "Nordic nRF — Platform Index",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [
+				"flash"
+			],
+			"path": "platforms/nrf/PLATFORM.md",
+			"content_hash": "883355154ccadf69e466feb516b092af90ea08245baf89544e304eb9b5777a76"
+		},
+		{
+			"id": "adsum/nrf/rules/device-identity",
+			"title": "Device Identity Rule",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/rules/device-identity.md",
+			"content_hash": "c8f4850bc9e6842f4f0ef2413162d2a48ae8fbb672c23e975012cfae02cbfe54"
+		},
+		{
+			"id": "adsum/nrf/rules/nrf-terminal",
+			"title": "nRF Platform Rule: nRF Connect Terminal",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [
+				"flash"
+			],
+			"path": "platforms/nrf/rules/nrf-terminal.md",
+			"content_hash": "ac0cdf29938cae1986768b2ed2868c89dabf6b99ab801b18dba9e13d0b78b46f"
+		},
+		{
+			"id": "adsum/nrf/rules/skill-loading",
+			"title": "nRF Platform Rule: Skill Loading",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/rules/skill-loading.md",
+			"content_hash": "bde2555006cd4723b6f618f18be689d2ccffac769b0a62fad812743e2f2865a4"
+		},
+		{
+			"id": "adsum/nrf/sdks/ncs/protocols/ble",
+			"title": "BLE Protocol Knowledge — NCS / Zephyr",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/sdks/ncs/protocols/BLE.md",
+			"content_hash": "551155bb73ef28ea21a79e8d2d2c3b468963976633c0444d5d910a12df4f84dd"
+		},
+		{
+			"id": "adsum/nrf/sdks/ncs/sdk",
+			"title": "Nordic Connect SDK",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/sdks/ncs/SDK.md",
+			"content_hash": "99f9933f1bc13be7aaed40baba4a7802fa105b8cfe252fa87413e227c2aaeabd"
+		},
+		{
+			"id": "adsum/nrf/workflows/add-feature",
+			"title": "Add Feature",
+			"type": "workflow",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"triggers": [
+				"add a feature",
+				"Add a feature to"
+			],
+			"sdk": "ncs",
+			"requires": [
+				"adsum/nrf/actions/find-sample",
+				"adsum/nrf/workflows/debug-loop"
+			],
+			"loaded_by": [
+				"adsum/nrf/workflows/prototype"
+			],
+			"safety": [
+				"flash"
+			],
+			"path": "platforms/nrf/workflows/add-feature.md",
+			"content_hash": "a3f4530d114f2ecbf0137919a4dd2a57d8e7e06a3ff4088f612abfd4cf064a76"
+		},
+		{
+			"id": "adsum/nrf/workflows/debug-loop",
+			"title": "Autonomous Debug Loop",
+			"type": "workflow",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"triggers": [
+				"build and flash",
+				"Build, flash & debug"
+			],
+			"requires": [
+				"adsum/nrf/actions/analyze-logs",
+				"adsum/nrf/actions/build",
+				"adsum/nrf/actions/capture-logs",
+				"adsum/nrf/actions/decode-fault",
+				"adsum/nrf/actions/flash"
+			],
+			"path": "platforms/nrf/workflows/debug-loop.md",
+			"content_hash": "aeac6449ba06073b004a9cd2326bea579e356a9852ae516c489ace0b505dc018"
+		},
+		{
+			"id": "adsum/nrf/workflows/demo-debug",
+			"title": "Demo Debug Workflow",
+			"type": "workflow",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"triggers": [
+				"Demo:",
+				"[ADSUM_DEMO:"
+			],
+			"path": "platforms/nrf/workflows/demo-debug.md",
+			"content_hash": "f1f3a94ce914f47619300baab908b92f057f9d9c35331483024991f3c819040f"
+		},
+		{
+			"id": "adsum/nrf/workflows/log-analyzer",
+			"title": "Log Analyzer Workflow",
+			"type": "workflow",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"triggers": [
+				"Analyze device logs",
+				"Check logs",
+				"What do the logs say",
+				"I want to debug my device"
+			],
+			"requires": [
+				"adsum/nrf/actions/analyze-logs",
+				"adsum/nrf/actions/capture-logs"
+			],
+			"path": "platforms/nrf/workflows/log-analyzer.md",
+			"content_hash": "bb24546be4cb8f0ec182827f1605d36944442031ff06861ee8fa86dea5d5096d"
+		},
+		{
+			"id": "adsum/nrf/workflows/log-generator",
+			"title": "Log Generator Workflow",
+			"type": "workflow",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"triggers": [
+				"Generate logging code",
+				"Add logs",
+				"Add LOG macros",
+				"Help me debug with logs"
+			],
+			"requires": [
+				"adsum/nrf/actions/capture-logs"
+			],
+			"path": "platforms/nrf/workflows/log-generator.md",
+			"content_hash": "1d66aa1ad9073d56fc359ea54ec42072dfad50e0a98eadcfb6ec9e2381a2c6d9"
+		},
+		{
+			"id": "adsum/nrf/workflows/prototype",
+			"title": "Prototype Workflow",
+			"type": "workflow",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"triggers": [
+				"scaffold a new nRF prototype",
+				"Start a new nRF/Zephyr prototype"
+			],
+			"requires": [
+				"adsum/nrf/actions/find-sample",
+				"adsum/nrf/workflows/add-feature",
+				"adsum/nrf/workflows/debug-loop"
+			],
+			"path": "platforms/nrf/workflows/prototype.md",
+			"content_hash": "09225f435e9413438c04720c203e6818d720b439c694492ca9afcb4206355ed8"
+		},
+		{
+			"id": "adsum/nrf/workflows/test-validate",
+			"title": "Test & Validate Workflow",
+			"type": "workflow",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"triggers": [
+				"test and validate",
+				"Prove",
+				"works"
+			],
+			"requires": [
+				"adsum/nrf/actions/run-twister",
+				"adsum/nrf/workflows/debug-loop"
+			],
+			"path": "platforms/nrf/workflows/test-validate.md",
+			"content_hash": "31b8f441d55e7666a55645571b83a0be82c8f1da31a883739e6b56682b6e8113"
+		},
+		{
+			"id": "adsum/rules/core",
+			"title": "Universal Embedded Rules",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "universal",
+			"path": "rules/core.md",
+			"content_hash": "924888d3799f538613a781e80e08575be6c6f59b0ffb91a7f4dcc3b27b918837"
+		},
+		{
+			"id": "adsum/rules/tool-routing",
+			"title": "Tool Routing Directives",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "universal",
+			"path": "rules/tool-routing.md",
+			"content_hash": "6aaeaea9c53f1ecadbb5d91e1b0bc264455f28ff5ec8de9b0adcb84401718e45"
+		}
+	]
+}

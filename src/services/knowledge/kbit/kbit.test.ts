@@ -3,7 +3,8 @@ import { execSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, test } from "node:test"
-import { deriveId, detectSafety, extractFrontmatter, type Issue, lintBitContent, lintCorpus } from "./lint"
+import { extractFrontmatter, stripFrontmatter } from "./frontmatter"
+import { deriveId, detectSafety, type Issue, lintBitContent, lintCorpus } from "./lint"
 import { kbitMetaSchema } from "./schema"
 
 const REPO_ROOT = join(__dirname, "..", "..", "..", "..")
@@ -122,6 +123,18 @@ describe("extractFrontmatter", () => {
 	})
 })
 
+describe("stripFrontmatter", () => {
+	test("removes a leading block + the blank line after it", () => {
+		assert.equal(stripFrontmatter("---\nid: x\n---\n\n# H\nbody"), "# H\nbody")
+	})
+	test("leaves text unchanged when there is no leading frontmatter", () => {
+		assert.equal(stripFrontmatter("# H\n---\ndivider"), "# H\n---\ndivider")
+	})
+	test("leaves text unchanged when frontmatter is unclosed", () => {
+		assert.equal(stripFrontmatter("---\nno close"), "---\nno close")
+	})
+})
+
 describe("deriveId", () => {
 	test("maps paths to canonical ids (platforms/ dropped, lowercased)", () => {
 		assert.equal(deriveId("platforms/nrf/workflows/add-feature.md"), "adsum/nrf/workflows/add-feature")
@@ -223,14 +236,13 @@ describe("lintBitContent", () => {
 // ---------------------------------------------------------------- regression (real corpus)
 
 describe("regression: live corpus", () => {
-	test("corpus is lint-clean: 26 bits, exactly add-feature migrated, 0 errors", () => {
+	test("corpus is fully migrated and lint-clean: 26 bits, 0 errors, 0 unmigrated", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
 		assert.equal(files.length, 26)
-		assert.equal(migrated, 1)
+		assert.equal(migrated, 26)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
-		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter")).map((i) => i.file)
-		assert.equal(unmigrated.length, 25)
-		assert.ok(!unmigrated.includes("platforms/nrf/workflows/add-feature.md"))
+		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
+		assert.equal(unmigrated.length, 0)
 	})
 
 	test("add-feature migration preserved the body byte-for-byte (only frontmatter added)", () => {
@@ -241,5 +253,12 @@ describe("regression: live corpus", () => {
 		const current = readFileSync(join(KNOWLEDGE_ROOT, "platforms/nrf/workflows/add-feature.md"), "utf8")
 		const body = extractFrontmatter(current).body
 		assert.equal(body.trim(), original.trim())
+	})
+
+	test("manifest.json is in sync with the corpus (run `npm run gen:kbit-manifest` if this fails)", () => {
+		const manifest = JSON.parse(readFileSync(join(KNOWLEDGE_ROOT, "manifest.json"), "utf8"))
+		const { migrated } = lintCorpus(KNOWLEDGE_ROOT)
+		assert.equal(manifest.count, manifest.bits.length)
+		assert.equal(manifest.count, migrated)
 	})
 })

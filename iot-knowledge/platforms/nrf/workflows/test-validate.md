@@ -1,3 +1,21 @@
+---
+id: adsum/nrf/workflows/test-validate
+title: "Test & Validate Workflow"
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+triggers: ["test and validate", "Prove", "works"]
+requires:
+  - adsum/nrf/actions/run-twister
+  - adsum/nrf/workflows/debug-loop
+---
+
 # Test & Validate Workflow (workflows/test-validate.md)
 
 **Triggered by:** Task text contains `test and validate` or `Prove` + `works`

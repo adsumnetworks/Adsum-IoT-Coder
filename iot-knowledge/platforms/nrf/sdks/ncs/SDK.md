@@ -1,3 +1,17 @@
+---
+id: adsum/nrf/sdks/ncs/sdk
+title: "Nordic Connect SDK"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+---
+
 # Nordic Connect SDK (NCS) — SDK Knowledge (sdks/ncs/SDK.md)
 
 ## SDK Overview

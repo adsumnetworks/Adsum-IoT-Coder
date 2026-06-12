@@ -1,3 +1,20 @@
+---
+id: adsum/nrf/workflows/log-generator
+title: "Log Generator Workflow"
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+triggers: ["Generate logging code", "Add logs", "Add LOG macros", "Help me debug with logs"]
+requires:
+  - adsum/nrf/actions/capture-logs
+---
+
 # Log Generator Workflow (workflows/log-generator.md)
 
 **Purpose:** Better logs = better analysis. This workflow's primary goal is to instrument your firmware so the Log Analyzer can perform meaningful root-cause analysis. Aim for logs that answer: boot sequence status, hardware init results, connection events, error states, and data flow. Without good logging, analysis is guesswork.

@@ -1,3 +1,17 @@
+---
+id: adsum/nrf/sdks/ncs/protocols/ble
+title: "BLE Protocol Knowledge — NCS / Zephyr"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+---
+
 # BLE Protocol Knowledge — NCS / Zephyr (sdks/ncs/protocols/BLE.md)
 
 ## Version Reference

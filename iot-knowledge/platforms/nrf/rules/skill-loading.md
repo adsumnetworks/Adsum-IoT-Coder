@@ -1,3 +1,17 @@
+---
+id: adsum/nrf/rules/skill-loading
+title: "nRF Platform Rule: Skill Loading"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+---
+
 # nRF Platform Rule: Skill Loading (rules/skill-loading.md)
 
 This rule governs when and how the agent loads Workflows and Actions from the `iot-knowledge` library.
