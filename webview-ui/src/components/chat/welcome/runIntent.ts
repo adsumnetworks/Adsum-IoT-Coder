@@ -1,12 +1,13 @@
 import { StringRequest } from "@shared/proto/cline/common"
 import { FileServiceClient } from "@/services/grpc-client"
 import type { NordicModeId } from "../nordicModes"
-import { buildIntentPrompt, type IntentId } from "./welcomeIntents"
+import { buildIntentPrompt, type IntentId, type WorkspacePlatform } from "./welcomeIntents"
 
 export interface IntentActionHandlers {
 	onSelectMode: (mode: NordicModeId) => void
 	onStartTask: (text: string) => void | Promise<void>
 	projectName?: string
+	platform?: WorkspacePlatform
 }
 
 /**
@@ -23,6 +24,6 @@ export function runIntent(id: IntentId, handlers: IntentActionHandlers): void {
 	} else if (id === "openProject") {
 		void FileServiceClient.openFolder(StringRequest.create({ value: "" }))
 	} else {
-		void handlers.onStartTask(buildIntentPrompt(id, handlers.projectName ?? undefined))
+		void handlers.onStartTask(buildIntentPrompt(id, handlers.projectName ?? undefined, handlers.platform ?? "nrf"))
 	}
 }
