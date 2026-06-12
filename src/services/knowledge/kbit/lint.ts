@@ -1,0 +1,149 @@
+import { readdirSync, readFileSync } from "node:fs"
+import { join } from "node:path"
+import { load as yamlLoad } from "js-yaml"
+import { type KBitSafety, kbitMetaSchema } from "./schema"
+
+/**
+ * Pure K-bit linting logic — see iot-knowledge/KBIT-SPEC.md.
+ * The CLI wrapper (scripts/kbit-lint.ts) does the IO + exit code; everything here is
+ * importable + unit-testable (and reused by the authoring wizard in P1).
+ */
+
+export type Issue = { level: "error" | "warn"; file: string; msg: string }
+
+/** Files that live under iot-knowledge/ but are not themselves bits. */
+export const NON_BIT_FILES = new Set(["KBIT-SPEC.md"])
+
+/** Path (relative to iot-knowledge/) → canonical bit id. Must match a migrated bit's `id`. */
+export function deriveId(relPath: string): string {
+	const p = relPath
+		.replace(/\\/g, "/")
+		.replace(/^platforms\//, "")
+		.replace(/\.md$/i, "")
+		.toLowerCase()
+	return `adsum/${p}`
+}
+
+export type Frontmatter = { found: boolean; closed: boolean; yaml: string; body: string }
+
+/** Extract ONLY the leading `---…---` block (mid-file `---` dividers are body, not frontmatter). */
+export function extractFrontmatter(text: string): Frontmatter {
+	const lines = text.split(/\r?\n/)
+	if (lines[0]?.trim() !== "---") {
+		return { found: false, closed: false, yaml: "", body: text }
+	}
+	const closeIdx = lines.findIndex((l, i) => i > 0 && l.trim() === "---")
+	if (closeIdx === -1) {
+		return { found: true, closed: false, yaml: "", body: text }
+	}
+	return {
+		found: true,
+		closed: true,
+		yaml: lines.slice(1, closeIdx).join("\n"),
+		body: lines.slice(closeIdx + 1).join("\n"),
+	}
+}
+
+/** Dangerous-op markers → the `safety` tag they require. Best-effort (the obvious commands). */
+const SAFETY_PATTERNS: { tag: KBitSafety; re: RegExp }[] = [
+	{ tag: "flash", re: /\bwest\s+flash\b|\bnrfutil\s+device\s+program\b|\bnrfjprog\b[^\n]*--program/i },
+	{ tag: "erase", re: /--erase\b|\bnrfjprog\b[^\n]*--erase/i },
+	{ tag: "process-kill", re: /\bpkill\b|\btaskkill\b|\bkill\s+-9\b/i },
+]
+
+/** The set of dangerous-op tags detected in a bit body. */
+export function detectSafety(body: string): Set<KBitSafety> {
+	const found = new Set<KBitSafety>()
+	for (const { tag, re } of SAFETY_PATTERNS) {
+		if (re.test(body)) {
+			found.add(tag)
+		}
+	}
+	return found
+}
+
+/**
+ * Lint a single bit from its content (pure — no filesystem).
+ * `knownIds` is the set of all derivable bit ids (so `requires` can resolve to as-yet-unmigrated bits).
+ */
+export function lintBitContent(relPath: string, text: string, knownIds: Set<string>): Issue[] {
+	const issues: Issue[] = []
+	const fm = extractFrontmatter(text)
+
+	if (!fm.found) {
+		issues.push({ level: "warn", file: relPath, msg: "no frontmatter (unmigrated — migrate in P0b)" })
+		return issues
+	}
+	if (!fm.closed) {
+		issues.push({ level: "error", file: relPath, msg: "frontmatter opened with `---` but never closed" })
+		return issues
+	}
+
+	let parsed: unknown
+	try {
+		parsed = yamlLoad(fm.yaml)
+	} catch (e) {
+		issues.push({ level: "error", file: relPath, msg: `invalid YAML frontmatter: ${(e as Error).message}` })
+		return issues
+	}
+
+	const result = kbitMetaSchema.safeParse(parsed)
+	if (!result.success) {
+		for (const issue of result.error.issues) {
+			const where = issue.path.length ? issue.path.join(".") : "(root)"
+			issues.push({ level: "error", file: relPath, msg: `schema: ${where}: ${issue.message}` })
+		}
+		return issues
+	}
+
+	const meta = result.data
+	const derived = deriveId(relPath)
+	if (meta.id !== derived) {
+		issues.push({ level: "error", file: relPath, msg: `id "${meta.id}" does not match path-derived id "${derived}"` })
+	}
+
+	const refs = [...(meta.requires ?? []), ...(meta.loaded_by ?? []), ...(meta.supersedes ? [meta.supersedes] : [])]
+	for (const ref of refs) {
+		if (!knownIds.has(ref)) {
+			issues.push({ level: "error", file: relPath, msg: `unresolved bit reference: "${ref}"` })
+		}
+	}
+
+	const declared = new Set(meta.safety ?? [])
+	for (const tag of detectSafety(fm.body)) {
+		if (!declared.has(tag)) {
+			issues.push({ level: "error", file: relPath, msg: `body performs a "${tag}" op but \`safety\` does not declare it` })
+		}
+	}
+
+	const h1 = fm.body.split(/\r?\n/).find((l) => l.startsWith("# "))
+	const base = relPath.split("/").pop() ?? relPath
+	if (!h1 || !h1.includes(base)) {
+		issues.push({ level: "warn", file: relPath, msg: `H1 should name its own path (e.g. "(… /${base})")` })
+	}
+
+	return issues
+}
+
+/** List the bit (.md) files under a knowledge root, relative + posix, excluding non-bit files. */
+export function listBitFiles(knowledgeRoot: string): string[] {
+	return (readdirSync(knowledgeRoot, { recursive: true }) as string[])
+		.map((f) => f.replace(/\\/g, "/"))
+		.filter((f) => f.endsWith(".md") && !NON_BIT_FILES.has(f.split("/").pop() ?? f))
+		.sort()
+}
+
+export type CorpusResult = { issues: Issue[]; files: string[]; migrated: number }
+
+/** Lint the whole corpus under a knowledge root. */
+export function lintCorpus(knowledgeRoot: string): CorpusResult {
+	const files = listBitFiles(knowledgeRoot)
+	const knownIds = new Set(files.map(deriveId))
+	const issues: Issue[] = []
+	for (const f of files) {
+		const text = readFileSync(join(knowledgeRoot, f), "utf8")
+		issues.push(...lintBitContent(f, text, knownIds))
+	}
+	const unmigrated = new Set(issues.filter((i) => i.msg.startsWith("no frontmatter")).map((i) => i.file))
+	return { issues, files, migrated: files.length - unmigrated.size }
+}
