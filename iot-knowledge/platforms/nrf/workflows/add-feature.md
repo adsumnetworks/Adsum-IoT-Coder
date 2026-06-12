@@ -1,3 +1,25 @@
+---
+id: adsum/nrf/workflows/add-feature
+title: Add Feature
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+sdk: ncs
+triggers: ["add a feature", "Add a feature to"]
+requires:
+  - adsum/nrf/actions/find-sample
+  - adsum/nrf/workflows/debug-loop
+loaded_by:
+  - adsum/nrf/workflows/prototype
+safety: [flash]
+---
+
 # Add Feature Workflow (workflows/add-feature.md)
 
 

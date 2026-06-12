@@ -355,8 +355,11 @@
 		"compile-tests": "node ./scripts/build-tests.js",
 		"watch-tests": "tsc -p . -w --outDir out",
 		"check-types": "npm run protos && npx tsc --noEmit && cd webview-ui && npx tsc --noEmit",
-		"lint": "biome lint --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error && npm run lint:proto",
+		"lint": "biome lint --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error && npm run lint:proto && npm run lint:kbits",
 		"lint:proto": "node ./scripts/proto-lint.js",
+		"lint:kbits": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit-lint.ts",
+		"gen:kbit-schema": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/gen-kbit-schema.ts",
+		"test:kbits": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/kbit.test.ts",
 		"format": "biome format --changed --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error",
 		"format:fix": "biome check --changed --no-errors-on-unmatched --files-ignore-unknown=true --write",
 		"fix:all": "biome check --no-errors-on-unmatched --files-ignore-unknown=true --write --diagnostic-level=error --unsafe",
@@ -444,7 +447,8 @@
 		"ts-node": "^10.9.2",
 		"ts-proto": "^2.6.1",
 		"tsconfig-paths": "^4.2.0",
-		"typescript": "^5.4.5"
+		"typescript": "^5.4.5",
+		"zod-to-json-schema": "^3.25.0"
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.37.0",
