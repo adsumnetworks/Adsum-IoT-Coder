@@ -13,10 +13,11 @@ interface NextStepChooserProps {
 }
 
 const NextStepChooser: React.FC<NextStepChooserProps> = ({ isDemoRun, onSelectMode, onStartTask, onStartDemo }) => {
-	const { openFolderPaths } = useExtensionState()
+	const { openFolderPaths, workspaceClassification } = useExtensionState()
 	const hasWorkspace = openFolderPaths.length > 0
 	const projectName = hasWorkspace ? (openFolderPaths[0].split("/").pop() ?? undefined) : undefined
 	const intents = hasWorkspace ? PROJECT_INTENTS : NO_PROJECT_INTENTS
+	const platform = workspaceClassification && workspaceClassification !== "none" ? workspaceClassification : "nrf"
 	const heading = isDemoRun ? "Your turn — pick a next step…" : "What would you like to do next?"
 
 	return (
@@ -35,6 +36,7 @@ const NextStepChooser: React.FC<NextStepChooserProps> = ({ isDemoRun, onSelectMo
 				intents={intents}
 				onSelectMode={onSelectMode}
 				onStartTask={onStartTask}
+				platform={platform}
 				projectName={projectName}
 				testIdPrefix="next-step"
 			/>

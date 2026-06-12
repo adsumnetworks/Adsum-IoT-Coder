@@ -29,10 +29,12 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	showUpgradeCard,
 }) => {
 	const { isDark } = useVSCodeTheme()
-	const { navigateToHistory, version, openFolderPaths, taskHistory } = useExtensionState()
+	const { navigateToHistory, version, openFolderPaths, taskHistory, workspaceClassification } = useExtensionState()
 
 	const hasWorkspace = openFolderPaths.length > 0
 	const projectName = hasWorkspace ? (openFolderPaths[0].split("/").pop() ?? null) : null
+	// Platform of the open workspace — "nrf" when nothing more specific is known.
+	const platform = workspaceClassification && workspaceClassification !== "none" ? workspaceClassification : "nrf"
 
 	const tenure = getTenure({
 		taskCount: taskHistory?.length ?? 0,
@@ -98,6 +100,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 					intents={intents}
 					onSelectMode={onSelectMode}
 					onStartTask={onStartTask}
+					platform={platform}
 					projectName={projectName ?? undefined}
 					testIdPrefix="intent-card"
 				/>

@@ -44,11 +44,19 @@ import { getCachedFreeTokensRemaining, onFreeTokensChanged } from "./services/ad
 import { AuthService } from "./services/auth/AuthService"
 import { LogoutReason } from "./services/auth/types"
 import {
+	clearEspEnvironmentCache,
+	detectEspEnvironment,
+	setEspExtensionInfo,
+	setEspIdfPathHint,
+	setEspWorkspaceRoots,
+} from "./services/esp/EspEnvironmentDetector"
+import {
 	clearNrfEnvironmentCache,
 	detectNrfEnvironment,
 	setNrfExtensionInfo,
 	setNrfWorkspaceRoots,
 } from "./services/nrf/EnvironmentDetector"
+import { refreshWorkspaceClassification } from "./services/platform/WorkspaceClassifier"
 import { createAdsumStatusBar, refreshAdsumStatusBar, setAdsumStatusBarTooltip } from "./services/statusbar/AdsumStatusBar"
 import { telemetryService } from "./services/telemetry"
 import { ClineTempManager } from "./services/temp"
@@ -125,10 +133,35 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Inject open workspace folder paths so the detector can resolve the project-bound SDK
 	// (it can't call vscode.* itself — grit forbids it outside extension.ts).
 	const collectWorkspaceRoots = () => (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath)
-	setNrfWorkspaceRoots(collectWorkspaceRoots())
+	const roots = collectWorkspaceRoots()
+	setNrfWorkspaceRoots(roots)
+	setEspWorkspaceRoots(roots)
+	refreshWorkspaceClassification(roots)
 
-	// Fire-and-forget initial nRF env detection — never blocks activation.
-	// Webview shows "detecting…" state until the cache populates and postStateToWebview fires.
+	// Probe Espressif ESP-IDF VS Code extension (allowed here — vscode.* banned in detectors).
+	try {
+		const espExt = vscode.extensions.getExtension("espressif.esp-idf-extension")
+		setEspExtensionInfo(
+			espExt ? { present: true, version: espExt.packageJSON?.version as string | undefined } : { present: false },
+		)
+	} catch {
+		setEspExtensionInfo({ present: false })
+	}
+
+	// Read the Espressif extension's configured IDF path — how most users install ESP-IDF.
+	// Injected because the detector can't read vscode config itself.
+	const applyEspIdfHint = () => {
+		const idfCfg = vscode.workspace.getConfiguration("idf")
+		const hint =
+			(process.platform === "win32" ? idfCfg.get<string>("espIdfPathWin") : undefined) ||
+			idfCfg.get<string>("espIdfPath") ||
+			undefined
+		setEspIdfPathHint(hint)
+	}
+	applyEspIdfHint()
+
+	// Fire-and-forget initial env detections — never block activation.
+	// Webview shows "detecting…" until caches populate and postStateToWebview fires.
 	void detectNrfEnvironment()
 		.then((env) => {
 			setAdsumStatusBarTooltip(env)
@@ -136,16 +169,27 @@ export async function activate(context: vscode.ExtensionContext) {
 		})
 		.catch(() => {})
 
-	// Re-detect nRF environment when workspace folders change (user opens/closes a project).
+	void detectEspEnvironment()
+		.then(() => webview.controller.postStateToWebview())
+		.catch(() => {})
+
+	// Re-detect both environments when workspace folders change.
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeWorkspaceFolders(() => {
+			const updated = collectWorkspaceRoots()
 			clearNrfEnvironmentCache()
-			setNrfWorkspaceRoots(collectWorkspaceRoots())
+			clearEspEnvironmentCache()
+			setNrfWorkspaceRoots(updated)
+			setEspWorkspaceRoots(updated)
+			refreshWorkspaceClassification(updated)
 			void detectNrfEnvironment()
 				.then((env) => {
 					setAdsumStatusBarTooltip(env)
 					return webview.controller.postStateToWebview()
 				})
+				.catch(() => {})
+			void detectEspEnvironment()
+				.then(() => webview.controller.postStateToWebview())
 				.catch(() => {})
 		}),
 	)
