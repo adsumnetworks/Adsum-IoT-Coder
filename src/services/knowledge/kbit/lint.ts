@@ -1,7 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { load as yamlLoad } from "js-yaml"
+import { extractFrontmatter } from "./frontmatter"
 import { type KBitSafety, kbitMetaSchema } from "./schema"
+
+export { extractFrontmatter, type Frontmatter } from "./frontmatter"
 
 /**
  * Pure K-bit linting logic — see iot-knowledge/KBIT-SPEC.md.
@@ -22,26 +25,6 @@ export function deriveId(relPath: string): string {
 		.replace(/\.md$/i, "")
 		.toLowerCase()
 	return `adsum/${p}`
-}
-
-export type Frontmatter = { found: boolean; closed: boolean; yaml: string; body: string }
-
-/** Extract ONLY the leading `---…---` block (mid-file `---` dividers are body, not frontmatter). */
-export function extractFrontmatter(text: string): Frontmatter {
-	const lines = text.split(/\r?\n/)
-	if (lines[0]?.trim() !== "---") {
-		return { found: false, closed: false, yaml: "", body: text }
-	}
-	const closeIdx = lines.findIndex((l, i) => i > 0 && l.trim() === "---")
-	if (closeIdx === -1) {
-		return { found: true, closed: false, yaml: "", body: text }
-	}
-	return {
-		found: true,
-		closed: true,
-		yaml: lines.slice(1, closeIdx).join("\n"),
-		body: lines.slice(closeIdx + 1).join("\n"),
-	}
 }
 
 /** Dangerous-op markers → the `safety` tag they require. Best-effort (the obvious commands). */

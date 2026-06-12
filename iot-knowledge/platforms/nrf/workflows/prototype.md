@@ -1,3 +1,22 @@
+---
+id: adsum/nrf/workflows/prototype
+title: "Prototype Workflow"
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+triggers: ["scaffold a new nRF prototype", "Start a new nRF/Zephyr prototype"]
+requires:
+  - adsum/nrf/actions/find-sample
+  - adsum/nrf/workflows/add-feature
+  - adsum/nrf/workflows/debug-loop
+---
+
 # Prototype Workflow (workflows/prototype.md)
 
 **Triggered by:** Task text contains `scaffold a new nRF prototype` or `Start a new nRF/Zephyr prototype`

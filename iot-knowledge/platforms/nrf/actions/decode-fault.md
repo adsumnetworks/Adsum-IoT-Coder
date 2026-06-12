@@ -1,3 +1,17 @@
+---
+id: adsum/nrf/actions/decode-fault
+title: "Action: Decode a Fatal Error / Fault"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+---
+
 # Action: Decode a Fatal Error / Fault (actions/decode-fault.md)
 
 ## When Used

@@ -1,3 +1,17 @@
+---
+id: adsum/nrf/actions/run-twister
+title: "Action: Run Host Tests via Twister"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+---
+
 # Action: Run Host Tests via Twister (actions/run-twister.md)
 
 ## When Used

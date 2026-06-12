@@ -1,3 +1,18 @@
+---
+id: adsum/nrf/actions/flash
+title: "Action: Flash Firmware"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+safety: [flash, erase, process-kill]
+---
+
 # Action: Flash Firmware (actions/flash.md)
 
 ## When Used

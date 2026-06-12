@@ -1,3 +1,24 @@
+---
+id: adsum/nrf/workflows/debug-loop
+title: "Autonomous Debug Loop"
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+triggers: ["build and flash", "Build, flash & debug"]
+requires:
+  - adsum/nrf/actions/analyze-logs
+  - adsum/nrf/actions/build
+  - adsum/nrf/actions/capture-logs
+  - adsum/nrf/actions/decode-fault
+  - adsum/nrf/actions/flash
+---
+
 # Autonomous Debug Loop (workflows/debug-loop.md)
 
 **Triggered by:** Log Generator Step 6, Log Analyzer recommendation, code modifications, or explicit user request to "build and flash". This is also the workflow behind the **"Build, flash & debug"** home card.

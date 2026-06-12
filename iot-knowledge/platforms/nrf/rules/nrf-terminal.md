@@ -1,3 +1,18 @@
+---
+id: adsum/nrf/rules/nrf-terminal
+title: "nRF Platform Rule: nRF Connect Terminal"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+safety: [flash]
+---
+
 # nRF Platform Rule: nRF Connect Terminal (rules/nrf-terminal.md)
 
 **ALL NCS SDK/toolchain commands MUST be executed using `nrf_device_tool` with `action="execute"`.**
