@@ -1,3 +1,17 @@
+---
+id: adsum/nrf/actions/build
+title: "Action: Build Firmware"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+---
+
 # Action: Build Firmware (actions/build.md)
 
 ## When Used

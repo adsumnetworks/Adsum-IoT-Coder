@@ -1,3 +1,17 @@
+---
+id: adsum/rules/core
+title: "Universal Embedded Rules"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: universal
+---
+
 # Universal Embedded Rules
 
 These rules apply universally to any IoT or Embedded project context, regardless of platform or SDK.

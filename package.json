@@ -359,6 +359,8 @@
 		"lint:proto": "node ./scripts/proto-lint.js",
 		"lint:kbits": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit-lint.ts",
 		"gen:kbit-schema": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/gen-kbit-schema.ts",
+		"migrate:kbits": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit-migrate.ts",
+		"gen:kbit-manifest": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/gen-kbit-manifest.ts",
 		"test:kbits": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/kbit.test.ts",
 		"format": "biome format --changed --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error",
 		"format:fix": "biome check --changed --no-errors-on-unmatched --files-ignore-unknown=true --write",

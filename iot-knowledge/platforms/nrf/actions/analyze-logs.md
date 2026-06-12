@@ -1,3 +1,20 @@
+---
+id: adsum/nrf/actions/analyze-logs
+title: "Action: Analyze Device Logs"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+requires:
+  - adsum/nrf/actions/capture-logs
+  - adsum/nrf/actions/decode-fault
+---
+
 # Action: Analyze Device Logs (actions/analyze-logs.md)
 
 ## When Used
