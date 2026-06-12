@@ -42,13 +42,21 @@ export interface IntentDef {
 	comingSoon?: boolean
 }
 
+export type WorkspacePlatform = "nrf" | "esp" | "both" | "none"
+
 /** Dev-as-hero prompt strings. projectName is interpolated where relevant. */
-export function buildIntentPrompt(id: IntentId, projectName?: string): string {
+export function buildIntentPrompt(id: IntentId, projectName?: string, platform: WorkspacePlatform = "nrf"): string {
 	const proj = projectName ?? "my project"
 	switch (id) {
 		case "prototype":
+			if (platform === "esp")
+				return "Start a new ESP-IDF prototype — tell me what you're building and I'll scaffold it from the right verified Espressif example."
+			if (platform === "both")
+				return "Start a new prototype — tell me whether it's nRF/Zephyr or ESP-IDF and what you're building, and I'll scaffold it from the right verified sample."
 			return "Start a new nRF/Zephyr prototype — tell me what you're building and I'll scaffold it from the right verified Nordic sample."
 		case "addFeature":
+			if (platform === "esp")
+				return `Add a feature to ${proj} — tell me what you need (a console command, a Wi-Fi/BLE service, NVS, etc.) and I'll wire it into your build.`
 			return `Add a feature to ${proj} — tell me what you need (Zephyr shell, BLE service, NVS, etc.) and I'll wire it into your build.`
 		case "debug":
 			return "Stream RTT or UART logs and find the root cause — I'll add logging first if it's missing."
@@ -69,10 +77,17 @@ export function buildIntentPrompt(id: IntentId, projectName?: string): string {
 	}
 }
 
-/** Card description with project-name interpolation where relevant (e.g. "Add a feature to <proj>"). */
-export function intentDescription(intent: IntentDef, projectName?: string): string {
-	if (intent.id === "addFeature" && projectName) {
-		return `A Zephyr shell, a BLE service, NVS storage… wired into ${projectName}, not a sample.`
+/** Card description with project-name + platform interpolation (e.g. ESP project → ESP wording). */
+export function intentDescription(intent: IntentDef, projectName?: string, platform: WorkspacePlatform = "nrf"): string {
+	const proj = projectName ?? "your project"
+	if (intent.id === "addFeature") {
+		if (platform === "esp") {
+			return `A console command, a Wi-Fi or BLE service, NVS storage… wired into ${proj}, not a sample.`
+		}
+		if (platform === "both") {
+			return `A shell, a BLE/Wi-Fi service, storage… wired into ${proj}, not a sample.`
+		}
+		return `A Zephyr shell, a BLE service, NVS storage… wired into ${proj}, not a sample.`
 	}
 	return intent.description
 }

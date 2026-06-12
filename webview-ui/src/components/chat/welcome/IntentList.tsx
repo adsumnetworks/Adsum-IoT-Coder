@@ -2,13 +2,15 @@ import React from "react"
 import type { NordicModeId } from "../nordicModes"
 import IntentCard from "./IntentCard"
 import { runIntent } from "./runIntent"
-import { type IntentDef, intentDescription } from "./welcomeIntents"
+import { type IntentDef, intentDescription, type WorkspacePlatform } from "./welcomeIntents"
 
 interface IntentListProps {
 	intents: IntentDef[]
 	onSelectMode: (mode: NordicModeId) => void
 	onStartTask: (text: string) => void | Promise<void>
 	projectName?: string
+	/** Detected workspace platform — drives platform-aware card copy + prompts. */
+	platform?: WorkspacePlatform
 	/** Prefix for each card's testId, e.g. "intent-card" (welcome) or "next-step" (post-task). */
 	testIdPrefix: string
 }
@@ -18,17 +20,24 @@ interface IntentListProps {
  * ("coming soon") entries — an "on the roadmap" divider followed by the disabled cards.
  * Shared by the welcome screen and the post-task NextStepChooser so both stay identical.
  */
-const IntentList: React.FC<IntentListProps> = ({ intents, onSelectMode, onStartTask, projectName, testIdPrefix }) => {
+const IntentList: React.FC<IntentListProps> = ({
+	intents,
+	onSelectMode,
+	onStartTask,
+	projectName,
+	platform = "nrf",
+	testIdPrefix,
+}) => {
 	const live = intents.filter((i) => !i.comingSoon)
 	const roadmap = intents.filter((i) => i.comingSoon)
 
 	const card = (intent: IntentDef) => (
 		<IntentCard
 			comingSoon={intent.comingSoon}
-			description={intentDescription(intent, projectName)}
+			description={intentDescription(intent, projectName, platform)}
 			icon={intent.icon}
 			key={intent.id}
-			onClick={() => runIntent(intent.id, { onSelectMode, onStartTask, projectName })}
+			onClick={() => runIntent(intent.id, { onSelectMode, onStartTask, projectName, platform })}
 			pill={intent.pill}
 			primary={intent.primary}
 			testId={`${testIdPrefix}-${intent.id}`}

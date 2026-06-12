@@ -1,0 +1,92 @@
+import { describe, it } from "mocha"
+import "should"
+import { join } from "path"
+import { type IdfPythonDeps, idfToolsPath, parseEsptoolChip, resolveIdfPython } from "../espChipProbe"
+
+describe("espChipProbe — parseEsptoolChip", () => {
+	it("parses 'Chip is ESP32-S3 (revision v0.2)'", () => {
+		const r = parseEsptoolChip("Connecting....\nChip is ESP32-S3 (revision v0.2)\nFeatures: WiFi, BLE")
+		r.chip!.should.equal("ESP32-S3")
+		r.chipRevision!.should.equal("v0.2")
+	})
+
+	it("parses 'Chip is ESP32-C6 (revision v0.0)'", () => {
+		parseEsptoolChip("Chip is ESP32-C6 (revision v0.0)").chip!.should.equal("ESP32-C6")
+	})
+
+	it("parses classic 'Chip is ESP32 (revision 3)'", () => {
+		const r = parseEsptoolChip("Chip is ESP32 (revision 3)")
+		r.chip!.should.equal("ESP32")
+		r.chipRevision!.should.equal("3")
+	})
+
+	it("parses 'Chip is ESP32-S3' with no revision", () => {
+		const r = parseEsptoolChip("Chip is ESP32-S3")
+		r.chip!.should.equal("ESP32-S3")
+		;(r.chipRevision === undefined).should.be.true()
+	})
+
+	it("falls back to 'Detecting chip type... ESP32-C3'", () => {
+		parseEsptoolChip("Serial port /dev/ttyACM0\nDetecting chip type... ESP32-C3\n").chip!.should.equal("ESP32-C3")
+	})
+
+	it("returns empty for unrelated output", () => {
+		const r = parseEsptoolChip("A fatal error occurred: Failed to connect")
+		;(r.chip === undefined).should.be.true()
+	})
+})
+
+describe("espChipProbe — idfToolsPath", () => {
+	it("uses IDF_TOOLS_PATH when set", () => {
+		idfToolsPath({ platform: "linux", env: { IDF_TOOLS_PATH: "/opt/esp/tools" }, home: "/home/dev" }).should.equal(
+			"/opt/esp/tools",
+		)
+	})
+
+	it("defaults to ~/.espressif on Linux/macOS", () => {
+		idfToolsPath({ platform: "linux", env: {}, home: "/home/dev" }).should.equal(join("/home/dev", ".espressif"))
+		idfToolsPath({ platform: "darwin", env: {}, home: "/Users/dev" }).should.equal(join("/Users/dev", ".espressif"))
+	})
+
+	it("defaults to %USERPROFILE%\\.espressif on Windows", () => {
+		idfToolsPath({ platform: "win32", env: { USERPROFILE: "C:\\Users\\dev" }, home: "C:\\Users\\dev" }).should.equal(
+			join("C:\\Users\\dev", ".espressif"),
+		)
+	})
+})
+
+describe("espChipProbe — resolveIdfPython", () => {
+	const make = (platform: IdfPythonDeps["platform"], present: string[], dirs: Record<string, string[]>): IdfPythonDeps => ({
+		platform,
+		env: {},
+		home: platform === "win32" ? "C:\\Users\\dev" : "/home/dev",
+		exists: (p) => present.includes(p),
+		listDir: (p) => dirs[p] ?? [],
+	})
+
+	it("finds bin/python on Linux", () => {
+		const root = join("/home/dev", ".espressif", "python_env")
+		const py = join(root, "idf5.3_py3.11_env", "bin", "python")
+		const deps = make("linux", [root, py], { [root]: ["idf5.3_py3.11_env"] })
+		resolveIdfPython(deps)!.should.equal(py)
+	})
+
+	it("finds Scripts/python.exe on Windows", () => {
+		const root = join("C:\\Users\\dev", ".espressif", "python_env")
+		const py = join(root, "idf5.3_py3.11_env", "Scripts", "python.exe")
+		const deps = make("win32", [root, py], { [root]: ["idf5.3_py3.11_env"] })
+		resolveIdfPython(deps)!.should.equal(py)
+	})
+
+	it("prefers the last (newest) env dir", () => {
+		const root = join("/home/dev", ".espressif", "python_env")
+		const newPy = join(root, "idf5.3_py3.11_env", "bin", "python")
+		const deps = make("linux", [root, newPy], { [root]: ["idf5.1_py3.9_env", "idf5.3_py3.11_env"] })
+		resolveIdfPython(deps)!.should.equal(newPy)
+	})
+
+	it("returns undefined when python_env is missing", () => {
+		const deps = make("linux", [], {})
+		;(resolveIdfPython(deps) === undefined).should.be.true()
+	})
+})

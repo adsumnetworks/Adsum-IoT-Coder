@@ -1,5 +1,6 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
 
+import type { EspEnvironment } from "@shared/esp"
 import { WorkspaceRoot } from "@shared/multi-root/types"
 import type { NrfEnvironment } from "@shared/nrf"
 import { RemoteConfigFields } from "@shared/storage/state-keys"
@@ -125,6 +126,9 @@ export interface ExtensionState {
 	openAiCodexIsAuthenticated?: boolean
 	freeTierRemainingTokens?: number
 	nrfEnvironment?: NrfEnvironment
+	espEnvironment?: EspEnvironment
+	/** Which embedded platform(s) the open workspace is — drives platform-aware card copy. */
+	workspaceClassification?: "nrf" | "esp" | "both" | "none"
 }
 
 export interface ClineMessage {
