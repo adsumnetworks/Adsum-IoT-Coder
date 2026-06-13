@@ -1,6 +1,7 @@
 import fs from "fs/promises"
 import path from "path"
 import { HostProvider } from "@/hosts/host-provider"
+import { loadBit } from "@/services/knowledge/KnowledgeResolver"
 import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 import { fileExistsAtPath } from "@/utils/fs"
 // import { IotProjectMemoryManager } from "../../../memory/IotProjectMemoryManager"
@@ -20,6 +21,16 @@ async function readKnowledgeFile(relativePath: string): Promise<string> {
 		console.error(`Failed to read IoT knowledge file: ${relativePath}`, e)
 	}
 	return ""
+}
+
+/**
+ * Load a bundled bit by its stable id via the KnowledgeResolver (manifest-backed), falling
+ * back to a direct path read if the id isn't in the manifest — so resolution is id-based but
+ * never regresses if the manifest is missing/stale. Both paths strip frontmatter.
+ */
+async function loadKnowledge(id: string, fallbackPath: string): Promise<string> {
+	const viaId = await loadBit(id)
+	return viaId || (await readKnowledgeFile(fallbackPath))
 }
 
 /**
@@ -117,18 +128,18 @@ async function detectProjectFeatures(
 }
 
 /**
- * Map a board target string to the corresponding board knowledge file.
+ * Map a board target string to the corresponding board bit (id + fallback path).
  */
-function getBoardKnowledgeFile(boardTarget: string): string | null {
+function getBoardKnowledge(boardTarget: string): { id: string; path: string } | null {
 	const lower = boardTarget.toLowerCase()
 	if (lower.includes("nrf52840")) {
-		return "platforms/nrf/boards/nrf52840.md"
+		return { id: "adsum/nrf/boards/nrf52840", path: "platforms/nrf/boards/nrf52840.md" }
 	}
 	if (lower.includes("nrf52832") || lower.includes("nrf52dk")) {
-		return "platforms/nrf/boards/nrf52832.md"
+		return { id: "adsum/nrf/boards/nrf52832", path: "platforms/nrf/boards/nrf52832.md" }
 	}
 	if (lower.includes("nrf5340")) {
-		return "platforms/nrf/boards/nrf5340.md"
+		return { id: "adsum/nrf/boards/nrf5340", path: "platforms/nrf/boards/nrf5340.md" }
 	}
 	return null
 }
@@ -144,9 +155,9 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 	iotContext += `> **CRITICAL RULE:** When using \`read_file\` to load a skill, you MUST use the absolute path by combining this directory with the skill file's relative path. For example: \`${kbPath}/platforms/nrf/workflows/log-analyzer.md\`\n\n`
 
 	// 1. Always load Global Base: Identity + Universal Rules
-	iotContext += (await readKnowledgeFile("AGENT.md")) + "\n\n"
-	iotContext += (await readKnowledgeFile("rules/core.md")) + "\n\n"
-	iotContext += (await readKnowledgeFile("rules/tool-routing.md")) + "\n\n"
+	iotContext += (await loadKnowledge("adsum/agent", "AGENT.md")) + "\n\n"
+	iotContext += (await loadKnowledge("adsum/rules/core", "rules/core.md")) + "\n\n"
+	iotContext += (await loadKnowledge("adsum/rules/tool-routing", "rules/tool-routing.md")) + "\n\n"
 
 	// 2. Progressive Platform Detection
 	let isPlatformDetected = false
@@ -159,13 +170,13 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 		// Always load: Platform index + platform rules.
 		// All three rules under platforms/nrf/rules/ are listed as MANDATORY/Always
 		// in PLATFORM.md, so they MUST all be loaded here.
-		iotContext += (await readKnowledgeFile("platforms/nrf/PLATFORM.md")) + "\n\n"
-		iotContext += (await readKnowledgeFile("platforms/nrf/rules/nrf-terminal.md")) + "\n\n"
-		iotContext += (await readKnowledgeFile("platforms/nrf/rules/skill-loading.md")) + "\n\n"
-		iotContext += (await readKnowledgeFile("platforms/nrf/rules/device-identity.md")) + "\n\n"
+		iotContext += (await loadKnowledge("adsum/nrf/platform", "platforms/nrf/PLATFORM.md")) + "\n\n"
+		iotContext += (await loadKnowledge("adsum/nrf/rules/nrf-terminal", "platforms/nrf/rules/nrf-terminal.md")) + "\n\n"
+		iotContext += (await loadKnowledge("adsum/nrf/rules/skill-loading", "platforms/nrf/rules/skill-loading.md")) + "\n\n"
+		iotContext += (await loadKnowledge("adsum/nrf/rules/device-identity", "platforms/nrf/rules/device-identity.md")) + "\n\n"
 
 		// Always load: NCS SDK knowledge (project structure, Kconfig, build reference)
-		iotContext += (await readKnowledgeFile("platforms/nrf/sdks/ncs/SDK.md")) + "\n\n"
+		iotContext += (await loadKnowledge("adsum/nrf/sdks/ncs/sdk", "platforms/nrf/sdks/ncs/SDK.md")) + "\n\n"
 
 		// 3. On-demand: Feature-based loading
 		const { hasBle, builds } = await detectProjectFeatures(cwd)
@@ -173,12 +184,13 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 		// Load BLE protocol knowledge if BLE is enabled
 		if (hasBle) {
 			iotContext += "#### Protocol: BLE Detected\n\n"
-			iotContext += (await readKnowledgeFile("platforms/nrf/sdks/ncs/protocols/BLE.md")) + "\n\n"
+			iotContext +=
+				(await loadKnowledge("adsum/nrf/sdks/ncs/protocols/ble", "platforms/nrf/sdks/ncs/protocols/BLE.md")) + "\n\n"
 		}
 
 		// Load board-specific knowledge for all detected builds (deduplicated)
 		if (builds.length > 0) {
-			const loadedBoardFiles = new Set<string>()
+			const loadedBoards = new Set<string>()
 
 			// Build summary for the agent
 			const buildSummary = builds
@@ -188,10 +200,10 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 
 			for (const build of builds) {
 				if (!build.boardTarget) continue
-				const boardFile = getBoardKnowledgeFile(build.boardTarget)
-				if (boardFile && !loadedBoardFiles.has(boardFile)) {
-					loadedBoardFiles.add(boardFile)
-					iotContext += (await readKnowledgeFile(boardFile)) + "\n\n"
+				const board = getBoardKnowledge(build.boardTarget)
+				if (board && !loadedBoards.has(board.id)) {
+					loadedBoards.add(board.id)
+					iotContext += (await loadKnowledge(board.id, board.path)) + "\n\n"
 				}
 			}
 		}

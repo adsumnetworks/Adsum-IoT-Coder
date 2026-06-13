@@ -106,7 +106,11 @@ export class AutoApprove {
 
 		let isLocalRead: boolean = false
 		if (autoApproveActionpath) {
-			// EXCEPTION: Always allow reading from the extension's iot-knowledge folder
+			// EXCEPTION: Always allow reading from the extension's bundled iot-knowledge folder.
+			// These bits ship inside the signed VSIX, so they are trusted.
+			// TRUST BOUNDARY (P2): when DOWNLOADED bits land in the local cache (globalStorage),
+			// they are UNTRUSTED executable input and must NOT be auto-read here — gate them on
+			// signature/hash verification (via the KnowledgeResolver) before auto-approval.
 			if (blockname === ClineDefaultTool.FILE_READ) {
 				const extensionFsPath = HostProvider.get().extensionFsPath
 				if (extensionFsPath) {
