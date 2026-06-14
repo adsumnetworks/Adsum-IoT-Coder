@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, test } from "node:test"
-import { __resetManifestCache, __setRegistryHooks, loadBit, loadBitByKbPath } from "../KnowledgeResolver"
+import { __resetManifestCache, __setRegistryHooks, isRegistryReachable, loadBit, loadBitByKbPath } from "../KnowledgeResolver"
 import { BitCache, sha256 } from "./BitCache"
 import { RegistryClient } from "./RegistryClient"
 
@@ -88,7 +88,11 @@ describe("KnowledgeResolver downloaded tier (bundled→cache→fetch)", () => {
 	test("fetch → verify → cache → strip frontmatter", async () => {
 		const root = await tmp()
 		const { content, hash } = bit("adsum/community/x", "# X (x.md)\nhello")
-		const manifest = { manifestVersion: 1, bits: [{ id: "adsum/community/x", version: "1.0.0", content_hash: hash }] }
+		// open license → eligible for on-disk plaintext caching (proprietary bits are covered separately below)
+		const manifest = {
+			manifestVersion: 1,
+			bits: [{ id: "adsum/community/x", version: "1.0.0", content_hash: hash, license: "CC-BY-SA-4.0" }],
+		}
 		const rc = new RegistryClient("http://r", stubFetch(manifest, { [hash]: content }))
 		__setRegistryHooks({ cache: new BitCache(root), registry: rc })
 
@@ -179,6 +183,62 @@ describe("loadBitByKbPath (P2.5 — un-bundled on-demand bits via read_file)", (
 			cache: new BitCache(await tmp()),
 		})
 		assert.equal(await loadBitByKbPath("/ext/iot-knowledge/platforms/nrf/workflows/ghost.md"), null)
+		__resetManifestCache()
+	})
+})
+
+// ---------------------------------------------------------------- proprietary cache policy + reachability
+
+describe("downloaded-bit cache policy (proprietary not plaintext-cached)", () => {
+	const serve = (id: string, content: string, hash: string, license: string, root: string) =>
+		__setRegistryHooks({
+			registry: new RegistryClient(
+				"http://r",
+				stubFetch(
+					{ manifestVersion: 1, bits: [{ id, version: "1.0.0", content_hash: hash, license }] },
+					{ [hash]: content },
+				),
+			),
+			cache: new BitCache(root),
+		})
+
+	test("OPEN bit is served AND cached as plaintext", async () => {
+		const root = await tmp()
+		const { content, hash } = bit("adsum/community/open", "# Open")
+		serve("adsum/community/open", content, hash, "CC-BY-SA-4.0", root)
+		assert.equal(await loadBit("adsum/community/open"), "# Open")
+		assert.equal(await new BitCache(root).readBlob(hash), content) // cached
+		__resetManifestCache()
+	})
+
+	test("PROPRIETARY bit is served but NOT cached on disk (no plaintext at rest)", async () => {
+		const root = await tmp()
+		const { content, hash } = bit("adsum/partner/secret", "# Secret")
+		serve("adsum/partner/secret", content, hash, "LicenseRef-Adsum-Proprietary", root)
+		assert.equal(await loadBit("adsum/partner/secret"), "# Secret") // served
+		assert.equal(await new BitCache(root).readBlob(hash), null) // NOT cached
+		__resetManifestCache()
+	})
+})
+
+describe("isRegistryReachable", () => {
+	test("true when the manifest fetch succeeds", async () => {
+		__setRegistryHooks({
+			registry: new RegistryClient("http://r", stubFetch({ manifestVersion: 1, bits: [] }, {})),
+			cache: new BitCache(await tmp()),
+		})
+		assert.equal(await isRegistryReachable(), true)
+		__resetManifestCache()
+	})
+
+	test("false when the registry is unreachable", async () => {
+		__setRegistryHooks({
+			registry: new RegistryClient("http://r", async () => {
+				throw new Error("offline")
+			}),
+			cache: new BitCache(await tmp()),
+		})
+		assert.equal(await isRegistryReachable(), false)
 		__resetManifestCache()
 	})
 })

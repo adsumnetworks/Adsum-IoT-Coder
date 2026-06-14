@@ -18,6 +18,9 @@ export interface DownloadedManifestEntry {
 	version: string
 	content_hash: string
 	path?: string
+	/** SPDX-ish license id. Drives the on-disk cache policy: open licenses may be cached as
+	 *  plaintext; anything else (proprietary) is served from the fetch but not persisted (see P5). */
+	license?: string
 	[k: string]: unknown
 }
 

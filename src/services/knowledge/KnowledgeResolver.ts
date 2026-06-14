@@ -134,7 +134,20 @@ async function downloadedManifest(): Promise<Map<string, DownloadedManifestEntry
 	return map
 }
 
-/** Load a downloaded (non-bundled) bit: verified cache → fetch (verify, then cache) → "". */
+// Open content licenses — these may be cached on disk as plaintext (public content). Anything else
+// (e.g. LicenseRef-Adsum-Proprietary) is treated as proprietary → NOT persisted to disk as plaintext
+// until encrypt-at-rest + watermark lands (P5). Proprietary bits are served from the fetch, not cached.
+const OPEN_LICENSE_RE = /^(CC-BY(-SA)?-4\.0|CC0-1\.0|Apache-2\.0|MIT|BSD-)/i
+function isOpenLicense(license: unknown): boolean {
+	return typeof license === "string" && OPEN_LICENSE_RE.test(license)
+}
+
+/** True if the registry is currently reachable (a fresh manifest fetch succeeds). Used for clear error messaging. */
+export async function isRegistryReachable(): Promise<boolean> {
+	return (await registry().fetchManifest()) !== null
+}
+
+/** Load a downloaded (non-bundled) bit: verified cache → fetch (verify, cache if open) → "". */
 async function loadDownloadedBit(id: string): Promise<string> {
 	const entry = (await downloadedManifest()).get(id)
 	if (!entry) {
@@ -148,7 +161,11 @@ async function loadDownloadedBit(id: string): Promise<string> {
 	}
 	const fetched = await registry().fetchBlob(hash)
 	if (fetched !== null && sha256(fetched) === hash) {
-		await cache().writeBlob(hash, fetched)
+		// Only persist OPEN bits to disk as plaintext. Proprietary bits are served from this fetch but
+		// not cached (no on-disk plaintext) until encrypt-at-rest exists (P5).
+		if (isOpenLicense(entry.license)) {
+			await cache().writeBlob(hash, fetched)
+		}
 		return stripFrontmatter(fetched)
 	}
 	console.error(`KnowledgeResolver: could not load downloaded bit "${id}" (offline or hash mismatch)`)
