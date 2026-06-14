@@ -4,7 +4,9 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, test } from "node:test"
 import { indexManifest } from "../KnowledgeResolver"
+import { composeBit, generateBody, generateFrontmatter } from "./authoring"
 import { extractFrontmatter, stripFrontmatter } from "./frontmatter"
+import { buildTree, filterEntries, formatBitDetail, formatCatalog, type ManifestEntry } from "./inspect"
 import { deriveId, detectSafety, type Issue, lintBitContent, lintCorpus } from "./lint"
 import { kbitMetaSchema } from "./schema"
 
@@ -280,5 +282,159 @@ describe("regression: live corpus", () => {
 		const { migrated } = lintCorpus(KNOWLEDGE_ROOT)
 		assert.equal(manifest.count, manifest.bits.length)
 		assert.equal(manifest.count, migrated)
+	})
+})
+
+// ---------------------------------------------------------------- P1: credibility roles (schema v2)
+
+describe("kbit schema — roles & lifecycle (P1)", () => {
+	test("accepts co_authors / endorsers / supporters / status / created / updated", () => {
+		assert.equal(
+			ok({
+				...validAction,
+				co_authors: [{ handle: "omar", name: "Omar" }],
+				endorsers: [{ handle: "drx", name: "Dr X", affiliation: "Nordic", version: "1.0.0", date: "2026-06-14" }],
+				supporters: [{ handle: "acme", kind: "backer" }],
+				status: "published",
+				created: "2026-01-01",
+				updated: "2026-06-14",
+			}),
+			true,
+		)
+	})
+
+	test("endorser.verified defaults to false; supporter.kind defaults to sponsor", () => {
+		const parsed = kbitMetaSchema.parse({
+			...validAction,
+			endorsers: [{ handle: "drx", version: "1.0.0", date: "2026-06-14" }],
+			supporters: [{ handle: "acme" }],
+		})
+		assert.equal(parsed.endorsers?.[0].verified, false)
+		assert.equal(parsed.supporters?.[0].kind, "sponsor")
+	})
+
+	test("rejects self-endorsement (endorser is the author or a co-author)", () => {
+		assert.equal(ok({ ...validAction, endorsers: [{ handle: "adsum", version: "1.0.0", date: "2026-06-14" }] }), false)
+		assert.equal(
+			ok({
+				...validAction,
+				co_authors: [{ handle: "omar" }],
+				endorsers: [{ handle: "omar", version: "1.0.0", date: "2026-06-14" }],
+			}),
+			false,
+		)
+	})
+
+	test("status enum is enforced", () => {
+		assert.equal(ok({ ...validAction, status: "live" }), false)
+		assert.equal(ok({ ...validAction, status: "deprecated" }), true)
+	})
+})
+
+// ---------------------------------------------------------------- P1: lint v2 warnings
+
+describe("lintBitContent — P1 warnings", () => {
+	test("endorsement version drift → warning (not error)", () => {
+		const fm = `${WF_FM}\nendorsers: [{handle: drx, version: "0.9.0", date: "2026-01-01"}]`
+		const issues = lintBitContent(WF_PATH, md(fm, WF_BODY), KNOWN)
+		assert.equal(errs(issues).length, 0)
+		assert.ok(issues.some((i) => i.level === "warn" && /bump or re-endorse/.test(i.msg)))
+	})
+
+	test("deprecated/revoked status on a bundled bit → warning", () => {
+		const issues = lintBitContent(WF_PATH, md(`${WF_FM}\nstatus: revoked`, WF_BODY), KNOWN)
+		assert.equal(errs(issues).length, 0)
+		assert.ok(issues.some((i) => i.level === "warn" && /can't be enforced independently/.test(i.msg)))
+	})
+})
+
+// ---------------------------------------------------------------- P1: authoring core
+
+describe("authoring", () => {
+	test("generateFrontmatter emits a validated, fenced block", () => {
+		const block = generateFrontmatter(validAction)
+		assert.ok(block.startsWith("---\n") && block.trimEnd().endsWith("---"))
+		assert.match(block, /id: adsum\/nrf\/actions\/flash/)
+		assert.match(block, /author: adsum/)
+	})
+
+	test("generateFrontmatter throws on an invalid meta", () => {
+		assert.throws(() => generateFrontmatter({ ...validAction, version: "BAD" }))
+	})
+
+	test("generateBody emits house-style markers per type", () => {
+		const wf = generateBody({ type: "workflow", title: "Add Feature" }, "add-feature.md")
+		assert.match(wf, /# Add Feature \(add-feature\.md\)/)
+		assert.match(wf, /## Steps/)
+		assert.match(wf, /MANDATORY SKILL LOAD/)
+	})
+
+	test("composeBit produces a lint-clean bit", () => {
+		const meta = kbitMetaSchema.parse(validAction)
+		const content = composeBit(meta, "flash.md")
+		const issues = lintBitContent("platforms/nrf/actions/flash.md", content, new Set(["adsum/nrf/actions/flash"]))
+		assert.equal(errs(issues).length, 0)
+	})
+})
+
+// ---------------------------------------------------------------- P1: inspect core
+
+const entry = (over: Partial<ManifestEntry>): ManifestEntry =>
+	({
+		id: "adsum/nrf/actions/build",
+		title: "Build",
+		type: "action",
+		version: "1.0.0",
+		owner: "adsum-core",
+		author: "adsum",
+		license: "CC-BY-SA-4.0",
+		tier: "certified",
+		delivery: "bundled",
+		domain: "embedded-iot",
+		platform: "nrf",
+		path: "platforms/nrf/actions/build.md",
+		content_hash: "deadbeefdeadbeef",
+		...over,
+	}) as ManifestEntry
+
+describe("inspect", () => {
+	const fixture: ManifestEntry[] = [
+		entry({ id: "adsum/nrf/actions/build", type: "action", path: "platforms/nrf/actions/build.md" }),
+		entry({ id: "adsum/nrf/workflows/add-feature", type: "workflow", path: "platforms/nrf/workflows/add-feature.md" }),
+		entry({ id: "adsum/agent", type: "knowledge", platform: "universal", path: "AGENT.md" }),
+	]
+
+	test("buildTree groups by platform → type", () => {
+		const tree = buildTree(fixture)
+		assert.deepEqual(Object.keys(tree).sort(), ["nrf", "universal"])
+		assert.deepEqual(Object.keys(tree.nrf).sort(), ["action", "workflow"])
+		assert.equal(tree.universal.knowledge.length, 1)
+	})
+
+	test("filterEntries filters by type", () => {
+		assert.equal(filterEntries(fixture, { type: "workflow" }).length, 1)
+		assert.equal(filterEntries(fixture, { platform: "nrf" }).length, 2)
+	})
+
+	test("formatCatalog lists ids with the count", () => {
+		const out = formatCatalog(fixture)
+		assert.match(out, /3 bits/)
+		assert.match(out, /adsum\/agent/)
+	})
+
+	test("formatBitDetail marks an unverified endorser as such", () => {
+		const e = entry({
+			endorsers: [
+				{ handle: "drx", name: "Dr X", affiliation: "Nordic", version: "1.0.0", date: "2026-06-14", verified: false },
+			],
+		})
+		const out = formatBitDetail(e)
+		assert.match(out, /Dr X \(Nordic\).*\[unverified\]/)
+	})
+
+	test("formatBitDetail falls back to git dates when frontmatter has none", () => {
+		const out = formatBitDetail(entry({}), { created: "2026-01-01", updated: "2026-06-14" })
+		assert.match(out, /created:\s+2026-01-01/)
+		assert.match(out, /updated:\s+2026-06-14/)
 	})
 })

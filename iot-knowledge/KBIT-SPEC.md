@@ -43,8 +43,33 @@ Frontmatter is a **single YAML block fenced by `---` at the very top of the file
 | `safety` | safety[] | Declared dangerous ops (§5). |
 | `supersedes` | string (bit id) | This bit replaces another id (rename/merge). |
 | `content_hash` | string | sha256 of the body — **computed by tooling** in P2 (distribution); omit when authoring. |
+| `co_authors` | `{handle, name?, affiliation?}[]` | Additional authors (the primary stays `author`). Credit/payout split attaches here. |
+| `endorsers` | `{handle, name?, affiliation?, version, date, verified?, statement?}[]` | Named experts who **reviewed & vouch** for a **specific `version`** (R5.x). `verified` stays `false` until the P2 registry authenticates the identity — display unverified ones as such. |
+| `supporters` | `{handle, name?, affiliation?, kind?}[]` | Backers/sponsors. `kind` ∈ `sponsor\|backer` (default `sponsor`). |
+| `status` | `draft\|published\|deprecated\|revoked` | Lifecycle (R4.1). Absent ⇒ `published`. Bundled bits can't be independently revoked (linter warns). |
+| `created` / `updated` | YYYY-MM-DD | Author hints. **Git history is authoritative for bundled bits**; `kbit show` derives these from git, the manifest does not persist them (determinism). |
 
 > `rules` and `index` files map to `type: knowledge` with `platform` set appropriately (a rule is reference knowledge the loader always injects; the platform index is a generated artifact in P0b).
+
+### Credibility roles & lifecycle (P1)
+**author · co-author · endorser · supporter** are distinct trust roles, not just name fields:
+- **author / co_authors** = who *created* the bit (creation credit).
+- **endorsers** = named experts who *reviewed and vouch*. This is the credibility engine ("reviewed by Dr X, Nordic BLE specialist"). Rules: **version-pinned** (re-endorse on a material change — the linter warns if `endorsers[].version ≠ version`); **no self-endorsement** (`endorser ∉ author/co_authors` — schema error); **`verified:false` until the registry verifies** (P2) — never render an unverified endorsement as trusted.
+- **supporters** = backers/sponsors (social proof), `kind: sponsor|backer`.
+
+> Authoring is done with the **`kbit` CLI** (`npm run kbit -- new|edit|ls|tree|show|lint`), not by hand — it shares this schema, so a scaffolded bit always lints. Verified identities, the endorsement workflow, usage stats, and the operator console are **P2/P3** (registry/backend).
+
+Worked example (frontmatter excerpt):
+```yaml
+author: adsum
+co_authors:
+  - { handle: omar, name: Omar }
+endorsers:
+  - { handle: drx, name: "Dr X", affiliation: Nordic, version: 1.0.0, date: 2026-06-14, verified: false }
+supporters:
+  - { handle: acme, name: "Acme Robotics", kind: sponsor }
+status: published
+```
 
 ---
 
