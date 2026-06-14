@@ -255,6 +255,18 @@ async function probeSdks(sdkManagerPrefix: string): Promise<string[]> {
 	}
 }
 
+/**
+ * A board is a genuine Nordic device only if `device-info` resolved a Nordic chip
+ * identity for it (deviceName like "nRF52840", or a deviceFamily). `nrfutil device list`
+ * also enumerates non-Nordic USB-serial devices (e.g. an ESP32 dev board), but those
+ * never get a Nordic chip identity — they fall through to a bare serial number. Showing
+ * those as "boards" leaked ESP devices into the nRF strip, so we drop them here. Exported
+ * for unit tests.
+ */
+export function isNordicBoard(board: NrfBoard): boolean {
+	return !!(board.deviceName || board.deviceFamily)
+}
+
 async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: boolean; boards: NrfBoard[] }> {
 	try {
 		const listResult = await execAsync(`${devicePrefix} list --json`, { timeout: 8000 })
@@ -264,7 +276,7 @@ async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: bool
 			return { nrfutilPresent: true, boards: [] }
 		}
 
-		const boards = await Promise.all(
+		const probed = await Promise.all(
 			serials.map(async (serialNumber) => {
 				try {
 					const infoResult = await execAsync(`${devicePrefix} device-info --serial-number ${serialNumber} --json`, {
@@ -277,7 +289,8 @@ async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: bool
 			}),
 		)
 
-		return { nrfutilPresent: true, boards }
+		// Keep only devices nrfutil identified as Nordic — drop enumerated ESP/other serial ports.
+		return { nrfutilPresent: true, boards: probed.filter(isNordicBoard) }
 	} catch (err) {
 		// Surface WHY detection failed so Windows "nrfutil not found" can be diagnosed:
 		// ENOENT/'is not recognized' = binary not on PATH; a non-zero exit = nrfutil ran but

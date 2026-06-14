@@ -35,18 +35,19 @@ describe("runIntent — shared intent routing", () => {
 	})
 
 	it.each(["addFeature", "buildFlashDebug", "buildFlash", "testValidate", "prototype", "demo"] as const)(
-		"%s → starts a task with its built prompt",
+		"%s → starts a task with its built prompt (neutral platform when unknown)",
 		(id) => {
 			runIntent(id, { onSelectMode, onStartTask })
 			expect(onStartTask).toHaveBeenCalledTimes(1)
-			expect(onStartTask).toHaveBeenCalledWith(buildIntentPrompt(id, undefined))
+			// No platform passed → runIntent defaults to neutral "both" (never silently nRF).
+			expect(onStartTask).toHaveBeenCalledWith(buildIntentPrompt(id, undefined, "both"))
 			expect(onSelectMode).not.toHaveBeenCalled()
 		},
 	)
 
-	it("threads projectName into the prompt for project-scoped intents", () => {
-		runIntent("addFeature", { onSelectMode, onStartTask, projectName: "central_uart" })
-		expect(onStartTask).toHaveBeenCalledWith(buildIntentPrompt("addFeature", "central_uart"))
+	it("threads projectName + platform into the prompt for project-scoped intents", () => {
+		runIntent("addFeature", { onSelectMode, onStartTask, projectName: "central_uart", platform: "nrf" })
+		expect(onStartTask).toHaveBeenCalledWith(buildIntentPrompt("addFeature", "central_uart", "nrf"))
 		expect(onStartTask.mock.calls[0][0]).toContain("central_uart")
 	})
 

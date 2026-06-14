@@ -277,6 +277,14 @@ export const ExtensionStateContextProvider: React.FC<{
 
 		openFolderPaths: [],
 		nrfEnvironment: { status: "unknown", extensionPresent: false, nrfutilPresent: false, boards: [] },
+		espEnvironment: {
+			status: "unknown",
+			extensionPresent: false,
+			idfPresent: false,
+			projectDetected: false,
+			espDevices: [],
+		},
+		workspaceClassification: "none",
 		// NEW: Add workspace information with defaults
 		workspaceRoots: [],
 		primaryRootIndex: 0,

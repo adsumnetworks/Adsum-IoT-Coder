@@ -11,7 +11,7 @@
 
 import { aiGeneratedCodeIcon, analyseBugsIcon } from "@/assets/modeIconsBase64"
 
-export type NordicModeId = "log_generator" | "log_analyzer"
+export type NordicModeId = "log_generator" | "log_analyzer" | "debug_app" | "generate_app" | "generate_logs"
 export type NordicChatPhase = "awaiting_mode" | "active" | "task_complete"
 
 export interface NordicModeConfig {
@@ -40,11 +40,39 @@ export const NORDIC_MODES: Record<NordicModeId, NordicModeConfig> = {
 		systemPrompt: "Generate logging code",
 		initialMessage: "Analyzing all open VS Code workspace folders for IoT projects...",
 	},
+	// ── ESP-IDF modes ──
+	debug_app: {
+		id: "debug_app",
+		icon: "🐞",
+		title: "Debug My App",
+		description: "Build, flash and read the serial/coredump from your ESP32 — the agent finds the crash and fixes it.",
+		systemPrompt: "Debug my ESP32 device",
+		initialMessage: "Analyzing the ESP-IDF project and connected ESP32 for debugging...",
+	},
+	generate_app: {
+		id: "generate_app",
+		icon: "✨",
+		title: "Generate New App",
+		description: "Scaffold a Wi-Fi + web-dashboard / sensor app on ESP-IDF, ready to build and flash.",
+		systemPrompt: "Generate a new ESP-IDF IoT app",
+		initialMessage: "Preparing an ESP-IDF IoT application skeleton...",
+	},
+	generate_logs: {
+		id: "generate_logs",
+		icon: "🔧",
+		title: "Generate Logging Code",
+		description: "Inject ESP-IDF logging into your existing source — feeds straight into Debug.",
+		systemPrompt: "Add ESP-IDF logging to my code",
+		initialMessage: "Scanning the ESP-IDF project for logging insertion points...",
+	},
 }
 
 export const MODE_ICONS: Record<NordicModeId, string> = {
 	log_generator: aiGeneratedCodeIcon,
 	log_analyzer: analyseBugsIcon,
+	debug_app: analyseBugsIcon,
+	generate_app: aiGeneratedCodeIcon,
+	generate_logs: aiGeneratedCodeIcon,
 }
 
 export function detectModeFromTask(task: string): NordicModeId | null {

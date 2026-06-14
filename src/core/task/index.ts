@@ -1568,8 +1568,12 @@ export class Task {
 		command: string,
 		timeoutSeconds: number | undefined,
 		terminalName?: string,
+		suppressShellIntegrationWarning?: boolean,
 	): Promise<[boolean, ClineToolResponseContent]> {
-		return this.commandExecutor.execute(command, timeoutSeconds, terminalName)
+		// Forward suppressShellIntegrationWarning so callers running in 3rd-party
+		// terminals without VS Code shell integration (nRF Connect, ESP-IDF) can
+		// silence the otherwise-noisy warning. Previously dropped here.
+		return this.commandExecutor.execute(command, timeoutSeconds, terminalName, suppressShellIntegrationWarning)
 	}
 
 	/**
