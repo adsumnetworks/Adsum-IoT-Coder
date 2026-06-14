@@ -5,7 +5,7 @@ import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
-import { loadBitByKbPath } from "@/services/knowledge/KnowledgeResolver"
+import { isRegistryReachable, loadBitByKbPath } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import { ClineSayTool } from "@/shared/ExtensionMessage"
 import { ClineDefaultTool } from "@/shared/tools"
@@ -192,6 +192,17 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 				await config.services.fileContextTracker.trackFileContext(relPath!, "read_tool")
 				return bitBody
 			}
+			// Couldn't resolve this knowledge bit. Give a clear, actionable reason instead of a bare
+			// "file not found": a downloaded bit when the registry is unreachable, vs. a wrong path.
+			const reachable = await isRegistryReachable()
+			return formatResponse.toolError(
+				reachable
+					? `Knowledge bit not found: "${displayPath}". It is not bundled and not in the registry — ` +
+							`double-check the path (combine the iot-knowledge directory with the bit's relative path).`
+					: `Could not load knowledge bit "${displayPath}": the Adsum knowledge registry is unreachable ` +
+							`and this bit is not cached locally. Check your network connection and retry. ` +
+							`(Bundled knowledge is unaffected.)`,
+			)
 		}
 
 		// Execute the actual file read operation
