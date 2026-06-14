@@ -4,6 +4,7 @@ import { ClineDefaultTool } from "@shared/tools"
 import * as path from "path"
 import { StateManager } from "@/core/storage/StateManager"
 import { HostProvider } from "@/hosts/host-provider"
+import { bitCacheDir } from "@/services/knowledge/KnowledgeResolver"
 import { getCwd, getDesktopDir, isLocatedInPath, isLocatedInWorkspace } from "@/utils/path"
 
 export class AutoApprove {
@@ -106,11 +107,14 @@ export class AutoApprove {
 
 		let isLocalRead: boolean = false
 		if (autoApproveActionpath) {
+			// TRUST BOUNDARY (P2): downloaded bits cached under <globalStorage>/kbit-cache are UNTRUSTED
+			// executable input (a bit can instruct the agent — R1.6). Never auto-read them until they are
+			// signature/hash-verified — force explicit approval, overriding the external-read setting.
+			if (blockname === ClineDefaultTool.FILE_READ && isLocatedInPath(bitCacheDir(), autoApproveActionpath)) {
+				return false
+			}
 			// EXCEPTION: Always allow reading from the extension's bundled iot-knowledge folder.
 			// These bits ship inside the signed VSIX, so they are trusted.
-			// TRUST BOUNDARY (P2): when DOWNLOADED bits land in the local cache (globalStorage),
-			// they are UNTRUSTED executable input and must NOT be auto-read here — gate them on
-			// signature/hash verification (via the KnowledgeResolver) before auto-approval.
 			if (blockname === ClineDefaultTool.FILE_READ) {
 				const extensionFsPath = HostProvider.get().extensionFsPath
 				if (extensionFsPath) {
