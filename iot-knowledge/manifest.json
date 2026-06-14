@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 26,
+	"count": 22,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -118,36 +118,6 @@
 			],
 			"path": "platforms/nrf/actions/flash.md",
 			"content_hash": "6054830200400021ec4ea778b58d2ad1c9633912a89eb10b35dfecd631647053"
-		},
-		{
-			"id": "adsum/nrf/actions/run-twister",
-			"title": "Action: Run Host Tests via Twister",
-			"type": "action",
-			"version": "1.0.0",
-			"owner": "adsum-core",
-			"author": "adsum",
-			"license": "CC-BY-SA-4.0",
-			"tier": "certified",
-			"delivery": "bundled",
-			"domain": "embedded-iot",
-			"platform": "nrf",
-			"path": "platforms/nrf/actions/run-twister.md",
-			"content_hash": "78bdf42b8a73949cc63262ded164b802ac85ff9f32be632909220743f2adb4ba"
-		},
-		{
-			"id": "adsum/nrf/boards/nrf52832",
-			"title": "nRF52832 — Board Knowledge",
-			"type": "knowledge",
-			"version": "1.0.0",
-			"owner": "adsum-core",
-			"author": "adsum",
-			"license": "CC-BY-SA-4.0",
-			"tier": "certified",
-			"delivery": "bundled",
-			"domain": "embedded-iot",
-			"platform": "nrf",
-			"path": "platforms/nrf/boards/nrf52832.md",
-			"content_hash": "c4f5f5aeb59a389123f0810ef48976b25494d41bf8db626351ba9b41ff7039c1"
 		},
 		{
 			"id": "adsum/nrf/boards/nrf52840",
@@ -376,30 +346,6 @@
 			"content_hash": "bb24546be4cb8f0ec182827f1605d36944442031ff06861ee8fa86dea5d5096d"
 		},
 		{
-			"id": "adsum/nrf/workflows/log-generator",
-			"title": "Log Generator Workflow",
-			"type": "workflow",
-			"version": "1.0.0",
-			"owner": "adsum-core",
-			"author": "adsum",
-			"license": "CC-BY-SA-4.0",
-			"tier": "certified",
-			"delivery": "bundled",
-			"domain": "embedded-iot",
-			"platform": "nrf",
-			"triggers": [
-				"Generate logging code",
-				"Add logs",
-				"Add LOG macros",
-				"Help me debug with logs"
-			],
-			"requires": [
-				"adsum/nrf/actions/capture-logs"
-			],
-			"path": "platforms/nrf/workflows/log-generator.md",
-			"content_hash": "1d66aa1ad9073d56fc359ea54ec42072dfad50e0a98eadcfb6ec9e2381a2c6d9"
-		},
-		{
 			"id": "adsum/nrf/workflows/prototype",
 			"title": "Prototype Workflow",
 			"type": "workflow",
@@ -422,30 +368,6 @@
 			],
 			"path": "platforms/nrf/workflows/prototype.md",
 			"content_hash": "09225f435e9413438c04720c203e6818d720b439c694492ca9afcb4206355ed8"
-		},
-		{
-			"id": "adsum/nrf/workflows/test-validate",
-			"title": "Test & Validate Workflow",
-			"type": "workflow",
-			"version": "1.0.0",
-			"owner": "adsum-core",
-			"author": "adsum",
-			"license": "CC-BY-SA-4.0",
-			"tier": "certified",
-			"delivery": "bundled",
-			"domain": "embedded-iot",
-			"platform": "nrf",
-			"triggers": [
-				"test and validate",
-				"Prove",
-				"works"
-			],
-			"requires": [
-				"adsum/nrf/actions/run-twister",
-				"adsum/nrf/workflows/debug-loop"
-			],
-			"path": "platforms/nrf/workflows/test-validate.md",
-			"content_hash": "31b8f441d55e7666a55645571b83a0be82c8f1da31a883739e6b56682b6e8113"
 		},
 		{
 			"id": "adsum/rules/core",
