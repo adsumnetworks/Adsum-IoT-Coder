@@ -15,6 +15,7 @@ export * from "./plan_mode_respond"
 export * from "./read_file"
 export * from "./replace_in_file"
 export * from "./search_files"
+export * from "./trigger_esp_action"
 export * from "./trigger_nordic_action"
 // export * from "./web_fetch" (Removed)
 // export * from "./web_search" (Removed)

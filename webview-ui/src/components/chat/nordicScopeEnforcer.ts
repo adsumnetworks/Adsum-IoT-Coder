@@ -12,7 +12,9 @@ interface ScopeRule {
 	rejectionMessage: string
 }
 
-const SCOPE_RULES: Record<NordicModeId, ScopeRule> = {
+// Partial: only the focused nRF modes carry an off-topic guard. ESP modes are
+// broader (debug naturally spans build/flash/debug) so they have no restriction.
+const SCOPE_RULES: Partial<Record<NordicModeId, ScopeRule>> = {
 	log_generator: {
 		offTopicPattern: /\b(build|flash|compile|debug(?:ger)?|optimize|refactor|deploy|test)\b/i,
 		rejectionMessage:

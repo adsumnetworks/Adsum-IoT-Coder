@@ -41,6 +41,12 @@ export class TaskState {
 	didEditFile: boolean = false
 	lastToolName: string = "" // Track last tool used for consecutive call detection
 
+	// IoT-knowledge no-double-load guard: absolute paths of iot-knowledge skill
+	// files already served via read_file this task. Re-reads return a short stub
+	// instead of the full text (these files don't change during a task), saving
+	// context. Complements the "already loaded" manifest in the system prompt.
+	loadedKnowledgeFiles: Set<string> = new Set()
+
 	// Error tracking
 	consecutiveMistakeCount: number = 0
 	didAutomaticallyRetryFailedApiRequest = false

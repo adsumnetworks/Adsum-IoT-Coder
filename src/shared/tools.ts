@@ -34,6 +34,7 @@ export enum ClineDefaultTool {
 	USE_SKILL = "use_skill",
 	UPDATE_MEMORY = "update_project_memory",
 	NORDIC_ACTION = "triggerNordicAction",
+	ESP_ACTION = "triggerEspAction",
 }
 
 // Array of all tool names for compatibility
