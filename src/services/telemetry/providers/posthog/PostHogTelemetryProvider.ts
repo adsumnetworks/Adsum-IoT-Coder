@@ -3,6 +3,7 @@ import { HostProvider } from "@/hosts/host-provider"
 import { ExtensionRegistryInfo } from "@/registry"
 import { getErrorLevelFromString } from "@/services/error"
 import { getDistinctId, setDistinctId } from "@/services/logging/distinctId"
+import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { Setting } from "@/shared/proto/index.host"
 import { posthogConfig } from "../../../../shared/services/config/posthog-config"
 import type { ClineAccountUserInfo } from "../../../auth/AuthService"
@@ -106,7 +107,7 @@ export class PostHogTelemetryProvider implements ITelemetryProvider {
 		this.client.capture({
 			distinctId: getDistinctId(),
 			event,
-			properties: { app_version: ExtensionRegistryInfo.version, ...properties },
+			properties: { app_version: ExtensionRegistryInfo.version, platform: getCachedWorkspaceSummary(), ...properties },
 		})
 	}
 
@@ -116,6 +117,7 @@ export class PostHogTelemetryProvider implements ITelemetryProvider {
 			event,
 			properties: {
 				app_version: ExtensionRegistryInfo.version,
+				platform: getCachedWorkspaceSummary(),
 				...properties,
 				_required: true,
 			},
