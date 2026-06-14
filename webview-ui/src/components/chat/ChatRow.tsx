@@ -710,6 +710,22 @@ export const ChatRowContent = memo(
 							</div>
 						</div>
 					)
+				case "triggerEspAction":
+					return (
+						<div>
+							<div className={HEADER_CLASSNAMES}>
+								{toolIcon("circuit-board")}
+								<span className="font-bold">
+									{message.type === "ask"
+										? "Adsum IoT Coder wants to run an ESP-IDF action:"
+										: "Adsum IoT Coder ran an ESP-IDF action:"}
+								</span>
+							</div>
+							<div className="bg-code border border-editor-group-border overflow-hidden rounded-xs py-[9px] px-2.5">
+								<span className="ph-no-capture font-medium">{tool.path}</span>
+							</div>
+						</div>
+					)
 				default:
 					return <InvisibleSpacer />
 			}

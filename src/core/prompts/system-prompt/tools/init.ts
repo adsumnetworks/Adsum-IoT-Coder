@@ -17,6 +17,7 @@ import { plan_mode_respond_variants } from "./plan_mode_respond"
 import { read_file_variants } from "./read_file"
 import { replace_in_file_variants } from "./replace_in_file"
 import { search_files_variants } from "./search_files"
+import { trigger_esp_action_variants } from "./trigger_esp_action"
 import { trigger_nordic_action_variants } from "./trigger_nordic_action"
 import { update_project_memory_variants } from "./update_project_memory"
 import { use_mcp_tool_variants } from "./use_mcp_tool"
@@ -57,6 +58,7 @@ export function registerClineToolSets(): void {
 		...write_to_file_variants,
 		...apply_patch_variants,
 		...trigger_nordic_action_variants,
+		...trigger_esp_action_variants,
 	]
 
 	// Register each variant

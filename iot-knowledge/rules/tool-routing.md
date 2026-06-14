@@ -1,3 +1,17 @@
+---
+id: adsum/rules/tool-routing
+title: "Tool Routing Directives"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: universal
+---
+
 # Tool Routing Directives
 
 Standard shell terminals on embedded development machines often lack the cross-compiler, toolchain, and SDK environment variables needed for firmware operations.
