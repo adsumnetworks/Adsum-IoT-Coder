@@ -64,4 +64,23 @@ export class BitCache {
 			// best-effort cache write; a failure just means we re-fetch next time
 		}
 	}
+
+	/** sha256 hashes of every cached blob (the blob filenames, minus `.md`). */
+	async listBlobHashes(): Promise<string[]> {
+		try {
+			const files = await fs.readdir(path.join(this.root, "blobs"))
+			return files.filter((f) => f.endsWith(".md")).map((f) => f.slice(0, -3))
+		} catch {
+			return [] // no blobs dir yet
+		}
+	}
+
+	/** Best-effort delete of a cached blob (used to honor revocation / drop superseded versions). */
+	async deleteBlob(hash: string): Promise<void> {
+		try {
+			await fs.rm(this.blobPath(hash))
+		} catch {
+			// already gone — fine
+		}
+	}
 }
