@@ -43,7 +43,11 @@ for (const rel of listBitFiles(ROOT)) {
 
 bits.sort((a, b) => a.id.localeCompare(b.id))
 
-const manifest = { manifestVersion: 1, count: bits.length, bits }
+// v2: entries now carry the P1 role/lifecycle fields (co_authors/endorsers/supporters/status,
+// and author-declared created/updated) — they flow in automatically via the spread above.
+// NOTE: git-derived created/updated are computed at display time (`kbit show`), NOT persisted here,
+// so the manifest stays deterministic (CI diffs it for drift).
+const manifest = { manifestVersion: 2, count: bits.length, bits }
 const outPath = join(ROOT, "manifest.json")
 writeFileSync(outPath, `${JSON.stringify(manifest, null, "\t")}\n`, "utf8")
 console.log(
