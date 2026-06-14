@@ -395,7 +395,7 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 	const summary = getCachedWorkspaceSummary()
 	const route = routePlatform(summary)
 	const exampleSkillPath =
-		route.identity === "AGENT-ESP.md" ? "platforms/esp/workflows/debug-loop.md" : "platforms/nrf/workflows/log-analyzer.md"
+		summary === "esp" ? "platforms/esp/workflows/debug-loop.md" : "platforms/nrf/workflows/log-analyzer.md"
 
 	let iotContext = "## IoT & Embedded Context\n\n"
 
@@ -414,8 +414,9 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 		return content
 	}
 
-	// 1. Global Base: platform identity (AGENT.md = nRF/neutral, AGENT-ESP.md = ESP) + universal rules
-	iotContext += (await load(route.identity)) + "\n\n"
+	// 1. Global Base: the single platform-neutral identity (AGENT.md covers nRF + ESP,
+	//    routing by the detected platform) + universal rules.
+	iotContext += (await load("AGENT.md")) + "\n\n"
 	if (route.multiPlatform) {
 		iotContext += MULTI_PLATFORM_NOTE + "\n\n"
 	}

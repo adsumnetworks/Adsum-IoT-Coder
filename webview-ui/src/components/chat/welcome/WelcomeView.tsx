@@ -11,7 +11,7 @@ import DockCoachMark from "./DockCoachMark"
 import IntentList from "./IntentList"
 import StatusHeader from "./StatusHeader"
 import TenureNudge from "./TenureNudge"
-import { getTenure, NO_PROJECT_INTENTS, PROJECT_INTENTS } from "./welcomeIntents"
+import { getTenure, NO_PROJECT_INTENTS, PROJECT_INTENTS, resolveIntentPlatform } from "./welcomeIntents"
 
 interface WelcomeViewProps {
 	onSelectMode: (mode: NordicModeId) => void
@@ -29,12 +29,18 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	showUpgradeCard,
 }) => {
 	const { isDark } = useVSCodeTheme()
-	const { navigateToHistory, version, openFolderPaths, taskHistory, workspaceClassification } = useExtensionState()
+	const { navigateToHistory, version, openFolderPaths, taskHistory, workspaceClassification, nrfEnvironment, espEnvironment } =
+		useExtensionState()
 
 	const hasWorkspace = openFolderPaths.length > 0
 	const projectName = hasWorkspace ? (openFolderPaths[0].split("/").pop() ?? null) : null
-	// Platform of the open workspace — "nrf" when nothing more specific is known.
-	const platform = workspaceClassification && workspaceClassification !== "none" ? workspaceClassification : "nrf"
+	// Platform for the cards: the open project's classification wins; with no project,
+	// bias by the installed toolchain (else neutral "both" so the agent asks — never
+	// silently nRF). See resolveIntentPlatform.
+	const platform = resolveIntentPlatform(workspaceClassification, {
+		nrf: !!(nrfEnvironment?.extensionPresent || nrfEnvironment?.nrfutilPresent),
+		esp: !!(espEnvironment?.extensionPresent || espEnvironment?.idfPresent),
+	})
 
 	const tenure = getTenure({
 		taskCount: taskHistory?.length ?? 0,

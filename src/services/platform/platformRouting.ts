@@ -1,9 +1,13 @@
 /**
  * platformRouting — pure mapping from the workspace classification summary to the
  * prompt/tool wiring for a task. This is the RUNTIME replacement for the old
- * build-time IOT_PLATFORM flag: an ESP-IDF workspace gets the ESP identity, ESP
- * knowledge and the ESP device tool; an nRF workspace gets the nRF stack; a mixed
- * (both) workspace gets both; an empty (none) workspace gets the neutral default.
+ * build-time IOT_PLATFORM flag: an ESP-IDF workspace gets the ESP knowledge and
+ * the ESP device tool; an nRF workspace gets the nRF stack; a mixed (both)
+ * workspace gets both; an empty (none) workspace gets the neutral default.
+ *
+ * The identity/persona is a SINGLE platform-neutral `AGENT.md` for every case —
+ * its Scope Gate covers both nRF/NCS and ESP-IDF and routes by the detected
+ * platform, so there is no per-platform identity file to choose.
  *
  * Kept dependency-free and synchronous so the tool gates and iot_context can call
  * it during prompt assembly, and so it is trivially unit-testable.
@@ -12,8 +16,6 @@
 import type { WorkspaceSummary } from "./WorkspaceClassifier"
 
 export interface PlatformRouting {
-	/** Which identity/persona file to load as the always-on base. */
-	identity: "AGENT.md" | "AGENT-ESP.md"
 	/** Load the nRF/NCS platform knowledge (when the cwd confirms an nRF project). */
 	loadNrf: boolean
 	/** Load the ESP-IDF platform knowledge (when the cwd confirms an ESP project). */
@@ -25,25 +27,23 @@ export interface PlatformRouting {
 /**
  * Map the workspace summary to the platform wiring for a task.
  *
- * - "esp"  → ESP identity, ESP knowledge only.
- * - "nrf"  → nRF identity, nRF knowledge only.
- * - "both" → nRF-base (neutral) identity + multi-platform note, BOTH knowledge sets.
- * - "none" → nRF-base (neutral) identity, no platform knowledge (graceful scope gate).
+ * - "esp"  → ESP knowledge only.
+ * - "nrf"  → nRF knowledge only.
+ * - "both" → BOTH knowledge sets + the multi-platform note.
+ * - "none" → no platform knowledge (graceful scope gate).
  *
- * Note: AGENT.md's *core identity* is already generic ("expert AI assistant for
- * Embedded Systems and IoT"); only its Scope Gate is nRF-specific, which the
- * multi-platform note relaxes for the "both" case.
+ * The always-on identity is `AGENT.md` in every case (see module note).
  */
 export function routePlatform(summary: WorkspaceSummary): PlatformRouting {
 	switch (summary) {
 		case "esp":
-			return { identity: "AGENT-ESP.md", loadNrf: false, loadEsp: true, multiPlatform: false }
+			return { loadNrf: false, loadEsp: true, multiPlatform: false }
 		case "both":
-			return { identity: "AGENT.md", loadNrf: true, loadEsp: true, multiPlatform: true }
+			return { loadNrf: true, loadEsp: true, multiPlatform: true }
 		case "nrf":
-			return { identity: "AGENT.md", loadNrf: true, loadEsp: false, multiPlatform: false }
+			return { loadNrf: true, loadEsp: false, multiPlatform: false }
 		default:
-			return { identity: "AGENT.md", loadNrf: false, loadEsp: false, multiPlatform: false }
+			return { loadNrf: false, loadEsp: false, multiPlatform: false }
 	}
 }
 
