@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, test } from "node:test"
-import { __resetManifestCache, __setRegistryHooks, loadBit } from "../KnowledgeResolver"
+import { __resetManifestCache, __setRegistryHooks, loadBit, loadBitByKbPath } from "../KnowledgeResolver"
 import { BitCache, sha256 } from "./BitCache"
 import { RegistryClient } from "./RegistryClient"
 
@@ -135,6 +135,50 @@ describe("KnowledgeResolver downloaded tier (bundled→cache→fetch)", () => {
 		})
 		__setRegistryHooks({ cache: new BitCache(await tmp()), registry: rc })
 		assert.equal(await loadBit("adsum/community/x"), "")
+		__resetManifestCache()
+	})
+})
+
+// ---------------------------------------------------------------- P2.5: read_file → registry fallback
+
+describe("loadBitByKbPath (P2.5 — un-bundled on-demand bits via read_file)", () => {
+	const hook = (id: string, content: string, hash: string, root: string) =>
+		__setRegistryHooks({
+			registry: new RegistryClient(
+				"http://r",
+				stubFetch({ manifestVersion: 1, bits: [{ id, version: "1.0.0", content_hash: hash }] }, { [hash]: content }),
+			),
+			cache: new BitCache(root),
+		})
+
+	test("maps an iot-knowledge path → id → registry → stripped body", async () => {
+		const { content, hash } = bit("adsum/nrf/workflows/test-validate", "# Test & Validate (test-validate.md)")
+		hook("adsum/nrf/workflows/test-validate", content, hash, await tmp())
+		const body = await loadBitByKbPath("/ext/iot-knowledge/platforms/nrf/workflows/test-validate.md")
+		assert.equal(body, "# Test & Validate (test-validate.md)")
+		__resetManifestCache()
+	})
+
+	test("handles Windows-style separators", async () => {
+		const { content, hash } = bit("adsum/nrf/actions/run-twister", "# Run Twister")
+		hook("adsum/nrf/actions/run-twister", content, hash, await tmp())
+		const body = await loadBitByKbPath("C:\\ext\\iot-knowledge\\platforms\\nrf\\actions\\run-twister.md")
+		assert.equal(body, "# Run Twister")
+		__resetManifestCache()
+	})
+
+	test("non-iot-knowledge path → null (no effect on normal file reads)", async () => {
+		assert.equal(await loadBitByKbPath("/home/user/project/src/main.c"), null)
+	})
+
+	test("unknown/offline bit → null (read_file then surfaces its normal not-found)", async () => {
+		__setRegistryHooks({
+			registry: new RegistryClient("http://r", async () => {
+				throw new Error("offline")
+			}),
+			cache: new BitCache(await tmp()),
+		})
+		assert.equal(await loadBitByKbPath("/ext/iot-knowledge/platforms/nrf/workflows/ghost.md"), null)
 		__resetManifestCache()
 	})
 })

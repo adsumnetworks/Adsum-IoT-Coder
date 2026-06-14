@@ -5,6 +5,7 @@ import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
+import { loadBitByKbPath } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import { ClineSayTool } from "@/shared/ExtensionMessage"
 import { ClineDefaultTool } from "@/shared/tools"
@@ -177,6 +178,19 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 						`enclosing logs/ directory to discover the newly-created filename — timestamps in ` +
 						`filenames vary, so do not assume a path.`,
 				)
+			}
+		}
+
+		// P2.5: un-bundled on-demand K-bit. If a bundled-tree (iot-knowledge) path isn't on disk, it may
+		// be a DOWNLOADED bit — resolve it through the registry (cache → fetch → hash-verify) so the
+		// agent's on-demand `read_file <kbDir>/…/X.md` still works for downloaded workflows/actions.
+		// Self-guarded (returns null for non-iot-knowledge paths) and only runs when the file is missing,
+		// so it has no effect on normal reads.
+		if (absolutePath.includes("iot-knowledge") && !(await fileAccessible(absolutePath))) {
+			const bitBody = await loadBitByKbPath(absolutePath)
+			if (bitBody) {
+				await config.services.fileContextTracker.trackFileContext(relPath!, "read_tool")
+				return bitBody
 			}
 		}
 
