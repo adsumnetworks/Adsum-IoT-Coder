@@ -105,6 +105,26 @@ export function lintBitContent(relPath: string, text: string, knownIds: Set<stri
 		issues.push({ level: "warn", file: relPath, msg: `H1 should name its own path (e.g. "(… /${base})")` })
 	}
 
+	// R5.2 — endorsements are version-pinned: a stale endorsement (for an older version) must be re-earned.
+	for (const e of meta.endorsers ?? []) {
+		if (e.version !== meta.version) {
+			issues.push({
+				level: "warn",
+				file: relPath,
+				msg: `endorsement by "${e.handle}" is for v${e.version} but the bit is v${meta.version} — bump or re-endorse`,
+			})
+		}
+	}
+
+	// R4.1 — bundled bits are frozen to the app release; they can't be independently deprecated/revoked.
+	if (meta.delivery === "bundled" && (meta.status === "deprecated" || meta.status === "revoked")) {
+		issues.push({
+			level: "warn",
+			file: relPath,
+			msg: `status "${meta.status}" on a bundled bit can't be enforced independently — revocation needs the registry (downloaded delivery)`,
+		})
+	}
+
 	return issues
 }
 
