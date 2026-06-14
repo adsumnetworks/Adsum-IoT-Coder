@@ -1,3 +1,17 @@
+---
+id: adsum/esp/actions/decode-fault
+title: "Action: Decode a Panic / Fatal Error"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+---
+
 # Action: Decode a Panic / Fatal Error (actions/decode-fault.md)
 
 ## When Used

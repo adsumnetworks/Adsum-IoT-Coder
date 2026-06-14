@@ -1,3 +1,17 @@
+---
+id: adsum/esp/sdks/esp-idf/protocols/ble
+title: "Protocol: BLE"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+---
+
 # Protocol: BLE (NimBLE) (sdks/esp-idf/protocols/BLE.md)
 
 ## When Used

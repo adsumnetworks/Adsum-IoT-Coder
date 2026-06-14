@@ -1,3 +1,17 @@
+---
+id: adsum/esp/rules/esp-terminal
+title: "ESP Platform Rule: The ESP-IDF Device Tool"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: esp
+---
+
 # ESP Platform Rule: The ESP-IDF Device Tool (rules/esp-terminal.md)
 
 **ALL ESP-IDF commands MUST go through the `triggerEspAction` tool. NEVER run `idf.py` or `esptool.py` via `execute_command`.**

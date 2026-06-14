@@ -1,3 +1,17 @@
+---
+id: adsum/esp/sdks/esp-idf/protocols/wifi
+title: "Protocol: Wi-Fi & Webserver"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+---
+
 # Protocol: Wi-Fi & Webserver (sdks/esp-idf/protocols/WIFI.md)
 
 This file documents the mandatory initialization sequence and best practices for creating a Wi-Fi connection and an HTTP server in ESP-IDF v5.5.

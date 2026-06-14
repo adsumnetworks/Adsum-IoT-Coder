@@ -1,3 +1,17 @@
+---
+id: adsum/esp/actions/flash
+title: "Action: Flash Firmware"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+---
+
 # Action: Flash Firmware (actions/flash.md)
 
 ## When Used

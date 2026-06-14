@@ -1,3 +1,17 @@
+---
+id: adsum/esp/actions/find-sample
+title: "Action: Find an Example"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+---
+
 # Action: Find an Example (actions/find-sample.md)
 
 ## When Used

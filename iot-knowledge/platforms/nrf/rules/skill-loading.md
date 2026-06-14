@@ -10,6 +10,7 @@ tier: certified
 delivery: bundled
 domain: embedded-iot
 platform: nrf
+safety: [flash]
 ---
 
 # nRF Platform Rule: Skill Loading (rules/skill-loading.md)

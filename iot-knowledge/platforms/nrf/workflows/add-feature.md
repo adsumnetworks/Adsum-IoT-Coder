@@ -2,12 +2,12 @@
 id: adsum/nrf/workflows/add-feature
 title: Add Feature
 type: workflow
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: adsum
-license: CC-BY-SA-4.0
+license: LicenseRef-Adsum-Proprietary
 tier: certified
-delivery: bundled
+delivery: downloaded
 domain: embedded-iot
 platform: nrf
 sdk: ncs
