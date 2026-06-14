@@ -25,7 +25,9 @@ export interface EspEnvironment {
 	idfPath?: string
 	/** IDF version from {idfPath}/version.txt — machine-installed. */
 	idfVersion?: string
-	/** IDF version bound to the open project from build/project_description.json. */
+	/** True when the open project has a build (any build-dir/project_description.json exists). */
+	projectBuilt?: boolean
+	/** IDF version bound to the open project from <buildDir>/project_description.json. */
 	projectIdfVersion?: string
 	/** True when the open workspace contains at least one ESP-IDF project (WorkspaceClassifier). */
 	projectDetected: boolean

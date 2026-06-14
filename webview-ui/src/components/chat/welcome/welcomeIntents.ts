@@ -103,7 +103,7 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 	{
 		id: "openProject",
 		icon: "folder-opened",
-		title: "Open my nRF project",
+		title: "Open my project",
 		description: "Point me at your firmware folder — I'll build it, debug live logs, and add features to your real code.",
 	},
 ]

@@ -8,7 +8,7 @@ import { resolve } from "path"
 import { defineConfig, type Plugin, ViteDevServer } from "vite"
 
 // Mirror the esbuild.mjs .env loader: read the workspace-root .env so that
-// IOT_PLATFORM (and other build-time vars) reach vite even though vite runs
+// build-time vars (telemetry keys, IS_DEV, …) reach vite even though vite runs
 // from webview-ui/. Shell-exported vars take precedence (only fills missing).
 const rootEnvPath = path.join(__dirname, "..", ".env")
 if (existsSync(rootEnvPath)) {
@@ -140,9 +140,6 @@ export default defineConfig({
 	},
 	define: {
 		__PLATFORM__: JSON.stringify(platform),
-		// IoT platform variant (nrf | esp) — selects the welcome-screen mode set,
-		// branding accent and copy. Baked at build time; default nrf.
-		__IOT_PLATFORM__: JSON.stringify(process.env.IOT_PLATFORM || "nrf"),
 		process: JSON.stringify({
 			platform: JSON.stringify(process?.platform),
 			env: {
