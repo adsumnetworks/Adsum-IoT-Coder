@@ -1,7 +1,7 @@
 import { describe, it } from "mocha"
 import "should"
 import { join } from "path"
-import { resolveNrfutilCommands } from "../EnvironmentDetector"
+import { isNordicBoard, resolveNrfutilCommands } from "../EnvironmentDetector"
 
 /**
  * resolveNrfutilCommands picks how to invoke nrfutil across the two layouts it ships in:
@@ -112,5 +112,23 @@ describe("resolveNrfutilCommands", () => {
 			cmds.devicePrefix.should.equal("nrfutil device")
 			cmds.sdkManagerPrefix.should.equal("nrfutil sdk-manager")
 		})
+	})
+})
+
+describe("isNordicBoard — filter out non-Nordic enumerated serial ports (e.g. ESP)", () => {
+	it("keeps a board with a Nordic deviceName", () => {
+		isNordicBoard({ serialNumber: "5B5F121973", deviceName: "nRF52840", boardVersion: "PCA10056" }).should.be.true()
+	})
+
+	it("keeps a board with only a deviceFamily", () => {
+		isNordicBoard({ serialNumber: "1050001234", deviceFamily: "NRF53" }).should.be.true()
+	})
+
+	it("drops an ESP device that came through as a bare serial number", () => {
+		isNordicBoard({ serialNumber: "5B5F121973" }).should.be.false()
+	})
+
+	it("drops a bare-serial device with no chip identity", () => {
+		isNordicBoard({ serialNumber: "0001" }).should.be.false()
 	})
 })

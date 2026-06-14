@@ -2,6 +2,7 @@ import type { NrfEnvironment } from "@shared/nrf"
 import fs from "fs/promises"
 import * as path from "path"
 import { ExtensionRegistryInfo } from "@/registry"
+import { resolveBitPathSync } from "@/services/knowledge/KnowledgeResolver"
 
 // ── Module-level singleton, set once during extension activation ──────────────
 
@@ -101,8 +102,12 @@ export function buildDemoDisplayText(): string {
 
 /** Builds the full agent task prompt pointing at real files in globalStorage. */
 export function buildDemoPrompt(ws: DemoWorkspace, capability: DemoCapability = "canned", env?: NrfEnvironment): string {
-	const workflowFile = path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "workflows", "demo-debug.md")
-	const bleFile = path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "sdks", "ncs", "protocols", "BLE.md")
+	const workflowFile =
+		resolveBitPathSync("adsum/nrf/workflows/demo-debug") ??
+		path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "workflows", "demo-debug.md")
+	const bleFile =
+		resolveBitPathSync("adsum/nrf/sdks/ncs/protocols/ble") ??
+		path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "sdks", "ncs", "protocols", "BLE.md")
 	const centralLog = path.join(ws.centralPath, "logs", "rtt", "central_683907940_20260606_162933.log")
 	const peripheralLog = path.join(ws.peripheralPath, "logs", "rtt", "peripheral_960167369_20260606_162933.log")
 	const centralSrc = path.join(ws.centralPath, "src", "main.c")
@@ -211,8 +216,12 @@ ${wrapUp}
 	if (capability === "hardware") {
 		const boardCount = env?.boards?.length ?? 1
 		const boardWord = boardCount >= 2 ? `${boardCount} boards` : "a board"
-		const flashDoc = path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "flash.md")
-		const captureDoc = path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "capture-logs.md")
+		const flashDoc =
+			resolveBitPathSync("adsum/nrf/actions/flash") ??
+			path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "flash.md")
+		const captureDoc =
+			resolveBitPathSync("adsum/nrf/actions/capture-logs") ??
+			path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "capture-logs.md")
 		return `
 After your five-beat analysis and one-sentence verdict, present the next step as BUTTONS using the ask_followup_question tool (never as "type this" free text). Ask exactly this:
 

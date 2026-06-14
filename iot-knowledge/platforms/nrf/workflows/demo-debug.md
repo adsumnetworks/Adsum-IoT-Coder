@@ -1,3 +1,18 @@
+---
+id: adsum/nrf/workflows/demo-debug
+title: "Demo Debug Workflow"
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+triggers: ["Demo:", "[ADSUM_DEMO:"]
+---
+
 # Demo Debug Workflow (workflows/demo-debug.md)
 
 **Triggered by:** Task text starts with `Demo:` or contains `[ADSUM_DEMO:`

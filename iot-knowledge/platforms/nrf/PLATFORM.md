@@ -1,3 +1,18 @@
+---
+id: adsum/nrf/platform
+title: "Nordic nRF — Platform Index"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+safety: [flash]
+---
+
 # Nordic nRF — Platform Index (`platforms/nrf/`)
 
 This file is the master index for the `platforms/nrf/` directory. It describes everything available for Nordic nRF development and tells the agent when and how to load each resource.
@@ -145,11 +160,11 @@ When starting a new task, load one of these Workflows first.
 | Log Generator | `workflows/log-generator.md` | Add Zephyr logging instrumentation to firmware |
 | Log Analyzer | `workflows/log-analyzer.md` | Guided sequence to capture and analyze device logs |
 | Debug Loop | `workflows/debug-loop.md` | Iterative Build → Flash → Capture → Analyze cycle |
-| Prototype | `workflows/prototype.md` | Scaffold a new nRF project from a verified Nordic sample (SCAFFOLD) |
-| Add Feature | `workflows/add-feature.md` | Add a Zephyr feature to an existing project (SCAFFOLD) |
-| Test & Validate | `workflows/test-validate.md` | host sim tests (native_sim on Linux, QEMU on Windows/macOS) + on-hardware validation (SCAFFOLD) |
+| Prototype | `workflows/prototype.md` | Compose a new nRF project from verified Nordic samples |
+| Add Feature | `workflows/add-feature.md` | Port one feature into an existing project, then verify via Debug Loop |
+| Test & Validate | `workflows/test-validate.md` | ztest via simulator/on-hardware Twister + behavioral validation + CI offer |
 
-### Internal Actions (loaded by Workflows only)
+### Internal Actions (loaded when a Workflow instructs, or the Command Gate in `rules/skill-loading.md` fires)
 
 | Action | File | Purpose |
 |---|---|---|
@@ -157,3 +172,7 @@ When starting a new task, load one of these Workflows first.
 | Flash | `actions/flash.md` | Flashing firmware to device (`west flash`) |
 | Capture Logs | `actions/capture-logs.md` | Capturing live RTT/UART device logs |
 | Analyze Logs | `actions/analyze-logs.md` | Analyzing a captured log file |
+| Find Sample | `actions/find-sample.md` | Map a capability to the verified Nordic sample to copy/port |
+| Run Twister | `actions/run-twister.md` | Build + run ztest suites (OS-aware simulator target or `--device-testing`) |
+| Decode Fault | `actions/decode-fault.md` | Symbolize a fault's PC/LR to `file:line` via addr2line |
+| Set Up CI | `actions/setup-ci.md` | GitHub Actions: build + native_sim Twister on every PR |

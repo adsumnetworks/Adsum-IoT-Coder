@@ -56,6 +56,7 @@ export const config = createVariant(ModelFamily.HERMES)
 		ClineDefaultTool.GENERATE_EXPLANATION,
 		ClineDefaultTool.USE_SKILL,
 		ClineDefaultTool.NORDIC_ACTION,
+		ClineDefaultTool.ESP_ACTION,
 	)
 	.placeholders({
 		MODEL_FAMILY: "hermes",
