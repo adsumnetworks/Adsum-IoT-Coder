@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { execSync } from "node:child_process"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, test } from "node:test"
 import { indexManifest } from "../KnowledgeResolver"
@@ -284,6 +284,34 @@ describe("regression: live corpus", () => {
 		const { migrated } = lintCorpus(KNOWLEDGE_ROOT)
 		assert.equal(manifest.count, manifest.bits.length)
 		assert.equal(manifest.count, migrated)
+	})
+
+	// Step guard: the 4 niche nRF bits were un-bundled (they live in the registry, `delivery: downloaded`,
+	// and resolve via read_file→loadBitByKbPath / iot_context). They must NOT creep back into the bundle.
+	test("un-bundled niche bits are absent from the bundled manifest AND the tree", () => {
+		const UNBUNDLED_IDS = [
+			"adsum/nrf/workflows/test-validate",
+			"adsum/nrf/actions/run-twister",
+			"adsum/nrf/workflows/log-generator",
+			"adsum/nrf/boards/nrf52832",
+		]
+		const UNBUNDLED_PATHS = [
+			"platforms/nrf/workflows/test-validate.md",
+			"platforms/nrf/actions/run-twister.md",
+			"platforms/nrf/workflows/log-generator.md",
+			"platforms/nrf/boards/nrf52832.md",
+		]
+		const ids = new Set(
+			(JSON.parse(readFileSync(join(KNOWLEDGE_ROOT, "manifest.json"), "utf8")).bits as Array<{ id: string }>).map(
+				(b) => b.id,
+			),
+		)
+		for (const id of UNBUNDLED_IDS) {
+			assert.equal(ids.has(id), false, `${id} must NOT be in the bundled manifest (it is downloaded-only)`)
+		}
+		for (const p of UNBUNDLED_PATHS) {
+			assert.equal(existsSync(join(KNOWLEDGE_ROOT, p)), false, `${p} must be removed from the bundled tree`)
+		}
 	})
 })
 
