@@ -362,7 +362,7 @@ BYOK (Bring Your Own Key) — you control which model and endpoint you trust. So
 
 > **Local models work.** Any OpenAI-compatible endpoint can be configured, including locally-hosted models via Ollama, LM Studio, or llama.cpp's built-in server — useful for privacy-sensitive projects where data cannot leave the developer's machine. A model with strong native tool-calling is required; small local models often fall short.
 
-**Telemetry.** Anonymous product analytics — installs, activations, feature and free-tier usage, and execution errors, keyed to a random install ID. Never source code, file paths, chat content, or device logs. Opt out: set `telemetry.telemetryLevel` to `off` in VS Code settings.
+**Telemetry.** Pseudonymous product analytics — installs, activations, feature & free-tier usage, detected platform (nRF/ESP), knowledge-bit fetches, and execution errors — keyed to a **random install ID** (no account, name, or email). We never collect your **source code, chat content, or device logs**. Tool-action commands (e.g. build/flash) are recorded to measure success. **Opt out** anytime: set `telemetry.telemetryLevel` to `off` in VS Code settings.
 
 ---
 

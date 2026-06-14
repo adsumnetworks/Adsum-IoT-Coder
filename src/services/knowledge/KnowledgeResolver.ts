@@ -103,6 +103,18 @@ let downloadedMap: Map<string, DownloadedManifestEntry> | null = null
 // fetch (handles "registry was down at session start, reachable later").
 let manifestRevalidated = false
 
+/** Optional telemetry sink for K-bit resolution. Wired by the extension at activation; a no-op in the
+ *  CLI / node:test so this low-level module never imports telemetryService/HostProvider. */
+type KbitTelemetry = {
+	downloadedResolved?(p: { id: string; source: "cache" | "registry" }): void
+	registryUnreachable?(p: { id?: string }): void
+	cacheReconciled?(p: { purged: number }): void
+}
+let kbitTelemetry: KbitTelemetry = {}
+export function __setKbitTelemetry(hooks: KbitTelemetry): void {
+	kbitTelemetry = hooks ?? {}
+}
+
 function cache(): BitCache {
 	return injectedCache ?? new BitCache(bitCacheDir())
 }
@@ -151,10 +163,15 @@ async function downloadedManifest(): Promise<Map<string, DownloadedManifestEntry
 async function reconcileCache(manifest: DownloadedManifest): Promise<void> {
 	try {
 		const live = new Set((manifest.bits ?? []).map((b) => b.content_hash))
+		let purged = 0
 		for (const hash of await cache().listBlobHashes()) {
 			if (!live.has(hash)) {
 				await cache().deleteBlob(hash)
+				purged++
 			}
+		}
+		if (purged > 0) {
+			kbitTelemetry.cacheReconciled?.({ purged })
 		}
 	} catch (e) {
 		console.error("KnowledgeResolver: cache reconcile failed", e)
@@ -190,18 +207,25 @@ async function loadDownloadedBit(id: string): Promise<string> {
 	const { content_hash: hash } = entry
 	const cached = await cache().readBlob(hash) // null if absent OR corrupt (hash mismatch)
 	if (cached !== null) {
+		kbitTelemetry.downloadedResolved?.({ id, source: "cache" })
 		return stripFrontmatter(cached)
 	}
 	const fetched = await registry().fetchBlob(hash)
-	if (fetched !== null && sha256(fetched) === hash) {
+	if (fetched === null) {
+		kbitTelemetry.registryUnreachable?.({ id })
+		console.error(`KnowledgeResolver: could not load downloaded bit "${id}" (registry unreachable)`)
+		return ""
+	}
+	if (sha256(fetched) === hash) {
 		// Only persist OPEN bits to disk as plaintext. Proprietary bits are served from this fetch but
 		// not cached (no on-disk plaintext) until encrypt-at-rest exists (P5).
 		if (isOpenLicense(entry.license)) {
 			await cache().writeBlob(hash, fetched)
 		}
+		kbitTelemetry.downloadedResolved?.({ id, source: "registry" })
 		return stripFrontmatter(fetched)
 	}
-	console.error(`KnowledgeResolver: could not load downloaded bit "${id}" (offline or hash mismatch)`)
+	console.error(`KnowledgeResolver: downloaded bit "${id}" failed hash verification`)
 	return ""
 }
 

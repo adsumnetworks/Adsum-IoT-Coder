@@ -3,7 +3,14 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, test } from "node:test"
-import { __resetManifestCache, __setRegistryHooks, isRegistryReachable, loadBit, loadBitByKbPath } from "../KnowledgeResolver"
+import {
+	__resetManifestCache,
+	__setKbitTelemetry,
+	__setRegistryHooks,
+	isRegistryReachable,
+	loadBit,
+	loadBitByKbPath,
+} from "../KnowledgeResolver"
 import { BitCache, sha256 } from "./BitCache"
 import { RegistryClient } from "./RegistryClient"
 
@@ -305,5 +312,80 @@ describe("isRegistryReachable", () => {
 		})
 		assert.equal(await isRegistryReachable(), false)
 		__resetManifestCache()
+	})
+})
+
+// ---------------------------------------------------------------- K-bit resolution telemetry hooks
+
+describe("K-bit telemetry hooks (__setKbitTelemetry)", () => {
+	test("downloadedResolved reports source: registry then cache", async () => {
+		const root = await tmp()
+		const { content, hash } = bit("adsum/community/x", "# X")
+		const sources: string[] = []
+		__setKbitTelemetry({ downloadedResolved: (p) => sources.push(p.source) })
+		const mk = () =>
+			new RegistryClient(
+				"http://r",
+				stubFetch(
+					{
+						manifestVersion: 1,
+						bits: [{ id: "adsum/community/x", version: "1.0.0", content_hash: hash, license: "CC-BY-SA-4.0" }],
+					},
+					{ [hash]: content },
+				),
+			)
+		__setRegistryHooks({ cache: new BitCache(root), registry: mk() })
+		assert.equal(await loadBit("adsum/community/x"), "# X") // fetched from registry → cached (open license)
+		__resetManifestCache()
+		__setRegistryHooks({ cache: new BitCache(root), registry: mk() }) // same root → cache persists
+		assert.equal(await loadBit("adsum/community/x"), "# X") // served from cache
+		assert.deepEqual(sources, ["registry", "cache"])
+		__resetManifestCache()
+		__setKbitTelemetry({})
+	})
+
+	test("registryUnreachable fires when the blob fetch fails", async () => {
+		const root = await tmp()
+		const { hash } = bit("adsum/community/x", "# X")
+		const c = new BitCache(root)
+		await c.writeManifest(
+			JSON.stringify({ manifestVersion: 1, bits: [{ id: "adsum/community/x", version: "1.0.0", content_hash: hash }] }),
+		)
+		let unreachable = 0
+		__setKbitTelemetry({ registryUnreachable: () => unreachable++ })
+		// manifest fetch throws → falls back to the cached catalog (bit present); blob fetch → 404 → null
+		const rc = new RegistryClient("http://r", async (url: string) => {
+			if (url.endsWith("/v1/kbits/manifest")) {
+				throw new Error("offline")
+			}
+			return new Response("nf", { status: 404 })
+		})
+		__setRegistryHooks({ cache: c, registry: rc })
+		assert.equal(await loadBit("adsum/community/x"), "")
+		assert.equal(unreachable, 1)
+		__resetManifestCache()
+		__setKbitTelemetry({})
+	})
+
+	test("cacheReconciled reports the purged count on revocation", async () => {
+		const root = await tmp()
+		const c = new BitCache(root)
+		const { content, hash } = bit("adsum/community/gone", "# Gone")
+		await c.writeBlob(hash, content)
+		await c.writeManifest(
+			JSON.stringify({ manifestVersion: 1, bits: [{ id: "adsum/community/gone", version: "1.0.0", content_hash: hash }] }),
+		)
+		let purged = -1
+		__setKbitTelemetry({
+			cacheReconciled: (p) => {
+				purged = p.purged
+			},
+		})
+		const rc = new RegistryClient("http://r", stubFetch({ manifestVersion: 1, bits: [] }, {})) // fresh catalog omits it
+		__setRegistryHooks({ cache: c, registry: rc })
+		await loadBit("adsum/community/gone")
+		assert.equal(purged, 1)
+		__resetManifestCache()
+		__setKbitTelemetry({})
 	})
 })

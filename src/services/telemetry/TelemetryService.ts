@@ -339,6 +339,16 @@ export class TelemetryService {
 			// Nordic telemetry events
 			NORDIC_ACTION_EXECUTED: "task.nordic_action_executed",
 			NORDIC_ACTION_ERROR: "task.nordic_action_error",
+			// ESP telemetry events (mirror the Nordic pair)
+			ESP_ACTION_EXECUTED: "task.esp_action_executed",
+			ESP_ACTION_ERROR: "task.esp_action_error",
+			// Knowledge-bit (K-bit) registry/resolution events
+			KBIT_DOWNLOADED_RESOLVED: "kbit.downloaded_resolved",
+			KBIT_REGISTRY_UNREACHABLE: "kbit.registry_unreachable",
+			KBIT_CACHE_RECONCILED: "kbit.cache_reconciled",
+			// Welcome-screen intent funnel (host-emitted; webview client stays disabled)
+			CARD_CLICKED: "task.card_clicked",
+			NEXT_STEP_SELECTED: "task.next_step_selected",
 		},
 		// UI interaction events for tracking user engagement
 		UI: {
@@ -2381,6 +2391,47 @@ export class TelemetryService {
 				errorMessage: errorMessage.substring(0, MAX_ERROR_MESSAGE_LENGTH),
 			},
 		})
+	}
+
+	/** Records a successful/rejected ESP-IDF tool action (mirror of captureNordicActionExecuted). */
+	public captureEspActionExecuted(ulid: string, action: string, commandDetails: Record<string, unknown>) {
+		this.capture({
+			event: TelemetryService.EVENTS.TASK.ESP_ACTION_EXECUTED,
+			properties: { ulid, action, ...commandDetails },
+		})
+	}
+
+	/** Records a failed ESP-IDF tool action (mirror of captureNordicActionError). */
+	public captureEspActionError(ulid: string, action: string, errorMessage: string) {
+		this.capture({
+			event: TelemetryService.EVENTS.TASK.ESP_ACTION_ERROR,
+			properties: { ulid, action, errorMessage: errorMessage.substring(0, MAX_ERROR_MESSAGE_LENGTH) },
+		})
+	}
+
+	/** K-bit: a DOWNLOADED bit resolved (bundled loads aren't tracked — they always resolve; would be noise). */
+	public captureKbitDownloadedResolved(props: { id: string; source: "cache" | "registry" }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.KBIT_DOWNLOADED_RESOLVED, properties: { ...props } })
+	}
+
+	/** K-bit: the registry was unreachable when a downloaded bit was needed (degradation / registry health). */
+	public captureKbitRegistryUnreachable(props: { id?: string } = {}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.KBIT_REGISTRY_UNREACHABLE, properties: { ...props } })
+	}
+
+	/** K-bit: the on-disk cache was reconciled against a fresh catalog (revocation / superseded-version purge). */
+	public captureKbitCacheReconciled(props: { purged: number }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.KBIT_CACHE_RECONCILED, properties: { ...props } })
+	}
+
+	/** Welcome-screen: a workflow/intent card was clicked (host-emitted; webview telemetry stays disabled). */
+	public captureCardClicked(props: { card: string }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.CARD_CLICKED, properties: { ...props } })
+	}
+
+	/** Welcome-screen: a post-task next-step was selected (host-emitted). */
+	public captureNextStepSelected(props: { step: string }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.NEXT_STEP_SELECTED, properties: { ...props } })
 	}
 
 	// Hooks telemetry methods
