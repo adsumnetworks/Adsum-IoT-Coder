@@ -66,6 +66,7 @@ export const config = createVariant(ModelFamily.NATIVE_NEXT_GEN)
 		ClineDefaultTool.GENERATE_EXPLANATION,
 		ClineDefaultTool.USE_SKILL,
 		ClineDefaultTool.NORDIC_ACTION,
+		ClineDefaultTool.ESP_ACTION,
 	)
 	.placeholders({
 		MODEL_FAMILY: ModelFamily.NATIVE_NEXT_GEN,

@@ -198,7 +198,7 @@ export async function hasBit(id: string): Promise<boolean> {
 }
 
 // Mirror of deriveId() in kbit/lint.ts (kept dep-light here so the runtime doesn't bundle the linter).
-function deriveIdFromRel(rel: string): string {
+export function deriveIdFromRel(rel: string): string {
 	const p = rel
 		.replace(/\\/g, "/")
 		.replace(/^platforms\//, "")

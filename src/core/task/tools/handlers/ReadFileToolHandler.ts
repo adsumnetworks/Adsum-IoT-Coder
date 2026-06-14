@@ -5,6 +5,7 @@ import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
+import { HostProvider } from "@/hosts/host-provider"
 import { isRegistryReachable, loadBitByKbPath } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import { ClineSayTool } from "@/shared/ExtensionMessage"
@@ -181,6 +182,18 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			}
 		}
 
+		// No-double-load guard: iot-knowledge skill files don't change during a task, and many are
+		// pre-loaded into the system prompt. If the agent re-reads one it already pulled this task
+		// (bundled OR downloaded), return a short stub instead of the full text to save context.
+		const knowledgeRoot = path.join(HostProvider.get().extensionFsPath, "iot-knowledge")
+		const isKnowledgeFile = absolutePath.startsWith(knowledgeRoot + path.sep)
+		if (isKnowledgeFile && config.taskState.loadedKnowledgeFiles.has(absolutePath)) {
+			return (
+				`${displayPath} is already in your context (loaded earlier this task) — not re-reading. ` +
+				`Refer to the copy already above; iot-knowledge files do not change during a task.`
+			)
+		}
+
 		// P2.5: un-bundled on-demand K-bit. If a bundled-tree (iot-knowledge) path isn't on disk, it may
 		// be a DOWNLOADED bit — resolve it through the registry (cache → fetch → hash-verify) so the
 		// agent's on-demand `read_file <kbDir>/…/X.md` still works for downloaded workflows/actions.
@@ -189,6 +202,9 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		if (absolutePath.includes("iot-knowledge") && !(await fileAccessible(absolutePath))) {
 			const bitBody = await loadBitByKbPath(absolutePath)
 			if (bitBody) {
+				if (isKnowledgeFile) {
+					config.taskState.loadedKnowledgeFiles.add(absolutePath)
+				}
 				await config.services.fileContextTracker.trackFileContext(relPath!, "read_tool")
 				return bitBody
 			}
@@ -203,6 +219,11 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 							`and this bit is not cached locally. Check your network connection and retry. ` +
 							`(Bundled knowledge is unaffected.)`,
 			)
+		}
+
+		// Bundled/on-disk knowledge file: mark it loaded before the read so a re-read this task stubs out.
+		if (isKnowledgeFile) {
+			config.taskState.loadedKnowledgeFiles.add(absolutePath)
 		}
 
 		// Execute the actual file read operation
