@@ -180,6 +180,38 @@ export async function hasBit(id: string): Promise<boolean> {
 	return (await manifest()).has(id)
 }
 
+// Mirror of deriveId() in kbit/lint.ts (kept dep-light here so the runtime doesn't bundle the linter).
+function deriveIdFromRel(rel: string): string {
+	const p = rel
+		.replace(/\\/g, "/")
+		.replace(/^platforms\//, "")
+		.replace(/\.md$/i, "")
+		.toLowerCase()
+	return `adsum/${p}`
+}
+
+/**
+ * P2.5 — resolve an absolute `iot-knowledge/…` file path to its bit content via the registry.
+ * Used by the read_file tool as a fallback when a bundled-tree path isn't on disk (an un-bundled
+ * "downloaded" bit): maps path → id → loadBit (bundled → cache → fetch, hash-verified). Returns the
+ * bit body, or null if the path isn't under iot-knowledge or the bit can't be resolved. This is what
+ * lets the agent's on-demand `read_file <kbDir>/…/X.md` work for downloaded workflows/actions.
+ */
+export async function loadBitByKbPath(absPath: string): Promise<string | null> {
+	const marker = `/${KNOWLEDGE_DIR}/`
+	const norm = absPath.replace(/\\/g, "/")
+	const i = norm.lastIndexOf(marker)
+	if (i === -1) {
+		return null // not under iot-knowledge/
+	}
+	const rel = norm.slice(i + marker.length)
+	if (!rel || rel.startsWith("..")) {
+		return null
+	}
+	const body = await loadBit(deriveIdFromRel(rel))
+	return body || null
+}
+
 /** Test-only: inject cache/registry doubles for the downloaded tier (no network). */
 export function __setRegistryHooks(hooks: { cache?: BitCache; registry?: RegistryClient }): void {
 	injectedCache = hooks.cache ?? null
