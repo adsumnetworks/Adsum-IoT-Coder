@@ -25,6 +25,7 @@ import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
 import { ErrorService } from "./services/error"
 import { featureFlagsService } from "./services/feature-flags"
+import { __setKbitTelemetry } from "./services/knowledge/KnowledgeResolver"
 import { getDistinctId, initializeDistinctId, setDistinctId } from "./services/logging/distinctId"
 import { telemetryService } from "./services/telemetry"
 import { PostHogClientProvider } from "./services/telemetry/providers/posthog/PostHogClientProvider"
@@ -68,6 +69,14 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	// not change flag eligibility. On Cline sign-in, identifyUser() switches to the
 	// account id (recording install_id as an alias property), preserving that path.
 	setDistinctId(installId)
+
+	// Route K-bit resolution telemetry through the host telemetry client (registry/cache health +
+	// downloaded-bit usage). KnowledgeResolver stays import-light; the extension wires the sink here.
+	__setKbitTelemetry({
+		downloadedResolved: (p) => telemetryService.captureKbitDownloadedResolved(p),
+		registryUnreachable: (p) => telemetryService.captureKbitRegistryUnreachable(p),
+		cacheReconciled: (p) => telemetryService.captureKbitCacheReconciled(p),
+	})
 
 	// Seed the in-memory quota cache from last-persisted value so the chip
 	// shows before the first API response on every launch (not just first registration)
