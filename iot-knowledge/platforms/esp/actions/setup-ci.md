@@ -1,3 +1,17 @@
+---
+id: adsum/esp/actions/setup-ci
+title: "Action: Set Up CI"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+---
+
 # Action: Set Up CI (actions/setup-ci.md)
 
 ## When Used

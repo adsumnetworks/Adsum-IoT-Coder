@@ -1,3 +1,17 @@
+---
+id: adsum/esp/actions/build
+title: "Action: Build Firmware"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+---
+
 # Action: Build Firmware (actions/build.md)
 
 ## When Used

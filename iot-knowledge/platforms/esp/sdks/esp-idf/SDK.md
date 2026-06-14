@@ -1,3 +1,17 @@
+---
+id: adsum/esp/sdks/esp-idf/sdk
+title: "ESP-IDF — SDK Knowledge"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: esp
+---
+
 # ESP-IDF — SDK Knowledge (sdks/esp-idf/SDK.md)
 
 ## Overview

@@ -130,18 +130,19 @@ async function detectProjectFeatures(
 }
 
 /**
- * Map a board target string to the corresponding board bit (id + fallback path).
+ * Map an nRF board target string to its board knowledge file (relPath), or null.
+ * Mirrors getEspBoardKnowledgeFile so both platforms load boards via the TrackedLoad relPath path.
  */
-function getBoardKnowledge(boardTarget: string): { id: string; path: string } | null {
+function getBoardKnowledgeFile(boardTarget: string): string | null {
 	const lower = boardTarget.toLowerCase()
 	if (lower.includes("nrf52840")) {
-		return { id: "adsum/nrf/boards/nrf52840", path: "platforms/nrf/boards/nrf52840.md" }
+		return "platforms/nrf/boards/nrf52840.md"
 	}
 	if (lower.includes("nrf52832") || lower.includes("nrf52dk")) {
-		return { id: "adsum/nrf/boards/nrf52832", path: "platforms/nrf/boards/nrf52832.md" }
+		return "platforms/nrf/boards/nrf52832.md"
 	}
 	if (lower.includes("nrf5340")) {
-		return { id: "adsum/nrf/boards/nrf5340", path: "platforms/nrf/boards/nrf5340.md" }
+		return "platforms/nrf/boards/nrf5340.md"
 	}
 	return null
 }

@@ -1,3 +1,19 @@
+---
+id: adsum/esp/actions/analyze-logs
+title: "Action: Analyze Device Logs"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+requires:
+  - adsum/nrf/actions/capture-logs
+---
+
 # Action: Analyze Device Logs (actions/analyze-logs.md)
 
 ## When Used

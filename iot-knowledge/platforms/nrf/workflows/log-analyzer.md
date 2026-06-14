@@ -2,12 +2,12 @@
 id: adsum/nrf/workflows/log-analyzer
 title: "Log Analyzer Workflow"
 type: workflow
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: adsum
-license: CC-BY-SA-4.0
+license: LicenseRef-Adsum-Proprietary
 tier: certified
-delivery: bundled
+delivery: downloaded
 domain: embedded-iot
 platform: nrf
 triggers: ["Analyze device logs", "Check logs", "What do the logs say", "I want to debug my device"]

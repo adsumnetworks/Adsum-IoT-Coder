@@ -1,3 +1,21 @@
+---
+id: adsum/esp/workflows/add-feature
+title: "Add Feature Workflow"
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+triggers: ["add a feature", "Add a feature to"]
+requires:
+  - adsum/nrf/actions/find-sample
+  - adsum/nrf/workflows/debug-loop
+---
+
 # Add Feature Workflow (workflows/add-feature.md)
 
 **Triggered by:** Task text contains `add a feature` or `Add a feature to`. Also loaded by

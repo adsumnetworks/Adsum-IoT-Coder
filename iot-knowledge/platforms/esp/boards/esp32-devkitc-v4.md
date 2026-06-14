@@ -1,3 +1,17 @@
+---
+id: adsum/esp/boards/esp32-devkitc-v4
+title: "Hardware constraint: ESP32 DevKitC v4"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+---
+
 # Hardware constraint: ESP32 DevKitC v4 (boards/esp32-devkitc-v4.md)
 
 ## Board Overview

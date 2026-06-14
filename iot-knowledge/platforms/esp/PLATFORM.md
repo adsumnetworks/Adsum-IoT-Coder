@@ -1,3 +1,17 @@
+---
+id: adsum/esp/platform
+title: "ESP32 — Platform Index"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: esp
+---
+
 # ESP32 — Platform Index (`platforms/esp/`)
 
 Master index for Espressif ESP32 / ESP-IDF development (baseline **ESP-IDF v5.x**, written version-agnostically). It tells you what is available and when to load each resource. **Debugging on real hardware is the core job; app generation is a starting point that feeds into it.**

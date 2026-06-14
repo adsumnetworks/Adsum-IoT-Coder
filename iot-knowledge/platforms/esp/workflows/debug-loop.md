@@ -1,3 +1,25 @@
+---
+id: adsum/esp/workflows/debug-loop
+title: "Autonomous Debug Loop"
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+triggers: ["build and flash", "debug my device", "why does it crash/reset"]
+requires:
+  - adsum/esp/actions/configure
+  - adsum/nrf/actions/analyze-logs
+  - adsum/nrf/actions/build
+  - adsum/nrf/actions/capture-logs
+  - adsum/nrf/actions/decode-fault
+  - adsum/nrf/actions/flash
+---
+
 # Autonomous Debug Loop (workflows/debug-loop.md)
 
 **Triggered by:** "build and flash", "debug my device", "why does it crash/reset", a code fix that needs verifying, or a handoff from another workflow.

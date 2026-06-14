@@ -1,3 +1,17 @@
+---
+id: adsum/esp/actions/configure
+title: "Action: Change Project Config"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+---
+
 # Action: Change Project Config (actions/configure.md)
 
 ## When Used

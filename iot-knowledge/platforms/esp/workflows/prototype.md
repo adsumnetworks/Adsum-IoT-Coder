@@ -1,3 +1,22 @@
+---
+id: adsum/esp/workflows/prototype
+title: "Prototype Workflow"
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+triggers: ["scaffold a new ESP-IDF prototype", "Start a new ESP-IDF prototype"]
+requires:
+  - adsum/nrf/actions/find-sample
+  - adsum/nrf/workflows/add-feature
+  - adsum/nrf/workflows/debug-loop
+---
+
 # Prototype Workflow (workflows/prototype.md)
 
 **Triggered by:** Task text contains `scaffold a new ESP-IDF prototype` or `Start a new ESP-IDF prototype`

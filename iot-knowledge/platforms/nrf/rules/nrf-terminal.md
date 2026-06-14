@@ -10,7 +10,7 @@ tier: certified
 delivery: bundled
 domain: embedded-iot
 platform: nrf
-safety: [flash]
+safety: [flash, process-kill]
 ---
 
 # nRF Platform Rule: nRF Connect Terminal (rules/nrf-terminal.md)
