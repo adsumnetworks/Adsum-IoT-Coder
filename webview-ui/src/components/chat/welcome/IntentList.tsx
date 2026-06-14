@@ -25,7 +25,7 @@ const IntentList: React.FC<IntentListProps> = ({
 	onSelectMode,
 	onStartTask,
 	projectName,
-	platform = "nrf",
+	platform = "both",
 	testIdPrefix,
 }) => {
 	const live = intents.filter((i) => !i.comingSoon)
