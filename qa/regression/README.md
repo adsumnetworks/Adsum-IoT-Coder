@@ -29,9 +29,10 @@ Exit code is **0 = all green**, non-zero = a regression (the failing step prints
   ```
   Proves the real client↔registry round-trip (fetch→cache→hash-verify, offline cache-hit, and the
   P2.5 path→id→registry resolution) against `api.adsumnetworks.com`.
-- **mocha suites** (`npm run test:unit` — `DemoManager.test`, etc.): **CI-only on Node 22.** They
-  **cannot run on Node 26** (yargs ESM break). Demo prompt invariants are otherwise verified by
-  render-diff in the demo PRs.
+- **mocha suites** (`npm run test:unit` — ESP/platform/`iot_context_esp`/`DemoManager`, **1044 host tests**):
+  yargs/ESM-blocked on Node 26 → run on **Node 22** (locally, not just CI):
+  `export PATH="/opt/homebrew/opt/node@22/bin:$PATH" && npm run test:unit`.
+- **webview** (`npm run test:webview`, **214 vitest tests**).
 
 ## Notes
 - Human-readable procedure + the latest full results live in
