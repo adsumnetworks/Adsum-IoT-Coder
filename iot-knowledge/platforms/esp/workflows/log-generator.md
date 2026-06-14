@@ -1,3 +1,20 @@
+---
+id: adsum/esp/workflows/log-generator
+title: "Log Generator Workflow"
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+triggers: ["Generate logging code", "Add logs", "Add ESP_LOG macros", "Help me debug with logs"]
+requires:
+  - adsum/nrf/actions/capture-logs
+---
+
 # Log Generator Workflow (workflows/log-generator.md)
 
 **Purpose:** Better logs = better analysis. Instrument the firmware so the Log Analyzer can do

@@ -1,3 +1,17 @@
+---
+id: adsum/esp/boards/esp32-s3
+title: "ESP32-S3 — Board Knowledge"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+---
+
 # ESP32-S3 — Board Knowledge
 
 ## Hardware Overview

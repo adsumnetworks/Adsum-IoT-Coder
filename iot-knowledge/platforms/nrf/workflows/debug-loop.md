@@ -2,12 +2,12 @@
 id: adsum/nrf/workflows/debug-loop
 title: "Autonomous Debug Loop"
 type: workflow
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: adsum
-license: CC-BY-SA-4.0
+license: LicenseRef-Adsum-Proprietary
 tier: certified
-delivery: bundled
+delivery: downloaded
 domain: embedded-iot
 platform: nrf
 triggers: ["build and flash", "Build, flash & debug"]

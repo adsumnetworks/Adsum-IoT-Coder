@@ -1,3 +1,17 @@
+---
+id: adsum/nrf/actions/setup-ci
+title: "Action: Set Up Firmware CI — GitHub Actions"
+type: action
+version: 1.1.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: nrf
+---
+
 # Action: Set Up Firmware CI — GitHub Actions (actions/setup-ci.md)
 
 ## When Used

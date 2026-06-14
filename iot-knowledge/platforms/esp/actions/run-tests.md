@@ -1,3 +1,17 @@
+---
+id: adsum/esp/actions/run-tests
+title: "Action: Run Tests"
+type: action
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+---
+
 # Action: Run Tests (Unity + pytest-embedded) (actions/run-tests.md)
 
 ## When Used

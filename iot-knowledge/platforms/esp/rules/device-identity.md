@@ -1,3 +1,17 @@
+---
+id: adsum/esp/rules/device-identity
+title: "ESP Platform Rule: Device Identity"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: esp
+---
+
 # ESP Platform Rule: Device Identity (rules/device-identity.md)
 
 **STRICT — Know exactly what hardware you are targeting BEFORE you build or flash. Never guess the chip.**

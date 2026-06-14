@@ -2,12 +2,12 @@
 id: adsum/nrf/actions/find-sample
 title: "Action: Find a Sample"
 type: action
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: adsum
-license: CC-BY-SA-4.0
+license: LicenseRef-Adsum-Proprietary
 tier: certified
-delivery: bundled
+delivery: downloaded
 domain: embedded-iot
 platform: nrf
 ---

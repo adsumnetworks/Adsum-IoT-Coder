@@ -1,3 +1,21 @@
+---
+id: adsum/esp/workflows/log-analyzer
+title: "Log Analyzer Workflow"
+type: workflow
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: LicenseRef-Adsum-Proprietary
+tier: certified
+delivery: downloaded
+domain: embedded-iot
+platform: esp
+triggers: ["Analyze device logs", "Check logs", "What do the logs say"]
+requires:
+  - adsum/nrf/actions/analyze-logs
+  - adsum/nrf/actions/decode-fault
+---
+
 # Log Analyzer Workflow (workflows/log-analyzer.md)
 
 **Triggered by:** Prompts like "Analyze device logs", "Check logs", "What do the logs say", "Why does
