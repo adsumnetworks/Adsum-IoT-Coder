@@ -99,9 +99,9 @@ export function resolveBitPathSync(id: string): string | null {
 let injectedCache: BitCache | null = null
 let injectedRegistry: RegistryClient | null = null
 let downloadedMap: Map<string, DownloadedManifestEntry> | null = null
-// Once per session: on a cache miss, revalidate the catalog from the registry so newly-published
-// bits are seen (a cache-first catalog would otherwise be pinned stale forever).
-let manifestRefreshed = false
+// True once a fresh catalog fetch has succeeded this session. Until then a cache miss retries the
+// fetch (handles "registry was down at session start, reachable later").
+let manifestRevalidated = false
 
 function cache(): BitCache {
 	return injectedCache ?? new BitCache(bitCacheDir())
@@ -110,18 +110,28 @@ function registry(): RegistryClient {
 	return injectedRegistry ?? new RegistryClient()
 }
 
-/** id → downloaded-manifest entry (id → content_hash). Reads the cached catalog; lazily refreshes from the registry once if absent. */
+/**
+ * id → downloaded-manifest entry. **Revalidate-first:** fetch the current catalog once per session so
+ * bit updates + removals (revocation) propagate, reconcile the on-disk cache against it, then fall back
+ * to the last cached catalog when offline. (Cache-first would pin stale entries — an update or a
+ * revocation would never reach a warm cache.)
+ */
 async function downloadedManifest(): Promise<Map<string, DownloadedManifestEntry>> {
 	if (downloadedMap) {
 		return downloadedMap
 	}
-	let manifestJson = await cache().readManifest()
-	if (!manifestJson) {
+	let manifestJson: string | null = null
+	if (!manifestRevalidated) {
 		const fetched = await registry().fetchManifest()
 		if (fetched) {
+			manifestRevalidated = true
 			manifestJson = JSON.stringify(fetched)
 			await cache().writeManifest(manifestJson)
+			await reconcileCache(fetched)
 		}
+	}
+	if (manifestJson === null) {
+		manifestJson = await cache().readManifest() // offline → last known catalog
 	}
 	const map = new Map<string, DownloadedManifestEntry>()
 	if (manifestJson) {
@@ -135,6 +145,20 @@ async function downloadedManifest(): Promise<Map<string, DownloadedManifestEntry
 	}
 	downloadedMap = map
 	return map
+}
+
+/** Purge cached blobs whose hash is no longer in the live catalog — honors revocation + frees superseded versions. */
+async function reconcileCache(manifest: DownloadedManifest): Promise<void> {
+	try {
+		const live = new Set((manifest.bits ?? []).map((b) => b.content_hash))
+		for (const hash of await cache().listBlobHashes()) {
+			if (!live.has(hash)) {
+				await cache().deleteBlob(hash)
+			}
+		}
+	} catch (e) {
+		console.error("KnowledgeResolver: cache reconcile failed", e)
+	}
 }
 
 // Open content licenses — these may be cached on disk as plaintext (public content). Anything else
@@ -153,17 +177,11 @@ export async function isRegistryReachable(): Promise<boolean> {
 /** Load a downloaded (non-bundled) bit: verified cache → fetch (verify, cache if open) → "". */
 async function loadDownloadedBit(id: string): Promise<string> {
 	let entry = (await downloadedManifest()).get(id)
-	if (!entry && !manifestRefreshed) {
-		// Not in the cached catalog — it may have been published since we cached it. Revalidate the
-		// manifest once per session (cache-first alone pins a stale catalog and never sees new bits),
-		// then retry. Offline → fetch returns null → keep the cached catalog.
-		manifestRefreshed = true
-		const fetched = await registry().fetchManifest()
-		if (fetched) {
-			await cache().writeManifest(JSON.stringify(fetched))
-			downloadedMap = null
-			entry = (await downloadedManifest()).get(id)
-		}
+	if (!entry && !manifestRevalidated) {
+		// Catalog wasn't successfully revalidated yet (registry down at session start) and the id is
+		// missing — drop the memo and retry, in case the registry is reachable now.
+		downloadedMap = null
+		entry = (await downloadedManifest()).get(id)
 	}
 	if (!entry) {
 		console.error(`KnowledgeResolver: unknown bit id "${id}" (not bundled, not in registry)`)
@@ -256,7 +274,7 @@ export function __resetManifestCache(): void {
 	asyncCache = null
 	syncCache = null
 	downloadedMap = null
-	manifestRefreshed = false
+	manifestRevalidated = false
 	injectedCache = null
 	injectedRegistry = null
 }

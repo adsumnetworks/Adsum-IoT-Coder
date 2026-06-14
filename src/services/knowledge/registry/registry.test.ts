@@ -58,6 +58,17 @@ describe("BitCache", () => {
 		await c.writeManifest('{"manifestVersion":1,"bits":[]}')
 		assert.equal(await c.readManifest(), '{"manifestVersion":1,"bits":[]}')
 	})
+
+	test("listBlobHashes + deleteBlob", async () => {
+		const c = new BitCache(await tmp())
+		const h = sha256("blob-a")
+		assert.deepEqual(await c.listBlobHashes(), []) // none yet
+		await c.writeBlob(h, "blob-a")
+		assert.deepEqual(await c.listBlobHashes(), [h])
+		await c.deleteBlob(h)
+		assert.equal(await c.readBlob(h), null)
+		assert.deepEqual(await c.listBlobHashes(), [])
+	})
 })
 
 // ---------------------------------------------------------------- RegistryClient
@@ -101,7 +112,7 @@ describe("KnowledgeResolver downloaded tier (bundled→cache→fetch)", () => {
 		__resetManifestCache()
 	})
 
-	test("cache hit serves the bit without any network call", async () => {
+	test("registry down → still serves a cached bit from the cached catalog (offline-resilient)", async () => {
 		const root = await tmp()
 		const { content, hash } = bit("adsum/community/x", "# X (x.md)\nhi")
 		const c = new BitCache(root)
@@ -109,15 +120,13 @@ describe("KnowledgeResolver downloaded tier (bundled→cache→fetch)", () => {
 		await c.writeManifest(
 			JSON.stringify({ manifestVersion: 1, bits: [{ id: "adsum/community/x", version: "1.0.0", content_hash: hash }] }),
 		)
-		let calls = 0
 		const rc = new RegistryClient("http://r", async () => {
-			calls++
-			throw new Error("should not fetch")
+			throw new Error("offline")
 		})
 		__setRegistryHooks({ cache: c, registry: rc })
 
+		// revalidation fetch fails → falls back to the cached catalog + cached blob (no throw)
 		assert.equal(await loadBit("adsum/community/x"), "# X (x.md)\nhi")
-		assert.equal(calls, 0)
 		__resetManifestCache()
 	})
 
@@ -154,8 +163,47 @@ describe("KnowledgeResolver downloaded tier (bundled→cache→fetch)", () => {
 			),
 		)
 		__setRegistryHooks({ cache: c, registry: rc })
-		// cache-first would miss it; refresh-on-miss revalidates the catalog and resolves it
+		// revalidate-first fetches the current catalog → resolves the newly-published bit
 		assert.equal(await loadBit("adsum/nrf/workflows/debug-loop"), "# Debug Loop")
+		__resetManifestCache()
+	})
+
+	test("revalidation purges a cached blob no longer in the catalog (revocation)", async () => {
+		const root = await tmp()
+		const c = new BitCache(root)
+		const { content, hash } = bit("adsum/community/gone", "# Gone")
+		await c.writeBlob(hash, content) // bit was cached
+		await c.writeManifest(
+			JSON.stringify({ manifestVersion: 1, bits: [{ id: "adsum/community/gone", version: "1.0.0", content_hash: hash }] }),
+		)
+		const rc = new RegistryClient("http://r", stubFetch({ manifestVersion: 1, bits: [] }, {})) // fresh catalog omits it
+		__setRegistryHooks({ cache: c, registry: rc })
+
+		assert.equal(await loadBit("adsum/community/gone"), "") // no longer in the catalog → not served
+		assert.equal(await new BitCache(root).readBlob(hash), null) // and its blob was purged
+		__resetManifestCache()
+	})
+
+	test("revalidation picks up a new version (changed content_hash)", async () => {
+		const root = await tmp()
+		const c = new BitCache(root)
+		const v1 = bit("adsum/community/x", "# X v1")
+		const v2 = bit("adsum/community/x", "# X v2")
+		await c.writeBlob(v1.hash, v1.content)
+		await c.writeManifest(
+			JSON.stringify({ manifestVersion: 1, bits: [{ id: "adsum/community/x", version: "1.0.0", content_hash: v1.hash }] }),
+		)
+		const rc = new RegistryClient(
+			"http://r",
+			stubFetch(
+				{ manifestVersion: 1, bits: [{ id: "adsum/community/x", version: "1.1.0", content_hash: v2.hash }] },
+				{ [v2.hash]: v2.content },
+			),
+		)
+		__setRegistryHooks({ cache: c, registry: rc })
+
+		assert.equal(await loadBit("adsum/community/x"), "# X v2") // fresh hash fetched, not stale v1
+		assert.equal(await new BitCache(root).readBlob(v1.hash), null) // superseded v1 blob purged
 		__resetManifestCache()
 	})
 })
