@@ -293,6 +293,38 @@ function finishAuthoring(relPath: string): void {
 
 // ── dispatch ─────────────────────────────────────────────────────────────────────
 
+/** `kbit stats [id]` — per-bit registry fetch counts from the live registry (distributions, not raw uses). */
+async function cmdStats(args: string[]): Promise<void> {
+	const base = process.env.ADSUM_API_BASE_URL || "https://api.adsumnetworks.com"
+	const filter = args[0]
+	let bits: Array<{ id: string; fetch_count: number; last_fetched_at: string | null }>
+	try {
+		const res = await fetch(`${base}/v1/kbits/stats`)
+		if (!res.ok) {
+			throw new Error(`HTTP ${res.status}`)
+		}
+		bits = ((await res.json()) as { bits?: typeof bits }).bits ?? []
+	} catch (e) {
+		console.error(`Could not fetch stats from ${base}: ${e instanceof Error ? e.message : e}`)
+		process.exitCode = 1
+		return
+	}
+	if (filter) {
+		bits = bits.filter((b) => b.id === filter || b.id.includes(filter))
+	}
+	if (bits.length === 0) {
+		console.log(filter ? `No stats for "${filter}".` : "No usage recorded yet.")
+		return
+	}
+	const w = Math.max(3, ...bits.map((b) => b.id.length))
+	console.log(`${"id".padEnd(w)}  fetches  last fetched`)
+	for (const b of bits) {
+		const last = b.last_fetched_at ? new Date(b.last_fetched_at).toISOString().slice(0, 10) : "—"
+		console.log(`${b.id.padEnd(w)}  ${String(b.fetch_count).padStart(7)}  ${last}`)
+	}
+	console.log(`\n${bits.length} bit(s) · ${base} · fetches = registry distributions (cached after first fetch), not raw uses`)
+}
+
 async function main(): Promise<void> {
 	const [cmd, ...rest] = process.argv.slice(2)
 	switch (cmd) {
@@ -314,8 +346,11 @@ async function main(): Promise<void> {
 		case "edit":
 			await cmdEdit(rest[0])
 			break
+		case "stats":
+			await cmdStats(rest)
+			break
 		default:
-			console.log("usage: kbit <ls|tree|show <id>|lint|new|edit <id>>")
+			console.log("usage: kbit <ls|tree|show <id>|lint|new|edit <id>|stats [id]>")
 			process.exitCode = cmd ? 1 : 0
 	}
 }

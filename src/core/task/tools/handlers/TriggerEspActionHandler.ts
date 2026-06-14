@@ -3,6 +3,7 @@ import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
 import { markEspTerminalSourced, prepareEspTerminal, wrapEspCommand } from "@/hosts/vscode/hostbridge/workspace/executeEspCommand"
+import { telemetryService } from "@/services/telemetry"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
@@ -106,11 +107,19 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 			}),
 		)
 
-		const [, result] = await config.callbacks.executeCommandTool(built.command, undefined, prepared.terminalName, true)
+		const [userRejected, result] = await config.callbacks.executeCommandTool(built.command, undefined, prepared.terminalName, true)
 		// The env is now sourced in this terminal — subsequent commands run bare.
 		// Mark only after the sourced command ran (built.command existed ⇒ IDF_PATH resolved).
 		if (prepared.needsSourcing) {
 			markEspTerminalSourced(prepared.terminal)
+		}
+		// Telemetry (mirror the Nordic handler). `sayPath` is the clean command label (e.g. "idf.py flash").
+		if (userRejected) {
+			telemetryService.captureEspActionExecuted(config.ulid, action, { command: sayPath, status: "rejected" })
+		} else if (result.error) {
+			telemetryService.captureEspActionError(config.ulid, action, result.error)
+		} else {
+			telemetryService.captureEspActionExecuted(config.ulid, action, { command: sayPath, status: "success" })
 		}
 		return result
 	}
