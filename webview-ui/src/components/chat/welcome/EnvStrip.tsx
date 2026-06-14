@@ -207,9 +207,17 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 	let sdk: string
 	let sdkTitle: string | undefined
 	let sdkMuted = false
-	if (env.projectIdfVersion) {
+	if (env.projectIdfVersion && env.projectBuilt) {
 		sdk = `ESP-IDF ${withV(env.projectIdfVersion)} · this build`
-		sdkTitle = "IDF version from build/project_description.json"
+		sdkTitle = "IDF version from dependencies.lock; build found (project_description.json)"
+	} else if (env.projectIdfVersion) {
+		// Components resolved (dependencies.lock) but no completed build yet.
+		sdk = `ESP-IDF ${withV(env.projectIdfVersion)} · workspace`
+		sdkTitle = "Project-bound IDF version from dependencies.lock"
+	} else if (env.projectBuilt) {
+		// A build exists but no version source was readable — still built.
+		sdk = "ESP-IDF · this build"
+		sdkTitle = "Build found (project_description.json); IDF version not recorded"
 	} else if (hasWorkspace && env.projectDetected) {
 		sdk = "not built yet"
 		sdkMuted = true

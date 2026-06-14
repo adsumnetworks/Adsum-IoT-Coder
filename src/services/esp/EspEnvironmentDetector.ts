@@ -18,7 +18,7 @@
 
 import type { EspDevice, EspEnvironment } from "@shared/esp"
 import { exec } from "child_process"
-import { existsSync, readFileSync } from "fs"
+import { existsSync, readdirSync, readFileSync } from "fs"
 import { join } from "path"
 import { promisify } from "util"
 import { resolveIdfPath } from "../../hosts/vscode/hostbridge/workspace/idfEnvResolver"
@@ -88,7 +88,13 @@ export function parseIdfVersionFile(content: string): string | undefined {
 	return m ? (trimmed.startsWith("v") ? trimmed.split(/\s/)[0] : `v${m[1]}`) : undefined
 }
 
-/** Parse build/project_description.json for the idf_version field. Pure; exported for tests. */
+/**
+ * Parse build/project_description.json for the idf_version field. Pure; exported
+ * for tests. NOTE: most ESP-IDF versions do NOT write an idf_version here (the
+ * file's "version" is its own format version, "project_version" is the app's git
+ * describe) — the reliable project IDF version comes from dependencies.lock; this
+ * stays as a forward-compatible fallback for IDF releases that do record it.
+ */
 export function parseProjectDescription(content: string): string | undefined {
 	try {
 		const obj = JSON.parse(content) as Record<string, unknown>
@@ -96,6 +102,41 @@ export function parseProjectDescription(content: string): string | undefined {
 		if (typeof v === "string" && v) return v
 	} catch {
 		// ignore malformed JSON
+	}
+	return undefined
+}
+
+/**
+ * Parse the project-bound ESP-IDF version from a dependencies.lock (the IDF
+ * Component Manager lock file). The resolved version lives under the top-level
+ * `idf:` dependency:
+ *
+ *   dependencies:
+ *     idf:
+ *       source:
+ *         type: idf
+ *       version: 5.5.2
+ *
+ * It is written whenever the project's components are resolved (set-target /
+ * reconfigure / build) — even if a full build never completed — so it is the
+ * reliable project-bound IDF version (the ESP analogue of nRF's manifest version).
+ * Pure; exported for tests.
+ */
+export function parseDependenciesLockIdfVersion(content: string): string | undefined {
+	const lines = content.split(/\r?\n/)
+	for (let i = 0; i < lines.length; i++) {
+		const m = lines[i].match(/^(\s*)idf:\s*$/)
+		if (!m) continue
+		const baseIndent = m[1].length
+		// Scan the more-indented block that belongs to this `idf:` key.
+		for (let j = i + 1; j < lines.length; j++) {
+			const line = lines[j]
+			if (line.trim() === "") continue
+			const indent = line.length - line.trimStart().length
+			if (indent <= baseIndent) break // dedent → left the idf block
+			const vm = line.match(/^\s*version:\s*['"]?([^'"\s#]+)/)
+			if (vm) return vm[1]
+		}
 	}
 	return undefined
 }
@@ -164,15 +205,64 @@ function readIdfVersion(idfPath: string): string | undefined {
 	}
 }
 
-/** Find the first build/project_description.json under the workspace roots. */
-function readProjectIdfVersion(roots: string[]): string | undefined {
+export interface EspBuildInfo {
+	/** A build descriptor exists somewhere under the roots (the project IS built). */
+	built: boolean
+	/** IDF version from project_description.json, when the descriptor records it. */
+	idfVersion?: string
+}
+
+/**
+ * Recognize an ESP-IDF build by its FILE (`<buildDir>/project_description.json`),
+ * not by assuming the build folder is named `build/`. ESP-IDF lets the build dir
+ * be any name (`idf.py -B <dir>`, the VS Code extension's `idf.buildPath`), so we
+ * scan each root's direct subfolders. "built" is independent of "version": a build
+ * with an unreadable / version-less descriptor is still a build. Exported for tests.
+ */
+export function readEspBuildInfo(roots: string[]): EspBuildInfo {
 	for (const root of roots) {
-		const p = join(root, "build", "project_description.json")
-		if (existsSync(p)) {
+		let entries: string[]
+		try {
+			entries = readdirSync(root)
+		} catch {
+			continue
+		}
+		for (const entry of entries) {
+			const p = join(root, entry, "project_description.json")
+			if (!existsSync(p)) continue
 			try {
-				return parseProjectDescription(readFileSync(p, "utf8"))
+				return { built: true, idfVersion: parseProjectDescription(readFileSync(p, "utf8")) }
 			} catch {
-				// try next root
+				// A build descriptor exists but is unreadable — still a build.
+				return { built: true }
+			}
+		}
+	}
+	return { built: false }
+}
+
+/**
+ * Read the project-bound IDF version from the first dependencies.lock found at a
+ * root or one of its direct subfolders (the lock sits at the project root, beside
+ * the build dir; the subfolder scan covers a nested app in a multi-root workspace).
+ * Exported for tests.
+ */
+export function readProjectIdfVersionFromLock(roots: string[]): string | undefined {
+	for (const root of roots) {
+		const candidates = [root]
+		try {
+			for (const entry of readdirSync(root)) candidates.push(join(root, entry))
+		} catch {
+			// unreadable root — fall through to next
+		}
+		for (const dir of candidates) {
+			const p = join(dir, "dependencies.lock")
+			if (!existsSync(p)) continue
+			try {
+				const v = parseDependenciesLockIdfVersion(readFileSync(p, "utf8"))
+				if (v) return v
+			} catch {
+				// try next candidate
 			}
 		}
 	}
@@ -257,7 +347,12 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 
 	const idfPresent = !!idfPath
 	const idfVersion = idfPath ? readIdfVersion(idfPath) : undefined
-	const projectIdfVersion = readProjectIdfVersion(_workspaceRoots)
+	// Project IDF version: dependencies.lock is the reliable source (present once
+	// components resolve, even without a completed build); the build descriptor's
+	// idf_version is only a forward-compatible fallback. "built" is independent.
+	const buildInfo = readEspBuildInfo(_workspaceRoots)
+	const projectBuilt = buildInfo.built
+	const projectIdfVersion = readProjectIdfVersionFromLock(_workspaceRoots) ?? buildInfo.idfVersion
 
 	// An open ESP-IDF project triggers the strip even with no toolchain installed
 	// (mirrors the always-visible nRF strip — honest "not detected" beats showing nothing).
@@ -274,6 +369,7 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 		idfPresent,
 		idfPath: idfPath ?? undefined,
 		idfVersion,
+		projectBuilt,
 		projectIdfVersion,
 		projectDetected,
 		espDevices,

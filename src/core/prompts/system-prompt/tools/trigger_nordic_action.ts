@@ -1,3 +1,5 @@
+import { nrfToolActive } from "@/services/platform/platformRouting"
+import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { ModelFamily } from "@/shared/prompts"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ClineToolSpec } from "../spec"
@@ -19,11 +21,12 @@ import type { ClineToolSpec } from "../spec"
  */
 
 /**
- * Platform gate. IOT_PLATFORM is baked at build time by esbuild's `define`
- * (defaults to "nrf"). The nRF tool is emitted only in the nRF build, so the
- * ESP build's prompt never advertises a tool its knowledge base doesn't use.
+ * Platform gate (runtime). The nRF tool is advertised when the open workspace is
+ * classified nrf, both, or none (the neutral default keeps nRF tooling available);
+ * it is hidden in a pure ESP workspace so the prompt never offers a tool the ESP
+ * knowledge base doesn't use. Mirrors trigger_esp_action's isEspActive.
  */
-const isNrfBuild = (): boolean => (process.env.IOT_PLATFORM || "nrf").toLowerCase() !== "esp"
+const isNrfActive = (): boolean => nrfToolActive(getCachedWorkspaceSummary())
 
 const TECHNICAL_REFERENCE = `
 CRITICAL OPERATIONAL RULES:
@@ -158,7 +161,7 @@ const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: "triggerNordicAction",
-	contextRequirements: isNrfBuild,
+	contextRequirements: isNrfActive,
 	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
 
 USE action="execute" for ALL NCS CLI operations: west build, west flash, nrfjprog, nrfutil, etc.
@@ -172,7 +175,7 @@ const NATIVE_GPT_5: ClineToolSpec = {
 	variant: ModelFamily.NATIVE_GPT_5,
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: ClineDefaultTool.NORDIC_ACTION,
-	contextRequirements: isNrfBuild,
+	contextRequirements: isNrfActive,
 	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
 USE action="execute" for ALL NCS CLI (west, nrfjprog, nrfutil). USE action="log_device" ONLY for log capture. NEVER use execute_command for NCS SDK tasks.
 ${TECHNICAL_REFERENCE}`,
@@ -188,7 +191,7 @@ const GEMINI_3: ClineToolSpec = {
 	variant: ModelFamily.GEMINI_3,
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: ClineDefaultTool.NORDIC_ACTION,
-	contextRequirements: isNrfBuild,
+	contextRequirements: isNrfActive,
 	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
 USE action="execute" for ALL NCS CLI (west, nrfjprog, nrfutil). USE action="log_device" ONLY for log capture. NEVER use execute_command for NCS SDK tasks.
 ${TECHNICAL_REFERENCE}`,

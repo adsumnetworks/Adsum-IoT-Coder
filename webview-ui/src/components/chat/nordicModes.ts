@@ -11,10 +11,6 @@
 
 import { aiGeneratedCodeIcon, analyseBugsIcon } from "@/assets/modeIconsBase64"
 
-// IoT platform variant baked at build time (vite `define`) — selects which
-// welcome-screen modes are shown. nrf = 2 modes, esp = 3 modes.
-declare const __IOT_PLATFORM__: string
-
 export type NordicModeId = "log_generator" | "log_analyzer" | "debug_app" | "generate_app" | "generate_logs"
 export type NordicChatPhase = "awaiting_mode" | "active" | "task_complete"
 
@@ -44,7 +40,7 @@ export const NORDIC_MODES: Record<NordicModeId, NordicModeConfig> = {
 		systemPrompt: "Generate logging code",
 		initialMessage: "Analyzing all open VS Code workspace folders for IoT projects...",
 	},
-	// ── ESP-IDF modes (shown when IOT_PLATFORM=esp) ──
+	// ── ESP-IDF modes ──
 	debug_app: {
 		id: "debug_app",
 		icon: "🐞",
@@ -78,19 +74,6 @@ export const MODE_ICONS: Record<NordicModeId, string> = {
 	generate_app: aiGeneratedCodeIcon,
 	generate_logs: aiGeneratedCodeIcon,
 }
-
-/**
- * Ordered set of modes shown on the welcome screen for THIS build's IoT platform.
- * nRF ships 2 modes; ESP ships 3 (Debug · Generate app · Generate logs).
- * `NORDIC_MODES` stays the full lookup map (used for id→config lookups elsewhere).
- */
-const ACTIVE_MODE_IDS: Record<string, NordicModeId[]> = {
-	nrf: ["log_analyzer", "log_generator"],
-	esp: ["debug_app", "generate_app", "generate_logs"],
-}
-export const ACTIVE_MODES: NordicModeConfig[] = (ACTIVE_MODE_IDS[__IOT_PLATFORM__] ?? ACTIVE_MODE_IDS.nrf).map(
-	(id) => NORDIC_MODES[id],
-)
 
 export function detectModeFromTask(task: string): NordicModeId | null {
 	for (const mode of Object.values(NORDIC_MODES)) {

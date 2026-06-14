@@ -140,10 +140,6 @@ const copyWasmFiles = {
 const buildEnvVars = {
 	"import.meta.url": "_importMetaUrl",
 	"process.env.IS_STANDALONE": JSON.stringify(standalone ? "true" : "false"),
-	// IoT platform variant (nrf | esp) baked at build time, so the runtime
-	// extension simply *is* nrf or esp — no workspace detection needed to pick
-	// the knowledge base / branding. Default nrf keeps existing builds unchanged.
-	"process.env.IOT_PLATFORM": JSON.stringify(process.env.IOT_PLATFORM || "nrf"),
 }
 
 if (production) {

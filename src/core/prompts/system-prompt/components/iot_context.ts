@@ -1,6 +1,8 @@
 import fs from "fs/promises"
 import path from "path"
 import { HostProvider } from "@/hosts/host-provider"
+import { routePlatform } from "@/services/platform/platformRouting"
+import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { fileExistsAtPath } from "@/utils/fs"
 // import { IotProjectMemoryManager } from "../../../memory/IotProjectMemoryManager"
 import { SystemPromptSection } from "../templates/placeholders"
@@ -323,15 +325,77 @@ async function getEspPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	return ctx
 }
 
+/**
+ * Progressive NCS / Zephyr knowledge load. Mirrors getEspPlatformContext: always
+ * loads the platform index + mandatory rules + SDK reference, then feature- and
+ * board-specific files on demand (BLE protocol, per-board constraints).
+ */
+async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<string> {
+	let ctx = "### Platform Detected: nRF Connect SDK / Zephyr RTOS\n\n"
+
+	// Always load: Platform index + platform rules.
+	// All three rules under platforms/nrf/rules/ are listed as MANDATORY/Always
+	// in PLATFORM.md, so they MUST all be loaded here.
+	ctx += (await load("platforms/nrf/PLATFORM.md")) + "\n\n"
+	ctx += (await load("platforms/nrf/rules/nrf-terminal.md")) + "\n\n"
+	ctx += (await load("platforms/nrf/rules/skill-loading.md")) + "\n\n"
+	ctx += (await load("platforms/nrf/rules/device-identity.md")) + "\n\n"
+
+	// Always load: NCS SDK knowledge (project structure, Kconfig, build reference)
+	ctx += (await load("platforms/nrf/sdks/ncs/SDK.md")) + "\n\n"
+
+	// On-demand: Feature-based loading
+	const { hasBle, builds } = await detectProjectFeatures(cwd)
+
+	// Load BLE protocol knowledge if BLE is enabled
+	if (hasBle) {
+		ctx += "#### Protocol: BLE Detected\n\n"
+		ctx += (await load("platforms/nrf/sdks/ncs/protocols/BLE.md")) + "\n\n"
+	}
+
+	// Load board-specific knowledge for all detected builds (deduplicated)
+	if (builds.length > 0) {
+		const loadedBoardFiles = new Set<string>()
+
+		// Build summary for the agent
+		const buildSummary = builds
+			.map((b) => `${b.dir}/ → board: ${b.boardTarget ?? "unknown"} (from build_info.yml)`)
+			.join(", ")
+		ctx += `#### Existing Build Folders: ${buildSummary}\n\n`
+
+		for (const build of builds) {
+			if (!build.boardTarget) continue
+			const boardFile = getBoardKnowledgeFile(build.boardTarget)
+			if (boardFile && !loadedBoardFiles.has(boardFile)) {
+				loadedBoardFiles.add(boardFile)
+				ctx += (await load(boardFile)) + "\n\n"
+			}
+		}
+	}
+
+	// Workflows/Actions are NOT pre-loaded — listed in PLATFORM.md for on-demand use.
+	return ctx
+}
+
+/**
+ * Injected when the workspace contains BOTH an nRF and an ESP app. Relaxes the
+ * single-platform scope gate in AGENT.md and tells the agent to confirm which app
+ * a task targets before driving hardware.
+ */
+const MULTI_PLATFORM_NOTE = `> **MULTI-PLATFORM WORKSPACE.** This workspace contains BOTH an nRF Connect SDK / Zephyr app and an Espressif ESP-IDF app. The single-platform "Scope Gate" above is relaxed — BOTH nRF/NCS and ESP/ESP-IDF projects are in scope here. Before you build, flash, or debug, confirm with the user which app (nRF or ESP) the task targets, then use that platform's device tool (\`triggerNordicAction\` for nRF, \`triggerEspAction\` for ESP) and that platform's knowledge below.`
+
 async function getIotContextTemplateText(context: SystemPromptContext): Promise<string> {
 	const cwd = context.cwd || process.cwd()
 	const kbPath = path.join(HostProvider.get().extensionFsPath, "iot-knowledge").replace(/\\/g, "/")
 
-	// Platform variant is baked at build time (esbuild `define`): the ESP build is
-	// always ESP, the nRF build keeps its existing workspace-detection behavior.
-	const iotPlatform = (process.env.IOT_PLATFORM || "nrf").toLowerCase()
-	const isEsp = iotPlatform === "esp"
-	const exampleSkillPath = isEsp ? "platforms/esp/workflows/debug-loop.md" : "platforms/nrf/workflows/log-analyzer.md"
+	// Platform is selected at RUNTIME from the workspace classification (not a build
+	// flag): an ESP-IDF workspace gets the ESP identity/knowledge/tool, an nRF
+	// workspace gets the nRF stack, a mixed workspace gets both, an empty one gets
+	// the neutral default. See routePlatform().
+	const summary = getCachedWorkspaceSummary()
+	const route = routePlatform(summary)
+	const exampleSkillPath =
+		route.identity === "AGENT-ESP.md" ? "platforms/esp/workflows/debug-loop.md" : "platforms/nrf/workflows/log-analyzer.md"
 
 	let iotContext = "## IoT & Embedded Context\n\n"
 
@@ -350,69 +414,30 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 		return content
 	}
 
-	// 1. Global Base: platform identity (ESP build uses AGENT-ESP.md) + universal rules
-	iotContext += (await load(isEsp ? "AGENT-ESP.md" : "AGENT.md")) + "\n\n"
+	// 1. Global Base: platform identity (AGENT.md = nRF/neutral, AGENT-ESP.md = ESP) + universal rules
+	iotContext += (await load(route.identity)) + "\n\n"
+	if (route.multiPlatform) {
+		iotContext += MULTI_PLATFORM_NOTE + "\n\n"
+	}
 	iotContext += (await load("rules/core.md")) + "\n\n"
 	iotContext += (await load("rules/tool-routing.md")) + "\n\n"
 
-	// 2. Platform knowledge
+	// 2. Platform knowledge — load each platform the classification allows AND the
+	//    cwd confirms as a real project. A single-platform workspace loads exactly
+	//    one; a mixed (both) workspace loads both; an empty (none) workspace loads
+	//    neither. The identity + tool gates above already reflect the classification,
+	//    so even if the cwd detect is inconclusive the agent still has the right
+	//    persona and device tool — only the heavy knowledge is gated on the cwd.
 	let isPlatformDetected = false
 
-	if (isEsp) {
-		// ESP build: gate the heavy platform load on the workspace actually being an
-		// ESP-IDF project (mirrors the nRF detect gate). The ESP base identity/rules
-		// above are always present; board/protocol/SDK load only for real projects.
-		if (await detectEspPlatform(cwd)) {
-			isPlatformDetected = true
-			iotContext += await getEspPlatformContext(cwd, load)
-		}
-	} else if (await detectNrfPlatform(cwd)) {
+	if (route.loadNrf && (await detectNrfPlatform(cwd))) {
 		isPlatformDetected = true
-		iotContext += "### Platform Detected: nRF Connect SDK / Zephyr RTOS\n\n"
+		iotContext += await getNrfPlatformContext(cwd, load)
+	}
 
-		// Always load: Platform index + platform rules.
-		// All three rules under platforms/nrf/rules/ are listed as MANDATORY/Always
-		// in PLATFORM.md, so they MUST all be loaded here.
-		iotContext += (await load("platforms/nrf/PLATFORM.md")) + "\n\n"
-		iotContext += (await load("platforms/nrf/rules/nrf-terminal.md")) + "\n\n"
-		iotContext += (await load("platforms/nrf/rules/skill-loading.md")) + "\n\n"
-		iotContext += (await load("platforms/nrf/rules/device-identity.md")) + "\n\n"
-
-		// Always load: NCS SDK knowledge (project structure, Kconfig, build reference)
-		iotContext += (await load("platforms/nrf/sdks/ncs/SDK.md")) + "\n\n"
-
-		// 3. On-demand: Feature-based loading
-		const { hasBle, builds } = await detectProjectFeatures(cwd)
-
-		// Load BLE protocol knowledge if BLE is enabled
-		if (hasBle) {
-			iotContext += "#### Protocol: BLE Detected\n\n"
-			iotContext += (await load("platforms/nrf/sdks/ncs/protocols/BLE.md")) + "\n\n"
-		}
-
-		// Load board-specific knowledge for all detected builds (deduplicated)
-		if (builds.length > 0) {
-			const loadedBoardFiles = new Set<string>()
-
-			// Build summary for the agent
-			const buildSummary = builds
-				.map((b) => `${b.dir}/ → board: ${b.boardTarget ?? "unknown"} (from build_info.yml)`)
-				.join(", ")
-			iotContext += `#### Existing Build Folders: ${buildSummary}\n\n`
-
-			for (const build of builds) {
-				if (!build.boardTarget) continue
-				const boardFile = getBoardKnowledgeFile(build.boardTarget)
-				if (boardFile && !loadedBoardFiles.has(boardFile)) {
-					loadedBoardFiles.add(boardFile)
-					iotContext += (await load(boardFile)) + "\n\n"
-				}
-			}
-		}
-
-		// 4. Workflows are NOT pre-loaded - listed in PLATFORM.md for on-demand use.
-		//    The agent reads the relevant workflow file when the task matches.
-		//    Actions are also not pre-loaded - agent reads them when executing a workflow step.
+	if (route.loadEsp && (await detectEspPlatform(cwd))) {
+		isPlatformDetected = true
+		iotContext += await getEspPlatformContext(cwd, load)
 	}
 
 	// Future platforms (Mbed, Zephyr-on-other-vendors, etc.) can be added here.
