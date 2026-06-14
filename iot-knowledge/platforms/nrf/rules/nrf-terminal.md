@@ -1,3 +1,18 @@
+---
+id: adsum/nrf/rules/nrf-terminal
+title: "nRF Platform Rule: nRF Connect Terminal"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: nrf
+safety: [flash, process-kill]
+---
+
 # nRF Platform Rule: nRF Connect Terminal (rules/nrf-terminal.md)
 
 **ALL NCS SDK/toolchain commands MUST be executed using `nrf_device_tool` with `action="execute"`.**
@@ -16,6 +31,21 @@ The nRF Connect terminal pre-loads the Zephyr/NCS toolchain environment (`ZEPHYR
 ```
 
 **NEVER use `execute_command` for NCS SDK tasks.** It runs in a plain terminal without `ZEPHYR_BASE`.
+
+## Shell Syntax — match the shell, don't guess (Windows trap)
+
+On Windows the nRF Connect terminal is **PowerShell**, not cmd. cmd-only syntax **errors hard** there:
+
+| Never (cmd-only) | Breaks in PowerShell with | Instead |
+|---|---|---|
+| `echo %ZEPHYR_BASE%` | prints the literal `%ZEPHYR_BASE%` | don't probe env at all — see below |
+| `cmd1 & cmd2` | `The ampersand (&) character is not allowed` | **one command per invocation** |
+| `cmd1 && cmd2` | fails on PowerShell 5.x | one command per invocation |
+| `set X=...`, `2>nul` | wrong/ignored semantics | PowerShell forms, or wrap: `cmd /c "..."` |
+
+- **One command per invocation is the rule on every OS.** You read each result before the next step anyway — chaining only hides which part failed.
+- **Don't probe the environment.** Never run `echo $ZEPHYR_BASE` / `echo %ZEPHYR_BASE%` to "check the env". In the nRF Connect terminal the env is pre-loaded — running the actual command (e.g. `west --version`) **is** the check. If it fails, the terminal setup is broken (see Prerequisites), not your syntax.
+- If a cmd-ism is genuinely unavoidable (e.g. `taskkill ... 2>nul`), wrap the whole thing: `cmd /c "..."`.
 
 ## Terminal State Check
 

@@ -1,3 +1,17 @@
+---
+id: adsum/rules/core
+title: "Universal Embedded Rules"
+type: knowledge
+version: 1.0.0
+owner: adsum-core
+author: adsum
+license: CC-BY-SA-4.0
+tier: certified
+delivery: bundled
+domain: embedded-iot
+platform: universal
+---
+
 # Universal Embedded Rules
 
 These rules apply universally to any IoT or Embedded project context, regardless of platform or SDK.
@@ -39,6 +53,7 @@ This pattern applies to ALL platforms for actions such as:
 - **Code blocks** are fine and encouraged for commands, config, and log excerpts.
 - **Bold key terms** to make summaries scannable.
 - **Diagrams (Mermaid):** When a relationship is clearer drawn than written, render a Mermaid diagram fenced as ```mermaid — it renders live in the chat. Reach for it for a **multi-device / connection timeline** (sequence diagram — e.g. a BLE central ↔ peripheral connect + GATT notify), a **project component map** (flowchart — e.g. BLE + sensor + storage modules), or a **state machine** (state diagram). When the diagram represents a design decision (new-app architecture, protocol flow), **show it and get the user's confirmation BEFORE implementing**. Keep diagrams focused — a few nodes, not exhaustive.
+  - **Mermaid syntax trap:** never put a literal `\n` inside a node label or message — Mermaid renders it as the two characters `\n`, not a line break. Keep labels single-line (preferred) or use `<br/>` for an intentional break.
 
 ## 7. Tool Usage Priority (Embedded Development)
 - **Prefer reading tools over shell commands:** For file inspection, use `read_file`, `search_files`, `list_files` instead of running `cat`, `grep`, or `ls` in a terminal.
@@ -59,9 +74,11 @@ Advanced workflows and actions are documented as `.md` files in the `iot-knowled
 - **No speculative reads:** Do NOT read files "just to understand the workspace". Read a file only when a workflow or rule explicitly instructs you to.
 - **Stop on empty workspace:** If `environment_details` shows no workspace root, or the root contains no NCS markers — stop immediately and apply the Scope Gate (see `AGENT.md`).
 
-## 10. No Decorative Shell Output
+## 10. No Decorative Shell Output, No GUI Launches
 
 Never invoke `execute_command` (or any shell tool) solely to print completion text, status banners, or summaries. The shell is for operations that have side effects (creating files, killing processes, capturing logs) — not for narrating the conversation.
+
+**Never launch GUI applications or windows to "show" the user a result** — no `start "" <folder>`, `explorer.exe`, `open`, `xdg-open`, or `code <folder>`. After a task completes (especially after scaffolding a project), state the **absolute path** in chat — paths are clickable; an explorer window popping up is intrusive and breaks trust. Same applies before completion: the deliverable is the chat summary plus paths, never a spawned window.
 
 **Do NOT do this:**
 - `echo "Analysis complete. See report above."`
@@ -69,5 +86,15 @@ Never invoke `execute_command` (or any shell tool) solely to print completion te
 - `printf "Build successful\n"`
 - `Write-Host "Cleanup done"`
 - `cmd /c "echo Task finished"`
+- `start "" "C:\Users\me\my-project"` (after scaffolding — just print the path)
 
 **Do this instead:** Write the completion text directly in your response as plain markdown, then call `attempt_completion` (or `ask_followup_question` if you're offering next-step buttons). A `Cleanup done`-style echo only makes sense as the *tail* of a chained shell command that actually does cleanup work — never on its own line.
+
+## 11. Install Transparency (when you can't do it yourself)
+
+Some prerequisites are beyond your reach: they need admin/elevated rights (an admin PowerShell, `sudo` with a password), a GUI installer, a license acceptance, or a terminal restart to take effect. When a step hits one:
+
+1. **Say exactly what is missing and why the task needs it** (one sentence).
+2. **Give the exact command or download link** the user should run, and note the privilege level (e.g. *"run this in an **admin** PowerShell"*).
+3. **Tell them how to verify** it worked (e.g. `qemu-system-arm --version` prints a version) and that a **new terminal** may be needed for PATH changes.
+4. Offer to continue once it's done — via buttons (Rule 5). Do NOT silently work around the gap, retry in a loop, or pretend a degraded path is equivalent.

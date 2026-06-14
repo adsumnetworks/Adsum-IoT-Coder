@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { buildIntentPrompt, getTenure, type IntentId, NO_PROJECT_INTENTS, PROJECT_INTENTS } from "../welcomeIntents"
+import {
+	buildIntentPrompt,
+	getTenure,
+	type IntentId,
+	NO_PROJECT_INTENTS,
+	PROJECT_INTENTS,
+	resolveIntentPlatform,
+} from "../welcomeIntents"
 
 describe("getTenure", () => {
 	it("taskCount=0, showAnnouncement=false → new", () => {
@@ -56,6 +63,35 @@ describe("buildIntentPrompt", () => {
 
 	it("prototype does not change with projectName (it is not project-scoped)", () => {
 		expect(buildIntentPrompt("prototype")).toBe(buildIntentPrompt("prototype", "irrelevant"))
+	})
+
+	it("prototype prompt is platform-specific (esp ≠ nrf ≠ both)", () => {
+		const esp = buildIntentPrompt("prototype", undefined, "esp")
+		const nrf = buildIntentPrompt("prototype", undefined, "nrf")
+		const both = buildIntentPrompt("prototype", undefined, "both")
+		expect(esp).toContain("ESP-IDF")
+		expect(nrf).toContain("Nordic")
+		expect(esp).not.toBe(nrf)
+		expect(both).not.toBe(nrf)
+	})
+})
+
+describe("resolveIntentPlatform", () => {
+	it("an open, classified project wins over toolchain detection", () => {
+		expect(resolveIntentPlatform("esp", { nrf: true, esp: false })).toBe("esp")
+		expect(resolveIntentPlatform("nrf", { nrf: false, esp: true })).toBe("nrf")
+		expect(resolveIntentPlatform("both", { nrf: true, esp: false })).toBe("both")
+	})
+
+	it("no project: biases to the single installed toolchain", () => {
+		expect(resolveIntentPlatform("none", { nrf: false, esp: true })).toBe("esp")
+		expect(resolveIntentPlatform("none", { nrf: true, esp: false })).toBe("nrf")
+		expect(resolveIntentPlatform(undefined, { nrf: false, esp: true })).toBe("esp")
+	})
+
+	it("no project + both or neither toolchain → neutral 'both' (never silently nRF)", () => {
+		expect(resolveIntentPlatform("none", { nrf: true, esp: true })).toBe("both")
+		expect(resolveIntentPlatform("none", { nrf: false, esp: false })).toBe("both")
 	})
 })
 

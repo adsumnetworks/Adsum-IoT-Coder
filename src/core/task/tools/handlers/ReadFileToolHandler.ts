@@ -5,6 +5,8 @@ import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
+import { HostProvider } from "@/hosts/host-provider"
+import { isRegistryReachable, loadBitByKbPath } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import { ClineSayTool } from "@/shared/ExtensionMessage"
 import { ClineDefaultTool } from "@/shared/tools"
@@ -178,6 +180,50 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 						`filenames vary, so do not assume a path.`,
 				)
 			}
+		}
+
+		// No-double-load guard: iot-knowledge skill files don't change during a task, and many are
+		// pre-loaded into the system prompt. If the agent re-reads one it already pulled this task
+		// (bundled OR downloaded), return a short stub instead of the full text to save context.
+		const knowledgeRoot = path.join(HostProvider.get().extensionFsPath, "iot-knowledge")
+		const isKnowledgeFile = absolutePath.startsWith(knowledgeRoot + path.sep)
+		if (isKnowledgeFile && config.taskState.loadedKnowledgeFiles.has(absolutePath)) {
+			return (
+				`${displayPath} is already in your context (loaded earlier this task) — not re-reading. ` +
+				`Refer to the copy already above; iot-knowledge files do not change during a task.`
+			)
+		}
+
+		// P2.5: un-bundled on-demand K-bit. If a bundled-tree (iot-knowledge) path isn't on disk, it may
+		// be a DOWNLOADED bit — resolve it through the registry (cache → fetch → hash-verify) so the
+		// agent's on-demand `read_file <kbDir>/…/X.md` still works for downloaded workflows/actions.
+		// Self-guarded (returns null for non-iot-knowledge paths) and only runs when the file is missing,
+		// so it has no effect on normal reads.
+		if (absolutePath.includes("iot-knowledge") && !(await fileAccessible(absolutePath))) {
+			const bitBody = await loadBitByKbPath(absolutePath)
+			if (bitBody) {
+				if (isKnowledgeFile) {
+					config.taskState.loadedKnowledgeFiles.add(absolutePath)
+				}
+				await config.services.fileContextTracker.trackFileContext(relPath!, "read_tool")
+				return bitBody
+			}
+			// Couldn't resolve this knowledge bit. Give a clear, actionable reason instead of a bare
+			// "file not found": a downloaded bit when the registry is unreachable, vs. a wrong path.
+			const reachable = await isRegistryReachable()
+			return formatResponse.toolError(
+				reachable
+					? `Knowledge bit not found: "${displayPath}". It is not bundled and not in the registry — ` +
+							`double-check the path (combine the iot-knowledge directory with the bit's relative path).`
+					: `Could not load knowledge bit "${displayPath}": the Adsum knowledge registry is unreachable ` +
+							`and this bit is not cached locally. Check your network connection and retry. ` +
+							`(Bundled knowledge is unaffected.)`,
+			)
+		}
+
+		// Bundled/on-disk knowledge file: mark it loaded before the read so a re-read this task stubs out.
+		if (isKnowledgeFile) {
+			config.taskState.loadedKnowledgeFiles.add(absolutePath)
 		}
 
 		// Execute the actual file read operation

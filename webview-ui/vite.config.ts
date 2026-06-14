@@ -1,10 +1,24 @@
 /// <reference types="vitest/config" />
 
-import { writeFileSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import path from "node:path"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react-swc"
 import { resolve } from "path"
 import { defineConfig, type Plugin, ViteDevServer } from "vite"
+
+// Mirror the esbuild.mjs .env loader: read the workspace-root .env so that
+// build-time vars (telemetry keys, IS_DEV, …) reach vite even though vite runs
+// from webview-ui/. Shell-exported vars take precedence (only fills missing).
+const rootEnvPath = path.join(__dirname, "..", ".env")
+if (existsSync(rootEnvPath)) {
+	for (const line of readFileSync(rootEnvPath, "utf8").split(/\r?\n/)) {
+		const match = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*?)\s*$/i)
+		if (match && !process.env[match[1]]) {
+			process.env[match[1]] = match[2].replace(/^["']|["']$/g, "")
+		}
+	}
+}
 
 // Custom plugin to write the server port to a file
 const writePortToFile = (): Plugin => {

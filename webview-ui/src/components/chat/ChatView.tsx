@@ -32,7 +32,7 @@ import {
 } from "./chat-view"
 import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
-import { NORDIC_MODES, TASK_COMPLETE_MARKER } from "./nordicModes"
+import { NORDIC_MODES, type NordicModeId, TASK_COMPLETE_MARKER } from "./nordicModes"
 import NextStepChooser from "./welcome/NextStepChooser"
 import WelcomeView from "./welcome/WelcomeView"
 
@@ -209,15 +209,16 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 
 	// Handle Nordic mode selection (must be after messageHandlers)
 	const handleModeSelect = useCallback(
-		async (mode: "log_generator" | "log_analyzer") => {
+		async (mode: NordicModeId) => {
 			try {
-				const _modeConfig = NORDIC_MODES[mode]
+				const modeConfig = NORDIC_MODES[mode]
 				setIsDemoRun(false)
 				setNordicMode(mode)
 				setNordicPhase("active")
 
-				// Send a concise task instruction - we rely on backend Markdown workflows for the logic
-				const taskPrompt = mode === "log_generator" ? "Generate logging code" : "Analyze device logs"
+				// Send a concise task instruction - we rely on backend Markdown workflows for the logic.
+				// Use the mode's own systemPrompt so this works for any platform (nRF or ESP).
+				const taskPrompt = modeConfig.systemPrompt
 				await messageHandlers.handleSendMessage(taskPrompt, [], [])
 			} catch (error) {
 				console.error("[ChatView] Failed to start Nordic task:", error)
