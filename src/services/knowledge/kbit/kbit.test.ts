@@ -258,23 +258,23 @@ describe("lintBitContent", () => {
 // ---------------------------------------------------------------- regression (real corpus)
 
 describe("regression: live corpus", () => {
-	// 22 bundled bits after P2.5 un-bundled 4 niche nRF bits (test-validate, run-twister, log-generator,
-	// boards/nrf52832) — those now live in the registry and resolve via read_file→loadBitByKbPath.
-	test("corpus is fully migrated and lint-clean: 22 bits, 0 errors, 0 unmigrated", () => {
+	// 17 bundled bits after the ESP+nRF un-bundle: every workflow/action/board + ESP protocols became
+	// delivery: downloaded (registry); only the always-loaded core + nRF demo-forced bits stay bundled.
+	test("corpus is fully migrated and lint-clean: 17 bits, 0 errors, 0 unmigrated", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
-		assert.equal(files.length, 22)
-		assert.equal(migrated, 22)
+		assert.equal(files.length, 17)
+		assert.equal(migrated, 17)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
 		assert.equal(unmigrated.length, 0)
 	})
 
-	test("add-feature migration preserved the body byte-for-byte (only frontmatter added)", () => {
-		const original = execSync("git show main:iot-knowledge/platforms/nrf/workflows/add-feature.md", {
+	test("migration preserved bodies byte-for-byte (device-identity: only frontmatter added)", () => {
+		const original = execSync("git show main:iot-knowledge/platforms/nrf/rules/device-identity.md", {
 			cwd: REPO_ROOT,
 			encoding: "utf8",
 		})
-		const current = readFileSync(join(KNOWLEDGE_ROOT, "platforms/nrf/workflows/add-feature.md"), "utf8")
+		const current = readFileSync(join(KNOWLEDGE_ROOT, "platforms/nrf/rules/device-identity.md"), "utf8")
 		const body = extractFrontmatter(current).body
 		assert.equal(body.trim(), original.trim())
 	})
@@ -286,30 +286,38 @@ describe("regression: live corpus", () => {
 		assert.equal(manifest.count, migrated)
 	})
 
-	// Step guard: the 4 niche nRF bits were un-bundled (they live in the registry, `delivery: downloaded`,
-	// and resolve via read_file→loadBitByKbPath / iot_context). They must NOT creep back into the bundle.
-	test("un-bundled niche bits are absent from the bundled manifest AND the tree", () => {
-		const UNBUNDLED_IDS = [
-			"adsum/nrf/workflows/test-validate",
-			"adsum/nrf/actions/run-twister",
-			"adsum/nrf/workflows/log-generator",
-			"adsum/nrf/boards/nrf52832",
-		]
-		const UNBUNDLED_PATHS = [
-			"platforms/nrf/workflows/test-validate.md",
-			"platforms/nrf/actions/run-twister.md",
-			"platforms/nrf/workflows/log-generator.md",
-			"platforms/nrf/boards/nrf52832.md",
-		]
-		const ids = new Set(
-			(JSON.parse(readFileSync(join(KNOWLEDGE_ROOT, "manifest.json"), "utf8")).bits as Array<{ id: string }>).map(
-				(b) => b.id,
-			),
-		)
-		for (const id of UNBUNDLED_IDS) {
-			assert.equal(ids.has(id), false, `${id} must NOT be in the bundled manifest (it is downloaded-only)`)
+	// Step guard: all workflows/actions/boards + ESP protocols are un-bundled (delivery: downloaded,
+	// served by the registry). The bundled manifest must hold ONLY delivery: bundled bits; the nRF
+	// demo-forced bits MUST stay bundled (DemoManager sync-loads them); un-bundled bits must not return.
+	test("bundled manifest holds only bundled bits; demo bits stay; un-bundled bits absent", () => {
+		const bits = JSON.parse(readFileSync(join(KNOWLEDGE_ROOT, "manifest.json"), "utf8")).bits as Array<{
+			id: string
+			delivery: string
+		}>
+		const ids = new Set(bits.map((b) => b.id))
+		for (const b of bits) {
+			assert.equal(b.delivery, "bundled", `${b.id} is in the bundled manifest but delivery="${b.delivery}"`)
 		}
-		for (const p of UNBUNDLED_PATHS) {
+		// demo-forced bits MUST remain bundled (DemoManager resolveBitPathSync needs them)
+		for (const id of [
+			"adsum/nrf/workflows/demo-debug",
+			"adsum/nrf/actions/flash",
+			"adsum/nrf/actions/capture-logs",
+			"adsum/nrf/sdks/ncs/protocols/ble",
+		]) {
+			assert.equal(ids.has(id), true, `${id} must stay bundled (DemoManager dependency)`)
+		}
+		// a sample of un-bundled bits must be absent (now downloaded-only, served by the registry)
+		for (const id of [
+			"adsum/esp/actions/build",
+			"adsum/esp/workflows/prototype",
+			"adsum/nrf/workflows/add-feature",
+			"adsum/nrf/boards/nrf52840",
+			"adsum/nrf/actions/run-twister",
+		]) {
+			assert.equal(ids.has(id), false, `${id} must NOT be in the bundled manifest (downloaded-only)`)
+		}
+		for (const p of ["platforms/esp/actions/build.md", "platforms/nrf/workflows/add-feature.md"]) {
 			assert.equal(existsSync(join(KNOWLEDGE_ROOT, p)), false, `${p} must be removed from the bundled tree`)
 		}
 	})
