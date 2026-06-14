@@ -269,8 +269,9 @@ describe("regression: live corpus", () => {
 		assert.equal(unmigrated.length, 0)
 	})
 
-	test("migration preserved bodies byte-for-byte (device-identity: only frontmatter added)", () => {
-		const original = execSync("git show main:iot-knowledge/platforms/nrf/rules/device-identity.md", {
+	test("migration only added frontmatter — device-identity body unchanged since v0.1.5 (fb3a178f)", () => {
+		// Compare to the pre-K-bit 0.1.5 release (fb3a178f), NOT `main` — main now includes the migration.
+		const original = execSync("git show fb3a178f:iot-knowledge/platforms/nrf/rules/device-identity.md", {
 			cwd: REPO_ROOT,
 			encoding: "utf8",
 		})
