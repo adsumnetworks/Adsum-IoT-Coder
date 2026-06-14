@@ -258,10 +258,12 @@ describe("lintBitContent", () => {
 // ---------------------------------------------------------------- regression (real corpus)
 
 describe("regression: live corpus", () => {
-	test("corpus is fully migrated and lint-clean: 26 bits, 0 errors, 0 unmigrated", () => {
+	// 22 bundled bits after P2.5 un-bundled 4 niche nRF bits (test-validate, run-twister, log-generator,
+	// boards/nrf52832) — those now live in the registry and resolve via read_file→loadBitByKbPath.
+	test("corpus is fully migrated and lint-clean: 22 bits, 0 errors, 0 unmigrated", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
-		assert.equal(files.length, 26)
-		assert.equal(migrated, 26)
+		assert.equal(files.length, 22)
+		assert.equal(migrated, 22)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
 		assert.equal(unmigrated.length, 0)
