@@ -2,6 +2,20 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
+## [0.1.6] - 2026-06-16
+
+### One extension — now for ESP32, too
+
+Adsum IoT Coder now supports **Espressif ESP32 / ESP-IDF** alongside Nordic nRF, in a single install. It detects what's on your desk and in your workspace and shows the right tools for each platform.
+
+- **ESP32 / ESP-IDF support.** Build, flash, debug, and test ESP-IDF firmware with the same agent workflows you use for nRF — `idf.py`/`esptool`-driven, with chip/flash/PSRAM detection and serial-log capture.
+- **Automatic platform detection.** The home screen recognizes nRF, ESP, both (a mixed workspace), or neither, and routes every card and the agent's persona to the right platform — nothing to switch.
+- **Leaner install, fresher knowledge.** Platform skills load on demand from Adsum's knowledge service and cache locally, so the extension stays small and the guidance stays current.
+
+### Notes
+
+- Existing nRF projects are unaffected — same workflows, same behavior.
+
 ## [0.1.5] - 2026-06-08
 
 ### A full UI redesign — rebuilt around how you start
