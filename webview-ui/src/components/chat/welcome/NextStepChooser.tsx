@@ -3,7 +3,7 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import DemoCard from "../DemoCard"
 import type { NordicModeId } from "../nordicModes"
 import IntentList from "./IntentList"
-import { NO_PROJECT_INTENTS, PROJECT_INTENTS } from "./welcomeIntents"
+import { NO_PROJECT_INTENTS, PROJECT_INTENTS, resolveIntentPlatform } from "./welcomeIntents"
 
 interface NextStepChooserProps {
 	isDemoRun: boolean
@@ -13,11 +13,16 @@ interface NextStepChooserProps {
 }
 
 const NextStepChooser: React.FC<NextStepChooserProps> = ({ isDemoRun, onSelectMode, onStartTask, onStartDemo }) => {
-	const { openFolderPaths, workspaceClassification } = useExtensionState()
+	const { openFolderPaths, workspaceClassification, nrfEnvironment, espEnvironment } = useExtensionState()
 	const hasWorkspace = openFolderPaths.length > 0
 	const projectName = hasWorkspace ? (openFolderPaths[0].split("/").pop() ?? undefined) : undefined
 	const intents = hasWorkspace ? PROJECT_INTENTS : NO_PROJECT_INTENTS
-	const platform = workspaceClassification && workspaceClassification !== "none" ? workspaceClassification : "nrf"
+	// Open project's classification wins; with no project, bias by installed toolchain
+	// (else neutral "both"). Never silently nRF — see resolveIntentPlatform.
+	const platform = resolveIntentPlatform(workspaceClassification, {
+		nrf: !!(nrfEnvironment?.extensionPresent || nrfEnvironment?.nrfutilPresent),
+		esp: !!(espEnvironment?.extensionPresent || espEnvironment?.idfPresent),
+	})
 	const heading = isDemoRun ? "Your turn — pick a next step…" : "What would you like to do next?"
 
 	return (

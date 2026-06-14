@@ -11,7 +11,7 @@ platforms/esp/
 ├── PLATFORM.md              ← You are here. Master index.
 ├── rules/
 │   ├── esp-terminal.md      ← CRITICAL: use triggerEspAction, never execute_command (always)
-│   ├── skill-loading.md     ← Workflows vs Actions hierarchy (always)
+│   ├── skill-loading.md     ← Workflows vs Actions hierarchy + Command Gate (always)
 │   └── device-identity.md   ← Identify chip/flash/PSRAM before building (always)
 ├── boards/                  ← Per-chip hardware constraints (load per target)
 │   ├── esp32-s3.md
@@ -19,15 +19,18 @@ platforms/esp/
 ├── sdks/esp-idf/
 │   ├── SDK.md               ← idf.py, CMake, FreeRTOS, sdkconfig, introspection
 │   └── protocols/
-│       ├── WIFI.md          ← Wi-Fi STA/AP, provisioning, failure modes
+│       ├── WIFI.md          ← Wi-Fi STA/AP, HTTP server, failure modes
 │       └── BLE.md           ← NimBLE basics (load on BLE projects)
-├── patterns/                ← Reusable design patterns (load as needed)
-├── actions/                 ← Subroutines (load ONLY when a Workflow instructs)
-│   ├── build.md, flash.md, capture-logs.md, analyze-logs.md
-└── workflows/               ← Entry points (START HERE for each task)
+├── actions/                 ← Internal subroutines (load ONLY when a Workflow instructs, or the Command Gate fires)
+│   ├── build.md, flash.md, capture-logs.md, analyze-logs.md, configure.md,
+│   └── find-sample.md, run-tests.md, decode-fault.md, setup-ci.md
+└── workflows/               ← Primary entry points (START HERE for each task)
     ├── debug-loop.md        ← Build → Flash → Capture → Analyze → Fix (primary)
-    ├── iot-app-generator.md ← Scaffold a new Wi-Fi / sensor / dashboard app
-    └── log-generator.md     ← Add ESP_LOG* instrumentation to existing source
+    ├── log-analyzer.md      ← Capture + root-cause for a board already running (no reflash)
+    ├── log-generator.md     ← Add ESP_LOG* instrumentation to existing source
+    ├── prototype.md         ← SCAFFOLD: new app composed from verified IDF examples
+    ├── add-feature.md       ← SCAFFOLD: add one feature/component to an existing app
+    └── test-validate.md     ← Unity via host (linux) / QEMU / on-hardware + behavioral validation
 ```
 
 ---
@@ -89,10 +92,13 @@ See `rules/skill-loading.md` for the mandatory loading protocol.
 | Workflow | File | Purpose |
 |---|---|---|
 | **Debug Loop** | `workflows/debug-loop.md` | Iterative Build → Flash → Capture → Analyze → Fix. The headline. |
-| IoT App Generator | `workflows/iot-app-generator.md` | Scaffold a new app from an IDF example; ask specs first. |
+| Log Analyzer | `workflows/log-analyzer.md` | Capture + code-aware root-cause for a board already running (no reflash). |
 | Log Generator | `workflows/log-generator.md` | Inject `ESP_LOG*` instrumentation into existing source. |
+| Prototype | `workflows/prototype.md` | Compose a new ESP-IDF app from verified IDF examples / registry components. |
+| Add Feature | `workflows/add-feature.md` | Port one feature/component into an existing app, then verify via Debug Loop. |
+| Test & Validate | `workflows/test-validate.md` | Unity via host (`linux`) / QEMU / on-hardware + behavioral validation + CI offer. |
 
-### Internal Actions (loaded by Workflows only)
+### Internal Actions (loaded when a Workflow instructs, or the Command Gate in `rules/skill-loading.md` fires)
 
 | Action | File | Purpose |
 |---|---|---|
@@ -100,7 +106,11 @@ See `rules/skill-loading.md` for the mandatory loading protocol.
 | Flash | `actions/flash.md` | `idf.py flash`; discover port once, always pass it. |
 | Capture Logs | `actions/capture-logs.md` | Serial capture via `action="monitor"`; naming convention. |
 | Analyze Logs | `actions/analyze-logs.md` | Decode panics/WDT/brownout/heap; structured report. |
-| Configure | `actions/configure.md` | Change a Kconfig value (Wi-Fi creds, pins, broker, sizes) the right way — `sdkconfig` vs `sdkconfig.defaults`. |
+| Configure | `actions/configure.md` | Change a Kconfig value the right way — `sdkconfig` vs `sdkconfig.defaults`. |
+| Find Sample | `actions/find-sample.md` | Map a capability to the verified IDF example / registry component to copy or pull. |
+| Run Tests | `actions/run-tests.md` | Build + run Unity suites (host `linux` / QEMU / on-hardware via pytest-embedded). |
+| Decode Fault | `actions/decode-fault.md` | Symbolize a panic backtrace to `file:line` (addr2line / coredump). |
+| Set Up CI | `actions/setup-ci.md` | GitHub Actions: build + host/QEMU tests on every PR. |
 
 ---
 

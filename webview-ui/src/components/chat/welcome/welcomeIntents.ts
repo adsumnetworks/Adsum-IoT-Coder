@@ -45,7 +45,7 @@ export interface IntentDef {
 export type WorkspacePlatform = "nrf" | "esp" | "both" | "none"
 
 /** Dev-as-hero prompt strings. projectName is interpolated where relevant. */
-export function buildIntentPrompt(id: IntentId, projectName?: string, platform: WorkspacePlatform = "nrf"): string {
+export function buildIntentPrompt(id: IntentId, projectName?: string, platform: WorkspacePlatform = "both"): string {
 	const proj = projectName ?? "my project"
 	switch (id) {
 		case "prototype":
@@ -65,6 +65,10 @@ export function buildIntentPrompt(id: IntentId, projectName?: string, platform: 
 		case "buildFlashDebug":
 			return `Build, flash and debug ${proj} — build and flash it to the board, stream the logs, and help me find any issue.`
 		case "testValidate":
+			if (platform === "esp")
+				return `Test and validate ${proj} — host tests (the ESP-IDF "linux" target) or QEMU now, on-hardware Unity checks when a board is connected.`
+			if (platform === "both")
+				return `Test and validate ${proj} — host/simulator tests now, on-hardware checks when a board is connected.`
 			return `Test and validate ${proj} — host tests with native_sim, on-hardware checks when boards are connected.`
 		case "demo":
 			return "Demo: BLE NUS one-directional bug — no setup needed\n\n[ADSUM_DEMO:nus-uart]"
@@ -78,7 +82,7 @@ export function buildIntentPrompt(id: IntentId, projectName?: string, platform: 
 }
 
 /** Card description with project-name + platform interpolation (e.g. ESP project → ESP wording). */
-export function intentDescription(intent: IntentDef, projectName?: string, platform: WorkspacePlatform = "nrf"): string {
+export function intentDescription(intent: IntentDef, projectName?: string, platform: WorkspacePlatform = "both"): string {
 	const proj = projectName ?? "your project"
 	if (intent.id === "addFeature") {
 		if (platform === "esp") {
@@ -89,7 +93,51 @@ export function intentDescription(intent: IntentDef, projectName?: string, platf
 		}
 		return `A Zephyr shell, a BLE service, NVS storage… wired into ${proj}, not a sample.`
 	}
+	if (intent.id === "prototype") {
+		if (platform === "esp") {
+			return "Tell me what you're building — I'll scaffold from the right verified ESP-IDF example."
+		}
+		if (platform === "both") {
+			return "Tell me what you're building (nRF/Zephyr or ESP-IDF) — I'll scaffold from the right verified sample."
+		}
+		return "Tell me what you're building — I'll scaffold from the right verified Nordic sample."
+	}
+	if (intent.id === "testValidate") {
+		if (platform === "esp") {
+			return "Prove it works — host/QEMU Unity tests now, on-hardware checks when a board's connected."
+		}
+		return intent.description
+	}
+	if (intent.id === "sdkMigration") {
+		if (platform === "esp") {
+			return "Bump to a newer ESP-IDF release — I surface the breaking changes and fix them with you."
+		}
+		return intent.description
+	}
 	return intent.description
+}
+
+/**
+ * Decide which platform an intent card should target.
+ * - An open, classified project wins (nrf / esp / both).
+ * - With no project open, bias by the single installed toolchain; if BOTH or NEITHER
+ *   toolchain is present, stay neutral ("both") so the agent asks which platform —
+ *   never silently assume nRF (that was the prototype-always-nRF bug).
+ */
+export function resolveIntentPlatform(
+	classification: WorkspacePlatform | undefined,
+	toolchains: { nrf: boolean; esp: boolean },
+): WorkspacePlatform {
+	if (classification && classification !== "none") {
+		return classification
+	}
+	if (toolchains.esp && !toolchains.nrf) {
+		return "esp"
+	}
+	if (toolchains.nrf && !toolchains.esp) {
+		return "nrf"
+	}
+	return "both"
 }
 
 export const NO_PROJECT_INTENTS: IntentDef[] = [

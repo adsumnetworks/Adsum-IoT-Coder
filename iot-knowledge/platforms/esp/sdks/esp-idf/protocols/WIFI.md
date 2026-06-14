@@ -50,7 +50,10 @@ ESP-IDF includes `esp_http_server` to serve endpoints.
 
 1. **Start the server:** Use `httpd_start(&server, &config)` after acquiring an IP address.
 2. **Register URIs:** Use `httpd_register_uri_handler(server, &uri_config)`.
-3. **Chunked Responses:** For serving large HTML strings (see `web-dashboard-dev.md`), you CANNOT send them as one massive chunk if they exceed system memory (they often do). You MUST use chunked transfer encoding `httpd_resp_send_chunk(req, buf, len)` in a loop, followed by `httpd_resp_send_chunk(req, NULL, 0)` to finish.
+3. **Chunked Responses:** For serving large HTML strings (the embedded-page recipe in
+   `workflows/add-feature.md`), you CANNOT send them as one massive chunk if they exceed the HTTPD
+   buffer. Use chunked transfer encoding `httpd_resp_send_chunk(req, buf, len)` in a loop, followed by
+   `httpd_resp_send_chunk(req, NULL, 0)` to finish.
 
 **Example URI Config:**
 ```c

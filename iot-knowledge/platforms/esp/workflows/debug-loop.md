@@ -40,6 +40,7 @@ After a successful flash. **MANDATORY SKILL LOAD:** `platforms/esp/actions/captu
 ### Phase 4: Analyze
 **MANDATORY SKILL LOAD:** `platforms/esp/actions/analyze-logs.md` (if not loaded).
 - First `list_files` `logs/uart/` and pick the most recent file (timestamps — never guess).
+- **If a panic / `Guru Meditation` backtrace appears:** **MANDATORY SKILL LOAD** `platforms/esp/actions/decode-fault.md` and resolve it to `file:line` before reporting (a raw register dump is not an analysis). `action="monitor"` usually decodes it already — read the first frame in the user's code.
 - Produce the structured report inline, with decoded backtrace `file:line` / WDT task / reset cause and the clickable log path.
 - Then `ask_followup_question` (not `attempt_completion`): *"Analyzed. What next?"* → options like `["Apply the fix and re-run", "Capture again (longer)", "Enable deeper logging", "Stop here"]`.
 
@@ -57,5 +58,6 @@ If a root cause is found: propose it, apply the fix, and return to **Phase 1** (
 
 ## Handoff
 - **Fixed** → `<!--TASK_COMPLETE-->`.
+- **Board already running, no reflash wanted** (the user just wants logs read) → `workflows/log-analyzer.md`.
 - **Logs too sparse to diagnose** → `workflows/log-generator.md`.
 - **More code/features needed** → loop back to Phase 1.

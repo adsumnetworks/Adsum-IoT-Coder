@@ -4,33 +4,29 @@ import { espToolActive, nrfToolActive, routePlatform } from "../platformRouting"
 
 describe("platformRouting", () => {
 	describe("routePlatform", () => {
-		it("esp workspace → ESP identity, ESP knowledge only, no multi-platform note", () => {
+		it("esp workspace → ESP knowledge only, no multi-platform note", () => {
 			const r = routePlatform("esp")
-			r.identity.should.equal("AGENT-ESP.md")
 			r.loadEsp.should.be.true()
 			r.loadNrf.should.be.false()
 			r.multiPlatform.should.be.false()
 		})
 
-		it("nrf workspace → nRF identity, nRF knowledge only, no multi-platform note", () => {
+		it("nrf workspace → nRF knowledge only, no multi-platform note", () => {
 			const r = routePlatform("nrf")
-			r.identity.should.equal("AGENT.md")
 			r.loadNrf.should.be.true()
 			r.loadEsp.should.be.false()
 			r.multiPlatform.should.be.false()
 		})
 
-		it("both workspace → neutral identity, BOTH knowledge sets, multi-platform note", () => {
+		it("both workspace → BOTH knowledge sets, multi-platform note", () => {
 			const r = routePlatform("both")
-			r.identity.should.equal("AGENT.md")
 			r.loadNrf.should.be.true()
 			r.loadEsp.should.be.true()
 			r.multiPlatform.should.be.true()
 		})
 
-		it("none workspace → neutral identity, no platform knowledge, no note", () => {
+		it("none workspace → no platform knowledge, no note", () => {
 			const r = routePlatform("none")
-			r.identity.should.equal("AGENT.md")
 			r.loadNrf.should.be.false()
 			r.loadEsp.should.be.false()
 			r.multiPlatform.should.be.false()
@@ -52,10 +48,10 @@ describe("platformRouting", () => {
 	})
 
 	describe("nrf/esp tool gates are mutually consistent with routePlatform", () => {
-		it("esp: esp tool on, nrf tool off, identity ESP", () => {
+		it("esp: esp tool on, nrf tool off, esp knowledge on", () => {
 			espToolActive("esp").should.be.true()
 			nrfToolActive("esp").should.be.false()
-			routePlatform("esp").identity.should.equal("AGENT-ESP.md")
+			routePlatform("esp").loadEsp.should.be.true()
 		})
 		it("both: both tools on", () => {
 			espToolActive("both").should.be.true()

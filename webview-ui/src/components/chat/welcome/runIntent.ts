@@ -24,6 +24,7 @@ export function runIntent(id: IntentId, handlers: IntentActionHandlers): void {
 	} else if (id === "openProject") {
 		void FileServiceClient.openFolder(StringRequest.create({ value: "" }))
 	} else {
-		void handlers.onStartTask(buildIntentPrompt(id, handlers.projectName ?? undefined, handlers.platform ?? "nrf"))
+		// Neutral "both" when the platform is unknown — never silently assume nRF.
+		void handlers.onStartTask(buildIntentPrompt(id, handlers.projectName ?? undefined, handlers.platform ?? "both"))
 	}
 }

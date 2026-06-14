@@ -25,7 +25,7 @@ Backtrace: 0x4008... 0x4008... 0x4200abcd:0x3ffb...
 E (...) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:
 E (...) task_wdt:  - IDLE0 (CPU 0)
 ```
-- A task hogged the CPU without yielding. Usually a `while(1)`/tight loop missing `vTaskDelay(pdMS_TO_TICKS(n))`, a busy-wait, or a long blocking call on a high-priority task. Fix: yield, lower priority, or move the work off the offending task. (See `troubleshooting/` for the deeper checklist.)
+- A task hogged the CPU without yielding. Usually a `while(1)`/tight loop missing `vTaskDelay(pdMS_TO_TICKS(n))`, a busy-wait, a long blocking call on a high-priority task, or a mutex held with `portMAX_DELAY` (prefer a timeout). Fix: yield, lower priority, or move the work off the offending task.
 
 ### 3. Stack overflow
 ```
