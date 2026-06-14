@@ -1,3 +1,5 @@
+import { espToolActive } from "@/services/platform/platformRouting"
+import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { ModelFamily } from "@/shared/prompts"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ClineToolSpec } from "../spec"
@@ -14,11 +16,12 @@ import type { ClineToolSpec } from "../spec"
  */
 
 /**
- * Platform gate. IOT_PLATFORM is baked at build time by esbuild's `define`
- * (defaults to "nrf"). The ESP tool is emitted only in the ESP build, so the
- * nRF build's prompt never advertises a tool its knowledge base doesn't use.
+ * Platform gate (runtime). The ESP tool is advertised when the open workspace is
+ * classified esp or both; it is hidden otherwise so an nRF-only or empty workspace
+ * never advertises a tool its knowledge base doesn't use. Mirrors
+ * trigger_nordic_action's isNrfActive.
  */
-const isEspBuild = (): boolean => (process.env.IOT_PLATFORM || "nrf").toLowerCase() === "esp"
+const isEspActive = (): boolean => espToolActive(getCachedWorkspaceSummary())
 
 const TECHNICAL_REFERENCE = `
 CRITICAL OPERATIONAL RULES:
@@ -101,7 +104,7 @@ const GENERIC: ClineToolSpec = {
 	variant: ModelFamily.GENERIC,
 	id: ClineDefaultTool.ESP_ACTION,
 	name: "triggerEspAction",
-	contextRequirements: isEspBuild,
+	contextRequirements: isEspActive,
 	description: `${DESCRIPTION}
 ${TECHNICAL_REFERENCE}`,
 	parameters: PARAMETERS,
@@ -111,7 +114,7 @@ const NATIVE_GPT_5: ClineToolSpec = {
 	variant: ModelFamily.NATIVE_GPT_5,
 	id: ClineDefaultTool.ESP_ACTION,
 	name: ClineDefaultTool.ESP_ACTION,
-	contextRequirements: isEspBuild,
+	contextRequirements: isEspActive,
 	description: `${DESCRIPTION}
 ${TECHNICAL_REFERENCE}`,
 	parameters: PARAMETERS,
@@ -126,7 +129,7 @@ const GEMINI_3: ClineToolSpec = {
 	variant: ModelFamily.GEMINI_3,
 	id: ClineDefaultTool.ESP_ACTION,
 	name: ClineDefaultTool.ESP_ACTION,
-	contextRequirements: isEspBuild,
+	contextRequirements: isEspActive,
 	description: `${DESCRIPTION}
 ${TECHNICAL_REFERENCE}`,
 	parameters: PARAMETERS,
