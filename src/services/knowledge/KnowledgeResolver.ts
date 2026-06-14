@@ -99,6 +99,9 @@ export function resolveBitPathSync(id: string): string | null {
 let injectedCache: BitCache | null = null
 let injectedRegistry: RegistryClient | null = null
 let downloadedMap: Map<string, DownloadedManifestEntry> | null = null
+// Once per session: on a cache miss, revalidate the catalog from the registry so newly-published
+// bits are seen (a cache-first catalog would otherwise be pinned stale forever).
+let manifestRefreshed = false
 
 function cache(): BitCache {
 	return injectedCache ?? new BitCache(bitCacheDir())
@@ -149,7 +152,19 @@ export async function isRegistryReachable(): Promise<boolean> {
 
 /** Load a downloaded (non-bundled) bit: verified cache → fetch (verify, cache if open) → "". */
 async function loadDownloadedBit(id: string): Promise<string> {
-	const entry = (await downloadedManifest()).get(id)
+	let entry = (await downloadedManifest()).get(id)
+	if (!entry && !manifestRefreshed) {
+		// Not in the cached catalog — it may have been published since we cached it. Revalidate the
+		// manifest once per session (cache-first alone pins a stale catalog and never sees new bits),
+		// then retry. Offline → fetch returns null → keep the cached catalog.
+		manifestRefreshed = true
+		const fetched = await registry().fetchManifest()
+		if (fetched) {
+			await cache().writeManifest(JSON.stringify(fetched))
+			downloadedMap = null
+			entry = (await downloadedManifest()).get(id)
+		}
+	}
 	if (!entry) {
 		console.error(`KnowledgeResolver: unknown bit id "${id}" (not bundled, not in registry)`)
 		return ""
@@ -241,6 +256,7 @@ export function __resetManifestCache(): void {
 	asyncCache = null
 	syncCache = null
 	downloadedMap = null
+	manifestRefreshed = false
 	injectedCache = null
 	injectedRegistry = null
 }
