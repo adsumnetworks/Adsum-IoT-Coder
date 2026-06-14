@@ -141,6 +141,23 @@ describe("KnowledgeResolver downloaded tier (bundled→cache→fetch)", () => {
 		assert.equal(await loadBit("adsum/community/x"), "")
 		__resetManifestCache()
 	})
+
+	test("cache miss revalidates the catalog → sees a newly-published bit", async () => {
+		const c = new BitCache(await tmp())
+		await c.writeManifest(JSON.stringify({ manifestVersion: 1, bits: [] })) // stale catalog: bit not in it yet
+		const { content, hash } = bit("adsum/nrf/workflows/debug-loop", "# Debug Loop")
+		const rc = new RegistryClient(
+			"http://r",
+			stubFetch(
+				{ manifestVersion: 1, bits: [{ id: "adsum/nrf/workflows/debug-loop", version: "1.1.0", content_hash: hash }] },
+				{ [hash]: content },
+			),
+		)
+		__setRegistryHooks({ cache: c, registry: rc })
+		// cache-first would miss it; refresh-on-miss revalidates the catalog and resolves it
+		assert.equal(await loadBit("adsum/nrf/workflows/debug-loop"), "# Debug Loop")
+		__resetManifestCache()
+	})
 })
 
 // ---------------------------------------------------------------- P2.5: read_file → registry fallback
