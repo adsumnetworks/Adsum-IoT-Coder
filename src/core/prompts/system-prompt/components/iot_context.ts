@@ -1,6 +1,7 @@
 import fs from "fs/promises"
 import path from "path"
 import { HostProvider } from "@/hosts/host-provider"
+import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import { deriveIdFromRel, loadBit } from "@/services/knowledge/KnowledgeResolver"
 import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 import { routePlatform } from "@/services/platform/platformRouting"
@@ -304,6 +305,23 @@ async function getEspPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	ctx += (await load("platforms/esp/rules/skill-loading.md")) + "\n\n"
 	ctx += (await load("platforms/esp/rules/device-identity.md")) + "\n\n"
 	ctx += (await load("platforms/esp/sdks/esp-idf/SDK.md")) + "\n\n"
+
+	// Surface the IDF-version split so the agent can reconcile (rules/device-identity.md Step 3):
+	// the active env's IDF vs the project's pinned IDF (dependencies.lock). The host bridge already
+	// sources the pinned install automatically and asks when several are installed with no pin — this
+	// block is so the agent SEES the versions and can confirm a mismatch with the user. Empty (e.g. in
+	// snapshot tests, before detection runs) → nothing is added.
+	const esp = getCachedEspEnvironment()
+	if (esp.idfVersion || esp.projectIdfVersion) {
+		const norm = (v?: string) => v?.replace(/^v/, "")
+		const mismatch = esp.idfVersion && esp.projectIdfVersion && norm(esp.idfVersion) !== norm(esp.projectIdfVersion)
+		ctx += "#### ESP-IDF Version\n"
+		ctx += `- Active IDF env: ${esp.idfVersion ?? "unknown"}\n`
+		ctx += `- Project pin (dependencies.lock): ${esp.projectIdfVersion ?? "none yet (components not resolved)"}\n`
+		ctx += mismatch
+			? "- ⚠ These differ — confirm which ESP-IDF to use before building (rules/device-identity.md Step 3). Never source export.sh by hand; the device tool sources the project's pinned install.\n\n"
+			: "- The device tool sources the project's pinned install automatically; if several IDF versions are installed with no pin, it will ask which to use.\n\n"
+	}
 
 	// On-demand: protocols, loaded only when config/usage shows them (no hardcoding).
 	const { hasBle, hasWifi, sdkTarget } = await detectEspFeatures(cwd)

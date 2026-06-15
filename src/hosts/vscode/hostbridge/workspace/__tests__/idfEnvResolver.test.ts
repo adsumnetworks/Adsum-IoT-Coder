@@ -1,15 +1,20 @@
+import * as os from "node:os"
+import * as path from "node:path"
 import { expect } from "chai"
 import { describe, it } from "mocha"
 import {
 	buildEspShellCommand,
 	buildIdfCommand,
 	detectShell,
+	enumerateIdfInstalls,
 	getExportScriptName,
 	getIdfPathCandidates,
 	idfNotFoundMessage,
 	isIdfDir,
+	normalizeIdfVersion,
 	resolveIdfPath,
 	type SupportedPlatform,
+	selectIdfInstall,
 } from "../idfEnvResolver"
 
 /**
@@ -193,6 +198,76 @@ describe("idfEnvResolver", () => {
 		})
 		it("uses a Windows-style example path on win32", () => {
 			expect(idfNotFoundMessage("win32")).to.contain("%USERPROFILE%")
+		})
+	})
+
+	describe("normalizeIdfVersion", () => {
+		it("strips a leading v", () => expect(normalizeIdfVersion("v5.5.2")).to.equal("5.5.2"))
+		it("keeps a bare version", () => expect(normalizeIdfVersion("5.5.2")).to.equal("5.5.2"))
+		it("handles a version.txt body with trailing text", () => expect(normalizeIdfVersion("v6.0\n")).to.equal("6.0"))
+		it("returns undefined for empty/undefined", () => {
+			expect(normalizeIdfVersion("")).to.equal(undefined)
+			expect(normalizeIdfVersion(undefined)).to.equal(undefined)
+		})
+	})
+
+	describe("selectIdfInstall (pin-aware)", () => {
+		const a = { path: "/esp/v5.5.2/esp-idf", version: "5.5.2" }
+		const b = { path: "/esp/v6.0/esp-idf", version: "6.0" }
+
+		it("auto-picks the install matching the project pin (over the explicit setting)", () => {
+			const sel = selectIdfInstall([a, b], "5.5.2", b.path)
+			expect(sel).to.deep.equal({ kind: "resolved", path: a.path, version: "5.5.2" })
+		})
+		it("matches a pin written with a leading v", () => {
+			const sel = selectIdfInstall([a, b], "v6.0")
+			expect(sel.kind).to.equal("resolved")
+			expect((sel as any).path).to.equal(b.path)
+		})
+		it("is ambiguous when several installs and no pin", () => {
+			expect(selectIdfInstall([a, b]).kind).to.equal("ambiguous")
+		})
+		it("prefers the explicit setting when there is no pin", () => {
+			expect((selectIdfInstall([a, b], undefined, b.path) as any).path).to.equal(b.path)
+		})
+		it("uses the sole install even if the pin is not installed", () => {
+			expect((selectIdfInstall([a], "9.9.9") as any).path).to.equal(a.path)
+		})
+		it("is ambiguous when the pin is not installed and several exist", () => {
+			expect(selectIdfInstall([a, b], "9.9.9").kind).to.equal("ambiguous")
+		})
+		it("is none when nothing is installed", () => {
+			expect(selectIdfInstall([]).kind).to.equal("none")
+		})
+	})
+
+	describe("enumerateIdfInstalls", () => {
+		it("globs ~/esp/<ver>/esp-idf and reads each version (de-duped)", () => {
+			const espParent = path.posix.join(os.homedir(), "esp")
+			const v552 = path.posix.join(espParent, "v5.5.2", "esp-idf")
+			const v60 = path.posix.join(espParent, "v6.0", "esp-idf")
+			const exists = (p: string) => p === `${v552}/export.sh` || p === `${v60}/export.sh`
+			const listDir = (p: string) => (p === espParent ? ["v5.5.2", "v6.0"] : [])
+			const readVersion = (dir: string) => (dir === v552 ? "v5.5.2" : dir === v60 ? "6.0" : undefined)
+
+			const installs = enumerateIdfInstalls("linux", {}, exists, listDir, readVersion)
+			const byPath = Object.fromEntries(installs.map((i) => [i.path, i.version]))
+			expect(byPath[v552]).to.equal("5.5.2")
+			expect(byPath[v60]).to.equal("6.0")
+		})
+		it("includes the explicit setting and IDF_PATH", () => {
+			const exists = (p: string) => p === "/opt/idf/export.sh" || p === "/env/idf/export.sh"
+			const installs = enumerateIdfInstalls(
+				"linux",
+				{ IDF_PATH: "/env/idf" },
+				exists,
+				() => [],
+				() => undefined,
+				"/opt/idf",
+			)
+			const paths = installs.map((i) => i.path)
+			expect(paths).to.include("/opt/idf")
+			expect(paths).to.include("/env/idf")
 		})
 	})
 })

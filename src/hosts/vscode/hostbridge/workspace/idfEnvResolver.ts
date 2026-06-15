@@ -119,6 +119,123 @@ export function resolveIdfPath(
 	return undefined
 }
 
+// ── Multi-install enumeration + pin-aware selection ─────────────────────────────
+//
+// `resolveIdfPath` above returns the FIRST valid path and stops — it cannot see that the user has
+// several IDF versions installed (e.g. ~/esp/v5.5.2 and ~/esp/v6.0) or that the project pins one of
+// them. These helpers enumerate ALL installs and pick the one that matches the project's pinned
+// version (from dependencies.lock), asking only when genuinely ambiguous.
+
+export interface IdfInstall {
+	/** Absolute path of the IDF checkout (the dir containing export.sh). */
+	path: string
+	/** Normalized version (no leading 'v'), e.g. "5.5.2"; undefined if version.txt is missing/unreadable. */
+	version?: string
+}
+
+export type IdfSelection =
+	| { kind: "resolved"; path: string; version?: string }
+	| { kind: "ambiguous"; installs: IdfInstall[] }
+	| { kind: "none" }
+
+/** Normalize a version for comparison: strip a leading 'v', keep the digit/dot core. "v5.5.2" → "5.5.2". */
+export function normalizeIdfVersion(v: string | undefined): string | undefined {
+	if (!v) return undefined
+	const m = v.trim().match(/v?(\d+(?:\.\d+)*)/)
+	return m ? m[1] : undefined
+}
+
+/** Parse a version.txt body to a normalized version. Pure; exported for tests. */
+export function parseIdfVersionTxt(content: string): string | undefined {
+	return normalizeIdfVersion(content)
+}
+
+/** The `~/esp` parent dir(s) whose versioned `esp-idf` subfolders are scanned for installs. */
+function idfParentDirs(platform: SupportedPlatform, env: NodeJS.ProcessEnv): string[] {
+	const home = os.homedir()
+	if (platform === "win32") {
+		return [joinFor("win32", env["USERPROFILE"] || home, "esp")]
+	}
+	return [joinFor(platform, home, "esp")]
+}
+
+/**
+ * Enumerate EVERY valid ESP-IDF install on the machine (de-duped by path): the explicit extension
+ * setting, `IDF_PATH`, the well-known fixed dirs, AND a glob of `~/esp/* /esp-idf` (this is what finds
+ * versioned installs like `v5.5.2` / `v6.0` that the fixed list misses). `version` is read per install
+ * from `{path}/version.txt`. Filesystem effects are injected so this is pure under test.
+ */
+export function enumerateIdfInstalls(
+	platform: SupportedPlatform,
+	env: NodeJS.ProcessEnv,
+	exists: (p: string) => boolean,
+	listDir: (p: string) => string[],
+	readVersion: (idfDir: string) => string | undefined,
+	explicitPath?: string,
+): IdfInstall[] {
+	const found = new Map<string, IdfInstall>()
+	const add = (dir?: string) => {
+		if (dir && !found.has(dir) && isIdfDir(platform, dir, exists)) {
+			found.set(dir, { path: dir, version: normalizeIdfVersion(readVersion(dir)) })
+		}
+	}
+	add(explicitPath)
+	add(env["IDF_PATH"])
+	// Glob ~/esp/* /esp-idf — the reliable way to see every versioned install.
+	for (const parent of idfParentDirs(platform, env)) {
+		for (const entry of listDir(parent)) {
+			add(joinFor(platform, parent, entry, "esp-idf"))
+		}
+	}
+	for (const candidate of getIdfPathCandidates(platform, env)) {
+		add(candidate)
+	}
+	return Array.from(found.values())
+}
+
+/**
+ * Pick which install to use. Pin-aware: an install whose version matches the project's pinned version
+ * wins automatically (no friction). Otherwise prefer the explicit extension setting; otherwise the sole
+ * install; otherwise the choice is **ambiguous** and the caller should surface the list and ask.
+ */
+export function selectIdfInstall(installs: IdfInstall[], pinnedVersion?: string, explicitPath?: string): IdfSelection {
+	if (installs.length === 0) {
+		return { kind: "none" }
+	}
+	const resolved = (i: IdfInstall): IdfSelection => ({ kind: "resolved", path: i.path, version: i.version })
+	const pin = normalizeIdfVersion(pinnedVersion)
+	if (pin) {
+		const match = installs.find((i) => i.version === pin)
+		if (match) {
+			return resolved(match)
+		}
+		// The pin can't be honored (that version isn't installed): one install → use it; several → ask.
+		return installs.length === 1 ? resolved(installs[0]) : { kind: "ambiguous", installs }
+	}
+	if (explicitPath) {
+		const ex = installs.find((i) => i.path === explicitPath)
+		if (ex) {
+			return resolved(ex)
+		}
+	}
+	if (installs.length === 1) {
+		return resolved(installs[0])
+	}
+	return { kind: "ambiguous", installs }
+}
+
+/** Actionable message when several IDF installs exist and the project doesn't pin one. */
+export function idfAmbiguousMessage(installs: IdfInstall[]): string {
+	const list = installs.map((i) => `  - ${i.path}${i.version ? ` (v${i.version})` : ""}`).join("\n")
+	return (
+		"Multiple ESP-IDF versions are installed and the project does not pin one " +
+		"(no resolved `idf:` version in dependencies.lock):\n" +
+		`${list}\n` +
+		"Ask the user which ESP-IDF version to use, then set it via the Espressif ESP-IDF extension's " +
+		"IDF selector (or pin it by running `idf.py set-target`/reconfigure). Do not source export.sh by hand."
+	)
+}
+
 /**
  * Wrap an arbitrary command `body` so it runs with the ESP-IDF environment
  * available, shaped for the target shell. This is the general primitive behind
