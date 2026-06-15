@@ -42,6 +42,13 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 
 		const config = uiHelpers.getConfig()
 
+		// Never open the diff editor on a degenerate path (filesystem root / blank). Opening on "/" or a
+		// directory leaves the editor unmatched and the next update throws "User closed text editor". The
+		// authoritative error is returned from execute(); here we simply refuse to open. See execute().
+		if (this.isDegeneratePath(config.cwd, rawRelPath)) {
+			return
+		}
+
 		// Creates file if it doesn't exist, and opens editor to stream content in. We don't want to handle this in the try/catch below since the error handler for it resets the diff view, which wouldn't be open if this failed.
 		const result = await this.validateAndPrepareFileOperation(config, block, rawRelPath, rawDiff, rawContent)
 		if (!result) {
@@ -102,6 +109,20 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 			return await config.callbacks.sayAndCreateMissingParamError(
 				block.name,
 				block.params.absolutePath ? "absolutePath" : "path",
+			)
+		}
+
+		// Guard: reject a degenerate path that resolves to the filesystem root ("/").
+		// This happens when the agent emits "/" or an empty path while no project folder
+		// is open yet (e.g. ESP prototype-from-scratch). Opening a diff editor on "/" produces
+		// an opaque "User closed text editor" error that the model cannot self-correct from.
+		// Returning a clear message lets it recover immediately by asking the user for a real path.
+		if (this.isDegeneratePath(config.cwd, rawRelPath)) {
+			config.taskState.consecutiveMistakeCount++
+			return formatResponse.toolError(
+				`${block.name} path resolved to the filesystem root ("/"). ` +
+					`Provide a full absolute path for the file, e.g. "/home/user/myproject/main/main.c". ` +
+					`Ask the user where they want the project folder if it has not been decided yet.`,
 			)
 		}
 
@@ -482,6 +503,21 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 		}
 
 		return { relPath, absolutePath, fileExists, diff, content, newContent, workspaceContext }
+	}
+
+	/**
+	 * True when a write path is degenerate — blank, or resolves to the filesystem root ("/").
+	 * Opening the diff editor on such a path fails opaquely ("User closed text editor"); both the
+	 * partial and execute paths use this to refuse before opening. Shared so the two stay in sync.
+	 */
+	private isDegeneratePath(cwd: string, relPath: string): boolean {
+		if (!relPath || !relPath.trim()) {
+			return true
+		}
+		if (relPath.trim() === "/") {
+			return true
+		}
+		return path.resolve(cwd, relPath) === "/"
 	}
 
 	private getModelInfo(config: TaskConfig) {
