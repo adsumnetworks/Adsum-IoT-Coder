@@ -131,6 +131,20 @@ const PlatformBlock: React.FC<PlatformBlockProps> = ({
 
 const withV = (v: string) => (v.startsWith("v") ? v : `v${v}`)
 
+const PCA_NAMES: Record<string, string> = {
+	PCA10028: "nRF51 DK",
+	PCA10031: "nRF51 Dongle",
+	PCA10040: "nRF52832 DK",
+	PCA10056: "nRF52840 DK",
+	PCA10059: "nRF52840 Dongle",
+	PCA10090: "nRF9160 DK",
+	PCA10095: "nRF5340 DK",
+	PCA10100: "nRF5340 DK",
+	PCA10153: "nRF9161 DK",
+	PCA20020: "Thingy:52",
+	PCA20035: "Thingy:91",
+}
+
 /** True when there's any nRF signal at all (toolchain, boards, or a project SDK). */
 function nrfHasAnything(env: NrfEnvironment): boolean {
 	return env.extensionPresent || env.nrfutilPresent || env.boards.length > 0 || !!env.projectSdk
@@ -153,7 +167,9 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 		sdk = "not built yet"
 		sdkMuted = true
 	} else if (env.extensionPresent || env.nrfutilPresent) {
-		sdk = "NCS installed"
+		sdk = env.installedSdkVersions?.length
+			? `NCS ${env.installedSdkVersions.map(withV).join(", ")} installed`
+			: "NCS installed"
 	} else {
 		sdk = "NCS not detected"
 		sdkMuted = true
@@ -173,7 +189,8 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 	} else {
 		devices = env.boards
 			.map((b: NrfBoard) => {
-				const name = b.deviceName ?? b.deviceFamily ?? b.serialNumber
+				const friendly = b.boardVersion ? (PCA_NAMES[b.boardVersion] ?? b.boardVersion) : undefined
+				const name = b.deviceName ?? friendly ?? b.deviceFamily ?? b.serialNumber
 				return b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name
 			})
 			.join(", ")
