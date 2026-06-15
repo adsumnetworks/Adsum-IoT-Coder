@@ -78,8 +78,11 @@ package.disabled.json
 
 # CONFIDENTIAL — internal-only, MUST never reach the public Marketplace VSIX.
 # Adsum-Planning is our private team planning repo (cloned here for agent context,
-# gitignored); .mcp.json / .embedder are per-developer local tooling artifacts.
+# gitignored); Adsum-Backend is the private K-bit content backend (pull/push the
+# proprietary .md via its own npm scripts); .mcp.json / .embedder are per-developer
+# local tooling artifacts.
 Adsum-Planning/**
+Adsum-Backend/**
 .mcp.json
 .vscode/mcp.json
 .embedder/**

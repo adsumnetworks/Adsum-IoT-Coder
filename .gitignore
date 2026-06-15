@@ -60,6 +60,10 @@ CLAUDE.*
 # Internal planning repo — cloned here for agent context only; has its own remote.
 # Never tracked by the code repo (strategy/docs stay out of code history).
 Adsum-Planning/
+
+# Internal knowledge backend — cloned here to pull/push the proprietary K-bit .md
+# files via its own npm scripts; has its own remote. Never tracked by the code repo.
+Adsum-Backend/
 .clangd
 
 # Local MCP server config (Nordic MCP etc.) — per-developer, keep out of repo history
