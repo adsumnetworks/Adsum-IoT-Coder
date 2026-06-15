@@ -80,6 +80,20 @@ interface MermaidBlockProps {
 	code: string
 }
 
+/**
+ * Some models emit the whole diagram on a single line with literal "\n" (backslash-n)
+ * escapes instead of real newlines; mermaid then fails to parse and we fall back to
+ * showing the raw "\n" text. When the source has NO real newlines but DOES contain
+ * literal "\n"/"\t" sequences, treat them as the intended line breaks. Multi-line
+ * sources are left untouched (a real "\n" inside a node label stays intact).
+ */
+export function normalizeMermaidSource(src: string): string {
+	if (src.includes("\n")) {
+		return src
+	}
+	return src.replace(/\\n/g, "\n").replace(/\\t/g, "\t")
+}
+
 export default function MermaidBlock({ code }: MermaidBlockProps) {
 	const containerRef = useRef<HTMLDivElement>(null)
 	const [isLoading, setIsLoading] = useState(false)
@@ -95,14 +109,16 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 			if (containerRef.current) {
 				containerRef.current.innerHTML = ""
 			}
+			// Normalize literal "\n" escapes some models emit instead of real newlines.
+			const source = normalizeMermaidSource(code)
 			mermaid
-				.parse(code, { suppressErrors: true })
+				.parse(source, { suppressErrors: true })
 				.then((isValid) => {
 					if (!isValid) {
 						throw new Error("Invalid or incomplete Mermaid code")
 					}
 					const id = `mermaid-${Math.random().toString(36).substring(2)}`
-					return mermaid.render(id, code)
+					return mermaid.render(id, source)
 				})
 				.then(({ svg }) => {
 					if (containerRef.current) {
@@ -111,7 +127,7 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 				})
 				.catch((err) => {
 					console.warn("Mermaid parse/render failed:", err)
-					containerRef.current!.innerHTML = code.replace(/</g, "&lt;").replace(/>/g, "&gt;")
+					containerRef.current!.innerHTML = source.replace(/</g, "&lt;").replace(/>/g, "&gt;")
 				})
 				.finally(() => {
 					setIsLoading(false)
