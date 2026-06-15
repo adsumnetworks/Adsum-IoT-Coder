@@ -35,7 +35,15 @@ An ESP-IDF binary is built for **one** target (`esp32`, `esp32s3`, `esp32c3`, `e
    `triggerEspAction` action="execute" command="`esptool.py -p <port> flash_id`"
    → e.g. `Chip is ESP32-S3 (QFN56) (revision v0.2)`, `Features: WiFi, BLE`, `Detected flash size: 8MB`.
    (On ESP32-S3 `chip_id` says *"has no Chip ID, reading MAC instead"* — that's normal; `flash_id` is the better single call.)
-3. **IDF version:** `triggerEspAction` action="execute" command="`idf.py --version`".
+3. **IDF version — match the project's pin (the user may have several IDF installs):**
+   - The project **pins** an IDF version: `read_file` `dependencies.lock` → the top-level `idf:` →
+     `version:` (the reliable pin, written once components resolve). This is what the project expects.
+   - The **active** env's version: `triggerEspAction` action="execute" command="`idf.py --version`".
+   - **If they differ** (e.g. the project pins `5.5.2` but the active env is `6.0`), or the user has
+     **more than one IDF install**, **STOP and confirm which IDF to use** — never silently build with
+     whichever IDF the environment happened to source. Building against the wrong IDF is a common,
+     confusing source of API/Kconfig mismatch errors. Switch via the ESP-IDF extension's IDF selector
+     or `IDF_PATH`; the device tool sources the selected one for you (never source `export.sh` by hand).
 4. **PSRAM** is a **config** fact, not an esptool read: check `sdkconfig` for `CONFIG_SPIRAM=y` and `CONFIG_SPIRAM_MODE_*` (quad/octal). It is **confirmed at runtime** by the boot log line `Found 8MB SPI RAM device` once you capture logs.
 5. **App memory footprint** (after a build): `triggerEspAction` action="execute" command="`idf.py size`" → IRAM / DRAM / Flash usage.
 
