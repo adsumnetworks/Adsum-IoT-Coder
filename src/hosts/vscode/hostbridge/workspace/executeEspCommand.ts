@@ -22,8 +22,20 @@
  */
 
 import * as fs from "node:fs"
+import * as path from "node:path"
 import * as vscode from "vscode"
-import { buildEspShellCommand, detectShell, idfNotFoundMessage, resolveIdfPath, type SupportedPlatform } from "./idfEnvResolver"
+import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
+import {
+	buildEspShellCommand,
+	detectShell,
+	enumerateIdfInstalls,
+	idfAmbiguousMessage,
+	idfNotFoundMessage,
+	parseIdfVersionTxt,
+	resolveIdfPath,
+	type SupportedPlatform,
+	selectIdfInstall,
+} from "./idfEnvResolver"
 
 /** Distinct name so we only ever reuse OUR terminal, never the extension's. */
 const ESP_TERMINAL_NAME = "Adsum ESP-IDF"
@@ -61,17 +73,57 @@ export function findOurEspTerminal(): vscode.Terminal | undefined {
 	return undefined
 }
 
+/** The Espressif extension's configured IDF path setting (Tier 1 hint), platform-aware. */
+function explicitIdfSetting(platform: SupportedPlatform): string | undefined {
+	const cfg = vscode.workspace.getConfiguration("idf")
+	return (platform === "win32" ? cfg.get<string>("espIdfPathWin") : undefined) || cfg.get<string>("espIdfPath") || undefined
+}
+
 /**
- * Resolve IDF_PATH on the host: the Espressif extension's `idf.espIdfPath`
- * setting (Tier 1 hint) → `IDF_PATH` env → well-known install dirs. We read the
- * extension's setting but never invoke its commands or use its terminal.
+ * Pin-aware IDF selection on the host. Enumerates every install (extension setting, `IDF_PATH`,
+ * `~/esp/* /esp-idf`, well-known dirs), then picks the one matching the project's pinned version
+ * (from dependencies.lock, via the detector cache). Auto-resolves on a pin match or a sole install;
+ * returns `ambiguous` when several installs exist and the project doesn't pin one.
+ */
+export function selectHostIdf() {
+	const platform = hostPlatform()
+	const explicit = explicitIdfSetting(platform)
+	const listDir = (p: string): string[] => {
+		try {
+			return fs.readdirSync(p)
+		} catch {
+			return []
+		}
+	}
+	const readVersion = (idfDir: string): string | undefined => {
+		try {
+			return parseIdfVersionTxt(fs.readFileSync(path.join(idfDir, "version.txt"), "utf8"))
+		} catch {
+			return undefined
+		}
+	}
+	const installs = enumerateIdfInstalls(platform, process.env, fs.existsSync, listDir, readVersion, explicit)
+	const pin = getCachedEspEnvironment().projectIdfVersion
+	return selectIdfInstall(installs, pin, explicit)
+}
+
+/**
+ * Resolve IDF_PATH on the host (single path, back-compat). Pin-aware via {@link selectHostIdf};
+ * returns undefined when nothing is installed OR the choice is ambiguous (callers that need to tell
+ * those apart should use {@link selectHostIdf} directly).
  */
 export function resolveHostIdfPath(): string | undefined {
-	const platform = hostPlatform()
-	const cfg = vscode.workspace.getConfiguration("idf")
-	const explicit =
-		(platform === "win32" ? cfg.get<string>("espIdfPathWin") : undefined) || cfg.get<string>("espIdfPath") || undefined
-	return resolveIdfPath(platform, process.env, fs.existsSync, explicit)
+	const sel = selectHostIdf()
+	if (sel.kind === "resolved") {
+		return sel.path
+	}
+	// Fall back to the legacy first-match resolver only when enumeration found nothing usable
+	// (keeps behavior for odd layouts the globber misses).
+	if (sel.kind === "none") {
+		const platform = hostPlatform()
+		return resolveIdfPath(platform, process.env, fs.existsSync, explicitIdfSetting(platform))
+	}
+	return undefined
 }
 
 export interface PreparedEspTerminal {
@@ -123,7 +175,13 @@ export function wrapEspCommand(body: string, needsSourcing: boolean): BuiltEspCo
 	if (!needsSourcing) {
 		return { command: body }
 	}
-	const idfPath = resolveHostIdfPath()
+	const selection = selectHostIdf()
+	if (selection.kind === "ambiguous") {
+		// Several IDF versions installed and the project pins none — ask the user instead of
+		// silently sourcing one (the v5.5.2-vs-v6.0 bug).
+		return { error: idfAmbiguousMessage(selection.installs) }
+	}
+	const idfPath = selection.kind === "resolved" ? selection.path : resolveHostIdfPath()
 	if (!idfPath) {
 		return { error: idfNotFoundMessage(platform) }
 	}
