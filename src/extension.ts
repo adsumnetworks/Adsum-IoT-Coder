@@ -50,6 +50,7 @@ import {
 	setEspIdfPathHint,
 	setEspWorkspaceRoots,
 } from "./services/esp/EspEnvironmentDetector"
+import { setIdfToolsPathHint } from "./services/esp/espChipProbe"
 import {
 	clearNrfEnvironmentCache,
 	detectNrfEnvironment,
@@ -157,6 +158,13 @@ export async function activate(context: vscode.ExtensionContext) {
 			idfCfg.get<string>("espIdfPath") ||
 			undefined
 		setEspIdfPathHint(hint)
+		// Also forward the IDF *tools* path (where python_env / esptool live) so the chip probe can
+		// resolve the IDF python on non-default installs — otherwise boards show as "ESP32-family".
+		const toolsHint =
+			(process.platform === "win32" ? idfCfg.get<string>("toolsPathWin") : undefined) ||
+			idfCfg.get<string>("toolsPath") ||
+			undefined
+		setIdfToolsPathHint(toolsHint)
 	}
 	applyEspIdfHint()
 
