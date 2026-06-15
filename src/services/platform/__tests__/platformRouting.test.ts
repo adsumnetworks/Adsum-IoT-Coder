@@ -40,11 +40,12 @@ describe("platformRouting", () => {
 		it("false for esp", () => nrfToolActive("esp").should.be.false())
 	})
 
-	describe("espToolActive — ESP device tool advertised for esp and both only", () => {
+	describe("espToolActive — ESP device tool advertised for esp, both and none (not pure nrf)", () => {
 		it("true for esp", () => espToolActive("esp").should.be.true())
 		it("true for both", () => espToolActive("both").should.be.true())
-		it("false for nrf", () => espToolActive("nrf").should.be.false())
-		it("false for none", () => espToolActive("none").should.be.false())
+		it("true for none (empty workspace can scaffold an ESP prototype from scratch)", () =>
+			espToolActive("none").should.be.true())
+		it("false for nrf (an nRF-only workspace never advertises the ESP tool)", () => espToolActive("nrf").should.be.false())
 	})
 
 	describe("nrf/esp tool gates are mutually consistent with routePlatform", () => {
