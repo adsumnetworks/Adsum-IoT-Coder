@@ -65,10 +65,20 @@ export interface IdfPythonDeps {
 	home: string
 	exists: (p: string) => boolean
 	listDir: (p: string) => string[]
+	/** Explicit IDF tools path from the Espressif extension's `idf.toolsPath` setting (Tier 1 hint). */
+	toolsPathHint?: string
 }
 
-/** Default IDF tools path: $IDF_TOOLS_PATH, else ~/.espressif (%USERPROFILE%\.espressif on Windows). */
-export function idfToolsPath(deps: Pick<IdfPythonDeps, "platform" | "env" | "home">): string {
+/**
+ * IDF tools path priority: the Espressif extension's `idf.toolsPath` setting → `$IDF_TOOLS_PATH` →
+ * ~/.espressif (%USERPROFILE%\.espressif on Windows). The extension setting matters because users who
+ * install ESP-IDF to a non-default location have their python_env there, not under ~/.espressif —
+ * without it the chip probe finds no python and the board shows as the generic "ESP32-family".
+ */
+export function idfToolsPath(deps: Pick<IdfPythonDeps, "platform" | "env" | "home" | "toolsPathHint">): string {
+	if (deps.toolsPathHint) {
+		return deps.toolsPathHint
+	}
 	if (deps.env.IDF_TOOLS_PATH) {
 		return deps.env.IDF_TOOLS_PATH
 	}
@@ -98,6 +108,12 @@ export function resolveIdfPython(deps: IdfPythonDeps): string | undefined {
 	return undefined
 }
 
+/** Injected from extension.ts: the Espressif extension's `idf.toolsPath` setting (per-OS). */
+let _idfToolsPathHint: string | undefined
+export function setIdfToolsPathHint(p: string | undefined): void {
+	_idfToolsPathHint = p
+}
+
 function realDeps(): IdfPythonDeps {
 	const platform: EspPlatform = process.platform === "win32" ? "win32" : process.platform === "darwin" ? "darwin" : "linux"
 	return {
@@ -112,6 +128,7 @@ function realDeps(): IdfPythonDeps {
 				return []
 			}
 		},
+		toolsPathHint: _idfToolsPathHint,
 	}
 }
 
