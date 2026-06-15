@@ -52,7 +52,14 @@ export function nrfToolActive(summary: WorkspaceSummary): boolean {
 	return summary === "nrf" || summary === "both" || summary === "none"
 }
 
-/** The ESP device tool (triggerEspAction) is advertised for esp and both. */
+/**
+ * The ESP device tool (triggerEspAction) is advertised for esp, both AND none —
+ * symmetric with nrfToolActive. The `none` case matters: scaffolding an ESP
+ * prototype from scratch happens in an empty/unclassified workspace, so the native
+ * tool must be available *before* any ESP project exists. Without it the agent
+ * improvises (execute_command + manual `export.sh`, or a hallucinated MCP server).
+ * An nRF-only workspace still hides it (esp tool stays off for summary === "nrf").
+ */
 export function espToolActive(summary: WorkspaceSummary): boolean {
-	return summary === "esp" || summary === "both"
+	return summary === "esp" || summary === "both" || summary === "none"
 }
