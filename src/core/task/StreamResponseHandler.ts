@@ -54,6 +54,11 @@ const ESCAPE_MAP: Record<string, string> = {
 
 const ESCAPE_PATTERN = /\\[ntr"\\]/g
 
+// Tool-call argument fields that are allowed to surface while still streaming (partial value).
+// These are the large, last-streamed payloads we render incrementally (the diff-view animation).
+// Any other field — notably the file path — must be complete before it is used.
+const STREAMABLE_PARTIAL_FIELDS = new Set(["content", "diff"])
+
 export class StreamResponseHandler {
 	private toolUseHandler = new ToolUseHandler()
 	private reasoningHandler = new ReasoningHandler()
@@ -251,10 +256,20 @@ class ToolUseHandler {
 
 	private extractPartialJsonFields(partialJson: string): Record<string, any> {
 		const result: Record<string, any> = {}
-		const pattern = /"(\w+)":\s*"((?:[^"\\]|\\.)*)(?:")?/g
+		// Group 3 captures the closing quote, present only when the value is fully streamed.
+		const pattern = /"(\w+)":\s*"((?:[^"\\]|\\.)*)(")?/g
 
 		for (const match of partialJson.matchAll(pattern)) {
-			result[match[1]] = match[2].replace(ESCAPE_PATTERN, (m) => ESCAPE_MAP[m])
+			const [, key, value, closingQuote] = match
+			// Only surface a field whose value is TERMINATED. The long streaming fields
+			// (content / diff) are intentionally rendered incrementally, so they may stay
+			// partial. Everything else — most importantly the file path (absolutePath / path)
+			// — must be complete before a consumer uses it: opening the diff editor on a
+			// half-streamed path points it at the wrong file and the write fails with
+			// "User closed text editor". See WriteToFileToolHandler.handlePartialBlock.
+			if (closingQuote || STREAMABLE_PARTIAL_FIELDS.has(key)) {
+				result[key] = value.replace(ESCAPE_PATTERN, (m) => ESCAPE_MAP[m])
+			}
 		}
 
 		return result
