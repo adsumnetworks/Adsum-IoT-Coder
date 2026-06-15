@@ -208,6 +208,7 @@ async function loadDownloadedBit(id: string): Promise<string> {
 	const cached = await cache().readBlob(hash) // null if absent OR corrupt (hash mismatch)
 	if (cached !== null) {
 		kbitTelemetry.downloadedResolved?.({ id, source: "cache" })
+		console.info(`[kbit] ${id} ← registry (cache)`)
 		return stripFrontmatter(cached)
 	}
 	const fetched = await registry().fetchBlob(hash)
@@ -219,10 +220,12 @@ async function loadDownloadedBit(id: string): Promise<string> {
 	if (sha256(fetched) === hash) {
 		// Only persist OPEN bits to disk as plaintext. Proprietary bits are served from this fetch but
 		// not cached (no on-disk plaintext) until encrypt-at-rest exists (P5).
-		if (isOpenLicense(entry.license)) {
+		const open = isOpenLicense(entry.license)
+		if (open) {
 			await cache().writeBlob(hash, fetched)
 		}
 		kbitTelemetry.downloadedResolved?.({ id, source: "registry" })
+		console.info(`[kbit] ${id} ← registry (fetched${open ? ", cached" : ", proprietary — not cached"})`)
 		return stripFrontmatter(fetched)
 	}
 	console.error(`KnowledgeResolver: downloaded bit "${id}" failed hash verification`)
@@ -239,6 +242,7 @@ export async function loadBit(id: string): Promise<string> {
 	if (full) {
 		try {
 			if (await fileExistsAtPath(full)) {
+				console.info(`[kbit] ${id} ← bundled`)
 				return stripFrontmatter(await fs.readFile(full, "utf-8"))
 			}
 		} catch (e) {
