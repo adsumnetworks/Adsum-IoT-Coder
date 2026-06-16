@@ -6,7 +6,7 @@
 
 ### ESP &amp; nRF · AI Debug &amp; Dev
 
-**One AI tool for the whole embedded inner loop on Espressif ESP and Nordic nRF: scaffold, build, flash, test, observe, fix. It automates the routine firmware work you would rather not do, and cracks the runtime bugs general agents cannot, because it reads your board, not just your code.**
+**An AI coding agent for VS Code that works your whole embedded inner loop on Espressif ESP and Nordic nRF: scaffold, build, flash, test, observe, fix. It automates the routine firmware work you would rather not do, and cracks the runtime bugs general agents cannot, because it reads your board, not just your code.**
 
 **What makes it different is real human expertise, not just a model.** Adsum is augmented with curated firmware knowledge authored by engineers who have shipped, loaded on demand and validated by an open benchmark on real hardware. Human-curated, not AI-generated.
 
@@ -22,7 +22,7 @@
 
 **[Watch the demo →](https://www.youtube.com/watch?v=67tUybg1phk)** · **[Install →](#getting-started)** · **[Docs →](https://adsumnetworks.com)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
 
-<a href="https://www.youtube.com/watch?v=67tUybg1phk"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder demo: capture, analyze, fix" /></a>
+<a href="https://www.youtube.com/watch?v=67tUybg1phk"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder debugging ESP32 and nRF firmware in VS Code: capture, analyze, fix" /></a>
 
 </div>
 
@@ -50,7 +50,7 @@ Embedded firmware work is two jobs at once: a lot of routine, repetitive setup, 
 
 And the reason it is good at the hard parts is the part general agents do not have: **real human expertise.** The firmware knowledge that drives it is authored by engineers who have shipped, loaded on demand, and validated against an open benchmark. Human-curated, not AI-generated.
 
-## What it does
+## What it does: debug, build, and prototype ESP and nRF firmware
 
 - **Automatic platform detection.** nRF, ESP, both, or a fresh start, with the right tools for each.
 - **Build, flash & debug.** The full loop on real hardware: build, flash, capture live logs (RTT/UART on nRF, serial monitor on ESP), analyze, fix, repeat.
@@ -59,10 +59,10 @@ And the reason it is good at the hard parts is the part general agents do not ha
 - **Test & validate.** Host tests and on-hardware checks.
 
 <p align="center">
-  <img src="assets/docs/home-project-open.png" width="340" alt="The guided home with workflow cards" />
+  <img src="assets/docs/home-project-open.png" width="340" alt="Adsum IoT Coder home: build, flash, debug, and prototype ESP-IDF and nRF Connect SDK projects" />
 </p>
 
-## Supported platforms
+## Supported platforms: ESP32 / ESP-IDF and nRF / nRF Connect SDK
 
 | Platform | Chips (today) | SDK | Protocols (today) |
 |:---|:---|:---|:---|
@@ -91,6 +91,8 @@ Full methodology, per-task results, and honest limitations are in the [benchmark
 
 Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the [Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) directly. No key, no account: the free tier is on by default.
 
+**Prerequisites:** the [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) for nRF work, or an ESP-IDF installation for ESP, plus Python 3.8+. Full requirements are in the [docs](https://adsumnetworks.com).
+
 1. Run the built-in **30-second demo** (no board needed) to see the capture, analyze, fix loop on a real BLE bug.
 2. Open your **nRF or ESP project**; the home reads it, detects your boards and toolchain, and offers the right one-click workflows.
 3. Bring your own model whenever you want; the running task continues, no restart.
@@ -116,13 +118,13 @@ Recommended for bring-your-own-key: **Claude Haiku 4.5** (the benchmark model) a
 
 Adsum gets better in two ways, and both are open to you.
 
-**Contribute knowledge (embedded experts and specialists).** The curated firmware knowledge is what makes the agent good. Author a knowledge module (a Markdown workflow, board, or protocol file under `iot-knowledge/`) and you are credited in it. You keep the rights to what you author and choose how it is licensed. [Start a discussion](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions) to become a founding contributor.
+**Contribute knowledge (embedded experts and specialists).** The curated firmware knowledge is what makes the agent good. Author a knowledge module (a Markdown workflow, board, or protocol file under `iot-knowledge/`), get credited in it, and climb a contributor ladder: Contributor, Verified, Maintainer, Module Owner. You keep the rights to what you author and choose how it is licensed. [Start a discussion](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions) to become a founding contributor.
 
 **Contribute code (open-source developers).** The extension is open source (Apache-2.0, built on [Cline](https://github.com/cline/cline)). Improve the tool itself, or add a benchmark task in [`evals/`](./evals/). [Open an issue or PR](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues).
 
 ## Roadmap
 
-Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi. Next: more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), deeper hardware-in-the-loop tooling (BLE sniffer, power profiling), and a growing community knowledge base. The roadmap is shaped by what the community asks for and contributes.
+Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi. Next: more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), deeper hardware-in-the-loop tooling (BLE sniffer, power profiling), and a growing community knowledge base. CRA-readiness workflows for the EU Cyber Resilience Act are coming as a separate release. The roadmap is shaped by what the community asks for and contributes.
 
 ## Limitations
 
