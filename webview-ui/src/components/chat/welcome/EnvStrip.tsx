@@ -4,11 +4,11 @@ import { EmptyRequest } from "@shared/proto/cline/common"
 import React, { useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient } from "@/services/grpc-client"
-import { BRAND_CORAL, BRAND_CYAN_600 } from "../brandColors"
 
 // ---------------------------------------------------------------------------
-// One detected platform = a 3-line block (extension / SDK / devices). nRF and
-// ESP share the identical structure so they read the same way.
+// One detected platform = a 2-line status row: line 1 = badge + extension · SDK,
+// line 2 = detected boards. Rendered as a flat status strip (no card), nRF and
+// ESP identical so they read the same way.
 //
 // Show/hide (per Omar, 2026-06-12):
 //   no project open  → show both (only the platforms that have something)
@@ -24,6 +24,9 @@ import { BRAND_CORAL, BRAND_CYAN_600 } from "../brandColors"
 
 const MUTED = "var(--vscode-descriptionForeground)"
 const FG = "var(--vscode-foreground)"
+// Neutral hairline divider between the nRF and ESP rows — foreground-derived so it's grey in every
+// theme (some themes tint --vscode-widget-border with an accent).
+const NEUTRAL_BORDER = "color-mix(in srgb, var(--vscode-foreground) 15%, transparent)"
 
 interface BlockFacts {
 	toolchain: string
@@ -36,17 +39,41 @@ interface BlockFacts {
 	detecting: boolean
 }
 
-interface PlatformBlockProps extends BlockFacts {
-	badge: string
-	badgeColor: string
-	onRefresh: () => void
-	refreshing: boolean
-	refreshLabel: string
+interface PlatformRowProps extends BlockFacts {
+	/** Platform name shown as the neutral lead badge (nRF / ESP). */
+	label: string
 }
 
-const PlatformBlock: React.FC<PlatformBlockProps> = ({
-	badge,
-	badgeColor,
+const FACT_ICON: React.CSSProperties = { fontSize: "12px", color: MUTED, flexShrink: 0 }
+
+/**
+ * High-contrast platform badge (nRF / ESP) — the lead identifier on each status row. Inverted vs the
+ * theme so it pops: light pill + dark text in dark themes, dark pill + light text (the "reverse") in
+ * light themes. Theme-derived (foreground/editor-background) — neutral, never a brand color.
+ */
+const Badge: React.FC<{ text: string }> = ({ text }) => (
+	<span
+		style={{
+			fontSize: "11px",
+			fontWeight: 700,
+			letterSpacing: "0.04em",
+			color: "var(--vscode-editor-background)",
+			background: "var(--vscode-foreground)",
+			borderRadius: "4px",
+			padding: "2px 6px",
+			flexShrink: 0,
+		}}>
+		{text}
+	</span>
+)
+
+/**
+ * Status rows for one platform: line 1 = badge + extension · SDK, line 2 = detected boards/devices
+ * (always its own line, for consistency). Reads as a compact status line (not a card). nRF and ESP
+ * render identically. Presentation only — the facts are computed upstream by nrfFacts/espFacts.
+ */
+const PlatformRow: React.FC<PlatformRowProps> = ({
+	label,
 	toolchain,
 	toolchainMuted,
 	sdk,
@@ -54,72 +81,32 @@ const PlatformBlock: React.FC<PlatformBlockProps> = ({
 	sdkMuted,
 	devices,
 	devicesMuted,
-	onRefresh,
-	refreshing,
-	refreshLabel,
 }) => (
-	<div style={{ display: "flex", flexDirection: "column", gap: "3px", width: "100%" }}>
-		{/* Header: badge + extension/toolchain + refresh (refresh pinned right, never wraps) */}
-		<div style={{ display: "flex", alignItems: "center", gap: "6px", width: "100%" }}>
-			<span
-				style={{
-					fontSize: "9px",
-					fontWeight: 700,
-					letterSpacing: "0.04em",
-					color: "#fff",
-					background: badgeColor,
-					borderRadius: "4px",
-					padding: "1px 5px",
-					flexShrink: 0,
-				}}>
-				{badge}
-			</span>
-			<span
-				style={{
-					fontSize: "11px",
-					color: toolchainMuted ? MUTED : FG,
-					overflow: "hidden",
-					textOverflow: "ellipsis",
-					whiteSpace: "nowrap",
-				}}>
-				{toolchain}
-			</span>
-			<button
-				aria-label={refreshLabel}
-				disabled={refreshing}
-				onClick={onRefresh}
-				style={{
-					marginLeft: "auto",
-					background: "none",
-					border: "none",
-					cursor: refreshing ? "default" : "pointer",
-					padding: "0",
-					color: MUTED,
-					opacity: refreshing ? 0.5 : 0.7,
-					display: "inline-flex",
-					alignItems: "center",
-					flexShrink: 0,
-				}}
-				title={refreshLabel}
-				type="button">
-				<i
-					className={`codicon codicon-refresh${refreshing ? " codicon-modifier-spin" : ""}`}
-					style={{ fontSize: "12px" }}
-				/>
-			</button>
-		</div>
-
-		{/* SDK / framework line */}
+	<div style={{ display: "flex", flexDirection: "column", gap: "3px", width: "100%", minWidth: 0 }}>
+		{/* Line 1: badge + extension · SDK (these wrap together only if the panel is narrow) */}
 		<div
-			style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: sdkMuted ? MUTED : FG }}
-			title={sdkTitle}>
-			<i className="codicon codicon-package" style={{ fontSize: "12px", color: MUTED, flexShrink: 0 }} />
-			<span>{sdk}</span>
+			style={{
+				display: "flex",
+				alignItems: "center",
+				flexWrap: "wrap",
+				columnGap: "12px",
+				rowGap: "3px",
+				fontSize: "11px",
+			}}>
+			<span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: toolchainMuted ? MUTED : FG }}>
+				<Badge text={label} />
+				<span>{toolchain}</span>
+			</span>
+			<span
+				style={{ display: "inline-flex", alignItems: "center", gap: "5px", color: sdkMuted ? MUTED : FG }}
+				title={sdkTitle}>
+				<i className="codicon codicon-package" style={FACT_ICON} />
+				<span>{sdk}</span>
+			</span>
 		</div>
-
-		{/* Devices line */}
+		{/* Line 2: detected boards / devices — always its own line */}
 		<div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: devicesMuted ? MUTED : FG }}>
-			<i className="codicon codicon-plug" style={{ fontSize: "12px", color: MUTED, flexShrink: 0 }} />
+			<i className="codicon codicon-plug" style={FACT_ICON} />
 			<span>{devices}</span>
 		</div>
 	</div>
@@ -316,44 +303,55 @@ const EnvStrip: React.FC = () => {
 
 	const containerStyle: React.CSSProperties = {
 		display: "flex",
-		flexDirection: "column",
+		flexDirection: "row",
+		alignItems: "flex-start",
 		gap: "8px",
 		width: "100%",
-		border: "1px solid var(--vscode-widget-border)",
-		borderRadius: "8px",
-		padding: "9px 11px",
-		background: "color-mix(in srgb, var(--vscode-foreground) 3%, transparent)",
+		// True flat status strip — no background panel, border, or radius, so it reads as a status line
+		// under the project name, not a card (distinct from the bordered action cards and dashed
+		// coming-soon cards). Flush-left to align with the project name above.
+		padding: "2px 0",
 	}
 
 	if (!showNrf && !showEsp) {
 		return <div style={{ ...containerStyle, fontSize: "11px", color: MUTED }}>No nRF or ESP toolchain detected.</div>
 	}
 
+	// Presentation only: one refresh re-probes both (same handleRefresh + detecting/refreshing state as
+	// before — no logic change).
+	const bothShown = showNrf && showEsp
+	const refreshBusy = refreshing || nrf.detecting || esp.detecting
+
 	return (
 		<div style={containerStyle}>
-			{showNrf && (
-				<PlatformBlock
-					badge="nRF"
-					badgeColor={BRAND_CYAN_600}
-					onRefresh={handleRefresh}
-					refreshing={nrf.detecting || refreshing}
-					refreshLabel="Re-probe nRF Connect + connected boards"
-					{...nrf}
+			<div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
+				{showNrf && <PlatformRow label="nRF" {...nrf} />}
+				{bothShown && <div style={{ height: "1px", background: NEUTRAL_BORDER, width: "100%" }} />}
+				{showEsp && <PlatformRow label="ESP" {...esp} />}
+			</div>
+			<button
+				aria-label="Re-probe detected platforms"
+				disabled={refreshBusy}
+				onClick={handleRefresh}
+				style={{
+					background: "none",
+					border: "none",
+					cursor: refreshBusy ? "default" : "pointer",
+					padding: "0",
+					marginTop: "1px",
+					color: MUTED,
+					opacity: refreshBusy ? 0.5 : 0.7,
+					display: "inline-flex",
+					alignItems: "center",
+					flexShrink: 0,
+				}}
+				title="Re-probe detected platforms"
+				type="button">
+				<i
+					className={`codicon codicon-refresh${refreshBusy ? " codicon-modifier-spin" : ""}`}
+					style={{ fontSize: "12px" }}
 				/>
-			)}
-
-			{showNrf && showEsp && <div style={{ height: "1px", background: "var(--vscode-widget-border)", width: "100%" }} />}
-
-			{showEsp && (
-				<PlatformBlock
-					badge="ESP"
-					badgeColor={BRAND_CORAL}
-					onRefresh={handleRefresh}
-					refreshing={esp.detecting || refreshing}
-					refreshLabel="Re-probe ESP-IDF + connected ESP devices"
-					{...esp}
-				/>
-			)}
+			</button>
 		</div>
 	)
 }
