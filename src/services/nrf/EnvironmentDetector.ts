@@ -201,6 +201,48 @@ export function parseDeviceList(stdout: string): string[] {
 	return matches.map((m) => m[1]).filter(Boolean)
 }
 
+interface DeviceListEntry {
+	serialNumber: string
+	deviceFamily?: string
+	boardVersion?: string
+	traits?: Record<string, boolean>
+}
+
+/**
+ * Richer parser for `nrfutil device list --json` stdout that also extracts the Nordic board
+ * identity fields (`devkit.deviceFamily`, `devkit.boardVersion`) present in each device entry.
+ * This avoids the need to call `device-info` for the panel strip — the devkit object in `list`
+ * already tells us the family and PCA board number. Exported for unit tests.
+ */
+export function parseDeviceListFull(stdout: string): DeviceListEntry[] {
+	const events = parseJsonLines(stdout)
+	let sawDevicesArray = false
+	let best: DeviceListEntry[] = []
+	for (const ev of events) {
+		const devices = devicesFromEvent(ev)
+		if (devices) {
+			sawDevicesArray = true
+			const entries: DeviceListEntry[] = (devices as any[])
+				.filter((d) => d?.serialNumber)
+				.map((d: any) => ({
+					serialNumber: d.serialNumber as string,
+					deviceFamily: d.devkit?.deviceFamily as string | undefined,
+					boardVersion: d.devkit?.boardVersion as string | undefined,
+					traits: d.traits as Record<string, boolean> | undefined,
+				}))
+			if (entries.length > best.length) {
+				best = entries
+			}
+		}
+	}
+	if (sawDevicesArray) {
+		return best
+	}
+	// Text fallback — no devkit fields available, serial only.
+	const matches = [...stdout.matchAll(/serial[_\s]?number["':\s]+(\w+)/gi)]
+	return matches.map((m) => ({ serialNumber: m[1] })).filter((e) => e.serialNumber)
+}
+
 /**
  * Pure parser for `nrfutil device device-info --serial-number <SN> --json` stdout.
  * Exported for unit tests. The rich fields live under data.deviceInfo.jlink.
@@ -263,34 +305,42 @@ async function probeSdks(sdkManagerPrefix: string): Promise<string[]> {
  * those as "boards" leaked ESP devices into the nRF strip, so we drop them here. Exported
  * for unit tests.
  */
-export function isNordicBoard(board: NrfBoard): boolean {
-	return !!(board.deviceName || board.deviceFamily)
+export function isNordicBoard(board: Partial<NrfBoard>): boolean {
+	return !!(board.deviceName || board.deviceFamily || board.boardVersion)
 }
 
 async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: boolean; boards: NrfBoard[] }> {
 	try {
 		const listResult = await execAsync(`${devicePrefix} list --json`, { timeout: 8000 })
-		const serials = parseDeviceList(listResult.stdout)
+		// `list --json` exposes devkit.deviceFamily and devkit.boardVersion directly — no device-info call needed.
+		const entries = parseDeviceListFull(listResult.stdout)
+		console.log(
+			`[adsum][nrf] device list → ${entries.length} device(s): ${entries.map((e) => e.serialNumber).join(", ") || "(none)"}`,
+		)
 
-		if (serials.length === 0) {
+		if (entries.length === 0) {
+			console.log(`[adsum][nrf] device list returned no devices; raw head: ${listResult.stdout.slice(0, 300)}`)
 			return { nrfutilPresent: true, boards: [] }
 		}
 
-		const probed = await Promise.all(
-			serials.map(async (serialNumber) => {
-				try {
-					const infoResult = await execAsync(`${devicePrefix} device-info --serial-number ${serialNumber} --json`, {
-						timeout: 8000,
-					})
-					return { serialNumber, ...parseDeviceInfo(infoResult.stdout) }
-				} catch {
-					return { serialNumber }
-				}
-			}),
-		)
+		const boards: NrfBoard[] = []
+		for (const entry of entries) {
+			const board: NrfBoard = {
+				serialNumber: entry.serialNumber,
+				deviceFamily: entry.deviceFamily,
+				boardVersion: entry.boardVersion,
+			}
+			const kept = isNordicBoard(board)
+			console.log(
+				`[adsum][nrf] list entry ${entry.serialNumber} → family=${entry.deviceFamily ?? "?"} board=${entry.boardVersion ?? "?"} traits.jlink=${entry.traits?.jlink ?? "?"} ${kept ? "(kept)" : "(DROPPED: no Nordic identity)"}`,
+			)
+			if (kept) {
+				boards.push(board)
+			}
+		}
 
-		// Keep only devices nrfutil identified as Nordic — drop enumerated ESP/other serial ports.
-		return { nrfutilPresent: true, boards: probed.filter(isNordicBoard) }
+		console.log(`[adsum][nrf] boards after Nordic filter: ${boards.length}`)
+		return { nrfutilPresent: true, boards }
 	} catch (err) {
 		// Surface WHY detection failed so Windows "nrfutil not found" can be diagnosed:
 		// ENOENT/'is not recognized' = binary not on PATH; a non-zero exit = nrfutil ran but

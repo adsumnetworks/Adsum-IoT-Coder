@@ -6,11 +6,19 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 
 ### One extension — now for ESP32, too
 
-Adsum IoT Coder now supports **Espressif ESP32 / ESP-IDF** alongside Nordic nRF, in a single install. It detects what's on your desk and in your workspace and shows the right tools for each platform.
+Adsum IoT Coder now speaks **Espressif ESP32 / ESP-IDF** as well as Nordic nRF, in a single install. It reads what's on your desk and in your workspace and shows the right tools, workflows, and guidance for each platform — nothing to switch.
 
-- **ESP32 / ESP-IDF support.** Build, flash, debug, and test ESP-IDF firmware with the same agent workflows you use for nRF — `idf.py`/`esptool`-driven, with chip/flash/PSRAM detection and serial-log capture.
-- **Automatic platform detection.** The home screen recognizes nRF, ESP, both (a mixed workspace), or neither, and routes every card and the agent's persona to the right platform — nothing to switch.
-- **Leaner install, fresher knowledge.** Platform skills load on demand from Adsum's knowledge service and cache locally, so the extension stays small and the guidance stays current.
+- **ESP32 / ESP-IDF support.** Build, flash, monitor, and test ESP-IDF firmware with the same guided agent workflows you already use for nRF — `idf.py`/`esptool`-driven, with chip, flash, and PSRAM detection and serial-log capture built in.
+- **Automatic platform detection.** The home screen recognizes whether your workspace is nRF, ESP, both, or a fresh start, and routes every workflow card and the agent's expertise to the right platform automatically.
+- **Prototyping for both platforms.** *Start a prototype* now scaffolds complete ESP-IDF projects too — it sets the target chip, lays out the project, and gets you to a first build, the same way it already does for nRF.
+- **Always-current knowledge, leaner install.** Platform expertise is delivered on demand and cached locally, so the extension stays small and the guidance stays up to date without waiting for a new release.
+
+### Reliability & cross-platform
+
+- **Stronger Windows support.** Board and toolchain detection now handle the full range of real-world install layouts on Windows — nRF boards and NCS versions surface correctly, ESP-IDF is found wherever it's installed, and serial-log capture runs cleanly. Verified on real nRF and ESP hardware.
+- **Smarter ESP toolchain selection.** When more than one ESP-IDF version is installed, the agent uses the one your project pins, and asks you when it's genuinely ambiguous instead of guessing.
+- **Steadier file editing.** Edits now apply cleanly even on large, streamed changes.
+- **Cleaner diagrams.** Architecture and sequence diagrams render reliably across models.
 
 ### Notes
 

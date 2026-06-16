@@ -18,7 +18,7 @@ export async function openFolder(_controller: Controller, request: StringRequest
 			const result = await HostProvider.window.showOpenDialogue({
 				canSelectFolders: true,
 				canSelectMany: false,
-				openLabel: "Open nRF Project",
+				openLabel: "Select Folder",
 			})
 			folderPath = result.paths[0]
 		}

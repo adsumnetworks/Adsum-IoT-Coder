@@ -27,6 +27,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -126,8 +127,55 @@ def build_log_path(output: str, name: str, chip: str, port: str | None) -> str:
     return os.path.abspath(os.path.join(uart_dir, fname))
 
 
+def idf_python_interpreter() -> str:
+    """
+    The ESP-IDF virtualenv Python — the interpreter idf.py expects to run under.
+    `export.sh`/`export.ps1`/`export.bat` set IDF_PYTHON_ENV_PATH to the venv dir,
+    so we derive the interpreter from it. Fall back to a `python` on PATH (a sourced
+    env puts the venv first) and finally to the interpreter running this script.
+    """
+    env_path = os.environ.get("IDF_PYTHON_ENV_PATH")
+    if env_path:
+        candidate = (
+            os.path.join(env_path, "Scripts", "python.exe")
+            if os.name == "nt"
+            else os.path.join(env_path, "bin", "python")
+        )
+        if os.path.isfile(candidate):
+            return candidate
+    return shutil.which("python") or shutil.which("python3") or sys.executable
+
+
+def resolve_idf_py_argv() -> list[str]:
+    """
+    The argv prefix that launches idf.py, robust across Windows/macOS/Linux.
+
+    On POSIX idf.py is directly executable (shebang + exec bit), so once the env is
+    sourced the bare name works. On Windows idf.py is a plain `.py` that
+    `subprocess.Popen` cannot exec directly — Windows' CreateProcess rejects it with
+    `WinError 193: %1 is not a valid Win32 application` because it is not a native
+    binary and Popen (unlike a shell) does not honor PATHEXT / file associations. So
+    on Windows we invoke it through the IDF virtualenv Python instead.
+
+    idf.py is located via IDF_PATH (set by export), with a PATH lookup as fallback.
+    """
+    idf_path = os.environ.get("IDF_PATH")
+    idf_py = os.path.join(idf_path, "tools", "idf.py") if idf_path else None
+    if not (idf_py and os.path.isfile(idf_py)):
+        idf_py = shutil.which("idf.py")  # honors PATHEXT where a launcher is registered
+
+    if os.name != "nt":
+        return [idf_py] if idf_py else ["idf.py"]
+
+    # Windows: must go through a Python interpreter.
+    if not idf_py:
+        # Env not sourced / IDF_PATH unset — let Popen surface the error, caught below.
+        return ["idf.py"]
+    return [idf_python_interpreter(), idf_py]
+
+
 def build_monitor_cmd(project_dir: str, port: str | None, no_reset: bool) -> list[str]:
-    cmd = ["idf.py", "-C", project_dir]
+    cmd = resolve_idf_py_argv() + ["-C", project_dir]
     if port:
         cmd += ["-p", port]
     cmd.append("monitor")
@@ -198,7 +246,23 @@ def summarize(log_path: str) -> str:
     return f"{lines} lines; no crash markers detected"
 
 
+def force_utf8_streams() -> None:
+    """
+    Windows consoles default to a legacy code page (e.g. cp1252) on which our status
+    arrows and the raw UTF-8 bytes streamed from `idf.py monitor` are unencodable —
+    printing them raises UnicodeEncodeError and aborts the capture. Reconfigure stdout
+    and stderr to UTF-8 (errors replaced) so output never crashes the logger. No-op on
+    platforms/streams that are already UTF-8 or don't support reconfigure.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+        except (AttributeError, ValueError):
+            pass
+
+
 def main() -> int:
+    force_utf8_streams()
     parser = argparse.ArgumentParser(description="Capture ESP-IDF serial logs (wraps idf.py monitor).")
     parser.add_argument("--project", default=".", help="ESP-IDF project directory (default: .)")
     parser.add_argument("--port", help="Serial port (e.g. /dev/ttyUSB0, COM5). Auto-detected if omitted.")
@@ -222,11 +286,21 @@ def main() -> int:
     print(f"[esp-monitor] capturing {args.duration}s → {log_path}")
     print(f"[esp-monitor] {' '.join(cmd)}")
 
+    # `idf.py monitor` (esp-idf-monitor) refuses to start unless stdin is a real
+    # TTY — but we run it as a captured subprocess (piped stdout, no interactive
+    # console), which has no TTY on any OS. ESP_IDF_MONITOR_TEST=1 is the monitor's
+    # own supported headless hook: it skips the TTY requirement AND makes the console
+    # reader ignore stdin (no keyboard input expected) while serial output keeps
+    # streaming to stdout — exactly a fixed-duration automated capture. We tee that
+    # stdout to the log and stop the monitor when the duration elapses.
+    child_env = {**os.environ, "ESP_IDF_MONITOR_TEST": "1"}
     popen_kwargs = dict(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        stdin=subprocess.DEVNULL,
         text=True,
         bufsize=1,
+        env=child_env,
     )
     if os.name == "nt":
         popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
@@ -237,6 +311,16 @@ def main() -> int:
         proc = subprocess.Popen(cmd, **popen_kwargs)
     except FileNotFoundError:
         print("[esp-monitor] ERROR: idf.py not found — the ESP-IDF environment is not sourced.", file=sys.stderr)
+        return 1
+    except OSError as e:
+        # e.g. WinError 193 (not a valid Win32 app) if idf.py is somehow launched
+        # directly on Windows, or the interpreter path is wrong. Make it actionable.
+        print(
+            f"[esp-monitor] ERROR: failed to launch monitor ({e}).\n"
+            f"[esp-monitor] command was: {' '.join(cmd)}\n"
+            "[esp-monitor] Ensure the ESP-IDF environment is sourced (IDF_PATH / IDF_PYTHON_ENV_PATH set).",
+            file=sys.stderr,
+        )
         return 1
 
     stop = threading.Event()
