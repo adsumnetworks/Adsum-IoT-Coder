@@ -255,6 +255,20 @@ describe("idfEnvResolver", () => {
 			expect(byPath[v552]).to.equal("5.5.2")
 			expect(byPath[v60]).to.equal("6.0")
 		})
+		it("finds C:\\esp\\<ver>\\esp-idf (extension container on C:, the win32 regression)", () => {
+			const idf = "C:\\esp\\v5.5.4\\esp-idf"
+			const exists = fakeExists([`${idf}\\export.sh`], "win32")
+			const listDir = (p: string) => (p === "C:\\esp" ? ["v5.5.4"] : [])
+			const installs = enumerateIdfInstalls("win32", {}, exists, listDir, () => "v5.5.4")
+			expect(installs.map((i) => i.path)).to.include(idf)
+		})
+		it("finds C:\\Espressif\\frameworks\\esp-idf-v5.x (IDF Tools installer, entry IS the root)", () => {
+			const idf = "C:\\Espressif\\frameworks\\esp-idf-v5.5"
+			const exists = fakeExists([`${idf}\\export.sh`], "win32")
+			const listDir = (p: string) => (p === "C:\\Espressif\\frameworks" ? ["esp-idf-v5.5"] : [])
+			const installs = enumerateIdfInstalls("win32", {}, exists, listDir, () => undefined)
+			expect(installs.map((i) => i.path)).to.include(idf)
+		})
 		it("includes the explicit setting and IDF_PATH", () => {
 			const exists = (p: string) => p === "/opt/idf/export.sh" || p === "/env/idf/export.sh"
 			const installs = enumerateIdfInstalls(

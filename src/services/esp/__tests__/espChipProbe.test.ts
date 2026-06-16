@@ -56,12 +56,18 @@ describe("espChipProbe — idfToolsPath", () => {
 })
 
 describe("espChipProbe — resolveIdfPython", () => {
-	const make = (platform: IdfPythonDeps["platform"], present: string[], dirs: Record<string, string[]>): IdfPythonDeps => ({
+	const make = (
+		platform: IdfPythonDeps["platform"],
+		present: string[],
+		dirs: Record<string, string[]>,
+		extra?: Partial<IdfPythonDeps>,
+	): IdfPythonDeps => ({
 		platform,
 		env: {},
 		home: platform === "win32" ? "C:\\Users\\dev" : "/home/dev",
 		exists: (p) => present.includes(p),
 		listDir: (p) => dirs[p] ?? [],
+		...extra,
 	})
 
 	it("finds bin/python on Linux", () => {
@@ -71,11 +77,53 @@ describe("espChipProbe — resolveIdfPython", () => {
 		resolveIdfPython(deps)!.should.equal(py)
 	})
 
-	it("finds Scripts/python.exe on Windows", () => {
+	it("finds Scripts/python.exe on Windows via %USERPROFILE%\\.espressif", () => {
 		const root = join("C:\\Users\\dev", ".espressif", "python_env")
 		const py = join(root, "idf5.3_py3.11_env", "Scripts", "python.exe")
 		const deps = make("win32", [root, py], { [root]: ["idf5.3_py3.11_env"] })
 		resolveIdfPython(deps)!.should.equal(py)
+	})
+
+	it("finds python on Windows via C:\\Espressif when %USERPROFILE%\\.espressif is absent", () => {
+		// Simulates the Espressif GUI installer layout: tools at C:\Espressif, not ~/.espressif
+		const root = join("C:\\", "Espressif", "python_env")
+		const py = join(root, "idf5.5_py3.14_env", "Scripts", "python.exe")
+		const deps = make("win32", [root, py], { [root]: ["idf5.5_py3.14_env"] })
+		resolveIdfPython(deps)!.should.equal(py)
+	})
+
+	it("finds C:\\Espressif python even when a toolsPathHint pointing nowhere is set", () => {
+		// Espressif extension may set idf.toolsPathWin to %USERPROFILE%\.espressif by default
+		// (its own default), but the actual tools are at C:\Espressif. The hint must not block
+		// the fallback search.
+		const root = join("C:\\", "Espressif", "python_env")
+		const py = join(root, "idf5.5_py3.14_env", "Scripts", "python.exe")
+		const deps = make(
+			"win32",
+			[root, py],
+			{ [root]: ["idf5.5_py3.14_env"] },
+			{
+				toolsPathHint: "C:\\Users\\dev\\.espressif", // hint exists but dir does not
+			},
+		)
+		resolveIdfPython(deps)!.should.equal(py)
+	})
+
+	it("prefers toolsPathHint over fallback when both have python_env", () => {
+		const hintRoot = join("C:\\CustomTools", "python_env")
+		const hintPy = join(hintRoot, "idf5.5_py3.14_env", "Scripts", "python.exe")
+		const fallbackRoot = join("C:\\", "Espressif", "python_env")
+		const fallbackPy = join(fallbackRoot, "idf5.5_py3.14_env", "Scripts", "python.exe")
+		const deps = make(
+			"win32",
+			[hintRoot, hintPy, fallbackRoot, fallbackPy],
+			{
+				[hintRoot]: ["idf5.5_py3.14_env"],
+				[fallbackRoot]: ["idf5.5_py3.14_env"],
+			},
+			{ toolsPathHint: "C:\\CustomTools" },
+		)
+		resolveIdfPython(deps)!.should.equal(hintPy)
 	})
 
 	it("prefers the last (newest) env dir", () => {
@@ -85,7 +133,7 @@ describe("espChipProbe — resolveIdfPython", () => {
 		resolveIdfPython(deps)!.should.equal(newPy)
 	})
 
-	it("returns undefined when python_env is missing", () => {
+	it("returns undefined when python_env is missing everywhere", () => {
 		const deps = make("linux", [], {})
 		;(resolveIdfPython(deps) === undefined).should.be.true()
 	})
