@@ -8,7 +8,7 @@
 
 **An AI coding agent for VS Code that works your whole embedded inner loop on Espressif ESP and Nordic nRF: scaffold, build, flash, test, observe, fix. It automates the routine firmware work you would rather not do, and cracks the runtime bugs general agents cannot, because it reads your board, not just your code.**
 
-**What makes it different is real human expertise, not just a model.** Adsum is augmented with curated firmware knowledge authored by engineers who have shipped, loaded on demand and validated by an [open benchmark](#benchmark) on real hardware. Human-curated, not AI-generated. It is the direction frontier research points to: equip a general model with curated, domain expertise that loads only when needed, rather than scale the model alone ([context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents), [Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)).
+**What makes it different is real human expertise, not just a model.** Adsum is augmented with curated firmware knowledge authored by engineers who have shipped, loaded on demand and validated by an [open benchmark](#benchmark) on real hardware. Human-curated, not AI-generated. It is the direction frontier research points to: equip a general model with curated, domain expertise that loads only when needed, rather than scale the model alone. The same approach appears in academic work on expert-skill-augmented models that shaped our benchmark ([arXiv:2603.19583](https://arxiv.org/abs/2603.19583)) and in industry practice ([context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents), [Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)).
 
 **Shipping today:** Espressif ESP32 (incl. S3, C6) on ESP-IDF · Nordic nRF52 / nRF53 / nRF54 on nRF Connect SDK (Zephyr) · BLE and Wi-Fi. Open source under Apache 2.0.
 
@@ -34,13 +34,11 @@
 
 ## What's New <sup>`v0.1.6`</sup>
 
-| | |
-|:--:|:--|
-| <img src="assets/icons/whatsnew/chip.svg" width="26" alt="" /> | **One extension, now for ESP32 too.** Build, flash, monitor, and test ESP-IDF firmware with the same guided workflows you use for nRF. |
-| <img src="assets/icons/whatsnew/detect.svg" width="26" alt="" /> | **Automatic platform detection.** The home reads whether your workspace is nRF, ESP, both, or a fresh start, and routes every workflow and the agent's expertise accordingly. |
-| <img src="assets/icons/whatsnew/prototype.svg" width="26" alt="" /> | **Prototyping for both.** *Start a prototype* now scaffolds complete ESP-IDF projects too. |
-| <img src="assets/icons/whatsnew/refresh.svg" width="26" alt="" /> | **Always-current knowledge, leaner install.** Platform expertise is delivered on demand and cached locally, so guidance stays fresh. |
-| <img src="assets/icons/whatsnew/windows.svg" width="26" alt="" /> | **Stronger Windows support.** Board and toolchain detection across real install layouts, verified on real nRF and ESP hardware. |
+**One extension, now for ESP32 too.** Build, flash, monitor, and test ESP-IDF firmware with the same guided workflows you use for nRF.
+**Automatic platform detection.** The home reads whether your workspace is nRF, ESP, both, or a fresh start, and routes every workflow and the agent's expertise accordingly.
+**Prototyping for both.** *Start a prototype* now scaffolds complete ESP-IDF projects too.
+**Always-current knowledge, leaner install.** Platform expertise is delivered on demand and cached locally, so guidance stays fresh.
+**Stronger Windows support.** Board and toolchain detection across real install layouts, verified on real nRF and ESP hardware.
 
 *Full history in the [changelog](./CHANGELOG.md).*
 
