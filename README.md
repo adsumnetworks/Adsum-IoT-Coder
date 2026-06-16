@@ -8,15 +8,15 @@
 
 **An AI coding agent for VS Code that works your whole embedded inner loop on Espressif ESP and Nordic nRF: scaffold, build, flash, test, observe, fix. It automates the routine firmware work you would rather not do, and cracks the runtime bugs general agents cannot, because it reads your board, not just your code.**
 
-**What makes it different is real human expertise, not just a model.** Adsum is augmented with curated firmware knowledge authored by engineers who have shipped, loaded on demand and validated by an open benchmark on real hardware. Human-curated, not AI-generated.
+**What makes it different is real human expertise, not just a model.** Adsum is augmented with curated firmware knowledge authored by engineers who have shipped, loaded on demand and validated by an [open benchmark](#benchmark) on real hardware. Human-curated, not AI-generated. It is the direction frontier research points to: equip a general model with curated, domain expertise that loads only when needed, rather than scale the model alone ([context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents), [Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)).
 
 **Shipping today:** Espressif ESP32 (incl. S3, C6) on ESP-IDF · Nordic nRF52 / nRF53 / nRF54 on nRF Connect SDK (Zephyr) · BLE and Wi-Fi. Open source under Apache 2.0.
 
 <p>
-  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/badge/VS%20Code%20Marketplace-install-00A9CE?logo=visual-studio-code" alt="VS Marketplace"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/badge/VS%20Code%20Marketplace-install-00A9CE?logo=visualstudiocode&logoColor=white" alt="VS Marketplace"></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://badgen.net/vs-marketplace/i/AdsumNetwork.nrf-ai-debugger?color=00a9ce" alt="Installs"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
-  <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions"><img src="https://img.shields.io/badge/community-discussions-00A9CE" alt="Discussions"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-D76947" alt="License"></a>
+  <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions"><img src="https://img.shields.io/badge/community-discussions-D76947" alt="Discussions"></a>
   <a href="https://www.youtube.com/@adsumnetworks"><img src="https://img.shields.io/badge/YouTube-watch-FF0000?logo=youtube&logoColor=white" alt="YouTube"></a>
 </p>
 
@@ -34,11 +34,13 @@
 
 ## What's New <sup>`v0.1.6`</sup>
 
-**One extension, now for ESP32 too.** Build, flash, monitor, and test ESP-IDF firmware with the same guided workflows you use for nRF.
-**Automatic platform detection.** The home reads whether your workspace is nRF, ESP, both, or a fresh start, and routes every workflow and the agent's expertise accordingly.
-**Prototyping for both.** *Start a prototype* now scaffolds complete ESP-IDF projects too.
-**Always-current knowledge, leaner install.** Platform expertise is delivered on demand and cached locally, so guidance stays fresh.
-**Stronger Windows support.** Board and toolchain detection across real install layouts, verified on real nRF and ESP hardware.
+| | |
+|:--:|:--|
+| <img src="assets/icons/whatsnew/chip.svg" width="26" alt="" /> | **One extension, now for ESP32 too.** Build, flash, monitor, and test ESP-IDF firmware with the same guided workflows you use for nRF. |
+| <img src="assets/icons/whatsnew/detect.svg" width="26" alt="" /> | **Automatic platform detection.** The home reads whether your workspace is nRF, ESP, both, or a fresh start, and routes every workflow and the agent's expertise accordingly. |
+| <img src="assets/icons/whatsnew/prototype.svg" width="26" alt="" /> | **Prototyping for both.** *Start a prototype* now scaffolds complete ESP-IDF projects too. |
+| <img src="assets/icons/whatsnew/refresh.svg" width="26" alt="" /> | **Always-current knowledge, leaner install.** Platform expertise is delivered on demand and cached locally, so guidance stays fresh. |
+| <img src="assets/icons/whatsnew/windows.svg" width="26" alt="" /> | **Stronger Windows support.** Board and toolchain detection across real install layouts, verified on real nRF and ESP hardware. |
 
 *Full history in the [changelog](./CHANGELOG.md).*
 
@@ -96,27 +98,9 @@ Full methodology, per-task results, and honest limitations are in the [benchmark
 
 ## Contributing
 
-That result comes from the expertise the agent runs on, not the model: curated firmware knowledge authored by practicing engineers and validated on real hardware. The agent gets stronger as that knowledge base grows, and there are two ways to add to it, both open to you.
+That result comes from the expertise the agent runs on, not the model: curated firmware knowledge authored by practicing engineers and validated on real hardware. The agent gets stronger as that knowledge base grows, and there are two ways to get involved, both open to you.
 
-**Contribute knowledge (embedded experts and specialists).** A knowledge module is a single Markdown file: when a problem shows up, and the idiomatic fix, for a real nRF or ESP case. The agent loads it on demand and applies it the way a senior engineer would. Author one, get credited in it by name, and climb the ladder: Contributor, Verified, Maintainer, Module Owner. You keep the rights to what you write and choose how it is licensed.
-
-```markdown
----
-title: Restore BLE notifications after a reconnect
-platform: nrf
-tags: [ble, settings, gatt]
-author: your-handle
----
-
-## When to use
-Notifications stop arriving after a central disconnects and reconnects.
-
-## Fix
-Call settings_load() after bt_enable() so the stored CCC configuration is
-restored on boot. Without it, the client's subscription is silently lost.
-```
-
-[Start a discussion](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions) to become a founding contributor.
+**Contribute knowledge (embedded experts and specialists).** This is the part that makes the agent good, and it is written by engineers, not the model: the hard-won fixes and idioms you only get from shipping nRF and ESP firmware. We are building a dedicated studio for authoring this expertise and will open it to outside specialists once it has earned its keep in-house. If you have lived inside these failure modes and want to shape it as a founding contributor, get credited for your work, and keep the rights to it, [start a discussion](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions).
 
 **Contribute code (open-source developers).** The extension is open source (Apache-2.0, built on [Cline](https://github.com/cline/cline)). Improve the tool itself, or add a benchmark task in [`evals/`](./evals/). [Open an issue or PR](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues).
 
