@@ -20,7 +20,7 @@
   <a href="https://www.youtube.com/@adsumnetworks"><img src="https://img.shields.io/badge/YouTube-watch-FF0000?logo=youtube&logoColor=white" alt="YouTube"></a>
 </p>
 
-**[Watch the demo →](https://www.youtube.com/watch?v=67tUybg1phk)** · **[Install →](#getting-started)** · **[Docs →](https://adsumnetworks.com)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
+**[Watch the demo →](https://www.youtube.com/watch?v=67tUybg1phk)** · **[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
 
 <a href="https://www.youtube.com/watch?v=67tUybg1phk"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder debugging ESP32 and nRF firmware in VS Code: capture, analyze, fix" /></a>
 
@@ -110,7 +110,7 @@ That result comes from the expertise the agent runs on, not the model: curated f
 
 Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the [Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) directly. No key, no account: the free tier is on by default.
 
-**Prerequisites:** the [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) for nRF work, or an ESP-IDF installation for ESP, plus Python 3.8+. Full requirements are in the [docs](https://adsumnetworks.com).
+**Prerequisites:** the [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) for nRF work, or an ESP-IDF installation for ESP, plus Python 3.8+. Full requirements are in the [docs](https://docs.adsumnetworks.com/getting-started).
 
 1. Run the built-in **30-second demo** (no board needed) to see the capture, analyze, fix loop on a real BLE bug.
 2. Open your **nRF or ESP project**; the home reads it, detects your boards and toolchain, and offers the right one-click workflows.
@@ -131,7 +131,7 @@ When you want your own model or heavier usage, drop in any OpenAI-compatible key
 | **Model** | Managed by Adsum | Any OpenAI-compatible model |
 | **Best for** | First run, evaluation, quick fixes | Daily driver, long sessions, model choice |
 
-Recommended for bring-your-own-key: **Claude Haiku 4.5** (the benchmark model) and **DeepSeek-V4-Pro** (cost-effective long sessions). Full setup and tested models in the [docs](https://adsumnetworks.com).
+Recommended for bring-your-own-key: **Claude Haiku 4.5** (the benchmark model) and **DeepSeek-V4-Pro** (cost-effective long sessions). Full setup and tested models in the [docs](https://docs.adsumnetworks.com/models).
 
 ## Roadmap
 
