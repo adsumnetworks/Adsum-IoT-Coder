@@ -34,11 +34,15 @@
 
 ## What's New <sup>`v0.1.6`</sup>
 
-**One extension, now for ESP32 too.** Build, flash, monitor, and test ESP-IDF firmware with the same guided workflows you use for nRF.
-**Automatic platform detection.** The home reads whether your workspace is nRF, ESP, both, or a fresh start, and routes every workflow and the agent's expertise accordingly.
-**Prototyping for both.** *Start a prototype* now scaffolds complete ESP-IDF projects too.
-**Always-current knowledge, leaner install.** Platform expertise is delivered on demand and cached locally, so guidance stays fresh.
-**Stronger Windows support.** Board and toolchain detection across real install layouts, verified on real nRF and ESP hardware.
+<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**One extension, now for ESP32 too.** Build, flash, monitor, and test ESP-IDF firmware with the same guided workflows you use for nRF.
+
+<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Automatic platform detection.** The home reads whether your workspace is nRF, ESP, both, or a fresh start, and routes every workflow and the agent's expertise accordingly.
+
+<img src="assets/icons/whatsnew-prototype.png" width="18" valign="middle" alt="" /> &nbsp;**Prototyping for both.** *Start a prototype* now scaffolds complete ESP-IDF projects too.
+
+<img src="assets/icons/whatsnew-knowledge.png" width="18" valign="middle" alt="" /> &nbsp;**Always-current knowledge, leaner install.** Platform expertise is delivered on demand and cached locally, so guidance stays fresh.
+
+<img src="assets/icons/whatsnew-windows.png" width="18" valign="middle" alt="" /> &nbsp;**Stronger Windows support.** Board and toolchain detection across real install layouts, verified on real nRF and ESP hardware.
 
 *Full history in the [changelog](./CHANGELOG.md).*
 
