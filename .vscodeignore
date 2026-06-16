@@ -56,6 +56,12 @@ webview-ui/node_modules/**
 docs/**
 old_docs/**
 
+# ...but ship the single benchmark figure the README embeds, so the token-efficiency
+# chart renders in the in-editor Extensions README preview too — not only on the
+# Marketplace web page (which rewrites relative image paths to the GitHub repo). Only
+# the referenced figure3.png is re-included; the other figures stay out to stay lean.
+!docs/benchmarks/assets/figure3.png
+
 # Ignore test coverage reports (never belong in a shipped VSIX)
 coverage/**
 **/coverage/**
@@ -95,6 +101,12 @@ nrf-doc/**
 archive/**
 tests/**
 **/__pycache__/**
+
+# Stray serial-capture logs written to the repo root by the ESP/nRF monitor scripts
+# during local testing (logs/uart/*.log). At runtime the monitor writes into the
+# user's project, never the extension — so a root-level logs/ is always test pollution
+# and must never ship. (demo-scenarios/**/logs/ is shipped separately and unaffected.)
+/logs/**
 
 # Build / lint / test tooling — only useful inside the repo
 esbuild.mjs
