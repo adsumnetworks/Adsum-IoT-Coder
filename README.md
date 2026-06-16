@@ -14,7 +14,7 @@
 
 <p>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/badge/VS%20Code%20Marketplace-install-00A9CE?logo=visual-studio-code" alt="VS Marketplace"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://vsmarketplacebadges.dev/installs-short/AdsumNetwork.nrf-ai-debugger.svg?label=installs&color=00A9CE&style=flat" alt="Installs"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://badgen.net/vs-marketplace/i/AdsumNetwork.nrf-ai-debugger?color=00a9ce" alt="Installs"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
   <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions"><img src="https://img.shields.io/badge/community-discussions-00A9CE" alt="Discussions"></a>
   <a href="https://www.youtube.com/@adsumnetworks"><img src="https://img.shields.io/badge/YouTube-watch-FF0000?logo=youtube&logoColor=white" alt="YouTube"></a>
@@ -29,6 +29,8 @@
 ---
 
 > **vs Claude Code, same model (Claude Haiku 4.5): 5/6 vs 3/6 bugs closed on real nRF hardware, at 3.8× fewer tokens on average and up to 13× on individual tasks. The edge is architecture, not model scale.**
+
+<p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
 
 ## What's New <sup>`v0.1.6`</sup>
 
@@ -62,6 +64,13 @@ And the reason it is good at the hard parts is the part general agents do not ha
   <img src="assets/docs/home-project-open.png" width="340" alt="Adsum IoT Coder home: build, flash, debug, and prototype ESP-IDF and nRF Connect SDK projects" />
 </p>
 
+<!-- TODO: ESP-IDF workflow screenshot. Ask Omar for the asset, save it at assets/docs/esp-home.png, then uncomment to show it beside the home view:
+<p align="center">
+  <img src="assets/docs/esp-home.png" width="340" alt="Adsum IoT Coder building, flashing, and monitoring ESP-IDF firmware on ESP32-S3 in VS Code" />
+</p>
+-->
+
+
 ## Supported platforms: ESP32 / ESP-IDF and nRF / nRF Connect SDK
 
 | Platform | Chips (today) | SDK | Protocols (today) |
@@ -83,9 +92,33 @@ Both agents ran the same model on real nRF52 hardware, so the gap measures archi
 | Cross-device tasks (L3) | **1 / 2** | 0 / 2 |
 | Tokens per resolved task | **1.86M** | 7.15M |
 
-<p align="center"><img src="docs/benchmarks/assets/figure3.png" width="92%" alt="Token consumption per task: Adsum vs Claude Code, same model" /></p>
-
 Full methodology, per-task results, and honest limitations are in the [benchmark report](./docs/benchmarks/v0.1-report.md).
+
+## Contributing
+
+That result comes from the expertise the agent runs on, not the model: curated firmware knowledge authored by practicing engineers and validated on real hardware. The agent gets stronger as that knowledge base grows, and there are two ways to add to it, both open to you.
+
+**Contribute knowledge (embedded experts and specialists).** A knowledge module is a single Markdown file: when a problem shows up, and the idiomatic fix, for a real nRF or ESP case. The agent loads it on demand and applies it the way a senior engineer would. Author one, get credited in it by name, and climb the ladder: Contributor, Verified, Maintainer, Module Owner. You keep the rights to what you write and choose how it is licensed.
+
+```markdown
+---
+title: Restore BLE notifications after a reconnect
+platform: nrf
+tags: [ble, settings, gatt]
+author: your-handle
+---
+
+## When to use
+Notifications stop arriving after a central disconnects and reconnects.
+
+## Fix
+Call settings_load() after bt_enable() so the stored CCC configuration is
+restored on boot. Without it, the client's subscription is silently lost.
+```
+
+[Start a discussion](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions) to become a founding contributor.
+
+**Contribute code (open-source developers).** The extension is open source (Apache-2.0, built on [Cline](https://github.com/cline/cline)). Improve the tool itself, or add a benchmark task in [`evals/`](./evals/). [Open an issue or PR](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues).
 
 ## Getting Started
 
@@ -113,14 +146,6 @@ When you want your own model or heavier usage, drop in any OpenAI-compatible key
 | **Best for** | First run, evaluation, quick fixes | Daily driver, long sessions, model choice |
 
 Recommended for bring-your-own-key: **Claude Haiku 4.5** (the benchmark model) and **DeepSeek-V4-Pro** (cost-effective long sessions). Full setup and tested models in the [docs](https://adsumnetworks.com).
-
-## Contributing
-
-Adsum gets better in two ways, and both are open to you.
-
-**Contribute knowledge (embedded experts and specialists).** The curated firmware knowledge is what makes the agent good. Author a knowledge module (a Markdown workflow, board, or protocol file under `iot-knowledge/`), get credited in it, and climb a contributor ladder: Contributor, Verified, Maintainer, Module Owner. You keep the rights to what you author and choose how it is licensed. [Start a discussion](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions) to become a founding contributor.
-
-**Contribute code (open-source developers).** The extension is open source (Apache-2.0, built on [Cline](https://github.com/cline/cline)). Improve the tool itself, or add a benchmark task in [`evals/`](./evals/). [Open an issue or PR](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues).
 
 ## Roadmap
 
