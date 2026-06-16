@@ -65,14 +65,9 @@ And the reason it is good at the hard parts is the part general agents do not ha
 - **Test & validate.** Host tests and on-hardware checks.
 
 <p align="center">
-  <img src="assets/docs/home-project-open.png" width="340" alt="Adsum IoT Coder home: build, flash, debug, and prototype ESP-IDF and nRF Connect SDK projects" />
+  <img src="assets/docs/home-detect.png" width="49%" alt="Adsum IoT Coder home in VS Code: automatic detection of Nordic nRF (nRF Connect SDK) and Espressif ESP (ESP-IDF) toolchains and boards, with one-click workflow cards" />
+  <img src="assets/docs/esp-build.png" width="49%" alt="Adsum IoT Coder building ESP-IDF firmware for an ESP32-S3 in VS Code" />
 </p>
-
-<!-- TODO: ESP-IDF workflow screenshot. Ask Omar for the asset, save it at assets/docs/esp-home.png, then uncomment to show it beside the home view:
-<p align="center">
-  <img src="assets/docs/esp-home.png" width="340" alt="Adsum IoT Coder building, flashing, and monitoring ESP-IDF firmware on ESP32-S3 in VS Code" />
-</p>
--->
 
 
 ## Supported platforms: ESP32 / ESP-IDF and nRF / nRF Connect SDK
