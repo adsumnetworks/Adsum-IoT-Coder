@@ -96,7 +96,7 @@ Both agents ran the same model on real nRF52 hardware, so the gap measures archi
 | Cross-device tasks (L3) | **1 / 2** | 0 / 2 |
 | Tokens per resolved task | **1.86M** | 7.15M |
 
-Full methodology, per-task results, and honest limitations are in the [benchmark report](./docs/benchmarks/v0.1-report.md).
+Full methodology, per-task results, and honest limitations are in the [benchmark report](./docs/benchmarks/v0.1-report.md). Methodology adapted from [arXiv:2603.19583](https://arxiv.org/abs/2603.19583).
 
 ## Contributing
 
@@ -147,9 +147,7 @@ The runtime runs entirely on your machine. Only the log snippets and code contex
 
 ## About
 
-**[Adsum Networks](https://github.com/adsumnetworks)** builds connected-device firmware and the tools to ship it, with years spent inside the failure modes that cost embedded engineers their days. We built Adsum IoT Coder because general coding agents leave embedded developers without reliable help for the work that fills the day: the routine setup worth automating, and the runtime bugs that never show up in source review. Domain-specific AI has to be built by engineers who have lived inside the failure modes, and measured against open benchmarks so the value can be defended, not just claimed.
-
-Built on [Cline](https://github.com/cline/cline). Benchmark methodology inspired by [arXiv:2603.19583](https://arxiv.org/abs/2603.19583).
+**[Adsum Networks](https://github.com/adsumnetworks)** has built embedded firmware on Nordic nRF and other SoC platforms for 8 years, living inside the failure modes that cost embedded engineers their days. We built Adsum IoT Coder because general coding agents leave embedded developers without reliable help for the work that fills the day: the routine setup worth automating, and the runtime bugs that never show up in source review. The difference is real human expertise, not just a model: curated firmware knowledge authored by engineers who have shipped, loaded on demand and measured against an open benchmark on real hardware, so the value can be defended, not just claimed.
 
 ---
 
