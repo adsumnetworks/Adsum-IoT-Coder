@@ -94,33 +94,69 @@ export function findNordicTerminal(): vscode.Terminal | undefined {
 	return undefined
 }
 
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Create the nRF Connect shell terminal and return it by REFERENCE — identified by
+ * diffing `vscode.window.terminals` (plus `onDidOpenTerminal`) rather than by name.
+ *
+ * Why not match by name: the nRF Connect terminal's name is built dynamically and
+ * has changed across extension releases (e.g. 2026.6.x no longer matches our
+ * historical "nrf/zephyr/ncs" patterns), so name-matching a *freshly created*
+ * terminal is unreliable and was the cause of "Failed to activate nRF Connect
+ * Terminal" even though the terminal had clearly opened. The new terminal is simply
+ * the one that wasn't there before the create command — whatever it is called.
+ *
+ * Returns undefined if the extension is absent or no new terminal appears in time.
+ */
+async function createNordicTerminalByDiff(): Promise<vscode.Terminal | undefined> {
+	const extension = vscode.extensions.getExtension("nordic-semiconductor.nrf-connect")
+	if (!extension) {
+		return undefined
+	}
+
+	const before = new Set(vscode.window.terminals)
+	let opened: vscode.Terminal | undefined
+	const disposable = vscode.window.onDidOpenTerminal((t) => {
+		if (!before.has(t)) {
+			opened = opened ?? t
+		}
+	})
+
+	try {
+		// "Create Shell Terminal" — the NCS shell with the SDK environment active.
+		await vscode.commands.executeCommand("nrf-connect.createNcsTerminal")
+
+		// POLL up to 15s. Prefer the event-captured terminal; otherwise diff the list.
+		for (let i = 0; i < 30; i++) {
+			await delay(500)
+			const appeared = opened ?? vscode.window.terminals.find((t) => !before.has(t))
+			if (appeared) {
+				return appeared
+			}
+		}
+	} finally {
+		disposable.dispose()
+	}
+
+	return undefined
+}
+
 /**
  * Execute a command in the nRF Connect terminal.
  * If no nRF terminal exists, creates one first.
  */
 export async function executeInNordicTerminal(request: ExecuteInNordicTerminalRequest): Promise<ExecuteInNordicTerminalResponse> {
 	try {
+		// Fast path: reuse an existing nRF terminal we can recognize by name.
 		let terminal = findNordicTerminal()
 		let terminalCreated = false
 
-		// If no nRF terminal found, try to create one
+		// Otherwise create one and capture it by reference (name-agnostic).
 		if (!terminal) {
-			// Check if nRF Connect extension is available
-			const extension = vscode.extensions.getExtension("nordic-semiconductor.nrf-connect")
+			terminal = await createNordicTerminalByDiff()
+			terminalCreated = !!terminal
 
-			if (extension) {
-				// Create nRF Connect terminal via extension command
-				await vscode.commands.executeCommand("nrf-connect.createNcsTerminal")
-
-				// Wait a bit for terminal to be created
-				await new Promise((resolve) => setTimeout(resolve, 1500))
-
-				// Try to find the newly created terminal
-				terminal = findNordicTerminal()
-				terminalCreated = true
-			}
-
-			// If still no terminal, fallback to finding any terminal or inform user
 			if (!terminal) {
 				return {
 					success: false,
@@ -155,35 +191,24 @@ export async function executeInNordicTerminal(request: ExecuteInNordicTerminalRe
  * This ensures the SDK environment is active for subsequent commands.
  */
 export async function activateNordicTerminal(): Promise<string | undefined> {
+	// Priority 1: reuse an existing nRF terminal we can recognize by name.
 	let terminal = findNordicTerminal()
-
-	// Priority 2: If we already have an nRF terminal, just use it (no need to create new)
 	if (terminal) {
 		terminal.show()
 		return terminal.name
 	}
 
-	// No nRF terminal found, try to create one
-	const extension = vscode.extensions.getExtension("nordic-semiconductor.nrf-connect")
-	if (extension) {
-		await vscode.commands.executeCommand("nrf-connect.createNcsTerminal")
-
-		// POLL: Wait for terminal to be created and registered
-		// Try 30 times with 500ms delay (total 15s)
-		for (let i = 0; i < 30; i++) {
-			await new Promise((resolve) => setTimeout(resolve, 500))
-			terminal = findNordicTerminal()
-			if (terminal) break
-		}
-	}
-
-	// Show/focus the terminal
+	// Priority 2: create one and capture it by REFERENCE (diff + onDidOpenTerminal),
+	// not by name — the new nRF Connect extension names its terminal in a way our
+	// historical name patterns miss, which is exactly what made activation "fail"
+	// even though the terminal opened.
+	terminal = await createNordicTerminalByDiff()
 	if (terminal) {
 		terminal.show()
 		return terminal.name
 	}
 
-	// If we still can't find it, log the running terminals to help debugging
+	// If we still can't find it, log the running terminals to help debugging.
 	const visibleTerminals = vscode.window.terminals.map((t) => t.name).join(", ")
 	console.warn(`[Nordic] Failed to find nRF terminal after creation attempts. Visible terminals: ${visibleTerminals}`)
 
