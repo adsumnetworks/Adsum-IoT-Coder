@@ -150,13 +150,30 @@ export function parseIdfVersionTxt(content: string): string | undefined {
 	return normalizeIdfVersion(content)
 }
 
-/** The `~/esp` parent dir(s) whose versioned `esp-idf` subfolders are scanned for installs. */
-function idfParentDirs(platform: SupportedPlatform, env: NodeJS.ProcessEnv): string[] {
+/**
+ * Container directories whose children are scanned for IDF installs. The IDF
+ * root can sit in two shapes under a container, and we don't assume which:
+ *   - `<container>/<ver>/esp-idf`  — the Espressif VS Code extension's Express
+ *     layout (e.g. `C:\esp\v5.5.4\esp-idf`, `~/esp/v5.5.2/esp-idf`).
+ *   - `<container>/esp-idf-v5.x.x` — the standalone IDF Tools installer, which
+ *     drops the checkout directly under `C:\Espressif\frameworks\`.
+ * `enumerateIdfInstalls` probes both the entry itself and `<entry>/esp-idf` for
+ * every container, so a new container only needs listing here once.
+ */
+function idfContainerDirs(platform: SupportedPlatform, env: NodeJS.ProcessEnv): string[] {
 	const home = os.homedir()
 	if (platform === "win32") {
-		return [joinFor("win32", env["USERPROFILE"] || home, "esp")]
+		const userProfile = env["USERPROFILE"] || home
+		return [
+			joinFor("win32", userProfile, "esp"), // extension Express default: %USERPROFILE%\esp\<ver>\esp-idf
+			joinFor("win32", "C:\\", "esp"), // extension with container on C:\ : C:\esp\<ver>\esp-idf
+			joinFor("win32", "C:\\", "Espressif", "frameworks"), // IDF Tools installer: C:\Espressif\frameworks\esp-idf-v5.x
+		]
 	}
-	return [joinFor(platform, home, "esp")]
+	return [
+		joinFor(platform, home, "esp"), // ~/esp/<ver>/esp-idf
+		joinFor(platform, "/opt", "esp"), // /opt/esp/<ver>/esp-idf (shared/system installs)
+	]
 }
 
 /**
@@ -181,10 +198,14 @@ export function enumerateIdfInstalls(
 	}
 	add(explicitPath)
 	add(env["IDF_PATH"])
-	// Glob ~/esp/* /esp-idf — the reliable way to see every versioned install.
-	for (const parent of idfParentDirs(platform, env)) {
-		for (const entry of listDir(parent)) {
-			add(joinFor(platform, parent, entry, "esp-idf"))
+	// Scan each container's children for versioned installs, probing BOTH shapes:
+	//   <container>/<entry>            — IDF Tools installer (entry IS the root, e.g. esp-idf-v5.x)
+	//   <container>/<entry>/esp-idf    — extension Express layout (e.g. v5.5.4/esp-idf)
+	// `add` validates with export.sh, so the wrong shape is simply ignored.
+	for (const dir of idfContainerDirs(platform, env)) {
+		for (const entry of listDir(dir)) {
+			add(joinFor(platform, dir, entry))
+			add(joinFor(platform, dir, entry, "esp-idf"))
 		}
 	}
 	for (const candidate of getIdfPathCandidates(platform, env)) {
