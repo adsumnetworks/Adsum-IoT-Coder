@@ -21,7 +21,7 @@ import { exec } from "child_process"
 import { existsSync, readdirSync, readFileSync } from "fs"
 import { join } from "path"
 import { promisify } from "util"
-import { resolveIdfPath } from "../../hosts/vscode/hostbridge/workspace/idfEnvResolver"
+import { enumerateIdfInstalls, resolveIdfPath } from "../../hosts/vscode/hostbridge/workspace/idfEnvResolver"
 import { classifyWorkspace } from "../platform/WorkspaceClassifier"
 import { type ChipResult, getIdfPython, probeChip } from "./espChipProbe"
 
@@ -355,7 +355,19 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 		| "linux"
 
 	// Resolve IDF path: extension setting hint (Tier 1) → IDF_PATH env → well-known dirs.
-	const idfPath = resolveIdfPath(platform, process.env, existsSync, _idfPathHint)
+	// Use the same multi-install enumeration the terminal launcher uses (globs the
+	// versioned container dirs like C:\esp\<ver>\esp-idf), then fall back to the
+	// first-match resolver for odd layouts the globber misses — so the strip and the
+	// terminal never disagree about whether ESP-IDF is installed.
+	const listDir = (p: string): string[] => {
+		try {
+			return readdirSync(p)
+		} catch {
+			return []
+		}
+	}
+	const installs = enumerateIdfInstalls(platform, process.env, existsSync, listDir, readIdfVersion, _idfPathHint)
+	const idfPath = installs[0]?.path ?? resolveIdfPath(platform, process.env, existsSync, _idfPathHint)
 
 	const idfPresent = !!idfPath
 	const idfVersion = idfPath ? readIdfVersion(idfPath) : undefined

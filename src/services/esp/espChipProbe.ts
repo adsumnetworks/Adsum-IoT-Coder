@@ -90,19 +90,47 @@ export function idfToolsPath(deps: Pick<IdfPythonDeps, "platform" | "env" | "hom
  * Resolve the IDF python executable, or undefined if not found. Looks under
  * <IDF_TOOLS_PATH>/python_env/<env>/{bin/python | Scripts/python.exe}, picking
  * the last (usually newest) matching env. Pure under injected deps.
+ *
+ * On Windows we build a layered search list so every common install layout is
+ * covered without requiring the user to configure anything:
+ *   1. toolsPathHint — the Espressif extension's idf.toolsPathWin (e.g. C:\Espressif
+ *      or %USERPROFILE%\.espressif depending on extension version / install method)
+ *   2. IDF_TOOLS_PATH env — set by the IDF installer or the user
+ *   3. %USERPROFILE%\.espressif — the classic/manual install default
+ *   4. C:\Espressif — the standalone IDF Tools GUI installer default
+ * De-duplication avoids checking the same directory twice when two sources agree.
  */
 export function resolveIdfPython(deps: IdfPythonDeps): string | undefined {
-	const pythonEnvRoot = join(idfToolsPath(deps), "python_env")
-	if (!deps.exists(pythonEnvRoot)) {
-		return undefined
+	const seen = new Set<string>()
+	const bases: string[] = []
+	const add = (p: string | undefined) => {
+		if (p && !seen.has(p)) {
+			seen.add(p)
+			bases.push(p)
+		}
 	}
-	const envDirs = deps.listDir(pythonEnvRoot).sort()
+	// Tier 1: extension hint (idf.toolsPathWin / idf.toolsPath)
+	if (deps.toolsPathHint) add(deps.toolsPathHint)
+	// Tier 2: IDF_TOOLS_PATH env var
+	if (deps.env.IDF_TOOLS_PATH) add(deps.env.IDF_TOOLS_PATH)
+	// Tier 3 (Windows): the two default install roots — always probe both so that
+	// the user never has to configure anything regardless of how IDF was installed.
+	if (deps.platform === "win32") {
+		const userProfile = deps.env.USERPROFILE || deps.home
+		add(join(userProfile, ".espressif")) // classic manual / extension default
+		add(join("C:\\", "Espressif")) // standalone IDF Tools GUI installer
+	} else {
+		add(join(deps.home, ".espressif")) // macOS / Linux manual install
+	}
 	const rel = deps.platform === "win32" ? join("Scripts", "python.exe") : join("bin", "python")
-	// Prefer the last (highest version when names sort lexically, e.g. idf5.3_…).
-	for (let i = envDirs.length - 1; i >= 0; i--) {
-		const candidate = join(pythonEnvRoot, envDirs[i], rel)
-		if (deps.exists(candidate)) {
-			return candidate
+	for (const base of bases) {
+		const pythonEnvRoot = join(base, "python_env")
+		if (!deps.exists(pythonEnvRoot)) continue
+		const envDirs = deps.listDir(pythonEnvRoot).sort()
+		// Prefer the last (highest version when names sort lexically, e.g. idf5.3_…).
+		for (let i = envDirs.length - 1; i >= 0; i--) {
+			const candidate = join(pythonEnvRoot, envDirs[i], rel)
+			if (deps.exists(candidate)) return candidate
 		}
 	}
 	return undefined
