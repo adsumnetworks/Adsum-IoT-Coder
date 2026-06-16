@@ -65,8 +65,10 @@ And the reason it is good at the hard parts is the part general agents do not ha
 - **Test & validate.** Host tests and on-hardware checks.
 
 <p align="center">
-  <img src="assets/docs/home-detect.png" width="49%" alt="Adsum IoT Coder home in VS Code: automatic detection of Nordic nRF (nRF Connect SDK) and Espressif ESP (ESP-IDF) toolchains and boards, with one-click workflow cards" />
-  <img src="assets/docs/esp-build.png" width="49%" alt="Adsum IoT Coder building ESP-IDF firmware for an ESP32-S3 in VS Code" />
+  <img src="assets/docs/home-detect.png" width="260" alt="Adsum IoT Coder panel in VS Code: automatic detection of Nordic nRF (nRF Connect SDK) and Espressif ESP (ESP-IDF) toolchains and boards, with one-click workflow cards" />
+</p>
+<p align="center">
+  <img src="assets/docs/esp-build.png" width="90%" alt="Adsum IoT Coder building ESP-IDF firmware for an ESP32-S3 in VS Code" />
 </p>
 
 
