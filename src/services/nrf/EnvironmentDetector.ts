@@ -104,7 +104,7 @@ export function resolveNrfutilCommands(
 	}
 	for (const launcher of launcherCandidates) {
 		if (existsSyncFn(launcher)) {
-			console.log(`[adsum][nrf] nrfutil launcher resolved to: ${launcher}`)
+			console.info(`[adsum][nrf] nrfutil launcher resolved to: ${launcher}`)
 			return {
 				devicePrefix: `${quote(launcher)} device`,
 				sdkManagerPrefix: `${quote(launcher)} sdk-manager`,
@@ -122,7 +122,7 @@ export function resolveNrfutilCommands(
 		const deviceBin = join(binDir, exe("nrfutil-device"))
 		const sdkBin = join(binDir, exe("nrfutil-sdk-manager"))
 		if (existsSyncFn(deviceBin)) {
-			console.log(`[adsum][nrf] nrfutil (nRF Connect extension bundle) resolved at: ${binDir}`)
+			console.info(`[adsum][nrf] nrfutil (nRF Connect extension bundle) resolved at: ${binDir}`)
 			return {
 				devicePrefix: quote(deviceBin),
 				// sdk-manager isn't guaranteed in every extension build; only use the split binary if
@@ -135,7 +135,7 @@ export function resolveNrfutilCommands(
 
 	// 3. Last resort — bare command on PATH (launcher form). Works only if nrfutil is on VS Code's
 	//    PATH, which on Windows it usually is not — hence the diagnostics above.
-	console.log(
+	console.info(
 		`[adsum][nrf] nrfutil not found at known locations; falling back to PATH. Checked launchers: ${launcherCandidates.join(" | ")}`,
 	)
 	return {
@@ -314,12 +314,12 @@ async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: bool
 		const listResult = await execAsync(`${devicePrefix} list --json`, { timeout: 8000 })
 		// `list --json` exposes devkit.deviceFamily and devkit.boardVersion directly — no device-info call needed.
 		const entries = parseDeviceListFull(listResult.stdout)
-		console.log(
+		console.info(
 			`[adsum][nrf] device list → ${entries.length} device(s): ${entries.map((e) => e.serialNumber).join(", ") || "(none)"}`,
 		)
 
 		if (entries.length === 0) {
-			console.log(`[adsum][nrf] device list returned no devices; raw head: ${listResult.stdout.slice(0, 300)}`)
+			console.info(`[adsum][nrf] device list returned no devices; raw head: ${listResult.stdout.slice(0, 300)}`)
 			return { nrfutilPresent: true, boards: [] }
 		}
 
@@ -331,7 +331,7 @@ async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: bool
 				boardVersion: entry.boardVersion,
 			}
 			const kept = isNordicBoard(board)
-			console.log(
+			console.info(
 				`[adsum][nrf] list entry ${entry.serialNumber} → family=${entry.deviceFamily ?? "?"} board=${entry.boardVersion ?? "?"} traits.jlink=${entry.traits?.jlink ?? "?"} ${kept ? "(kept)" : "(DROPPED: no Nordic identity)"}`,
 			)
 			if (kept) {
@@ -339,7 +339,7 @@ async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: bool
 			}
 		}
 
-		console.log(`[adsum][nrf] boards after Nordic filter: ${boards.length}`)
+		console.info(`[adsum][nrf] boards after Nordic filter: ${boards.length}`)
 		return { nrfutilPresent: true, boards }
 	} catch (err) {
 		// Surface WHY detection failed so Windows "nrfutil not found" can be diagnosed:
