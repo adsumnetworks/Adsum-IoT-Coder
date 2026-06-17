@@ -58,7 +58,7 @@ const Badge: React.FC<{ text: string }> = ({ text }) => (
 			fontWeight: 700,
 			letterSpacing: "0.04em",
 			color: "var(--vscode-editor-background)",
-			background: "var(--vscode-foreground)",
+			background: "color-mix(in srgb, var(--vscode-foreground) 80%, transparent)",
 			borderRadius: "4px",
 			padding: "2px 6px",
 			flexShrink: 0,
@@ -83,7 +83,8 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 	devicesMuted,
 }) => (
 	<div style={{ display: "flex", flexDirection: "column", gap: "3px", width: "100%", minWidth: 0 }}>
-		{/* Line 1: badge + extension · SDK (these wrap together only if the panel is narrow) */}
+		{/* Line 1: badge + extension · SDK. Flows naturally — one line when there's room, SDK wraps below
+		    on its own only when the panel is too narrow. No truncation; same whether a project is open or closed. */}
 		<div
 			style={{
 				display: "flex",
