@@ -35,6 +35,7 @@ CRITICAL OPERATIONAL RULES:
 3. TARGET: A project builds for one chip (esp32, esp32s3, esp32c3, esp32c6...). Set it with action="execute" command="idf.py set-target esp32s3" before the first build if it differs from sdkconfig's CONFIG_IDF_TARGET.
 4. PORTS: discover the port ONCE (command="python -m serial.tools.list_ports"), then ALWAYS pass "port" to flash and monitor. A portless flash/monitor makes esptool open every serial device (/dev/ttyS0..S31 on Linux) one by one before finding the board, and picks the wrong one when two boards are attached. Linux: /dev/ttyUSB* or /dev/ttyACM*; macOS: /dev/cu.usbserial-* or /dev/cu.usbmodem*; Windows: COMx.
 5. MONITOR = log capture: action="monitor" runs idf.py monitor for "duration" seconds and SAVES the serial output (panic backtraces already decoded to file:line) to logs/uart/<name>_<chip>_<port>_<ts>.log. It resets the board first by default (set reset="false" for mid-runtime capture). This is how you capture crashes/coredumps — do NOT run "idf.py monitor" via execute (it would hang).
+   MULTI-BOARD: pass "devices" instead of "port" to capture two or more boards CONCURRENTLY in one call (e.g. a BLE central + peripheral pair). Format: "name1:port1:/abs/path/project1,name2:port2:/abs/path/project2". Each board runs idf.py monitor inside its own project directory, in parallel, for the same "duration".
 6. CLEAN/RECONFIG: use action="execute" with command="idf.py fullclean" or "idf.py reconfigure" when the build is in a bad state.
 `
 
@@ -66,11 +67,22 @@ Examples:
 	{
 		name: "port",
 		required: false,
-		instruction: `For "flash" and "monitor": the serial port of the target board. Discover it once via command="python -m serial.tools.list_ports", then pass it on EVERY flash/monitor (don't rely on auto-detect — it scans all ports and can pick the wrong board).
+		instruction: `For "flash" and single-board "monitor": the serial port of the target board. Discover it once via command="python -m serial.tools.list_ports", then pass it on EVERY flash/monitor (don't rely on auto-detect — it scans all ports and can pick the wrong board).
 - Linux:   /dev/ttyUSB0 or /dev/ttyACM0
 - macOS:   /dev/cu.usbserial-1410 or /dev/cu.usbmodem*
-- Windows: COM5`,
+- Windows: COM5
+For two or more boards at once, use "devices" instead.`,
 		usage: "/dev/ttyACM0",
+	},
+	{
+		name: "devices",
+		required: false,
+		instruction: `For "monitor" with multiple boards: comma-separated list of name:port:project entries (one per board). Captures all boards concurrently in a single call.
+Format: "name:port:/abs/path/to/project" — the project path is the ESP-IDF project for that specific board.
+Example (Windows): "central:COM8:C:\\Users\\Omar\\esp\\ble_central,peripheral:COM10:C:\\Users\\Omar\\esp\\ble_peripheral"
+Example (Linux):   "central:/dev/ttyUSB0:/home/user/esp/ble_central,peripheral:/dev/ttyUSB1:/home/user/esp/ble_peripheral"
+When "devices" is set, "port" and "name" parameters are ignored (name is embedded per-device in the tuple).`,
+		usage: "central:COM8:C:\\projects\\ble_central,peripheral:COM10:C:\\projects\\ble_peripheral",
 	},
 	{
 		name: "duration",
