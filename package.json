@@ -52,7 +52,8 @@
 		"ai-agent",
 		"coding-agent",
 		"cra",
-		"cyber-resilience-act"
+		"cyber-resilience-act",
+		"sbom"
 	],
 	"activationEvents": [
 		"onLanguage",
