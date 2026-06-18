@@ -6,15 +6,13 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient } from "@/services/grpc-client"
 
 // ---------------------------------------------------------------------------
-// One detected platform = a 2-line status row: line 1 = badge + extension · SDK,
-// line 2 = detected boards. Rendered as a flat status strip (no card), nRF and
-// ESP identical so they read the same way.
+// Each platform = a 2-line status row: line 1 = badge + extension · SDK, line 2 =
+// detected boards. Rendered as a flat status strip (no card), nRF and ESP identical.
 //
-// Show/hide (per Omar, 2026-06-12):
-//   no project open  → show both (only the platforms that have something)
-//   nRF project      → nRF only
-//   ESP project      → ESP only
-//   mixed workspace  → both
+// Display (v2): ALWAYS show both platforms. Detection (nrfHasAnything/espHasAnything,
+// Omar's classification — unchanged) drives full-vs-dimmed, not hide: an absent platform
+// renders as one dimmed "not detected — install …" line (awareness + consistency). The
+// badge stays neutral; detected-vs-not is opacity, never colour.
 //
 // Version line:
 //   project + built     → "vX.Y.Z · this build"
