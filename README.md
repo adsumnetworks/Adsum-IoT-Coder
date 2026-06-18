@@ -72,6 +72,17 @@ And the reason it is good at the hard parts is the part general agents do not ha
 </p>
 
 
+## CRA Readiness Check: get CRA-ready as you build
+
+One click runs a build-time readiness check for the **EU Cyber Resilience Act**, on both nRF and ESP. It's a readiness snapshot to help you prepare — **not a conformity assessment, and not legal advice.**
+
+- **SBOM** from your real build (SPDX, machine-readable — the CRA's named artifact).
+- **Secure-by-design posture** against your build's actual configuration: secure boot, signed updates, debug-port lock, secure pairing, secure storage, and more — each ✅/⚠️/❌ with the plain-English requirement and what to do, in dependency order.
+- **Advisories** for your detected SDK version (links to review — never an automatic verdict).
+- **Help you start** closing the top gap (e.g. add a secure bootloader).
+
+It tells you which CRA date applies to you, and writes a `compliance/` folder (report + machine-readable JSON + SBOM). Run it on your firmware, or try it on a bundled sample with nothing open.
+
 ## Supported platforms: ESP32 / ESP-IDF and nRF / nRF Connect SDK
 
 | Platform | Chips (today) | SDK | Protocols (today) |
