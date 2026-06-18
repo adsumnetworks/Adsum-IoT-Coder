@@ -3,7 +3,7 @@ import { describe, it } from "mocha"
 import { tmpdir } from "os"
 import { join } from "path"
 import "should"
-import { findActiveNcsVersionHeader, isNordicBoard, resolveNrfutilCommands } from "../EnvironmentDetector"
+import { collectBuildNcsVersions, isNordicBoard, resolveNrfutilCommands, summarizeProjectBuilds } from "../EnvironmentDetector"
 
 /**
  * resolveNrfutilCommands picks how to invoke nrfutil across the two layouts it ships in:
@@ -136,11 +136,46 @@ describe("isNordicBoard — filter out non-Nordic enumerated serial ports (e.g. 
 })
 
 /**
- * The project SDK must follow the SELECTED build (`build/`, the nRF Connect default active dir), not
- * whichever build dir was compiled most recently. Regression for: build/ (NCS 3.2.1, selected) +
- * build_1/ (NCS 3.3.1, built later) was showing 3.3.1.
+ * The project SDK must follow the SELECTED build, not whichever was compiled most recently. The
+ * selection isn't in any file, so: prefer the default `build/`, and when build configs DISAGREE on
+ * NCS, surface ALL versions rather than guess. Regression for: build/ (3.2.1 selected) + build_1/
+ * (3.3.1 built later) was showing 3.3.1.
  */
-describe("findActiveNcsVersionHeader — prefer the selected `build/` over a newer build_N/", () => {
+describe("summarizeProjectBuilds — primary + honest multi-build", () => {
+	it("prefers `build/` as primary and surfaces all when builds disagree", () => {
+		const s = summarizeProjectBuilds([
+			{ dir: "build", version: "3.2.1", mtimeMs: 1 },
+			{ dir: "build_1", version: "3.3.1", mtimeMs: 9 }, // newer, but NOT build/
+		])!
+		s.version.should.equal("3.2.1")
+		s.allVersions!.should.deepEqual(["3.2.1", "3.3.1"])
+		s.builds!.should.have.length(2)
+	})
+
+	it("with no `build/`, primary = newest by mtime; still surfaces all", () => {
+		const s = summarizeProjectBuilds([
+			{ dir: "build_1", version: "3.2.1", mtimeMs: 1 },
+			{ dir: "build_2", version: "3.3.1", mtimeMs: 9 },
+		])!
+		s.version.should.equal("3.3.1")
+		s.allVersions!.should.deepEqual(["3.2.1", "3.3.1"])
+	})
+
+	it("builds that AGREE → single version, no multi-build fields", () => {
+		const s = summarizeProjectBuilds([
+			{ dir: "build", version: "3.2.1", mtimeMs: 1 },
+			{ dir: "build_1", version: "3.2.1", mtimeMs: 9 },
+		])!
+		s.version.should.equal("3.2.1")
+		;(s.allVersions === undefined).should.be.true()
+	})
+
+	it("empty → undefined", () => {
+		;(summarizeProjectBuilds([]) === undefined).should.be.true()
+	})
+})
+
+describe("collectBuildNcsVersions — read each build dir's NCS (real temp dirs)", () => {
 	const headerText = (v: string) => `#define NCS_VERSION_STRING           "${v}"\n`
 	const writeBuild = (root: string, buildDir: string, version: string, mtime: Date) => {
 		const dir = join(root, buildDir, "central_uart", "zephyr", "include", "generated")
@@ -149,37 +184,24 @@ describe("findActiveNcsVersionHeader — prefer the selected `build/` over a new
 		writeFileSync(file, headerText(version))
 		utimesSync(file, mtime, mtime)
 	}
-	const mkRoot = () => mkdtempSync(join(tmpdir(), "nrf-build-test-"))
 	const OLD = new Date(Date.now() - 3_600_000)
 	const NEW = new Date()
 
-	it("prefers `build/` (3.2.1) even though build_1/ (3.3.1) is newer", () => {
-		const root = mkRoot()
+	it("returns each build dir's version, and summarize prefers build/ (3.2.1)", () => {
+		const root = mkdtempSync(join(tmpdir(), "nrf-build-test-"))
 		try {
 			writeBuild(root, "build", "3.2.1", OLD)
 			writeBuild(root, "build_1", "3.3.1", NEW)
-			findActiveNcsVersionHeader(root)!.content.should.match(/"3\.2\.1"/)
-		} finally {
-			rmSync(root, { recursive: true, force: true })
-		}
-	})
-
-	it("falls back to newest-by-mtime when there is no `build/` dir", () => {
-		const root = mkRoot()
-		try {
-			writeBuild(root, "build_1", "3.2.1", OLD)
-			writeBuild(root, "build_2", "3.3.1", NEW)
-			findActiveNcsVersionHeader(root)!.content.should.match(/"3\.3\.1"/)
-		} finally {
-			rmSync(root, { recursive: true, force: true })
-		}
-	})
-
-	it("returns undefined when no build dir has a header", () => {
-		const root = mkRoot()
-		try {
-			mkdirSync(join(root, "src"), { recursive: true })
-			;(findActiveNcsVersionHeader(root) === undefined).should.be.true()
+			const found = collectBuildNcsVersions(root)
+			found
+				.map((b) => b.dir)
+				.sort()
+				.should.deepEqual(["build", "build_1"])
+			found
+				.map((b) => b.version)
+				.sort()
+				.should.deepEqual(["3.2.1", "3.3.1"])
+			summarizeProjectBuilds(found)!.version.should.equal("3.2.1")
 		} finally {
 			rmSync(root, { recursive: true, force: true })
 		}

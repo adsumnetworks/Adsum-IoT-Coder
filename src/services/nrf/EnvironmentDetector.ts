@@ -440,23 +440,15 @@ function newestNcsHeaderInDir(start: string): { content: string; mtimeMs: number
 	return best
 }
 
-/**
- * Resolve the project's NCS version header from its build dirs. **Prefers the dir named exactly
- * `build`** — the nRF Connect extension's DEFAULT active build; extra configurations become
- * `build_1/`, `build_2/`, and the active one stays `build/` unless the user explicitly switches. Falls
- * back to the newest-by-mtime across the other build dirs. (Newest-mtime alone was wrong: a more
- * recently-built *non-selected* config — e.g. `build_1` on a different board — would shadow the
- * selected `build/`. Reading the extension's explicitly-selected non-default build needs its API; see
- * roadmap Inc-3. This fixes the default/common case correctly and cross-platform.) Exported for tests.
- */
-export function findActiveNcsVersionHeader(root: string): { content: string; mtimeMs: number } | undefined {
+/** Per build dir, the newest ncs_version.h's version + mtime (skips dirs with no/unparseable header). Exported for tests. */
+export function collectBuildNcsVersions(root: string): { dir: string; version: string; mtimeMs: number }[] {
 	let topEntries: string[]
 	try {
 		topEntries = readdirSync(root)
 	} catch {
-		return undefined
+		return []
 	}
-	const perDir: { name: string; content: string; mtimeMs: number }[] = []
+	const out: { dir: string; version: string; mtimeMs: number }[] = []
 	for (const entry of topEntries) {
 		if (!entry.startsWith("build")) {
 			continue
@@ -470,16 +462,40 @@ export function findActiveNcsVersionHeader(root: string): { content: string; mti
 			continue
 		}
 		const found = newestNcsHeaderInDir(full)
-		if (found) {
-			perDir.push({ name: entry, ...found })
+		if (!found) {
+			continue
+		}
+		const version = parseNcsVersionHeader(found.content)
+		if (version) {
+			out.push({ dir: entry, version, mtimeMs: found.mtimeMs })
 		}
 	}
-	if (perDir.length === 0) {
+	return out
+}
+
+/**
+ * Reduce per-build-dir versions to a project-SDK summary. **Primary** = the dir named exactly `build`
+ * (the nRF Connect default active build; extra configs become `build_1/`, `build_2/`), else the newest
+ * by mtime. When the builds **DISAGREE** (>1 distinct version) we can't tell which is *selected* from
+ * files (the selection lives in the extension's memento), so we surface ALL of them (`allVersions` +
+ * `builds`) instead of asserting one. Pure; exported for tests.
+ */
+export function summarizeProjectBuilds(
+	builds: { dir: string; version: string; mtimeMs: number }[],
+): { version: string; allVersions?: string[]; builds?: { dir: string; version: string }[] } | undefined {
+	if (builds.length === 0) {
 		return undefined
 	}
-	// Prefer the default active build dir (`build`); else the newest by mtime.
-	const chosen = perDir.find((d) => d.name === "build") ?? perDir.reduce((a, b) => (b.mtimeMs > a.mtimeMs ? b : a))
-	return { content: chosen.content, mtimeMs: chosen.mtimeMs }
+	const primary = builds.find((b) => b.dir === "build") ?? builds.reduce((a, b) => (b.mtimeMs > a.mtimeMs ? b : a))
+	const distinct = [...new Set(builds.map((b) => b.version))].sort()
+	if (distinct.length > 1) {
+		return {
+			version: primary.version,
+			allVersions: distinct,
+			builds: builds.map((b) => ({ dir: b.dir, version: b.version })),
+		}
+	}
+	return { version: primary.version }
 }
 
 /**
@@ -508,14 +524,12 @@ export function detectProjectSdk(roots: string[]): ProjectSdk | undefined {
 			}
 		}
 
-		// Tier 1 — build artifact (freestanding or workspace without a readable pin). Prefers the
-		// selected/default `build/` dir over a more-recently-built non-selected config (e.g. build_1/).
-		const header = findActiveNcsVersionHeader(root)
-		if (header) {
-			const version = parseNcsVersionHeader(header.content)
-			if (version) {
-				return { version, source: "build", topology: topdir ? "workspace" : "freestanding" }
-			}
+		// Tier 1 — build artifact (freestanding or workspace without a readable pin). Prefer the
+		// selected/default `build/`; if multiple build configs DISAGREE on NCS, surface all of them
+		// (we can't read which the extension has selected).
+		const summary = summarizeProjectBuilds(collectBuildNcsVersions(root))
+		if (summary) {
+			return { ...summary, source: "build", topology: topdir ? "workspace" : "freestanding" }
 		}
 	}
 	return undefined

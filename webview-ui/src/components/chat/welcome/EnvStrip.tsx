@@ -175,8 +175,17 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 	let sdkTitle: string | undefined
 	let sdkMuted = false
 	if (env.projectSdk?.source === "build") {
-		sdk = `NCS ${withV(env.projectSdk.version)} · this build`
-		sdkTitle = `Resolved from the build artifact (${env.projectSdk.topology})`
+		const ps = env.projectSdk
+		if (ps.allVersions && ps.allVersions.length > 1) {
+			// Multiple build configs disagree on NCS; we can't read which is selected → show all (honest).
+			sdk = `NCS ${ps.allVersions.map(withV).join(", ")} · multiple builds`
+			sdkTitle =
+				ps.builds?.map((b) => `${b.dir}: ${withV(b.version)}`).join(" · ") ??
+				"Multiple build configs with different NCS versions — see the nRF Connect panel for the selected one"
+		} else {
+			sdk = `NCS ${withV(ps.version)} · this build`
+			sdkTitle = `Resolved from the build artifact (${ps.topology})`
+		}
 	} else if (env.projectSdk?.source === "manifest") {
 		sdk = `NCS ${withV(env.projectSdk.version)} · workspace`
 		sdkTitle = `Pinned by the west manifest (${env.projectSdk.topology})`
