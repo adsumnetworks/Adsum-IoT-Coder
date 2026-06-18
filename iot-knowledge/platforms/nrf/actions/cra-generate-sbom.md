@@ -39,9 +39,20 @@ errors *"CONFIG_BUILD_OUTPUT_META must be enabled to generate spdx files."* Run 
 If a build already exists but was made **without** `--init` (or without `CONFIG_BUILD_OUTPUT_META`), offer a
 user-confirmed pristine rebuild with both (builds are long — see AGENT.md permissions).
 
+> **Sysbuild gotcha — don't loop.** On **sysbuild** projects (the nRF default), `west spdx` often still fails
+> with *"cmake api reply directory …/.cmake/api/v1/reply does not exist"* even after `--init` + a clean
+> rebuild — the file-based API query dir isn't created inside the image sub-build. Try the golden path **once**;
+> if you hit that error, **stop and use the SBOM-lite fallback** — don't burn rebuilds chasing it.
+
 ## Fallback (SBOM-lite)
-If `west spdx` is unavailable on the project's NCS version, fall back to `west list` → a markdown component
-inventory written to `compliance/sbom/`, **clearly labeled "SBOM-lite (component inventory, not SPDX)"**.
+If `west spdx` is unavailable / fails (e.g. the sysbuild case above), fall back to `west list` → a markdown
+component inventory written to `compliance/sbom/`, with the **exact** heading **"SBOM-lite (component
+inventory, not SPDX)"** so no one mistakes it for the CRA's named SPDX artifact.
+- **Reconcile the version before you write it.** `west list` reports the **west workspace/manifest**
+  revisions, which can differ from what the build actually consumed. Cross-check against the build's
+  `<build>/<image>/zephyr_modules.txt` module paths (e.g. `/opt/nordic/ncs/v3.3.1/…`). **If they disagree on
+  the NCS version, say so** ("west workspace = v3.2.1, build linked v3.3.1 modules — verify") rather than
+  stamping one version across the whole inventory.
 
 ## Safety
 `shell` (runs `west`), `long-running` (the build). No flash/erase.

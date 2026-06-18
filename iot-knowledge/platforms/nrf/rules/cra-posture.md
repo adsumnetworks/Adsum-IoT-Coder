@@ -27,11 +27,17 @@ Readiness Check, dated **"11 Dec 2027 essential requirements — worth doing now
   say so and offer a build (don't guess).
 - **Honest statuses only:** ✅ = "configured/present" (never "correct/done") · ⚠️ = "review" (heuristic /
   necessary-but-not-sufficient) · ❌ = "not found". A board-dependent check that doesn't apply is **N/A**,
-  never a fail.
+  never a fail. Use **only** these symbols in the status column — **not** "Strong / Good / Partial / Weak /
+  Pass" (those read as conformity grades, which this preview must never give).
+- **Never write that a setting "meets / satisfies the requirement."** State the evidence + status; the
+  reader's notified body decides conformity. "✅ LE Secure Connections configured" — yes; "meets the CRA
+  state-of-the-art requirement" — no.
 
-> **Requirement citations are plain-English in v0.1.** The exact CRA **Annex I clause letters** and the
-> **EN 18031** references per row are a **fast-follow pending expert validation** — do **not** assert
-> specific clause letters in the report until confirmed. Cite the regulation in plain language for now.
+> **Requirement citations are plain-English — this is a HARD rule, not a v0.1 caveat.** Do **not** put CRA
+> **Annex I clause letters or article numbers** in the report (e.g. "Annex I 2.(d)", "Art. 14(8)"). The exact
+> Annex/clause/article + **EN 18031** mapping is pending expert validation, and guessed citations are
+> frequently wrong (essential requirements are Art. 13 + Annex I, *not* Art. 14 — which is incident
+> reporting). Cite each requirement in **plain language** until the validated mapping ships.
 
 ## The checks (evidence → status → requirement → action)
 
