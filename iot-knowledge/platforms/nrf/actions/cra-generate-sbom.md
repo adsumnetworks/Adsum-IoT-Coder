@@ -39,6 +39,14 @@ errors *"CONFIG_BUILD_OUTPUT_META must be enabled to generate spdx files."* Run 
 If a build already exists but was made **without** `--init` (or without `CONFIG_BUILD_OUTPUT_META`), offer a
 user-confirmed pristine rebuild with both (builds are long — see AGENT.md permissions).
 
+## Spaces in the project path break the build — stage to a space-free dir
+Zephyr/CMake devicetree preprocessing splits the `app.overlay` path on spaces, so a project under a path
+like `…/Adsum IoT Coder/…` or `~/Desktop/My Project/` fails configure with *"fatal error: /…/Adsum: No
+such file or directory"* — **even with the app dir quoted, and even via a symlink** (CMake resolves the
+real path). Don't burn rebuilds fighting the quoting: **copy the project into a space-free temp dir**
+(e.g. `cp -r <proj> /tmp/cra-src/<app>`) and build from there. The read-only bundled sample is already
+copied for building — copy it into a **space-free** temp (the install path may contain spaces).
+
 ## Sysbuild recipe (the nRF default — this works, don't give up)
 On **sysbuild** projects `west spdx -d build` fails with *"cmake api reply directory
 …/.cmake/api/v1/reply does not exist"* — because the file-based API lives in the **image sub-build**, not the
