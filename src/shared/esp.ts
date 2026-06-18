@@ -23,8 +23,11 @@ export interface EspEnvironment {
 	/** True when a valid IDF_PATH was resolved (export.sh found). */
 	idfPresent: boolean
 	idfPath?: string
-	/** IDF version from {idfPath}/version.txt — machine-installed. */
+	/** IDF version of the active install ({idfPath}/version.txt or version.cmake) — machine-installed. */
 	idfVersion?: string
+	/** ALL ESP-IDF versions installed on this machine (normalized, e.g. ["5.5.2","6.0"]). Mirrors nRF's
+	 * installedSdkVersions so the strip can list every install, not just the first. Global fact. */
+	installedVersions?: string[]
 	/** True when the open project has a build (any build-dir/project_description.json exists). */
 	projectBuilt?: boolean
 	/** IDF version bound to the open project from <buildDir>/project_description.json. */
