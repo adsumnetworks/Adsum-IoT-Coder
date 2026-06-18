@@ -2,6 +2,24 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
+## [0.1.7] - 2026-06-23
+
+### CRA Readiness Check — get CRA-ready as you build
+
+A new one-click **CRA Readiness Check** helps you prepare for the EU Cyber Resilience Act, on **both nRF and ESP**. It's a readiness snapshot to help you prepare — not a conformity assessment, and not legal advice.
+
+- **SBOM from your real build.** A machine-readable software bill of materials (SPDX) — the CRA's named artifact — generated from the actual build, not a guess.
+- **Secure-by-design posture.** A checklist against your build's real configuration (secure boot, signed updates, debug-port lock, secure pairing, secure storage, and more) — each ✅/⚠️/❌ with the plain-English requirement and what to do, ordered so prerequisites come first.
+- **Advisories for your SDK version.** Surfaced with links to review — never an automatic verdict.
+- **Help you start.** The agent offers to begin closing the top gap (e.g. add a secure bootloader), routing into the normal add-feature flow.
+- Writes a `compliance/` folder: a human-readable report, a machine-readable JSON companion, and the SBOM. Run it on your project, or try it on a bundled sample with nothing open.
+
+It also tells you which CRA date applies to you up front — whether you're getting a head start on the Dec 2027 essential requirements, or already in scope for the Sep 2026 reporting duty.
+
+### Refinements
+
+- **Cleaner platform status.** The nRF/ESP detection panel is now a compact, neutral status strip.
+
 ## [0.1.6] - 2026-06-16
 
 ### One extension — now for ESP32, too
