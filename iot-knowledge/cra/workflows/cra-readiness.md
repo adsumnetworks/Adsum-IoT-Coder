@@ -73,9 +73,26 @@ then offer to *start* fixing the top gap. Works on nRF (NCS/Zephyr) and ESP (ESP
 6. **Advisory bonus (nRF, when any exist) — MANDATORY SKILL LOAD.** `read_file` → `platforms/nrf/sdks/ncs/cra-advisories.md`. Surface the known advisories for the detected SDK version with links + an "as of <date>; check live for newer" note. **Surface-and-link only — never an affected/not-affected verdict.** (ESP advisories are a fast-follow.)
 
 7. **Write the artifacts** into the output directory resolved in step 3 (a real project → `<project-root>/compliance/`; a sample → only after the user says save, into the namespaced folder you proposed — otherwise show them inline and skip the write). Write **all** outputs (not just the markdown) and tell the user the absolute path.
-   - `compliance/sbom/…` (SPDX from step 4)
-   - `compliance/CRA_READINESS.md` — header (disclaimer + binding date), posture table, advisory list, "do these first"
+   - `compliance/sbom/…` — the SBOM from step 4 (SPDX, or the SBOM-lite markdown). **A real folder, not inlined into the report prose.**
+   - `compliance/CRA_READINESS.md` — exact filename; fill the skeleton below.
    - `compliance/cra-readiness.json` — the same results, machine-readable (pre-wires the future register). **Required — emit the JSON too, not only the .md.**
+
+   **Report skeleton (fill it; don't free-form — the parts below are the ones agents drop):**
+   ```
+   # CRA Readiness Check — <project>
+   > Readiness snapshot — NOT a conformity assessment, NOT legal advice. A ✅ means
+   > "configured/present", never "compliant/correct/done". Only a notified body / your
+   > formal assessment establishes conformity.
+   > Product type: <answer> · Market status: <answer> · Binding date: <11 Dec 2027 | Art. 14 since 11 Sep 2026>
+   > SDK: <version + how resolved> · Generated: <date> · Method: <west spdx | SBOM-lite>
+
+   ## 1. SBOM            → see compliance/sbom/ (summarise; don't paste the whole inventory)
+   ## 2. Posture preview → the step-5 table: Check · Evidence · Plain-English requirement · Status (✅/⚠️/❌) · Action
+   ## 3. Advisories      → MANDATORY section even when empty: the live-source links + "no bundled advisories
+                            for NCS <x> as of <date>; check live" (never silently omit it)
+   ## 4. Do these first  → dependency-ordered gap list (step 5)
+   ```
+   **Before you finish, check:** disclaimer + binding date are in the **written header** (not just chat) · status column uses ✅/⚠️/❌ (not "Strong/Weak/Pass") · the advisory section is present · **both** `CRA_READINESS.md` **and** `cra-readiness.json` were written · `compliance/sbom/` exists.
 
 8. **Help you *start* the top fix — in dependency order.** Offer, via `ask_followup_question`, to *begin* closing the top gap (e.g. "Want me to start adding MCUboot secure boot?") — route into the existing add-feature workflow. Offer gaps in **dependency order**, not just severity. Framed as **help you start**: a change you apply is **"started — you must build, flash, and verify"**, NEVER "fixed" / "done" / "resolved" / "now compliant" (a successful *build* is NOT proof a security feature works). **On the bundled sample, NEVER modify it — show the diff only** (it is read-only and ours). The user owns the result.
 
@@ -83,6 +100,8 @@ then offer to *start* fixing the top gap. Works on nRF (NCS/Zephyr) and ESP (ESP
 - Real evidence per row or "unknown" — never invent a status.
 - A heuristic finding is "⚠️ review", never "❌ violation". A ✅ is "configured/present", never "correct/done".
 - Never say "compliant", "certified", "passes", "affected/not affected".
+- **Never assert specific CRA clause letters or article numbers** (e.g. "Annex I 2.(d)", "Art. 14(8)") — the exact clause/Annex/article + EN 18031 mapping is pending expert validation, and guessed numbers are often wrong. Cite the requirement in **plain English only**. (See the posture card's pending-validation note.)
+- **Never write that the product "meets / satisfies / fulfils" a requirement**, and don't grade rows "Strong / Good / Weak / Pass" — those are conformity verdicts. State the **evidence** and the ✅/⚠️/❌ status; a ✅ is "configured/present", full stop.
 - **Never write "fixed" / "done" / "resolved" / "✅ FIXED" for a gap** — in the report header, posture table, or chat. A change you applied is **"started — unverified"** until the user builds, flashes, and confirms; a clean build is not verification. Don't restyle a ❌/⚠️ row to "✅ fixed".
 
 ## Next step
