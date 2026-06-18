@@ -243,9 +243,13 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 	} else if (hasWorkspace && env.projectDetected) {
 		sdk = "not built yet"
 		sdkMuted = true
-	} else if (env.extensionPresent || env.idfPresent) {
-		// Installed-but-no-project: show the machine-installed IDF version (version.txt) like nRF shows NCS.
+	} else if (env.idfPresent || env.idfVersion) {
+		// SDK actually resolved (IDF_PATH/version.txt) → show the installed version like nRF shows NCS.
 		sdk = env.idfVersion ? `ESP-IDF ${withV(env.idfVersion)} installed` : "ESP-IDF installed"
+	} else if (env.extensionPresent) {
+		// Extension present but no SDK resolved — don't claim ESP-IDF is installed (it isn't yet).
+		sdk = "ESP-IDF not installed"
+		sdkMuted = true
 	} else {
 		sdk = "ESP-IDF not detected"
 		sdkMuted = true
