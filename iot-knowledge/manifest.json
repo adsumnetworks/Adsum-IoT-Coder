@@ -46,7 +46,7 @@
 			"status": "draft",
 			"created": "2026-06-18",
 			"path": "cra/workflows/cra-readiness.md",
-			"content_hash": "ca98e76eeef33072ad2b4a95d8992b7d2a164ccb1cf27f0e0fe78efa5ec55ab7"
+			"content_hash": "cf0dc467c03874c876a854399e149bd978effbd5249a96d7be015a1842712132"
 		},
 		{
 			"id": "adsum/esp/actions/cra-generate-sbom",
@@ -201,7 +201,7 @@
 			"status": "draft",
 			"created": "2026-06-18",
 			"path": "platforms/nrf/actions/cra-generate-sbom.md",
-			"content_hash": "78747a9106135e7840ff7b8e6cbe93654e703c6a80d16eaf4186bfa107a3f458"
+			"content_hash": "5d2317a5d26ea6f016565e86dc4bdd33aaf2ec3969702f7da3dce778bbde65be"
 		},
 		{
 			"id": "adsum/nrf/actions/flash",
@@ -257,7 +257,7 @@
 			"status": "draft",
 			"created": "2026-06-18",
 			"path": "platforms/nrf/rules/cra-posture.md",
-			"content_hash": "bd124a1fb59c3362e87e4cf3b73791fae4d485da36908adac696e77190d9da3e"
+			"content_hash": "f960953ad578f533b59ee20c3ab5e71b2cc821ead935ce5dc928c257e9bb1606"
 		},
 		{
 			"id": "adsum/nrf/rules/device-identity",
