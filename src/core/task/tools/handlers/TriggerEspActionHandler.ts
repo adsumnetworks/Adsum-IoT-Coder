@@ -107,7 +107,12 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 			}),
 		)
 
-		const [userRejected, result] = await config.callbacks.executeCommandTool(built.command, undefined, prepared.terminalName, true)
+		const [userRejected, result] = await config.callbacks.executeCommandTool(
+			built.command,
+			undefined,
+			prepared.terminalName,
+			true,
+		)
 		// The env is now sourced in this terminal — subsequent commands run bare.
 		// Mark only after the sourced command ran (built.command existed ⇒ IDF_PATH resolved).
 		if (prepared.needsSourcing) {
@@ -130,7 +135,7 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 	 * file; the panic-backtrace decoding is done by idf.py monitor itself.
 	 */
 	private buildMonitorCommand(projectDir: string, block: ToolUse): string {
-		const { port, duration, name, reset } = block.params as Record<string, string | undefined>
+		const { port, duration, name, reset, devices } = block.params as Record<string, string | undefined>
 
 		const isWindows = process.platform === "win32"
 		const wrapperName = isWindows ? "esp-monitor.bat" : "esp-monitor"
@@ -148,10 +153,16 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 		}
 		const quote = (s: string) => (s.includes(" ") ? `"${s}"` : s)
 
-		const args = [quote(wrapperPath), "--project", quote(projectDir)]
-		if (port) args.push("--port", port)
+		const args = [quote(wrapperPath)]
+		if (devices) {
+			// Multi-board concurrent capture: --devices name:port:project,... replaces --project/--port/--name.
+			args.push("--devices", quote(devices))
+		} else {
+			args.push("--project", quote(projectDir))
+			if (port) args.push("--port", port)
+			if (name) args.push("--name", name)
+		}
 		args.push("--duration", String(duration || "10"))
-		if (name) args.push("--name", name)
 		// Reset-before-capture is the default (captures the boot sequence). Only
 		// skip it for mid-runtime capture, matching the nRF capture semantics.
 		if (reset === "false") {
