@@ -8,6 +8,7 @@ import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { ClineSayTool } from "@shared/ExtensionMessage"
 import { fileExistsAtPath } from "@utils/fs"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
+import { HostProvider } from "@/hosts/host-provider"
 import { telemetryService } from "@/services/telemetry"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
@@ -19,6 +20,24 @@ import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { applyModelContentFixes } from "../utils/ModelContentProcessor"
 import { ToolDisplayUtils } from "../utils/ToolDisplayUtils"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
+
+/**
+ * True if `absolutePath` is inside the Adsum extension install (read-only on a published build) or any
+ * copy of the bundled samples (`demo-scenarios/…`, ours not the user's). Agent writes must never land
+ * here — it fails on a published install and mutating the shipped sample corrupts it. Pure; exported
+ * for tests. The `demo-scenarios` segment is matched even outside the install so a dev/source checkout
+ * copy is protected too (an nRF/ESP firmware project would not legitimately contain that folder).
+ */
+export function isUnderExtensionOrSample(absolutePath: string, extensionRoot?: string): boolean {
+	const norm = absolutePath.replace(/\\/g, "/")
+	if (extensionRoot) {
+		const root = extensionRoot.replace(/\\/g, "/").replace(/\/+$/, "")
+		if (norm === root || norm.startsWith(`${root}/`)) {
+			return true
+		}
+	}
+	return /(^|\/)demo-scenarios(\/|$)/.test(norm)
+}
 
 export class WriteToFileToolHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.FILE_NEW // This handler supports write_to_file, replace_in_file, and new_rule
@@ -153,6 +172,22 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 			}
 
 			const { relPath, absolutePath, fileExists, diff, content, newContent, workspaceContext } = result
+
+			// Guard: never write into the Adsum extension install or any bundled sample. On a published
+			// install the extension dir is read-only (a write fails); and the bundled CRA/demo samples
+			// (`demo-scenarios/…`) are ours, not the user's — mutating them corrupts the shipped sample.
+			// The CRA bundled-sample run must read in place and write its output to the user's workspace or
+			// an OS temp dir. (Prompt rules say the same; this enforces it for weaker models.)
+			if (this.isExtensionOwnedPath(absolutePath)) {
+				config.taskState.consecutiveMistakeCount++
+				await config.services.diffViewProvider.reset()
+				return formatResponse.toolError(
+					`Refusing to write to "${getReadablePath(config.cwd, relPath)}": it is inside the Adsum extension ` +
+						`or a bundled sample (read-only — mutating it corrupts the install). Write to the user's open ` +
+						`project, or to an OS temp dir (e.g. /tmp/… or %TEMP%\\…). For the CRA bundled-sample preview, ` +
+						`show the report inline or save to a namespaced folder under the user's Desktop — never into the sample.`,
+				)
+			}
 
 			// Handle approval flow
 			const sharedMessageProps: ClineSayTool = {
@@ -518,6 +553,17 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 			return true
 		}
 		return path.resolve(cwd, relPath) === "/"
+	}
+
+	/** True if writing here would touch the extension install or a bundled sample (forbidden). */
+	private isExtensionOwnedPath(absolutePath: string): boolean {
+		let extensionRoot: string | undefined
+		try {
+			extensionRoot = HostProvider.get().extensionFsPath
+		} catch {
+			extensionRoot = undefined
+		}
+		return isUnderExtensionOrSample(absolutePath, extensionRoot)
 	}
 
 	private getModelInfo(config: TaskConfig) {
