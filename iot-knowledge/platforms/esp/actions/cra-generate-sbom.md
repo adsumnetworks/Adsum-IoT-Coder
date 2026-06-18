@@ -5,7 +5,7 @@ type: action
 version: 0.1.0
 owner: adsum-core
 author: adsum
-license: CC-BY-SA-4.0
+license: LicenseRef-Adsum-Proprietary
 tier: certified
 delivery: bundled
 domain: cra
