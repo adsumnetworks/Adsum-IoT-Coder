@@ -57,7 +57,7 @@ then offer to *start* fixing the top gap. Works on nRF (NCS/Zephyr) and ESP (ESP
    - **The user's OWN firmware project is the open workspace root** → write to `<workspace-root>/compliance/` (its natural home, version-controllable next to the code). No need to ask.
    - **The bundled sample, OR no project open** → **always the preview path.** The bundled sample is structurally a valid project (it has `CMakeLists.txt`/`prj.conf`/`src/`) but it is **ours, not the user's**, and in a published build it lives **read-only inside the extension** — so **NEVER write a `compliance/` into the bundled sample's own directory or anywhere inside the extension/`demo-scenarios` tree**, and never into a bare cwd like the Desktop (it litters + breaks checkpoints). Instead: present the full report **inline in chat**, then **ask** via `ask_followup_question` whether to save — and only if yes, write to a **namespaced**, **OS-appropriate** folder you propose under the user's home/Desktop (macOS/Linux e.g. `~/Desktop/adsum-cra-<sample>/compliance/`; Windows e.g. `%USERPROFILE%\Desktop\adsum-cra-<sample>\compliance\`). Always state the absolute output path.
    **If no project is open**, you cannot check the user's code yet — and **opening a folder reloads VS Code, which ends this chat.** So NEVER offer "open it and I'll continue" (that promise can't be kept). Offer a button choice via `ask_followup_question`:
-   - **"Run on the bundled nRF sample"** → run the full check in-place on the shipped sample (no reload). State plainly that the result describes the *sample* — it shows how the check works; for their own product they run it on their code.
+   - **"Run on the bundled nRF sample"** → the sample is shipped **read-only** at `<extension-root>/demo-scenarios/nus-uart/central_uart` — the `demo-scenarios/` sibling of the `iot-knowledge/` directory these skills load from (derive `<extension-root>` from the absolute path you read THIS workflow from; this resolves correctly on a fresh install where the sample lives inside the installed extension, not the user's cwd). **Read it in place; NEVER modify it or write anything inside it.** Build to an **OS temp** dir (`west build -d <tmp-dir>`), and follow the save rule above for the report. State plainly the result describes the *sample* — for their own product they run it on their code.
    - **"Check my own project"** → respond with **instructions only** (do not wait to continue): *"Open your firmware project (File ▸ Open Folder — VS Code will reload), then click the **CRA Readiness Check** card again and I'll run it on your code."*
 
 4. **SBOM — MANDATORY SKILL LOAD.**
@@ -72,17 +72,18 @@ then offer to *start* fixing the top gap. Works on nRF (NCS/Zephyr) and ESP (ESP
 
 6. **Advisory bonus (nRF, when any exist) — MANDATORY SKILL LOAD.** `read_file` → `platforms/nrf/sdks/ncs/cra-advisories.md`. Surface the known advisories for the detected SDK version with links + an "as of <date>; check live for newer" note. **Surface-and-link only — never an affected/not-affected verdict.** (ESP advisories are a fast-follow.)
 
-7. **Write the artifacts** into the output directory resolved in step 3 (a real project → `<project-root>/compliance/`; a sample → only after the user says save, into the namespaced folder you proposed — otherwise show them inline and skip the write). Always tell the user the absolute path you wrote to.
+7. **Write the artifacts** into the output directory resolved in step 3 (a real project → `<project-root>/compliance/`; a sample → only after the user says save, into the namespaced folder you proposed — otherwise show them inline and skip the write). Write **all** outputs (not just the markdown) and tell the user the absolute path.
    - `compliance/sbom/…` (SPDX from step 4)
    - `compliance/CRA_READINESS.md` — header (disclaimer + binding date), posture table, advisory list, "do these first"
-   - `compliance/cra-readiness.json` — the same results, machine-readable (pre-wires the future register)
+   - `compliance/cra-readiness.json` — the same results, machine-readable (pre-wires the future register). **Required — emit the JSON too, not only the .md.**
 
-8. **Help you *start* the top fix — in dependency order.** Offer, via `ask_followup_question`, to *begin* closing the top gap (e.g. "Want me to start adding MCUboot secure boot?") — route into the existing add-feature workflow. Offer gaps in **dependency order**, not just severity. Framed as **help you start** — never "fixed" / "now compliant"; the user owns the result.
+8. **Help you *start* the top fix — in dependency order.** Offer, via `ask_followup_question`, to *begin* closing the top gap (e.g. "Want me to start adding MCUboot secure boot?") — route into the existing add-feature workflow. Offer gaps in **dependency order**, not just severity. Framed as **help you start**: a change you apply is **"started — you must build, flash, and verify"**, NEVER "fixed" / "done" / "resolved" / "now compliant" (a successful *build* is NOT proof a security feature works). **On the bundled sample, NEVER modify it — show the diff only** (it is read-only and ours). The user owns the result.
 
 ## Honesty rules
 - Real evidence per row or "unknown" — never invent a status.
 - A heuristic finding is "⚠️ review", never "❌ violation". A ✅ is "configured/present", never "correct/done".
 - Never say "compliant", "certified", "passes", "affected/not affected".
+- **Never write "fixed" / "done" / "resolved" / "✅ FIXED" for a gap** — in the report header, posture table, or chat. A change you applied is **"started — unverified"** until the user builds, flashes, and confirms; a clean build is not verification. Don't restyle a ❌/⚠️ row to "✅ fixed".
 
 ## Next step
 Offer the developer a button choice via `ask_followup_question` — never "type this".
