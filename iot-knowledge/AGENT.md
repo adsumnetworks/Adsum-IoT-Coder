@@ -47,6 +47,8 @@ and rules are loaded for you when a project is present.
   - Task contains `scaffold a new nRF prototype` or `Start a new nRF/Zephyr prototype` → load `platforms/nrf/workflows/prototype.md`.
   - Task contains `scaffold a new ESP-IDF prototype` or `Start a new ESP-IDF prototype` → load `platforms/esp/workflows/prototype.md`.
   - Generic `Start a new prototype` (mixed/unknown workspace) → ask which platform (nRF/Zephyr or ESP-IDF), then load that platform's `prototype.md`.
+- **CRA Readiness Check** (build-time readiness — runs on the open project, or a **bundled sample if none is open**, so it skips the "project must exist" check):
+  - Task contains `CRA`, `CRA Readiness Check`, `readiness check`, or `get CRA-ready` → load `cra/workflows/cra-readiness.md` and follow it **exactly**. The workflow detects the platform (nRF or ESP) itself and writes a `compliance/` folder. Follow its steps and honesty rules — **never improvise an SBOM/CRA assessment from general knowledge, and never refuse it as out-of-scope.** (It is in scope: it is an Adsum feature backed by `cra/workflows/cra-readiness.md`.)
 
 > **Mixed workspace:** if the workspace contains BOTH an nRF and an ESP app, both are in scope. Confirm with the user which app a task targets before driving hardware, then use that platform's tool and knowledge. (A note to this effect is injected when both are detected.)
 
