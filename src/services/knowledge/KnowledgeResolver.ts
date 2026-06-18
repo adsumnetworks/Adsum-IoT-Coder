@@ -109,7 +109,11 @@ type KbitTelemetry = {
 	downloadedResolved?(p: { id: string; source: "cache" | "registry" }): void
 	registryUnreachable?(p: { id?: string }): void
 	cacheReconciled?(p: { purged: number }): void
+	/** Fired when the CRA Readiness Check workflow loads — the H1 acquisition signal for the CRA feature. */
+	craCheckStarted?(): void
 }
+/** The CRA Readiness Check workflow id — loading it means a CRA check is running (telemetry signal). */
+const CRA_WORKFLOW_ID = "adsum/cra/workflows/cra-readiness"
 let kbitTelemetry: KbitTelemetry = {}
 export function __setKbitTelemetry(hooks: KbitTelemetry): void {
 	kbitTelemetry = hooks ?? {}
@@ -238,6 +242,9 @@ async function loadDownloadedBit(id: string): Promise<string> {
  * only non-bundled ids reach the downloaded tier.
  */
 export async function loadBit(id: string): Promise<string> {
+	if (id === CRA_WORKFLOW_ID) {
+		kbitTelemetry.craCheckStarted?.()
+	}
 	const full = await resolveBitPath(id) // bundled manifest only
 	if (full) {
 		try {

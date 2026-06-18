@@ -26,6 +26,7 @@ export type IntentId =
 	| "buildFlash"
 	| "buildFlashDebug"
 	| "testValidate"
+	| "craCheck"
 	| "sdkMigration"
 	| "boardBringUp"
 
@@ -70,6 +71,8 @@ export function buildIntentPrompt(id: IntentId, projectName?: string, platform: 
 			if (platform === "both")
 				return `Test and validate ${proj} — host/simulator tests now, on-hardware checks when a board is connected.`
 			return `Test and validate ${proj} — host tests with native_sim, on-hardware checks when boards are connected.`
+		case "craCheck":
+			return `Run a CRA Readiness Check on ${proj} — generate the SBOM, preview my secure-by-design posture against the EU Cyber Resilience Act, and offer to start fixing the top gap.`
 		case "demo":
 			return "Demo: BLE NUS one-directional bug — no setup needed\n\n[ADSUM_DEMO:nus-uart]"
 		case "openProject":
@@ -149,6 +152,14 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 		primary: true,
 	},
 	{
+		id: "craCheck",
+		icon: "shield",
+		title: "CRA Readiness Check",
+		description:
+			"Try it on a bundled sample — generate an SBOM and a secure-by-design posture check, ahead of the EU Cyber Resilience Act.",
+		pill: "New",
+	},
+	{
 		id: "openProject",
 		icon: "folder-opened",
 		title: "Open my project",
@@ -182,6 +193,14 @@ export const PROJECT_INTENTS: IntentDef[] = [
 		icon: "beaker",
 		title: "Test & validate",
 		description: "Prove it works — host tests (native_sim) now, on-hardware checks when a board's connected.",
+	},
+	{
+		id: "craCheck",
+		icon: "shield",
+		title: "CRA Readiness Check",
+		description:
+			"Generate your SBOM, preview your secure-by-design posture, and get a build-time readiness check — ahead of the EU Cyber Resilience Act.",
+		pill: "New",
 	},
 	{
 		id: "sdkMigration",

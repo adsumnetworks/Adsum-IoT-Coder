@@ -197,6 +197,8 @@ export class TelemetryService {
 			DEMO_RUN_COMPLETED: "free_tier.demo_run_completed",
 			// User posted a message after the demo completed (strongest activation signal)
 			DEMO_USER_INTERACTED: "free_tier.demo_user_interacted",
+			// CRA Readiness Check ran (the cra-readiness workflow loaded) — H1 acquisition signal
+			CRA_CHECK_STARTED: "free_tier.cra_check_started",
 			// User started a non-demo task (crossed from demo to real use)
 			FIRST_REAL_TASK_STARTED: "free_tier.first_real_task_started",
 			// Upgrade card shown to dormant user after version bump
@@ -2412,6 +2414,12 @@ export class TelemetryService {
 	/** K-bit: a DOWNLOADED bit resolved (bundled loads aren't tracked — they always resolve; would be noise). */
 	public captureKbitDownloadedResolved(props: { id: string; source: "cache" | "registry" }) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.KBIT_DOWNLOADED_RESOLVED, properties: { ...props } })
+	}
+
+	/** CRA Readiness Check started (the cra-readiness workflow loaded). `iot_platform` is the CORRECT
+	 *  nrf/esp/both/none dimension — the global `platform` super-property is broken (logs the IDE name). */
+	public captureCraCheckStarted(props: { iot_platform?: string } = {}) {
+		this.capture({ event: TelemetryService.EVENTS.FREE_TIER.CRA_CHECK_STARTED, properties: { ...props } })
 	}
 
 	/** K-bit: the registry was unreachable when a downloaded bit was needed (degradation / registry health). */
