@@ -27,7 +27,7 @@ describe("getTenure", () => {
 })
 
 describe("buildIntentPrompt", () => {
-	const ids: IntentId[] = ["prototype", "addFeature", "debug", "buildFlash", "testValidate", "demo"]
+	const ids: IntentId[] = ["prototype", "addFeature", "debug", "buildFlash", "testValidate", "craCheck", "demo"]
 	for (const id of ids) {
 		it(`${id} returns a non-empty string`, () => {
 			expect(buildIntentPrompt(id)).toBeTypeOf("string")
