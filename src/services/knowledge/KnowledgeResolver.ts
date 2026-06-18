@@ -297,6 +297,37 @@ export async function loadBitByKbPath(absPath: string): Promise<string | null> {
 	return body || null
 }
 
+/**
+ * Top-level dirs under `iot-knowledge/` whose files are bits. Used to recognise a bundled-tree
+ * RELATIVE path (no `iot-knowledge/` prefix) so ordinary missing project files fall through.
+ */
+const BIT_ROOTS = ["platforms/", "cra/", "rules/"]
+
+/** True if `rel` looks like a bundled-tree relative path to a bit (e.g. `platforms/nrf/…/x.md`). */
+export function isBareBitPath(rel: string | undefined | null): boolean {
+	if (!rel) {
+		return false
+	}
+	const norm = rel.replace(/\\/g, "/").replace(/^\.\//, "")
+	return /\.md$/i.test(norm) && BIT_ROOTS.some((r) => norm.startsWith(r))
+}
+
+/**
+ * Resolve a bundled-tree RELATIVE path (no `iot-knowledge/` prefix) to its bit content. The agent
+ * often reads a bit by its tree path, e.g. `platforms/nrf/workflows/debug-loop.md`; that resolves
+ * against the workspace and isn't on disk, so without this it 404s and the agent retries with the
+ * absolute path. Restricted to known bit roots so ordinary missing files (`src/main.c`) return null
+ * fast (no registry hit). Resolves through `loadBit` (bundled → cache → fetch, hash-verified).
+ */
+export async function loadBitByRel(rel: string): Promise<string | null> {
+	if (!isBareBitPath(rel)) {
+		return null
+	}
+	const norm = rel.replace(/\\/g, "/").replace(/^\.\//, "")
+	const body = await loadBit(deriveIdFromRel(norm))
+	return body || null
+}
+
 /** Test-only: inject cache/registry doubles for the downloaded tier (no network). */
 export function __setRegistryHooks(hooks: { cache?: BitCache; registry?: RegistryClient }): void {
 	injectedCache = hooks.cache ?? null

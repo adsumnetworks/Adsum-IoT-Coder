@@ -7,9 +7,11 @@ import {
 	__resetManifestCache,
 	__setKbitTelemetry,
 	__setRegistryHooks,
+	isBareBitPath,
 	isRegistryReachable,
 	loadBit,
 	loadBitByKbPath,
+	loadBitByRel,
 } from "../KnowledgeResolver"
 import { BitCache, sha256 } from "./BitCache"
 import { RegistryClient } from "./RegistryClient"
@@ -256,6 +258,42 @@ describe("loadBitByKbPath (P2.5 — un-bundled on-demand bits via read_file)", (
 		})
 		assert.equal(await loadBitByKbPath("/ext/iot-knowledge/platforms/nrf/workflows/ghost.md"), null)
 		__resetManifestCache()
+	})
+})
+
+describe("loadBitByRel / isBareBitPath (bare bundled-tree path via read_file — debug-loop fix)", () => {
+	const hook = (id: string, content: string, hash: string, root: string) =>
+		__setRegistryHooks({
+			registry: new RegistryClient(
+				"http://r",
+				stubFetch({ manifestVersion: 1, bits: [{ id, version: "1.0.0", content_hash: hash }] }, { [hash]: content }),
+			),
+			cache: new BitCache(root),
+		})
+
+	test("isBareBitPath: bit roots match, non-bit paths don't", () => {
+		assert.equal(isBareBitPath("platforms/nrf/workflows/debug-loop.md"), true)
+		assert.equal(isBareBitPath("cra/workflows/cra-readiness.md"), true)
+		assert.equal(isBareBitPath("rules/core.md"), true)
+		assert.equal(isBareBitPath("platforms\\nrf\\actions\\run-twister.md"), true) // Windows separators
+		assert.equal(isBareBitPath("./platforms/nrf/workflows/debug-loop.md"), true) // leading ./
+		assert.equal(isBareBitPath("src/main.c"), false) // ordinary project file
+		assert.equal(isBareBitPath("platforms/nrf/workflows/debug-loop"), false) // no .md
+		assert.equal(isBareBitPath("README.md"), false) // .md but not a bit root
+		assert.equal(isBareBitPath(undefined), false)
+	})
+
+	test("maps a bare tree-relative path → id → registry → stripped body", async () => {
+		const { content, hash } = bit("adsum/nrf/workflows/debug-loop", "# Debug Loop (debug-loop.md)")
+		hook("adsum/nrf/workflows/debug-loop", content, hash, await tmp())
+		const body = await loadBitByRel("platforms/nrf/workflows/debug-loop.md")
+		assert.equal(body, "# Debug Loop (debug-loop.md)")
+		__resetManifestCache()
+	})
+
+	test("ordinary missing project file → null (no registry hit, no effect on normal reads)", async () => {
+		assert.equal(await loadBitByRel("src/main.c"), null)
+		assert.equal(await loadBitByRel("build/zephyr/.config"), null)
 	})
 })
 

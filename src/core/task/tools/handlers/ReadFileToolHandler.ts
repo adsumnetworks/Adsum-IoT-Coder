@@ -6,7 +6,7 @@ import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
-import { isRegistryReachable, loadBitByKbPath } from "@/services/knowledge/KnowledgeResolver"
+import { isBareBitPath, isRegistryReachable, loadBitByKbPath, loadBitByRel } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import { ClineSayTool } from "@/shared/ExtensionMessage"
 import { ClineDefaultTool } from "@/shared/tools"
@@ -194,13 +194,17 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			)
 		}
 
-		// P2.5: un-bundled on-demand K-bit. If a bundled-tree (iot-knowledge) path isn't on disk, it may
-		// be a DOWNLOADED bit — resolve it through the registry (cache → fetch → hash-verify) so the
-		// agent's on-demand `read_file <kbDir>/…/X.md` still works for downloaded workflows/actions.
-		// Self-guarded (returns null for non-iot-knowledge paths) and only runs when the file is missing,
-		// so it has no effect on normal reads.
-		if (absolutePath.includes("iot-knowledge") && !(await fileAccessible(absolutePath))) {
-			const bitBody = await loadBitByKbPath(absolutePath)
+		// P2.5: un-bundled on-demand K-bit. A bundled-tree path that isn't on disk may be a DOWNLOADED
+		// bit — resolve it through the registry (cache → fetch → hash-verify) so the agent's on-demand
+		// `read_file <kbDir>/…/X.md` still works for downloaded workflows/actions. Two shapes:
+		//   (a) absolute iot-knowledge path (already includes the dir), or
+		//   (b) a BARE bundled-tree relative path (e.g. "platforms/nrf/workflows/debug-loop.md") that
+		//       resolved against the workspace — without this it 404s and the agent retries the absolute
+		//       path (the "file not found then recover" loop). Self-guarded to bit roots, only when missing.
+		const isAbsKbPath = absolutePath.includes("iot-knowledge")
+		const isBarePath = !isAbsKbPath && isBareBitPath(relPath)
+		if ((isAbsKbPath || isBarePath) && !(await fileAccessible(absolutePath))) {
+			const bitBody = isAbsKbPath ? await loadBitByKbPath(absolutePath) : await loadBitByRel(relPath!)
 			if (bitBody) {
 				if (isKnowledgeFile) {
 					config.taskState.loadedKnowledgeFiles.add(absolutePath)
