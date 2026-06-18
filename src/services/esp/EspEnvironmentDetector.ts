@@ -89,6 +89,19 @@ export function parseIdfVersionFile(content: string): string | undefined {
 }
 
 /**
+ * Parse {idfPath}/tools/cmake/version.cmake → version string. A git checkout of ESP-IDF (an
+ * official install method) has NO version.txt — only release tarballs / EIM installs do — but
+ * version.cmake is always present and carries IDF_VERSION_MAJOR/MINOR/PATCH. Pure; exported for tests.
+ */
+export function parseIdfVersionCmake(content: string): string | undefined {
+	const major = content.match(/set\(\s*IDF_VERSION_MAJOR\s+(\d+)\s*\)/)?.[1]
+	const minor = content.match(/set\(\s*IDF_VERSION_MINOR\s+(\d+)\s*\)/)?.[1]
+	const patch = content.match(/set\(\s*IDF_VERSION_PATCH\s+(\d+)\s*\)/)?.[1]
+	if (major === undefined || minor === undefined || patch === undefined) return undefined
+	return `v${major}.${minor}.${patch}`
+}
+
+/**
  * Parse build/project_description.json for the idf_version field. Pure; exported
  * for tests. NOTE: most ESP-IDF versions do NOT write an idf_version here (the
  * file's "version" is its own format version, "project_version" is the app's git
@@ -194,15 +207,30 @@ export function filterEspPorts(ports: RawPortData[]): EspDevice[] {
 // Subprocess probes
 // ---------------------------------------------------------------------------
 
-/** Read IDF version from {idfPath}/version.txt (ship on every IDF release). */
+/**
+ * Read IDF version from {idfPath}/version.txt (release tarballs / EIM installs), falling back to
+ * {idfPath}/tools/cmake/version.cmake (always present — covers git-clone installs that ship no
+ * version.txt, so they no longer show a blank version in the env strip).
+ */
 function readIdfVersion(idfPath: string): string | undefined {
 	const versionFile = join(idfPath, "version.txt")
-	if (!existsSync(versionFile)) return undefined
-	try {
-		return parseIdfVersionFile(readFileSync(versionFile, "utf8"))
-	} catch {
-		return undefined
+	if (existsSync(versionFile)) {
+		try {
+			const v = parseIdfVersionFile(readFileSync(versionFile, "utf8"))
+			if (v) return v
+		} catch {
+			// fall through to version.cmake
+		}
 	}
+	const cmakeFile = join(idfPath, "tools", "cmake", "version.cmake")
+	if (existsSync(cmakeFile)) {
+		try {
+			return parseIdfVersionCmake(readFileSync(cmakeFile, "utf8"))
+		} catch {
+			return undefined
+		}
+	}
+	return undefined
 }
 
 export interface EspBuildInfo {
