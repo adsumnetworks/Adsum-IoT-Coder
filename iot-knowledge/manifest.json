@@ -15,7 +15,7 @@
 			"domain": "embedded-iot",
 			"platform": "universal",
 			"path": "AGENT.md",
-			"content_hash": "e16ee219bf7132bffaa8cf783446ed01bbcd6bd0e50011c1ac3caa6c5ab82cf3"
+			"content_hash": "b0b52ef24b79031b0825a92eb095919b5eeb6438b5f6ae7005278adcffc37b93"
 		},
 		{
 			"id": "adsum/cra/workflows/cra-readiness",
@@ -46,7 +46,7 @@
 			"status": "draft",
 			"created": "2026-06-18",
 			"path": "cra/workflows/cra-readiness.md",
-			"content_hash": "b038c37d85d594f678f78c2f0a5e9214b27d4e3aea62ff88ae9cdbafb34c9edc"
+			"content_hash": "5f2538004833e790f61dbe3df0d8d2904ea4b8a3434b86cb7a37faff57f825ac"
 		},
 		{
 			"id": "adsum/esp/actions/cra-generate-sbom",

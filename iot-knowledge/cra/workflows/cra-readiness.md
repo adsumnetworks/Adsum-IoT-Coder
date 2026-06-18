@@ -50,8 +50,15 @@ then offer to *start* fixing the top gap. Works on nRF (NCS/Zephyr) and ESP (ESP
    - **Not yet on the market →** your binding date is **11 Dec 2027** (full obligations). "This free check is your head start."
    - **Already shipping →** **11 Sep 2026 Article 14 reporting already applies to you** (report actively-exploited vulnerabilities / severe incidents in 24h/72h/14-day). Note that operational incident reporting is a separate, paid Adsum capability — this free check covers build-time readiness.
    *(Low-liability: "already on the market" is the literal Article-14 trigger, not a judgement.)*
+   **NEVER assume the answer.** If the user hasn't confirmed market status, you have NOT established it — do not assert "already on the market" or "Article 14 active." When running on the **bundled sample**, a sample is by definition not a shipped product: default to **not yet on market → 11 Dec 2027**, and label the header's market status **"assumed — confirm for your real product."** Pick the *non-alarming* default, never the Article-14 one, without a user answer.
 
-3. **Detect the platform & project.** Use the existing environment detection (nRF Connect / ESP-IDF, board, SDK version). If **no project is open**, offer to run on a **bundled sample** so the check still works (acquisition path). Confirm the `compliance/` output directory.
+3. **Detect the platform & project.** Use the existing environment detection (nRF Connect / ESP-IDF, board, SDK version).
+   **Resolve where artifacts go (do this before writing anything):**
+   - **A real firmware project is open** → write to `<project-root>/compliance/` (its natural home, version-controllable next to the code). No need to ask.
+   - **No project / bundled sample** → the workspace cwd may be a non-project folder (e.g. the Desktop) where a bare `compliance/` litters and checkpoints fail. So treat it as a **preview**: present the full report **inline in chat**, then **ask** via `ask_followup_question` whether to save — and if yes, write to a **namespaced** folder you propose (e.g. `~/Desktop/adsum-cra-<sample>/compliance/`), never a bare `compliance/` in a non-project directory. Always state the absolute output path.
+   **If no project is open**, you cannot check the user's code yet — and **opening a folder reloads VS Code, which ends this chat.** So NEVER offer "open it and I'll continue" (that promise can't be kept). Offer a button choice via `ask_followup_question`:
+   - **"Run on the bundled nRF sample"** → run the full check in-place on the shipped sample (no reload). State plainly that the result describes the *sample* — it shows how the check works; for their own product they run it on their code.
+   - **"Check my own project"** → respond with **instructions only** (do not wait to continue): *"Open your firmware project (File ▸ Open Folder — VS Code will reload), then click the **CRA Readiness Check** card again and I'll run it on your code."*
 
 4. **SBOM — MANDATORY SKILL LOAD.**
    - nRF project → `read_file` → `platforms/nrf/actions/cra-generate-sbom.md`
@@ -65,7 +72,7 @@ then offer to *start* fixing the top gap. Works on nRF (NCS/Zephyr) and ESP (ESP
 
 6. **Advisory bonus (nRF, when any exist) — MANDATORY SKILL LOAD.** `read_file` → `platforms/nrf/sdks/ncs/cra-advisories.md`. Surface the known advisories for the detected SDK version with links + an "as of <date>; check live for newer" note. **Surface-and-link only — never an affected/not-affected verdict.** (ESP advisories are a fast-follow.)
 
-7. **Write the artifacts.**
+7. **Write the artifacts** into the output directory resolved in step 3 (a real project → `<project-root>/compliance/`; a sample → only after the user says save, into the namespaced folder you proposed — otherwise show them inline and skip the write). Always tell the user the absolute path you wrote to.
    - `compliance/sbom/…` (SPDX from step 4)
    - `compliance/CRA_READINESS.md` — header (disclaimer + binding date), posture table, advisory list, "do these first"
    - `compliance/cra-readiness.json` — the same results, machine-readable (pre-wires the future register)
@@ -78,4 +85,6 @@ then offer to *start* fixing the top gap. Works on nRF (NCS/Zephyr) and ESP (ESP
 - Never say "compliant", "certified", "passes", "affected/not affected".
 
 ## Next step
-Offer the developer a button choice (run the demo sample, open a project, or start the top fix) via `ask_followup_question` — never "type this".
+Offer the developer a button choice via `ask_followup_question` — never "type this".
+- **With a project:** start the top fix (step 8), or re-run the check.
+- **No project:** see step 3 — run on the bundled sample, or give the open-then-re-click instructions. **Never** promise to "continue after you open a project" (the reload ends the chat).
