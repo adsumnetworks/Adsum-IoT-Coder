@@ -2,6 +2,7 @@ import type { EspDevice, EspEnvironment } from "@shared/esp"
 import type { NrfBoard, NrfEnvironment } from "@shared/nrf"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import React, { useState } from "react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient } from "@/services/grpc-client"
 
@@ -22,10 +23,11 @@ import { FileServiceClient } from "@/services/grpc-client"
 
 const MUTED = "var(--vscode-descriptionForeground)"
 const FG = "var(--vscode-foreground)"
-// "There's more on hover" affordance: a dotted underline + help cursor on text that carries a tooltip
-// (the extension ✓ build, and the per-build breakdown behind "multiple builds"). Applied only when a
-// tooltip is actually present, so plain text never gets a misleading underline.
-const TIP_STYLE: React.CSSProperties = { cursor: "help", borderBottom: `1px dotted ${MUTED}` }
+// "There's more on hover" affordance: a small muted ⓘ after the bit that carries a tooltip (the
+// extension ✓ build, and the per-build list behind "multiple builds") + a help cursor — no underline,
+// and only on the element that actually has info (a "?" next to a version would read as uncertainty).
+const HINT_WRAP: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: "3px", cursor: "help" }
+const INFO_ICON: React.CSSProperties = { fontSize: "10px", opacity: 0.6, color: MUTED }
 // Neutral hairline divider between the nRF and ESP rows — foreground-derived so it's grey in every
 // theme (some themes tint --vscode-widget-border with an accent).
 const NEUTRAL_BORDER = "color-mix(in srgb, var(--vscode-foreground) 15%, transparent)"
@@ -81,6 +83,19 @@ const Badge: React.FC<{ text: string }> = ({ text }) => (
 	</span>
 )
 
+/** Wraps content in the app's styled (Radix) tooltip when `tip` is set — native `title` does not render
+ *  reliably in the VS Code webview, so we use the same Tooltip component as the rest of the app. Renders
+ *  the child unchanged when there's no tip. */
+const WithTip: React.FC<{ tip?: string; children: React.ReactElement }> = ({ tip, children }) =>
+	tip ? (
+		<Tooltip>
+			<TooltipTrigger asChild>{children}</TooltipTrigger>
+			<TooltipContent>{tip}</TooltipContent>
+		</Tooltip>
+	) : (
+		children
+	)
+
 /**
  * Status rows for one platform: line 1 = badge + extension · SDK, line 2 = detected boards/devices
  * (always its own line, for consistency). Reads as a compact status line (not a card). nRF and ESP
@@ -124,15 +139,21 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 				}}>
 				<span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: toolchainMuted ? MUTED : FG }}>
 					<Badge text={label} />
-					<span style={toolchainTitle ? TIP_STYLE : undefined} title={toolchainTitle}>
-						{toolchain}
-					</span>
+					<WithTip tip={toolchainTitle}>
+						<span style={toolchainTitle ? HINT_WRAP : undefined}>
+							{toolchain}
+							{toolchainTitle ? <i className="codicon codicon-info" style={INFO_ICON} /> : null}
+						</span>
+					</WithTip>
 				</span>
 				<span style={{ display: "inline-flex", alignItems: "center", gap: "5px", color: sdkMuted ? MUTED : FG }}>
 					<i className="codicon codicon-package" style={FACT_ICON} />
-					<span style={sdkTitle ? TIP_STYLE : undefined} title={sdkTitle}>
-						{sdk}
-					</span>
+					<WithTip tip={sdkTitle}>
+						<span style={sdkTitle ? HINT_WRAP : undefined}>
+							{sdk}
+							{sdkTitle ? <i className="codicon codicon-info" style={INFO_ICON} /> : null}
+						</span>
+					</WithTip>
 				</span>
 			</div>
 			{/* Line 2: detected boards / devices — always its own line */}
