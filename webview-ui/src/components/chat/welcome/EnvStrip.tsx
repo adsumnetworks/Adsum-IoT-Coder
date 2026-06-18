@@ -22,6 +22,10 @@ import { FileServiceClient } from "@/services/grpc-client"
 
 const MUTED = "var(--vscode-descriptionForeground)"
 const FG = "var(--vscode-foreground)"
+// "There's more on hover" affordance: a dotted underline + help cursor on text that carries a tooltip
+// (the extension ✓ build, and the per-build breakdown behind "multiple builds"). Applied only when a
+// tooltip is actually present, so plain text never gets a misleading underline.
+const TIP_STYLE: React.CSSProperties = { cursor: "help", borderBottom: `1px dotted ${MUTED}` }
 // Neutral hairline divider between the nRF and ESP rows — foreground-derived so it's grey in every
 // theme (some themes tint --vscode-widget-border with an accent).
 const NEUTRAL_BORDER = "color-mix(in srgb, var(--vscode-foreground) 15%, transparent)"
@@ -120,13 +124,15 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 				}}>
 				<span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: toolchainMuted ? MUTED : FG }}>
 					<Badge text={label} />
-					<span title={toolchainTitle}>{toolchain}</span>
+					<span style={toolchainTitle ? TIP_STYLE : undefined} title={toolchainTitle}>
+						{toolchain}
+					</span>
 				</span>
-				<span
-					style={{ display: "inline-flex", alignItems: "center", gap: "5px", color: sdkMuted ? MUTED : FG }}
-					title={sdkTitle}>
+				<span style={{ display: "inline-flex", alignItems: "center", gap: "5px", color: sdkMuted ? MUTED : FG }}>
 					<i className="codicon codicon-package" style={FACT_ICON} />
-					<span>{sdk}</span>
+					<span style={sdkTitle ? TIP_STYLE : undefined} title={sdkTitle}>
+						{sdk}
+					</span>
 				</span>
 			</div>
 			{/* Line 2: detected boards / devices — always its own line */}
