@@ -1,7 +1,9 @@
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "fs"
 import { describe, it } from "mocha"
-import "should"
+import { tmpdir } from "os"
 import { join } from "path"
-import { isNordicBoard, resolveNrfutilCommands } from "../EnvironmentDetector"
+import "should"
+import { findActiveNcsVersionHeader, isNordicBoard, resolveNrfutilCommands } from "../EnvironmentDetector"
 
 /**
  * resolveNrfutilCommands picks how to invoke nrfutil across the two layouts it ships in:
@@ -130,5 +132,56 @@ describe("isNordicBoard — filter out non-Nordic enumerated serial ports (e.g. 
 
 	it("drops a bare-serial device with no chip identity", () => {
 		isNordicBoard({ serialNumber: "0001" }).should.be.false()
+	})
+})
+
+/**
+ * The project SDK must follow the SELECTED build (`build/`, the nRF Connect default active dir), not
+ * whichever build dir was compiled most recently. Regression for: build/ (NCS 3.2.1, selected) +
+ * build_1/ (NCS 3.3.1, built later) was showing 3.3.1.
+ */
+describe("findActiveNcsVersionHeader — prefer the selected `build/` over a newer build_N/", () => {
+	const headerText = (v: string) => `#define NCS_VERSION_STRING           "${v}"\n`
+	const writeBuild = (root: string, buildDir: string, version: string, mtime: Date) => {
+		const dir = join(root, buildDir, "central_uart", "zephyr", "include", "generated")
+		mkdirSync(dir, { recursive: true })
+		const file = join(dir, "ncs_version.h")
+		writeFileSync(file, headerText(version))
+		utimesSync(file, mtime, mtime)
+	}
+	const mkRoot = () => mkdtempSync(join(tmpdir(), "nrf-build-test-"))
+	const OLD = new Date(Date.now() - 3_600_000)
+	const NEW = new Date()
+
+	it("prefers `build/` (3.2.1) even though build_1/ (3.3.1) is newer", () => {
+		const root = mkRoot()
+		try {
+			writeBuild(root, "build", "3.2.1", OLD)
+			writeBuild(root, "build_1", "3.3.1", NEW)
+			findActiveNcsVersionHeader(root)!.content.should.match(/"3\.2\.1"/)
+		} finally {
+			rmSync(root, { recursive: true, force: true })
+		}
+	})
+
+	it("falls back to newest-by-mtime when there is no `build/` dir", () => {
+		const root = mkRoot()
+		try {
+			writeBuild(root, "build_1", "3.2.1", OLD)
+			writeBuild(root, "build_2", "3.3.1", NEW)
+			findActiveNcsVersionHeader(root)!.content.should.match(/"3\.3\.1"/)
+		} finally {
+			rmSync(root, { recursive: true, force: true })
+		}
+	})
+
+	it("returns undefined when no build dir has a header", () => {
+		const root = mkRoot()
+		try {
+			mkdirSync(join(root, "src"), { recursive: true })
+			;(findActiveNcsVersionHeader(root) === undefined).should.be.true()
+		} finally {
+			rmSync(root, { recursive: true, force: true })
+		}
 	})
 })
