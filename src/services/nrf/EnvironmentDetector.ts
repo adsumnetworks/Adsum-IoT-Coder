@@ -398,11 +398,10 @@ function findWestTopdir(start: string): string | undefined {
 	return undefined
 }
 
-/** Bounded recursive search for the newest ncs_version.h under build* dirs. Returns its content + mtime. */
-function findNewestNcsVersionHeader(root: string): { content: string; mtimeMs: number } | undefined {
-	let best: { content: string; mtimeMs: number } | undefined
+/** Newest ncs_version.h within ONE build dir (a sysbuild build has several images, all the same NCS). */
+function newestNcsHeaderInDir(start: string): { content: string; mtimeMs: number } | undefined {
 	const SKIP = new Set(["node_modules", ".git", ".west"])
-
+	let best: { content: string; mtimeMs: number } | undefined
 	const walk = (dir: string, depth: number) => {
 		if (depth > 9) {
 			return
@@ -422,10 +421,9 @@ function findNewestNcsVersionHeader(root: string): { content: string; mtimeMs: n
 				continue
 			}
 			if (isDir) {
-				if (SKIP.has(entry)) {
-					continue
+				if (!SKIP.has(entry)) {
+					walk(full, depth + 1)
 				}
-				walk(full, depth + 1)
 			} else if (entry === "ncs_version.h" && full.includes(join("zephyr", "include", "generated"))) {
 				try {
 					const mtimeMs = statSync(full).mtimeMs
@@ -438,28 +436,50 @@ function findNewestNcsVersionHeader(root: string): { content: string; mtimeMs: n
 			}
 		}
 	}
+	walk(start, 0)
+	return best
+}
 
-	// Only descend into build* dirs to keep the scan cheap.
+/**
+ * Resolve the project's NCS version header from its build dirs. **Prefers the dir named exactly
+ * `build`** — the nRF Connect extension's DEFAULT active build; extra configurations become
+ * `build_1/`, `build_2/`, and the active one stays `build/` unless the user explicitly switches. Falls
+ * back to the newest-by-mtime across the other build dirs. (Newest-mtime alone was wrong: a more
+ * recently-built *non-selected* config — e.g. `build_1` on a different board — would shadow the
+ * selected `build/`. Reading the extension's explicitly-selected non-default build needs its API; see
+ * roadmap Inc-3. This fixes the default/common case correctly and cross-platform.) Exported for tests.
+ */
+export function findActiveNcsVersionHeader(root: string): { content: string; mtimeMs: number } | undefined {
 	let topEntries: string[]
 	try {
 		topEntries = readdirSync(root)
 	} catch {
 		return undefined
 	}
+	const perDir: { name: string; content: string; mtimeMs: number }[] = []
 	for (const entry of topEntries) {
 		if (!entry.startsWith("build")) {
 			continue
 		}
 		const full = join(root, entry)
 		try {
-			if (statSync(full).isDirectory()) {
-				walk(full, 0)
+			if (!statSync(full).isDirectory()) {
+				continue
 			}
 		} catch {
-			// skip
+			continue
+		}
+		const found = newestNcsHeaderInDir(full)
+		if (found) {
+			perDir.push({ name: entry, ...found })
 		}
 	}
-	return best
+	if (perDir.length === 0) {
+		return undefined
+	}
+	// Prefer the default active build dir (`build`); else the newest by mtime.
+	const chosen = perDir.find((d) => d.name === "build") ?? perDir.reduce((a, b) => (b.mtimeMs > a.mtimeMs ? b : a))
+	return { content: chosen.content, mtimeMs: chosen.mtimeMs }
 }
 
 /**
@@ -488,8 +508,9 @@ export function detectProjectSdk(roots: string[]): ProjectSdk | undefined {
 			}
 		}
 
-		// Tier 1 — build artifact (freestanding or workspace without a readable pin).
-		const header = findNewestNcsVersionHeader(root)
+		// Tier 1 — build artifact (freestanding or workspace without a readable pin). Prefers the
+		// selected/default `build/` dir over a more-recently-built non-selected config (e.g. build_1/).
+		const header = findActiveNcsVersionHeader(root)
 		if (header) {
 			const version = parseNcsVersionHeader(header.content)
 			if (version) {
