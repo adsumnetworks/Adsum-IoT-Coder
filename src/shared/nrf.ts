@@ -17,6 +17,15 @@ export interface ProjectSdk {
 	version: string
 	source: "build" | "manifest"
 	topology: "workspace" | "freestanding" | "unknown"
+	/**
+	 * All DISTINCT NCS versions across the project's build dirs, set only when they DISAGREE (>1) —
+	 * e.g. build/ on NCS 3.2.1 and build_1/ on 3.3.1. We can't read which build the nRF Connect
+	 * extension has *selected* (it lives in the extension's memento, not a file), so rather than guess
+	 * a single value we surface all of them. Drives the "multiple builds" strip label.
+	 */
+	allVersions?: string[]
+	/** Per-build-dir version (for the tooltip), present alongside `allVersions`. */
+	builds?: { dir: string; version: string }[]
 }
 
 export interface NrfEnvironment {
