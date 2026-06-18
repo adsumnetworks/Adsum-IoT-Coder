@@ -258,12 +258,13 @@ describe("lintBitContent", () => {
 // ---------------------------------------------------------------- regression (real corpus)
 
 describe("regression: live corpus", () => {
-	// 17 bundled bits after the ESP+nRF un-bundle: every workflow/action/board + ESP protocols became
-	// delivery: downloaded (registry); only the always-loaded core + nRF demo-forced bits stay bundled.
-	test("corpus is fully migrated and lint-clean: 17 bits, 0 errors, 0 unmigrated", () => {
+	// 23 bundled bits: the 17 post-un-bundle core/demo bits + the 6 CRA Readiness v0.1 bits (workflow,
+	// nRF/ESP SBOM actions, nRF/ESP posture, NCS advisories) — bundled because CRA v1 is the free open
+	// hook (offline-reliable, no registry dependency).
+	test("corpus is fully migrated and lint-clean: 23 bits, 0 errors, 0 unmigrated", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
-		assert.equal(files.length, 17)
-		assert.equal(migrated, 17)
+		assert.equal(files.length, 23)
+		assert.equal(migrated, 23)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
 		assert.equal(unmigrated.length, 0)

@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 17,
+	"count": 23,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -18,6 +18,59 @@
 			"content_hash": "e16ee219bf7132bffaa8cf783446ed01bbcd6bd0e50011c1ac3caa6c5ab82cf3"
 		},
 		{
+			"id": "adsum/cra/workflows/cra-readiness",
+			"title": "CRA Readiness Check",
+			"type": "workflow",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "cra",
+			"platform": "universal",
+			"triggers": [
+				"CRA",
+				"CRA readiness",
+				"CRA Readiness Check",
+				"readiness check",
+				"get CRA-ready"
+			],
+			"requires": [
+				"adsum/nrf/actions/cra-generate-sbom",
+				"adsum/esp/actions/cra-generate-sbom",
+				"adsum/nrf/rules/cra-posture",
+				"adsum/esp/rules/cra-posture",
+				"adsum/nrf/sdks/ncs/cra-advisories"
+			],
+			"status": "draft",
+			"created": "2026-06-18",
+			"path": "cra/workflows/cra-readiness.md",
+			"content_hash": "b038c37d85d594f678f78c2f0a5e9214b27d4e3aea62ff88ae9cdbafb34c9edc"
+		},
+		{
+			"id": "adsum/esp/actions/cra-generate-sbom",
+			"title": "Generate SBOM (ESP / esp-idf-sbom)",
+			"type": "action",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "cra",
+			"platform": "esp",
+			"sdk": "esp-idf",
+			"safety": [
+				"shell",
+				"long-running"
+			],
+			"status": "draft",
+			"created": "2026-06-18",
+			"path": "platforms/esp/actions/cra-generate-sbom.md",
+			"content_hash": "929bc62448e9cf6fe16db9c4633b2c18720d5726d28175098f2ca74bfe05b6ed"
+		},
+		{
 			"id": "adsum/esp/platform",
 			"title": "ESP32 — Platform Index",
 			"type": "knowledge",
@@ -33,6 +86,24 @@
 			"content_hash": "0ea9e21dc1e75def74989190f5cfdf4d62d26916ce0a1cef73f0902aa8e72b87"
 		},
 		{
+			"id": "adsum/esp/rules/cra-posture",
+			"title": "CRA Secure-by-Design Posture (ESP)",
+			"type": "knowledge",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "cra",
+			"platform": "esp",
+			"sdk": "esp-idf",
+			"status": "draft",
+			"created": "2026-06-18",
+			"path": "platforms/esp/rules/cra-posture.md",
+			"content_hash": "89b38d135ad13a2b85cdc15c8aa423f8bf501bae5a49310c6f37da0f18bd0ecf"
+		},
+		{
 			"id": "adsum/esp/rules/device-identity",
 			"title": "ESP Platform Rule: Device Identity",
 			"type": "knowledge",
@@ -45,7 +116,7 @@
 			"domain": "embedded-iot",
 			"platform": "esp",
 			"path": "platforms/esp/rules/device-identity.md",
-			"content_hash": "506e2fc650b6c37ea43ff8cb14b6dc26a9160ce7feabaed41f896a35e620c173"
+			"content_hash": "b469d5972789f7f479e6a575e3d5c936c8b0ffc5b7c73f640d845eda1ebf6df5"
 		},
 		{
 			"id": "adsum/esp/rules/esp-terminal",
@@ -111,6 +182,28 @@
 			"content_hash": "ed01076abac0f0d70c68eff8b249fe574ec1560e5ab6057bf45ef1d300a54680"
 		},
 		{
+			"id": "adsum/nrf/actions/cra-generate-sbom",
+			"title": "Generate SBOM (nRF / west spdx)",
+			"type": "action",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "cra",
+			"platform": "nrf",
+			"sdk": "ncs",
+			"safety": [
+				"shell",
+				"long-running"
+			],
+			"status": "draft",
+			"created": "2026-06-18",
+			"path": "platforms/nrf/actions/cra-generate-sbom.md",
+			"content_hash": "b4b22b9eb047241392ecb2bc9d3aadb8d7faf119e76cf239c2ecde575aa06193"
+		},
+		{
 			"id": "adsum/nrf/actions/flash",
 			"title": "Action: Flash Firmware",
 			"type": "action",
@@ -147,6 +240,24 @@
 			],
 			"path": "platforms/nrf/PLATFORM.md",
 			"content_hash": "bbc4e2fbc7b53e0bb5864e121ff031ecffbb5f7bdbe1213c986af546c0bab320"
+		},
+		{
+			"id": "adsum/nrf/rules/cra-posture",
+			"title": "CRA Secure-by-Design Posture (nRF)",
+			"type": "knowledge",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "cra",
+			"platform": "nrf",
+			"sdk": "ncs",
+			"status": "draft",
+			"created": "2026-06-18",
+			"path": "platforms/nrf/rules/cra-posture.md",
+			"content_hash": "e17c15edb1ed3c7623fae7ce0138f62d1bfd2d1a6d66d0e558c498bbc877a1fa"
 		},
 		{
 			"id": "adsum/nrf/rules/device-identity",
@@ -199,6 +310,24 @@
 			],
 			"path": "platforms/nrf/rules/skill-loading.md",
 			"content_hash": "715eb48c32d45af0a7ce91d2e48d5a443d59614cd27225e1a7a296383af98531"
+		},
+		{
+			"id": "adsum/nrf/sdks/ncs/cra-advisories",
+			"title": "CRA Advisory Snapshot (NCS)",
+			"type": "knowledge",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "cra",
+			"platform": "nrf",
+			"sdk": "ncs",
+			"status": "draft",
+			"created": "2026-06-18",
+			"path": "platforms/nrf/sdks/ncs/cra-advisories.md",
+			"content_hash": "72ae5f082a650f22a56581faa13bcefb1055100a09deb56a58b7bbb4e86cd367"
 		},
 		{
 			"id": "adsum/nrf/sdks/ncs/protocols/ble",
