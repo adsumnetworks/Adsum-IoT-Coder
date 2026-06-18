@@ -60,9 +60,15 @@ const Badge: React.FC<{ text: string }> = ({ text }) => (
 			fontWeight: 700,
 			letterSpacing: "0.04em",
 			color: "var(--vscode-editor-background)",
-			background: "color-mix(in srgb, var(--vscode-foreground) 80%, transparent)",
+			background: "var(--vscode-foreground)",
 			borderRadius: "4px",
-			padding: "2px 6px",
+			padding: "1px 5px",
+			// Equal-size pills: clamp both nRF/ESP to one width + center, so glyph-width
+			// differences ("nRF" vs "ESP") don't make the two badges visibly different sizes.
+			minWidth: "34px",
+			textAlign: "center",
+			boxSizing: "border-box",
+			display: "inline-block",
 			flexShrink: 0,
 		}}>
 		{text}
