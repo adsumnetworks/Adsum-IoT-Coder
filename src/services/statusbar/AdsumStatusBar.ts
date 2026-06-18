@@ -73,7 +73,9 @@ let _vscodeApi: typeof vscode | undefined
 
 /** Creates and shows the status-bar item, pushing disposal onto context.subscriptions. */
 export function createAdsumStatusBar(context: vscode.ExtensionContext, vscodeApi: typeof vscode): vscode.StatusBarItem {
-	const item = vscodeApi.window.createStatusBarItem(vscodeApi.StatusBarAlignment.Right, 100)
+	// High priority so the Adsum item stays visible (shown further left + survives status-bar
+	// collapsing) when the ESP-IDF extension floods the right side with target/port/build/flash icons.
+	const item = vscodeApi.window.createStatusBarItem(vscodeApi.StatusBarAlignment.Right, 10_000)
 	item.command = FOCUS_COMMAND
 	item.tooltip = "Open Adsum IoT Coder"
 	_item = item
