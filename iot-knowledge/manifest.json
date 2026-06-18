@@ -46,7 +46,7 @@
 			"status": "draft",
 			"created": "2026-06-18",
 			"path": "cra/workflows/cra-readiness.md",
-			"content_hash": "cf8e0cc12fc4245a4d824558b91110bd3ad8d3b70c71494d51b601da254cff6a"
+			"content_hash": "ca98e76eeef33072ad2b4a95d8992b7d2a164ccb1cf27f0e0fe78efa5ec55ab7"
 		},
 		{
 			"id": "adsum/esp/actions/cra-generate-sbom",
@@ -201,7 +201,7 @@
 			"status": "draft",
 			"created": "2026-06-18",
 			"path": "platforms/nrf/actions/cra-generate-sbom.md",
-			"content_hash": "7e3fdfe9c0a27239c24dbd3b1eb17266aa4d9bba3ac608482745f72cdcad5625"
+			"content_hash": "78747a9106135e7840ff7b8e6cbe93654e703c6a80d16eaf4186bfa107a3f458"
 		},
 		{
 			"id": "adsum/nrf/actions/flash",
