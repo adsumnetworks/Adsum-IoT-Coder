@@ -42,6 +42,10 @@ interface BlockFacts {
 interface PlatformRowProps extends BlockFacts {
 	/** Platform name shown as the neutral lead badge (nRF / ESP). */
 	label: string
+	/** True when the platform's toolchain/board/project is present; false → a dimmed "not detected" row. */
+	detected: boolean
+	/** Muted setup nudge shown when not detected, e.g. "not detected — install ESP-IDF to enable". */
+	notDetectedHint: string
 }
 
 const FACT_ICON: React.CSSProperties = { fontSize: "12px", color: MUTED, flexShrink: 0 }
@@ -74,6 +78,8 @@ const Badge: React.FC<{ text: string }> = ({ text }) => (
  */
 const PlatformRow: React.FC<PlatformRowProps> = ({
 	label,
+	detected,
+	notDetectedHint,
 	toolchain,
 	toolchainMuted,
 	sdk,
@@ -81,37 +87,50 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 	sdkMuted,
 	devices,
 	devicesMuted,
-}) => (
-	<div style={{ display: "flex", flexDirection: "column", gap: "3px", width: "100%", minWidth: 0 }}>
-		{/* Line 1: badge + extension · SDK. Flows naturally — one line when there's room, SDK wraps below
-		    on its own only when the panel is too narrow. No truncation; same whether a project is open or closed. */}
-		<div
-			style={{
-				display: "flex",
-				alignItems: "center",
-				flexWrap: "wrap",
-				columnGap: "12px",
-				rowGap: "3px",
-				fontSize: "11px",
-			}}>
-			<span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: toolchainMuted ? MUTED : FG }}>
+}) => {
+	// Not detected → one dimmed line (badge + setup nudge), reusing the inactive-card opacity. The badge
+	// stays neutral; detected-vs-not is shown by opacity, not colour (cyan stays "primary action" only).
+	if (!detected) {
+		return (
+			<div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", opacity: 0.55 }}>
 				<Badge text={label} />
-				<span>{toolchain}</span>
-			</span>
-			<span
-				style={{ display: "inline-flex", alignItems: "center", gap: "5px", color: sdkMuted ? MUTED : FG }}
-				title={sdkTitle}>
-				<i className="codicon codicon-package" style={FACT_ICON} />
-				<span>{sdk}</span>
-			</span>
+				<span style={{ color: MUTED }}>{notDetectedHint}</span>
+			</div>
+		)
+	}
+	return (
+		<div style={{ display: "flex", flexDirection: "column", gap: "3px", width: "100%", minWidth: 0 }}>
+			{/* Line 1: badge + extension · SDK. Flows naturally — one line when there's room, SDK wraps below
+		    on its own only when the panel is too narrow. No truncation; same whether a project is open or closed. */}
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					flexWrap: "wrap",
+					columnGap: "12px",
+					rowGap: "3px",
+					fontSize: "11px",
+				}}>
+				<span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: toolchainMuted ? MUTED : FG }}>
+					<Badge text={label} />
+					<span>{toolchain}</span>
+				</span>
+				<span
+					style={{ display: "inline-flex", alignItems: "center", gap: "5px", color: sdkMuted ? MUTED : FG }}
+					title={sdkTitle}>
+					<i className="codicon codicon-package" style={FACT_ICON} />
+					<span>{sdk}</span>
+				</span>
+			</div>
+			{/* Line 2: detected boards / devices — always its own line */}
+			<div
+				style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: devicesMuted ? MUTED : FG }}>
+				<i className="codicon codicon-plug" style={FACT_ICON} />
+				<span>{devices}</span>
+			</div>
 		</div>
-		{/* Line 2: detected boards / devices — always its own line */}
-		<div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: devicesMuted ? MUTED : FG }}>
-			<i className="codicon codicon-plug" style={FACT_ICON} />
-			<span>{devices}</span>
-		</div>
-	</div>
-)
+	)
+}
 
 // ---------------------------------------------------------------------------
 // Facts
@@ -227,7 +246,8 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 		sdk = "not built yet"
 		sdkMuted = true
 	} else if (env.extensionPresent || env.idfPresent) {
-		sdk = "ESP-IDF installed"
+		// Installed-but-no-project: show the machine-installed IDF version (version.txt) like nRF shows NCS.
+		sdk = env.idfVersion ? `ESP-IDF ${withV(env.idfVersion)} installed` : "ESP-IDF installed"
 	} else {
 		sdk = "ESP-IDF not detected"
 		sdkMuted = true
@@ -239,7 +259,7 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 		devices = "detecting…"
 		devicesMuted = true
 	} else if (env.espDevices.length === 0) {
-		devices = "no ESP devices"
+		devices = "no boards connected"
 		devicesMuted = true
 	} else {
 		// Show the exact chip once esptool resolved it; otherwise "ESP32-family".
@@ -268,7 +288,7 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 // ---------------------------------------------------------------------------
 
 const EnvStrip: React.FC = () => {
-	const { nrfEnvironment, espEnvironment, openFolderPaths, workspaceClassification } = useExtensionState()
+	const { nrfEnvironment, espEnvironment, openFolderPaths } = useExtensionState()
 	const [refreshing, setRefreshing] = useState(false)
 
 	const handleRefresh = () => {
@@ -289,15 +309,11 @@ const EnvStrip: React.FC = () => {
 	}
 
 	const hasWorkspace = openFolderPaths.length > 0
-	const cls = workspaceClassification ?? "none"
 
-	// Show/hide rule: nRF project → nRF only; ESP project → ESP only; otherwise both.
-	// Then gate each section on actually having something, so a single-platform
-	// machine never shows an empty section for the other platform.
-	const nrfAllowed = !hasWorkspace || cls === "nrf" || cls === "both" || cls === "none"
-	const espAllowed = !hasWorkspace || cls === "esp" || cls === "both" || cls === "none"
-	const showNrf = nrfAllowed && nrfHasAnything(nrfEnv)
-	const showEsp = espAllowed && espHasAnything(espEnv)
+	// Always show BOTH platforms (awareness + consistency). Detection drives full-vs-dimmed, not hide —
+	// nrfHasAnything/espHasAnything (unchanged) classify "set up"; an absent platform renders dimmed.
+	const nrfDetected = nrfHasAnything(nrfEnv)
+	const espDetected = espHasAnything(espEnv)
 
 	const nrf = nrfFacts(nrfEnv, hasWorkspace)
 	const esp = espFacts(espEnv, hasWorkspace)
@@ -314,21 +330,25 @@ const EnvStrip: React.FC = () => {
 		padding: "2px 0",
 	}
 
-	if (!showNrf && !showEsp) {
-		return <div style={{ ...containerStyle, fontSize: "11px", color: MUTED }}>No nRF or ESP toolchain detected.</div>
-	}
-
-	// Presentation only: one refresh re-probes both (same handleRefresh + detecting/refreshing state as
-	// before — no logic change).
-	const bothShown = showNrf && showEsp
+	// One refresh re-probes both (same handleRefresh + detecting/refreshing state).
 	const refreshBusy = refreshing || nrf.detecting || esp.detecting
 
 	return (
 		<div style={containerStyle}>
 			<div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
-				{showNrf && <PlatformRow label="nRF" {...nrf} />}
-				{bothShown && <div style={{ height: "1px", background: NEUTRAL_BORDER, width: "100%" }} />}
-				{showEsp && <PlatformRow label="ESP" {...esp} />}
+				<PlatformRow
+					detected={nrfDetected}
+					label="nRF"
+					notDetectedHint="not detected — install nRF Connect SDK to enable"
+					{...nrf}
+				/>
+				<div style={{ height: "1px", background: NEUTRAL_BORDER, width: "100%" }} />
+				<PlatformRow
+					detected={espDetected}
+					label="ESP"
+					notDetectedHint="not detected — install ESP-IDF to enable"
+					{...esp}
+				/>
 			</div>
 			<button
 				aria-label="Re-probe detected platforms"
