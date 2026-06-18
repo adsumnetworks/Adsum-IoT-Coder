@@ -399,6 +399,9 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 
 	const idfPresent = !!idfPath
 	const idfVersion = idfPath ? readIdfVersion(idfPath) : undefined
+	// Every install's version (de-duped) so the strip lists ALL of them, not just installs[0] —
+	// otherwise it asserts one active version while a build with several installed asks which to use.
+	const installedVersions = Array.from(new Set(installs.map((i) => i.version).filter((v): v is string => !!v)))
 	// Project IDF version: dependencies.lock is the reliable source (present once
 	// components resolve, even without a completed build); the build descriptor's
 	// idf_version is only a forward-compatible fallback. "built" is independent.
@@ -421,6 +424,7 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 		idfPresent,
 		idfPath: idfPath ?? undefined,
 		idfVersion,
+		installedVersions,
 		projectBuilt,
 		projectIdfVersion,
 		projectDetected,

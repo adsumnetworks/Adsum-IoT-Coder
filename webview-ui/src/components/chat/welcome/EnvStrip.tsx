@@ -29,6 +29,8 @@ const NEUTRAL_BORDER = "color-mix(in srgb, var(--vscode-foreground) 15%, transpa
 interface BlockFacts {
 	toolchain: string
 	toolchainMuted: boolean
+	/** Hover text for the toolchain label — carries the exact extension build (kept out of the line). */
+	toolchainTitle?: string
 	sdk: string
 	sdkTitle?: string
 	sdkMuted: boolean
@@ -86,6 +88,7 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 	notDetectedHint,
 	toolchain,
 	toolchainMuted,
+	toolchainTitle,
 	sdk,
 	sdkTitle,
 	sdkMuted,
@@ -117,7 +120,7 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 				}}>
 				<span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: toolchainMuted ? MUTED : FG }}>
 					<Badge text={label} />
-					<span>{toolchain}</span>
+					<span title={toolchainTitle}>{toolchain}</span>
 				</span>
 				<span
 					style={{ display: "inline-flex", alignItems: "center", gap: "5px", color: sdkMuted ? MUTED : FG }}
@@ -162,7 +165,10 @@ function nrfHasAnything(env: NrfEnvironment): boolean {
 }
 
 function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
-	const toolchain = env.extensionPresent ? `nRF Connect ext ${withV(env.extensionVersion ?? "?")}` : "nRF Connect not detected"
+	// Extension shown as presence (✓), exact build in the tooltip — the precise version is support-only noise inline.
+	const toolchain = env.extensionPresent ? "nRF Connect ✓" : "nRF Connect not detected"
+	const toolchainTitle =
+		env.extensionPresent && env.extensionVersion ? `nRF Connect for VS Code ${withV(env.extensionVersion)}` : undefined
 
 	// Version line.
 	let sdk: string
@@ -210,6 +216,7 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 	return {
 		toolchain,
 		toolchainMuted: !env.extensionPresent,
+		toolchainTitle,
 		sdk,
 		sdkTitle,
 		sdkMuted,
@@ -225,11 +232,11 @@ function espHasAnything(env: EspEnvironment): boolean {
 }
 
 function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
-	const toolchain = env.extensionPresent
-		? `Espressif IDF ext ${withV(env.extensionVersion ?? "?")}`
-		: env.idfPresent
-			? "ESP-IDF installed"
-			: "Espressif ext not found"
+	// Extension shown as presence (✓), exact build in the tooltip; falls back to SDK-on-disk when the
+	// extension is gone but ESP-IDF is still installed (a real state — SDK detection is independent).
+	const toolchain = env.extensionPresent ? "Espressif IDF ✓" : env.idfPresent ? "ESP-IDF installed" : "Espressif ext not found"
+	const toolchainTitle =
+		env.extensionPresent && env.extensionVersion ? `ESP-IDF extension ${withV(env.extensionVersion)}` : undefined
 
 	// Version line. ESP only has a version after a build (project_description.json).
 	let sdk: string
@@ -249,9 +256,14 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 	} else if (hasWorkspace && env.projectDetected) {
 		sdk = "not built yet"
 		sdkMuted = true
-	} else if (env.idfPresent || env.idfVersion) {
-		// SDK actually resolved (IDF_PATH/version.txt) → show the installed version like nRF shows NCS.
-		sdk = env.idfVersion ? `ESP-IDF ${withV(env.idfVersion)} installed` : "ESP-IDF installed"
+	} else if (env.idfPresent || env.idfVersion || env.installedVersions?.length) {
+		// SDK(s) resolved → list ALL installed (like nRF lists NCS), not just installs[0]; otherwise the
+		// strip asserts one active version while a build with several installed asks which to use.
+		sdk = env.installedVersions?.length
+			? `ESP-IDF ${env.installedVersions.map(withV).join(", ")} installed`
+			: env.idfVersion
+				? `ESP-IDF ${withV(env.idfVersion)} installed`
+				: "ESP-IDF installed"
 	} else if (env.extensionPresent) {
 		// Extension present but no SDK resolved — don't claim ESP-IDF is installed (it isn't yet).
 		sdk = "ESP-IDF not installed"
@@ -282,6 +294,7 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 	return {
 		toolchain,
 		toolchainMuted: !env.extensionPresent && !env.idfPresent,
+		toolchainTitle,
 		sdk,
 		sdkTitle,
 		sdkMuted,
