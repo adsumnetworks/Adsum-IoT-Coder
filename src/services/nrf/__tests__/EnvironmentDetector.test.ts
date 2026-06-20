@@ -1,7 +1,7 @@
 import { describe, it } from "mocha"
 import "should"
 import { join } from "path"
-import { isNordicBoard, resolveNrfutilCommands } from "../EnvironmentDetector"
+import { isNordicBoard, parseSdkInstallPaths, resolveNrfutilCommands } from "../EnvironmentDetector"
 
 /**
  * resolveNrfutilCommands picks how to invoke nrfutil across the two layouts it ships in:
@@ -95,6 +95,49 @@ describe("resolveNrfutilCommands", () => {
 		})
 	})
 
+	describe("sdk-manager resolved independently of device (CONFIRMED field bug)", () => {
+		// Verified on a real dev machine: the launcher (`nrfutil`) and its `device` plugin
+		// (`~/.nrfutil/bin/nrfutil-device`) were installed and worked — `nrfutil device list` succeeded.
+		// But the launcher's `sdk-manager` plugin (`~/.nrfutil/bin/nrfutil-sdk-manager`) was NOT
+		// installed; running `nrfutil sdk-manager list --json` failed with "Subcommand
+		// nrfutil-sdk-manager not found", which silently looked like "zero NCS versions installed" even
+		// though two NCS versions were actually present on disk. The nRF Connect extension's own
+		// bundled `nrfutil-sdk-manager` binary worked fine in the same scenario.
+		it("falls through to the extension's bundled sdk-manager when the launcher's own plugin is missing, while keeping device on the launcher", () => {
+			const launcherDir = join(HOME, ".nrfutil", "bin")
+			const launcher = join(launcherDir, "nrfutil")
+			const launcherDevicePlugin = join(launcherDir, "nrfutil-device") // present — device works
+			// NOTE: deliberately no "nrfutil-sdk-manager" next to the launcher.
+			const extSdkBin = join(EXT, "platform", "nrfutil", "bin", "nrfutil-sdk-manager")
+			const cmds = resolveNrfutilCommands(
+				{ platform: "linux", env: {}, home: HOME, extensionPath: EXT },
+				fsWith([launcher, launcherDevicePlugin, extSdkBin]),
+			)
+			cmds.devicePrefix.should.equal(`"${launcher}" device`)
+			cmds.source.should.equal("launcher")
+			cmds.sdkManagerPrefix.should.equal(`"${extSdkBin}"`)
+			cmds.sdkManagerSource.should.equal("extension")
+		})
+
+		it("uses the launcher's own sdk-manager plugin when it IS installed locally", () => {
+			const launcherDir = join(HOME, ".nrfutil", "bin")
+			const launcher = join(launcherDir, "nrfutil")
+			const launcherSdkPlugin = join(launcherDir, "nrfutil-sdk-manager")
+			const cmds = resolveNrfutilCommands({ platform: "linux", env: {}, home: HOME }, fsWith([launcher, launcherSdkPlugin]))
+			cmds.sdkManagerPrefix.should.equal(`"${launcher}" sdk-manager`)
+			cmds.sdkManagerSource.should.equal("launcher")
+		})
+
+		it("treats an unverifiable launcher sdk-manager (no plugin file, no extension bundle) as path-fallback", () => {
+			const launcher = join(HOME, ".nrfutil", "bin", "nrfutil")
+			const cmds = resolveNrfutilCommands({ platform: "linux", env: {}, home: HOME }, fsWith([launcher]))
+			// String form is unchanged (still attempts the launcher), but the source tells callers
+			// this is NOT confirmed to work — selectHostNcs uses sdkManagerSource, not the prefix string.
+			cmds.sdkManagerPrefix.should.equal(`"${launcher}" sdk-manager`)
+			cmds.sdkManagerSource.should.equal("path-fallback")
+		})
+	})
+
 	describe("nothing found — PATH fallback", () => {
 		it("returns bare launcher forms on Windows", () => {
 			const cmds = resolveNrfutilCommands(
@@ -112,6 +155,55 @@ describe("resolveNrfutilCommands", () => {
 			cmds.devicePrefix.should.equal("nrfutil device")
 			cmds.sdkManagerPrefix.should.equal("nrfutil sdk-manager")
 		})
+	})
+})
+
+describe("parseSdkInstallPaths — derives ZEPHYR_BASE source data from `sdk-manager list --json`", () => {
+	// Exact shape captured from a real `nrfutil-sdk-manager list --json` run (two NCS versions
+	// installed). This is the field-confirmed fix for "west: unknown command 'build'" on a
+	// freestanding (out-of-tree) NCS app: west needs ZEPHYR_BASE = <dirNames[0]>/zephyr.
+	const REAL_OUTPUT = JSON.stringify({
+		type: "info",
+		data: {
+			versions: [
+				{
+					dirNames: ["/home/omar/ncs/v3.3.1"],
+					sdkStatus: "installed",
+					toolchainPath: "/home/omar/ncs/toolchains/911f4c5c26",
+					toolchainStatus: "installed",
+					type: "nrf",
+					version: "v3.3.1",
+				},
+				{
+					dirNames: ["/home/omar/ncs/v3.2.1"],
+					sdkStatus: "installed",
+					toolchainPath: "/home/omar/ncs/toolchains/43683a87ea",
+					toolchainStatus: "installed",
+					type: "nrf",
+					version: "v3.2.1",
+				},
+			],
+		},
+	})
+
+	it("maps each installed version (normalized, no leading v) to its install dir", () => {
+		const paths = parseSdkInstallPaths(REAL_OUTPUT)
+		paths.should.deepEqual({
+			"3.3.1": "/home/omar/ncs/v3.3.1",
+			"3.2.1": "/home/omar/ncs/v3.2.1",
+		})
+	})
+
+	it("skips a version whose sdkStatus is not 'installed'", () => {
+		const stdout = JSON.stringify({
+			data: { versions: [{ version: "v9.9.9", dirNames: ["/x/ncs/v9.9.9"], sdkStatus: "not-installed" }] },
+		})
+		parseSdkInstallPaths(stdout).should.deepEqual({})
+	})
+
+	it("returns an empty map for unparseable/empty stdout", () => {
+		parseSdkInstallPaths("not json\n").should.deepEqual({})
+		parseSdkInstallPaths("").should.deepEqual({})
 	})
 })
 
