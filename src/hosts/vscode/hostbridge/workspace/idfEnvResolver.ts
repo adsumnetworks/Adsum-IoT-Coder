@@ -151,6 +151,28 @@ export function parseIdfVersionTxt(content: string): string | undefined {
 }
 
 /**
+ * Parse an ESP-IDF version from `tools/cmake/version.cmake`. This file exists in EVERY IDF checkout
+ * (release tarball, git clone, AND the VS Code extension's managed installs) — unlike `version.txt`,
+ * which only ships in release tarballs and is ABSENT from extension/git installs (the real-world cause
+ * of "version undefined → can't match the project pin → ambiguous forever"). The file sets:
+ *   set(IDF_VERSION_MAJOR 6)
+ *   set(IDF_VERSION_MINOR 0)
+ *   set(IDF_VERSION_PATCH 0)
+ * Returns the normalized "MAJOR.MINOR.PATCH" (e.g. "6.0.0", matching dependencies.lock's `idf:` version),
+ * or undefined if any component is missing. Pure; exported for tests.
+ */
+export function parseIdfVersionCmake(content: string): string | undefined {
+	const grab = (key: string): string | undefined => content.match(new RegExp(`set\\(\\s*${key}\\s+(\\d+)`, "i"))?.[1]
+	const major = grab("IDF_VERSION_MAJOR")
+	const minor = grab("IDF_VERSION_MINOR")
+	const patch = grab("IDF_VERSION_PATCH")
+	if (major === undefined || minor === undefined || patch === undefined) {
+		return undefined
+	}
+	return `${major}.${minor}.${patch}`
+}
+
+/**
  * Container directories whose children are scanned for IDF installs. The IDF
  * root can sit in two shapes under a container, and we don't assume which:
  *   - `<container>/<ver>/esp-idf`  — the Espressif VS Code extension's Express
