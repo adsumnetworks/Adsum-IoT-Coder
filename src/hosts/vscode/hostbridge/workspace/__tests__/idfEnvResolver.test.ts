@@ -9,6 +9,7 @@ import {
 	enumerateIdfInstalls,
 	getExportScriptName,
 	getIdfPathCandidates,
+	idfAmbiguousMessage,
 	idfNotFoundMessage,
 	isIdfDir,
 	normalizeIdfVersion,
@@ -238,6 +239,41 @@ describe("idfEnvResolver", () => {
 		})
 		it("is none when nothing is installed", () => {
 			expect(selectIdfInstall([]).kind).to.equal("none")
+		})
+
+		// Parity with nRF selectNcsInstall: explicit idf_version → persisted → pin → path → single → ambiguous.
+		it("explicit idf_version wins over the pin and disambiguates", () => {
+			const sel = selectIdfInstall([a, b], "5.5.2", undefined, { explicit: "6.0" })
+			expect(sel.kind).to.equal("resolved")
+			expect((sel as any).path).to.equal(b.path)
+		})
+		it("tolerates a v-prefixed explicit idf_version", () => {
+			expect((selectIdfInstall([a, b], undefined, undefined, { explicit: "v6.0" }) as any).path).to.equal(b.path)
+		})
+		it("persisted choice resolves when installed (over the pin)", () => {
+			const sel = selectIdfInstall([a, b], "5.5.2", undefined, { persisted: "6.0" })
+			expect((sel as any).path).to.equal(b.path)
+		})
+		it("explicit beats persisted", () => {
+			const sel = selectIdfInstall([a, b], undefined, undefined, { explicit: "5.5.2", persisted: "6.0" })
+			expect((sel as any).path).to.equal(a.path)
+		})
+		it("falls through to ambiguous when explicit/persisted are not installed", () => {
+			expect(selectIdfInstall([a, b], undefined, undefined, { explicit: "9.9.9" }).kind).to.equal("ambiguous")
+			expect(selectIdfInstall([a, b], undefined, undefined, { persisted: "9.9.9" }).kind).to.equal("ambiguous")
+		})
+	})
+
+	describe("idfAmbiguousMessage", () => {
+		it("lists installs and tells the agent to re-run with idf_version (not the extension selector)", () => {
+			const msg = idfAmbiguousMessage([
+				{ path: "/esp/v5.5.2/esp-idf", version: "5.5.2" },
+				{ path: "/esp/v6.0/esp-idf", version: "6.0" },
+			])
+			expect(msg).to.contain("idf_version")
+			expect(msg).to.contain("/esp/v5.5.2/esp-idf")
+			expect(msg).to.contain("remembered for this project")
+			expect(msg).to.not.contain("IDF selector")
 		})
 	})
 

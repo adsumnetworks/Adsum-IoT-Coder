@@ -28,6 +28,9 @@ import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
  *                `idf.py set-target esp32s3`, `idf.py --version`,
  *                `esptool.py flash_id`, `python -m serial.tools.list_ports`.
  */
+/** workspaceState key for the per-project IDF version chosen when several are installed (ask-once). */
+const IDF_VERSION_STATE_KEY = "adsum.esp.idfVersion"
+
 export class TriggerEspActionHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.ESP_ACTION
 
@@ -92,11 +95,20 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 		// only on the first command in that terminal (the env persists after),
 		// bare on subsequent commands.
 		const prepared = await prepareEspTerminal()
-		const built = wrapEspCommand(body, prepared.needsSourcing)
+		// Version resolution mirrors the nRF handler: explicit `idf_version` param → persisted per-project
+		// choice → project pin → sole install → ask once. The explicit choice is remembered so the next
+		// build is silent (no re-asking, no falling back to a plain terminal).
+		const explicitVersion = (block.params as Record<string, string | undefined>).idf_version
+		const persistedVersion = this.context.workspaceState?.get<string>(IDF_VERSION_STATE_KEY)
+		const built = wrapEspCommand(body, prepared.needsSourcing, { explicitVersion, persistedVersion })
 		if (built.error || !built.command) {
 			const msg = built.error || "Could not build the ESP-IDF command."
 			await config.callbacks.say("error", msg)
 			return formatResponse.toolError(msg)
+		}
+		// The explicit choice resolved into a usable command — remember it for this project.
+		if (explicitVersion) {
+			await this.context.workspaceState?.update(IDF_VERSION_STATE_KEY, explicitVersion)
 		}
 
 		await config.callbacks.say(

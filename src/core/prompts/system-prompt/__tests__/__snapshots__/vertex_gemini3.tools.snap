@@ -405,6 +405,9 @@
         },
         "reset": {
           "type": "STRING"
+        },
+        "idf_version": {
+          "type": "STRING"
         }
       },
       "required": [
