@@ -21,7 +21,11 @@ import { exec } from "child_process"
 import { existsSync, readdirSync, readFileSync } from "fs"
 import { join } from "path"
 import { promisify } from "util"
-import { enumerateIdfInstalls, resolveIdfPath } from "../../hosts/vscode/hostbridge/workspace/idfEnvResolver"
+import {
+	enumerateIdfInstalls,
+	parseIdfVersionCmake,
+	resolveIdfPath,
+} from "../../hosts/vscode/hostbridge/workspace/idfEnvResolver"
 import { classifyWorkspace } from "../platform/WorkspaceClassifier"
 import { type ChipResult, getIdfPython, probeChip } from "./espChipProbe"
 
@@ -194,15 +198,25 @@ export function filterEspPorts(ports: RawPortData[]): EspDevice[] {
 // Subprocess probes
 // ---------------------------------------------------------------------------
 
-/** Read IDF version from {idfPath}/version.txt (ship on every IDF release). */
+/**
+ * Read an install's IDF version. Prefer {idfPath}/version.txt (release tarballs); fall back to
+ * tools/cmake/version.cmake, which is present in EVERY IDF checkout — extension-managed and git
+ * installs have NO version.txt, so without this fallback the version is undefined and the project
+ * pin can never match (the v6.0-vs-v5.5.2 "ambiguous forever" bug).
+ */
 function readIdfVersion(idfPath: string): string | undefined {
-	const versionFile = join(idfPath, "version.txt")
-	if (!existsSync(versionFile)) return undefined
-	try {
-		return parseIdfVersionFile(readFileSync(versionFile, "utf8"))
-	} catch {
-		return undefined
+	const read = (p: string): string | undefined => {
+		try {
+			return readFileSync(p, "utf8")
+		} catch {
+			return undefined
+		}
 	}
+	const txt = read(join(idfPath, "version.txt"))
+	const fromTxt = txt ? parseIdfVersionFile(txt) : undefined
+	if (fromTxt) return fromTxt
+	const cmake = read(join(idfPath, "tools", "cmake", "version.cmake"))
+	return cmake ? parseIdfVersionCmake(cmake) : undefined
 }
 
 export interface EspBuildInfo {
