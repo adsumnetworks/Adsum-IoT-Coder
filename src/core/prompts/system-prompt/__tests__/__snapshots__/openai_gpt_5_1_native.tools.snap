@@ -524,6 +524,10 @@
           "reset": {
             "type": "string",
             "description": "Optional for \"monitor\". Reset the board before capturing (DEFAULT: true — captures the full boot sequence). Set to \"false\" for mid-runtime capture without resetting."
+          },
+          "idf_version": {
+            "type": "string",
+            "description": "Optional. The ESP-IDF version to build/flash with, e.g. \"5.5.2\".\nYou normally do NOT set this — the tool auto-resolves the version from the project's pin (dependencies.lock)\nor uses the only installed version. Set it ONLY when the tool reports that multiple ESP-IDF versions are\ninstalled and the project pins none: ask the user which to use, then pass it here. The choice is remembered\nfor this project, so you won't be asked again. Do NOT switch the Espressif extension's IDF selector or\nsource export.sh by hand — just pass this parameter."
           }
         },
         "required": [

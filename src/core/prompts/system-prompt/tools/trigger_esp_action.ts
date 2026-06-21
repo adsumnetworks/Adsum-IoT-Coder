@@ -105,6 +105,17 @@ When "devices" is set, "port" and "name" parameters are ignored (name is embedde
 		instruction: `Optional for "monitor". Reset the board before capturing (DEFAULT: true — captures the full boot sequence). Set to "false" for mid-runtime capture without resetting.`,
 		usage: "true",
 	},
+	{
+		name: "idf_version",
+		required: false,
+		instruction: `Optional. The ESP-IDF version to build/flash with, e.g. "5.5.2".
+You normally do NOT set this — the tool auto-resolves the version from the project's pin (dependencies.lock)
+or uses the only installed version. Set it ONLY when the tool reports that multiple ESP-IDF versions are
+installed and the project pins none: ask the user which to use, then pass it here. The choice is remembered
+for this project, so you won't be asked again. Do NOT switch the Espressif extension's IDF selector or
+source export.sh by hand — just pass this parameter.`,
+		usage: "5.5.2",
+	},
 ]
 
 const DESCRIPTION = `Run the ESP-IDF toolchain in a terminal with the ESP-IDF environment sourced for you.
