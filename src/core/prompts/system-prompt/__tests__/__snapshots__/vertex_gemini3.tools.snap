@@ -340,6 +340,9 @@
         "command": {
           "type": "STRING"
         },
+        "ncs_version": {
+          "type": "STRING"
+        },
         "operation": {
           "type": "STRING"
         },
@@ -378,7 +381,7 @@
   },
   {
     "name": "triggerEspAction",
-    "description": "Run the ESP-IDF toolchain in a terminal with the ESP-IDF environment sourced for you.\n\nUSE action=\"build\" | \"flash\" for the core cycle, action=\"monitor\" to CAPTURE serial logs/crashes to a file, or action=\"execute\" with a \"command\" for any other idf.py/esptool/python command (including device identification: esptool.py flash_id, idf.py --version, idf.py size).\nNEVER use execute_command for ESP-IDF tasks — a plain terminal has no IDF environment.\n\nCRITICAL OPERATIONAL RULES:\n1. ENVIRONMENT: Never run idf.py/esptool via execute_command. This tool provides the sourced ESP-IDF environment.\n2. DEVICE IDENTITY (run BEFORE the first build/flash, via action=\"execute\"): identify the connected chip and flash so you build for the right target.\n   - \"esptool.py flash_id\"  → chip type + revision + features (WiFi/BLE) + flash (ROM) size in one call.\n   - \"idf.py --version\"      → the ESP-IDF version.\n   - \"python -m serial.tools.list_ports\"  → enumerate serial ports (which board is on which port).\n   - PSRAM is a config fact: read sdkconfig (CONFIG_SPIRAM*), confirmed at runtime by the boot log (\"Found 8MB SPI RAM device\").\n   - \"idf.py size\"  → app IRAM/DRAM/Flash usage (after a build).\n3. TARGET: A project builds for one chip (esp32, esp32s3, esp32c3, esp32c6...). Set it with action=\"execute\" command=\"idf.py set-target esp32s3\" before the first build if it differs from sdkconfig's CONFIG_IDF_TARGET.\n4. PORTS: discover the port ONCE (command=\"python -m serial.tools.list_ports\"), then ALWAYS pass \"port\" to flash and monitor. A portless flash/monitor makes esptool open every serial device (/dev/ttyS0..S31 on Linux) one by one before finding the board, and picks the wrong one when two boards are attached. Linux: /dev/ttyUSB* or /dev/ttyACM*; macOS: /dev/cu.usbserial-* or /dev/cu.usbmodem*; Windows: COMx.\n5. MONITOR = log capture: action=\"monitor\" runs idf.py monitor for \"duration\" seconds and SAVES the serial output (panic backtraces already decoded to file:line) to logs/uart/<name>_<chip>_<port>_<ts>.log. It resets the board first by default (set reset=\"false\" for mid-runtime capture). This is how you capture crashes/coredumps — do NOT run \"idf.py monitor\" via execute (it would hang).\n6. CLEAN/RECONFIG: use action=\"execute\" with command=\"idf.py fullclean\" or \"idf.py reconfigure\" when the build is in a bad state.\n",
+    "description": "Run the ESP-IDF toolchain in a terminal with the ESP-IDF environment sourced for you.\n\nUSE action=\"build\" | \"flash\" for the core cycle, action=\"monitor\" to CAPTURE serial logs/crashes to a file, or action=\"execute\" with a \"command\" for any other idf.py/esptool/python command (including device identification: esptool.py flash_id, idf.py --version, idf.py size).\nNEVER use execute_command for ESP-IDF tasks — a plain terminal has no IDF environment.\n\nCRITICAL OPERATIONAL RULES:\n1. ENVIRONMENT: Never run idf.py/esptool via execute_command. This tool provides the sourced ESP-IDF environment.\n2. DEVICE IDENTITY (run BEFORE the first build/flash, via action=\"execute\"): identify the connected chip and flash so you build for the right target.\n   - \"esptool.py flash_id\"  → chip type + revision + features (WiFi/BLE) + flash (ROM) size in one call.\n   - \"idf.py --version\"      → the ESP-IDF version.\n   - \"python -m serial.tools.list_ports\"  → enumerate serial ports (which board is on which port).\n   - PSRAM is a config fact: read sdkconfig (CONFIG_SPIRAM*), confirmed at runtime by the boot log (\"Found 8MB SPI RAM device\").\n   - \"idf.py size\"  → app IRAM/DRAM/Flash usage (after a build).\n3. TARGET: A project builds for one chip (esp32, esp32s3, esp32c3, esp32c6...). Set it with action=\"execute\" command=\"idf.py set-target esp32s3\" before the first build if it differs from sdkconfig's CONFIG_IDF_TARGET.\n4. PORTS: discover the port ONCE (command=\"python -m serial.tools.list_ports\"), then ALWAYS pass \"port\" to flash and monitor. A portless flash/monitor makes esptool open every serial device (/dev/ttyS0..S31 on Linux) one by one before finding the board, and picks the wrong one when two boards are attached. Linux: /dev/ttyUSB* or /dev/ttyACM*; macOS: /dev/cu.usbserial-* or /dev/cu.usbmodem*; Windows: COMx.\n5. MONITOR = log capture: action=\"monitor\" runs idf.py monitor for \"duration\" seconds and SAVES the serial output (panic backtraces already decoded to file:line) to logs/uart/<name>_<chip>_<port>_<ts>.log. It resets the board first by default (set reset=\"false\" for mid-runtime capture). This is how you capture crashes/coredumps — do NOT run \"idf.py monitor\" via execute (it would hang).\n   MULTI-BOARD: pass \"devices\" instead of \"port\" to capture two or more boards CONCURRENTLY in one call (e.g. a BLE central + peripheral pair). Format: \"name1:port1:/abs/path/project1,name2:port2:/abs/path/project2\". Each board runs idf.py monitor inside its own project directory, in parallel, for the same \"duration\".\n6. CLEAN/RECONFIG: use action=\"execute\" with command=\"idf.py fullclean\" or \"idf.py reconfigure\" when the build is in a bad state.\n",
     "parameters": {
       "type": "OBJECT",
       "properties": {
@@ -389,6 +392,9 @@
           "type": "STRING"
         },
         "port": {
+          "type": "STRING"
+        },
+        "devices": {
           "type": "STRING"
         },
         "duration": {
