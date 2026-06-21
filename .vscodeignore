@@ -3,6 +3,7 @@
 .vscode-test/**
 .worktrees/**
 CLAUDE.local.md
+NRF_TERMINAL_ARCHITECTURE.md
 out/
 dist-standalone/
 node_modules/
