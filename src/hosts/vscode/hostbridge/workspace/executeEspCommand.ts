@@ -31,6 +31,7 @@ import {
 	enumerateIdfInstalls,
 	idfAmbiguousMessage,
 	idfNotFoundMessage,
+	parseIdfVersionCmake,
 	parseIdfVersionTxt,
 	resolveIdfPath,
 	type SupportedPlatform,
@@ -96,11 +97,23 @@ export function selectHostIdf(opts: { explicitVersion?: string; persistedVersion
 		}
 	}
 	const readVersion = (idfDir: string): string | undefined => {
-		try {
-			return parseIdfVersionTxt(fs.readFileSync(path.join(idfDir, "version.txt"), "utf8"))
-		} catch {
-			return undefined
+		const read = (p: string): string | undefined => {
+			try {
+				return fs.readFileSync(p, "utf8")
+			} catch {
+				return undefined
+			}
 		}
+		// version.txt first (release tarballs); fall back to tools/cmake/version.cmake, which exists in
+		// every install (extension-managed / git checkouts have NO version.txt) — without this the install
+		// version is undefined and the project pin (e.g. 6.0.0) can never match → ambiguous forever.
+		const txt = read(path.join(idfDir, "version.txt"))
+		const fromTxt = txt ? parseIdfVersionTxt(txt) : undefined
+		if (fromTxt) {
+			return fromTxt
+		}
+		const cmake = read(path.join(idfDir, "tools", "cmake", "version.cmake"))
+		return cmake ? parseIdfVersionCmake(cmake) : undefined
 	}
 	const installs = enumerateIdfInstalls(platform, process.env, fs.existsSync, listDir, readVersion, explicit)
 	const pin = getCachedEspEnvironment().projectIdfVersion

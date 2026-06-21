@@ -13,6 +13,7 @@ import {
 	idfNotFoundMessage,
 	isIdfDir,
 	normalizeIdfVersion,
+	parseIdfVersionCmake,
 	resolveIdfPath,
 	type SupportedPlatform,
 	selectIdfInstall,
@@ -209,6 +210,24 @@ describe("idfEnvResolver", () => {
 		it("returns undefined for empty/undefined", () => {
 			expect(normalizeIdfVersion("")).to.equal(undefined)
 			expect(normalizeIdfVersion(undefined)).to.equal(undefined)
+		})
+	})
+
+	describe("parseIdfVersionCmake", () => {
+		// Real tools/cmake/version.cmake body from an ESP-IDF v6.0 install (the install dir had NO
+		// version.txt — the bug this parser fixes). Must yield "6.0.0" to match the lock pin "6.0.0".
+		const V60 = `set(IDF_VERSION_MAJOR 6)\nset(IDF_VERSION_MINOR 0)\nset(IDF_VERSION_PATCH 0)\n\nset(ENV{IDF_VERSION} "\${IDF_VERSION_MAJOR}.\${IDF_VERSION_MINOR}.\${IDF_VERSION_PATCH}")`
+		it("extracts MAJOR.MINOR.PATCH (v6.0 → 6.0.0, matches dependencies.lock)", () => {
+			expect(parseIdfVersionCmake(V60)).to.equal("6.0.0")
+		})
+		it("handles v5.5.2", () => {
+			expect(parseIdfVersionCmake("set(IDF_VERSION_MAJOR 5)\nset(IDF_VERSION_MINOR 5)\nset(IDF_VERSION_PATCH 2)")).to.equal(
+				"5.5.2",
+			)
+		})
+		it("returns undefined when a component is missing or body is junk", () => {
+			expect(parseIdfVersionCmake("set(IDF_VERSION_MAJOR 6)\nset(IDF_VERSION_MINOR 0)")).to.equal(undefined)
+			expect(parseIdfVersionCmake("not a cmake file")).to.equal(undefined)
 		})
 	})
 
