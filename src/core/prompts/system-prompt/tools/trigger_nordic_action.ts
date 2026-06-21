@@ -65,6 +65,16 @@ Examples:
 		usage: "west build -b nrf52840dk/nrf52840 .",
 	},
 	{
+		name: "ncs_version",
+		required: false,
+		instruction: `Optional. The nRF Connect SDK version to build/flash with, e.g. "v3.2.1".
+You normally do NOT set this — the tool auto-resolves the version from the project's existing build,
+or uses the only installed version. Set it ONLY when the tool reports that multiple NCS versions are
+installed and the project has no build yet: ask the user which to use, then pass it here. The choice is
+remembered for this project, so you won't be asked again.`,
+		usage: "v3.2.1",
+	},
+	{
 		name: "operation",
 		required: false,
 		instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor", "device_info".
