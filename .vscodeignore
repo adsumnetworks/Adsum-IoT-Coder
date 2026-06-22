@@ -83,6 +83,16 @@ _includes/**
 .env.example
 package.disabled.json
 
+# Maintainer-only dev memory and tooling configs — these document how WE build the
+# extension, not how it runs. None are read at extension runtime (the .agents/ rules the
+# agent reads come from the USER's workspace, not our bundled copy), so shipping them only
+# leaks internal dev notes to Marketplace users and bloats the VSIX.
+CLAUDE.md
+CLAUDE.roadmap.md
+.clangd
+.agents/**
+qa/**
+
 # CONFIDENTIAL — internal-only, MUST never reach the public Marketplace VSIX.
 # Adsum-Planning is our private team planning repo (cloned here for agent context,
 # gitignored); Adsum-Backend is the private K-bit content backend (pull/push the
@@ -107,7 +117,10 @@ tests/**
 # during local testing (logs/uart/*.log). At runtime the monitor writes into the
 # user's project, never the extension — so a root-level logs/ is always test pollution
 # and must never ship. (demo-scenarios/**/logs/ is shipped separately and unaffected.)
-/logs/**
+# NOTE: pattern must NOT be leading-slash anchored — vsce's minimatch matches relative
+# paths, so `/logs/**` silently matches nothing; `logs/**` is start-anchored already and
+# only hits the root logs/ dir, never demo-scenarios/**/logs/.
+logs/**
 
 # Build / lint / test tooling — only useful inside the repo
 esbuild.mjs
