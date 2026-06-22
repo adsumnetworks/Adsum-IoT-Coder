@@ -1,6 +1,6 @@
 ---
 id: adsum/nrf/actions/cra-generate-sbom
-title: Generate SBOM (nRF / west spdx)
+title: Generate SBOM (nRF / west ncs-sbom)
 type: action
 version: 0.1.0
 owner: adsum-core
@@ -18,13 +18,31 @@ created: "2026-06-18"
 status: draft
 ---
 
-# Generate SBOM — nRF / west spdx (platforms/nrf/actions/cra-generate-sbom.md)
+# Generate SBOM — nRF / west ncs-sbom (platforms/nrf/actions/cra-generate-sbom.md)
 
 ## What it does
 Emits a machine-readable **SPDX** software bill of materials from the **real** Zephyr/NCS build —
-the CRA's named artifact (Annex I, Part II). SPDX is a commonly-used machine-readable format.
+the CRA's named artifact (Annex I, Part II). SPDX is a commonly-used machine-readable format. Prefer Nordic's vendor-native `west ncs-sbom`; fall back only when it can't run.
 
-## How to run it (golden path)
+## Tool ladder — prefer the vendor-native tool, never dead-end
+1. **`west ncs-sbom`** (Nordic, vendor-native) — richer + CRA-positioned; the **golden path** below.
+2. **`west spdx`** (upstream-generic) — **Fallback A**, the hardened recipe; only if `ncs-sbom` is unavailable or genuinely fails.
+3. **SBOM-lite** (`west list` inventory) — **Fallback B**, true last resort.
+Descend only after the rung above genuinely fails, and **record which rung ran** in the report `Method:` field.
+
+> The build gotchas (**spaces-in-path**, below) apply to every rung — they all build the project.
+
+## Golden path — west ncs-sbom (vendor-native, preferred)
+Nordic's own SBOM tool (in NCS 2.0–3.3.x → 3.2.1 covered), positioned by Nordic for CRA. Over `west spdx` it adds per-file **license detection**, **PURL/CPE** ids, package supplier, an **HTML report**, and handles **sysbuild natively per-domain** — so the fragile `--init`/touch-CMakeLists reply dance (Fallback A) is **not needed**. Output is **SPDX 2.2** (west spdx is 2.3 — both CRA-acceptable; label which you produced).
+1. **Deps pre-flight (don't crash):** if `ncs-sbom` errors on a missing import, install its deps: `pip3 install -r <ncs>/nrf/scripts/requirements-west-ncs-sbom.txt`. Detect-and-instruct; never dead-end.
+2. **Build** to a Ninja build dir: `west build -d build -b <board> .`.
+3. **Generate:** `west ncs-sbom -d build --output-spdx compliance/sbom/<app>.spdx --output-html compliance/sbom/sbom_report.html`.
+   - **Sysbuild:** point `-d` at the **build root** — `ncs-sbom` detects `domains.yaml` and fans out **per-domain** (filenames get `_<domain>`, or use `{domain}` in the path). **No `--init` dance.**
+   - **Skip scancode** (long-running): pass `--license-detectors spdx-tag,full-text,external-file` (omit `scancode-toolkit`). There is **no `-n` flag** — don't invent one.
+4. **License data = evidence-to-verify, not authoritative** — Nordic marks license detection **experimental**. Surface licenses as "detected — verify", never as a compliance fact (readiness-not-compliance).
+5. `west ncs-sbom` **only generates** — no CVE/vulnerability scanning, so nothing to fence (advisories stay surface-and-link via the advisories bit).
+
+## Fallback A — west spdx (upstream-generic; the hardened recipe)
 Two gotchas are the whole value: (1) `west spdx --init` **must run before the build** (it enables the
 CMake file-based API), and (2) the build **must have `CONFIG_BUILD_OUTPUT_META=y`** or `west spdx`
 errors *"CONFIG_BUILD_OUTPUT_META must be enabled to generate spdx files."* Run via the nRF device tool.
@@ -62,8 +80,8 @@ reads. Verified working sequence (produces real SPDX, not SBOM-lite):
 > **Never run `west build -p` (pristine) after `--init`.** Pristine wipes `build/<image>/.cmake/api`, taking the
 > query dir with it, and you're back to the reply-missing error. Do all pristine builds **first**, `--init` **last**.
 
-## Fallback (SBOM-lite) — true last resort, not the first stumble
-Use this **only** if `west spdx` genuinely can't run (e.g. absent on this SDK version) **after** the recipe
+## Fallback B — SBOM-lite (true last resort)
+Use this **only** if both `west ncs-sbom` and `west spdx` genuinely can't run (e.g. absent on this SDK version) **after** the recipes
 above — never on the first error. Fall back to `west list` → a markdown component inventory written to
 `compliance/sbom/`, with the **exact** heading **"SBOM-lite (component inventory, not SPDX)"** so no one
 mistakes it for the CRA's named SPDX artifact.
@@ -74,7 +92,9 @@ mistakes it for the CRA's named SPDX artifact.
   stamping one version across the whole inventory.
 
 ## Safety
-`shell` (runs `west`), `long-running` (the build). No flash/erase.
+`shell` (runs `west`), `long-running` (the build). No flash/erase. No network.
 
-> ⚠️ **VERIFY ON HARDWARE before launch:** confirm the exact `west spdx --init/-d` flags + output paths on
-> **NCS 3.2.1** (flags have drifted across versions). Version-gate this action if needed.
+> ⚠️ **VERIFY ON HARDWARE before launch (NCS 3.2.1):** on a real build confirm the `west ncs-sbom`
+> `-d` / `--output-spdx` / `--output-html` flags, the `nrf/scripts/requirements-west-ncs-sbom.txt` deps
+> path, and the `--license-detectors` behaviour (is scancode pulled in by default?). Keep the Fallback A
+> `west spdx --init/-d` flags verified too. Flags drift across versions — version-gate if needed.
