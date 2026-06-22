@@ -46,7 +46,7 @@
 			"status": "draft",
 			"created": "2026-06-18",
 			"path": "cra/workflows/cra-readiness.md",
-			"content_hash": "cf0dc467c03874c876a854399e149bd978effbd5249a96d7be015a1842712132"
+			"content_hash": "d9ea9ccf2b4cac575149b8766a85fa174b4a1120309f642a8be24b078680f4b2"
 		},
 		{
 			"id": "adsum/esp/actions/cra-generate-sbom",
@@ -68,7 +68,7 @@
 			"status": "draft",
 			"created": "2026-06-18",
 			"path": "platforms/esp/actions/cra-generate-sbom.md",
-			"content_hash": "929bc62448e9cf6fe16db9c4633b2c18720d5726d28175098f2ca74bfe05b6ed"
+			"content_hash": "6ddf398a5b501bfa4417c543a2df7bd2b27376435e0aa6d6e4d449dc5df269d8"
 		},
 		{
 			"id": "adsum/esp/platform",
@@ -183,7 +183,7 @@
 		},
 		{
 			"id": "adsum/nrf/actions/cra-generate-sbom",
-			"title": "Generate SBOM (nRF / west spdx)",
+			"title": "Generate SBOM (nRF / west ncs-sbom)",
 			"type": "action",
 			"version": "0.1.0",
 			"owner": "adsum-core",
@@ -201,7 +201,7 @@
 			"status": "draft",
 			"created": "2026-06-18",
 			"path": "platforms/nrf/actions/cra-generate-sbom.md",
-			"content_hash": "5d2317a5d26ea6f016565e86dc4bdd33aaf2ec3969702f7da3dce778bbde65be"
+			"content_hash": "3f4a1b66b70e2ac545a4cb8f705ce149a4d8f5e50f018ebdfb89fd912e30065a"
 		},
 		{
 			"id": "adsum/nrf/actions/flash",
