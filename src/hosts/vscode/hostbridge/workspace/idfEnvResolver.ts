@@ -237,18 +237,21 @@ export function enumerateIdfInstalls(
 }
 
 /**
- * Pick which install to use. Priority (mirrors nRF's `selectNcsInstall`):
- *   1. explicit `idf_version` the agent passed (an override the user just chose) — when installed.
- *   2. the per-project choice remembered earlier (workspaceState) — when installed.
- *   3. the project's pinned version (dependencies.lock) — when installed.
- *   4. the explicit extension-setting path.
- *   5. the sole install (no real choice to make).
- *   6. several installed and nothing decided → **ambiguous**; nothing installed → **none**.
+ * Pick which install to use. Priority:
+ *   1. the project's pinned version (dependencies.lock) — when installed. This is the GROUND TRUTH for
+ *      a pinned project and MUST win over a remembered/override choice: a v6.0 remembered from testing
+ *      another project must never hijack a project whose lock pins v5.5.2.
+ *   2. the explicit `idf_version` the agent passed this call — only when there's no usable pin (the
+ *      ambiguous, no-pin case the param exists for).
+ *   3. the per-project choice remembered earlier (workspaceState) — likewise only when there's no pin.
+ *   4. a pin that is set but NOT installed → can't honor: sole install uses it, else ask.
+ *   5. the explicit extension-setting path.
+ *   6. the sole install (no real choice to make).
+ *   7. several installed and nothing decided → **ambiguous**; nothing installed → **none**.
  *
- * Explicit/persisted/pin only resolve when that version is actually installed; otherwise we fall through
- * (e.g. a stale persisted choice the user uninstalled shouldn't wedge us — we drop to single/ambiguous).
- * `opts.explicit` / `opts.persisted` are version strings (any `v`-prefix tolerated). Back-compat: the
- * positional `pinnedVersion` / `explicitPath` params are unchanged.
+ * Explicit/persisted/pin only resolve when that version is actually installed. `opts.explicit` /
+ * `opts.persisted` are version strings (any `v`-prefix tolerated). Back-compat: the positional
+ * `pinnedVersion` / `explicitPath` params are unchanged.
  */
 export function selectIdfInstall(
 	installs: IdfInstall[],
@@ -265,34 +268,37 @@ export function selectIdfInstall(
 		return n ? installs.find((i) => i.version === n) : undefined
 	}
 
-	// 1. Explicit override (agent passed idf_version) — highest, when installed.
+	// 1. Project pin first — honor what the project's own lock declares. A pinned, installed version is
+	//    authoritative; nothing remembered or passed may override it.
+	const pin = normalizeIdfVersion(pinnedVersion)
+	const pinMatch = pin ? installs.find((i) => i.version === pin) : undefined
+	if (pinMatch) {
+		return resolved(pinMatch)
+	}
+
+	// 2/3. No usable pin → the explicit override (this call), then the remembered per-project choice.
 	const explicitMatch = byVersion(opts.explicit)
 	if (explicitMatch) {
 		return resolved(explicitMatch)
 	}
-	// 2. Persisted per-project choice, when still installed.
 	const persistedMatch = byVersion(opts.persisted)
 	if (persistedMatch) {
 		return resolved(persistedMatch)
 	}
-	// 3. Project pin (dependencies.lock), when installed.
-	const pin = normalizeIdfVersion(pinnedVersion)
+
+	// 4. A pin was declared but that version isn't installed — can't honor it: sole install → use it; several → ask.
 	if (pin) {
-		const match = installs.find((i) => i.version === pin)
-		if (match) {
-			return resolved(match)
-		}
-		// The pin can't be honored (that version isn't installed): one install → use it; several → ask.
 		return installs.length === 1 ? resolved(installs[0]) : { kind: "ambiguous", installs }
 	}
-	// 4. Explicit extension-setting path.
+
+	// 5. Explicit extension-setting path.
 	if (explicitPath) {
 		const ex = installs.find((i) => i.path === explicitPath)
 		if (ex) {
 			return resolved(ex)
 		}
 	}
-	// 5/6. Sole install → use it; several with nothing decided → ask.
+	// 6/7. Sole install → use it; several with nothing decided → ask.
 	if (installs.length === 1) {
 		return resolved(installs[0])
 	}
