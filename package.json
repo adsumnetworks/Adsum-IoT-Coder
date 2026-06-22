@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug & Dev",
 	"description": "Open-source AI debug & dev tool for Espressif ESP32 / ESP-IDF and Nordic nRF Connect SDK (Zephyr). Builds, flashes, and debugs firmware on real hardware, generates logging code, and analyzes device logs.",
-	"version": "0.1.6",
+	"version": "0.1.7",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
