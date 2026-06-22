@@ -268,24 +268,57 @@ def terminate(proc: subprocess.Popen) -> None:
 
 def _run_capture_subprocess(cmd: list[str], duration: int, log_path: str, prefix: str, env: dict | None) -> bool:
     """Launch `cmd`, tee its output to log_path for `duration`s, then stop it. False if it won't launch."""
+    popen_kwargs = _popen_kwargs()
+    master_fd = slave_fd = None
+    # POSIX: idf.py monitor's miniterm.Console() runs termios.tcgetattr(stdin) at startup — and
+    # esp-idf-monitor >=1.9 (shipped with IDF v6.0) does this UNCONDITIONALLY in __init__, BEFORE its
+    # ESP_IDF_MONITOR_TEST headless hook. With stdin=DEVNULL that throws "Inappropriate ioctl for device"
+    # and the capture dies before a single line is read. Hand it a pseudo-TTY as stdin so the check
+    # passes; we never write to the master, and ESP_IDF_MONITOR_TEST=1 makes the console reader ignore
+    # input anyway, so the monitor sees an idle terminal and just streams serial output to its (piped)
+    # stdout. Verified against esp-idf-monitor 1.9.0. (Windows' Console doesn't use termios — leave it.)
+    if os.name != "nt":
+        try:
+            import pty
+
+            master_fd, slave_fd = pty.openpty()
+            popen_kwargs["stdin"] = slave_fd
+        except (OSError, ImportError):
+            master_fd = slave_fd = None  # fall back to the DEVNULL stdin set in _popen_kwargs
+
+    def _close(fd):
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+
     try:
-        proc = subprocess.Popen(cmd, env=env, **_popen_kwargs())
+        proc = subprocess.Popen(cmd, env=env, **popen_kwargs)
     except (FileNotFoundError, OSError) as e:
         print(f"{prefix}launch failed ({e})", file=sys.stderr)
+        _close(slave_fd)
+        _close(master_fd)
         return False
+    # The child dup'd the slave end; the parent no longer needs it. Keep the master open until cleanup —
+    # closing it early would send EOF/HUP to the monitor's stdin.
+    _close(slave_fd)
     stop = threading.Event()
-    with open(log_path, "w", encoding="utf-8") as log_file:
-        reader = threading.Thread(target=stream_to_file, args=(proc, log_file, stop, prefix), daemon=True)
-        reader.start()
-        try:
-            proc.wait(timeout=duration)
-        except subprocess.TimeoutExpired:
-            pass  # expected — duration elapsed
-        except KeyboardInterrupt:
-            pass
-        stop.set()
-        terminate(proc)
-        reader.join(timeout=3)
+    try:
+        with open(log_path, "w", encoding="utf-8") as log_file:
+            reader = threading.Thread(target=stream_to_file, args=(proc, log_file, stop, prefix), daemon=True)
+            reader.start()
+            try:
+                proc.wait(timeout=duration)
+            except subprocess.TimeoutExpired:
+                pass  # expected — duration elapsed
+            except KeyboardInterrupt:
+                pass
+            stop.set()
+            terminate(proc)
+            reader.join(timeout=3)
+    finally:
+        _close(master_fd)
     return True
 
 
@@ -293,11 +326,13 @@ def capture_via_idf_monitor(project: str, port: str | None, no_reset: bool, dura
     """
     Primary path: `idf.py -C <project> -p <port> monitor`, headless.
 
-    `idf.py monitor` (esp-idf-monitor) refuses to start unless stdin is a real TTY —
-    but we run it as a captured subprocess with no console. ESP_IDF_MONITOR_TEST=1 is
-    the monitor's own supported headless hook: it skips the TTY requirement AND makes
-    the console reader ignore stdin while serial output keeps streaming to stdout.
-    Returns False if idf.py could not be launched (so the caller can fall back).
+    `idf.py monitor` (esp-idf-monitor) refuses to start unless stdin is a real TTY (its
+    miniterm.Console() calls termios.tcgetattr at startup). We run it headless, so
+    _run_capture_subprocess hands it a pseudo-TTY (pty) as stdin to satisfy that check.
+    ESP_IDF_MONITOR_TEST=1 is the complementary hook: it makes the console reader IGNORE
+    input (so the idle pty is never consumed) while serial output keeps streaming to
+    stdout. (Older monitors also skipped the TTY check under this env var; >=1.9 no
+    longer does — hence the pty.) Returns False if idf.py could not be launched.
     """
     cmd = build_monitor_cmd(project, port, no_reset)
     print(f"{prefix}{' '.join(cmd)}")
