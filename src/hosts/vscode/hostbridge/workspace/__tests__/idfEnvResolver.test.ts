@@ -260,24 +260,28 @@ describe("idfEnvResolver", () => {
 			expect(selectIdfInstall([]).kind).to.equal("none")
 		})
 
-		// Parity with nRF selectNcsInstall: explicit idf_version → persisted → pin → path → single → ambiguous.
-		it("explicit idf_version wins over the pin and disambiguates", () => {
-			const sel = selectIdfInstall([a, b], "5.5.2", undefined, { explicit: "6.0" })
-			expect(sel.kind).to.equal("resolved")
-			expect((sel as any).path).to.equal(b.path)
+		// Priority: project pin FIRST (it's the project's ground truth), then explicit idf_version (this
+		// call), then the persisted choice — but only when there is no usable pin.
+		it("the project pin wins over a stale persisted choice (the v6-hijacks-v5.5 bug)", () => {
+			// Project lock pins 5.5.2; a 6.0 was remembered from testing another project. Pin must win.
+			const sel = selectIdfInstall([a, b], "5.5.2", undefined, { persisted: "6.0" })
+			expect((sel as any).path).to.equal(a.path)
 		})
-		it("tolerates a v-prefixed explicit idf_version", () => {
+		it("the project pin wins over an explicit idf_version too", () => {
+			const sel = selectIdfInstall([a, b], "5.5.2", undefined, { explicit: "6.0" })
+			expect((sel as any).path).to.equal(a.path)
+		})
+		it("uses explicit idf_version only when there is no pin", () => {
 			expect((selectIdfInstall([a, b], undefined, undefined, { explicit: "v6.0" }) as any).path).to.equal(b.path)
 		})
-		it("persisted choice resolves when installed (over the pin)", () => {
-			const sel = selectIdfInstall([a, b], "5.5.2", undefined, { persisted: "6.0" })
-			expect((sel as any).path).to.equal(b.path)
+		it("uses the persisted choice only when there is no pin", () => {
+			expect((selectIdfInstall([a, b], undefined, undefined, { persisted: "6.0" }) as any).path).to.equal(b.path)
 		})
-		it("explicit beats persisted", () => {
+		it("explicit beats persisted (both, no pin)", () => {
 			const sel = selectIdfInstall([a, b], undefined, undefined, { explicit: "5.5.2", persisted: "6.0" })
 			expect((sel as any).path).to.equal(a.path)
 		})
-		it("falls through to ambiguous when explicit/persisted are not installed", () => {
+		it("falls through to ambiguous when explicit/persisted are not installed and no pin", () => {
 			expect(selectIdfInstall([a, b], undefined, undefined, { explicit: "9.9.9" }).kind).to.equal("ambiguous")
 			expect(selectIdfInstall([a, b], undefined, undefined, { persisted: "9.9.9" }).kind).to.equal("ambiguous")
 		})
