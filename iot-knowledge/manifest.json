@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 23,
+	"count": 24,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -185,6 +185,32 @@
 			"id": "adsum/nrf/actions/cra-generate-sbom",
 			"title": "Generate SBOM (nRF / west ncs-sbom)",
 			"type": "action",
+			"version": "0.2.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "cra",
+			"platform": "nrf",
+			"sdk": "ncs",
+			"requires": [
+				"adsum/nrf/actions/cra-generate-sbom-fallbacks"
+			],
+			"safety": [
+				"shell",
+				"long-running"
+			],
+			"status": "draft",
+			"created": "2026-06-18",
+			"updated": "2026-06-22",
+			"path": "platforms/nrf/actions/cra-generate-sbom.md",
+			"content_hash": "bf868394f0b7dd45cc32a740f1e84f32c95191df024fc15ad7244c3a2e8cc50c"
+		},
+		{
+			"id": "adsum/nrf/actions/cra-generate-sbom-fallbacks",
+			"title": "SBOM fallbacks (nRF / west spdx + SBOM-lite)",
+			"type": "action",
 			"version": "0.1.0",
 			"owner": "adsum-core",
 			"author": "adsum",
@@ -194,14 +220,17 @@
 			"domain": "cra",
 			"platform": "nrf",
 			"sdk": "ncs",
+			"loaded_by": [
+				"adsum/nrf/actions/cra-generate-sbom"
+			],
 			"safety": [
 				"shell",
 				"long-running"
 			],
 			"status": "draft",
-			"created": "2026-06-18",
-			"path": "platforms/nrf/actions/cra-generate-sbom.md",
-			"content_hash": "3f4a1b66b70e2ac545a4cb8f705ce149a4d8f5e50f018ebdfb89fd912e30065a"
+			"created": "2026-06-22",
+			"path": "platforms/nrf/actions/cra-generate-sbom-fallbacks.md",
+			"content_hash": "df199ce04c1d62fcde6383609ced4e0cb3551081335353afcec0a871c0d37667"
 		},
 		{
 			"id": "adsum/nrf/actions/flash",
