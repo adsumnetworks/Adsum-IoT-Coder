@@ -19,6 +19,7 @@ import { type FileOpsResult, FileProviderOperations } from "../utils/FileProvide
 import { PatchParser } from "../utils/PatchParser"
 import { PathResolver } from "../utils/PathResolver"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
+import { emitCraMilestoneForWrite } from "./craFunnel"
 
 interface FileChange {
 	type: PatchActionType
@@ -634,17 +635,27 @@ export class ApplyPatchHandler implements IFullyManagedTool {
 				// For delete operations, actually delete the file now (after approval)
 				await ops.deleteFile(path)
 				return { deleted: true }
-			case PatchActionType.ADD:
+			case PatchActionType.ADD: {
 				if (!change.newContent) {
 					throw new DiffError(`Cannot create ${path} with no content`)
 				}
-				return await ops.saveChanges()
-			case PatchActionType.UPDATE:
+				const r = await ops.saveChanges()
+				if (this.config) {
+					emitCraMilestoneForWrite(this.config, change.movePath ?? path) // CRA funnel (covers apply_patch too)
+				}
+				return r
+			}
+			case PatchActionType.UPDATE: {
 				if (!change.newContent) {
 					throw new DiffError(`UPDATE change for ${path} has no new content`)
 				}
 				// For move operations, we're saving the new file (the old file deletion is handled in the calling code)
-				return await ops.saveChanges()
+				const r = await ops.saveChanges()
+				if (this.config) {
+					emitCraMilestoneForWrite(this.config, change.movePath ?? path) // CRA funnel (covers apply_patch too)
+				}
+				return r
+			}
 		}
 	}
 

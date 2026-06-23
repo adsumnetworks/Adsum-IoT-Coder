@@ -9,7 +9,6 @@ import { ClineSayTool } from "@shared/ExtensionMessage"
 import { fileExistsAtPath } from "@utils/fs"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
-import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { telemetryService } from "@/services/telemetry"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
@@ -21,7 +20,7 @@ import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { applyModelContentFixes } from "../utils/ModelContentProcessor"
 import { ToolDisplayUtils } from "../utils/ToolDisplayUtils"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
-import { classifyCraArtifactPath } from "./craArtifact"
+import { emitCraMilestoneForWrite } from "./craFunnel"
 
 /**
  * True if `absolutePath` is inside the Adsum extension install (read-only on a published build) or any
@@ -39,23 +38,6 @@ export function isUnderExtensionOrSample(absolutePath: string, extensionRoot?: s
 		}
 	}
 	return /(^|\/)demo-scenarios(\/|$)/.test(norm)
-}
-
-/**
- * CRA funnel detection — host-side, keyed on the OUTPUT artifact path. The path is a LOCAL trigger only;
- * it is never put in the telemetry payload (payload = iot_platform + the global app_version super-prop).
- * Each milestone fires at most once per task (TaskState flags). See the pinned {surface,key} table:
- * write events key on the output path, never on a bit load or on cra-readiness.json.
- */
-function emitCraMilestoneOnce(config: TaskConfig, absolutePath: string): void {
-	const kind = classifyCraArtifactPath(absolutePath) // pure + unit-tested in craArtifact.test.ts
-	if (kind === "sbom" && !config.taskState.craSbomEmitted) {
-		config.taskState.craSbomEmitted = true // SBOM door cleared (compliance/sbom/)
-		telemetryService.captureCraSbomGenerated({ iot_platform: getCachedWorkspaceSummary() })
-	} else if (kind === "fix" && !config.taskState.craFixEmitted) {
-		config.taskState.craFixEmitted = true // remediation handoff written
-		telemetryService.captureCraFixCompleted({ iot_platform: getCachedWorkspaceSummary() })
-	}
 }
 
 export class WriteToFileToolHandler implements IFullyManagedTool {
@@ -370,7 +352,7 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 
 			// CRA funnel: detect host-side which milestone this write cleared, keyed on the OUTPUT artifact
 			// path (the path itself is NEVER sent — payload is iot_platform only). Fire once per task.
-			emitCraMilestoneOnce(config, absolutePath)
+			emitCraMilestoneForWrite(config, absolutePath)
 
 			// Track file edit operation
 			await config.services.fileContextTracker.trackFileContext(relPath, "cline_edited")
