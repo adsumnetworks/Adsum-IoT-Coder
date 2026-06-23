@@ -41,6 +41,11 @@ export class TaskState {
 	didEditFile: boolean = false
 	lastToolName: string = "" // Track last tool used for consecutive call detection
 
+	// CRA funnel — fire each milestone once per task, keyed host-side on the output artifact path (the
+	// path is never sent; payload is iot_platform only). See WriteToFileToolHandler.
+	craSbomEmitted: boolean = false
+	craFixEmitted: boolean = false
+
 	// IoT-knowledge no-double-load guard: absolute paths of iot-knowledge skill
 	// files already served via read_file this task. Re-reads return a short stub
 	// instead of the full text (these files don't change during a task), saving
