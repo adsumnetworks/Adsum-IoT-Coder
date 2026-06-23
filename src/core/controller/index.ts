@@ -35,6 +35,7 @@ import { LogoutReason } from "@/services/auth/types"
 import { BannerService } from "@/services/banner/BannerService"
 import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import { featureFlagsService } from "@/services/feature-flags"
+import { consumeCraRanThisSession } from "@/services/knowledge/KnowledgeResolver"
 import { getDistinctId } from "@/services/logging/distinctId"
 import { Logger } from "@/services/logging/Logger"
 import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
@@ -244,6 +245,13 @@ export class Controller {
 		// will apply as soon as this fetch completes. The function also calls postStateToWebview()
 		// when done and catches all errors internally.
 		fetchRemoteConfig(this)
+
+		// CRA funnel (host-side, cross-task): if this NEW task is the first started after a CRA run this
+		// session, it is "core feature tried after CRA" — the retention signal. Read host-side here because
+		// the bridge routes via the webview-only runIntent (no telemetry path). Consumed → fires once per run.
+		if (task && !historyItem && consumeCraRanThisSession()) {
+			telemetryService.captureCoreFeatureTriedAfterCra({ iot_platform: getCachedWorkspaceSummary() })
+		}
 
 		await this.clearTask() // ensures that an existing task doesn't exist before starting a new one, although this shouldn't be possible since user must clear task before starting a new one
 
