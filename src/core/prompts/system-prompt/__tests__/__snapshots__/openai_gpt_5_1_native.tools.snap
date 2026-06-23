@@ -479,6 +479,10 @@
           "list_nrf": {
             "type": "string",
             "description": "Optional. When true with operation=\"list\", shows only nRF devices."
+          },
+          "monitor": {
+            "type": "string",
+            "description": "Optional, RTT only. When true, also captures the HCI Monitor stream (host↔controller commands/events) on RTT channel 1 and auto-decodes it to a readable logs/hci/*.hci.log the user and you can read. Pass monitor=\"true\" for BLE debugging — pairing/connection/PHY/GATT/controller issues — where controller-level evidence helps. Auto-enabled when prj.conf has CONFIG_BT_DEBUG_MONITOR_RTT=y (you need not pass it then). Requires that Kconfig in the firmware; if missing, enable it first (see the BLE knowledge / log-generator workflow)."
           }
         },
         "required": [
