@@ -172,3 +172,11 @@ for whatever's most valuable next. Works on nRF (NCS/Zephyr) and ESP (ESP-IDF).
 The bridge (step 6) drives this via `rules/next-step.md` — a single grounded, decline-able offer, then the
 loop, then a clean exit. **No project:** see step 2 — run on the bundled sample, or give the open-then-re-click
 instructions. **Never** promise to "continue after you open a project" (the reload ends the chat).
+
+## Completion marker (emit ONLY at loop-exit — this drives the funnel + the fallback menu)
+When the next-step loop has **exited** — its high-value backlog is dry, or the developer declined / said
+"done" — end your **final** message with `<!--TASK_COMPLETE-->` (exactly — nothing after it). This signals
+the host (funnel telemetry + the generic next-step menu, which is the **post-exit fallback**). **Do NOT emit
+it while a grounded offer is still pending** (an `ask_followup_question` offer keeps the task active — that's
+the in-chat path; the marker is for *after* the loop). One offer XOR the menu: don't also print a generic
+text menu — the host renders the menu on completion.
