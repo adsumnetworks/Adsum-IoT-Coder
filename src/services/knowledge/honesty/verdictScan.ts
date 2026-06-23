@@ -5,7 +5,7 @@
  * Scope + honest limits (read before trusting this):
  * - It targets the **documented leak shapes** (the failures the project actually hit): a ✅ glued to a
  *   verdict, "now compliant", "gap/vuln fixed/resolved", "you're affected/clear", "Top gap fixed",
- *   "status: ✅/fixed". It is a **safety net, not a guarantee** — it will NOT catch a paraphrased verdict
+ *   "status: ✅/fixed", "✅ Built & verified" (build ≠ verification). It is a **safety net, not a guarantee** — it will NOT catch a paraphrased verdict
  *   ("your firmware satisfies the requirement"). The load-bearing honesty guards remain the bit rules
  *   (evidence-mode, verify-the-positive-AND-negative) — this only catches the literal leaks.
  * - It is **high-precision by design**: it skips negated / meta uses so it does not fire on the CRA
@@ -48,7 +48,7 @@ const LEAK_PATTERNS: LeakPattern[] = [
 	// A ✅/✔/❌/✗ glued to a verdict — the canonical "✅ FIXED" leak.
 	{
 		rule: "glyph-verdict",
-		re: /[✅✔❌✗]\s*(fixed|done|resolved|remediated|mitigated|pass(?:es|ed)?|fail(?:s|ed)?|compliant|certified|clear)\b/gi,
+		re: /[✅✔❌✗]\s*\*{0,2}\s*(fixed|done|resolved|remediated|mitigated|pass(?:es|ed)?|fail(?:s|ed)?|compliant|certified|clear|verified|built|complete)\b/gi,
 	},
 	// A verdict glyph used as a TABLE CELL value — evidence-mode tables have no status-glyph column.
 	{ rule: "glyph-cell", re: /\|\s*[✅✔❌✗]/g },
@@ -89,7 +89,7 @@ const LEAK_PATTERNS: LeakPattern[] = [
 	// emoji never matches, since ✅ is not a word char.)
 	{
 		rule: "status-verdict",
-		re: /\bstatus:?\s*(?:[✅✔]|(?:fixed|resolved|done|compliant|certified|clear(?:ed)?|pass(?:es|ed)?)\b)/gi,
+		re: /\bstatus:?\s*\*{0,2}\s*(?:[✅✔]|(?:fixed|resolved|done|compliant|certified|clear(?:ed)?|pass(?:es|ed)?|verified|built|complete)\b)/gi,
 	},
 	// "affected" as a verdict about the USER's build — NOT advisory metadata ("builds…are affected",
 	// "versions are affected", "affected versions"). Requires a 2nd-person / "your build" subject.
