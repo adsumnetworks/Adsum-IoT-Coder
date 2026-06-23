@@ -29,6 +29,27 @@ except ImportError:
         print(f"WARNING: Failed to install pyserial automatically: {e}")
         HAS_PYSERIAL = False
 
+try:
+    import pylink as _pylink_check
+    HAS_PYLINK = True
+except ImportError:
+    HAS_PYLINK = False
+
+def ensure_pylink() -> bool:
+    """Auto-install pylink-square if not present. Returns True if available."""
+    global HAS_PYLINK
+    if HAS_PYLINK:
+        return True
+    print("INFO: pylink-square not installed. Attempting to install automatically...")
+    try:
+        subprocess.run([sys.executable, "-m", "pip", "install", "pylink-square", "--quiet"], check=True)
+        import pylink  # noqa: F401 — adds to sys.modules cache
+        HAS_PYLINK = True
+        print("Successfully installed pylink-square.")
+        return True
+    except Exception as e:
+        print(f"WARNING: Failed to install pylink-square automatically: {e}")
+        return False
 
 
 # ============================================================================
@@ -362,85 +383,191 @@ class RTTLoggerThread(threading.Thread):
 
 
 # ============================================================================
+# Monitor Thread (pylink dual-channel: ch0 = text log, ch1 = BT Monitor binary)
+# ============================================================================
+
+class MonitorRTTThread(threading.Thread):
+    """Reads RTT channel 0 (text) and channel 1 (BT Monitor binary) via pylink-square.
+
+    Channel 0 → timestamped lines → .log file (same format as RTTLoggerThread).
+    Channel 1 → raw BT Monitor frames → .btmon file (decoded by the Adsum viewer).
+    """
+
+    def __init__(self, name: str, serial: str, final_file: str, btmon_file: str, device_type: str):
+        super().__init__(daemon=True)
+        self.name = name
+        self.serial = serial
+        self.final_file = final_file
+        self.btmon_file = btmon_file
+        self.device_type = device_type
+        self.running = True
+        self.line_count = 0
+        self.btmon_bytes = 0
+        self.attached = False
+
+    def stop(self):
+        self.running = False
+
+    def run(self):
+        import pylink  # available after ensure_pylink()
+
+        jlink = None
+        try:
+            jlink = pylink.JLink()
+            jlink.open(serial_no=int(self.serial))
+            jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
+            jlink.set_speed(4000)
+            jlink.connect(self.device_type, verbose=False)
+            jlink.rtt_start(None)
+            self.attached = True
+        except Exception as e:
+            print(f"  [{self.name}] pylink connect failed: {e}")
+            if jlink:
+                try: jlink.close()
+                except: pass
+            return
+
+        buf0 = bytearray()
+        try:
+            with open(self.final_file, 'w', encoding='utf-8') as log_f, \
+                 open(self.btmon_file, 'wb') as btmon_f:
+                log_f.write(f"# RTT Log from {self.name} ({self.serial})\n")
+                log_f.write(f"# Started: {datetime.now().isoformat()}\n")
+                log_f.write(f"# Interface: SWD, Speed: 4000 kHz, Channel: 0\n")
+                log_f.write("-" * 60 + "\n")
+
+                while self.running:
+                    # Channel 0 — text log lines
+                    try:
+                        chunk = bytes(jlink.rtt_read(0, 4096))
+                        if chunk:
+                            buf0.extend(chunk)
+                            while b'\n' in buf0:
+                                nl = buf0.index(b'\n')
+                                line = buf0[:nl + 1].decode('utf-8', errors='replace')
+                                buf0 = buf0[nl + 1:]
+                                ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                                log_f.write(f"[{ts}] {line}")
+                                log_f.flush()
+                                self.line_count += 1
+                    except Exception:
+                        pass
+
+                    # Channel 1 — raw BT Monitor binary frames
+                    try:
+                        chunk = bytes(jlink.rtt_read(1, 4096))
+                        if chunk:
+                            btmon_f.write(chunk)
+                            btmon_f.flush()
+                            self.btmon_bytes += len(chunk)
+                    except Exception:
+                        pass
+
+                    time.sleep(0.02)  # 50 Hz poll
+
+        except Exception as e:
+            print(f"  [{self.name}] Monitor error: {e}")
+        finally:
+            try:
+                jlink.rtt_stop()
+                jlink.close()
+            except Exception:
+                pass
+
+
+# ============================================================================
 # Capture Orchestration
 # ============================================================================
 
-def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFAULT_DEVICE_TYPE, channel=DEFAULT_RTT_CHANNEL):
+def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFAULT_DEVICE_TYPE, channel=DEFAULT_RTT_CHANNEL, monitor=False):
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     kill_jlink_processes()
-    
+
     if reset:
         print(f"  Resetting {len(devices)} device(s)...")
         for name, serial in devices.items():
             reset_device(serial)
-    
-    started = []
-    # Find JLinkRTTLogger executable once
-    try:
-        jlink_exe = find_jlink_rtt_logger()
-    except FileNotFoundError as e:
-        print(f"  ERROR: {e}")
-        return {}
-    
-    # Use provided output directory directly (handler manages structure)
-    log_dir = output_dir 
-    os.makedirs(log_dir, exist_ok=True)
-    
-    for name, raw_serial_or_port in devices.items():
-        # Resolve COM port to Serial Number if necessary
-        serial = get_device_serial(raw_serial_or_port)
-        
-        # Determine role from name
-        role = name if name in ["central", "peripheral"] else "device"
-        
-        # Filename: rtt/{role}_{serial}_{timestamp}.log
-        filename = f"{role}_{serial}_{timestamp}.log"
-        final_file = os.path.join(log_dir, filename)
-        
-        # Determine raw file path (temp)
-        raw_file = os.path.join(log_dir, f"{role}_{serial}_{timestamp}_raw.log")
-        
-        cmd = [jlink_exe, "-Device", device_type, "-If", "SWD", "-Speed", "4000", "-USB", str(serial), "-RTTChannel", str(channel), raw_file]
-        try:
-            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            active_processes.append(proc)
-            thread = RTTLoggerThread(name, serial, proc, raw_file, final_file)
-            thread.start()
-            started.append((name, proc, thread, raw_file, final_file))
-        except Exception as e:
-            print(f"  [{name}] Failed to start: {e}")
 
-    if not started: return {}
+    log_dir = output_dir
+    os.makedirs(log_dir, exist_ok=True)
+    started = []  # (mode, name, proc_or_None, thread, raw_or_None, final_file, btmon_or_None)
+
+    if monitor and not ensure_pylink():
+        print("  WARNING: pylink-square unavailable — falling back to single-channel (no .btmon).")
+        monitor = False
+
+    if monitor:
+        for name, raw_serial_or_port in devices.items():
+            serial = get_device_serial(raw_serial_or_port)
+            role = name if name in ["central", "peripheral"] else "device"
+            final_file = os.path.join(log_dir, f"{role}_{serial}_{timestamp}.log")
+            btmon_file = os.path.join(log_dir, f"{role}_{serial}_{timestamp}.btmon")
+            thread = MonitorRTTThread(name, serial, final_file, btmon_file, device_type)
+            thread.start()
+            started.append(("monitor", name, None, thread, None, final_file, btmon_file))
+    else:
+        try:
+            jlink_exe = find_jlink_rtt_logger()
+        except FileNotFoundError as e:
+            print(f"  ERROR: {e}")
+            return {}
+
+        for name, raw_serial_or_port in devices.items():
+            serial = get_device_serial(raw_serial_or_port)
+            role = name if name in ["central", "peripheral"] else "device"
+            final_file = os.path.join(log_dir, f"{role}_{serial}_{timestamp}.log")
+            raw_file = os.path.join(log_dir, f"{role}_{serial}_{timestamp}_raw.log")
+            cmd = [jlink_exe, "-Device", device_type, "-If", "SWD", "-Speed", "4000",
+                   "-USB", str(serial), "-RTTChannel", str(channel), raw_file]
+            try:
+                proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                active_processes.append(proc)
+                thread = RTTLoggerThread(name, serial, proc, raw_file, final_file)
+                thread.start()
+                started.append(("rtt", name, proc, thread, raw_file, final_file, None))
+            except Exception as e:
+                print(f"  [{name}] Failed to start: {e}")
+
+    if not started:
+        return {}
 
     print(f"\n  Capturing for {duration} seconds... (Ctrl+C to stop)")
     try:
         for i in range(duration, 0, -1):
-            total_lines = sum(t.line_count for n, p, t, r, f in started)
-            sys.stdout.write(f"\r  [{i:3d}s] Lines: {total_lines} ")
+            total_lines = sum(t.line_count for _, n, p, t, r, f, b in started)
+            if monitor:
+                btmon_kb = sum(t.btmon_bytes for _, n, p, t, r, f, b in started) // 1024
+                sys.stdout.write(f"\r  [{i:3d}s] Lines: {total_lines}  HCI: {btmon_kb} KB ")
+            else:
+                sys.stdout.write(f"\r  [{i:3d}s] Lines: {total_lines} ")
             sys.stdout.flush()
             time.sleep(1)
-        print("\r  Capture complete!                 ")
+        print("\r  Capture complete!                        ")
     except KeyboardInterrupt:
         print("\n  Interrupted.")
 
     print("\n  Processing logs...")
-    for name, proc, thread, raw, final in started:
+    result = {}
+    for _, name, proc, thread, raw, final, btmon in started:
         thread.stop()
-        if proc.poll() is None:
+        if proc and proc.poll() is None:
             proc.terminate()
             try: proc.wait(timeout=1)
             except: proc.kill()
         thread.join(timeout=2)
-        
+
         if os.path.exists(final):
             size = os.path.getsize(final)
             print(f"    [{name}] {os.path.basename(final)} ({size} bytes, {thread.line_count} lines)")
-        
-        if os.path.exists(raw):
+        if btmon and os.path.exists(btmon):
+            bsize = os.path.getsize(btmon)
+            print(f"    [{name}] {os.path.basename(btmon)} ({bsize} bytes, HCI monitor)")
+        if raw and os.path.exists(raw):
             os.remove(raw)
-            
-    return {n: f for n, p, t, r, f in started}
+        result[name] = final
+
+    return result
 
 
 def analyze_logs(log_files):
@@ -558,7 +685,10 @@ def main():
     parser.add_argument("--analyze", action="store_true", help="Analyze logs after recording")
     parser.add_argument("--channel", type=int, default=DEFAULT_RTT_CHANNEL)
     parser.add_argument("--device-type", type=str, default=DEFAULT_DEVICE_TYPE)
-    
+    parser.add_argument("--monitor", action="store_true",
+                        help="Dual-channel capture: text log (.log) + HCI binary (.btmon). "
+                             "Requires CONFIG_BT_DEBUG_MONITOR_RTT=y on device and pylink-square.")
+
     args = parser.parse_args()
     
     if args.list:
@@ -603,7 +733,7 @@ def main():
              sys.exit(1)
 
     # Capture
-    log_files = capture_rtt_logs(devices, args.duration, args.output, reset=not args.no_reset, device_type=args.device_type, channel=args.channel)
+    log_files = capture_rtt_logs(devices, args.duration, args.output, reset=not args.no_reset, device_type=args.device_type, channel=args.channel, monitor=args.monitor)
     
     # Analyze
     if args.analyze and log_files:

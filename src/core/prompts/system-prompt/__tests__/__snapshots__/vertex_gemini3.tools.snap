@@ -372,6 +372,9 @@
         },
         "list_nrf": {
           "type": "STRING"
+        },
+        "monitor": {
+          "type": "STRING"
         }
       },
       "required": [

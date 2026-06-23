@@ -321,6 +321,7 @@ Use role-specific labels (central, peripheral) ONLY when the role has been confi
 - reset: (optional) Optional. Reset device(s) before capture. DEFAULT: true. Set to false ONLY for mid-runtime capture.
 - auto_detect: (optional) Optional. Auto-detect all connected nRF devices. Set to true for BLE/multi-device scenarios where you want to capture everything without specifying ports.
 - list_nrf: (optional) Optional. When true with operation="list", shows only nRF devices.
+- monitor: (optional) Optional, RTT only. When true, also captures the HCI Monitor stream (host↔controller commands/events) on RTT channel 1 and auto-decodes it to a readable logs/hci/*.hci.log the user and you can read. Pass monitor="true" for BLE debugging — pairing/connection/PHY/GATT/controller issues — where controller-level evidence helps. Auto-enabled when prj.conf has CONFIG_BT_DEBUG_MONITOR_RTT=y (you need not pass it then). Requires that Kconfig in the firmware; if missing, enable it first (see the BLE knowledge / log-generator workflow).
 Usage:
 <triggerNordicAction>
 <action>execute</action>
@@ -336,6 +337,7 @@ Usage:
 <reset>true</reset>
 <auto_detect>true</auto_detect>
 <list_nrf>true</list_nrf>
+<monitor>true</monitor>
 </triggerNordicAction>
 
 ## triggerEspAction

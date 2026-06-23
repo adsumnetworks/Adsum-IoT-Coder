@@ -1,9 +1,12 @@
+import * as fs from "node:fs"
 import * as path from "node:path"
 import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
 import { prepareNordicExecution } from "@/hosts/vscode/hostbridge/workspace/executeNordicCommand"
 import { getCachedCapabilities } from "@/platform/nordicProjectDetector"
+import { formatHci } from "@/services/nrf/hci/format"
+import { parseHci } from "@/services/nrf/hci/hciParser"
 import { telemetryService } from "@/services/telemetry"
 
 import { ClineDefaultTool } from "@/shared/tools"
@@ -114,7 +117,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 	private async handleLogDevice(config: TaskConfig, block: ToolUse): Promise<ToolResponse> {
 		const operation = block.params.operation
-		let { port, duration, devices, output, reset, auto_detect, list_nrf, transport } = block.params as any
+		let { port, duration, devices, output, reset, auto_detect, list_nrf, transport, monitor } = block.params as any
 
 		// ROBUST TRANSPORT DETECTION with explicit user input priority
 		if (!transport) {
@@ -257,6 +260,9 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			}
 		}
 
+		// True once we've added --monitor, so the post-capture step knows to decode the .btmon sidecar(s).
+		let monitorOn = false
+
 		switch (operation) {
 			case "test":
 				if (port) {
@@ -297,6 +303,22 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 				if (duration) args.push("--duration", duration.toString())
 				if (resolvedOutput) args.push("--output", quoteIfNeeded(resolvedOutput))
+
+				// HCI Monitor: dual-channel capture (text .log + binary .btmon). Pass --monitor when the agent
+				// asked for it OR when the project's prj.conf has CONFIG_BT_DEBUG_MONITOR_RTT=y (safety net so
+				// the host↔controller trace is never silently dropped). RTT only — the monitor rides RTT ch1.
+				{
+					const monitorExplicit = monitor === true || monitor === "true"
+					const monitorAuto =
+						!monitorExplicit && transport === "rtt" && !!config.cwd && getCachedCapabilities(config.cwd).hasMonitorRTT
+					if (monitorExplicit || monitorAuto) {
+						args.push("--monitor")
+						monitorOn = true
+						if (monitorAuto) {
+							console.log("[Nordic] Auto-enabling --monitor (CONFIG_BT_DEBUG_MONITOR_RTT=y in prj.conf)")
+						}
+					}
+				}
 				break
 			case "monitor":
 				// Monitor maps to undefined (default behavior of script if no duration?)
@@ -326,7 +348,83 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		// Logger wrappers run bare in our own terminal — no SDK toolchain needed, but they shell out
 		// to `nrfutil device …` (reachable via the injected PATH / ADSUM_NRFUTIL). `isLoggerWrapper`
 		// makes the resolver add the PowerShell call operator for the quoted wrapper path.
-		return this.executeInAdsumNrfTerminal(config, block, cmd, { needsToolchain: false, isLoggerWrapper: true })
+		const captureResult = await this.executeInAdsumNrfTerminal(config, block, cmd, {
+			needsToolchain: false,
+			isLoggerWrapper: true,
+		})
+
+		// Agent-first HCI: when we captured the BT Monitor stream, decode each raw .btmon into a
+		// human- AND agent-readable .hci.log under logs/hci/, and tell the agent to read it. The capture
+		// command has already finished (executeCommandTool blocks), so the .btmon files exist on disk.
+		if (monitorOn && resolvedOutput && config.cwd) {
+			const note = this.decodeMonitorCaptures(resolvedOutput, config.cwd)
+			if (note) {
+				return typeof captureResult === "string" ? `${captureResult}\n\n${note}` : captureResult
+			}
+		}
+		return captureResult
+	}
+
+	/**
+	 * Decode every raw `.btmon` in `captureDir` (the BT Monitor binary from RTT channel 1) into a
+	 * human-readable `<base>.hci.log` under `<cwd>/logs/hci/`. Returns an agent-facing note listing the
+	 * decoded files so the agent reads + correlates them with the app log. Best-effort: a bad/empty
+	 * capture is reported, never thrown.
+	 */
+	private decodeMonitorCaptures(captureDir: string, cwd: string): string | undefined {
+		let btmonFiles: string[]
+		try {
+			btmonFiles = fs
+				.readdirSync(captureDir)
+				.filter((f) => f.endsWith(".btmon"))
+				.map((f) => path.join(captureDir, f))
+		} catch {
+			return undefined
+		}
+		if (btmonFiles.length === 0) {
+			return undefined
+		}
+
+		const hciDir = path.join(cwd, "logs", "hci")
+		try {
+			fs.mkdirSync(hciDir, { recursive: true })
+		} catch {
+			// fall back to writing beside the .btmon if logs/hci can't be created
+		}
+
+		const decoded: string[] = []
+		for (const btmon of btmonFiles) {
+			try {
+				const base = path.basename(btmon, ".btmon")
+				const target = fs.existsSync(hciDir)
+					? path.join(hciDir, `${base}.hci.log`)
+					: path.join(captureDir, `${base}.hci.log`)
+				// Skip .btmon already decoded (filenames are timestamped, so this keeps the note to THIS
+				// capture instead of re-listing every prior capture in the folder).
+				if (fs.existsSync(target)) {
+					continue
+				}
+				const buf = fs.readFileSync(btmon)
+				if (buf.length === 0) {
+					continue
+				}
+				fs.writeFileSync(target, formatHci(parseHci(buf)), "utf8")
+				decoded.push(target)
+			} catch (e) {
+				console.warn(`[Nordic HCI] decode failed for ${btmon}: ${e instanceof Error ? e.message : String(e)}`)
+			}
+		}
+
+		if (decoded.length === 0) {
+			return "HCI monitor was enabled but no frames were decoded (the .btmon capture may be empty — confirm CONFIG_BT_DEBUG_MONITOR_RTT=y and that BLE activity occurred during capture)."
+		}
+		const list = decoded.map((p) => `  - ${p}`).join("\n")
+		return (
+			`Decoded HCI monitor trace (host ↔ controller) written to:\n${list}\n` +
+			`Read the .hci.log file(s), then present a SHORT readable summary in chat: a framing line, a key-frame ` +
+			`timeline (only the frames that matter — not every frame, no raw hex), and your diagnosis correlated ` +
+			`with the app log. Point the user to the full .hci.log for detail. The raw .btmon is kept for btmon/Wireshark.`
+		)
 	}
 
 	/**
