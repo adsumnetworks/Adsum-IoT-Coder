@@ -125,6 +125,25 @@ export function lintBitContent(relPath: string, text: string, knownIds: Set<stri
 		})
 	}
 
+	// R4.3 — LICENSE FOLLOWS DELIVERY (K-bit Licensing & Delivery Policy). A `bundled` bit ships in the
+	// Apache VSIX as plaintext, so it MUST be open (CC-BY-SA-4.0) — proprietary content must never ship
+	// bundled; make it `delivery: downloaded` (registry-served, copyright). `downloaded` bits default to
+	// proprietary; an open downloaded bit is allowed but flagged to confirm intent.
+	if (meta.delivery === "bundled" && meta.license !== "CC-BY-SA-4.0") {
+		issues.push({
+			level: "error",
+			file: relPath,
+			msg: `bundled bit must be open (CC-BY-SA-4.0) — found "${meta.license}". A bundled bit ships in the Apache VSIX as plaintext; proprietary content must be \`delivery: downloaded\` (registry-served). License follows delivery.`,
+		})
+	}
+	if (meta.delivery === "downloaded" && meta.license === "CC-BY-SA-4.0") {
+		issues.push({
+			level: "warn",
+			file: relPath,
+			msg: `downloaded bit is open (CC-BY-SA-4.0) — downloaded bits default to LicenseRef-Adsum-Proprietary; confirm this open licence is intentional.`,
+		})
+	}
+
 	return issues
 }
 

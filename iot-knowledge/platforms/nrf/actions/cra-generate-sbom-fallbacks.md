@@ -7,7 +7,7 @@ owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
 tier: certified
-delivery: bundled
+delivery: downloaded
 domain: cra
 platform: nrf
 sdk: ncs
