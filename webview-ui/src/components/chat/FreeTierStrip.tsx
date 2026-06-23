@@ -1,5 +1,6 @@
 import { useExtensionState } from "@/context/ExtensionStateContext"
-import { BRAND_CORAL, BRAND_CYAN_300, BRAND_CYAN_600, brandAlpha } from "./brandColors"
+import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
+import { BRAND_CORAL, BRAND_CYAN_300, BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha } from "./brandColors"
 
 /** Compact token label: ≥1M → one decimal (e.g. 1.3M), ≥1K → rounded K, else raw. */
 const formatTokens = (n: number): string => {
@@ -21,12 +22,16 @@ const formatTokens = (n: number): string => {
  */
 const FreeTierStrip = () => {
 	const { freeTierRemainingTokens, navigateToSettings } = useExtensionState()
+	const { isDark } = useVSCodeTheme()
 
 	if (freeTierRemainingTokens === undefined) {
 		return null
 	}
 
 	const tokensLabel = formatTokens(freeTierRemainingTokens)
+	// Light cyan reads well on dark panels but washes out on a near-white light-theme bg;
+	// fall to the darker "text-on-fill safe" cyan in light mode. Dark mode unchanged.
+	const cyanText = isDark ? BRAND_CYAN_300 : BRAND_CYAN_700
 
 	return (
 		<div
@@ -37,7 +42,7 @@ const FreeTierStrip = () => {
 				gap: "8px",
 				padding: "5px 12px",
 				fontSize: "11px",
-				color: BRAND_CYAN_300,
+				color: cyanText,
 				background: brandAlpha(BRAND_CYAN_600, 0.08),
 				borderBottom: `1px solid ${brandAlpha(BRAND_CYAN_600, 0.22)}`,
 			}}>
