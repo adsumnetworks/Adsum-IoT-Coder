@@ -364,6 +364,7 @@
 		"gen:kbit-manifest": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/gen-kbit-manifest.ts",
 		"test:kbits": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/kbit.test.ts",
 		"test:registry": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/registry/registry.test.ts",
+		"test:cra-honesty": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/verdictScan.test.ts",
 		"kbit": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit.ts",
 		"qa": "bash qa/regression/run.sh",
 		"format": "biome format --changed --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error",
