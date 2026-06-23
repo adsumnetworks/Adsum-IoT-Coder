@@ -7,7 +7,7 @@ owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
 tier: certified
-delivery: bundled
+delivery: downloaded
 domain: cra
 platform: nrf
 sdk: ncs
@@ -21,6 +21,14 @@ A **dated, bundled** snapshot of known Nordic / Zephyr security advisories, keye
 the CRA Readiness Check as a **bonus**: surface the relevant advisories for the detected SDK version with
 links. **Surface-and-link ONLY — never an affected / not-affected verdict** (that matching is the paid,
 higher-liability layer). Often sparse — a bonus, not a pillar.
+
+> 🚫 **NO-AUTO-POPULATE FENCE (mission-exit line).** The entries below are **authored by us at build time
+> only.** **NEVER** populate, infer, or extend this list **at runtime** from any scanner or network source —
+> not `esp-idf-sbom check`, not `west`, not the NVD/CVE API, not a web fetch, not SBOM→CVE matching. If the
+> table is empty for the detected version, surface the **live-source links** below and say "no bundled
+> advisories for NCS <x> as of <date>; check live" — **never synthesize an entry**, and never imply the
+> project is therefore clear. A vulnerability-matching engine is the out-of-scope, higher-liability layer we
+> deliberately do not build.
 
 ## Snapshot date
 **As of: 2026-06-18.** Always tell the user: *"as of <this date>; check the live advisory sources for
@@ -38,9 +46,9 @@ anything newer."* This snapshot is refreshed per release.
 
 ## Advisories by NCS version
 > ⚠️ **TO POPULATE before launch** — curate the real, dated entries per NCS version (e.g. 3.2.x). Keep each
-> to: id/link · affected versions · one-line summary · fixed-in. **No verdicts.** Until populated, the
-> workflow surfaces the live-sources links above with the "as of" caveat.
+> to: id/link · affected versions · one-line summary · remediated-in version. **No verdicts.** Until
+> populated, the workflow surfaces the live-sources links above with the "as of" caveat.
 
-| NCS version | Advisory (link) | Summary | Fixed in |
+| NCS version | Advisory (link) | Summary | Remediated in |
 |---|---|---|---|
 | _to populate_ | — | — | — |

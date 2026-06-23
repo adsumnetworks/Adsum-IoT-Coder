@@ -2,81 +2,86 @@
 id: adsum/nrf/rules/cra-posture
 title: CRA Secure-by-Design Posture (nRF)
 type: knowledge
-version: 0.1.0
+version: 0.2.0
 owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
 tier: certified
-delivery: bundled
+delivery: downloaded
 domain: cra
 platform: nrf
 sdk: ncs
 created: "2026-06-18"
+updated: "2026-06-22"
 status: draft
 ---
 
 # CRA Secure-by-Design Posture — nRF (platforms/nrf/rules/cra-posture.md)
 
-The secure-by-design **posture preview** for nRF/Zephyr. Each check reads **real build evidence** and
-produces a status + a **plain-English requirement** + a suggested action. This is the spine of the CRA
-Readiness Check, dated **"11 Dec 2027 essential requirements — worth doing now."**
+The secure-by-design **posture preview** for nRF/Zephyr. Each check reads **real build evidence** and reports
+it in **evidence-mode**: the **curated requirement** (our words, sourced to the public CRA regulation) · what
+**your build literally shows** · what **you verify**. This is a labelled *preview*, dated **"11 Dec 2027
+essential cybersecurity requirements (CRA Annex I, Part I) — worth doing now"** — never a pass/fail, never a
+merge blocker, never the hero.
 
-## Overview
+## Overview — how to read each check
 - **Read the merged config, not `prj.conf`.** Evaluate against `build/<target>/zephyr/.config` (board
-  defaults + overlays + `prj.conf`). `prj.conf` alone misses everything inherited. If no build exists,
-  say so and offer a build (don't guess).
-- **Honest statuses only:** ✅ = "configured/present" (never "correct/done") · ⚠️ = "review" (heuristic /
-  necessary-but-not-sufficient) · ❌ = "not found". A board-dependent check that doesn't apply is **N/A**,
-  never a fail. Use **only** these symbols in the status column — **not** "Strong / Good / Partial / Weak /
-  Pass" (those read as conformity grades, which this preview must never give).
-- **Never write that a setting "meets / satisfies the requirement."** State the evidence + status; the
-  reader's notified body decides conformity. "✅ LE Secure Connections configured" — yes; "meets the CRA
-  state-of-the-art requirement" — no.
-- **Verify the positive, not just the negative.** A ✅ requires the check's **named evidence symbol
-  present** in the merged `.config`. If it shows `not set` (e.g. `# CONFIG_BOOTLOADER_MCUBOOT is not
-  set`), it is **not** a ✅ — no matter what *adjacent* symbols (`CONFIG_SECURE_BOOT`,
-  `CONFIG_NCS_MCUBOOT_IN_BUILD`) suggest. Don't narrate a pass the config contradicts. (A real run
-  stamped secure boot ✅ on a build where `CONFIG_BOOTLOADER_MCUBOOT` was not set and no bootloader
+  defaults + overlays + `prj.conf`). `prj.conf` alone misses everything inherited. If no build exists, say so
+  and offer a build (don't guess).
+- **Evidence-mode, never a verdict.** Report the literal symbol state, **neutrally**, bound to that row's
+  named symbol: present → "`CONFIG_X=y` is present"; absent → "`CONFIG_X`: not present in this merged
+  `.config` — verify whether your design intends it." **Never** "✅ / ⚠️ / ❌", never "Strong / Good / Weak /
+  Pass", never "missing/violation". A requirement is **never** phrased as an unmet imperative sitting beside
+  an absent symbol (that manufactures a verdict by layout). The conclusion — does your build meet it — is the
+  developer's (or their notified body's).
+- **Verify the positive AND the negative.** "Present" requires the check's **named symbol present** in the
+  merged `.config`; "not present" requires it genuinely absent (or `# CONFIG_x is not set`). Don't narrate a
+  feature as present when its symbol shows `not set`, regardless of *adjacent* symbols
+  (`CONFIG_SECURE_BOOT`, `CONFIG_NCS_MCUBOOT_IN_BUILD`); don't narrate it absent when it's there.
+  **This re-read is the load-bearing honesty guard — the curated citation does NOT make a misread safe.**
+  (A real run stamped secure boot present where `CONFIG_BOOTLOADER_MCUBOOT` was not set and no bootloader
   image was built.)
-- **Chip applicability is real evidence too.** TrustZone-M / TF-M exists only on ARMv8-M Cortex-M33
-  parts — **nRF5340, nRF91, nRF54L/H**. The **nRF52 series (incl. nRF52840) is Cortex-M4 with no
-  TrustZone** → check #6 is **N/A** there, never ❌. Never describe a 52-part as "Cortex-M4 with
-  TrustZone" (a real run did, and graded an inapplicable gap).
+- **Chip applicability is real evidence too.** TrustZone-M / TF-M exists only on ARMv8-M Cortex-M33 parts —
+  **nRF5340, nRF91, nRF54L** (the nRF54H uses a different security architecture). The **nRF52 series (incl.
+  nRF52840) is Cortex-M4 with no TrustZone** → check #6 is **N/A** there (state "not applicable on this
+  part"), never a gap. Never describe a 52-part as "Cortex-M4 with TrustZone".
 
-> **Requirement citations are plain-English — this is a HARD rule, not a v0.1 caveat.** Do **not** put CRA
-> **Annex I clause letters or article numbers** in the report (e.g. "Annex I 2.(d)", "Art. 14(8)"). The exact
-> Annex/clause/article + **EN 18031** mapping is pending expert validation, and guessed citations are
-> frequently wrong (essential requirements are Art. 13 + Annex I, *not* Art. 14 — which is incident
-> reporting). Cite each requirement in **plain language** until the validated mapping ships.
+> **Curated-static citations — the rule.** The "Requirement" column is authored by us in plain English,
+> sourced to the public CRA regulation. You may surface the **Part I / Part II** label **exactly as written
+> below** — these are fixed, copied labels, never a field you select or fill. **Nothing finer:** no "Annex I
+> 2.(d)", no article numbers (e.g. "Art. 14(8)") — guessed clause letters are frequently wrong and reopen a
+> known failure; the fine-grained Annex/clause + **EN 18031** mapping is pending expert validation. Cite a
+> vendor doc only as a generic "see also" feature link, never as "Nordic's CRA guide says you must".
 
-## The checks (evidence → status → requirement → action)
+## The checks (requirement → your build shows → you verify)
 
-| # | Check | Evidence (merged `.config`) | Plain-English CRA requirement | If missing → suggested action |
+| # | Check | Requirement (our words, sourced to CRA Annex I) | Your build shows — read the named symbol literally | You verify |
 |---|---|---|---|---|
-| 1 | **Secure boot** | `CONFIG_BOOTLOADER_MCUBOOT=y` | Boot only verified, signed firmware (integrity + secure update root of trust). | Add MCUboot (the root dependency — do this **first**). |
-| 2 | **Signed update / FOTA** | `CONFIG_MCUMGR*`, SMP/BT DFU, or nRF Cloud FOTA | Ship security updates over the support period, integrity-protected. | Enable DFU/FOTA **after** MCUboot (signed images need the bootloader). |
-| 3 | **BLE pairing security** | `CONFIG_BT_SMP=y` + LE Secure Connections (`*_SC_*`) + bonding; flag Just-Works / fixed passkey | Authenticated, confidential pairing; no unauthenticated access. | Enable LE Secure Connections + bonding; avoid fixed passkeys. |
-| 4 | **Debug-port lock (production)** | `CONFIG_NRF_APPROTECT_LOCK=y` | Limit the attack surface — lock the debug access port in production. | Lock APPROTECT for **production** builds. ⚠️ Irreversible at runtime — blocks the debugger and needs a full erase (`nrfutil`/`--recover`) to undo; never apply to a dev/debug build. |
-| 5 | **Crypto / secure key storage** | `CONFIG_NRF_SECURITY` / PSA + key storage (PSA ITS / Trusted Storage) | Protect confidentiality; store keys/secrets securely. | Use the PSA crypto + secure storage path, not raw keys in flash. |
-| 6 | **TrustZone / TF-M** (ARMv8-M only — 5340/91/54) | `CONFIG_BUILD_WITH_TFM=y` | Isolate security-critical code to reduce exploit impact. | **On 52-series (incl. nRF52840 = Cortex-M4, no TrustZone): N/A, never ❌.** Build with TF-M only on nRF5340/91/54. |
-| 7 | **Memory protection** | `CONFIG_ARM_MPU`, `CONFIG_HW_STACK_PROTECTION`, `CONFIG_STACK_SENTINEL` | Mitigate memory-corruption exploits. | Enable MPU + stack protection. |
-| 8 | **Logging hygiene** | `CONFIG_LOG` config + heuristic grep of `src/` for secrets in `LOG_*`/`printk` | Don't leak secrets; minimise sensitive data in logs. | ⚠️ review flagged lines (heuristic — confirm manually). |
-| 9 | **Shell/console in production** | `CONFIG_SHELL=y` on a UART/console backend in a production build → flag | Don't ship an interactive debug surface in production. | Disable the shell/console for production builds. |
-| 10 | **SBOM generated** | this run produced `compliance/sbom/` | Identify & document components (machine-readable SBOM). | Generated by the SBOM step. |
+| 1 | **Secure boot** | Boot only verified firmware — integrity + the root of trust for secure update. *(Part I)* | `CONFIG_BOOTLOADER_MCUBOOT` present / not present | If you intend verified boot, enable MCUboot (the root dependency — first) + confirm a bootloader sub-image is built. |
+| 2 | **Signed update / FOTA** | A secure mechanism to ship integrity-protected updates over the support period. *(Part I)* | `CONFIG_MCUMGR*` / SMP-BT DFU / nRF Cloud FOTA present / not present | If you need field updates, wire a signed-update transport **after** MCUboot (signed images need the bootloader). |
+| 3 | **BLE pairing security** | Authenticated, confidential access — no unauthenticated pairing. *(Part I)* | `CONFIG_BT_SMP` + LE Secure Connections (`*_SC_*`) + bonding present / not present; Just-Works / fixed passkey | Confirm LE Secure Connections + bonding; verify no Just-Works / fixed passkey in production. |
+| 4 | **Debug-port lock (production)** | Minimise the attack surface — close the debug access port in production. *(Part I)* | `CONFIG_NRF_APPROTECT_LOCK` present / not present (sysbuild: `SB_CONFIG_APPROTECT_LOCK`) | If you need it closed in production, lock APPROTECT. **Multi-image: it must be set in the *first* image (the secure bootloader), or via sysbuild's `SB_CONFIG_APPROTECT_LOCK` for all images** — otherwise it's reopened for later images. Caution: blocks the debugger; needs a full erase (`nrfutil device recover`) to undo; never on a dev build. |
+| 5 | **Crypto / secure key storage** | Protect confidentiality; store keys/secrets securely. *(Part I)* | `CONFIG_NRF_SECURITY` / PSA + PSA ITS / Trusted Storage present / not present | Verify keys use the PSA crypto + secure-storage path, not raw keys in flash. |
+| 6 | **TrustZone / TF-M** (ARMv8-M only) | Isolate security-critical code to reduce exploit impact. *(Part I)* | `CONFIG_BUILD_WITH_TFM` present / not present — **or N/A**. (TF-M is enabled by building the **`/ns` board target**, which sets this.) | **52-series (incl. nRF52840 = Cortex-M4, no TrustZone): N/A, not a gap.** TF-M applies on nRF5340 / nRF91 / nRF54L; the nRF54H uses a different security architecture. |
+| 7 | **Memory protection** | Mitigate memory-corruption exploits. *(Part I)* | `CONFIG_ARM_MPU` / `CONFIG_HW_STACK_PROTECTION` / `CONFIG_STACK_SENTINEL` present / not present | Verify MPU + stack protection suit your part. |
+| 8 | **Logging hygiene** | Don't leak secrets; minimise sensitive data in logs. *(Part I)* | `CONFIG_LOG` config + heuristic grep of `src/` for secrets in `LOG_*`/`printk` | Heuristic — review any flagged lines yourself; confirm no secrets are logged. |
+| 9 | **Shell/console in production** | Don't ship an interactive debug surface in production. *(Part I)* | `CONFIG_SHELL` on a UART/console backend present / not present | If this is a production build, verify the shell/console is disabled. |
+| 10 | **SBOM generated** | Identify & document components (the named machine-readable SBOM). *(Part II — vulnerability handling)* | this run produced `compliance/sbom/` (yes / no) | Generated by the SBOM step; keep it updated when components change. |
 
 > **Secure boot (#1) is a multi-image feature — confirm the bootloader was actually built.**
-> `CONFIG_BOOTLOADER_MCUBOOT` lives in the **application image's** merged `.config`; if it shows
-> `not set` there, MCUboot is not chained for the app even when `CONFIG_SECURE_BOOT` (B0/NSIB) or
+> `CONFIG_BOOTLOADER_MCUBOOT` lives in the **application image's** merged `.config`; if it shows `not set`
+> there, MCUboot is not chained for the app even when `CONFIG_SECURE_BOOT` (B0/NSIB) or
 > `CONFIG_NCS_MCUBOOT_IN_BUILD` appear. A real secure-boot sysbuild builds a **separate `mcuboot`/`b0`
-> sub-image** — confirm it exists (in the build log or a `build/mcuboot` / `build/b0` dir). If only the
-> app image + `merged.hex` were produced, report **⚠️ review** ("requested in `prj.conf` but not present
-> in this build"), never ✅ — and never invent a "child image" the build didn't produce.
+> sub-image** — confirm it exists (in the build log or a `build/mcuboot` / `build/b0` dir). If only the app
+> image + `merged.hex` were produced, report it **neutrally** ("requested in `prj.conf` but the bootloader
+> sub-image is not present in this build — verify"), and never invent a "child image" the build didn't produce.
 
-## "Do these first" — dependency order (not just severity)
+## "Worth doing now" — dependency order (not just severity)
 1. **MCUboot (secure boot)** — the root; signed updates depend on it.
 2. **Signed FOTA/DFU** — once the bootloader verifies images.
-3. **APPROTECT lock** + **TF-M** (53/91) — surface + isolation.
+3. **APPROTECT lock** + **TF-M** (5340/91/54) — surface + isolation.
 4. **Secure storage / crypto**, then memory protection, logging hygiene, shell-off.
 
-> Verification status: the Kconfig→requirement mappings are best-effort and pending an expert pass
-> (Pashley / VivaTech). Treat as a *preview*, not an audit.
+> Verification status: the Kconfig→requirement mappings are best-effort and pending an expert pass. Treat as a
+> *preview*, not an audit. The Part I/Part II labels are coarse (the public regulation's two halves); finer
+> clause mapping ships only after expert validation.
