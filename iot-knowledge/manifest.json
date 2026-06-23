@@ -21,7 +21,7 @@
 			"id": "adsum/cra/workflows/cra-readiness",
 			"title": "CRA SBOM & Fix",
 			"type": "workflow",
-			"version": "0.2.0",
+			"version": "0.2.1",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
@@ -48,9 +48,9 @@
 			],
 			"status": "draft",
 			"created": "2026-06-18",
-			"updated": "2026-06-22",
+			"updated": "2026-06-23",
 			"path": "cra/workflows/cra-readiness.md",
-			"content_hash": "f78a5d743a0bdd2849c1cbd6f723c059107bf64c3868a7dc4a4731b5c895b78a"
+			"content_hash": "adeb11ecfa41b8587ed5159486a77dd5904f28a53d2aa9c32c638a0ce92ea8d6"
 		},
 		{
 			"id": "adsum/esp/actions/cra-generate-sbom",
@@ -208,7 +208,7 @@
 			"id": "adsum/nrf/actions/cra-generate-sbom",
 			"title": "Generate SBOM (nRF / west ncs-sbom)",
 			"type": "action",
-			"version": "0.2.0",
+			"version": "0.2.1",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
@@ -220,15 +220,19 @@
 			"requires": [
 				"adsum/nrf/actions/cra-generate-sbom-fallbacks"
 			],
+			"last_verified": {
+				"date": "2026-06-23",
+				"env": "NCS 3.2.1 / nRF5340DK dual-core sysbuild"
+			},
 			"safety": [
 				"shell",
 				"long-running"
 			],
 			"status": "draft",
 			"created": "2026-06-18",
-			"updated": "2026-06-22",
+			"updated": "2026-06-23",
 			"path": "platforms/nrf/actions/cra-generate-sbom.md",
-			"content_hash": "a5e9126fbbd59d158d186df69914142a8d48aa606c8f23dee1c214babdaf8414"
+			"content_hash": "9f5158cd3161310f15dd09ccf35fff17207c41a08bb7de401570da0f4e1d2c10"
 		},
 		{
 			"id": "adsum/nrf/actions/cra-generate-sbom-fallbacks",
@@ -297,7 +301,7 @@
 			"id": "adsum/nrf/rules/cra-posture",
 			"title": "CRA Secure-by-Design Posture (nRF)",
 			"type": "knowledge",
-			"version": "0.2.0",
+			"version": "0.2.1",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
@@ -308,9 +312,9 @@
 			"sdk": "ncs",
 			"status": "draft",
 			"created": "2026-06-18",
-			"updated": "2026-06-22",
+			"updated": "2026-06-23",
 			"path": "platforms/nrf/rules/cra-posture.md",
-			"content_hash": "f6fa588f8d2c7e601794ab50ac7bcec800015c6dbf5a5dc4981abb383120d050"
+			"content_hash": "2d19e5ee6e13a4af976bf059020a72692c00a3f08a704ef52d2976b8863b7073"
 		},
 		{
 			"id": "adsum/nrf/rules/device-identity",
@@ -450,7 +454,7 @@
 			"id": "adsum/rules/next-step",
 			"title": "Productive Next-Step Loop",
 			"type": "knowledge",
-			"version": "0.1.0",
+			"version": "0.1.1",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
@@ -460,8 +464,9 @@
 			"platform": "universal",
 			"status": "draft",
 			"created": "2026-06-22",
+			"updated": "2026-06-23",
 			"path": "rules/next-step.md",
-			"content_hash": "5176c76e5b2e0a318e86c8db5a661ca40fa4fc5189033514659eac08ce05e3d6"
+			"content_hash": "719ce537cbf4412b1f3e36f63bf1a8e99a99f26b6b82c6f27794de1381e2abc5"
 		},
 		{
 			"id": "adsum/rules/tool-routing",

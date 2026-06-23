@@ -2,7 +2,7 @@
 id: adsum/cra/workflows/cra-readiness
 title: CRA SBOM & Fix
 type: workflow
-version: 0.2.0
+version: 0.2.1
 owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
@@ -26,7 +26,7 @@ requires:
   - adsum/esp/sdks/esp-idf/cra-advisories
   - adsum/rules/next-step
 created: "2026-06-18"
-updated: "2026-06-22"
+updated: "2026-06-23"
 status: draft
 ---
 
@@ -119,8 +119,11 @@ for whatever's most valuable next. Works on nRF (NCS/Zephyr) and ESP (ESP-IDF).
    `debug`/`addFeature` — it does not seed the loop. **One grounded offer XOR the generic menu.**
    - **Remediation handoff (when you start/apply a fix).** Write/append `compliance/cra-remediation-<date>.md`
      recording the change you're starting — the component/Kconfig symbol, what changes, the advisory link if
-     any — framed **"changed — build, flash, verify"**, never "fixed". This is the developer's record of what
-     was started (and the host's signal that the remediation spine reached its handoff). On the preview-and-ask
+     any — framed **"changed — build, flash, verify"**, never "fixed" (and never "✅ Built & verified" — a clean
+     build is not verification). Apply it **cleanly** per `next-step.md` → *Remediation execution*: revert any
+     dead-end attempts (leave only the working diff), and **if the change altered the component set, re-run
+     step 3 so the SBOM matches the built firmware.** This is the developer's record of what was started (and
+     the host's signal that the remediation spine reached its handoff). On the preview-and-ask
      path, show it inline until the user consents to save.
 
 7. **Write the artifacts** (real project → `<project-root>/compliance/`; sample → only after the user says

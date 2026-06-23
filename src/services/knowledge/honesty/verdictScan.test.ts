@@ -38,6 +38,10 @@ describe("verdictScan — leaks that MUST be caught", () => {
 			"per-clause: meta-clause must not shield the verdict",
 			"I won't claim more than I see, but your build is now compliant.",
 		],
+		// run-#3 review — the "✅ Built & verified" handoff overstatement (build ≠ verification) the scanner missed:
+		["'✅ Built & verified' bolded status", "**Status:** ✅ **Built & verified** — build_5340 produced the mcuboot image"],
+		["bare '✅ verified' status", "Secure boot: ✅ verified"],
+		["'✅ built' done-marker", "MCUboot: ✅ built"],
 	]
 	for (const [name, sample] of leaks) {
 		test(name, () => {
@@ -72,6 +76,12 @@ describe("verdictScan — disclaimers / evidence-mode that MUST NOT trip", () =>
 		["advisory 'builds … are affected'", "Builds before 1.2.4 are affected; update to 1.2.4."],
 		["advisory 'which versions are affected'", "Check which versions are affected by this CVE."],
 		["meta-clause + meta-clause (both shielded)", "I will never tell you you're clear, and I won't say you're compliant."],
+		// run-#3 review — the HONEST handoff phrasing must stay clean (legitimately uses build/verify):
+		[
+			"honest handoff 'changed — build, flash, verify'",
+			"Secure boot: changed — build, flash, verify on hardware; a clean build is not verification.",
+		],
+		["dev-as-hero verify offer", "Want me to start MCUboot so YOU can build, flash, and verify it?"],
 	]
 	for (const [name, sample] of clean) {
 		test(name, () => {

@@ -2,7 +2,7 @@
 id: adsum/nrf/rules/cra-posture
 title: CRA Secure-by-Design Posture (nRF)
 type: knowledge
-version: 0.2.0
+version: 0.2.1
 owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
@@ -12,7 +12,7 @@ domain: cra
 platform: nrf
 sdk: ncs
 created: "2026-06-18"
-updated: "2026-06-22"
+updated: "2026-06-23"
 status: draft
 ---
 
@@ -57,7 +57,7 @@ merge blocker, never the hero.
 
 | # | Check | Requirement (our words, sourced to CRA Annex I) | Your build shows — read the named symbol literally | You verify |
 |---|---|---|---|---|
-| 1 | **Secure boot** | Boot only verified firmware — integrity + the root of trust for secure update. *(Part I)* | `CONFIG_BOOTLOADER_MCUBOOT` present / not present | If you intend verified boot, enable MCUboot (the root dependency — first) + confirm a bootloader sub-image is built. |
+| 1 | **Secure boot** | Boot only verified firmware — integrity + the root of trust for secure update. *(Part I)* | `CONFIG_BOOTLOADER_MCUBOOT` present / not present | If you intend verified boot, enable MCUboot at the **sysbuild** level (recipe + change-impact caveats in the note ↓) + confirm a bootloader sub-image is built. |
 | 2 | **Signed update / FOTA** | A secure mechanism to ship integrity-protected updates over the support period. *(Part I)* | `CONFIG_MCUMGR*` / SMP-BT DFU / nRF Cloud FOTA present / not present | If you need field updates, wire a signed-update transport **after** MCUboot (signed images need the bootloader). |
 | 3 | **BLE pairing security** | Authenticated, confidential access — no unauthenticated pairing. *(Part I)* | `CONFIG_BT_SMP` + LE Secure Connections (`*_SC_*`) + bonding present / not present; Just-Works / fixed passkey | Confirm LE Secure Connections + bonding; verify no Just-Works / fixed passkey in production. |
 | 4 | **Debug-port lock (production)** | Minimise the attack surface — close the debug access port in production. *(Part I)* | `CONFIG_NRF_APPROTECT_LOCK` present / not present (sysbuild: `SB_CONFIG_APPROTECT_LOCK`) | If you need it closed in production, lock APPROTECT. **Multi-image: it must be set in the *first* image (the secure bootloader), or via sysbuild's `SB_CONFIG_APPROTECT_LOCK` for all images** — otherwise it's reopened for later images. Caution: blocks the debugger; needs a full erase (`nrfutil device recover`) to undo; never on a dev build. |
@@ -75,6 +75,15 @@ merge blocker, never the hero.
 > sub-image** — confirm it exists (in the build log or a `build/mcuboot` / `build/b0` dir). If only the app
 > image + `merged.hex` were produced, report it **neutrally** ("requested in `prj.conf` but the bootloader
 > sub-image is not present in this build — verify"), and never invent a "child image" the build didn't produce.
+>
+> **Enabling it (recipe + change-impact, for a fix you start):** set it at the **sysbuild** level —
+> `sysbuild.conf` → `SB_CONFIG_BOOTLOADER_MCUBOOT=y` (NCS ≥ 2.7). App-level `CONFIG_BOOTLOADER_MCUBOOT=y`
+> **alone does NOT build the bootloader child image** — it only marks the app as chain-loaded. Surface two
+> caveats to the dev: (a) a bootloader **changes the flash partition map** — for an **already-deployed**
+> product pin a static layout (`pm_static.yml`) so an OTA matches fielded devices; (b) the build signs with a
+> **debug key** by default (`root-rsa-2048.pem`) — swap in your own before production. If the project already
+> stages MCUboot configs (e.g. `*_sr_net.conf`), prefer/offer **those** rather than hand-rolling a different
+> flavour.
 
 ## "Worth doing now" — dependency order (not just severity)
 1. **MCUboot (secure boot)** — the root; signed updates depend on it.

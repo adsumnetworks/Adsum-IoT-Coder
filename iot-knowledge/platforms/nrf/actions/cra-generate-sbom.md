@@ -2,7 +2,7 @@
 id: adsum/nrf/actions/cra-generate-sbom
 title: Generate SBOM (nRF / west ncs-sbom)
 type: action
-version: 0.2.0
+version: 0.2.1
 owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
@@ -17,7 +17,8 @@ safety:
 requires:
   - adsum/nrf/actions/cra-generate-sbom-fallbacks
 created: "2026-06-18"
-updated: "2026-06-22"
+updated: "2026-06-23"
+last_verified: { date: "2026-06-23", env: "NCS 3.2.1 / nRF5340DK dual-core sysbuild" }
 status: draft
 ---
 
@@ -37,7 +38,7 @@ it adds per-file **license detection**, **PURL/CPE** ids, package supplier, an *
 1. **Deps pre-flight (don't crash):** if `ncs-sbom` errors on a missing import, install its deps: `pip3 install -r <ncs>/nrf/scripts/requirements-west-ncs-sbom.txt`. Detect-and-instruct; never dead-end.
 2. **Build** to a Ninja build dir: `west build -d build -b <board> .` (long-running). The **spaces-in-path** rule below applies — it builds the project like every rung does.
 3. **Generate:** `west ncs-sbom -d build --output-spdx compliance/sbom/<app>.spdx --output-html compliance/sbom/sbom_report.html`.
-   - **Sysbuild:** point `-d` at the **build root** — `ncs-sbom` detects `domains.yaml` and fans out **per-domain** (filenames get `_<domain>`, or use `{domain}` in the path). **No `--init` dance.**
+   - **Sysbuild:** point `-d` at the **build root** — `ncs-sbom` reads `domains.yaml` and (on **NCS 3.2.1**, verified) emits a **single SPDX covering all domains** (app + net-core) at the path you give. **`{domain}` is NOT a placeholder on 3.2.1 — it's written literally; use a plain filename** (`compliance/sbom/<app>.spdx`). Newer `ncs-sbom` may fan out per-domain / expand `{domain}` — version-gate. **No `--init` dance.**
    - **Skip scancode** (long-running): pass `--license-detectors spdx-tag,full-text,external-file` (omit `scancode-toolkit`). There is **no `-n` flag** — don't invent one.
 4. **License data = evidence-to-verify, not authoritative** — Nordic marks license detection **experimental**. Surface licenses as "detected — verify", never as a compliance fact (readiness-not-compliance).
 5. `west ncs-sbom` **only generates** — no CVE/vulnerability scanning, so nothing to fence (advisories stay surface-and-link via the advisories bit).
@@ -61,7 +62,7 @@ mislabel SBOM-lite as SPDX.
 ## Safety
 `shell` (runs `west`), `long-running` (the build). No flash/erase. No network.
 
-> ⚠️ **VERIFY ON HARDWARE before launch (NCS 3.2.1):** on a real build confirm the `west ncs-sbom`
-> `-d` / `--output-spdx` / `--output-html` flags, the `nrf/scripts/requirements-west-ncs-sbom.txt` deps
-> path, and the `--license-detectors` behaviour (is scancode pulled in by default?). Flags drift across
-> versions — version-gate if needed. (The Fallback A/B flags are verified inside the fallbacks bit.)
+> **Golden-path flags verified on hardware (NCS 3.2.1 / nRF5340DK, 2026-06-23):** `west ncs-sbom -d
+> <build-root> --output-spdx --output-html --license-detectors spdx-tag,full-text,external-file` ran clean on
+> a real dual-core sysbuild. **Re-verify on other NCS versions** — flags + `{domain}` behaviour drift across
+> releases (version-gate if needed). The Fallback A/B flags are verified inside the fallbacks bit.
