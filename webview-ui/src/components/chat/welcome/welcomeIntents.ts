@@ -72,7 +72,7 @@ export function buildIntentPrompt(id: IntentId, projectName?: string, platform: 
 				return `Test and validate ${proj} — host/simulator tests now, on-hardware checks when a board is connected.`
 			return `Test and validate ${proj} — host tests with native_sim, on-hardware checks when boards are connected.`
 		case "craCheck":
-			return `Run a CRA Readiness Check on ${proj} — generate the SBOM, preview my secure-by-design posture against the EU Cyber Resilience Act, and offer to start fixing the top gap.`
+			return `Run CRA SBOM & Fix on ${proj} — pull together my SBOM from my real build, preview my secure-by-design posture against the EU Cyber Resilience Act, and surface the top gap so I can decide what to change.`
 		case "demo":
 			return "Demo: BLE NUS one-directional bug — no setup needed\n\n[ADSUM_DEMO:nus-uart]"
 		case "openProject":
@@ -154,9 +154,9 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 	{
 		id: "craCheck",
 		icon: "shield",
-		title: "CRA Readiness Check",
+		title: "CRA SBOM & Fix",
 		description:
-			"Try it on a bundled sample — generate an SBOM and a secure-by-design posture check, ahead of the EU Cyber Resilience Act.",
+			"Try it on a bundled sample — your SBOM from a real build and a secure-by-design posture to verify, so you stay ahead of the EU Cyber Resilience Act.",
 		pill: "New",
 	},
 	{
@@ -197,9 +197,9 @@ export const PROJECT_INTENTS: IntentDef[] = [
 	{
 		id: "craCheck",
 		icon: "shield",
-		title: "CRA Readiness Check",
+		title: "CRA SBOM & Fix",
 		description:
-			"Generate your SBOM, preview your secure-by-design posture, and get a build-time readiness check — ahead of the EU Cyber Resilience Act.",
+			"Your SBOM from your real build, a preview of your secure-by-design posture, a build-time readiness check — so you can get ahead of the EU Cyber Resilience Act.",
 		pill: "New",
 	},
 	{
