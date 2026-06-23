@@ -50,7 +50,7 @@
 			"created": "2026-06-18",
 			"updated": "2026-06-22",
 			"path": "cra/workflows/cra-readiness.md",
-			"content_hash": "aa63db13ee4cc24dc4660dbb144a1d4cb9bb9d2d6ed3fd5c1df7222e50656c67"
+			"content_hash": "2044e015b966f5dff10468190a29a5628e540199be5cb07f7238babfb8b17a36"
 		},
 		{
 			"id": "adsum/esp/actions/cra-generate-sbom",
@@ -461,7 +461,7 @@
 			"status": "draft",
 			"created": "2026-06-22",
 			"path": "rules/next-step.md",
-			"content_hash": "8befd0494089c4f142314c7decefb5b0fd5145223c17cfdc1c5addb00cfe3b2f"
+			"content_hash": "5176c76e5b2e0a318e86c8db5a661ca40fa4fc5189033514659eac08ce05e3d6"
 		},
 		{
 			"id": "adsum/rules/tool-routing",

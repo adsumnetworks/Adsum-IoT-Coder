@@ -54,7 +54,9 @@ or the dev says "done".
    report body. "started — build, flash, verify", never "fixed". Dev-as-hero ("want me to start X so YOU can
    verify?", never "I secured it").
 7. **One offer XOR the menu.** When a grounded offer fires, the generic next-step menu is suppressed — never a
-   sharp offer followed by a generic grid. The menu is the fallback only when nothing was groundable.
+   sharp offer followed by a generic grid. The menu is the fallback only when nothing was groundable. The
+   generic menu is the **host's** `NextStepChooser`, rendered on the workflow's completion marker — **don't
+   print a text menu yourself**; at loop-exit emit the workflow's completion marker and the host shows it.
 
 ## Degradation (stay honest cross-context)
 If the candidate source is empty or unavailable — the developer chose the **SBOM-only** branch (no posture
