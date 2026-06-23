@@ -24,6 +24,20 @@ describe("verdictScan — leaks that MUST be caught", () => {
 		["all-clear verdict", "Good news — you're in the clear on secure boot."],
 		["affected verdict (even negated)", "Don't worry, your build is not affected by CVE-2025-0001."],
 		["status cell asserting ✅", "Status: ✅  (secure boot)"],
+		// MF3a additions — shapes the verification proved were missed:
+		["bare ✅ as a table cell value", "| Secure boot | ✅ | MCUboot present |"],
+		["PASS grade", "Secure boot: PASS"],
+		["FAIL grade in a cell", "| APPROTECT | FAIL |"],
+		["'gap remediated' done-word", "Good — that gap remediated in the rebuild."],
+		["passive 'has been mitigated'", "The CVE has been mitigated."],
+		["paraphrased 'satisfies the requirement'", "Your build satisfies the requirement for secure boot."],
+		["clearance 'all gaps closed'", "Nice — all gaps closed."],
+		["clearance 'no gaps remain'", "no gaps remain on this build."],
+		["'ready to ship'", "You're ready to ship."],
+		[
+			"per-clause: meta-clause must not shield the verdict",
+			"I won't claim more than I see, but your build is now compliant.",
+		],
 	]
 	for (const [name, sample] of leaks) {
 		test(name, () => {
@@ -54,6 +68,10 @@ describe("verdictScan — disclaimers / evidence-mode that MUST NOT trip", () =>
 			"A clean build does not mean a gap is resolved — it is started, build/flash/verify.",
 		],
 		["honesty rule quoting the bans", 'Never say "compliant", "certified", "passes", "affected".'],
+		// MF3a — advisory metadata about a CVE's scope is NOT a verdict about the user's build:
+		["advisory 'builds … are affected'", "Builds before 1.2.4 are affected; update to 1.2.4."],
+		["advisory 'which versions are affected'", "Check which versions are affected by this CVE."],
+		["meta-clause + meta-clause (both shielded)", "I will never tell you you're clear, and I won't say you're compliant."],
 	]
 	for (const [name, sample] of clean) {
 		test(name, () => {

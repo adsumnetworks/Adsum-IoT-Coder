@@ -117,6 +117,11 @@ for whatever's most valuable next. Works on nRF (NCS/Zephyr) and ESP (ESP-IDF).
    pool = gaps minus accepted; stop when the high-value backlog is dry). A real bug you *read* in the source
    may headline **once**, integrity-guarded ("I don't see `X()` — verify", never an asserted bug), routed into
    `debug`/`addFeature` — it does not seed the loop. **One grounded offer XOR the generic menu.**
+   - **Remediation handoff (when you start/apply a fix).** Write/append `compliance/cra-remediation-<date>.md`
+     recording the change you're starting — the component/Kconfig symbol, what changes, the advisory link if
+     any — framed **"changed — build, flash, verify"**, never "fixed". This is the developer's record of what
+     was started (and the host's signal that the remediation spine reached its handoff). On the preview-and-ask
+     path, show it inline until the user consents to save.
 
 7. **Write the artifacts** (real project → `<project-root>/compliance/`; sample → only after the user says
    save, into the namespaced folder you proposed — otherwise show inline and skip the write). Write **all**

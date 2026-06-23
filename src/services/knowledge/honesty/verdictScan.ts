@@ -43,31 +43,59 @@ interface LeakPattern {
 	re: RegExp
 }
 
-/** High-precision leak patterns — each targets an *assertive* verdict shape, not a bare word. */
+/** Leak patterns — each targets an *assertive* verdict shape, not a bare word. High-precision, not exhaustive. */
 const LEAK_PATTERNS: LeakPattern[] = [
-	// A ✅/✔ glued to a verdict — the canonical "✅ FIXED" leak.
-	{ rule: "glyph-verdict", re: /[✅✔]\s*(fixed|done|resolved|pass(?:es|ed)?|compliant|certified|clear)\b/gi },
-	// "now/fully compliant|resolved|fixed|done|cleared"
-	{ rule: "now-verdict", re: /\b(?:now|fully|now fully)\s+(compliant|certified|resolved|fixed|done|cleared|clear)\b/gi },
-	// Assertive subject + verdict: "you're compliant", "the build is certified", "product is compliant"
+	// A ✅/✔/❌/✗ glued to a verdict — the canonical "✅ FIXED" leak.
+	{
+		rule: "glyph-verdict",
+		re: /[✅✔❌✗]\s*(fixed|done|resolved|remediated|mitigated|pass(?:es|ed)?|fail(?:s|ed)?|compliant|certified|clear)\b/gi,
+	},
+	// A verdict glyph used as a TABLE CELL value — evidence-mode tables have no status-glyph column.
+	{ rule: "glyph-cell", re: /\|\s*[✅✔❌✗]/g },
+	// A PASS/FAIL grade — standalone UPPERCASE token (case-sensitive): "Secure boot: PASS", "| FAIL |".
+	// Uppercase-only avoids prose "pass"/"fail" and substrings (BYPASS, FAILURE, PASSED).
+	{ rule: "passfail", re: /(?<![A-Za-z])(?:PASS|FAIL)(?![A-Za-z])/g },
+	// "now/fully compliant|certified|resolved|fixed|…"
+	{
+		rule: "now-verdict",
+		re: /\b(?:now|fully|now fully)\s+(compliant|certified|resolved|fixed|done|cleared|clear|remediated|mitigated)\b/gi,
+	},
+	// Assertive subject + verdict: "you're compliant", "the build is certified".
 	{
 		rule: "assertive-verdict",
 		re: /\b(?:you(?:'re| are)|it(?:'s| is)|the (?:build|firmware|product|device) is|product is|build is)\s+(compliant|certified|clear)\b/gi,
 	},
-	// A finding marked done: "gap fixed", "vulnerability resolved", "issue cleared"
-	{ rule: "gap-verdict", re: /\b(?:gap|gaps|vuln(?:erability)?|vulns?|issue|finding|cve)\s+(fixed|resolved|done|cleared)\b/gi },
-	// The documented closing-summary leak.
-	{ rule: "summary-leak", re: /\btop gap\s+(fixed|resolved|done|cleared)\b/gi },
-	// A status cell asserting a verdict. (Note: `\b` only on the word alternatives — a trailing `\b` after
-	// the ✅ emoji never matches, since ✅ is not a word char.)
-	{ rule: "status-verdict", re: /\bstatus:?\s*(?:[✅✔]|(?:fixed|resolved|done|compliant|pass(?:es|ed)?)\b)/gi },
-	// "affected" as a verdict about the user's build (incl. "not affected") — NOT advisory "affected versions".
+	// A finding marked done: "gap fixed/resolved/remediated/mitigated/addressed/closed".
 	{
-		rule: "affected-verdict",
-		re: /\b(?:you(?:'re| are)|build is|product is|is|are)\s+(?:not\s+)?affected\b(?!\s+versions?)/gi,
+		rule: "gap-verdict",
+		re: /\b(?:gap|gaps|vuln(?:erability)?|vulns?|issue|finding|cve)\s+(fixed|resolved|done|cleared|remediated|mitigated|addressed|closed)\b/gi,
 	},
+	// Passive done-claim: "has been fixed/resolved/remediated/mitigated" (e.g. "the CVE has been mitigated").
+	{ rule: "passive-done", re: /\b(?:has|have|had)\s+been\s+(fixed|resolved|remediated|mitigated|addressed|cleared)\b/gi },
+	// Clearance claims: "all gaps closed", "no gaps remain", "ready to ship".
+	{
+		rule: "clearance",
+		re: /\b(?:all gaps|all findings)\s+(?:closed|addressed|resolved|cleared)\b|\bno gaps?\s+(?:remain|left)\b|\bready to ship\b/gi,
+	},
+	// Paraphrased conformity verdicts (named in the threat list — high-value, still not exhaustive).
+	{
+		rule: "paraphrase-verdict",
+		re: /\b(?:satisfies|satisfy|meets|meet|fulfils?|fulfills?|complies with|conforms to)\s+(?:the\s+|all\s+)?(?:requirement|requirements|annex|cra|essential|conformity)/gi,
+	},
+	{ rule: "fully-addressed", re: /\bfully addressed\b/gi },
+	// The documented closing-summary leak.
+	{ rule: "summary-leak", re: /\btop gap\s+(fixed|resolved|done|cleared|remediated)\b/gi },
+	// A status cell asserting a verdict. (`\b` only on the word alternatives — a trailing `\b` after the ✅
+	// emoji never matches, since ✅ is not a word char.)
+	{
+		rule: "status-verdict",
+		re: /\bstatus:?\s*(?:[✅✔]|(?:fixed|resolved|done|compliant|certified|clear(?:ed)?|pass(?:es|ed)?)\b)/gi,
+	},
+	// "affected" as a verdict about the USER's build — NOT advisory metadata ("builds…are affected",
+	// "versions are affected", "affected versions"). Requires a 2nd-person / "your build" subject.
+	{ rule: "affected-verdict", re: /\b(?:you(?:'re| are)|your (?:build|product|firmware|device) is)\s+(?:not\s+)?affected\b/gi },
 	// An all-clear verdict: "you're (in the) clear".
-	{ rule: "all-clear", re: /\b(?:you(?:'re| are)|build is|product is)\s+(?:in the\s+)?clear\b/gi },
+	{ rule: "all-clear", re: /\b(?:you(?:'re| are)|your (?:build|product) is)\s+(?:in the\s+)?clear\b/gi },
 ]
 
 /**
@@ -78,16 +106,20 @@ export function scanForVerdictLeaks(content: string): VerdictLeak[] {
 	const leaks: VerdictLeak[] = []
 	const lines = content.split(/\r?\n/)
 	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i]
-		if (LIMIT_STATEMENT.test(line)) {
-			continue // a "never say / won't claim …" meta-statement — not a verdict
-		}
-		for (const { rule, re } of LEAK_PATTERNS) {
-			re.lastIndex = 0
-			let m: RegExpExecArray | null
-			// biome-ignore lint/suspicious/noAssignInExpressions: standard global-regex exec loop
-			while ((m = re.exec(line)) !== null) {
-				leaks.push({ line: i + 1, match: m[0].trim(), rule })
+		// Split into clauses so a meta-clause ("I won't claim…") only shields ITS clause, not a verdict in a
+		// sibling clause on the same line ("…, but your build is now compliant").
+		const clauses = lines[i].split(/(?:;|\.\s+|\s[—–]\s|,?\s+(?:but|and)\s+)/i)
+		for (const clause of clauses) {
+			if (LIMIT_STATEMENT.test(clause)) {
+				continue // a "never say / won't claim …" meta-clause — not a verdict
+			}
+			for (const { rule, re } of LEAK_PATTERNS) {
+				re.lastIndex = 0
+				let m: RegExpExecArray | null
+				// biome-ignore lint/suspicious/noAssignInExpressions: standard global-regex exec loop
+				while ((m = re.exec(clause)) !== null) {
+					leaks.push({ line: i + 1, match: m[0].trim(), rule })
+				}
 			}
 		}
 	}

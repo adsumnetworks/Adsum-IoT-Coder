@@ -50,7 +50,7 @@
 			"created": "2026-06-18",
 			"updated": "2026-06-22",
 			"path": "cra/workflows/cra-readiness.md",
-			"content_hash": "2044e015b966f5dff10468190a29a5628e540199be5cb07f7238babfb8b17a36"
+			"content_hash": "f78a5d743a0bdd2849c1cbd6f723c059107bf64c3868a7dc4a4731b5c895b78a"
 		},
 		{
 			"id": "adsum/esp/actions/cra-generate-sbom",
