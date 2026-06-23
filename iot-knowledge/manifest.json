@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 24,
+	"count": 26,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -19,21 +19,22 @@
 		},
 		{
 			"id": "adsum/cra/workflows/cra-readiness",
-			"title": "CRA Readiness Check",
+			"title": "CRA SBOM & Fix",
 			"type": "workflow",
-			"version": "0.1.0",
+			"version": "0.2.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
 			"tier": "certified",
-			"delivery": "bundled",
+			"delivery": "downloaded",
 			"domain": "cra",
 			"platform": "universal",
 			"triggers": [
 				"CRA",
+				"SBOM",
+				"fix vulnerability",
 				"CRA readiness",
-				"CRA Readiness Check",
-				"readiness check",
+				"CRA SBOM",
 				"get CRA-ready"
 			],
 			"requires": [
@@ -41,12 +42,15 @@
 				"adsum/esp/actions/cra-generate-sbom",
 				"adsum/nrf/rules/cra-posture",
 				"adsum/esp/rules/cra-posture",
-				"adsum/nrf/sdks/ncs/cra-advisories"
+				"adsum/nrf/sdks/ncs/cra-advisories",
+				"adsum/esp/sdks/esp-idf/cra-advisories",
+				"adsum/rules/next-step"
 			],
 			"status": "draft",
 			"created": "2026-06-18",
+			"updated": "2026-06-22",
 			"path": "cra/workflows/cra-readiness.md",
-			"content_hash": "d9ea9ccf2b4cac575149b8766a85fa174b4a1120309f642a8be24b078680f4b2"
+			"content_hash": "aa63db13ee4cc24dc4660dbb144a1d4cb9bb9d2d6ed3fd5c1df7222e50656c67"
 		},
 		{
 			"id": "adsum/esp/actions/cra-generate-sbom",
@@ -57,7 +61,7 @@
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
 			"tier": "certified",
-			"delivery": "bundled",
+			"delivery": "downloaded",
 			"domain": "cra",
 			"platform": "esp",
 			"sdk": "esp-idf",
@@ -89,19 +93,20 @@
 			"id": "adsum/esp/rules/cra-posture",
 			"title": "CRA Secure-by-Design Posture (ESP)",
 			"type": "knowledge",
-			"version": "0.1.0",
+			"version": "0.2.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
 			"tier": "certified",
-			"delivery": "bundled",
+			"delivery": "downloaded",
 			"domain": "cra",
 			"platform": "esp",
 			"sdk": "esp-idf",
 			"status": "draft",
 			"created": "2026-06-18",
+			"updated": "2026-06-22",
 			"path": "platforms/esp/rules/cra-posture.md",
-			"content_hash": "89b38d135ad13a2b85cdc15c8aa423f8bf501bae5a49310c6f37da0f18bd0ecf"
+			"content_hash": "840184fa0b1c5340628c6a4ece25925b31650bcfdc227cb5f36e9722ba62cbc5"
 		},
 		{
 			"id": "adsum/esp/rules/device-identity",
@@ -149,6 +154,24 @@
 			"content_hash": "74fb0b588b056d5162af90bf26d769f7867d76fb513dcd0cef505e7a379b93f2"
 		},
 		{
+			"id": "adsum/esp/sdks/esp-idf/cra-advisories",
+			"title": "CRA Advisory Snapshot (ESP-IDF)",
+			"type": "knowledge",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "cra",
+			"platform": "esp",
+			"sdk": "esp-idf",
+			"status": "draft",
+			"created": "2026-06-23",
+			"path": "platforms/esp/sdks/esp-idf/cra-advisories.md",
+			"content_hash": "de4dddfc3b8c2ea961bbf0ed3437f397a71a6dadfb15edf331463b0a1c37c952"
+		},
+		{
 			"id": "adsum/esp/sdks/esp-idf/sdk",
 			"title": "ESP-IDF — SDK Knowledge",
 			"type": "knowledge",
@@ -190,7 +213,7 @@
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
 			"tier": "certified",
-			"delivery": "bundled",
+			"delivery": "downloaded",
 			"domain": "cra",
 			"platform": "nrf",
 			"sdk": "ncs",
@@ -205,7 +228,7 @@
 			"created": "2026-06-18",
 			"updated": "2026-06-22",
 			"path": "platforms/nrf/actions/cra-generate-sbom.md",
-			"content_hash": "bf868394f0b7dd45cc32a740f1e84f32c95191df024fc15ad7244c3a2e8cc50c"
+			"content_hash": "a5e9126fbbd59d158d186df69914142a8d48aa606c8f23dee1c214babdaf8414"
 		},
 		{
 			"id": "adsum/nrf/actions/cra-generate-sbom-fallbacks",
@@ -216,7 +239,7 @@
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
 			"tier": "certified",
-			"delivery": "bundled",
+			"delivery": "downloaded",
 			"domain": "cra",
 			"platform": "nrf",
 			"sdk": "ncs",
@@ -274,19 +297,20 @@
 			"id": "adsum/nrf/rules/cra-posture",
 			"title": "CRA Secure-by-Design Posture (nRF)",
 			"type": "knowledge",
-			"version": "0.1.0",
+			"version": "0.2.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
 			"tier": "certified",
-			"delivery": "bundled",
+			"delivery": "downloaded",
 			"domain": "cra",
 			"platform": "nrf",
 			"sdk": "ncs",
 			"status": "draft",
 			"created": "2026-06-18",
+			"updated": "2026-06-22",
 			"path": "platforms/nrf/rules/cra-posture.md",
-			"content_hash": "f960953ad578f533b59ee20c3ab5e71b2cc821ead935ce5dc928c257e9bb1606"
+			"content_hash": "f6fa588f8d2c7e601794ab50ac7bcec800015c6dbf5a5dc4981abb383120d050"
 		},
 		{
 			"id": "adsum/nrf/rules/device-identity",
@@ -349,14 +373,14 @@
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
 			"tier": "certified",
-			"delivery": "bundled",
+			"delivery": "downloaded",
 			"domain": "cra",
 			"platform": "nrf",
 			"sdk": "ncs",
 			"status": "draft",
 			"created": "2026-06-18",
 			"path": "platforms/nrf/sdks/ncs/cra-advisories.md",
-			"content_hash": "72ae5f082a650f22a56581faa13bcefb1055100a09deb56a58b7bbb4e86cd367"
+			"content_hash": "382f94be62b3f89d21eef3d94d1010d1e96d48a52c6af5edd5a02d3319280a26"
 		},
 		{
 			"id": "adsum/nrf/sdks/ncs/protocols/ble",
@@ -421,6 +445,23 @@
 			"platform": "universal",
 			"path": "rules/core.md",
 			"content_hash": "7656f94ececcc969cfbf529683df218074e3f415cc23b8b6d3e7a4ebd92b2cc7"
+		},
+		{
+			"id": "adsum/rules/next-step",
+			"title": "Productive Next-Step Loop",
+			"type": "knowledge",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "embedded-iot",
+			"platform": "universal",
+			"status": "draft",
+			"created": "2026-06-22",
+			"path": "rules/next-step.md",
+			"content_hash": "8befd0494089c4f142314c7decefb5b0fd5145223c17cfdc1c5addb00cfe3b2f"
 		},
 		{
 			"id": "adsum/rules/tool-routing",
