@@ -103,7 +103,7 @@ export function intentDescription(intent: IntentDef, projectName?: string, platf
 		if (platform === "both") {
 			return "Tell me what you're building (nRF/Zephyr or ESP-IDF) — I'll scaffold from the right verified sample."
 		}
-		return "Tell me what you're building — I'll scaffold from the right verified Nordic sample."
+		return "Tell me what you're building — your prototype, scaffolded from the right verified Nordic sample, ready for you to build on."
 	}
 	if (intent.id === "testValidate") {
 		if (platform === "esp") {
@@ -186,7 +186,7 @@ export const PROJECT_INTENTS: IntentDef[] = [
 		id: "addFeature",
 		icon: "extensions",
 		title: "Add a feature",
-		description: "A Zephyr shell, a BLE service, NVS storage… wired into your real project, not a sample.",
+		description: "Add a Zephyr shell, a BLE service, NVS storage… to your real project, not a sample.",
 	},
 	{
 		id: "testValidate",
@@ -213,7 +213,7 @@ export const PROJECT_INTENTS: IntentDef[] = [
 		id: "boardBringUp",
 		icon: "circuit-board",
 		title: "Board Bring-Up",
-		description: "Move from a DK to your custom board — generate the board files and map the pins.",
+		description: "Bring up your custom board from a DK — board files drafted and pins mapped, ready for you to verify.",
 		comingSoon: true,
 	},
 ]
