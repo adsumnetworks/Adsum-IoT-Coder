@@ -9,6 +9,8 @@ import * as path from "node:path"
 export interface ProjectCapabilities {
 	hasRTT: boolean
 	hasUART: boolean
+	/** CONFIG_BT_DEBUG_MONITOR_RTT=y — project emits the BT Monitor (HCI) binary stream on RTT channel 1. */
+	hasMonitorRTT: boolean
 	recommendedTransport: "rtt" | "uart"
 	configPath: string | null
 	loggingDisabled: boolean
@@ -21,6 +23,7 @@ function scanPrjConf(prjConfPath: string): ProjectCapabilities {
 	const capabilities: ProjectCapabilities = {
 		hasRTT: false,
 		hasUART: false,
+		hasMonitorRTT: false,
 		recommendedTransport: "uart",
 		configPath: null,
 		loggingDisabled: false,
@@ -39,6 +42,11 @@ function scanPrjConf(prjConfPath: string): ProjectCapabilities {
 
 		if (hasRTT) {
 			capabilities.hasRTT = true
+		}
+
+		// HCI Monitor (BT Monitor protocol on RTT channel 1) — enables the host↔controller HCI trace.
+		if (/^\s*CONFIG_BT_DEBUG_MONITOR_RTT\s*=\s*y/im.test(content)) {
+			capabilities.hasMonitorRTT = true
 		}
 
 		// Check for UART configuration
@@ -101,6 +109,7 @@ export function detectProjectCapabilities(workspacePath: string): ProjectCapabil
 	return {
 		hasRTT: false,
 		hasUART: true,
+		hasMonitorRTT: false,
 		recommendedTransport: "uart",
 		configPath: null,
 		loggingDisabled: false,
