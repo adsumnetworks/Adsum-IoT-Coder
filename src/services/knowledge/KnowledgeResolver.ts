@@ -114,6 +114,21 @@ type KbitTelemetry = {
 }
 /** The CRA Readiness Check workflow id — loading it means a CRA check is running (telemetry signal). */
 const CRA_WORKFLOW_ID = "adsum/cra/workflows/cra-readiness"
+
+/**
+ * In-session flag: set when the CRA workflow loads, consumed (read + cleared) when the NEXT task starts.
+ * It is the host-side bridge for `core_feature_tried_after_cra` — the routed debug/addFeature task is a
+ * separate task started via the webview-only `runIntent`, which has no telemetry path, so the host reads
+ * this flag at `Controller.initTask`. In-memory on purpose: the signal is "continued use *this session*
+ * after a CRA run", and it must not persist across a reload. Fires only for the first task after the run.
+ */
+let craRanThisSession = false
+/** Read-and-clear the "a CRA run happened this session" flag (host-side `core_feature_tried_after_cra`). */
+export function consumeCraRanThisSession(): boolean {
+	const v = craRanThisSession
+	craRanThisSession = false
+	return v
+}
 let kbitTelemetry: KbitTelemetry = {}
 export function __setKbitTelemetry(hooks: KbitTelemetry): void {
 	kbitTelemetry = hooks ?? {}
@@ -244,6 +259,7 @@ async function loadDownloadedBit(id: string): Promise<string> {
 export async function loadBit(id: string): Promise<string> {
 	if (id === CRA_WORKFLOW_ID) {
 		kbitTelemetry.craCheckStarted?.()
+		craRanThisSession = true // arm the cross-task "core feature tried after CRA" signal (consumed at next task start)
 	}
 	const full = await resolveBitPath(id) // bundled manifest only
 	if (full) {
