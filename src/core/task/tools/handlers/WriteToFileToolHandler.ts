@@ -21,6 +21,7 @@ import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { applyModelContentFixes } from "../utils/ModelContentProcessor"
 import { ToolDisplayUtils } from "../utils/ToolDisplayUtils"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
+import { classifyCraArtifactPath } from "./craArtifact"
 
 /**
  * True if `absolutePath` is inside the Adsum extension install (read-only on a published build) or any
@@ -47,15 +48,12 @@ export function isUnderExtensionOrSample(absolutePath: string, extensionRoot?: s
  * write events key on the output path, never on a bit load or on cra-readiness.json.
  */
 function emitCraMilestoneOnce(config: TaskConfig, absolutePath: string): void {
-	const norm = absolutePath.replace(/\\/g, "/")
-	// The SBOM door cleared: a real SPDX / SBOM-lite file landed under compliance/sbom/.
-	if (!config.taskState.craSbomEmitted && /\/compliance\/sbom\//.test(norm)) {
-		config.taskState.craSbomEmitted = true
+	const kind = classifyCraArtifactPath(absolutePath) // pure + unit-tested in craArtifact.test.ts
+	if (kind === "sbom" && !config.taskState.craSbomEmitted) {
+		config.taskState.craSbomEmitted = true // SBOM door cleared (compliance/sbom/)
 		telemetryService.captureCraSbomGenerated({ iot_platform: getCachedWorkspaceSummary() })
-	}
-	// The remediation spine reached its handoff: compliance/cra-remediation-<date>.md.
-	if (!config.taskState.craFixEmitted && /\/compliance\/cra-remediation[^/]*\.md$/.test(norm)) {
-		config.taskState.craFixEmitted = true
+	} else if (kind === "fix" && !config.taskState.craFixEmitted) {
+		config.taskState.craFixEmitted = true // remediation handoff written
 		telemetryService.captureCraFixCompleted({ iot_platform: getCachedWorkspaceSummary() })
 	}
 }
