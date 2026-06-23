@@ -199,6 +199,14 @@ export class TelemetryService {
 			DEMO_USER_INTERACTED: "free_tier.demo_user_interacted",
 			// CRA Readiness Check ran (the cra-readiness workflow loaded) — H1 acquisition signal
 			CRA_CHECK_STARTED: "free_tier.cra_check_started",
+			// CRA SBOM written to compliance/sbom/ (the door cleared) — keyed on the output artifact path
+			CRA_SBOM_GENERATED: "free_tier.cra_sbom_generated",
+			// CRA remediation handoff written (the spine reached the verified-diff/handoff step)
+			CRA_FIX_COMPLETED: "free_tier.cra_fix_completed",
+			// The CRA bridge routed into a core feature (debug/addFeature) — fired host-side at task start
+			CORE_FEATURE_TRIED_AFTER_CRA: "free_tier.core_feature_tried_after_cra",
+			// The productive next-step loop made a grounded offer (treadmill guard: offers vs accepts)
+			NEXT_STEP_OFFERED: "free_tier.next_step_offered",
 			// User started a non-demo task (crossed from demo to real use)
 			FIRST_REAL_TASK_STARTED: "free_tier.first_real_task_started",
 			// Upgrade card shown to dormant user after version bump
@@ -2420,6 +2428,28 @@ export class TelemetryService {
 	 *  nrf/esp/both/none dimension — the global `platform` super-property is broken (logs the IDE name). */
 	public captureCraCheckStarted(props: { iot_platform?: string } = {}) {
 		this.capture({ event: TelemetryService.EVENTS.FREE_TIER.CRA_CHECK_STARTED, properties: { ...props } })
+	}
+
+	/** CRA: SBOM written to compliance/sbom/ (the door cleared). Keyed host-side on the output path — the path is never sent. */
+	public captureCraSbomGenerated(props: { iot_platform?: string } = {}) {
+		this.capture({ event: TelemetryService.EVENTS.FREE_TIER.CRA_SBOM_GENERATED, properties: { ...props } })
+	}
+
+	/** CRA: remediation handoff written (the spine reached the verified-diff/handoff step). */
+	public captureCraFixCompleted(props: { iot_platform?: string } = {}) {
+		this.capture({ event: TelemetryService.EVENTS.FREE_TIER.CRA_FIX_COMPLETED, properties: { ...props } })
+	}
+
+	/** CRA: the bridge routed into a core feature (debug/addFeature). Fired host-side at the routed task's start. */
+	public captureCoreFeatureTriedAfterCra(props: { iot_platform?: string; intent?: string } = {}) {
+		this.capture({ event: TelemetryService.EVENTS.FREE_TIER.CORE_FEATURE_TRIED_AFTER_CRA, properties: { ...props } })
+	}
+
+	/** CRA loop: a grounded next-step offer fired (treadmill guard = offers vs accepts). */
+	public captureNextStepOffered(
+		props: { iot_platform?: string; kind?: "inferred" | "generic"; grounded?: boolean; accepted?: boolean } = {},
+	) {
+		this.capture({ event: TelemetryService.EVENTS.FREE_TIER.NEXT_STEP_OFFERED, properties: { ...props } })
 	}
 
 	/** K-bit: the registry was unreachable when a downloaded bit was needed (degradation / registry health). */
