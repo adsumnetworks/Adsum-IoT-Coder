@@ -1,0 +1,11 @@
+The knowledge content in this directory (K-bits, workflows, rules, and related
+Markdown) is licensed under the Creative Commons Attribution-ShareAlike 4.0
+International License (CC-BY-SA-4.0): https://creativecommons.org/licenses/by-sa/4.0/
+
+Copyright 2026 Adsum Networks and contributors.
+
+This applies to the BUNDLED content shipped in this directory. Bits delivered via
+the Adsum registry ("downloaded" delivery) are NOT covered by this license and are
+governed by Adsum Networks' proprietary terms that accompany them.
+
+The extension code (outside this directory) is licensed under Apache-2.0 (see ../LICENSE).
