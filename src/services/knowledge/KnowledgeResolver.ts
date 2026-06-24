@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import fs from "node:fs/promises"
 import path from "node:path"
 import { HostProvider } from "@/hosts/host-provider"
@@ -109,6 +109,25 @@ type KbitTelemetry = {
 	downloadedResolved?(p: { id: string; source: "cache" | "registry" }): void
 	registryUnreachable?(p: { id?: string }): void
 	cacheReconciled?(p: { purged: number }): void
+	/** Fired when the CRA Readiness Check workflow loads — the H1 acquisition signal for the CRA feature. */
+	craCheckStarted?(): void
+}
+/** The CRA Readiness Check workflow id — loading it means a CRA check is running (telemetry signal). */
+const CRA_WORKFLOW_ID = "adsum/cra/workflows/cra-readiness"
+
+/**
+ * In-session flag: set when the CRA workflow loads, consumed (read + cleared) when the NEXT task starts.
+ * It is the host-side bridge for `core_feature_tried_after_cra` — the routed debug/addFeature task is a
+ * separate task started via the webview-only `runIntent`, which has no telemetry path, so the host reads
+ * this flag at `Controller.initTask`. In-memory on purpose: the signal is "continued use *this session*
+ * after a CRA run", and it must not persist across a reload. Fires only for the first task after the run.
+ */
+let craRanThisSession = false
+/** Read-and-clear the "a CRA run happened this session" flag (host-side `core_feature_tried_after_cra`). */
+export function consumeCraRanThisSession(): boolean {
+	const v = craRanThisSession
+	craRanThisSession = false
+	return v
 }
 let kbitTelemetry: KbitTelemetry = {}
 export function __setKbitTelemetry(hooks: KbitTelemetry): void {
@@ -191,8 +210,66 @@ export async function isRegistryReachable(): Promise<boolean> {
 	return (await registry().fetchManifest()) !== null
 }
 
-/** Load a downloaded (non-bundled) bit: verified cache → fetch (verify, cache if open) → "". */
+// ── Dev override: local-disk resolution for downloaded bits ──────────────────────
+//
+// `ADSUM_KBIT_LOCAL=<abs path to a kbits/ tree>` (e.g. ../Adsum-Backend/kbits) lets a developer F5-test
+// a DOWNLOADED (closed/proprietary) bit straight from disk — edit + F5, same friction as a bundled bit —
+// before it's ever published to the registry. Without it, testing a closed bit needs the copy-into-
+// iot-knowledge/ trick (easy to forget to undo → proprietary leak in a VSIX).
+//
+// Hard-gated on `process.env.IS_DEV === "true"`. esbuild defines IS_DEV as the literal "false" in every
+// production build (esbuild.mjs), so this whole branch is dead-code-eliminated from a shipped VSIX even
+// if the env var is somehow present on the machine. Only affects ids NOT in the bundled manifest.
+
+let localKbitIndex: Map<string, string> | null | undefined // undefined = not built yet; null = disabled
+
+/** The local kbits root, or null unless BOTH the env var is set AND this is a dev build. */
+function localKbitDir(): string | null {
+	if (process.env.IS_DEV !== "true") {
+		return null
+	}
+	const dir = process.env.ADSUM_KBIT_LOCAL
+	return dir && existsSync(dir) ? dir : null
+}
+
+/** Lazy id → absolute-path index over the local kbits tree, using the same deriveId as the bundled manifest. */
+function localKbits(): Map<string, string> | null {
+	if (localKbitIndex !== undefined) {
+		return localKbitIndex
+	}
+	const root = localKbitDir()
+	if (!root) {
+		localKbitIndex = null
+		return null
+	}
+	const map = new Map<string, string>()
+	try {
+		for (const f of readdirSync(root, { recursive: true }) as string[]) {
+			if (!f.endsWith(".md")) {
+				continue
+			}
+			const rel = f.replace(/\\/g, "/")
+			map.set(deriveIdFromRel(rel), path.join(root, f))
+		}
+		console.info(`[kbit] local override active (${map.size} bits) ← ${root}`)
+	} catch (e) {
+		console.error("KnowledgeResolver: failed to index ADSUM_KBIT_LOCAL", e)
+	}
+	localKbitIndex = map
+	return map
+}
+
+/** Load a downloaded (non-bundled) bit: local override (dev) → verified cache → fetch (verify, cache if open) → "". */
 async function loadDownloadedBit(id: string): Promise<string> {
+	const localPath = localKbits()?.get(id)
+	if (localPath) {
+		try {
+			console.info(`[kbit] ${id} ← local override`)
+			return stripFrontmatter(readFileSync(localPath, "utf-8"))
+		} catch (e) {
+			console.error(`KnowledgeResolver: failed to read local-override bit "${id}"`, e)
+		}
+	}
 	let entry = (await downloadedManifest()).get(id)
 	if (!entry && !manifestRevalidated) {
 		// Catalog wasn't successfully revalidated yet (registry down at session start) and the id is
@@ -238,6 +315,10 @@ async function loadDownloadedBit(id: string): Promise<string> {
  * only non-bundled ids reach the downloaded tier.
  */
 export async function loadBit(id: string): Promise<string> {
+	if (id === CRA_WORKFLOW_ID) {
+		kbitTelemetry.craCheckStarted?.()
+		craRanThisSession = true // arm the cross-task "core feature tried after CRA" signal (consumed at next task start)
+	}
 	const full = await resolveBitPath(id) // bundled manifest only
 	if (full) {
 		try {
@@ -290,6 +371,37 @@ export async function loadBitByKbPath(absPath: string): Promise<string | null> {
 	return body || null
 }
 
+/**
+ * Top-level dirs under `iot-knowledge/` whose files are bits. Used to recognise a bundled-tree
+ * RELATIVE path (no `iot-knowledge/` prefix) so ordinary missing project files fall through.
+ */
+const BIT_ROOTS = ["platforms/", "cra/", "rules/"]
+
+/** True if `rel` looks like a bundled-tree relative path to a bit (e.g. `platforms/nrf/…/x.md`). */
+export function isBareBitPath(rel: string | undefined | null): boolean {
+	if (!rel) {
+		return false
+	}
+	const norm = rel.replace(/\\/g, "/").replace(/^\.\//, "")
+	return /\.md$/i.test(norm) && BIT_ROOTS.some((r) => norm.startsWith(r))
+}
+
+/**
+ * Resolve a bundled-tree RELATIVE path (no `iot-knowledge/` prefix) to its bit content. The agent
+ * often reads a bit by its tree path, e.g. `platforms/nrf/workflows/debug-loop.md`; that resolves
+ * against the workspace and isn't on disk, so without this it 404s and the agent retries with the
+ * absolute path. Restricted to known bit roots so ordinary missing files (`src/main.c`) return null
+ * fast (no registry hit). Resolves through `loadBit` (bundled → cache → fetch, hash-verified).
+ */
+export async function loadBitByRel(rel: string): Promise<string | null> {
+	if (!isBareBitPath(rel)) {
+		return null
+	}
+	const norm = rel.replace(/\\/g, "/").replace(/^\.\//, "")
+	const body = await loadBit(deriveIdFromRel(norm))
+	return body || null
+}
+
 /** Test-only: inject cache/registry doubles for the downloaded tier (no network). */
 export function __setRegistryHooks(hooks: { cache?: BitCache; registry?: RegistryClient }): void {
 	injectedCache = hooks.cache ?? null
@@ -305,4 +417,5 @@ export function __resetManifestCache(): void {
 	manifestRevalidated = false
 	injectedCache = null
 	injectedRegistry = null
+	localKbitIndex = undefined
 }

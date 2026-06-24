@@ -244,4 +244,71 @@ describe("WorkspaceClassifier", () => {
 			result.summary.should.equal("both")
 		})
 	})
+
+	// -----------------------------------------------------------------------
+	// Workspace features (A3/A10) — BLE + compliance file-presence signals.
+	// These accumulate independently of platform classification.
+	// -----------------------------------------------------------------------
+	describe("features.hasBle", () => {
+		it("detects BLE from nRF prj.conf CONFIG_BT=y", () => {
+			const fs = fixture({ "/proj/CMakeLists.txt": NRF_CMAKE, "/proj/prj.conf": "CONFIG_BT=y\nCONFIG_LOG=y\n" })
+			classifyWorkspace(["/proj"], fs).features.hasBle.should.equal(true)
+		})
+
+		it("detects BLE from ESP sdkconfig CONFIG_BT_ENABLED=y", () => {
+			const fs = fixture({ "/proj/CMakeLists.txt": ESP_CMAKE, "/proj/sdkconfig": "CONFIG_BT_ENABLED=y\n" })
+			classifyWorkspace(["/proj"], fs).features.hasBle.should.equal(true)
+		})
+
+		it("detects BLE from sdkconfig.defaults too", () => {
+			const fs = fixture({ "/proj/sdkconfig": "", "/proj/sdkconfig.defaults": "CONFIG_BT_ENABLED=y\n" })
+			classifyWorkspace(["/proj"], fs).features.hasBle.should.equal(true)
+		})
+
+		it("tolerates whitespace around the assignment", () => {
+			const fs = fixture({ "/proj/prj.conf": "  CONFIG_BT = y\n" })
+			classifyWorkspace(["/proj"], fs).features.hasBle.should.equal(true)
+		})
+
+		it("does NOT flag BLE for CONFIG_BT=n", () => {
+			const fs = fixture({ "/proj/CMakeLists.txt": NRF_CMAKE, "/proj/prj.conf": "CONFIG_BT=n\n" })
+			classifyWorkspace(["/proj"], fs).features.hasBle.should.equal(false)
+		})
+
+		it("does NOT flag BLE for a CONFIG_BT_* symbol without the master switch", () => {
+			// Keys on the master switch CONFIG_BT=y, not CONFIG_BT_PERIPHERAL etc. (conservative: a miss only hides the sub-line).
+			const fs = fixture({ "/proj/CMakeLists.txt": NRF_CMAKE, "/proj/prj.conf": "CONFIG_BT_PERIPHERAL=y\n" })
+			classifyWorkspace(["/proj"], fs).features.hasBle.should.equal(false)
+		})
+
+		it("hasBle false when no config enables a BLE stack", () => {
+			const fs = fixture({ "/proj/CMakeLists.txt": NRF_CMAKE, "/proj/prj.conf": "CONFIG_LOG=y\n" })
+			classifyWorkspace(["/proj"], fs).features.hasBle.should.equal(false)
+		})
+	})
+
+	describe("features.hasComplianceArtifacts", () => {
+		it("detects a top-level compliance/ directory", () => {
+			const fs = fixture({ "/proj/CMakeLists.txt": NRF_CMAKE, "/proj/compliance/sbom/app.spdx.json": "{}" })
+			classifyWorkspace(["/proj"], fs).features.hasComplianceArtifacts.should.equal(true)
+		})
+
+		it("detects compliance/ in a depth-1 app folder", () => {
+			const fs = fixture({ "/ws/app/CMakeLists.txt": NRF_CMAKE, "/ws/app/compliance/cra-remediation.md": "# notes" })
+			classifyWorkspace(["/ws"], fs).features.hasComplianceArtifacts.should.equal(true)
+		})
+
+		it("hasComplianceArtifacts false with no compliance/ dir", () => {
+			const fs = fixture({ "/proj/CMakeLists.txt": NRF_CMAKE, "/proj/prj.conf": "CONFIG_BT=y\n" })
+			classifyWorkspace(["/proj"], fs).features.hasComplianceArtifacts.should.equal(false)
+		})
+	})
+
+	describe("features default", () => {
+		it("empty workspace → both feature flags false", () => {
+			const f = classifyWorkspace(["/proj"], fixture({})).features
+			f.hasBle.should.equal(false)
+			f.hasComplianceArtifacts.should.equal(false)
+		})
+	})
 })

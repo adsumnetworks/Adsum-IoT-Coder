@@ -2,7 +2,7 @@
 id: adsum/nrf/rules/nrf-terminal
 title: "nRF Platform Rule: nRF Connect Terminal"
 type: knowledge
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -15,13 +15,11 @@ safety: [flash, process-kill]
 
 # nRF Platform Rule: nRF Connect Terminal (rules/nrf-terminal.md)
 
-**ALL NCS SDK/toolchain commands MUST be executed using `nrf_device_tool` with `action="execute"`.**
+**ALL NCS SDK/toolchain commands MUST be run with `nrf_device_tool` (`action="execute"` for west/nrfutil/nrfjprog, `action="log_device"` for RTT/UART capture).** Never use `execute_command` for NCS tasks — it runs in a plain terminal with no toolchain.
 
-The nRF Connect terminal pre-loads the Zephyr/NCS toolchain environment (`ZEPHYR_BASE`, `GNUARMEMB_TOOLCHAIN_PATH`, `west`, `cmake`, `ninja`, etc.). Running commands in a plain terminal will **FAIL** because the environment is not configured.
+## How it runs (you don't manage the terminal)
 
-## How to Execute NCS Commands
-
-**ALWAYS use `nrf_device_tool` with `action="execute"`:**
+`nrf_device_tool` runs your command in **its own terminal** and **sources the right NCS toolchain in the background**, so you only ever issue the clean dev command. You do **not** open the nRF Connect terminal, pick a version, or source any environment script — the tool does all of that for you.
 
 ```xml
 <nrf_device_tool>
@@ -30,59 +28,38 @@ The nRF Connect terminal pre-loads the Zephyr/NCS toolchain environment (`ZEPHYR
 </nrf_device_tool>
 ```
 
-**NEVER use `execute_command` for NCS SDK tasks.** It runs in a plain terminal without `ZEPHYR_BASE`.
+If the tool can't source the toolchain itself, it automatically falls back to the nRF Connect extension's terminal. You never trigger that fallback by hand.
 
-## Shell Syntax — match the shell, don't guess (Windows trap)
+## NCS version selection
 
-On Windows the nRF Connect terminal is **PowerShell**, not cmd. cmd-only syntax **errors hard** there:
+The tool picks the NCS version automatically: the project's existing build → the only installed version → otherwise it **asks once**. If it returns a message that several NCS versions are installed and the project has no build yet, **ask the user which version**, then re-run with `ncs_version="vX.Y.Z"`. The choice is remembered for this project, so you won't be asked again. You do **not** need `ncs_version` in the normal case.
 
-| Never (cmd-only) | Breaks in PowerShell with | Instead |
+## Shell syntax — one command per invocation (Windows trap)
+
+Commands run in the user's own shell (PowerShell on Windows, bash/zsh on macOS/Linux). Do not chain.
+
+| Never | Why | Instead |
 |---|---|---|
-| `echo %ZEPHYR_BASE%` | prints the literal `%ZEPHYR_BASE%` | don't probe env at all — see below |
-| `cmd1 & cmd2` | `The ampersand (&) character is not allowed` | **one command per invocation** |
-| `cmd1 && cmd2` | fails on PowerShell 5.x | one command per invocation |
-| `set X=...`, `2>nul` | wrong/ignored semantics | PowerShell forms, or wrap: `cmd /c "..."` |
+| `cmd1 && cmd2` | fails on Windows PowerShell 5.x | **one command per invocation** |
+| `cmd1 & cmd2` | `&` is not allowed in PowerShell | one command per invocation |
+| `echo $ZEPHYR_BASE` / `echo %ZEPHYR_BASE%` | env-probing tells you nothing | run the real command (e.g. `west --version`) — that **is** the check |
+| `set X=...`, `2>nul` | cmd-only semantics | wrap an unavoidable cmd-ism as `cmd /c "..."` |
 
-- **One command per invocation is the rule on every OS.** You read each result before the next step anyway — chaining only hides which part failed.
-- **Don't probe the environment.** Never run `echo $ZEPHYR_BASE` / `echo %ZEPHYR_BASE%` to "check the env". In the nRF Connect terminal the env is pre-loaded — running the actual command (e.g. `west --version`) **is** the check. If it fails, the terminal setup is broken (see Prerequisites), not your syntax.
-- If a cmd-ism is genuinely unavoidable (e.g. `taskkill ... 2>nul`), wrap the whole thing: `cmd /c "..."`.
+- **One command per invocation on every OS.** You read each result before the next step, so chaining only hides which part failed.
+- **Don't probe the environment.** The toolchain is already sourced for you; running the actual command is the verification.
 
-## Terminal State Check
+## Use `nrf_device_tool` for
+- `west build`, `west flash`, `west debug`, `west boards`, `west build -t menuconfig`
+- Any `nrfutil` / `nrfjprog` command (`action="execute"`)
+- Device enumeration → `action="log_device"` `operation="list"` (never `nrfutil device list` via `execute_command`)
+- RTT/UART log capture → `action="log_device"`
 
-Before running commands, the tool will:
-1. **Check** if an existing nRF terminal is open and active → use it directly.
-2. **Activate** existing nRF terminal if it is not the active one → bring it to focus.
-3. **Create** a new nRF Connect terminal via the extension → wait for it to initialize.
-
-## Commands that MUST use `nrf_device_tool`
-- `west build`, `west flash`, `west debug`
-- `nrfutil device list`, `nrfutil device device-info`
-- `nrfutil toolchain-manager list`
-- `west build -t menuconfig`
-- Any `nrfjprog` command
-- Any `nrfutil` command
-
-## Commands that use `execute_command` (standard terminal)
-- `git` commands (commit, push, status)
+## Use `execute_command` (plain terminal) for
+- `git` (commit, push, status)
 - Host package managers: `pip install`, `apt install`
-- **File search/read tasks → prefer built-in tools** (`read_file`, `search_files`, `list_files`) over shell commands.
+- File search/read → prefer built-in tools (`read_file`, `search_files`, `list_files`)
 - General one-off host OS operations
 
-## The `source` Workaround (Last Resort ONLY)
-
-If `nrf_device_tool` cannot open the nRF Connect terminal (extension not installed or failing), use this workaround as a last resort. Document the attempt and ask the user to fix the extension afterward.
-
-```bash
-source ~/ncs/v3.2.1/zephyr/zephyr-env.sh && export ZEPHYR_BASE=~/ncs/v3.2.1/zephyr && \
-export GNUARMEMB_TOOLCHAIN_PATH=~/ncs/toolchains/43683a87ea && \
-export PATH=~/ncs/toolchains/43683a87ea/opt/bin:$PATH && \
-west build -b nrf52840dk/nrf52840 .
-```
-
-> **Do NOT use this workaround as the default.** It is only acceptable when the nRF Connect extension is confirmed broken. Always try `nrf_device_tool` first. it's good to ask the user if he wants to use this workaround.
-
 ## Prerequisites
-- The **nRF Connect for VS Code** extension must be installed and configured.
-- If `west --version` or `nrfutil --version` fails inside the nRF Connect terminal, the user must fix the extension setup before any development can proceed.
-- If `nrfutil device` fails, install it: `nrfutil install device`
-- If `nrfutil toolchain-manager` fails, install it: `nrfutil install toolchain-manager`
+- The **nRF Connect for VS Code** extension installed, with at least one NCS toolchain (Manage SDKs / Manage Toolchains, or `nrfutil sdk-manager install vX.Y.Z`).
+- If a build fails with "toolchain not found" / no NCS installed, tell the user to install an SDK version, then retry. Do not hand-source any environment script.

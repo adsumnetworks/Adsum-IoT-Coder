@@ -2,21 +2,31 @@
 """
 ESP-IDF serial capture — the ESP analogue of nrf_uart_logger.py.
 
-`idf.py monitor` takes over the terminal and runs until you press Ctrl+], which
-an automated agent cannot do. This script wraps it: it launches `idf.py monitor`
-for a fixed duration, tees the serial output to a correctly-named log file, then
-stops it cleanly. Because it is `idf.py monitor`, panic backtraces are already
-decoded to file:line in the captured output (the whole point of capturing on ESP).
+Primary engine is `idf.py monitor`: it decodes panic backtraces to file:line
+using the project's build ELF (the whole point of capturing on ESP), so we keep
+it as the real tool. `idf.py monitor` is project-bound — it needs a built IDF
+project (`CMakeLists.txt` + `build/project_description.json`) — so each device is
+captured **inside its own project**. Multiple devices (e.g. a BLE central +
+peripheral) capture **concurrently**, each into its own log, via `--devices`.
+
+Only when a device has no valid built project, or `idf.py monitor` cannot launch,
+do we fall back to a clean **raw pyserial** capture keyed on the port alone (no
+panic decode, but you still get the log). The fallback is for those critical
+cases — the default path is always the real `idf.py monitor`.
 
 Output file (mirrors the nRF naming convention):
     <output>/uart/<name>_<chip>_<port>_<YYYYMMDD_HHMMSS>.log
 
-The chip is read from <project>/build/project_description.json when not given, so
-the filename records what the firmware was actually built for.
-
 Usage:
+    # single device (back-compatible)
     esp_monitor_logger.py --project /path/to/proj --port /dev/ttyUSB0 --duration 10
-    esp_monitor_logger.py --project . --duration 20 --name wifi --no-reset
+
+    # multiple devices, each in its own project, captured at the same time:
+    esp_monitor_logger.py --duration 20 \\
+        --devices central:COM3:C:/work/proto/central,peripheral:COM5:C:/work/proto/peripheral
+
+    # two boards that share one project (same firmware), decode via that project:
+    esp_monitor_logger.py --project ./app --devices a:COM3,b:COM5 --duration 15
 """
 
 # Keep annotations lazy so `str | None` signatures work on ESP-IDF's bundled
@@ -32,9 +42,11 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime
 
 DEFAULT_DURATION = 10
+DEFAULT_BAUD = 115200
 
 # Strip ANSI color/escape sequences from the saved log so the file the agent
 # reads is clean text (idf.py monitor colorizes its output). Terminal echo keeps
@@ -55,9 +67,11 @@ CRASH_MARKERS = [
 ]
 
 
-def resolve_chip(project_dir: str, explicit: str | None) -> str:
+def resolve_chip(project_dir: str | None, explicit: str | None) -> str:
     if explicit:
         return explicit
+    if not project_dir:
+        return "esp32"
     pd = os.path.join(project_dir, "build", "project_description.json")
     try:
         with open(pd, "r", encoding="utf-8") as f:
@@ -129,7 +143,8 @@ def build_log_path(output: str, name: str, chip: str, port: str | None) -> str:
 
 def idf_python_interpreter() -> str:
     """
-    The ESP-IDF virtualenv Python — the interpreter idf.py expects to run under.
+    The ESP-IDF virtualenv Python — the interpreter idf.py expects to run under,
+    and the one that reliably has pyserial for the raw fallback.
     `export.sh`/`export.ps1`/`export.bat` set IDF_PYTHON_ENV_PATH to the venv dir,
     so we derive the interpreter from it. Fall back to a `python` on PATH (a sourced
     env puts the venv first) and finally to the interpreter running this script.
@@ -184,20 +199,43 @@ def build_monitor_cmd(project_dir: str, port: str | None, no_reset: bool) -> lis
     return cmd
 
 
-def stream_to_file(proc: subprocess.Popen, log_file, stop: threading.Event) -> None:
-    """Read the monitor's combined output line by line; tee to file + stdout."""
+def is_built_idf_project(project_dir: str | None) -> bool:
+    """
+    True only when `idf.py monitor` can actually work for this project: it needs the
+    project root (`CMakeLists.txt`) AND a completed build (`build/project_description.json`
+    — the source of the target chip and the ELF used to decode backtraces). When this
+    is False we capture raw serial instead of letting idf.py fail.
+    """
+    if not project_dir:
+        return False
+    has_cmake = os.path.isfile(os.path.join(project_dir, "CMakeLists.txt"))
+    has_build = os.path.isfile(os.path.join(project_dir, "build", "project_description.json"))
+    return has_cmake and has_build
+
+
+def _popen_kwargs() -> dict:
+    kwargs = dict(stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True, bufsize=1)
+    if os.name == "nt":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+    else:
+        kwargs["start_new_session"] = True
+    return kwargs
+
+
+def stream_to_file(proc: subprocess.Popen, log_file, stop: threading.Event, prefix: str = "") -> None:
+    """Read the subprocess's combined output line by line; tee to file (clean) + stdout."""
     assert proc.stdout is not None
     for line in proc.stdout:
         log_file.write(ANSI_RE.sub("", line))  # clean text in the file
         log_file.flush()
-        sys.stdout.write(line)  # keep colors on screen
+        sys.stdout.write(prefix + line if prefix else line)  # echo (prefixed when concurrent)
         sys.stdout.flush()
         if stop.is_set():
             break
 
 
 def terminate(proc: subprocess.Popen) -> None:
-    """Stop idf.py monitor and its child process group cleanly, then forcefully."""
+    """Stop a monitor/capture subprocess and its child process group cleanly, then forcefully."""
     if proc.poll() is not None:
         return
     try:
@@ -226,6 +264,127 @@ def terminate(proc: subprocess.Popen) -> None:
                 proc.kill()
         except (ProcessLookupError, OSError):
             pass
+
+
+def _run_capture_subprocess(cmd: list[str], duration: int, log_path: str, prefix: str, env: dict | None) -> bool:
+    """Launch `cmd`, tee its output to log_path for `duration`s, then stop it. False if it won't launch."""
+    popen_kwargs = _popen_kwargs()
+    master_fd = slave_fd = None
+    # POSIX: idf.py monitor's miniterm.Console() runs termios.tcgetattr(stdin) at startup — and
+    # esp-idf-monitor >=1.9 (shipped with IDF v6.0) does this UNCONDITIONALLY in __init__, BEFORE its
+    # ESP_IDF_MONITOR_TEST headless hook. With stdin=DEVNULL that throws "Inappropriate ioctl for device"
+    # and the capture dies before a single line is read. Hand it a pseudo-TTY as stdin so the check
+    # passes; we never write to the master, and ESP_IDF_MONITOR_TEST=1 makes the console reader ignore
+    # input anyway, so the monitor sees an idle terminal and just streams serial output to its (piped)
+    # stdout. Verified against esp-idf-monitor 1.9.0. (Windows' Console doesn't use termios — leave it.)
+    if os.name != "nt":
+        try:
+            import pty
+
+            master_fd, slave_fd = pty.openpty()
+            popen_kwargs["stdin"] = slave_fd
+        except (OSError, ImportError):
+            master_fd = slave_fd = None  # fall back to the DEVNULL stdin set in _popen_kwargs
+
+    def _close(fd):
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+
+    try:
+        proc = subprocess.Popen(cmd, env=env, **popen_kwargs)
+    except (FileNotFoundError, OSError) as e:
+        print(f"{prefix}launch failed ({e})", file=sys.stderr)
+        _close(slave_fd)
+        _close(master_fd)
+        return False
+    # The child dup'd the slave end; the parent no longer needs it. Keep the master open until cleanup —
+    # closing it early would send EOF/HUP to the monitor's stdin.
+    _close(slave_fd)
+    stop = threading.Event()
+    try:
+        with open(log_path, "w", encoding="utf-8") as log_file:
+            reader = threading.Thread(target=stream_to_file, args=(proc, log_file, stop, prefix), daemon=True)
+            reader.start()
+            try:
+                proc.wait(timeout=duration)
+            except subprocess.TimeoutExpired:
+                pass  # expected — duration elapsed
+            except KeyboardInterrupt:
+                pass
+            stop.set()
+            terminate(proc)
+            reader.join(timeout=3)
+    finally:
+        _close(master_fd)
+    return True
+
+
+def capture_via_idf_monitor(project: str, port: str | None, no_reset: bool, duration: int, log_path: str, prefix: str) -> bool:
+    """
+    Primary path: `idf.py -C <project> -p <port> monitor`, headless.
+
+    `idf.py monitor` (esp-idf-monitor) refuses to start unless stdin is a real TTY (its
+    miniterm.Console() calls termios.tcgetattr at startup). We run it headless, so
+    _run_capture_subprocess hands it a pseudo-TTY (pty) as stdin to satisfy that check.
+    ESP_IDF_MONITOR_TEST=1 is the complementary hook: it makes the console reader IGNORE
+    input (so the idle pty is never consumed) while serial output keeps streaming to
+    stdout. (Older monitors also skipped the TTY check under this env var; >=1.9 no
+    longer does — hence the pty.) Returns False if idf.py could not be launched.
+    """
+    cmd = build_monitor_cmd(project, port, no_reset)
+    print(f"{prefix}{' '.join(cmd)}")
+    # ESP_IDF_MONITOR_TEST=1 → headless (skip TTY check, ignore stdin). PYTHONIOENCODING /
+    # PYTHONUTF8 → force the CHILD idf_monitor's piped stdout to UTF-8: on Windows a pipe
+    # defaults to cp1252, so a single non-cp1252 serial byte makes esp_idf_monitor's
+    # ansi_color_converter crash with UnicodeEncodeError and TRUNCATE the capture. Our own
+    # force_utf8_streams() only fixes this process; the child needs its own override.
+    env = {**os.environ, "ESP_IDF_MONITOR_TEST": "1", "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
+    return _run_capture_subprocess(cmd, duration, log_path, prefix, env)
+
+
+# A tiny, clean pyserial reader run under the IDF venv Python (which always has
+# pyserial). It opens the port, optionally pulses DTR/RTS to reset the board into
+# its app (esptool's classic sequence), and prints raw bytes for `duration`s.
+_RAW_CAPTURE_SRC = r"""
+import sys, time, serial
+port, duration, no_reset = sys.argv[1], float(sys.argv[2]), sys.argv[3] == "1"
+ser = serial.Serial(port, int(sys.argv[4]), timeout=0.5)
+try:
+    if not no_reset:
+        ser.setDTR(False); ser.setRTS(True); time.sleep(0.1)
+        ser.setRTS(False); time.sleep(0.1); ser.setDTR(True)
+    deadline = time.time() + duration
+    while time.time() < deadline:
+        line = ser.readline()
+        if line:
+            sys.stdout.buffer.write(line); sys.stdout.buffer.flush()
+finally:
+    try: ser.close()
+    except Exception: pass
+"""
+
+
+def capture_raw_serial(port: str | None, duration: int, no_reset: bool, log_path: str, prefix: str, baud: int) -> bool:
+    """
+    Critical-case fallback: raw serial capture keyed on the port alone (no project,
+    no panic decode). Runs the reader under the IDF venv Python so pyserial is present
+    even when this script itself runs under a system Python without it.
+    """
+    if not port:
+        print(f"{prefix}ERROR: no port for raw capture", file=sys.stderr)
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write("ERROR: no serial port resolved for raw capture\n")
+        return False
+    cmd = [idf_python_interpreter(), "-c", _RAW_CAPTURE_SRC, port, str(duration), "1" if no_reset else "0", str(baud)]
+    print(f"{prefix}raw serial capture on {port} (no panic decode)")
+    ok = _run_capture_subprocess(cmd, duration + 5, log_path, prefix, None)
+    if not ok:
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write(f"ERROR: raw serial capture could not start on {port}\n")
+    return ok
 
 
 def summarize(log_path: str) -> str:
@@ -261,84 +420,109 @@ def force_utf8_streams() -> None:
             pass
 
 
+# ---------------------------------------------------------------------------
+# Device model + per-device capture
+# ---------------------------------------------------------------------------
+
+
+def parse_devices(spec: str, default_project: str | None) -> list[dict]:
+    """
+    Parse `--devices name:port[:project],name2:port2[:project2]`.
+
+    Split each entry on the first two ':' only (maxsplit=2) so a Windows project
+    path keeps its drive colon (e.g. `peripheral:COM5:C:/work/periph`). A missing
+    per-device project falls back to the shared `--project`.
+    """
+    devices: list[dict] = []
+    for entry in spec.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        parts = entry.split(":", 2)
+        name = parts[0].strip() or None
+        port = parts[1].strip() if len(parts) > 1 and parts[1].strip() else None
+        project = parts[2].strip() if len(parts) > 2 and parts[2].strip() else default_project
+        devices.append({"name": name, "port": port, "project": project})
+    return devices
+
+
+def capture_one(device: dict, duration: int, output: str, no_reset: bool, chip_override: str | None, baud: int, concurrent: bool) -> str:
+    """Capture one device into its own log. Uses idf.py monitor when the project is built; else raw serial."""
+    name = device.get("name")
+    port = device.get("port") or find_usb_serial_port()
+    project = device.get("project")
+    project_abs = os.path.abspath(project) if project else None
+
+    chip = resolve_chip(project_abs, chip_override)
+    label = name or chip
+    prefix = f"[esp-monitor:{label}] " if concurrent else "[esp-monitor] "
+    log_path = build_log_path(output, label, chip, port)
+
+    if not device.get("port"):
+        print(f"{prefix}auto-selected port: {port or 'none found'}")
+    print(f"{prefix}capturing {duration}s → {log_path}")
+
+    if is_built_idf_project(project_abs):
+        ok = capture_via_idf_monitor(project_abs, port, no_reset, duration, log_path, prefix)
+        if not ok:
+            print(f"{prefix}idf.py monitor unavailable → falling back to raw serial capture")
+            capture_raw_serial(port, duration, no_reset, log_path, prefix, baud)
+    else:
+        if project_abs:
+            reason = "not a built ESP-IDF project (need CMakeLists.txt + build/project_description.json)"
+        else:
+            reason = "no project given"
+        print(f"{prefix}{reason} → raw serial capture (panic backtraces will NOT be decoded)")
+        capture_raw_serial(port, duration, no_reset, log_path, prefix, baud)
+
+    print(f"{prefix}done — {summarize(log_path)}")
+    print(f"{prefix}log: {log_path}")
+    return log_path
+
+
 def main() -> int:
     force_utf8_streams()
-    parser = argparse.ArgumentParser(description="Capture ESP-IDF serial logs (wraps idf.py monitor).")
-    parser.add_argument("--project", default=".", help="ESP-IDF project directory (default: .)")
+    parser = argparse.ArgumentParser(description="Capture ESP-IDF serial logs (wraps idf.py monitor; raw-serial fallback).")
+    parser.add_argument("--project", default=".", help="ESP-IDF project directory (single-device default: .)")
     parser.add_argument("--port", help="Serial port (e.g. /dev/ttyUSB0, COM5). Auto-detected if omitted.")
+    parser.add_argument(
+        "--devices",
+        help="Capture several boards at once, each in its own project: "
+        "name:port[:project],name2:port2[:project2]. Per-device project falls back to --project.",
+    )
     parser.add_argument("--duration", type=int, default=DEFAULT_DURATION, help=f"Seconds to capture (default: {DEFAULT_DURATION})")
-    parser.add_argument("--name", help="Label for the log filename (default: chip name)")
+    parser.add_argument("--name", help="Label for the log filename (single device; default: chip name)")
     parser.add_argument("--chip", help="Chip target for the filename (default: read from build/project_description.json)")
+    parser.add_argument("--baud", type=int, default=DEFAULT_BAUD, help=f"Baud rate for the raw fallback (default: {DEFAULT_BAUD})")
     parser.add_argument("--output", default="logs", help="Output directory (default: logs/)")
     parser.add_argument("--no-reset", action="store_true", help="Do not reset the board before capture (mid-runtime capture)")
     args = parser.parse_args()
 
-    project_dir = os.path.abspath(args.project)
-    chip = resolve_chip(project_dir, args.chip)
-    name = args.name or chip
-    # Resolve the port up front so idf.py monitor doesn't scan every /dev/ttyS*.
-    port = args.port or find_usb_serial_port()
-    if not args.port:
-        print(f"[esp-monitor] auto-selected port: {port or 'none found (idf.py will auto-detect)'}")
-    log_path = build_log_path(args.output, name, chip, port)
-    cmd = build_monitor_cmd(project_dir, port, args.no_reset)
-
-    print(f"[esp-monitor] capturing {args.duration}s → {log_path}")
-    print(f"[esp-monitor] {' '.join(cmd)}")
-
-    # `idf.py monitor` (esp-idf-monitor) refuses to start unless stdin is a real
-    # TTY — but we run it as a captured subprocess (piped stdout, no interactive
-    # console), which has no TTY on any OS. ESP_IDF_MONITOR_TEST=1 is the monitor's
-    # own supported headless hook: it skips the TTY requirement AND makes the console
-    # reader ignore stdin (no keyboard input expected) while serial output keeps
-    # streaming to stdout — exactly a fixed-duration automated capture. We tee that
-    # stdout to the log and stop the monitor when the duration elapses.
-    child_env = {**os.environ, "ESP_IDF_MONITOR_TEST": "1"}
-    popen_kwargs = dict(
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        stdin=subprocess.DEVNULL,
-        text=True,
-        bufsize=1,
-        env=child_env,
-    )
-    if os.name == "nt":
-        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+    if args.devices:
+        devices = parse_devices(args.devices, args.project if args.project != "." else None)
+        if not devices:
+            print("[esp-monitor] ERROR: --devices was empty", file=sys.stderr)
+            return 1
     else:
-        popen_kwargs["start_new_session"] = True
+        devices = [{"name": args.name, "port": args.port, "project": args.project}]
 
-    try:
-        proc = subprocess.Popen(cmd, **popen_kwargs)
-    except FileNotFoundError:
-        print("[esp-monitor] ERROR: idf.py not found — the ESP-IDF environment is not sourced.", file=sys.stderr)
-        return 1
-    except OSError as e:
-        # e.g. WinError 193 (not a valid Win32 app) if idf.py is somehow launched
-        # directly on Windows, or the interpreter path is wrong. Make it actionable.
-        print(
-            f"[esp-monitor] ERROR: failed to launch monitor ({e}).\n"
-            f"[esp-monitor] command was: {' '.join(cmd)}\n"
-            "[esp-monitor] Ensure the ESP-IDF environment is sourced (IDF_PATH / IDF_PYTHON_ENV_PATH set).",
-            file=sys.stderr,
-        )
-        return 1
+    concurrent = len(devices) > 1
+    if concurrent:
+        print(f"[esp-monitor] capturing {len(devices)} devices concurrently for {args.duration}s")
+        threads = []
+        for dev in devices:
+            t = threading.Thread(
+                target=capture_one,
+                args=(dev, args.duration, args.output, args.no_reset, args.chip, args.baud, True),
+                daemon=True,
+            )
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+    else:
+        capture_one(devices[0], args.duration, args.output, args.no_reset, args.chip, args.baud, False)
 
-    stop = threading.Event()
-    with open(log_path, "w", encoding="utf-8") as log_file:
-        reader = threading.Thread(target=stream_to_file, args=(proc, log_file, stop), daemon=True)
-        reader.start()
-        try:
-            proc.wait(timeout=args.duration)
-        except subprocess.TimeoutExpired:
-            pass  # expected — duration elapsed, stop the monitor
-        except KeyboardInterrupt:
-            pass
-        stop.set()
-        terminate(proc)
-        reader.join(timeout=3)
-
-    print(f"[esp-monitor] done — {summarize(log_path)}")
-    print(f"[esp-monitor] log: {log_path}")
     return 0
 
 

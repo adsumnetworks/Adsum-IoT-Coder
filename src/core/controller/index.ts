@@ -35,10 +35,11 @@ import { LogoutReason } from "@/services/auth/types"
 import { BannerService } from "@/services/banner/BannerService"
 import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import { featureFlagsService } from "@/services/feature-flags"
+import { consumeCraRanThisSession } from "@/services/knowledge/KnowledgeResolver"
 import { getDistinctId } from "@/services/logging/distinctId"
 import { Logger } from "@/services/logging/Logger"
 import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
-import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
+import { getCachedWorkspaceFeatures, getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { telemetryService } from "@/services/telemetry"
 import { BannerCardData } from "@/shared/cline/banner"
 import { getAxiosSettings } from "@/shared/net"
@@ -244,6 +245,17 @@ export class Controller {
 		// will apply as soon as this fetch completes. The function also calls postStateToWebview()
 		// when done and catches all errors internally.
 		fetchRemoteConfig(this)
+
+		// CRA funnel (host-side, cross-task): fires once on the FIRST new task started after a CRA run this
+		// session — the "continued use after CRA" retention signal. NOTE (honest semantics): this is ANY next
+		// task, not strictly the bridge-routed debug/addFeature one — the host can't reliably tell a routed
+		// task from an unrelated prompt (the bridge routes via the webview-only runIntent, which has no
+		// telemetry path; that's why we read host-side here). Intentionally broad: "they kept using the tool
+		// after CRA" is the funnel signal we want. (`intent` on the capture method is reserved for a future
+		// best-effort classification; left unset rather than overclaim precision.) Consumed → once per run.
+		if (task && !historyItem && consumeCraRanThisSession()) {
+			telemetryService.captureCoreFeatureTriedAfterCra({ iot_platform: getCachedWorkspaceSummary() })
+		}
 
 		await this.clearTask() // ensures that an existing task doesn't exist before starting a new one, although this shouldn't be possible since user must clear task before starting a new one
 
@@ -985,6 +997,7 @@ export class Controller {
 			nrfEnvironment: getCachedNrfEnvironment(),
 			espEnvironment: getCachedEspEnvironment(),
 			workspaceClassification: getCachedWorkspaceSummary(),
+			workspaceFeatures: getCachedWorkspaceFeatures(),
 		}
 	}
 

@@ -50,25 +50,51 @@ export interface NrfutilCommands {
 	devicePrefix: string
 	/** Command prefix for sdk-manager ops — append e.g. ` list --json`. */
 	sdkManagerPrefix: string
-	/** Where the binaries were resolved from (diagnostics/telemetry). */
+	/** Where `devicePrefix` was resolved from (diagnostics/telemetry; also drives `binDir`/`nrfutilPath`). */
 	source: "launcher" | "extension" | "path-fallback"
+	/**
+	 * Where `sdkManagerPrefix` specifically was resolved from. Tracked SEPARATELY from `source`
+	 * because `device` and `sdk-manager` are independently-installed nrfutil plugins — a real,
+	 * confirmed case: a launcher install can have `device` installed (works) but NOT `sdk-manager`
+	 * (errors "Subcommand nrfutil-sdk-manager not found"), even though the launcher binary itself
+	 * exists. Use this (not `source`) to decide whether sdk-manager calls will actually work.
+	 */
+	sdkManagerSource: "launcher" | "extension" | "path-fallback"
+	/**
+	 * Absolute directory containing the resolved nrfutil binary, when known
+	 * (launcher dir or the extension's bin dir). Undefined for the PATH fallback.
+	 * Used to prepend nrfutil to PATH in our own terminal so the logger wrappers
+	 * (which shell out to `nrfutil device …`) work without the nRF terminal.
+	 */
+	binDir?: string
+	/** Absolute path to the resolved nrfutil binary, when known (for ADSUM_NRFUTIL). */
+	nrfutilPath?: string
 }
 
 /**
- * Resolves how to invoke nrfutil. It ships in two layouts:
+ * Resolves how to invoke nrfutil's `device` and `sdk-manager` commands — INDEPENDENTLY, because in
+ * practice they are separately-installed nrfutil plugins, not a single bundle. nrfutil ships in two
+ * layouts:
  *
- *  - **Launcher** — a single `nrfutil` binary that dispatches subcommands, invoked as
- *    `nrfutil device …` / `nrfutil sdk-manager …`. This is the canonical standalone install at
- *    `~/.nrfutil/bin/nrfutil`, which is what macOS/Linux developers typically have.
- *  - **Split per-command binaries** — separate `nrfutil-device` / `nrfutil-sdk-manager`
- *    executables that take the subcommand args directly (`nrfutil-device list …`). This is how the
- *    nRF Connect VS Code extension bundles nrfutil, under `<ext>/platform/nrfutil/bin/`. On a stock
- *    Windows install this is the ONLY nrfutil present — there is no launcher anywhere — which is why
- *    detection previously returned "nrfutil not found" and the home screen showed no boards.
+ *  - **Launcher** — a single `nrfutil` binary that dispatches to per-command plugin binaries it finds
+ *    alongside itself (`<launcherDir>/nrfutil-device`, `<launcherDir>/nrfutil-sdk-manager`, …), invoked
+ *    as `nrfutil device …` / `nrfutil sdk-manager …`. This is the canonical standalone install at
+ *    `~/.nrfutil/bin/nrfutil`. CONFIRMED IN THE FIELD: a dev machine had the launcher AND its `device`
+ *    plugin installed (`~/.nrfutil/bin/nrfutil-device` present, `nrfutil device …` works), but NOT its
+ *    `sdk-manager` plugin (`~/.nrfutil/bin/nrfutil-sdk-manager` absent) — running `nrfutil sdk-manager
+ *    list` on that box fails with "Subcommand nrfutil-sdk-manager not found", which silently looked
+ *    like "no NCS installed" even though two NCS versions were on disk. So a launcher's existence does
+ *    NOT guarantee every subcommand works; we check each plugin's presence independently.
+ *  - **Split per-command binaries** — separate `nrfutil-device` / `nrfutil-sdk-manager` executables
+ *    that take the subcommand args directly (`nrfutil-device list …`). This is how the nRF Connect VS
+ *    Code extension bundles nrfutil, under `<ext>/platform/nrfutil/bin/`. On a stock Windows install
+ *    this is the only nrfutil present; but it's also a valid SOURCE FOR AN INDIVIDUAL SUBCOMMAND even
+ *    on macOS/Linux when the launcher's own plugin for that subcommand is missing (the case above).
  *
- * Resolution order is deliberately **launcher-first**: if a launcher exists we use it exactly as
- * before, so macOS/Linux behaviour is unchanged. The extension-bundled split binaries are only used
- * when no launcher is found (the Windows case). A bare-command PATH form is the last resort.
+ * Resolution per subcommand: launcher (if its own plugin file is present) → extension bundle (if that
+ * binary is present) → bare PATH form. `devicePrefix`'s resolution also drives `binDir`/`nrfutilPath`
+ * (used to put nrfutil on PATH in our terminal for bare `nrfutil device …` calls) — unchanged behavior
+ * from before, since `device` is the common case and rarely the one missing.
  *
  * `existsSyncFn` is injected for unit tests.
  */
@@ -83,8 +109,7 @@ export function resolveNrfutilCommands(
 	const exe = (base: string): string => (isWin ? `${base}.exe` : base)
 	const quote = (p: string): string => `"${p}"`
 
-	// 1. Launcher locations — unchanged from the previous resolver. Keeping these FIRST guarantees
-	//    macOS/Linux (and any standalone-launcher Windows install) behave exactly as before.
+	// 1. Find the launcher (unchanged search order from before).
 	const launcherCandidates: string[] = []
 	if (env.NRFUTIL_HOME) {
 		launcherCandidates.push(join(env.NRFUTIL_HOME, "bin", exe("nrfutil")))
@@ -102,47 +127,96 @@ export function resolveNrfutilCommands(
 			launcherCandidates.push(join(programFiles, "Nordic Semiconductor", "nrfutil", exe("nrfutil")))
 		}
 	}
-	for (const launcher of launcherCandidates) {
-		if (existsSyncFn(launcher)) {
-			console.info(`[adsum][nrf] nrfutil launcher resolved to: ${launcher}`)
-			return {
-				devicePrefix: `${quote(launcher)} device`,
-				sdkManagerPrefix: `${quote(launcher)} sdk-manager`,
-				source: "launcher",
-			}
+	let launcher: string | undefined
+	for (const candidate of launcherCandidates) {
+		if (existsSyncFn(candidate)) {
+			launcher = candidate
+			break
 		}
 	}
+	if (launcher) {
+		console.info(`[adsum][nrf] nrfutil launcher resolved to: ${launcher}`)
+	} else {
+		console.info(`[adsum][nrf] no nrfutil launcher found. Checked: ${launcherCandidates.join(" | ")}`)
+	}
 
-	// 2. nRF Connect extension-bundled split binaries — the only nrfutil on a stock Windows install.
-	//    The layout `<ext>/platform/nrfutil/bin/nrfutil-{device,sdk-manager}` is consistent across
-	//    platforms (only the .exe suffix differs), so this also covers macOS/Linux users who have the
-	//    extension but no standalone launcher.
+	// 2. Find the extension-bundled split binaries, if any (per-subcommand presence).
+	let extDeviceBin: string | undefined
+	let extSdkBin: string | undefined
 	if (opts.extensionPath) {
-		const binDir = join(opts.extensionPath, "platform", "nrfutil", "bin")
-		const deviceBin = join(binDir, exe("nrfutil-device"))
-		const sdkBin = join(binDir, exe("nrfutil-sdk-manager"))
-		if (existsSyncFn(deviceBin)) {
-			console.info(`[adsum][nrf] nrfutil (nRF Connect extension bundle) resolved at: ${binDir}`)
-			return {
-				devicePrefix: quote(deviceBin),
-				// sdk-manager isn't guaranteed in every extension build; only use the split binary if
-				// it's actually there, otherwise fall back to a bare launcher form on PATH.
-				sdkManagerPrefix: existsSyncFn(sdkBin) ? quote(sdkBin) : `${exe("nrfutil")} sdk-manager`,
-				source: "extension",
-			}
-		}
+		const extBinDir = join(opts.extensionPath, "platform", "nrfutil", "bin")
+		const deviceCandidate = join(extBinDir, exe("nrfutil-device"))
+		const sdkCandidate = join(extBinDir, exe("nrfutil-sdk-manager"))
+		if (existsSyncFn(deviceCandidate)) extDeviceBin = deviceCandidate
+		if (existsSyncFn(sdkCandidate)) extSdkBin = sdkCandidate
 	}
 
-	// 3. Last resort — bare command on PATH (launcher form). Works only if nrfutil is on VS Code's
-	//    PATH, which on Windows it usually is not — hence the diagnostics above.
-	console.info(
-		`[adsum][nrf] nrfutil not found at known locations; falling back to PATH. Checked launchers: ${launcherCandidates.join(" | ")}`,
-	)
-	return {
-		devicePrefix: `${exe("nrfutil")} device`,
-		sdkManagerPrefix: `${exe("nrfutil")} sdk-manager`,
-		source: "path-fallback",
+	// 3. Resolve "device": launcher ALWAYS wins when it exists — unchanged from before. The `device`
+	//    plugin is near-universal (installed by the extension's own first run), so we deliberately do
+	//    NOT add a plugin-existence check here: that would risk silently flipping the already-working
+	//    macOS/Linux path on a false negative. Only "sdk-manager" below gets the stricter check, because
+	//    that's the one CONFIRMED to go missing while the launcher itself is present.
+	let devicePrefix: string
+	let deviceSource: NrfutilCommands["source"]
+	if (launcher) {
+		devicePrefix = `${quote(launcher)} device`
+		deviceSource = "launcher"
+	} else if (extDeviceBin) {
+		devicePrefix = quote(extDeviceBin)
+		deviceSource = "extension"
+	} else {
+		devicePrefix = `${exe("nrfutil")} device`
+		deviceSource = "path-fallback"
 	}
+
+	// 4. Resolve "sdk-manager" — INDEPENDENTLY of device. Same priority, but falls through to the
+	//    extension bundle (or PATH) when the launcher exists yet its sdk-manager plugin doesn't.
+	let sdkManagerPrefix: string
+	let sdkManagerSource: NrfutilCommands["source"]
+	const launcherSdkBin = launcher ? join(dirname(launcher), exe("nrfutil-sdk-manager")) : undefined
+	if (launcher && launcherSdkBin && existsSyncFn(launcherSdkBin)) {
+		sdkManagerPrefix = `${quote(launcher)} sdk-manager`
+		sdkManagerSource = "launcher"
+	} else if (extSdkBin) {
+		sdkManagerPrefix = quote(extSdkBin)
+		sdkManagerSource = "extension"
+		if (launcher) {
+			console.info(
+				`[adsum][nrf] launcher found at ${launcher} but its sdk-manager plugin is missing — using the nRF Connect extension's bundled nrfutil-sdk-manager instead`,
+			)
+		}
+	} else if (launcher) {
+		// Best-effort: still try the launcher form even though we can't confirm the plugin exists —
+		// but mark the source as path-fallback so callers know sdk-manager may not actually work.
+		sdkManagerPrefix = `${quote(launcher)} sdk-manager`
+		sdkManagerSource = "path-fallback"
+	} else {
+		sdkManagerPrefix = `${exe("nrfutil")} sdk-manager`
+		sdkManagerSource = "path-fallback"
+	}
+
+	// binDir/nrfutilPath follow the DEVICE resolution — that's what bare `nrfutil device …`/`nrfutil
+	// device reset` calls (typed literally by the agent and the logger wrappers) need on PATH.
+	let binDir: string | undefined
+	let nrfutilPath: string | undefined
+	if (deviceSource === "launcher" && launcher) {
+		binDir = dirname(launcher)
+		nrfutilPath = launcher
+	} else if (deviceSource === "extension" && extDeviceBin) {
+		binDir = dirname(extDeviceBin)
+		nrfutilPath = extDeviceBin
+	}
+
+	return { devicePrefix, sdkManagerPrefix, source: deviceSource, sdkManagerSource, binDir, nrfutilPath }
+}
+
+/**
+ * Convenience over {@link resolveNrfutilCommands} that uses the nRF Connect
+ * extension path captured at activation, so callers outside this module (e.g. the
+ * host bridge building our own terminal) don't need to thread `extensionPath`.
+ */
+export function getResolvedNrfutil(): NrfutilCommands {
+	return resolveNrfutilCommands({ extensionPath: _extensionInfo.extensionPath })
 }
 
 /** Parse newline-delimited JSON (nrfutil's --json output is one event object per line). */
@@ -288,12 +362,64 @@ export function parseSdkList(stdout: string): string[] {
 	return []
 }
 
-async function probeSdks(sdkManagerPrefix: string): Promise<string[]> {
+/**
+ * Pure parser for `nrfutil sdk-manager list --json` stdout that extracts each installed
+ * version's SDK root install directory (the `dirNames` field, e.g. `["/home/user/ncs/v3.3.1"]`).
+ * Keyed by NORMALIZED version (no leading "v"), to match {@link selectNcsInstall}'s resolved
+ * version format directly — no re-normalization needed at the lookup site.
+ *
+ * This is what makes `ZEPHYR_BASE` (`<installDir>/zephyr`) derivable for a resolved NCS version:
+ * `west` extension commands (`build`, `flash`, …) are only available when west can locate the
+ * workspace — either by running with cwd inside it, or via `ZEPHYR_BASE` set as an environment
+ * variable (CONFIRMED against Nordic's own troubleshooting docs and tested end-to-end: a `-z
+ * ZEPHYR_BASE` CLI flag does NOT work for this, the env var is required). Exported for unit tests.
+ */
+export function parseSdkInstallPaths(stdout: string): Record<string, string> {
+	const events = parseJsonLines(stdout)
+	const paths: Record<string, string> = {}
+	for (const ev of events) {
+		const e = ev as any
+		const versions = e?.data?.versions ?? e?.versions
+		if (!Array.isArray(versions)) continue
+		for (const v of versions) {
+			if ((v?.sdkStatus ?? v?.sdk_status ?? "installed") !== "installed") continue
+			const version = v?.version as string | undefined
+			const dirName = Array.isArray(v?.dirNames) ? (v.dirNames[0] as string | undefined) : undefined
+			if (version && dirName) {
+				paths[version.replace(/^v/i, "")] = dirName
+			}
+		}
+		return paths
+	}
+	return paths
+}
+
+interface SdkProbeResult {
+	versions: string[]
+	/** Normalized version (no "v") → NCS SDK root install dir. */
+	paths: Record<string, string>
+}
+
+async function probeSdks(sdkManagerPrefix: string): Promise<SdkProbeResult> {
 	try {
 		const result = await execAsync(`${sdkManagerPrefix} list --json`, { timeout: 8000 })
-		return parseSdkList(result.stdout)
-	} catch {
-		return []
+		const versions = parseSdkList(result.stdout)
+		// Diagnostic: when the parse yields nothing, log the raw head so we can see whether sdk-manager
+		// returned an unexpected shape, an error, or simply isn't the right command family on this host.
+		if (versions.length === 0) {
+			const head = (result.stdout || result.stderr || "").slice(0, 600).replace(/\s+/g, " ").trim()
+			console.info(
+				`[adsum][nrf] sdk-manager list returned no parseable versions. Prefix="${sdkManagerPrefix}". Raw head: ${head || "(empty)"}`,
+			)
+		} else {
+			console.info(`[adsum][nrf] sdk-manager list → ${versions.join(", ")}`)
+		}
+		return { versions, paths: parseSdkInstallPaths(result.stdout) }
+	} catch (e) {
+		console.info(
+			`[adsum][nrf] sdk-manager list failed for prefix "${sdkManagerPrefix}": ${e instanceof Error ? e.message : e}`,
+		)
+		return { versions: [], paths: {} }
 	}
 }
 
@@ -398,11 +524,10 @@ function findWestTopdir(start: string): string | undefined {
 	return undefined
 }
 
-/** Bounded recursive search for the newest ncs_version.h under build* dirs. Returns its content + mtime. */
-function findNewestNcsVersionHeader(root: string): { content: string; mtimeMs: number } | undefined {
-	let best: { content: string; mtimeMs: number } | undefined
+/** Newest ncs_version.h within ONE build dir (a sysbuild build has several images, all the same NCS). */
+function newestNcsHeaderInDir(start: string): { content: string; mtimeMs: number } | undefined {
 	const SKIP = new Set(["node_modules", ".git", ".west"])
-
+	let best: { content: string; mtimeMs: number } | undefined
 	const walk = (dir: string, depth: number) => {
 		if (depth > 9) {
 			return
@@ -422,10 +547,9 @@ function findNewestNcsVersionHeader(root: string): { content: string; mtimeMs: n
 				continue
 			}
 			if (isDir) {
-				if (SKIP.has(entry)) {
-					continue
+				if (!SKIP.has(entry)) {
+					walk(full, depth + 1)
 				}
-				walk(full, depth + 1)
 			} else if (entry === "ncs_version.h" && full.includes(join("zephyr", "include", "generated"))) {
 				try {
 					const mtimeMs = statSync(full).mtimeMs
@@ -438,28 +562,66 @@ function findNewestNcsVersionHeader(root: string): { content: string; mtimeMs: n
 			}
 		}
 	}
+	walk(start, 0)
+	return best
+}
 
-	// Only descend into build* dirs to keep the scan cheap.
+/** Per build dir, the newest ncs_version.h's version + mtime (skips dirs with no/unparseable header). Exported for tests. */
+export function collectBuildNcsVersions(root: string): { dir: string; version: string; mtimeMs: number }[] {
 	let topEntries: string[]
 	try {
 		topEntries = readdirSync(root)
 	} catch {
-		return undefined
+		return []
 	}
+	const out: { dir: string; version: string; mtimeMs: number }[] = []
 	for (const entry of topEntries) {
 		if (!entry.startsWith("build")) {
 			continue
 		}
 		const full = join(root, entry)
 		try {
-			if (statSync(full).isDirectory()) {
-				walk(full, 0)
+			if (!statSync(full).isDirectory()) {
+				continue
 			}
 		} catch {
-			// skip
+			continue
+		}
+		const found = newestNcsHeaderInDir(full)
+		if (!found) {
+			continue
+		}
+		const version = parseNcsVersionHeader(found.content)
+		if (version) {
+			out.push({ dir: entry, version, mtimeMs: found.mtimeMs })
 		}
 	}
-	return best
+	return out
+}
+
+/**
+ * Reduce per-build-dir versions to a project-SDK summary. **Primary** = the dir named exactly `build`
+ * (the nRF Connect default active build; extra configs become `build_1/`, `build_2/`), else the newest
+ * by mtime. When the builds **DISAGREE** (>1 distinct version) we can't tell which is *selected* from
+ * files (the selection lives in the extension's memento), so we surface ALL of them (`allVersions` +
+ * `builds`) instead of asserting one. Pure; exported for tests.
+ */
+export function summarizeProjectBuilds(
+	builds: { dir: string; version: string; mtimeMs: number }[],
+): { version: string; allVersions?: string[]; builds?: { dir: string; version: string }[] } | undefined {
+	if (builds.length === 0) {
+		return undefined
+	}
+	const primary = builds.find((b) => b.dir === "build") ?? builds.reduce((a, b) => (b.mtimeMs > a.mtimeMs ? b : a))
+	const distinct = [...new Set(builds.map((b) => b.version))].sort()
+	if (distinct.length > 1) {
+		return {
+			version: primary.version,
+			allVersions: distinct,
+			builds: builds.map((b) => ({ dir: b.dir, version: b.version })),
+		}
+	}
+	return { version: primary.version }
 }
 
 /**
@@ -488,13 +650,12 @@ export function detectProjectSdk(roots: string[]): ProjectSdk | undefined {
 			}
 		}
 
-		// Tier 1 — build artifact (freestanding or workspace without a readable pin).
-		const header = findNewestNcsVersionHeader(root)
-		if (header) {
-			const version = parseNcsVersionHeader(header.content)
-			if (version) {
-				return { version, source: "build", topology: topdir ? "workspace" : "freestanding" }
-			}
+		// Tier 1 — build artifact (freestanding or workspace without a readable pin). Prefer the
+		// selected/default `build/`; if multiple build configs DISAGREE on NCS, surface all of them
+		// (we can't read which the extension has selected).
+		const summary = summarizeProjectBuilds(collectBuildNcsVersions(root))
+		if (summary) {
+			return { ...summary, source: "build", topology: topdir ? "workspace" : "freestanding" }
 		}
 	}
 	return undefined
@@ -505,9 +666,9 @@ export async function detectNrfEnvironment(): Promise<NrfEnvironment> {
 
 	const cmds = resolveNrfutilCommands({ extensionPath: _extensionInfo.extensionPath })
 	const projectSdk = detectProjectSdk(_workspaceRoots)
-	const [boardsResult, installedSdkVersions] = await Promise.all([
+	const [boardsResult, sdkResult] = await Promise.all([
 		probeBoards(cmds.devicePrefix).catch(() => ({ nrfutilPresent: false, boards: [] as NrfBoard[] })),
-		probeSdks(cmds.sdkManagerPrefix).catch(() => [] as string[]),
+		probeSdks(cmds.sdkManagerPrefix).catch(() => ({ versions: [], paths: {} }) as SdkProbeResult),
 	])
 
 	_cache = {
@@ -515,7 +676,8 @@ export async function detectNrfEnvironment(): Promise<NrfEnvironment> {
 		extensionPresent: _extensionInfo.present,
 		extensionVersion: _extensionInfo.version,
 		nrfutilPresent: boardsResult.nrfutilPresent,
-		installedSdkVersions,
+		installedSdkVersions: sdkResult.versions,
+		installedSdkPaths: sdkResult.paths,
 		projectSdk,
 		boards: boardsResult.boards,
 		lastDetectedAt: Date.now(),

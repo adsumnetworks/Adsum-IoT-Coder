@@ -14,7 +14,7 @@ describe("DemoCard — hero variant (default)", () => {
 
 	it("renders the prominent hero copy", () => {
 		render(<DemoCard onStartDemo={onStartDemo} />)
-		expect(screen.getByText("See it debug a real bug")).toBeInTheDocument()
+		expect(screen.getByText("Debug a real BLE bug")).toBeInTheDocument()
 		expect(screen.getByText(`${scenario.title} — no setup, no hardware needed`)).toBeInTheDocument()
 		expect(screen.getByText(scenario.honestLabel)).toBeInTheDocument()
 	})
@@ -52,7 +52,7 @@ describe("DemoCard — rerun variant (demoted, abridged)", () => {
 
 	it("drops the hero copy, subtitle, and honest label", () => {
 		render(<DemoCard onStartDemo={onStartDemo} variant="rerun" />)
-		expect(screen.queryByText("See it debug a real bug")).not.toBeInTheDocument()
+		expect(screen.queryByText("Debug a real BLE bug")).not.toBeInTheDocument()
 		expect(screen.queryByText(`${scenario.title} — no setup, no hardware needed`)).not.toBeInTheDocument()
 		expect(screen.queryByText(scenario.honestLabel)).not.toBeInTheDocument()
 	})

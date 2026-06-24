@@ -8,6 +8,8 @@ interface IntentCardProps {
 	primary?: boolean
 	/** Small pill next to the title (e.g. "Start here"). Coming-soon cards show "Coming soon" automatically. */
 	pill?: string
+	/** Optional one-line capability sub-line under the description (e.g. the A10 deep-debug ladder). */
+	subline?: string
 	/** Roadmap card: dashed/dimmed, non-interactive. */
 	comingSoon?: boolean
 	disabled?: boolean
@@ -25,6 +27,7 @@ const IntentCard: React.FC<IntentCardProps> = ({
 	description,
 	primary = false,
 	pill,
+	subline,
 	comingSoon = false,
 	disabled = false,
 	onClick,
@@ -41,7 +44,7 @@ const IntentCard: React.FC<IntentCardProps> = ({
 			: "var(--vscode-input-background)"
 	const iconBg = comingSoon ? SOON_ICON_BG : primary ? BRAND_CYAN_700 : BRAND_CORAL
 	const iconColor = comingSoon ? "var(--vscode-descriptionForeground)" : "#fff"
-	const pillText = comingSoon ? "Coming soon" : pill
+	const pillText = comingSoon ? "Roadmap" : pill
 
 	return (
 		<button
@@ -110,6 +113,19 @@ const IntentCard: React.FC<IntentCardProps> = ({
 					}}>
 					{description}
 				</div>
+				{subline && (
+					<div
+						data-testid={testId ? `${testId}-subline` : undefined}
+						style={{
+							fontSize: "10.5px",
+							color: "var(--vscode-descriptionForeground)",
+							opacity: 0.85,
+							marginTop: "5px",
+							lineHeight: 1.4,
+						}}>
+						{subline}
+					</div>
+				)}
 			</div>
 		</button>
 	)

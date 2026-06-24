@@ -9,9 +9,11 @@ import {
 	enumerateIdfInstalls,
 	getExportScriptName,
 	getIdfPathCandidates,
+	idfAmbiguousMessage,
 	idfNotFoundMessage,
 	isIdfDir,
 	normalizeIdfVersion,
+	parseIdfVersionCmake,
 	resolveIdfPath,
 	type SupportedPlatform,
 	selectIdfInstall,
@@ -211,6 +213,24 @@ describe("idfEnvResolver", () => {
 		})
 	})
 
+	describe("parseIdfVersionCmake", () => {
+		// Real tools/cmake/version.cmake body from an ESP-IDF v6.0 install (the install dir had NO
+		// version.txt — the bug this parser fixes). Must yield "6.0.0" to match the lock pin "6.0.0".
+		const V60 = `set(IDF_VERSION_MAJOR 6)\nset(IDF_VERSION_MINOR 0)\nset(IDF_VERSION_PATCH 0)\n\nset(ENV{IDF_VERSION} "\${IDF_VERSION_MAJOR}.\${IDF_VERSION_MINOR}.\${IDF_VERSION_PATCH}")`
+		it("extracts MAJOR.MINOR.PATCH (v6.0 → 6.0.0, matches dependencies.lock)", () => {
+			expect(parseIdfVersionCmake(V60)).to.equal("6.0.0")
+		})
+		it("handles v5.5.2", () => {
+			expect(parseIdfVersionCmake("set(IDF_VERSION_MAJOR 5)\nset(IDF_VERSION_MINOR 5)\nset(IDF_VERSION_PATCH 2)")).to.equal(
+				"5.5.2",
+			)
+		})
+		it("returns undefined when a component is missing or body is junk", () => {
+			expect(parseIdfVersionCmake("set(IDF_VERSION_MAJOR 6)\nset(IDF_VERSION_MINOR 0)")).to.equal(undefined)
+			expect(parseIdfVersionCmake("not a cmake file")).to.equal(undefined)
+		})
+	})
+
 	describe("selectIdfInstall (pin-aware)", () => {
 		const a = { path: "/esp/v5.5.2/esp-idf", version: "5.5.2" }
 		const b = { path: "/esp/v6.0/esp-idf", version: "6.0" }
@@ -238,6 +258,45 @@ describe("idfEnvResolver", () => {
 		})
 		it("is none when nothing is installed", () => {
 			expect(selectIdfInstall([]).kind).to.equal("none")
+		})
+
+		// Priority: project pin FIRST (it's the project's ground truth), then explicit idf_version (this
+		// call), then the persisted choice — but only when there is no usable pin.
+		it("the project pin wins over a stale persisted choice (the v6-hijacks-v5.5 bug)", () => {
+			// Project lock pins 5.5.2; a 6.0 was remembered from testing another project. Pin must win.
+			const sel = selectIdfInstall([a, b], "5.5.2", undefined, { persisted: "6.0" })
+			expect((sel as any).path).to.equal(a.path)
+		})
+		it("the project pin wins over an explicit idf_version too", () => {
+			const sel = selectIdfInstall([a, b], "5.5.2", undefined, { explicit: "6.0" })
+			expect((sel as any).path).to.equal(a.path)
+		})
+		it("uses explicit idf_version only when there is no pin", () => {
+			expect((selectIdfInstall([a, b], undefined, undefined, { explicit: "v6.0" }) as any).path).to.equal(b.path)
+		})
+		it("uses the persisted choice only when there is no pin", () => {
+			expect((selectIdfInstall([a, b], undefined, undefined, { persisted: "6.0" }) as any).path).to.equal(b.path)
+		})
+		it("explicit beats persisted (both, no pin)", () => {
+			const sel = selectIdfInstall([a, b], undefined, undefined, { explicit: "5.5.2", persisted: "6.0" })
+			expect((sel as any).path).to.equal(a.path)
+		})
+		it("falls through to ambiguous when explicit/persisted are not installed and no pin", () => {
+			expect(selectIdfInstall([a, b], undefined, undefined, { explicit: "9.9.9" }).kind).to.equal("ambiguous")
+			expect(selectIdfInstall([a, b], undefined, undefined, { persisted: "9.9.9" }).kind).to.equal("ambiguous")
+		})
+	})
+
+	describe("idfAmbiguousMessage", () => {
+		it("lists installs and tells the agent to re-run with idf_version (not the extension selector)", () => {
+			const msg = idfAmbiguousMessage([
+				{ path: "/esp/v5.5.2/esp-idf", version: "5.5.2" },
+				{ path: "/esp/v6.0/esp-idf", version: "6.0" },
+			])
+			expect(msg).to.contain("idf_version")
+			expect(msg).to.contain("/esp/v5.5.2/esp-idf")
+			expect(msg).to.contain("remembered for this project")
+			expect(msg).to.not.contain("IDF selector")
 		})
 	})
 
