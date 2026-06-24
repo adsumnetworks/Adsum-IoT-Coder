@@ -65,6 +65,16 @@ Examples:
 		usage: "west build -b nrf52840dk/nrf52840 .",
 	},
 	{
+		name: "ncs_version",
+		required: false,
+		instruction: `Optional. The nRF Connect SDK version to build/flash with, e.g. "v3.2.1".
+You normally do NOT set this — the tool auto-resolves the version from the project's existing build,
+or uses the only installed version. Set it ONLY when the tool reports that multiple NCS versions are
+installed and the project has no build yet: ask the user which to use, then pass it here. The choice is
+remembered for this project, so you won't be asked again.`,
+		usage: "v3.2.1",
+	},
+	{
 		name: "operation",
 		required: false,
 		instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor", "device_info".
@@ -153,6 +163,12 @@ Use role-specific labels (central, peripheral) ONLY when the role has been confi
 		name: "list_nrf",
 		required: false,
 		instruction: `Optional. When true with operation="list", shows only nRF devices.`,
+		usage: "true",
+	},
+	{
+		name: "monitor",
+		required: false,
+		instruction: `Optional, RTT only. When true, also captures the HCI Monitor stream (host↔controller commands/events) on RTT channel 1 and auto-decodes it to a readable logs/hci/*.hci.log the user and you can read. Pass monitor="true" for BLE debugging — pairing/connection/PHY/GATT/controller issues — where controller-level evidence helps. Auto-enabled when prj.conf has CONFIG_BT_DEBUG_MONITOR_RTT=y (you need not pass it then). Requires that Kconfig in the firmware; if missing, enable it first (see the BLE knowledge / log-generator workflow).`,
 		usage: "true",
 	},
 ]

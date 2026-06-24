@@ -21,7 +21,11 @@ import { exec } from "child_process"
 import { existsSync, readdirSync, readFileSync } from "fs"
 import { join } from "path"
 import { promisify } from "util"
-import { enumerateIdfInstalls, resolveIdfPath } from "../../hosts/vscode/hostbridge/workspace/idfEnvResolver"
+import {
+	enumerateIdfInstalls,
+	parseIdfVersionCmake,
+	resolveIdfPath,
+} from "../../hosts/vscode/hostbridge/workspace/idfEnvResolver"
 import { classifyWorkspace } from "../platform/WorkspaceClassifier"
 import { type ChipResult, getIdfPython, probeChip } from "./espChipProbe"
 
@@ -86,19 +90,6 @@ export function parseIdfVersionFile(content: string): string | undefined {
 	// Typical content: "v5.3.2" or "5.3.2" — accept with or without leading 'v'
 	const m = trimmed.match(/^v?(\d+\.\d+[.\d]*)/)
 	return m ? (trimmed.startsWith("v") ? trimmed.split(/\s/)[0] : `v${m[1]}`) : undefined
-}
-
-/**
- * Parse {idfPath}/tools/cmake/version.cmake → version string. A git checkout of ESP-IDF (an
- * official install method) has NO version.txt — only release tarballs / EIM installs do — but
- * version.cmake is always present and carries IDF_VERSION_MAJOR/MINOR/PATCH. Pure; exported for tests.
- */
-export function parseIdfVersionCmake(content: string): string | undefined {
-	const major = content.match(/set\(\s*IDF_VERSION_MAJOR\s+(\d+)\s*\)/)?.[1]
-	const minor = content.match(/set\(\s*IDF_VERSION_MINOR\s+(\d+)\s*\)/)?.[1]
-	const patch = content.match(/set\(\s*IDF_VERSION_PATCH\s+(\d+)\s*\)/)?.[1]
-	if (major === undefined || minor === undefined || patch === undefined) return undefined
-	return `v${major}.${minor}.${patch}`
 }
 
 /**

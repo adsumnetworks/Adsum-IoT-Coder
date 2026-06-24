@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { load as yamlLoad } from "js-yaml"
@@ -168,4 +169,116 @@ export function lintCorpus(knowledgeRoot: string): CorpusResult {
 	}
 	const unmigrated = new Set(issues.filter((i) => i.msg.startsWith("no frontmatter")).map((i) => i.file))
 	return { issues, files, migrated: files.length - unmigrated.size }
+}
+
+// ── Drift / version / mapping guards (the kbit dev-workflow safety nets) ──────────
+
+const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex")
+
+export type ManifestEntry = { id: string; version: string; path: string; content_hash: string }
+
+/** Tolerant parse of manifest.json text → bit entries. Returns [] on any malformed input. */
+export function parseManifestEntries(jsonText: string): ManifestEntry[] {
+	try {
+		const obj = JSON.parse(jsonText)
+		const bits = Array.isArray(obj?.bits) ? obj.bits : []
+		return bits
+			.filter((b: unknown): b is ManifestEntry => !!b && typeof (b as ManifestEntry).id === "string")
+			.map((b: ManifestEntry) => ({ id: b.id, version: b.version, path: b.path, content_hash: b.content_hash }))
+	} catch {
+		return []
+	}
+}
+
+/**
+ * Guard: the committed `manifest.json` must match the bits on disk. A mismatch means a bit was added or
+ * edited without `npm run gen:kbit-manifest` — the exact "the agent can't find my bit" hole. The
+ * content_hash is over the body (frontmatter stripped), identical to gen-kbit-manifest.
+ */
+export function lintManifestFresh(knowledgeRoot: string, files: string[], manifestJson: string): Issue[] {
+	const issues: Issue[] = []
+	const entries = parseManifestEntries(manifestJson)
+	const byPath = new Map(entries.map((e) => [e.path, e]))
+	const onDisk = new Set<string>()
+	for (const f of files) {
+		const fm = extractFrontmatter(readFileSync(join(knowledgeRoot, f), "utf8"))
+		if (!fm.found) {
+			continue // unmigrated — already a separate warning
+		}
+		onDisk.add(f)
+		const e = byPath.get(f)
+		if (!e) {
+			issues.push({ level: "error", file: f, msg: "not in manifest.json — run `npm run gen:kbit-manifest`" })
+		} else if (e.content_hash !== sha256(fm.body)) {
+			issues.push({ level: "error", file: f, msg: "manifest.json content_hash is stale — run `npm run gen:kbit-manifest`" })
+		}
+	}
+	for (const e of entries) {
+		if (!onDisk.has(e.path)) {
+			issues.push({
+				level: "error",
+				file: "manifest.json",
+				msg: `lists ${e.path}, not on disk — run \`npm run gen:kbit-manifest\``,
+			})
+		}
+	}
+	return issues
+}
+
+/** Read the `version` field out of a frontmatter YAML block, tolerant of malformed input. */
+function bitVersion(yaml: string): string | undefined {
+	try {
+		const m = yamlLoad(yaml) as { version?: unknown }
+		return typeof m?.version === "string" ? m.version : undefined
+	} catch {
+		return undefined
+	}
+}
+
+/**
+ * Guard: a body change must bump the bit's `version`. Compares the bit's current body against its
+ * previous body (the CLI supplies git HEAD's text; null = new file). Body-based, not manifest-based, so
+ * it stays correct even when the committed manifest is itself stale. Pure → unit-testable.
+ */
+export function lintVersionBump(rel: string, currentText: string, headText: string | null): Issue[] {
+	if (headText == null) {
+		return [] // new bit — no prior version to compare
+	}
+	const cur = extractFrontmatter(currentText)
+	const head = extractFrontmatter(headText)
+	if (!cur.found || !head.found) {
+		return []
+	}
+	const cv = bitVersion(cur.yaml)
+	const hv = bitVersion(head.yaml)
+	if (cur.body.trim() !== head.body.trim() && cv && hv && cv === hv) {
+		return [{ level: "error", file: rel, msg: `body changed but version stayed ${cv} — bump \`version\`` }]
+	}
+	return []
+}
+
+/** True for index/map bits (all-caps basename like PLATFORM/SDK/BLE, or README) — they ARE the maps. */
+function isIndexBit(rel: string): boolean {
+	return /(^|\/)([A-Z][A-Z0-9-]*|README)\.md$/.test(rel)
+}
+
+/**
+ * Map/discovery warning: every non-index bit should be referenced (by path or filename) somewhere else
+ * in the corpus — i.e. listed in a map/index so the agent learns it exists. An orphan is the "useful md
+ * never loaded" bug. Warning, not error: the indexes are still being completed during migration.
+ */
+export function lintMapping(knowledgeRoot: string, files: string[]): Issue[] {
+	const bodies = files.map((f) => ({ f, text: readFileSync(join(knowledgeRoot, f), "utf8") }))
+	const issues: Issue[] = []
+	for (const { f } of bodies) {
+		if (isIndexBit(f)) {
+			continue
+		}
+		const name = f.split("/").pop() ?? f
+		const referenced = bodies.some((b) => b.f !== f && (b.text.includes(f) || b.text.includes(name)))
+		if (!referenced) {
+			issues.push({ level: "warn", file: f, msg: "not referenced in any map/index bit (agent may never discover it)" })
+		}
+	}
+	return issues
 }
