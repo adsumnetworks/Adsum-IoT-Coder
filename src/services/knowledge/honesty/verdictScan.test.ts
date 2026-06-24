@@ -42,6 +42,10 @@ describe("verdictScan — leaks that MUST be caught", () => {
 		["'✅ Built & verified' bolded status", "**Status:** ✅ **Built & verified** — build_5340 produced the mcuboot image"],
 		["bare '✅ verified' status", "Secure boot: ✅ verified"],
 		["'✅ built' done-marker", "MCUboot: ✅ built"],
+		// run-#4/#5 review — status glyph as a bullet/list marker (the shape 2306d/2306e produced + the scanner missed):
+		["bullet ✅ status marker", "- ✅ MCUboot child image built (`mcuboot/` sub-directory — 32 KB FLASH)"],
+		["bullet ⚠️ status marker", "- ⚠️ Default debug signing key — swap before production"],
+		["bare ✅ at line start", "✅ MCUboot child image built"],
 	]
 	for (const [name, sample] of leaks) {
 		test(name, () => {
@@ -82,6 +86,8 @@ describe("verdictScan — disclaimers / evidence-mode that MUST NOT trip", () =>
 			"Secure boot: changed — build, flash, verify on hardware; a clean build is not verification.",
 		],
 		["dev-as-hero verify offer", "Want me to start MCUboot so YOU can build, flash, and verify it?"],
+		// run-#4/#5 — the disclaimer's mid-sentence ✅ (preceded by "A ") is NOT a status marker → must stay clean:
+		["disclaimer mid-sentence ✅ stays clean", "A ✅ means configured/present in this build — never a status verdict."],
 	]
 	for (const [name, sample] of clean) {
 		test(name, () => {

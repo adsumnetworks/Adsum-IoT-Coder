@@ -5,7 +5,7 @@
  * Scope + honest limits (read before trusting this):
  * - It targets the **documented leak shapes** (the failures the project actually hit): a ✅ glued to a
  *   verdict, "now compliant", "gap/vuln fixed/resolved", "you're affected/clear", "Top gap fixed",
- *   "status: ✅/fixed", "✅ Built & verified" (build ≠ verification). It is a **safety net, not a guarantee** — it will NOT catch a paraphrased verdict
+ *   "status: ✅/fixed", "✅ Built & verified" (build ≠ verification), a status glyph as a bullet/cell marker ("- ✅ … built"). It is a **safety net, not a guarantee** — it will NOT catch a paraphrased verdict
  *   ("your firmware satisfies the requirement"). The load-bearing honesty guards remain the bit rules
  *   (evidence-mode, verify-the-positive-AND-negative) — this only catches the literal leaks.
  * - It is **high-precision by design**: it skips negated / meta uses so it does not fire on the CRA
@@ -51,7 +51,11 @@ const LEAK_PATTERNS: LeakPattern[] = [
 		re: /[✅✔❌✗]\s*\*{0,2}\s*(fixed|done|resolved|remediated|mitigated|pass(?:es|ed)?|fail(?:s|ed)?|compliant|certified|clear|verified|built|complete)\b/gi,
 	},
 	// A verdict glyph used as a TABLE CELL value — evidence-mode tables have no status-glyph column.
-	{ rule: "glyph-cell", re: /\|\s*[✅✔❌✗]/g },
+	{ rule: "glyph-cell", re: /\|\s*[✅✔❌✗⚠]/g },
+	// A status glyph used as a BULLET / list-item / line-start marker ("- ✅ MCUboot built", "✅ done",
+	// "⚠️ debug key") — evidence-mode output carries NO status glyphs. Anchored to clause/bullet start, so the
+	// disclaimer's mid-sentence "A ✅ means …" (preceded by "A ") never trips. `g` flag → the exec-loop ends.
+	{ rule: "glyph-bullet", re: /^\s*(?:[-*+]|\d+[.)])?\s*\*{0,2}\s*[✅✔❌✗⚠]/g },
 	// A PASS/FAIL grade — standalone UPPERCASE token (case-sensitive): "Secure boot: PASS", "| FAIL |".
 	// Uppercase-only avoids prose "pass"/"fail" and substrings (BYPASS, FAILURE, PASSED).
 	{ rule: "passfail", re: /(?<![A-Za-z])(?:PASS|FAIL)(?![A-Za-z])/g },
