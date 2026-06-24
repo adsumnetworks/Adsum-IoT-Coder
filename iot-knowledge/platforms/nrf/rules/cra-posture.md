@@ -2,7 +2,7 @@
 id: adsum/nrf/rules/cra-posture
 title: CRA Secure-by-Design Posture (nRF)
 type: knowledge
-version: 0.2.1
+version: 0.2.2
 owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
@@ -75,6 +75,12 @@ merge blocker, never the hero.
 > sub-image** — confirm it exists (in the build log or a `build/mcuboot` / `build/b0` dir). If only the app
 > image + `merged.hex` were produced, report it **neutrally** ("requested in `prj.conf` but the bootloader
 > sub-image is not present in this build — verify"), and never invent a "child image" the build didn't produce.
+>
+> **Reconcile your sources — don't report a contradiction.** `domains.yaml` / `build_info.yml` *list* the
+> images; the actual sub-image dir (`build/mcuboot`) confirms one *built*. If they **disagree** (metadata lists
+> `mcuboot` but the dir is absent, or vice-versa), the build tree is **stale/inconsistent** — say so and
+> **rebuild before reporting**; never write one source as "present" (the SBOM section) and the other as "not
+> built" (the posture) in the same report.
 >
 > **Enabling it (recipe + change-impact, for a fix you start):** set it at the **sysbuild** level —
 > `sysbuild.conf` → `SB_CONFIG_BOOTLOADER_MCUBOOT=y` (NCS ≥ 2.7). App-level `CONFIG_BOOTLOADER_MCUBOOT=y`
