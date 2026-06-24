@@ -34,7 +34,7 @@ describe("runIntent — shared intent routing", () => {
 		expect(onSelectMode).not.toHaveBeenCalled()
 	})
 
-	it.each(["addFeature", "buildFlashDebug", "buildFlash", "testValidate", "prototype", "demo"] as const)(
+	it.each(["addFeature", "buildFlashDebug", "buildFlash", "testValidate", "prototype", "demo", "craCheck"] as const)(
 		"%s → starts a task with its built prompt (neutral platform when unknown)",
 		(id) => {
 			runIntent(id, { onSelectMode, onStartTask })

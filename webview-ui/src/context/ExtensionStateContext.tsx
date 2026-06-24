@@ -285,6 +285,7 @@ export const ExtensionStateContextProvider: React.FC<{
 			espDevices: [],
 		},
 		workspaceClassification: "none",
+		workspaceFeatures: { hasBle: false, hasComplianceArtifacts: false },
 		// NEW: Add workspace information with defaults
 		workspaceRoots: [],
 		primaryRootIndex: 0,

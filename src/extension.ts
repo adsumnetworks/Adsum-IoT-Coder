@@ -202,6 +202,37 @@ export async function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 
+	// Re-classify on saves to config / compliance files so the welcome CRA nudge + deep-debug sub-line update
+	// live within the session (not only on reload / folder-change). Debounced; classification is cheap + sync.
+	let reclassifyTimer: ReturnType<typeof setTimeout> | undefined
+	const scheduleReclassify = () => {
+		if (reclassifyTimer) {
+			clearTimeout(reclassifyTimer)
+		}
+		reclassifyTimer = setTimeout(() => {
+			refreshWorkspaceClassification(collectWorkspaceRoots())
+			void webview.controller.postStateToWebview().catch(() => {})
+		}, 500)
+	}
+	context.subscriptions.push(
+		vscode.workspace.onDidSaveTextDocument((doc) => {
+			const name = (doc.uri.path.split("/").pop() ?? "").toLowerCase()
+			const isConfig =
+				name === "prj.conf" || name === "sdkconfig" || name === "sdkconfig.defaults" || /\.(conf|overlay)$/i.test(name)
+			if (isConfig || doc.uri.path.includes("/compliance/")) {
+				scheduleReclassify()
+			}
+		}),
+	)
+	// compliance/ artifacts are often written by tooling (west ncs-sbom / cp), not an editor save — watch the
+	// filesystem too so SBOM generation demotes the CRA nudge even when no document is saved.
+	const complianceWatcher = vscode.workspace.createFileSystemWatcher("**/compliance/**")
+	context.subscriptions.push(
+		complianceWatcher,
+		complianceWatcher.onDidCreate(scheduleReclassify),
+		complianceWatcher.onDidDelete(scheduleReclassify),
+	)
+
 	// Apply the Adsum-specific telemetry opt-out setting and keep it live.
 	// VS Code's global telemetry.telemetryLevel is already respected by the
 	// telemetry provider — this AND-combines the user's Adsum-level preference
