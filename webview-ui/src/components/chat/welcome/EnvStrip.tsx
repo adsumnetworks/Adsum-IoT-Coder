@@ -347,6 +347,8 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 const EnvStrip: React.FC = () => {
 	const { nrfEnvironment, espEnvironment, openFolderPaths } = useExtensionState()
 	const [refreshing, setRefreshing] = useState(false)
+	// A5 — compact by default (one line per detected platform), expand for the full per-platform detail.
+	const [expanded, setExpanded] = useState(false)
 
 	const handleRefresh = () => {
 		if (refreshing) return
@@ -390,22 +392,109 @@ const EnvStrip: React.FC = () => {
 	// One refresh re-probes both (same handleRefresh + detecting/refreshing state).
 	const refreshBusy = refreshing || nrf.detecting || esp.detecting
 
+	// Compact summary line per detected platform (A5). Collapsed is fixed-height, so detecting→ready fills in
+	// place rather than reflowing the rows (A2).
+	const compact = (f: BlockFacts): string => [f.sdk, f.devicesMuted ? null : f.devices].filter(Boolean).join(" · ")
+	const summaryRows: Array<{ label: string; text: string }> = []
+	if (nrfDetected) {
+		summaryRows.push({ label: "nRF", text: compact(nrf) })
+	}
+	if (espDetected) {
+		summaryRows.push({ label: "ESP", text: compact(esp) })
+	}
+	const detecting = nrf.detecting || esp.detecting
+
+	const collapseLinkStyle: React.CSSProperties = {
+		display: "inline-flex",
+		alignItems: "center",
+		gap: "4px",
+		alignSelf: "flex-start",
+		background: "none",
+		border: "none",
+		padding: 0,
+		marginTop: "2px",
+		color: MUTED,
+		opacity: 0.7,
+		fontSize: "10px",
+		cursor: "pointer",
+	}
+
 	return (
 		<div style={containerStyle}>
 			<div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
-				<PlatformRow
-					detected={nrfDetected}
-					label="nRF"
-					notDetectedHint="not detected — install nRF Connect SDK to enable"
-					{...nrf}
-				/>
-				<div style={{ height: "1px", background: NEUTRAL_BORDER, width: "100%" }} />
-				<PlatformRow
-					detected={espDetected}
-					label="ESP"
-					notDetectedHint="not detected — install ESP-IDF to enable"
-					{...esp}
-				/>
+				{expanded ? (
+					<>
+						<PlatformRow
+							detected={nrfDetected}
+							label="nRF"
+							notDetectedHint="not detected — install nRF Connect SDK to enable"
+							{...nrf}
+						/>
+						<div style={{ height: "1px", background: NEUTRAL_BORDER, width: "100%" }} />
+						<PlatformRow
+							detected={espDetected}
+							label="ESP"
+							notDetectedHint="not detected — install ESP-IDF to enable"
+							{...esp}
+						/>
+						<button
+							data-testid="envstrip-collapse"
+							onClick={() => setExpanded(false)}
+							style={collapseLinkStyle}
+							type="button">
+							<i className="codicon codicon-chevron-up" style={{ fontSize: "11px" }} /> less
+						</button>
+					</>
+				) : (
+					<button
+						data-testid="envstrip-summary"
+						onClick={() => setExpanded(true)}
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: "8px",
+							width: "100%",
+							background: "none",
+							border: "none",
+							padding: 0,
+							cursor: "pointer",
+							textAlign: "left",
+						}}
+						title="Show environment detail"
+						type="button">
+						<div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1, minWidth: 0 }}>
+							{summaryRows.length > 0 ? (
+								summaryRows.map((r) => (
+									<span
+										key={r.label}
+										style={{
+											display: "inline-flex",
+											alignItems: "center",
+											gap: "6px",
+											fontSize: "11px",
+											minWidth: 0,
+										}}>
+										<Badge text={r.label} />
+										<span
+											style={{
+												color: MUTED,
+												overflow: "hidden",
+												textOverflow: "ellipsis",
+												whiteSpace: "nowrap",
+											}}>
+											{r.text}
+										</span>
+									</span>
+								))
+							) : (
+								<span style={{ color: MUTED, fontSize: "11px" }}>
+									{detecting ? "detecting…" : "No SDK detected — click to set up"}
+								</span>
+							)}
+						</div>
+						<i className="codicon codicon-chevron-right" style={{ fontSize: "11px", color: MUTED, flexShrink: 0 }} />
+					</button>
+				)}
 			</div>
 			<button
 				aria-label="Re-probe detected platforms"
