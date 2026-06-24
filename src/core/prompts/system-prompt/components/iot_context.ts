@@ -5,7 +5,7 @@ import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import { deriveIdFromRel, loadBit } from "@/services/knowledge/KnowledgeResolver"
 import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 import { routePlatform } from "@/services/platform/platformRouting"
-import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
+import { getCachedWorkspaceSummary, NRF_BLE_RE } from "@/services/platform/WorkspaceClassifier"
 import { fileExistsAtPath } from "@/utils/fs"
 // import { IotProjectMemoryManager } from "../../../memory/IotProjectMemoryManager"
 import { SystemPromptSection } from "../templates/placeholders"
@@ -118,7 +118,9 @@ async function detectProjectFeatures(
 	try {
 		if (await fileExistsAtPath(prjConfPath)) {
 			const content = await fs.readFile(prjConfPath, "utf-8")
-			hasBle = content.includes("CONFIG_BT=y")
+			// Shared anchored test with the welcome-screen probe (WorkspaceClassifier) so the two BLE detectors
+			// agree — rejects commented / `=yes` / `CONFIG_BT_*` lines a bare substring would mis-match.
+			hasBle = NRF_BLE_RE.test(content)
 		}
 	} catch {
 		// Silent fail

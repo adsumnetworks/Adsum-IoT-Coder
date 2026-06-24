@@ -6,7 +6,13 @@
  * Extracted from WriteToFileToolHandler so the path-detection (the part that matters) is unit-testable
  * without the handler's heavy import graph / live telemetry. See design/08 + the pinned {surface,key} table.
  */
+import { CRA_ARTIFACT_DIR, CRA_SBOM_SUBDIR } from "@shared/cra-paths"
+
 export type CraArtifactKind = "sbom" | "fix" | null
+
+// Built from the shared CRA path constants so a bit-side dir rename changes ONE place (see @shared/cra-paths).
+const SBOM_PATH_RE = new RegExp(`(^|/)${CRA_SBOM_SUBDIR}/`)
+const FIX_PATH_RE = new RegExp(`(^|/)${CRA_ARTIFACT_DIR}/cra-remediation[^/]*\\.md$`)
 
 /**
  * - `"sbom"` — an SBOM file under `compliance/sbom/` (the door cleared).
@@ -18,10 +24,10 @@ export type CraArtifactKind = "sbom" | "fix" | null
 export function classifyCraArtifactPath(absolutePath: string): CraArtifactKind {
 	const norm = absolutePath.replace(/\\/g, "/")
 	// `(^|/)` so it matches both absolute (/proj/compliance/sbom/…) and relative (compliance/sbom/…) paths.
-	if (/(^|\/)compliance\/sbom\//.test(norm)) {
+	if (SBOM_PATH_RE.test(norm)) {
 		return "sbom"
 	}
-	if (/(^|\/)compliance\/cra-remediation[^/]*\.md$/.test(norm)) {
+	if (FIX_PATH_RE.test(norm)) {
 		return "fix"
 	}
 	return null

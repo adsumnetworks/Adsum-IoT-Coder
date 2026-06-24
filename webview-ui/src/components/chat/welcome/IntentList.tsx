@@ -40,6 +40,7 @@ const IntentList: React.FC<IntentListProps> = ({
 			onClick={() => runIntent(intent.id, { onSelectMode, onStartTask, projectName, platform })}
 			pill={intent.pill}
 			primary={intent.primary}
+			subline={intent.subline}
 			testId={`${testIdPrefix}-${intent.id}`}
 			title={intent.title}
 		/>

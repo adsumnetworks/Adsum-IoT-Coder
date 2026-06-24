@@ -39,7 +39,7 @@ import { consumeCraRanThisSession } from "@/services/knowledge/KnowledgeResolver
 import { getDistinctId } from "@/services/logging/distinctId"
 import { Logger } from "@/services/logging/Logger"
 import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
-import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
+import { getCachedWorkspaceFeatures, getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { telemetryService } from "@/services/telemetry"
 import { BannerCardData } from "@/shared/cline/banner"
 import { getAxiosSettings } from "@/shared/net"
@@ -997,6 +997,7 @@ export class Controller {
 			nrfEnvironment: getCachedNrfEnvironment(),
 			espEnvironment: getCachedEspEnvironment(),
 			workspaceClassification: getCachedWorkspaceSummary(),
+			workspaceFeatures: getCachedWorkspaceFeatures(),
 		}
 	}
 

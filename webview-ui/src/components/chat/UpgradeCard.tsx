@@ -62,7 +62,7 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 					marginBottom: "12px",
 					lineHeight: 1.5,
 				}}>
-				See it debug a real BLE bug in 30 seconds — no board, no key, no setup. Then point it at your own firmware.
+				Debug a real BLE bug — no board, no setup. Then point Adsum at your own firmware.
 			</div>
 
 			<div style={{ display: "flex", alignItems: "center" }}>
@@ -89,10 +89,10 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 						fontWeight: 600,
 						cursor: "pointer",
 					}}
-					title="Run the agent in your editor on real device logs with live AI — no setup"
+					title="Runs on real nRF logs — no board or setup needed."
 					type="button">
 					<i className="codicon codicon-rocket" style={{ fontSize: "13px" }} />
-					Try the live demo
+					Try it on a real BLE bug ›
 				</button>
 			</div>
 		</div>
