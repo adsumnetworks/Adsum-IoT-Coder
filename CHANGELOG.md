@@ -2,23 +2,52 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
-## [0.1.7] - 2026-06-23
+## [0.1.7] - 2026-06-24
 
 ### CRA Readiness Check — get CRA-ready as you build
 
 A new one-click **CRA Readiness Check** helps you prepare for the EU Cyber Resilience Act, on **both nRF and ESP**. It's a readiness snapshot to help you prepare — not a conformity assessment, and not legal advice.
 
 - **SBOM from your real build.** A machine-readable software bill of materials (SPDX) — the CRA's named artifact — generated from the actual build, not a guess.
-- **Secure-by-design posture.** A checklist against your build's real configuration (secure boot, signed updates, debug-port lock, secure pairing, secure storage, and more) — each ✅/⚠️/❌ with the plain-English requirement and what to do, ordered so prerequisites come first.
+- **Secure-by-design posture.** A checklist against your build's real configuration (secure boot, signed updates, debug-port lock, secure pairing, secure storage, and more) — each item evidence-grounded (the literal config fact, not a generic assertion), ordered so prerequisites come first.
 - **Advisories for your SDK version.** Surfaced with links to review — never an automatic verdict.
 - **Help you start.** The agent offers to begin closing the top gap (e.g. add a secure bootloader), routing into the normal add-feature flow.
 - Writes a `compliance/` folder: a human-readable report, a machine-readable JSON companion, and the SBOM. Run it on your project, or try it on a bundled sample with nothing open.
 
 It also tells you which CRA date applies to you up front — whether you're getting a head start on the Dec 2027 essential requirements, or already in scope for the Sep 2026 reporting duty.
 
-### Refinements
+### HCI deep-debug — three layers for BLE projects
 
-- **Cleaner platform status.** The nRF/ESP detection panel is now a compact, neutral status strip.
+When a BLE project is open (`CONFIG_BT=y` detected), the welcome screen now surfaces a one-line shortcut to the full debug stack:
+
+> **app logs · HCI · radio sniffer** *(soon)*
+
+The HCI layer is new: the extension can now parse Host Controller Interface (HCI) event streams and decode them to human-readable BLE protocol events — helping you see exactly what's happening at the controller level, not just the application log. The radio sniffer integration is coming next.
+
+### nRF terminal — self-contained, version-aware
+
+The nRF terminal now detects which NCS version your build uses and executes commands against that SDK automatically — no manual path wrangling. When you have multiple NCS installs (e.g. v3.2.1 and v3.3.1), the agent follows the build directory's version, not whichever was compiled most recently.
+
+### ESP reliability
+
+- **Multi-board builds.** When multiple ESP-IDF versions are installed, the extension now shows all of them, not just the first — removing the "ambiguous forever" state where a project pinned to a different version than the global install.
+- **Version detection on git-clone installs.** ESP-IDF git checkouts have no `version.txt`; the extension now reads `tools/cmake/version.cmake` as a reliable fallback, so the platform strip always shows the correct IDF version regardless of install method.
+
+### Welcome screen — adaptive, not static
+
+- **"Try it on a sample" picker.** A new inline picker lists available demos (BLE bug, CRA readiness check, and more). Appears when no project is open; becomes a re-run link once you've tried one.
+- **CRA nudge for BLE projects.** When a BLE project is open but has no `compliance/` folder yet, a dismissible note surfaces: "A connected product likely falls under the EU CRA — preview your secure-by-design posture." Evidence-grounded, never a verdict.
+- **Compact platform status.** The nRF/ESP detection panel collapses to a one-line summary per detected platform (e.g. `nRF · NCS 3.2.1 · nRF5340 DK`). Click to expand for full detail.
+
+### Honesty hardening
+
+The agent's CRA output is now verified against a 108-fixture scanner before it leaves the model. New rules added this release: the agent can no longer produce numeric readiness scores, "non-compliant" verdicts, or citations to CRA articles that don't exist. All posture items are evidence-mode only — literal config facts, with "verify" always the next step.
+
+### Legal
+
+- `NOTICE` file added (Apache 2.0 §4c attribution).
+- `iot-knowledge/LICENSE` makes the open k-bits' license explicit.
+- README updated: open-core model, AI limitations, trademark notices.
 
 ## [0.1.6] - 2026-06-16
 
