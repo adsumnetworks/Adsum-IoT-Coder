@@ -7,7 +7,17 @@ import { indexManifest } from "../KnowledgeResolver"
 import { composeBit, generateBody, generateFrontmatter } from "./authoring"
 import { extractFrontmatter, stripFrontmatter } from "./frontmatter"
 import { buildTree, filterEntries, formatBitDetail, formatCatalog, type ManifestEntry } from "./inspect"
-import { deriveId, detectSafety, type Issue, lintBitContent, lintCorpus } from "./lint"
+import {
+	deriveId,
+	detectSafety,
+	type Issue,
+	lintBitContent,
+	lintCorpus,
+	lintManifestFresh,
+	lintVersionBump,
+	listBitFiles,
+	parseManifestEntries,
+} from "./lint"
 import { kbitMetaSchema } from "./schema"
 
 const REPO_ROOT = join(__dirname, "..", "..", "..", "..")
@@ -258,12 +268,14 @@ describe("lintBitContent", () => {
 // ---------------------------------------------------------------- regression (real corpus)
 
 describe("regression: live corpus", () => {
-	// 17 bundled bits after the ESP+nRF un-bundle: every workflow/action/board + ESP protocols became
-	// delivery: downloaded (registry); only the always-loaded core + nRF demo-forced bits stay bundled.
-	test("corpus is fully migrated and lint-clean: 17 bits, 0 errors, 0 unmigrated", () => {
+	// 26 bits: the 17 post-un-bundle core/demo bits (delivery: bundled, open) + the 9 CRA "SBOM & Fix"
+	// bits (delivery: downloaded, LicenseRef-Adsum-Proprietary — license-follows-delivery). The CRA bits
+	// are still in the tree/manifest pre-Phase-D (resolver-loaded; bundled-wins serves them in dev); the
+	// Phase-D cutover publishes them to the registry and removes them from the manifest (count → 17).
+	test("corpus is fully migrated and lint-clean: 26 bits, 0 errors, 0 unmigrated", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
-		assert.equal(files.length, 17)
-		assert.equal(migrated, 17)
+		assert.equal(files.length, 26)
+		assert.equal(migrated, 26)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
 		assert.equal(unmigrated.length, 0)
@@ -287,17 +299,43 @@ describe("regression: live corpus", () => {
 		assert.equal(manifest.count, migrated)
 	})
 
-	// Step guard: all workflows/actions/boards + ESP protocols are un-bundled (delivery: downloaded,
-	// served by the registry). The bundled manifest must hold ONLY delivery: bundled bits; the nRF
-	// demo-forced bits MUST stay bundled (DemoManager sync-loads them); un-bundled bits must not return.
-	test("bundled manifest holds only bundled bits; demo bits stay; un-bundled bits absent", () => {
+	// Step guard: workflows/actions/boards + ESP protocols are un-bundled (delivery: downloaded, served by
+	// the registry). The bundled manifest must hold ONLY delivery: bundled bits — EXCEPT the 9 CRA "SBOM &
+	// Fix" bits, which are delivery: downloaded + proprietary and are still in the manifest **pending the
+	// Phase-D cutover** (publish to the registry → remove from the manifest). The nRF demo-forced bits MUST
+	// stay bundled (DemoManager sync-loads them); un-bundled bits must not return. When Phase D lands, the
+	// CRA ids should leave the manifest and CRA_PENDING_PUBLISH should shrink to empty.
+	const CRA_PENDING_PUBLISH = new Set([
+		"adsum/cra/workflows/cra-readiness",
+		"adsum/rules/next-step",
+		"adsum/nrf/actions/cra-generate-sbom",
+		"adsum/nrf/actions/cra-generate-sbom-fallbacks",
+		"adsum/esp/actions/cra-generate-sbom",
+		"adsum/nrf/rules/cra-posture",
+		"adsum/esp/rules/cra-posture",
+		"adsum/nrf/sdks/ncs/cra-advisories",
+		"adsum/esp/sdks/esp-idf/cra-advisories",
+	])
+	test("bundled manifest holds only bundled bits (+ CRA downloaded bits pending Phase-D); demo bits stay; un-bundled bits absent", () => {
 		const bits = JSON.parse(readFileSync(join(KNOWLEDGE_ROOT, "manifest.json"), "utf8")).bits as Array<{
 			id: string
 			delivery: string
 		}>
 		const ids = new Set(bits.map((b) => b.id))
 		for (const b of bits) {
-			assert.equal(b.delivery, "bundled", `${b.id} is in the bundled manifest but delivery="${b.delivery}"`)
+			if (CRA_PENDING_PUBLISH.has(b.id)) {
+				assert.equal(
+					b.delivery,
+					"downloaded",
+					`${b.id} should be delivery="downloaded" (proprietary, pending Phase-D publish)`,
+				)
+				continue
+			}
+			assert.equal(
+				b.delivery,
+				"bundled",
+				`${b.id} is in the bundled manifest but delivery="${b.delivery}" (unexpected downloaded bit)`,
+			)
 		}
 		// demo-forced bits MUST remain bundled (DemoManager resolveBitPathSync needs them)
 		for (const id of [
@@ -475,5 +513,112 @@ describe("inspect", () => {
 		const out = formatBitDetail(entry({}), { created: "2026-01-01", updated: "2026-06-14" })
 		assert.match(out, /created:\s+2026-01-01/)
 		assert.match(out, /updated:\s+2026-06-14/)
+	})
+})
+
+// ---------------------------------------------------------------- dev-workflow guards (Part B)
+
+const FM = (over: Partial<Record<string, string>> = {}) =>
+	[
+		"---",
+		`id: ${over.id ?? "adsum/nrf/workflows/x"}`,
+		'title: "X"',
+		"type: workflow",
+		`version: ${over.version ?? "1.0.0"}`,
+		"owner: adsum-core",
+		"author: adsum",
+		"license: CC-BY-SA-4.0",
+		"tier: certified",
+		"delivery: bundled",
+		"domain: embedded-iot",
+		"platform: nrf",
+		"---",
+	].join("\n")
+const bit = (body: string, over?: Partial<Record<string, string>>) => `${FM(over)}\n\n${body}\n`
+
+describe("parseManifestEntries", () => {
+	test("parses the bits array", () => {
+		const json = JSON.stringify({ bits: [{ id: "a", version: "1.0.0", path: "p.md", content_hash: "h" }] })
+		assert.deepEqual(parseManifestEntries(json), [{ id: "a", version: "1.0.0", path: "p.md", content_hash: "h" }])
+	})
+	test("returns [] on junk", () => {
+		assert.deepEqual(parseManifestEntries("not json"), [])
+		assert.deepEqual(parseManifestEntries("{}"), [])
+	})
+})
+
+describe("lintVersionBump", () => {
+	test("flags a body change with no version bump", () => {
+		const issues = lintVersionBump("w.md", bit("NEW body"), bit("OLD body"))
+		assert.equal(issues.length, 1)
+		assert.match(issues[0].msg, /bump `version`/)
+	})
+	test("passes when the version was bumped", () => {
+		const issues = lintVersionBump("w.md", bit("NEW body", { version: "1.1.0" }), bit("OLD body"))
+		assert.deepEqual(issues, [])
+	})
+	test("passes when the body is unchanged", () => {
+		assert.deepEqual(lintVersionBump("w.md", bit("same"), bit("same")), [])
+	})
+	test("ignores a brand-new bit (no HEAD)", () => {
+		assert.deepEqual(lintVersionBump("w.md", bit("body"), null), [])
+	})
+})
+
+describe("manifest freshness + mapping on the real corpus", () => {
+	test("committed manifest.json matches the bits on disk (no stale drift)", () => {
+		const files = listBitFiles(KNOWLEDGE_ROOT)
+		const manifestJson = readFileSync(join(KNOWLEDGE_ROOT, "manifest.json"), "utf8")
+		const errors = lintManifestFresh(KNOWLEDGE_ROOT, files, manifestJson).filter((i) => i.level === "error")
+		assert.deepEqual(
+			errors.map((e) => `${e.file}: ${e.msg}`),
+			[],
+		)
+	})
+})
+
+// C2 — R4.3: license follows delivery (bundled ⇒ open / downloaded ⇒ proprietary).
+describe("lint R4.3 — license follows delivery", () => {
+	const r43bit = (delivery: string, license: string) =>
+		[
+			"---",
+			"id: adsum/test/r43-fixture",
+			"title: R4.3 fixture",
+			"type: knowledge",
+			"version: 0.1.0",
+			"owner: adsum-core",
+			"author: adsum",
+			`license: ${license}`,
+			"tier: certified",
+			`delivery: ${delivery}`,
+			"domain: cra",
+			"---",
+			"# R4.3 fixture (test/r43-fixture.md)",
+			"body",
+		].join("\n")
+	const lint = (delivery: string, license: string) =>
+		lintBitContent("test/r43-fixture.md", r43bit(delivery, license), new Set(["adsum/test/r43-fixture"]))
+
+	test("bundled + proprietary → ERROR (the violation we hit)", () => {
+		const issues = lint("bundled", "LicenseRef-Adsum-Proprietary")
+		assert.ok(
+			issues.some((i) => i.level === "error" && /bundled bit must be open/i.test(i.msg)),
+			JSON.stringify(issues),
+		)
+	})
+	test("downloaded + open → WARN", () => {
+		const issues = lint("downloaded", "CC-BY-SA-4.0")
+		assert.ok(
+			issues.some((i) => i.level === "warn" && /downloaded bit is open/i.test(i.msg)),
+			JSON.stringify(issues),
+		)
+	})
+	test("bundled + open → no R4.3 issue", () => {
+		const issues = lint("bundled", "CC-BY-SA-4.0")
+		assert.ok(!issues.some((i) => /bundled bit must be open|downloaded bit is open/i.test(i.msg)), JSON.stringify(issues))
+	})
+	test("downloaded + proprietary (the CRA bits) → no R4.3 issue", () => {
+		const issues = lint("downloaded", "LicenseRef-Adsum-Proprietary")
+		assert.ok(!issues.some((i) => /bundled bit must be open|downloaded bit is open/i.test(i.msg)), JSON.stringify(issues))
 	})
 })

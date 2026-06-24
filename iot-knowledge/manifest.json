@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 17,
+	"count": 26,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -15,7 +15,64 @@
 			"domain": "embedded-iot",
 			"platform": "universal",
 			"path": "AGENT.md",
-			"content_hash": "e16ee219bf7132bffaa8cf783446ed01bbcd6bd0e50011c1ac3caa6c5ab82cf3"
+			"content_hash": "b0b52ef24b79031b0825a92eb095919b5eeb6438b5f6ae7005278adcffc37b93"
+		},
+		{
+			"id": "adsum/cra/workflows/cra-readiness",
+			"title": "CRA SBOM & Fix",
+			"type": "workflow",
+			"version": "0.2.3",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "cra",
+			"platform": "universal",
+			"triggers": [
+				"CRA",
+				"SBOM",
+				"fix vulnerability",
+				"CRA readiness",
+				"CRA SBOM",
+				"get CRA-ready"
+			],
+			"requires": [
+				"adsum/nrf/actions/cra-generate-sbom",
+				"adsum/esp/actions/cra-generate-sbom",
+				"adsum/nrf/rules/cra-posture",
+				"adsum/esp/rules/cra-posture",
+				"adsum/nrf/sdks/ncs/cra-advisories",
+				"adsum/esp/sdks/esp-idf/cra-advisories",
+				"adsum/rules/next-step"
+			],
+			"status": "draft",
+			"created": "2026-06-18",
+			"updated": "2026-06-24",
+			"path": "cra/workflows/cra-readiness.md",
+			"content_hash": "22014ee0488e905ec607c96b657fec5a8bb3d915897658f271c35dc9ab0d47cd"
+		},
+		{
+			"id": "adsum/esp/actions/cra-generate-sbom",
+			"title": "Generate SBOM (ESP / esp-idf-sbom)",
+			"type": "action",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "cra",
+			"platform": "esp",
+			"sdk": "esp-idf",
+			"safety": [
+				"shell",
+				"long-running"
+			],
+			"status": "draft",
+			"created": "2026-06-18",
+			"path": "platforms/esp/actions/cra-generate-sbom.md",
+			"content_hash": "6ddf398a5b501bfa4417c543a2df7bd2b27376435e0aa6d6e4d449dc5df269d8"
 		},
 		{
 			"id": "adsum/esp/platform",
@@ -33,6 +90,25 @@
 			"content_hash": "0ea9e21dc1e75def74989190f5cfdf4d62d26916ce0a1cef73f0902aa8e72b87"
 		},
 		{
+			"id": "adsum/esp/rules/cra-posture",
+			"title": "CRA Secure-by-Design Posture (ESP)",
+			"type": "knowledge",
+			"version": "0.2.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "cra",
+			"platform": "esp",
+			"sdk": "esp-idf",
+			"status": "draft",
+			"created": "2026-06-18",
+			"updated": "2026-06-22",
+			"path": "platforms/esp/rules/cra-posture.md",
+			"content_hash": "840184fa0b1c5340628c6a4ece25925b31650bcfdc227cb5f36e9722ba62cbc5"
+		},
+		{
 			"id": "adsum/esp/rules/device-identity",
 			"title": "ESP Platform Rule: Device Identity",
 			"type": "knowledge",
@@ -45,7 +121,7 @@
 			"domain": "embedded-iot",
 			"platform": "esp",
 			"path": "platforms/esp/rules/device-identity.md",
-			"content_hash": "506e2fc650b6c37ea43ff8cb14b6dc26a9160ce7feabaed41f896a35e620c173"
+			"content_hash": "b469d5972789f7f479e6a575e3d5c936c8b0ffc5b7c73f640d845eda1ebf6df5"
 		},
 		{
 			"id": "adsum/esp/rules/esp-terminal",
@@ -76,6 +152,24 @@
 			"platform": "esp",
 			"path": "platforms/esp/rules/skill-loading.md",
 			"content_hash": "74fb0b588b056d5162af90bf26d769f7867d76fb513dcd0cef505e7a379b93f2"
+		},
+		{
+			"id": "adsum/esp/sdks/esp-idf/cra-advisories",
+			"title": "CRA Advisory Snapshot (ESP-IDF)",
+			"type": "knowledge",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "cra",
+			"platform": "esp",
+			"sdk": "esp-idf",
+			"status": "draft",
+			"created": "2026-06-23",
+			"path": "platforms/esp/sdks/esp-idf/cra-advisories.md",
+			"content_hash": "de4dddfc3b8c2ea961bbf0ed3437f397a71a6dadfb15edf331463b0a1c37c952"
 		},
 		{
 			"id": "adsum/esp/sdks/esp-idf/sdk",
@@ -109,6 +203,61 @@
 			],
 			"path": "platforms/nrf/actions/capture-logs.md",
 			"content_hash": "ed01076abac0f0d70c68eff8b249fe574ec1560e5ab6057bf45ef1d300a54680"
+		},
+		{
+			"id": "adsum/nrf/actions/cra-generate-sbom",
+			"title": "Generate SBOM (nRF / west ncs-sbom)",
+			"type": "action",
+			"version": "0.2.1",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "cra",
+			"platform": "nrf",
+			"sdk": "ncs",
+			"requires": [
+				"adsum/nrf/actions/cra-generate-sbom-fallbacks"
+			],
+			"last_verified": {
+				"date": "2026-06-23",
+				"env": "NCS 3.2.1 / nRF5340DK dual-core sysbuild"
+			},
+			"safety": [
+				"shell",
+				"long-running"
+			],
+			"status": "draft",
+			"created": "2026-06-18",
+			"updated": "2026-06-23",
+			"path": "platforms/nrf/actions/cra-generate-sbom.md",
+			"content_hash": "9f5158cd3161310f15dd09ccf35fff17207c41a08bb7de401570da0f4e1d2c10"
+		},
+		{
+			"id": "adsum/nrf/actions/cra-generate-sbom-fallbacks",
+			"title": "SBOM fallbacks (nRF / west spdx + SBOM-lite)",
+			"type": "action",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "cra",
+			"platform": "nrf",
+			"sdk": "ncs",
+			"loaded_by": [
+				"adsum/nrf/actions/cra-generate-sbom"
+			],
+			"safety": [
+				"shell",
+				"long-running"
+			],
+			"status": "draft",
+			"created": "2026-06-22",
+			"path": "platforms/nrf/actions/cra-generate-sbom-fallbacks.md",
+			"content_hash": "df199ce04c1d62fcde6383609ced4e0cb3551081335353afcec0a871c0d37667"
 		},
 		{
 			"id": "adsum/nrf/actions/flash",
@@ -149,6 +298,25 @@
 			"content_hash": "bbc4e2fbc7b53e0bb5864e121ff031ecffbb5f7bdbe1213c986af546c0bab320"
 		},
 		{
+			"id": "adsum/nrf/rules/cra-posture",
+			"title": "CRA Secure-by-Design Posture (nRF)",
+			"type": "knowledge",
+			"version": "0.2.2",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "cra",
+			"platform": "nrf",
+			"sdk": "ncs",
+			"status": "draft",
+			"created": "2026-06-18",
+			"updated": "2026-06-23",
+			"path": "platforms/nrf/rules/cra-posture.md",
+			"content_hash": "1ec9dd0a578d6c0873dd48d3ab3c236a93dfb7de0beb6c70ce7eba937ed657af"
+		},
+		{
 			"id": "adsum/nrf/rules/device-identity",
 			"title": "Device Identity Rule",
 			"type": "knowledge",
@@ -167,7 +335,7 @@
 			"id": "adsum/nrf/rules/nrf-terminal",
 			"title": "nRF Platform Rule: nRF Connect Terminal",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -180,7 +348,7 @@
 				"process-kill"
 			],
 			"path": "platforms/nrf/rules/nrf-terminal.md",
-			"content_hash": "edf4733f1317b09bfcc40f23486bc391a2813c67567678779b3e3df98b102bf3"
+			"content_hash": "d83d9611adbdbeb0131e277527a4e80232e6a475e57f4099d3d7d9a029403d66"
 		},
 		{
 			"id": "adsum/nrf/rules/skill-loading",
@@ -201,10 +369,28 @@
 			"content_hash": "715eb48c32d45af0a7ce91d2e48d5a443d59614cd27225e1a7a296383af98531"
 		},
 		{
+			"id": "adsum/nrf/sdks/ncs/cra-advisories",
+			"title": "CRA Advisory Snapshot (NCS)",
+			"type": "knowledge",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "cra",
+			"platform": "nrf",
+			"sdk": "ncs",
+			"status": "draft",
+			"created": "2026-06-18",
+			"path": "platforms/nrf/sdks/ncs/cra-advisories.md",
+			"content_hash": "382f94be62b3f89d21eef3d94d1010d1e96d48a52c6af5edd5a02d3319280a26"
+		},
+		{
 			"id": "adsum/nrf/sdks/ncs/protocols/ble",
 			"title": "BLE Protocol Knowledge — NCS / Zephyr",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -213,7 +399,7 @@
 			"domain": "embedded-iot",
 			"platform": "nrf",
 			"path": "platforms/nrf/sdks/ncs/protocols/BLE.md",
-			"content_hash": "551155bb73ef28ea21a79e8d2d2c3b468963976633c0444d5d910a12df4f84dd"
+			"content_hash": "fccb8b6d18ae88d8324454abaabc4f2e1fae34b25451666124c0395393846fc2"
 		},
 		{
 			"id": "adsum/nrf/sdks/ncs/sdk",
@@ -263,6 +449,24 @@
 			"platform": "universal",
 			"path": "rules/core.md",
 			"content_hash": "7656f94ececcc969cfbf529683df218074e3f415cc23b8b6d3e7a4ebd92b2cc7"
+		},
+		{
+			"id": "adsum/rules/next-step",
+			"title": "Productive Next-Step Loop",
+			"type": "knowledge",
+			"version": "0.1.3",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "embedded-iot",
+			"platform": "universal",
+			"status": "draft",
+			"created": "2026-06-22",
+			"updated": "2026-06-24",
+			"path": "rules/next-step.md",
+			"content_hash": "33abec6c18f5a3f8503938f45b9d14cb17d9cbe23227035960ec692e5cfd1ed2"
 		},
 		{
 			"id": "adsum/rules/tool-routing",

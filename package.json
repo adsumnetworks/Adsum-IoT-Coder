@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug & Dev",
 	"description": "Open-source AI debug & dev tool for Espressif ESP32 / ESP-IDF and Nordic nRF Connect SDK (Zephyr). Builds, flashes, and debugs firmware on real hardware, generates logging code, and analyzes device logs.",
-	"version": "0.1.6",
+	"version": "0.1.7",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -52,7 +52,8 @@
 		"ai-agent",
 		"coding-agent",
 		"cra",
-		"cyber-resilience-act"
+		"cyber-resilience-act",
+		"sbom"
 	],
 	"activationEvents": [
 		"onLanguage",
@@ -363,6 +364,11 @@
 		"gen:kbit-manifest": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/gen-kbit-manifest.ts",
 		"test:kbits": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/kbit.test.ts",
 		"test:registry": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/registry/registry.test.ts",
+		"test:cra-honesty": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/verdictScan.test.ts",
+		"test:cra-artifact": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/craArtifact.test.ts",
+		"test:workspace": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/platform/WorkspaceClassifier.node-test.ts",
+		"test:cve": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/cra/all.node-test.ts",
+		"test:cra": "npm-run-all test:kbits test:cra-honesty test:cra-artifact test:workspace test:cve",
 		"kbit": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit.ts",
 		"qa": "bash qa/regression/run.sh",
 		"format": "biome format --changed --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error",

@@ -6,7 +6,7 @@ import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
-import { isRegistryReachable, loadBitByKbPath } from "@/services/knowledge/KnowledgeResolver"
+import { isBareBitPath, isRegistryReachable, loadBitByKbPath, loadBitByRel } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import { ClineSayTool } from "@/shared/ExtensionMessage"
 import { ClineDefaultTool } from "@/shared/tools"
@@ -78,7 +78,7 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 
 		// Resolve the absolute path based on multi-workspace configuration
 		const pathResult = resolveWorkspacePath(config, relPath!, "ReadFileToolHandler.execute")
-		const { absolutePath, displayPath } =
+		let { absolutePath, displayPath } =
 			typeof pathResult === "string" ? { absolutePath: pathResult, displayPath: relPath! } : pathResult
 
 		// Determine workspace context for telemetry
@@ -182,10 +182,26 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			}
 		}
 
+		// Recovery for a common agent mistake: the knowledge base's own cross-reference tables
+		// (skill-loading.md, PLATFORM.md, …) show skill paths RELATIVE to the iot-knowledge root
+		// (e.g. "platforms/nrf/workflows/debug-loop.md") even though the system prompt's CRITICAL
+		// RULE asks for the full absolute path. When that happens, `relPath` resolves against the
+		// WORKSPACE cwd instead and 404s before the P2.5 un-bundled-bit fallback below even gets a
+		// chance to run (it only fires when absolutePath already contains "iot-knowledge"). Redirect
+		// unconditionally (not gated on the file existing bundled-on-disk): P2.5's loadBitByKbPath
+		// derives the bit id from the path string alone and tries bundled → cache → registry, so a
+		// referenced-but-not-yet-bundled file (like debug-loop.md) still resolves correctly instead
+		// of surfacing a confusing raw workspace "File not found". Only engages when the primary
+		// resolution already failed, so it can't affect any normal (already-working) read.
+		const knowledgeRoot = path.join(HostProvider.get().extensionFsPath, "iot-knowledge")
+		if (relPath && !absolutePath.startsWith(knowledgeRoot + path.sep) && !(await fileAccessible(absolutePath))) {
+			absolutePath = path.join(knowledgeRoot, relPath)
+			displayPath = path.join("iot-knowledge", relPath)
+		}
+
 		// No-double-load guard: iot-knowledge skill files don't change during a task, and many are
 		// pre-loaded into the system prompt. If the agent re-reads one it already pulled this task
 		// (bundled OR downloaded), return a short stub instead of the full text to save context.
-		const knowledgeRoot = path.join(HostProvider.get().extensionFsPath, "iot-knowledge")
 		const isKnowledgeFile = absolutePath.startsWith(knowledgeRoot + path.sep)
 		if (isKnowledgeFile && config.taskState.loadedKnowledgeFiles.has(absolutePath)) {
 			return (
@@ -194,13 +210,17 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			)
 		}
 
-		// P2.5: un-bundled on-demand K-bit. If a bundled-tree (iot-knowledge) path isn't on disk, it may
-		// be a DOWNLOADED bit — resolve it through the registry (cache → fetch → hash-verify) so the
-		// agent's on-demand `read_file <kbDir>/…/X.md` still works for downloaded workflows/actions.
-		// Self-guarded (returns null for non-iot-knowledge paths) and only runs when the file is missing,
-		// so it has no effect on normal reads.
-		if (absolutePath.includes("iot-knowledge") && !(await fileAccessible(absolutePath))) {
-			const bitBody = await loadBitByKbPath(absolutePath)
+		// P2.5: un-bundled on-demand K-bit. A bundled-tree path that isn't on disk may be a DOWNLOADED
+		// bit — resolve it through the registry (cache → fetch → hash-verify) so the agent's on-demand
+		// `read_file <kbDir>/…/X.md` still works for downloaded workflows/actions. Two shapes:
+		//   (a) absolute iot-knowledge path (already includes the dir), or
+		//   (b) a BARE bundled-tree relative path (e.g. "platforms/nrf/workflows/debug-loop.md") that
+		//       resolved against the workspace — without this it 404s and the agent retries the absolute
+		//       path (the "file not found then recover" loop). Self-guarded to bit roots, only when missing.
+		const isAbsKbPath = absolutePath.includes("iot-knowledge")
+		const isBarePath = !isAbsKbPath && isBareBitPath(relPath)
+		if ((isAbsKbPath || isBarePath) && !(await fileAccessible(absolutePath))) {
+			const bitBody = isAbsKbPath ? await loadBitByKbPath(absolutePath) : await loadBitByRel(relPath!)
 			if (bitBody) {
 				if (isKnowledgeFile) {
 					config.taskState.loadedKnowledgeFiles.add(absolutePath)

@@ -32,7 +32,7 @@ const TenureNudge: React.FC<TenureNudgeProps> = ({ onStartDemo }) => {
 					New here?
 				</div>
 				<div style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)" }}>
-					Watch it find a real BLE bug in 60 seconds — no setup, no hardware.
+					Try Adsum on a real BLE bug — no setup, no hardware needed.
 				</div>
 			</div>
 			<button
@@ -56,7 +56,7 @@ const TenureNudge: React.FC<TenureNudgeProps> = ({ onStartDemo }) => {
 					transition: "background 0.15s, color 0.15s",
 				}}
 				type="button">
-				Show me ›
+				Try it ›
 			</button>
 		</div>
 	)

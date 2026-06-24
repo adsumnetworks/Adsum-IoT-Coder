@@ -97,7 +97,7 @@ const DemoCard: React.FC<DemoCardProps> = ({ onStartDemo, disabled = false, vari
 									marginBottom: "4px",
 									lineHeight: "1.3",
 								}}>
-								See it debug a real bug
+								Debug a real BLE bug
 							</div>
 							<div
 								style={{

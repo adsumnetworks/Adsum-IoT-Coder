@@ -32,7 +32,7 @@ import {
 } from "./chat-view"
 import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
-import { NORDIC_MODES, type NordicModeId, TASK_COMPLETE_MARKER } from "./nordicModes"
+import { isNordicTaskComplete, NORDIC_MODES, type NordicModeId } from "./nordicModes"
 import NextStepChooser from "./welcome/NextStepChooser"
 import WelcomeView from "./welcome/WelcomeView"
 
@@ -416,7 +416,10 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	useEffect(() => {
 		if (nordicPhase === "active" && modifiedMessages.length > 0) {
 			const last = modifiedMessages[modifiedMessages.length - 1]
-			if (last?.type === "say" && last?.say === "text" && last?.text?.includes(TASK_COMPLETE_MARKER)) {
+			// Complete on the workflow's marker OR on attempt_completion (completion_result) — see
+			// isNordicTaskComplete. The latter is the R4 safety-net: the next-step menu renders even when the
+			// model ends the task via the completion tool, including a premature exit.
+			if (isNordicTaskComplete(last)) {
 				setNordicPhase("task_complete")
 			}
 		}

@@ -4,8 +4,9 @@ import { HostProvider } from "@/hosts/host-provider"
 import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import { deriveIdFromRel, loadBit } from "@/services/knowledge/KnowledgeResolver"
 import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
+import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { routePlatform } from "@/services/platform/platformRouting"
-import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
+import { getCachedWorkspaceSummary, NRF_BLE_RE } from "@/services/platform/WorkspaceClassifier"
 import { fileExistsAtPath } from "@/utils/fs"
 // import { IotProjectMemoryManager } from "../../../memory/IotProjectMemoryManager"
 import { SystemPromptSection } from "../templates/placeholders"
@@ -118,7 +119,9 @@ async function detectProjectFeatures(
 	try {
 		if (await fileExistsAtPath(prjConfPath)) {
 			const content = await fs.readFile(prjConfPath, "utf-8")
-			hasBle = content.includes("CONFIG_BT=y")
+			// Shared anchored test with the welcome-screen probe (WorkspaceClassifier) so the two BLE detectors
+			// agree — rejects commented / `=yes` / `CONFIG_BT_*` lines a bare substring would mis-match.
+			hasBle = NRF_BLE_RE.test(content)
 		}
 	} catch {
 		// Silent fail
@@ -375,6 +378,28 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 
 	// Always load: NCS SDK knowledge (project structure, Kconfig, build reference)
 	ctx += (await load("platforms/nrf/sdks/ncs/SDK.md")) + "\n\n"
+
+	// Surface the NCS-version picture so the agent SEES which toolchain the device tool will use and
+	// can disambiguate when needed (rules/nrf-terminal.md). The host bridge auto-resolves the version
+	// (project build pin → single install → ask once) and sources the toolchain in the background; this
+	// block just makes the state visible. Empty (e.g. snapshot tests, before detection) → nothing added.
+	const nrf = getCachedNrfEnvironment()
+	const installed = nrf.installedSdkVersions ?? []
+	if (nrf.projectSdk?.version || installed.length > 0) {
+		const norm = (v?: string) => v?.replace(/^v/, "")
+		const pin = nrf.projectSdk?.version
+		const pinInstalled = pin && installed.some((v) => norm(v) === norm(pin))
+		ctx += "#### nRF Connect SDK Version\n"
+		ctx += `- Installed NCS toolchains: ${installed.length > 0 ? installed.join(", ") : "none detected"}\n`
+		ctx += `- Project pin (${nrf.projectSdk?.source ?? "none"}): ${pin ?? "none yet (not built)"}\n`
+		if (pin && installed.length > 0 && !pinInstalled) {
+			ctx += `- ⚠ The project pins ${pin} but it is not among the installed toolchains — confirm with the user which NCS to use.\n`
+		}
+		ctx +=
+			installed.length > 1 && !pin
+				? "- Several NCS versions are installed and this project has no build yet. The device tool will ask once which to use, then remember it; pass `ncs_version` when you re-run.\n\n"
+				: "- The device tool resolves the NCS version and sources the toolchain automatically (in its own terminal). Never open the nRF terminal or source the env by hand.\n\n"
+	}
 
 	// On-demand: Feature-based loading
 	const { hasBle, builds } = await detectProjectFeatures(cwd)

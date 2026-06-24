@@ -171,6 +171,87 @@ analysis didn't run rather than completing with a canned diagnosis.)
 ${escalation}`
 }
 
+// ── CRA-on-sample scenario (the guaranteed 2nd picker entry — A1.2) ────────────
+// Runs the REAL cra-readiness workflow on the bundled sample via the workflow's preview path. No canned
+// result: the bit drives it (SBOM ladder degrades to SBOM-lite without NCS), so honesty is the bit's job.
+
+/** Chat-bubble text for the CRA-on-sample preview. Its prefix is what hasRunDemo matches for this scenario. */
+export function buildCraSampleDisplayText(): string {
+	return (
+		"Preview CRA readiness on a bundled sample — a real SBOM + a secure-by-design posture for the EU Cyber " +
+		"Resilience Act, on our nRF sample (not your build)."
+	)
+}
+
+/** Prompt that runs the cra-readiness workflow on the bundled sample (preview path). Thin trigger; the bit leads. */
+function buildCraSamplePrompt(samplePath: string): string {
+	const workflowFile =
+		resolveBitPathSync("adsum/cra/workflows/cra-readiness") ??
+		path.join(_extensionPath!, "iot-knowledge", "cra", "workflows", "cra-readiness.md")
+	return `Run CRA SBOM & Fix on the bundled sample project at ${samplePath}.
+
+[ADSUM_DEMO:cra-sample] This is OUR bundled nRF sample (central_uart), NOT the user's own project — it is the \
+workflow's PREVIEW path. Detect the platform, generate the SBOM, preview the secure-by-design posture, surface \
+the top gap, then offer to start closing it.
+
+Hard rules for this sample run:
+- Load and follow the workflow exactly: read_file ${workflowFile}. It carries the honesty rules — evidence-mode \
+only, NO verdicts / grades / scores (no status glyphs, no "MET"/"READY"/"GOOD", no "N/10" or aggregate score, no \
+"non-compliant"), the mandatory "# CRA SBOM & Fix" title + the "Readiness aid — NOT a conformity assessment" \
+disclaimer, and curated citations only (Annex Part I / Part II + the curated Article 14 — never invent a sub-clause \
+such as "Article 3(8)").
+- It is our READ-ONLY sample: NEVER write into it or the extension. Show the report INLINE; ask via \
+ask_followup_question before saving, and only on consent save to a namespaced folder under the user's Desktop. \
+State plainly the result describes the sample, not the user's product — for their own build they run it on their code.
+- Follow the productive next-step loop: after the preview, offer the top gap as one concrete, decline-able step; \
+do NOT call attempt_completion while a high-value gap is still un-offered and the user has not declined.`
+}
+
+// ── Scenario registry (id-keyed) ──────────────────────────────────────────────
+// A1: the demo system is generalizing from a single hardcoded scenario to an id-keyed registry so the
+// welcome "Try it on a sample" picker can host more than one demo (CRA-on-sample, Omar's HCI). Today the
+// only live entry is nus-uart, wrapping the functions above unchanged — adding a scenario is now additive.
+
+export interface HostDemoScenario {
+	/** Stable id, also the telemetry key (matches the `[ADSUM_DEMO:<id>]` trigger). */
+	id: string
+	/** The exact trigger token the webview sends for this scenario. */
+	triggerToken: string
+	/** Prepare the bundle (if any) + build the full agent prompt and the chat-bubble display text. */
+	buildTask(env: NrfEnvironment | undefined): Promise<{ taskText: string; displayText: string }>
+}
+
+const HOST_DEMO_SCENARIOS: Record<string, HostDemoScenario> = {
+	[SCENARIO_ID]: {
+		id: SCENARIO_ID,
+		triggerToken: DEMO_TRIGGER,
+		async buildTask(env) {
+			const ws = await prepareDemoWorkspace()
+			const capability = classifyDemoCapability(env)
+			return { taskText: buildDemoPrompt(ws, capability, env), displayText: buildDemoDisplayText() }
+		},
+	},
+	"cra-sample": {
+		id: "cra-sample",
+		triggerToken: "[ADSUM_DEMO:cra-sample]",
+		async buildTask() {
+			const ws = await prepareDemoWorkspace()
+			return { taskText: buildCraSamplePrompt(ws.centralPath), displayText: buildCraSampleDisplayText() }
+		},
+	},
+}
+
+/** Extract the demo id from an `[ADSUM_DEMO:<id>]` trigger; null if absent or not registered. */
+export function parseDemoTrigger(text: string): string | null {
+	const id = text.match(/\[ADSUM_DEMO:([a-z0-9-]+)\]/i)?.[1]
+	return id && id in HOST_DEMO_SCENARIOS ? id : null
+}
+
+/** Look up a registered host demo scenario by id. */
+export function getHostDemoScenario(id: string): HostDemoScenario | undefined {
+	return HOST_DEMO_SCENARIOS[id]
+}
+
 // ── Private helpers ───────────────────────────────────────────────────────────
 
 function buildEscalationBlock(capability: DemoCapability, ws: DemoWorkspace, env?: NrfEnvironment): string {

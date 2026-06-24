@@ -2,7 +2,7 @@
 id: adsum/nrf/sdks/ncs/protocols/ble
 title: "BLE Protocol Knowledge — NCS / Zephyr"
 type: knowledge
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -132,3 +132,13 @@ CONFIG_LOG_PROCESS_THREAD_SLEEP_MS=10
 
 ### nRF5340 Dual-Core BLE Logging
 See `boards/nrf5340.md` for network core logging setup.
+
+## BLE Sub-bits — Map (discovery)
+
+These deepen specific BLE topics. They are **fetched on demand** (downloaded) — load by id when the
+symptom matches. This index is how you learn they exist; don't skip them when relevant.
+
+| id | When to load | Delivery |
+|---|---|---|
+| `adsum/nrf/workflows/hci-trace` | A BLE bug app/stack logs can't explain and you need host↔controller evidence: pairing fails on one side, conn params won't update, PHY won't switch, GATT works on phone not peer, controller crash, timing-sensitive BLE bug. Drives: enable monitor → capture → decode → present. | downloaded — fetched on demand |
+| `adsum/nrf/sdks/ncs/protocols/ble/hci-monitor` | You already have a decoded HCI trace (`logs/hci/*.hci.log`) and need the expert layer — request→status→outcome chain reading, failure-signature table, cross-layer correlation. Loaded by the `hci-trace` workflow. | downloaded — fetched on demand |

@@ -21,7 +21,11 @@ import { exec } from "child_process"
 import { existsSync, readdirSync, readFileSync } from "fs"
 import { join } from "path"
 import { promisify } from "util"
-import { enumerateIdfInstalls, resolveIdfPath } from "../../hosts/vscode/hostbridge/workspace/idfEnvResolver"
+import {
+	enumerateIdfInstalls,
+	parseIdfVersionCmake,
+	resolveIdfPath,
+} from "../../hosts/vscode/hostbridge/workspace/idfEnvResolver"
 import { classifyWorkspace } from "../platform/WorkspaceClassifier"
 import { type ChipResult, getIdfPython, probeChip } from "./espChipProbe"
 
@@ -194,15 +198,30 @@ export function filterEspPorts(ports: RawPortData[]): EspDevice[] {
 // Subprocess probes
 // ---------------------------------------------------------------------------
 
-/** Read IDF version from {idfPath}/version.txt (ship on every IDF release). */
+/**
+ * Read IDF version from {idfPath}/version.txt (release tarballs / EIM installs), falling back to
+ * {idfPath}/tools/cmake/version.cmake (always present — covers git-clone installs that ship no
+ * version.txt, so they no longer show a blank version in the env strip).
+ */
 function readIdfVersion(idfPath: string): string | undefined {
 	const versionFile = join(idfPath, "version.txt")
-	if (!existsSync(versionFile)) return undefined
-	try {
-		return parseIdfVersionFile(readFileSync(versionFile, "utf8"))
-	} catch {
-		return undefined
+	if (existsSync(versionFile)) {
+		try {
+			const v = parseIdfVersionFile(readFileSync(versionFile, "utf8"))
+			if (v) return v
+		} catch {
+			// fall through to version.cmake
+		}
 	}
+	const cmakeFile = join(idfPath, "tools", "cmake", "version.cmake")
+	if (existsSync(cmakeFile)) {
+		try {
+			return parseIdfVersionCmake(readFileSync(cmakeFile, "utf8"))
+		} catch {
+			return undefined
+		}
+	}
+	return undefined
 }
 
 export interface EspBuildInfo {
@@ -371,6 +390,9 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 
 	const idfPresent = !!idfPath
 	const idfVersion = idfPath ? readIdfVersion(idfPath) : undefined
+	// Every install's version (de-duped) so the strip lists ALL of them, not just installs[0] —
+	// otherwise it asserts one active version while a build with several installed asks which to use.
+	const installedVersions = Array.from(new Set(installs.map((i) => i.version).filter((v): v is string => !!v)))
 	// Project IDF version: dependencies.lock is the reliable source (present once
 	// components resolve, even without a completed build); the build descriptor's
 	// idf_version is only a forward-compatible fallback. "built" is independent.
@@ -393,6 +415,7 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 		idfPresent,
 		idfPath: idfPath ?? undefined,
 		idfVersion,
+		installedVersions,
 		projectBuilt,
 		projectIdfVersion,
 		projectDetected,

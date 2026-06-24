@@ -26,6 +26,7 @@ export type IntentId =
 	| "buildFlash"
 	| "buildFlashDebug"
 	| "testValidate"
+	| "craCheck"
 	| "sdkMigration"
 	| "boardBringUp"
 
@@ -38,9 +39,19 @@ export interface IntentDef {
 	primary?: boolean
 	/** Small pill shown next to the title (e.g. "Start here"). */
 	pill?: string
+	/** Optional one-line capability sub-line under the description (injected conditionally, e.g. A10). */
+	subline?: string
 	/** Roadmap card — rendered disabled under an "on the roadmap" divider, never routes. */
 	comingSoon?: boolean
 }
+
+/**
+ * A10 — the deep-debug capability ladder shown under "Build, flash & debug" for BLE projects.
+ * Protocol-neutral (no "BLE" in the label — a Wi-Fi sniffer variant lands later). HCI is the no-dongle
+ * layer (lands this sprint); the radio sniffer is the additive frontier (EOS). It names the ladder — it
+ * is not a promise that every layer is live today, so it degrades truthfully if the sniffer slips.
+ */
+export const DEEP_DEBUG_SUBLINE = "↳ deep debug — app logs → HCI → radio sniffer (soon)"
 
 export type WorkspacePlatform = "nrf" | "esp" | "both" | "none"
 
@@ -61,7 +72,7 @@ export function buildIntentPrompt(id: IntentId, projectName?: string, platform: 
 		case "debug":
 			return "Stream RTT or UART logs and find the root cause — I'll add logging first if it's missing."
 		case "buildFlash":
-			return `Build and flash ${proj} — run the loop, build, flash, and watch it come up.`
+			return `Build and flash ${proj} — run the loop: build it, flash it, and bring it up.`
 		case "buildFlashDebug":
 			return `Build, flash and debug ${proj} — build and flash it to the board, stream the logs, and help me find any issue.`
 		case "testValidate":
@@ -70,6 +81,8 @@ export function buildIntentPrompt(id: IntentId, projectName?: string, platform: 
 			if (platform === "both")
 				return `Test and validate ${proj} — host/simulator tests now, on-hardware checks when a board is connected.`
 			return `Test and validate ${proj} — host tests with native_sim, on-hardware checks when boards are connected.`
+		case "craCheck":
+			return `Run CRA SBOM & Fix on ${proj} — pull together my SBOM from my real build, preview my secure-by-design posture against the EU Cyber Resilience Act, and surface the top gap so I can decide what to change.`
 		case "demo":
 			return "Demo: BLE NUS one-directional bug — no setup needed\n\n[ADSUM_DEMO:nus-uart]"
 		case "openProject":
@@ -100,17 +113,23 @@ export function intentDescription(intent: IntentDef, projectName?: string, platf
 		if (platform === "both") {
 			return "Tell me what you're building (nRF/Zephyr or ESP-IDF) — I'll scaffold from the right verified sample."
 		}
-		return "Tell me what you're building — I'll scaffold from the right verified Nordic sample."
+		return "Tell me what you're building — your prototype, scaffolded from the right verified Nordic sample, ready for you to build on."
 	}
 	if (intent.id === "testValidate") {
 		if (platform === "esp") {
 			return "Prove it works — host/QEMU Unity tests now, on-hardware checks when a board's connected."
+		}
+		if (platform === "both") {
+			return "Prove it works — host/simulator tests now, on-hardware checks when a board's connected."
 		}
 		return intent.description
 	}
 	if (intent.id === "sdkMigration") {
 		if (platform === "esp") {
 			return "Bump to a newer ESP-IDF release — I surface the breaking changes and fix them with you."
+		}
+		if (platform === "both") {
+			return "Bump to a newer nRF Connect SDK or ESP-IDF release — I surface the breaking changes and fix them with you."
 		}
 		return intent.description
 	}
@@ -145,8 +164,14 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 		id: "prototype",
 		icon: "tools",
 		title: "Start a prototype",
-		description: "Tell me what you're building — I'll scaffold from the right verified Nordic sample.",
-		primary: true,
+		description: "Tell me what you're building — I'll scaffold from the right verified sample.",
+	},
+	{
+		id: "craCheck",
+		icon: "shield",
+		title: "Preview CRA readiness",
+		description: "A real SBOM + secure-by-design posture on a bundled sample — not your build. Get ahead of the EU CRA.",
+		pill: "New",
 	},
 	{
 		id: "openProject",
@@ -167,7 +192,7 @@ export const PROJECT_INTENTS: IntentDef[] = [
 		id: "buildFlashDebug",
 		icon: "zap",
 		title: "Build, flash & debug",
-		description: "I'll build your code, flash it to the board, stream the logs, and help you find any issue.",
+		description: "Build, flash & stream live logs.",
 		primary: true,
 		pill: "Start here",
 	},
@@ -175,13 +200,21 @@ export const PROJECT_INTENTS: IntentDef[] = [
 		id: "addFeature",
 		icon: "extensions",
 		title: "Add a feature",
-		description: "A Zephyr shell, a BLE service, NVS storage… wired into your real project, not a sample.",
+		description: "Add a Zephyr shell, a BLE service, NVS storage… to your real project, not a sample.",
 	},
 	{
 		id: "testValidate",
 		icon: "beaker",
 		title: "Test & validate",
 		description: "Prove it works — host tests (native_sim) now, on-hardware checks when a board's connected.",
+	},
+	{
+		id: "craCheck",
+		icon: "shield",
+		title: "CRA SBOM & Fix",
+		description:
+			"From your real build: an SBOM, a secure-by-design posture preview, and a readiness check — so you decide what to fix before the EU CRA.",
+		pill: "New",
 	},
 	{
 		id: "sdkMigration",
@@ -194,7 +227,7 @@ export const PROJECT_INTENTS: IntentDef[] = [
 		id: "boardBringUp",
 		icon: "circuit-board",
 		title: "Board Bring-Up",
-		description: "Move from a DK to your custom board — generate the board files and map the pins.",
+		description: "Bring up your custom board from a DK — board files drafted and pins mapped, ready for you to verify.",
 		comingSoon: true,
 	},
 ]
