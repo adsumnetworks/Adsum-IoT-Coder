@@ -61,6 +61,20 @@ test("no-match report is verdict-clean and does NOT read as 'clean'", () => {
 	assert.match(report, /not a complete check/)
 })
 
+test("EDGE: component names containing verdict words ('libfixed', 'clearwater') stay verdict-clean", () => {
+	const tricky: OsvMatch = {
+		component: { name: "libfixed-clearwater-affected", version: "1.0", purl: "pkg:generic/libfixed@1.0" },
+		vulnIds: ["CVE-2025-0001"],
+	}
+	const report = formatCveScanReport({
+		findings: [{ match: tricky, applicability: assessApplicability(undefined, {}) }],
+		skipped: [],
+		queriedCount: 1,
+		asOf: "2026-06-24",
+	})
+	assert.equal(isVerdictClean(report), true, `verdict-word component name tripped the scanner:\n${report}`)
+})
+
 test("coverage line is honest about cpe-only + no-identifier gaps", () => {
 	const report = formatCveScanReport({ findings: [], skipped, queriedCount: 5, asOf: "2026-06-24" })
 	assert.match(report, /1 cpe-only \(not OSV-queryable\)/)
