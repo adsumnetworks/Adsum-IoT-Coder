@@ -2,7 +2,7 @@
 id: adsum/rules/next-step
 title: "Productive Next-Step Loop"
 type: knowledge
-version: 0.1.2
+version: 0.1.3
 owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
@@ -11,7 +11,7 @@ delivery: downloaded
 domain: embedded-iot
 platform: universal
 created: "2026-06-22"
-updated: "2026-06-23"
+updated: "2026-06-24"
 status: draft
 ---
 
@@ -47,9 +47,16 @@ or the dev says "done".
    live evidence** (re-read the merged `.config`); the offer pool = regenerated gaps **minus accepted**; never
    offer from the pre-action list, never rely on a second prose re-read. (Offering a fix the dev just applied
    is the worst trust-killer after lying.)
-5. **Deterministic exit — governed by the finite pre-computed source only.** When its high-value items are
-   done (or the dev declines / says "done"), there's nothing left → stop. The reasoned class is unbounded, so
-   it can never govern the exit. No streaks, no nags, no "you're 1 step from compliant".
+5. **Deterministic exit — and these are the ONLY two exits.** Exit when **(a)** the pre-computed gap list is
+   empty (every high-value gap applied or explicitly skipped by the dev), **OR (b)** the dev declines / says
+   "done". **Nothing else ends the loop.** Applying the ONE fix the dev picked is **NOT** an exit — re-derive
+   the gap list (rule 4) and offer the next one. The **preview / bundled-sample path is NOT an exit** (on a
+   sample the dev still gets to pick the next gap). "The remaining gaps are for the dev to apply", "the report
+   is written", "they seem satisfied" are **NOT** exits. **While ≥1 high-value gap remains AND the dev hasn't
+   declined, your next move is another decline-able offer — never `attempt_completion`, never the completion
+   marker.** *Listing* the remaining gaps inside a completion is not offering them. (Two real runs ended after
+   one fix with three gaps merely listed — that exact slip is what this rule exists to stop.) The reasoned
+   class is unbounded, so it can never govern the exit. No streaks, no nags, no "you're 1 step from compliant".
 6. **Honesty grammar on the offer AND the closing summary.** Banned verdict words (compliant / certified /
    passes / affected / fixed / done / resolved / clear) — in the offer sentence and the sign-off, not just the
    report body. "started — build, flash, verify", never "fixed". Dev-as-hero ("want me to start X so YOU can
