@@ -45,7 +45,7 @@
 			"domain": "embedded-iot",
 			"platform": "esp",
 			"path": "platforms/esp/rules/device-identity.md",
-			"content_hash": "506e2fc650b6c37ea43ff8cb14b6dc26a9160ce7feabaed41f896a35e620c173"
+			"content_hash": "b469d5972789f7f479e6a575e3d5c936c8b0ffc5b7c73f640d845eda1ebf6df5"
 		},
 		{
 			"id": "adsum/esp/rules/esp-terminal",
@@ -167,7 +167,7 @@
 			"id": "adsum/nrf/rules/nrf-terminal",
 			"title": "nRF Platform Rule: nRF Connect Terminal",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -180,7 +180,7 @@
 				"process-kill"
 			],
 			"path": "platforms/nrf/rules/nrf-terminal.md",
-			"content_hash": "edf4733f1317b09bfcc40f23486bc391a2813c67567678779b3e3df98b102bf3"
+			"content_hash": "d83d9611adbdbeb0131e277527a4e80232e6a475e57f4099d3d7d9a029403d66"
 		},
 		{
 			"id": "adsum/nrf/rules/skill-loading",
