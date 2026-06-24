@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import fs from "node:fs/promises"
 import path from "node:path"
 import { HostProvider } from "@/hosts/host-provider"
@@ -191,8 +191,66 @@ export async function isRegistryReachable(): Promise<boolean> {
 	return (await registry().fetchManifest()) !== null
 }
 
-/** Load a downloaded (non-bundled) bit: verified cache → fetch (verify, cache if open) → "". */
+// ── Dev override: local-disk resolution for downloaded bits ──────────────────────
+//
+// `ADSUM_KBIT_LOCAL=<abs path to a kbits/ tree>` (e.g. ../Adsum-Backend/kbits) lets a developer F5-test
+// a DOWNLOADED (closed/proprietary) bit straight from disk — edit + F5, same friction as a bundled bit —
+// before it's ever published to the registry. Without it, testing a closed bit needs the copy-into-
+// iot-knowledge/ trick (easy to forget to undo → proprietary leak in a VSIX).
+//
+// Hard-gated on `process.env.IS_DEV === "true"`. esbuild defines IS_DEV as the literal "false" in every
+// production build (esbuild.mjs), so this whole branch is dead-code-eliminated from a shipped VSIX even
+// if the env var is somehow present on the machine. Only affects ids NOT in the bundled manifest.
+
+let localKbitIndex: Map<string, string> | null | undefined // undefined = not built yet; null = disabled
+
+/** The local kbits root, or null unless BOTH the env var is set AND this is a dev build. */
+function localKbitDir(): string | null {
+	if (process.env.IS_DEV !== "true") {
+		return null
+	}
+	const dir = process.env.ADSUM_KBIT_LOCAL
+	return dir && existsSync(dir) ? dir : null
+}
+
+/** Lazy id → absolute-path index over the local kbits tree, using the same deriveId as the bundled manifest. */
+function localKbits(): Map<string, string> | null {
+	if (localKbitIndex !== undefined) {
+		return localKbitIndex
+	}
+	const root = localKbitDir()
+	if (!root) {
+		localKbitIndex = null
+		return null
+	}
+	const map = new Map<string, string>()
+	try {
+		for (const f of readdirSync(root, { recursive: true }) as string[]) {
+			if (!f.endsWith(".md")) {
+				continue
+			}
+			const rel = f.replace(/\\/g, "/")
+			map.set(deriveIdFromRel(rel), path.join(root, f))
+		}
+		console.info(`[kbit] local override active (${map.size} bits) ← ${root}`)
+	} catch (e) {
+		console.error("KnowledgeResolver: failed to index ADSUM_KBIT_LOCAL", e)
+	}
+	localKbitIndex = map
+	return map
+}
+
+/** Load a downloaded (non-bundled) bit: local override (dev) → verified cache → fetch (verify, cache if open) → "". */
 async function loadDownloadedBit(id: string): Promise<string> {
+	const localPath = localKbits()?.get(id)
+	if (localPath) {
+		try {
+			console.info(`[kbit] ${id} ← local override`)
+			return stripFrontmatter(readFileSync(localPath, "utf-8"))
+		} catch (e) {
+			console.error(`KnowledgeResolver: failed to read local-override bit "${id}"`, e)
+		}
+	}
 	let entry = (await downloadedManifest()).get(id)
 	if (!entry && !manifestRevalidated) {
 		// Catalog wasn't successfully revalidated yet (registry down at session start) and the id is
@@ -305,4 +363,5 @@ export function __resetManifestCache(): void {
 	manifestRevalidated = false
 	injectedCache = null
 	injectedRegistry = null
+	localKbitIndex = undefined
 }

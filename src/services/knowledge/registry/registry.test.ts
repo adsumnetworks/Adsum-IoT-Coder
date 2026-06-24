@@ -315,6 +315,100 @@ describe("isRegistryReachable", () => {
 	})
 })
 
+// ---------------------------------------------------------------- dev override: ADSUM_KBIT_LOCAL
+
+describe("ADSUM_KBIT_LOCAL dev override (local-disk resolution for downloaded bits)", () => {
+	const ID = "adsum/nrf/sdks/ncs/protocols/hci-monitor"
+	const REL = "platforms/nrf/sdks/ncs/protocols/hci-monitor.md"
+
+	// build a temp kbits/ tree with one closed bit on disk
+	const localTree = async (body: string) => {
+		const root = await mkdtemp(join(tmpdir(), "kbit-local-"))
+		const file = join(root, REL)
+		await mkdir(join(file, ".."), { recursive: true })
+		await writeFile(file, `---\nid: ${ID}\ndelivery: downloaded\n---\n\n${body}`, "utf8")
+		return root
+	}
+
+	const withEnv = async (env: Record<string, string | undefined>, fn: () => Promise<void>) => {
+		const saved: Record<string, string | undefined> = {}
+		for (const k of Object.keys(env)) {
+			saved[k] = process.env[k]
+			if (env[k] === undefined) {
+				delete process.env[k]
+			} else {
+				process.env[k] = env[k]
+			}
+		}
+		try {
+			await fn()
+		} finally {
+			for (const k of Object.keys(saved)) {
+				if (saved[k] === undefined) {
+					delete process.env[k]
+				} else {
+					process.env[k] = saved[k]
+				}
+			}
+			__resetManifestCache()
+		}
+	}
+
+	test("dev build + env set → bit is read straight from local disk (no registry)", async () => {
+		const root = await localTree("# HCI Monitor (local)")
+		await withEnv({ IS_DEV: "true", ADSUM_KBIT_LOCAL: root }, async () => {
+			// registry would serve different content — the local override must win and not hit it
+			const { content, hash } = bit(ID, "# HCI Monitor (registry)")
+			__setRegistryHooks({
+				registry: new RegistryClient(
+					"http://r",
+					stubFetch(
+						{ manifestVersion: 1, bits: [{ id: ID, version: "1.0.0", content_hash: hash }] },
+						{ [hash]: content },
+					),
+				),
+				cache: new BitCache(await tmp()),
+			})
+			assert.equal(await loadBit(ID), "# HCI Monitor (local)") // disk wins, frontmatter stripped
+		})
+	})
+
+	test("env set but NOT a dev build → override is inert, falls through to the registry", async () => {
+		const root = await localTree("# HCI Monitor (local)")
+		await withEnv({ IS_DEV: "false", ADSUM_KBIT_LOCAL: root }, async () => {
+			const { content, hash } = bit(ID, "# HCI Monitor (registry)")
+			__setRegistryHooks({
+				registry: new RegistryClient(
+					"http://r",
+					stubFetch(
+						{ manifestVersion: 1, bits: [{ id: ID, version: "1.0.0", content_hash: hash }] },
+						{ [hash]: content },
+					),
+				),
+				cache: new BitCache(await tmp()),
+			})
+			assert.equal(await loadBit(ID), "# HCI Monitor (registry)") // production: override compiled-out path is dead
+		})
+	})
+
+	test("dev build, env unset → no override, normal downloaded resolution", async () => {
+		await withEnv({ IS_DEV: "true", ADSUM_KBIT_LOCAL: undefined }, async () => {
+			const { content, hash } = bit(ID, "# HCI Monitor (registry)")
+			__setRegistryHooks({
+				registry: new RegistryClient(
+					"http://r",
+					stubFetch(
+						{ manifestVersion: 1, bits: [{ id: ID, version: "1.0.0", content_hash: hash }] },
+						{ [hash]: content },
+					),
+				),
+				cache: new BitCache(await tmp()),
+			})
+			assert.equal(await loadBit(ID), "# HCI Monitor (registry)")
+		})
+	})
+})
+
 // ---------------------------------------------------------------- K-bit resolution telemetry hooks
 
 describe("K-bit telemetry hooks (__setKbitTelemetry)", () => {
