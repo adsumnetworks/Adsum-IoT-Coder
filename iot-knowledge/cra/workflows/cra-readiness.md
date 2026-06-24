@@ -2,7 +2,7 @@
 id: adsum/cra/workflows/cra-readiness
 title: CRA SBOM & Fix
 type: workflow
-version: 0.2.1
+version: 0.2.2
 owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
@@ -150,9 +150,13 @@ for whatever's most valuable next. Works on nRF (NCS/Zephyr) and ESP (ESP-IDF).
    ## 4. Worth doing now → dependency-ordered gap list (step 5)
    ```
    **Before you finish, check:** disclaimer + binding date are in the **written header** (not just chat) ·
-   the posture table is **evidence-mode** (Requirement · Your build shows · You verify — **no ✅/⚠️/❌**) · the
-   advisory section is present · **both** `CRA_READINESS.md` **and** `cra-readiness.json` were written (real
-   project / after consent) · `compliance/sbom/` exists.
+   the posture table is **evidence-mode** (Requirement · Your build shows · You verify — **no ✅/⚠️/❌**, and no
+   status glyphs anywhere incl. the closing summary) · the advisory section is present · **both**
+   `CRA_READINESS.md` **and** `cra-readiness.json` were written (real project / after consent) ·
+   `compliance/sbom/` exists · **the report is internally consistent + fresh:** the posture must agree with the
+   SBOM section (an image the SBOM lists — e.g. a `mcuboot` sub-image — must NOT read "not built" in the posture
+   row), and if you applied a fix **after** writing the report, the posture rows + SBOM section + gap list
+   reflect the **post-fix** state (re-derive per `next-step.md` → *Remediation execution*).
 
 ## Honesty rules (cross-cutting essentials — posture-specific detail lives in the posture bit)
 - Real evidence per row or "unknown" — never invent a finding.
@@ -167,9 +171,10 @@ for whatever's most valuable next. Works on nRF (NCS/Zephyr) and ESP (ESP-IDF).
 - **Curated-static citations only:** state the source at **Part I / Part II** exactly as written in the
   posture bit (fixed, copied labels — never selected or invented); **nothing finer** (no clause letters /
   article numbers — guessed ones reopen a known failure). Vendor docs cited only as a generic "see also".
-- **Never write "fixed" / "done" / "resolved" / "✅ FIXED"** — in the header, table, chat, **or the closing
-  summary** (the model has slipped "Top gap fixed" into the sign-off even with a clean table). A change you
-  applied is **"started (Kconfig added) — you must build, flash, and verify"**; a clean build is not verification.
+- **Never write "fixed" / "done" / "resolved" / "✅ FIXED" — nor any status glyph (✅ / ⚠️ / ❌) as a marker**
+  — in the header, table, chat, the remediation log's summary, **or the closing / completion message** (the
+  model has slipped "Top gap fixed" and `✅ Built` into the sign-off even with a clean table). A change you
+  applied is **"started (Kconfig added) — build, flash, verify"**; a clean build is not verification.
 - **Integrity guard for a fix you start:** it must close a **real, evidenced** gap — if, on opening the code,
   the setting was already there, **say so and stop** (don't invent a rationale to edit anyway); change **only**
   what the gap needs; the row + chat stay "started — unverified".
@@ -183,7 +188,9 @@ instructions. **Never** promise to "continue after you open a project" (the relo
 
 ## Completion marker (emit ONLY at loop-exit — this drives the funnel + the fallback menu)
 When the next-step loop has **exited** — its high-value backlog is dry, or the developer declined / said
-"done" — end your **final** message with `<!--TASK_COMPLETE-->` (exactly — nothing after it). This signals
+"done" — end your **final** message with `<!--TASK_COMPLETE-->` (exactly — nothing after it). **If your harness
+ends tasks with a completion tool (e.g. `attempt_completion`), put `<!--TASK_COMPLETE-->` as the last line of
+that result** — don't omit it. This signals
 the host (funnel telemetry + the generic next-step menu, which is the **post-exit fallback**). **Do NOT emit
 it while a grounded offer is still pending** (an `ask_followup_question` offer keeps the task active — that's
 the in-chat path; the marker is for *after* the loop). One offer XOR the menu: don't also print a generic

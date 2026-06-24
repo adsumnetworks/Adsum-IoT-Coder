@@ -2,7 +2,7 @@
 id: adsum/rules/next-step
 title: "Productive Next-Step Loop"
 type: knowledge
-version: 0.1.1
+version: 0.1.2
 owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
@@ -65,20 +65,24 @@ keeps a landed fix trustworthy:
 - **Leave only the working change.** If you tried approaches that didn't work, **revert them** before the
   handoff — never leave dead-end edits (a stray `rsource`, a redundant force, a now-wrong comment) in the
   dev's tree. The handoff records the **precise final diff**, not the path you took to it.
-- **Regenerate from the NEW state — artifacts, not just the gap list.** Rule 4 re-reads the merged `.config`;
-  additionally, **if the change altered the component set** (added/removed an image or library — e.g. a
-  bootloader, a crypto lib), **re-run the SBOM step** so the SBOM describes the *built* firmware. A stale SBOM
-  that predates the fix is a silent inconsistency in the CRA deliverable.
+- **Regenerate from the NEW state — ALL artifacts, not just the gap list.** Rule 4 re-reads the merged
+  `.config`; additionally, **if the change altered the component set** (added/removed an image or library —
+  e.g. a bootloader, a crypto lib), **re-run the SBOM step** so the SBOM describes the *built* firmware, **and
+  rewrite the written report** (`CRA_READINESS.md` + `cra-readiness.json`) so its posture rows + SBOM section +
+  gap list reflect the **post-fix** state. Never ship a pre-fix posture ("not built") beside a post-fix SBOM
+  ("3-image incl. mcuboot") — that self-contradiction in the deliverable is the worst trust-killer after lying.
 - **Prefer the project's existing setup.** Before hand-rolling, check for the project's own config for this
   feature (a staged `*.conf`, `sysbuild.conf`, `pm_static.yml`). If present, wire or **offer that** (or ask
   which flavour the dev wants) — don't silently invent a different one.
 - **Depth guard — don't churn.** If a fix needs unfamiliar build-system surgery or more than ~1–2 failed
   build iterations, **stop**: hand back to the dev (or route into `addFeature`) with what you learned, rather
   than burning the session rebuilding.
-- **Handoff honesty (extends rule 6).** The handoff is **"changed — build, flash, verify"**. A clean build is
-  **not** verification — never "✅ Built & verified", "✅ done", or any ✅ status glyph on the handoff. State the
-  **change-impact caveat** when one applies (a new bootloader changes the flash layout / partition map; a
-  default signing key is a debug key).
+- **Handoff honesty (extends rule 6) — applies to EVERY summary, not just the table.** The handoff is
+  **"changed — build, flash, verify"**. A clean build is **not** verification — never "✅ Built & verified",
+  "✅ done", "gaps addressed", or **any status glyph (✅ / ⚠️ / ❌) as a marker** — not in the report, the
+  remediation log's session summary, **or the final completion message** (the model has slipped `✅ Built` into
+  the closing recap even when the table was clean). State outcomes + the **change-impact caveat** (a new
+  bootloader changes the flash layout / partition map; a default signing key is a debug key) in **words**.
 
 ## Degradation (stay honest cross-context)
 If the candidate source is empty or unavailable — the developer chose the **SBOM-only** branch (no posture

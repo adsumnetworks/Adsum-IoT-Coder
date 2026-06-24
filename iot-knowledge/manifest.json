@@ -21,7 +21,7 @@
 			"id": "adsum/cra/workflows/cra-readiness",
 			"title": "CRA SBOM & Fix",
 			"type": "workflow",
-			"version": "0.2.1",
+			"version": "0.2.2",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
@@ -50,7 +50,7 @@
 			"created": "2026-06-18",
 			"updated": "2026-06-23",
 			"path": "cra/workflows/cra-readiness.md",
-			"content_hash": "adeb11ecfa41b8587ed5159486a77dd5904f28a53d2aa9c32c638a0ce92ea8d6"
+			"content_hash": "8a2e29338fd10f2311074ba423e83d538055b37327dc704b78482f234f58ba9d"
 		},
 		{
 			"id": "adsum/esp/actions/cra-generate-sbom",
@@ -301,7 +301,7 @@
 			"id": "adsum/nrf/rules/cra-posture",
 			"title": "CRA Secure-by-Design Posture (nRF)",
 			"type": "knowledge",
-			"version": "0.2.1",
+			"version": "0.2.2",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
@@ -314,7 +314,7 @@
 			"created": "2026-06-18",
 			"updated": "2026-06-23",
 			"path": "platforms/nrf/rules/cra-posture.md",
-			"content_hash": "2d19e5ee6e13a4af976bf059020a72692c00a3f08a704ef52d2976b8863b7073"
+			"content_hash": "1ec9dd0a578d6c0873dd48d3ab3c236a93dfb7de0beb6c70ce7eba937ed657af"
 		},
 		{
 			"id": "adsum/nrf/rules/device-identity",
@@ -454,7 +454,7 @@
 			"id": "adsum/rules/next-step",
 			"title": "Productive Next-Step Loop",
 			"type": "knowledge",
-			"version": "0.1.1",
+			"version": "0.1.2",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
@@ -466,7 +466,7 @@
 			"created": "2026-06-22",
 			"updated": "2026-06-23",
 			"path": "rules/next-step.md",
-			"content_hash": "719ce537cbf4412b1f3e36f63bf1a8e99a99f26b6b82c6f27794de1381e2abc5"
+			"content_hash": "04c31eaabfddbb1607310cacb18bfa385df97972ce70a0f5291b138ecc414475"
 		},
 		{
 			"id": "adsum/rules/tool-routing",
