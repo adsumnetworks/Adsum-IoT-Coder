@@ -151,6 +151,28 @@ export function parseIdfVersionTxt(content: string): string | undefined {
 }
 
 /**
+ * Parse an ESP-IDF version from `tools/cmake/version.cmake`. This file exists in EVERY IDF checkout
+ * (release tarball, git clone, AND the VS Code extension's managed installs) — unlike `version.txt`,
+ * which only ships in release tarballs and is ABSENT from extension/git installs (the real-world cause
+ * of "version undefined → can't match the project pin → ambiguous forever"). The file sets:
+ *   set(IDF_VERSION_MAJOR 6)
+ *   set(IDF_VERSION_MINOR 0)
+ *   set(IDF_VERSION_PATCH 0)
+ * Returns the normalized "MAJOR.MINOR.PATCH" (e.g. "6.0.0", matching dependencies.lock's `idf:` version),
+ * or undefined if any component is missing. Pure; exported for tests.
+ */
+export function parseIdfVersionCmake(content: string): string | undefined {
+	const grab = (key: string): string | undefined => content.match(new RegExp(`set\\(\\s*${key}\\s+(\\d+)`, "i"))?.[1]
+	const major = grab("IDF_VERSION_MAJOR")
+	const minor = grab("IDF_VERSION_MINOR")
+	const patch = grab("IDF_VERSION_PATCH")
+	if (major === undefined || minor === undefined || patch === undefined) {
+		return undefined
+	}
+	return `${major}.${minor}.${patch}`
+}
+
+/**
  * Container directories whose children are scanned for IDF installs. The IDF
  * root can sit in two shapes under a container, and we don't assume which:
  *   - `<container>/<ver>/esp-idf`  — the Espressif VS Code extension's Express
@@ -215,45 +237,88 @@ export function enumerateIdfInstalls(
 }
 
 /**
- * Pick which install to use. Pin-aware: an install whose version matches the project's pinned version
- * wins automatically (no friction). Otherwise prefer the explicit extension setting; otherwise the sole
- * install; otherwise the choice is **ambiguous** and the caller should surface the list and ask.
+ * Pick which install to use. Priority:
+ *   1. the project's pinned version (dependencies.lock) — when installed. This is the GROUND TRUTH for
+ *      a pinned project and MUST win over a remembered/override choice: a v6.0 remembered from testing
+ *      another project must never hijack a project whose lock pins v5.5.2.
+ *   2. the explicit `idf_version` the agent passed this call — only when there's no usable pin (the
+ *      ambiguous, no-pin case the param exists for).
+ *   3. the per-project choice remembered earlier (workspaceState) — likewise only when there's no pin.
+ *   4. a pin that is set but NOT installed → can't honor: sole install uses it, else ask.
+ *   5. the explicit extension-setting path.
+ *   6. the sole install (no real choice to make).
+ *   7. several installed and nothing decided → **ambiguous**; nothing installed → **none**.
+ *
+ * Explicit/persisted/pin only resolve when that version is actually installed. `opts.explicit` /
+ * `opts.persisted` are version strings (any `v`-prefix tolerated). Back-compat: the positional
+ * `pinnedVersion` / `explicitPath` params are unchanged.
  */
-export function selectIdfInstall(installs: IdfInstall[], pinnedVersion?: string, explicitPath?: string): IdfSelection {
+export function selectIdfInstall(
+	installs: IdfInstall[],
+	pinnedVersion?: string,
+	explicitPath?: string,
+	opts: { explicit?: string; persisted?: string } = {},
+): IdfSelection {
 	if (installs.length === 0) {
 		return { kind: "none" }
 	}
 	const resolved = (i: IdfInstall): IdfSelection => ({ kind: "resolved", path: i.path, version: i.version })
+	const byVersion = (v?: string): IdfInstall | undefined => {
+		const n = normalizeIdfVersion(v)
+		return n ? installs.find((i) => i.version === n) : undefined
+	}
+
+	// 1. Project pin first — honor what the project's own lock declares. A pinned, installed version is
+	//    authoritative; nothing remembered or passed may override it.
 	const pin = normalizeIdfVersion(pinnedVersion)
+	const pinMatch = pin ? installs.find((i) => i.version === pin) : undefined
+	if (pinMatch) {
+		return resolved(pinMatch)
+	}
+
+	// 2/3. No usable pin → the explicit override (this call), then the remembered per-project choice.
+	const explicitMatch = byVersion(opts.explicit)
+	if (explicitMatch) {
+		return resolved(explicitMatch)
+	}
+	const persistedMatch = byVersion(opts.persisted)
+	if (persistedMatch) {
+		return resolved(persistedMatch)
+	}
+
+	// 4. A pin was declared but that version isn't installed — can't honor it: sole install → use it; several → ask.
 	if (pin) {
-		const match = installs.find((i) => i.version === pin)
-		if (match) {
-			return resolved(match)
-		}
-		// The pin can't be honored (that version isn't installed): one install → use it; several → ask.
 		return installs.length === 1 ? resolved(installs[0]) : { kind: "ambiguous", installs }
 	}
+
+	// 5. Explicit extension-setting path.
 	if (explicitPath) {
 		const ex = installs.find((i) => i.path === explicitPath)
 		if (ex) {
 			return resolved(ex)
 		}
 	}
+	// 6/7. Sole install → use it; several with nothing decided → ask.
 	if (installs.length === 1) {
 		return resolved(installs[0])
 	}
 	return { kind: "ambiguous", installs }
 }
 
-/** Actionable message when several IDF installs exist and the project doesn't pin one. */
+/**
+ * Actionable message when several IDF installs exist and the project doesn't pin one. Mirrors nRF's
+ * `ncsAmbiguousMessage`: tells the agent to ask the user ONCE and re-run with `idf_version="…"`, which
+ * is then remembered per project — NOT to fiddle with the extension's selector or source export.sh by
+ * hand (that pushed the agent off our tool into a plain terminal).
+ */
 export function idfAmbiguousMessage(installs: IdfInstall[]): string {
 	const list = installs.map((i) => `  - ${i.path}${i.version ? ` (v${i.version})` : ""}`).join("\n")
 	return (
-		"Multiple ESP-IDF versions are installed and the project does not pin one " +
+		"Multiple ESP-IDF versions are installed and this project does not pin one " +
 		"(no resolved `idf:` version in dependencies.lock):\n" +
 		`${list}\n` +
-		"Ask the user which ESP-IDF version to use, then set it via the Espressif ESP-IDF extension's " +
-		"IDF selector (or pin it by running `idf.py set-target`/reconfigure). Do not source export.sh by hand."
+		"Ask the user which ESP-IDF version to use, then re-run this action with " +
+		'`idf_version="5.5.2"`. The choice is remembered for this project.'
 	)
 }
 

@@ -7,7 +7,17 @@ import { indexManifest } from "../KnowledgeResolver"
 import { composeBit, generateBody, generateFrontmatter } from "./authoring"
 import { extractFrontmatter, stripFrontmatter } from "./frontmatter"
 import { buildTree, filterEntries, formatBitDetail, formatCatalog, type ManifestEntry } from "./inspect"
-import { deriveId, detectSafety, type Issue, lintBitContent, lintCorpus } from "./lint"
+import {
+	deriveId,
+	detectSafety,
+	type Issue,
+	lintBitContent,
+	lintCorpus,
+	lintManifestFresh,
+	lintVersionBump,
+	listBitFiles,
+	parseManifestEntries,
+} from "./lint"
 import { kbitMetaSchema } from "./schema"
 
 const REPO_ROOT = join(__dirname, "..", "..", "..", "..")
@@ -506,9 +516,70 @@ describe("inspect", () => {
 	})
 })
 
+// ---------------------------------------------------------------- dev-workflow guards (Part B)
+
+const FM = (over: Partial<Record<string, string>> = {}) =>
+	[
+		"---",
+		`id: ${over.id ?? "adsum/nrf/workflows/x"}`,
+		'title: "X"',
+		"type: workflow",
+		`version: ${over.version ?? "1.0.0"}`,
+		"owner: adsum-core",
+		"author: adsum",
+		"license: CC-BY-SA-4.0",
+		"tier: certified",
+		"delivery: bundled",
+		"domain: embedded-iot",
+		"platform: nrf",
+		"---",
+	].join("\n")
+const bit = (body: string, over?: Partial<Record<string, string>>) => `${FM(over)}\n\n${body}\n`
+
+describe("parseManifestEntries", () => {
+	test("parses the bits array", () => {
+		const json = JSON.stringify({ bits: [{ id: "a", version: "1.0.0", path: "p.md", content_hash: "h" }] })
+		assert.deepEqual(parseManifestEntries(json), [{ id: "a", version: "1.0.0", path: "p.md", content_hash: "h" }])
+	})
+	test("returns [] on junk", () => {
+		assert.deepEqual(parseManifestEntries("not json"), [])
+		assert.deepEqual(parseManifestEntries("{}"), [])
+	})
+})
+
+describe("lintVersionBump", () => {
+	test("flags a body change with no version bump", () => {
+		const issues = lintVersionBump("w.md", bit("NEW body"), bit("OLD body"))
+		assert.equal(issues.length, 1)
+		assert.match(issues[0].msg, /bump `version`/)
+	})
+	test("passes when the version was bumped", () => {
+		const issues = lintVersionBump("w.md", bit("NEW body", { version: "1.1.0" }), bit("OLD body"))
+		assert.deepEqual(issues, [])
+	})
+	test("passes when the body is unchanged", () => {
+		assert.deepEqual(lintVersionBump("w.md", bit("same"), bit("same")), [])
+	})
+	test("ignores a brand-new bit (no HEAD)", () => {
+		assert.deepEqual(lintVersionBump("w.md", bit("body"), null), [])
+	})
+})
+
+describe("manifest freshness + mapping on the real corpus", () => {
+	test("committed manifest.json matches the bits on disk (no stale drift)", () => {
+		const files = listBitFiles(KNOWLEDGE_ROOT)
+		const manifestJson = readFileSync(join(KNOWLEDGE_ROOT, "manifest.json"), "utf8")
+		const errors = lintManifestFresh(KNOWLEDGE_ROOT, files, manifestJson).filter((i) => i.level === "error")
+		assert.deepEqual(
+			errors.map((e) => `${e.file}: ${e.msg}`),
+			[],
+		)
+	})
+})
+
 // C2 — R4.3: license follows delivery (bundled ⇒ open / downloaded ⇒ proprietary).
 describe("lint R4.3 — license follows delivery", () => {
-	const bit = (delivery: string, license: string) =>
+	const r43bit = (delivery: string, license: string) =>
 		[
 			"---",
 			"id: adsum/test/r43-fixture",
@@ -526,7 +597,7 @@ describe("lint R4.3 — license follows delivery", () => {
 			"body",
 		].join("\n")
 	const lint = (delivery: string, license: string) =>
-		lintBitContent("test/r43-fixture.md", bit(delivery, license), new Set(["adsum/test/r43-fixture"]))
+		lintBitContent("test/r43-fixture.md", r43bit(delivery, license), new Set(["adsum/test/r43-fixture"]))
 
 	test("bundled + proprietary → ERROR (the violation we hit)", () => {
 		const issues = lint("bundled", "LicenseRef-Adsum-Proprietary")

@@ -36,6 +36,12 @@ export interface NrfEnvironment {
 	nrfutilPresent: boolean
 	/** NCS SDK versions installed on this machine, e.g. ["v3.2.1"]. Global fact, not workspace-bound. */
 	installedSdkVersions?: string[]
+	/**
+	 * Normalized version (no leading "v", e.g. "3.2.1") → NCS SDK root install dir
+	 * (e.g. "/home/user/ncs/v3.2.1"). Lets callers derive `ZEPHYR_BASE` for a resolved
+	 * version without another nrfutil call.
+	 */
+	installedSdkPaths?: Record<string, string>
 	/** SDK version bound to the open project, when one can be resolved. Drives "we understand this project". */
 	projectSdk?: ProjectSdk
 	boards: NrfBoard[]

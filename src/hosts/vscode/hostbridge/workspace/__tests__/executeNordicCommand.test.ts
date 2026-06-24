@@ -1,5 +1,6 @@
 import { expect } from "chai"
 import { describe, it } from "mocha"
+import { deriveZephyrBase } from "../executeNordicCommand"
 
 /**
  * Test the isNordicTerminalName logic directly.
@@ -88,6 +89,29 @@ describe("CLI_REFERENCE Content Validation", () => {
 
 	it("should document board recovery process", () => {
 		expect(expectedPatterns).to.include("nrfjprog --recover")
+	})
+})
+
+describe("deriveZephyrBase — the 'west: unknown command build' field fix", () => {
+	// CONFIRMED root cause: west only registers extension commands (build, flash, …) when it can
+	// locate the workspace. For a "freestanding" NCS app (outside the NCS install dir — the common
+	// case), that requires ZEPHYR_BASE set as an ENV VAR (a `-z` CLI flag does not work — verified
+	// end-to-end against a live nrfutil install and Nordic's west-troubleshooting docs).
+	const paths = { "3.3.1": "/home/omar/ncs/v3.3.1", "3.2.1": "/home/omar/ncs/v3.2.1" }
+
+	it("joins the install dir with /zephyr on macOS/Linux", () => {
+		expect(deriveZephyrBase("linux", "3.3.1", paths)).to.equal("/home/omar/ncs/v3.3.1/zephyr")
+		expect(deriveZephyrBase("darwin", "3.3.1", paths)).to.equal("/home/omar/ncs/v3.3.1/zephyr")
+	})
+
+	it("uses a backslash join on win32", () => {
+		const winPaths = { "3.3.1": "C:\\ncs\\v3.3.1" }
+		expect(deriveZephyrBase("win32", "3.3.1", winPaths)).to.equal("C:\\ncs\\v3.3.1\\zephyr")
+	})
+
+	it("returns undefined when the version's install dir is unknown (degrades, doesn't throw)", () => {
+		expect(deriveZephyrBase("linux", "9.9.9", paths)).to.equal(undefined)
+		expect(deriveZephyrBase("linux", "3.3.1", undefined)).to.equal(undefined)
 	})
 })
 
