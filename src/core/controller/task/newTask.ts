@@ -1,10 +1,4 @@
-import {
-	buildDemoDisplayText,
-	buildDemoPrompt,
-	classifyDemoCapability,
-	DEMO_TRIGGER,
-	prepareDemoWorkspace,
-} from "@core/demos/DemoManager"
+import { getHostDemoScenario, parseDemoTrigger } from "@core/demos/DemoManager"
 import { getInstallId } from "@services/adsum/InstallIdentity"
 import { telemetryService } from "@services/telemetry"
 import { String } from "@shared/proto/cline/common"
@@ -107,19 +101,24 @@ export async function newTask(controller: Controller, request: NewTaskRequest): 
 		}).filter(([_, value]) => value !== undefined),
 	)
 
-	// Demo intercept: replace the lightweight trigger with a real prompt pointing
-	// at actual source files and RTT logs copied into globalStorage.
+	// Demo intercept: replace the lightweight [ADSUM_DEMO:<id>] trigger with the real scenario prompt
+	// (id-keyed registry — A1; today the only live scenario is nus-uart) pointing at actual source files
+	// and RTT logs copied into globalStorage.
 	let taskText = request.text
 	// Friendly bubble text shown in place of the full runbook (kept out of the user's view).
 	let displayText: string | undefined
-	if (taskText.includes(DEMO_TRIGGER)) {
+	const demoId = parseDemoTrigger(taskText)
+	if (demoId) {
 		try {
-			const ws = await prepareDemoWorkspace()
+			const scenario = getHostDemoScenario(demoId)
+			if (!scenario) {
+				throw new Error(`No host demo scenario registered for "${demoId}"`)
+			}
 			const env = getCachedNrfEnvironment()
-			const capability = classifyDemoCapability(env)
-			taskText = buildDemoPrompt(ws, capability, env)
-			displayText = buildDemoDisplayText()
-			telemetryService.captureFreeTierDemoRunStarted(getInstallId(), "nus-uart")
+			const built = await scenario.buildTask(env)
+			taskText = built.taskText
+			displayText = built.displayText
+			telemetryService.captureFreeTierDemoRunStarted(getInstallId(), scenario.id)
 			// Consume the one-shot auto-start flag (set by the announcement toast CTA) so the demo
 			// doesn't re-trigger on the next launch.
 			controller.stateManager.setGlobalState("demoAutoStart", undefined)

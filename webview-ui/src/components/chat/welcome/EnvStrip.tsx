@@ -2,19 +2,18 @@ import type { EspDevice, EspEnvironment } from "@shared/esp"
 import type { NrfBoard, NrfEnvironment } from "@shared/nrf"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import React, { useState } from "react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient } from "@/services/grpc-client"
 
 // ---------------------------------------------------------------------------
-// One detected platform = a 2-line status row: line 1 = badge + extension · SDK,
-// line 2 = detected boards. Rendered as a flat status strip (no card), nRF and
-// ESP identical so they read the same way.
+// Each platform = a 2-line status row: line 1 = badge + extension · SDK, line 2 =
+// detected boards. Rendered as a flat status strip (no card), nRF and ESP identical.
 //
-// Show/hide (per Omar, 2026-06-12):
-//   no project open  → show both (only the platforms that have something)
-//   nRF project      → nRF only
-//   ESP project      → ESP only
-//   mixed workspace  → both
+// Display (v2): ALWAYS show both platforms. Detection (nrfHasAnything/espHasAnything,
+// Omar's classification — unchanged) drives full-vs-dimmed, not hide: an absent platform
+// renders as one dimmed "not detected — install …" line (awareness + consistency). The
+// badge stays neutral; detected-vs-not is opacity, never colour.
 //
 // Version line:
 //   project + built     → "vX.Y.Z · this build"
@@ -24,6 +23,11 @@ import { FileServiceClient } from "@/services/grpc-client"
 
 const MUTED = "var(--vscode-descriptionForeground)"
 const FG = "var(--vscode-foreground)"
+// "There's more on hover" affordance: a small muted ⓘ after the bit that carries a tooltip (the
+// extension ✓ build, and the per-build list behind "multiple builds") + a help cursor — no underline,
+// and only on the element that actually has info (a "?" next to a version would read as uncertainty).
+const HINT_WRAP: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: "3px", cursor: "help" }
+const INFO_ICON: React.CSSProperties = { fontSize: "10px", opacity: 0.6, color: MUTED }
 // Neutral hairline divider between the nRF and ESP rows — foreground-derived so it's grey in every
 // theme (some themes tint --vscode-widget-border with an accent).
 const NEUTRAL_BORDER = "color-mix(in srgb, var(--vscode-foreground) 15%, transparent)"
@@ -31,6 +35,8 @@ const NEUTRAL_BORDER = "color-mix(in srgb, var(--vscode-foreground) 15%, transpa
 interface BlockFacts {
 	toolchain: string
 	toolchainMuted: boolean
+	/** Hover text for the toolchain label — carries the exact extension build (kept out of the line). */
+	toolchainTitle?: string
 	sdk: string
 	sdkTitle?: string
 	sdkMuted: boolean
@@ -42,6 +48,10 @@ interface BlockFacts {
 interface PlatformRowProps extends BlockFacts {
 	/** Platform name shown as the neutral lead badge (nRF / ESP). */
 	label: string
+	/** True when the platform's toolchain/board/project is present; false → a dimmed "not detected" row. */
+	detected: boolean
+	/** Muted setup nudge shown when not detected, e.g. "not detected — install ESP-IDF to enable". */
+	notDetectedHint: string
 }
 
 const FACT_ICON: React.CSSProperties = { fontSize: "12px", color: MUTED, flexShrink: 0 }
@@ -58,14 +68,33 @@ const Badge: React.FC<{ text: string }> = ({ text }) => (
 			fontWeight: 700,
 			letterSpacing: "0.04em",
 			color: "var(--vscode-editor-background)",
-			background: "color-mix(in srgb, var(--vscode-foreground) 80%, transparent)",
+			background: "var(--vscode-foreground)",
 			borderRadius: "4px",
-			padding: "2px 6px",
+			padding: "1px 5px",
+			// Equal-size pills: clamp both nRF/ESP to one width + center, so glyph-width
+			// differences ("nRF" vs "ESP") don't make the two badges visibly different sizes.
+			minWidth: "34px",
+			textAlign: "center",
+			boxSizing: "border-box",
+			display: "inline-block",
 			flexShrink: 0,
 		}}>
 		{text}
 	</span>
 )
+
+/** Wraps content in the app's styled (Radix) tooltip when `tip` is set — native `title` does not render
+ *  reliably in the VS Code webview, so we use the same Tooltip component as the rest of the app. Renders
+ *  the child unchanged when there's no tip. */
+const WithTip: React.FC<{ tip?: string; children: React.ReactElement }> = ({ tip, children }) =>
+	tip ? (
+		<Tooltip>
+			<TooltipTrigger asChild>{children}</TooltipTrigger>
+			<TooltipContent>{tip}</TooltipContent>
+		</Tooltip>
+	) : (
+		children
+	)
 
 /**
  * Status rows for one platform: line 1 = badge + extension · SDK, line 2 = detected boards/devices
@@ -74,44 +103,68 @@ const Badge: React.FC<{ text: string }> = ({ text }) => (
  */
 const PlatformRow: React.FC<PlatformRowProps> = ({
 	label,
+	detected,
+	notDetectedHint,
 	toolchain,
 	toolchainMuted,
+	toolchainTitle,
 	sdk,
 	sdkTitle,
 	sdkMuted,
 	devices,
 	devicesMuted,
-}) => (
-	<div style={{ display: "flex", flexDirection: "column", gap: "3px", width: "100%", minWidth: 0 }}>
-		{/* Line 1: badge + extension · SDK. Flows naturally — one line when there's room, SDK wraps below
-		    on its own only when the panel is too narrow. No truncation; same whether a project is open or closed. */}
-		<div
-			style={{
-				display: "flex",
-				alignItems: "center",
-				flexWrap: "wrap",
-				columnGap: "12px",
-				rowGap: "3px",
-				fontSize: "11px",
-			}}>
-			<span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: toolchainMuted ? MUTED : FG }}>
+}) => {
+	// Not detected → one dimmed line (badge + setup nudge), reusing the inactive-card opacity. The badge
+	// stays neutral; detected-vs-not is shown by opacity, not colour (cyan stays "primary action" only).
+	if (!detected) {
+		return (
+			<div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", opacity: 0.55 }}>
 				<Badge text={label} />
-				<span>{toolchain}</span>
-			</span>
-			<span
-				style={{ display: "inline-flex", alignItems: "center", gap: "5px", color: sdkMuted ? MUTED : FG }}
-				title={sdkTitle}>
-				<i className="codicon codicon-package" style={FACT_ICON} />
-				<span>{sdk}</span>
-			</span>
+				<span style={{ color: MUTED }}>{notDetectedHint}</span>
+			</div>
+		)
+	}
+	return (
+		<div style={{ display: "flex", flexDirection: "column", gap: "3px", width: "100%", minWidth: 0 }}>
+			{/* Line 1: badge + extension · SDK. Flows naturally — one line when there's room, SDK wraps below
+		    on its own only when the panel is too narrow. No truncation; same whether a project is open or closed. */}
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					flexWrap: "wrap",
+					columnGap: "12px",
+					rowGap: "3px",
+					fontSize: "11px",
+				}}>
+				<span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: toolchainMuted ? MUTED : FG }}>
+					<Badge text={label} />
+					<WithTip tip={toolchainTitle}>
+						<span style={toolchainTitle ? HINT_WRAP : undefined}>
+							{toolchain}
+							{toolchainTitle ? <i className="codicon codicon-info" style={INFO_ICON} /> : null}
+						</span>
+					</WithTip>
+				</span>
+				<span style={{ display: "inline-flex", alignItems: "center", gap: "5px", color: sdkMuted ? MUTED : FG }}>
+					<i className="codicon codicon-package" style={FACT_ICON} />
+					<WithTip tip={sdkTitle}>
+						<span style={sdkTitle ? HINT_WRAP : undefined}>
+							{sdk}
+							{sdkTitle ? <i className="codicon codicon-info" style={INFO_ICON} /> : null}
+						</span>
+					</WithTip>
+				</span>
+			</div>
+			{/* Line 2: detected boards / devices — always its own line */}
+			<div
+				style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: devicesMuted ? MUTED : FG }}>
+				<i className="codicon codicon-plug" style={FACT_ICON} />
+				<span>{devices}</span>
+			</div>
 		</div>
-		{/* Line 2: detected boards / devices — always its own line */}
-		<div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: devicesMuted ? MUTED : FG }}>
-			<i className="codicon codicon-plug" style={FACT_ICON} />
-			<span>{devices}</span>
-		</div>
-	</div>
-)
+	)
+}
 
 // ---------------------------------------------------------------------------
 // Facts
@@ -139,15 +192,27 @@ function nrfHasAnything(env: NrfEnvironment): boolean {
 }
 
 function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
-	const toolchain = env.extensionPresent ? `nRF Connect ext ${withV(env.extensionVersion ?? "?")}` : "nRF Connect not detected"
+	// Extension shown as presence (✓), exact build in the tooltip — the precise version is support-only noise inline.
+	const toolchain = env.extensionPresent ? "nRF Connect ✓" : "nRF Connect not detected"
+	const toolchainTitle =
+		env.extensionPresent && env.extensionVersion ? `nRF Connect for VS Code ${withV(env.extensionVersion)}` : undefined
 
 	// Version line.
 	let sdk: string
 	let sdkTitle: string | undefined
 	let sdkMuted = false
 	if (env.projectSdk?.source === "build") {
-		sdk = `NCS ${withV(env.projectSdk.version)} · this build`
-		sdkTitle = `Resolved from the build artifact (${env.projectSdk.topology})`
+		const ps = env.projectSdk
+		if (ps.allVersions && ps.allVersions.length > 1) {
+			// Multiple build configs disagree on NCS; we can't read which is selected → show all (honest).
+			sdk = `NCS ${ps.allVersions.map(withV).join(", ")} · multiple builds`
+			sdkTitle =
+				ps.builds?.map((b) => `${b.dir}: ${withV(b.version)}`).join(" · ") ??
+				"Multiple build configs with different NCS versions — see the nRF Connect panel for the selected one"
+		} else {
+			sdk = `NCS ${withV(ps.version)} · this build`
+			sdkTitle = `Resolved from the build artifact (${ps.topology})`
+		}
 	} else if (env.projectSdk?.source === "manifest") {
 		sdk = `NCS ${withV(env.projectSdk.version)} · workspace`
 		sdkTitle = `Pinned by the west manifest (${env.projectSdk.topology})`
@@ -187,6 +252,7 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 	return {
 		toolchain,
 		toolchainMuted: !env.extensionPresent,
+		toolchainTitle,
 		sdk,
 		sdkTitle,
 		sdkMuted,
@@ -202,11 +268,11 @@ function espHasAnything(env: EspEnvironment): boolean {
 }
 
 function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
-	const toolchain = env.extensionPresent
-		? `Espressif IDF ext ${withV(env.extensionVersion ?? "?")}`
-		: env.idfPresent
-			? "ESP-IDF installed"
-			: "Espressif ext not found"
+	// Extension shown as presence (✓), exact build in the tooltip; falls back to SDK-on-disk when the
+	// extension is gone but ESP-IDF is still installed (a real state — SDK detection is independent).
+	const toolchain = env.extensionPresent ? "Espressif IDF ✓" : env.idfPresent ? "ESP-IDF installed" : "Espressif ext not found"
+	const toolchainTitle =
+		env.extensionPresent && env.extensionVersion ? `ESP-IDF extension ${withV(env.extensionVersion)}` : undefined
 
 	// Version line. ESP only has a version after a build (project_description.json).
 	let sdk: string
@@ -226,8 +292,18 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 	} else if (hasWorkspace && env.projectDetected) {
 		sdk = "not built yet"
 		sdkMuted = true
-	} else if (env.extensionPresent || env.idfPresent) {
-		sdk = "ESP-IDF installed"
+	} else if (env.idfPresent || env.idfVersion || env.installedVersions?.length) {
+		// SDK(s) resolved → list ALL installed (like nRF lists NCS), not just installs[0]; otherwise the
+		// strip asserts one active version while a build with several installed asks which to use.
+		sdk = env.installedVersions?.length
+			? `ESP-IDF ${env.installedVersions.map(withV).join(", ")} installed`
+			: env.idfVersion
+				? `ESP-IDF ${withV(env.idfVersion)} installed`
+				: "ESP-IDF installed"
+	} else if (env.extensionPresent) {
+		// Extension present but no SDK resolved — don't claim ESP-IDF is installed (it isn't yet).
+		sdk = "ESP-IDF not installed"
+		sdkMuted = true
 	} else {
 		sdk = "ESP-IDF not detected"
 		sdkMuted = true
@@ -239,7 +315,7 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 		devices = "detecting…"
 		devicesMuted = true
 	} else if (env.espDevices.length === 0) {
-		devices = "no ESP devices"
+		devices = "no boards connected"
 		devicesMuted = true
 	} else {
 		// Show the exact chip once esptool resolved it; otherwise "ESP32-family".
@@ -254,6 +330,7 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 	return {
 		toolchain,
 		toolchainMuted: !env.extensionPresent && !env.idfPresent,
+		toolchainTitle,
 		sdk,
 		sdkTitle,
 		sdkMuted,
@@ -268,8 +345,10 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 // ---------------------------------------------------------------------------
 
 const EnvStrip: React.FC = () => {
-	const { nrfEnvironment, espEnvironment, openFolderPaths, workspaceClassification } = useExtensionState()
+	const { nrfEnvironment, espEnvironment, openFolderPaths } = useExtensionState()
 	const [refreshing, setRefreshing] = useState(false)
+	// A5 — compact by default (one line per detected platform), expand for the full per-platform detail.
+	const [expanded, setExpanded] = useState(false)
 
 	const handleRefresh = () => {
 		if (refreshing) return
@@ -289,15 +368,11 @@ const EnvStrip: React.FC = () => {
 	}
 
 	const hasWorkspace = openFolderPaths.length > 0
-	const cls = workspaceClassification ?? "none"
 
-	// Show/hide rule: nRF project → nRF only; ESP project → ESP only; otherwise both.
-	// Then gate each section on actually having something, so a single-platform
-	// machine never shows an empty section for the other platform.
-	const nrfAllowed = !hasWorkspace || cls === "nrf" || cls === "both" || cls === "none"
-	const espAllowed = !hasWorkspace || cls === "esp" || cls === "both" || cls === "none"
-	const showNrf = nrfAllowed && nrfHasAnything(nrfEnv)
-	const showEsp = espAllowed && espHasAnything(espEnv)
+	// Always show BOTH platforms (awareness + consistency). Detection drives full-vs-dimmed, not hide —
+	// nrfHasAnything/espHasAnything (unchanged) classify "set up"; an absent platform renders dimmed.
+	const nrfDetected = nrfHasAnything(nrfEnv)
+	const espDetected = espHasAnything(espEnv)
 
 	const nrf = nrfFacts(nrfEnv, hasWorkspace)
 	const esp = espFacts(espEnv, hasWorkspace)
@@ -314,21 +389,112 @@ const EnvStrip: React.FC = () => {
 		padding: "2px 0",
 	}
 
-	if (!showNrf && !showEsp) {
-		return <div style={{ ...containerStyle, fontSize: "11px", color: MUTED }}>No nRF or ESP toolchain detected.</div>
-	}
-
-	// Presentation only: one refresh re-probes both (same handleRefresh + detecting/refreshing state as
-	// before — no logic change).
-	const bothShown = showNrf && showEsp
+	// One refresh re-probes both (same handleRefresh + detecting/refreshing state).
 	const refreshBusy = refreshing || nrf.detecting || esp.detecting
+
+	// Compact summary line per detected platform (A5). Collapsed is fixed-height, so detecting→ready fills in
+	// place rather than reflowing the rows (A2).
+	const compact = (f: BlockFacts): string => [f.sdk, f.devicesMuted ? null : f.devices].filter(Boolean).join(" · ")
+	const summaryRows: Array<{ label: string; text: string }> = []
+	if (nrfDetected) {
+		summaryRows.push({ label: "nRF", text: compact(nrf) })
+	}
+	if (espDetected) {
+		summaryRows.push({ label: "ESP", text: compact(esp) })
+	}
+	const detecting = nrf.detecting || esp.detecting
+
+	const collapseLinkStyle: React.CSSProperties = {
+		display: "inline-flex",
+		alignItems: "center",
+		gap: "4px",
+		alignSelf: "flex-start",
+		background: "none",
+		border: "none",
+		padding: 0,
+		marginTop: "2px",
+		color: MUTED,
+		opacity: 0.7,
+		fontSize: "10px",
+		cursor: "pointer",
+	}
 
 	return (
 		<div style={containerStyle}>
 			<div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
-				{showNrf && <PlatformRow label="nRF" {...nrf} />}
-				{bothShown && <div style={{ height: "1px", background: NEUTRAL_BORDER, width: "100%" }} />}
-				{showEsp && <PlatformRow label="ESP" {...esp} />}
+				{expanded ? (
+					<>
+						<PlatformRow
+							detected={nrfDetected}
+							label="nRF"
+							notDetectedHint="not detected — install nRF Connect SDK to enable"
+							{...nrf}
+						/>
+						<div style={{ height: "1px", background: NEUTRAL_BORDER, width: "100%" }} />
+						<PlatformRow
+							detected={espDetected}
+							label="ESP"
+							notDetectedHint="not detected — install ESP-IDF to enable"
+							{...esp}
+						/>
+						<button
+							data-testid="envstrip-collapse"
+							onClick={() => setExpanded(false)}
+							style={collapseLinkStyle}
+							type="button">
+							<i className="codicon codicon-chevron-up" style={{ fontSize: "11px" }} /> less
+						</button>
+					</>
+				) : (
+					<button
+						data-testid="envstrip-summary"
+						onClick={() => setExpanded(true)}
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: "8px",
+							width: "100%",
+							background: "none",
+							border: "none",
+							padding: 0,
+							cursor: "pointer",
+							textAlign: "left",
+						}}
+						title="Show environment detail"
+						type="button">
+						<div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1, minWidth: 0 }}>
+							{summaryRows.length > 0 ? (
+								summaryRows.map((r) => (
+									<span
+										key={r.label}
+										style={{
+											display: "inline-flex",
+											alignItems: "center",
+											gap: "6px",
+											fontSize: "11px",
+											minWidth: 0,
+										}}>
+										<Badge text={r.label} />
+										<span
+											style={{
+												color: MUTED,
+												overflow: "hidden",
+												textOverflow: "ellipsis",
+												whiteSpace: "nowrap",
+											}}>
+											{r.text}
+										</span>
+									</span>
+								))
+							) : (
+								<span style={{ color: MUTED, fontSize: "11px" }}>
+									{detecting ? "detecting…" : "No SDK detected — click to set up"}
+								</span>
+							)}
+						</div>
+						<i className="codicon codicon-chevron-right" style={{ fontSize: "11px", color: MUTED, flexShrink: 0 }} />
+					</button>
+				)}
 			</div>
 			<button
 				aria-label="Re-probe detected platforms"

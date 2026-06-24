@@ -1,1 +1,10 @@
 lint-staged
+
+# CRA "SBOM & Fix" gate: when CRA bits, the knowledge layer, the funnel handlers, or telemetry change, run
+# the CRA test suite (kbit lint incl. R4.3 license-follows-delivery · honesty verdict-scan · funnel
+# classifier). Targeted so non-CRA commits stay fast. Note: scanning LIVE generated reports is the
+# model-in-the-loop eval (gated); this gate locks the lib + rules against regression.
+if git diff --cached --name-only | grep -qE '(^|/)iot-knowledge/|/services/knowledge/|/handlers/(craArtifact|craFunnel|WriteToFile|ExecuteCommand|ApplyPatch)|/TelemetryService\.ts'; then
+	echo "[pre-commit] CRA-relevant files changed → npm run test:cra"
+	npm run test:cra
+fi

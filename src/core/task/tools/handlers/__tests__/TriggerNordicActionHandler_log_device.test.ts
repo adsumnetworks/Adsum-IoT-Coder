@@ -11,7 +11,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 	let sandbox: sinon.SinonSandbox
 	let handler: any
 	let mockVscode: any
-	let mockActivateNordicTerminal: sinon.SinonStub
+	let mockPrepareNordicExecution: sinon.SinonStub
 	let mockExecuteCommandTool: sinon.SinonStub
 	let mockTaskConfig: any
 	let mockExecFile: sinon.SinonStub
@@ -34,8 +34,13 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 			extensionUri: { fsPath: "/mock/extension/path" },
 		}
 
-		// Mock external dependencies
-		mockActivateNordicTerminal = sandbox.stub().resolves("nRF Terminal")
+		// Mock external dependencies. prepareNordicExecution echoes the built command body back
+		// as the plan's command, so these tests keep asserting on the command handleLogDevice builds
+		// (the terminal-tiering itself is covered by nordicEnvResolver / executeNordicCommand tests).
+		mockPrepareNordicExecution = sandbox.stub().callsFake(async ({ body }: { body: string }) => ({
+			kind: "ready",
+			plan: { terminalName: "Adsum nRF", command: body, tier: 1 },
+		}))
 
 		// Mock child_process execFile
 		mockExecFile = sandbox.stub()
@@ -45,7 +50,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 			vscode: mockVscode,
 			"node:child_process": { execFile: mockExecFile },
 			"@/hosts/vscode/hostbridge/workspace/executeNordicCommand": {
-				activateNordicTerminal: mockActivateNordicTerminal,
+				prepareNordicExecution: mockPrepareNordicExecution,
 			},
 			"@/platform/pythonDetector": {
 				default: sandbox.stub().resolves("python3"),

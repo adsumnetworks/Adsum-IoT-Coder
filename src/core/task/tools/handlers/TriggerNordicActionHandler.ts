@@ -1,9 +1,12 @@
+import * as fs from "node:fs"
 import * as path from "node:path"
 import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
-import { activateNordicTerminal } from "@/hosts/vscode/hostbridge/workspace/executeNordicCommand"
+import { prepareNordicExecution } from "@/hosts/vscode/hostbridge/workspace/executeNordicCommand"
 import { getCachedCapabilities } from "@/platform/nordicProjectDetector"
+import { formatHci } from "@/services/nrf/hci/format"
+import { parseHci } from "@/services/nrf/hci/hciParser"
 import { telemetryService } from "@/services/telemetry"
 
 import { ClineDefaultTool } from "@/shared/tools"
@@ -27,6 +30,9 @@ import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
  * is fundamentally incompatible with it and causes the agent to hang forever.
  * Instead, we use terminal.sendText() + file-based output capture (Tee-Object/tee).
  */
+/** Workspace-scoped key remembering the NCS version the user chose for this project (ask-once). */
+const NCS_VERSION_STATE_KEY = "adsum.nrf.ncsVersion"
+
 export class TriggerNordicActionHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.NORDIC_ACTION
 
@@ -89,12 +95,29 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			}),
 		)
 
-		return this.executeInNrfTerminal(config, command)
+		// Only Zephyr build tools need the NCS toolchain env (and thus a resolved version);
+		// nrfutil/nrfjprog and process cleanup just run bare with nrfutil on PATH.
+		return this.executeInAdsumNrfTerminal(config, block, command, {
+			needsToolchain: this.commandNeedsToolchain(command),
+		})
+	}
+
+	/**
+	 * Does this command need the NCS toolchain environment (ZEPHYR_BASE, the SDK
+	 * toolchain, west's venv)? ONLY the Zephyr build tools do. Everything else —
+	 * `nrfutil` in all its forms (`device`, `sdk-manager`, `toolchain-manager`,
+	 * `--version`), `nrfjprog`, and process cleanup — are standalone tools that only
+	 * need to be on PATH (our terminal provides that). Gating those behind a resolved
+	 * NCS version is wrong: e.g. `nrfutil toolchain-manager list` is how you DISCOVER
+	 * what's installed, so it must never require something to already be installed.
+	 */
+	private commandNeedsToolchain(command: string): boolean {
+		return /\bwest\b/i.test(command) || /\b(cmake|ninja|dtc|menuconfig|guiconfig)\b/i.test(command)
 	}
 
 	private async handleLogDevice(config: TaskConfig, block: ToolUse): Promise<ToolResponse> {
 		const operation = block.params.operation
-		let { port, duration, devices, output, reset, auto_detect, list_nrf, transport } = block.params as any
+		let { port, duration, devices, output, reset, auto_detect, list_nrf, transport, monitor } = block.params as any
 
 		// ROBUST TRANSPORT DETECTION with explicit user input priority
 		if (!transport) {
@@ -166,7 +189,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 				}),
 			)
 
-			return this.executeInNrfTerminal(config, cmd)
+			return this.executeInAdsumNrfTerminal(config, block, cmd, { needsToolchain: false })
 		}
 
 		// 1. Handle "list" operation via nRF terminal (ensures nrfutil is available)
@@ -178,7 +201,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 					path: `Nordic Logger: list devices`,
 				}),
 			)
-			return this.executeInNrfTerminal(config, "nrfutil device list")
+			return this.executeInAdsumNrfTerminal(config, block, "nrfutil device list", { needsToolchain: false })
 		}
 
 		// 2. Resolve paths for "capture" / "test" / "monitor"
@@ -237,6 +260,9 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			}
 		}
 
+		// True once we've added --monitor, so the post-capture step knows to decode the .btmon sidecar(s).
+		let monitorOn = false
+
 		switch (operation) {
 			case "test":
 				if (port) {
@@ -277,6 +303,22 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 				if (duration) args.push("--duration", duration.toString())
 				if (resolvedOutput) args.push("--output", quoteIfNeeded(resolvedOutput))
+
+				// HCI Monitor: dual-channel capture (text .log + binary .btmon). Pass --monitor when the agent
+				// asked for it OR when the project's prj.conf has CONFIG_BT_DEBUG_MONITOR_RTT=y (safety net so
+				// the host↔controller trace is never silently dropped). RTT only — the monitor rides RTT ch1.
+				{
+					const monitorExplicit = monitor === true || monitor === "true"
+					const monitorAuto =
+						!monitorExplicit && transport === "rtt" && !!config.cwd && getCachedCapabilities(config.cwd).hasMonitorRTT
+					if (monitorExplicit || monitorAuto) {
+						args.push("--monitor")
+						monitorOn = true
+						if (monitorAuto) {
+							console.log("[Nordic] Auto-enabling --monitor (CONFIG_BT_DEBUG_MONITOR_RTT=y in prj.conf)")
+						}
+					}
+				}
 				break
 			case "monitor":
 				// Monitor maps to undefined (default behavior of script if no duration?)
@@ -303,45 +345,150 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			}),
 		)
 
-		// Execute using the same NRF terminal logic to ensure python environment is okay
-		// (Though python might be system wide, NRF terminal is safer for consistency)
-		return this.executeInNrfTerminal(config, cmd)
+		// Logger wrappers run bare in our own terminal — no SDK toolchain needed, but they shell out
+		// to `nrfutil device …` (reachable via the injected PATH / ADSUM_NRFUTIL). `isLoggerWrapper`
+		// makes the resolver add the PowerShell call operator for the quoted wrapper path.
+		const captureResult = await this.executeInAdsumNrfTerminal(config, block, cmd, {
+			needsToolchain: false,
+			isLoggerWrapper: true,
+		})
+
+		// Agent-first HCI: when we captured the BT Monitor stream, decode each raw .btmon into a
+		// human- AND agent-readable .hci.log under logs/hci/, and tell the agent to read it. The capture
+		// command has already finished (executeCommandTool blocks), so the .btmon files exist on disk.
+		if (monitorOn && resolvedOutput && config.cwd) {
+			const note = this.decodeMonitorCaptures(resolvedOutput, config.cwd)
+			if (note) {
+				return typeof captureResult === "string" ? `${captureResult}\n\n${note}` : captureResult
+			}
+		}
+		return captureResult
 	}
 
 	/**
-	 * Execute a command strictly inside the nRF terminal environment.
-	 *
-	 * Uses a two-step approach:
-	 * 1. Activate/create nRF Connect terminal (guarantees correct SDK environment/PATH variables).
-	 * 2. Execute command using standard executeCommandTool, explicitly passing the terminalName.
+	 * Decode every raw `.btmon` in `captureDir` (the BT Monitor binary from RTT channel 1) into a
+	 * human-readable `<base>.hci.log` under `<cwd>/logs/hci/`. Returns an agent-facing note listing the
+	 * decoded files so the agent reads + correlates them with the app log. Best-effort: a bad/empty
+	 * capture is reported, never thrown.
 	 */
-	private async executeInNrfTerminal(config: TaskConfig, command: string): Promise<ToolResponse> {
-		// Step 1: Ensure nRF terminal is active (creates if needed, sets up SDK env)
-		let terminalName: string | undefined
+	private decodeMonitorCaptures(captureDir: string, cwd: string): string | undefined {
+		let btmonFiles: string[]
 		try {
-			// This returns the name of the nRF terminal (e.g. "nRF Connect")
-			terminalName = await activateNordicTerminal()
+			btmonFiles = fs
+				.readdirSync(captureDir)
+				.filter((f) => f.endsWith(".btmon"))
+				.map((f) => path.join(captureDir, f))
+		} catch {
+			return undefined
+		}
+		if (btmonFiles.length === 0) {
+			return undefined
+		}
+
+		const hciDir = path.join(cwd, "logs", "hci")
+		try {
+			fs.mkdirSync(hciDir, { recursive: true })
+		} catch {
+			// fall back to writing beside the .btmon if logs/hci can't be created
+		}
+
+		const decoded: string[] = []
+		for (const btmon of btmonFiles) {
+			try {
+				const base = path.basename(btmon, ".btmon")
+				const target = fs.existsSync(hciDir)
+					? path.join(hciDir, `${base}.hci.log`)
+					: path.join(captureDir, `${base}.hci.log`)
+				// Skip .btmon already decoded (filenames are timestamped, so this keeps the note to THIS
+				// capture instead of re-listing every prior capture in the folder).
+				if (fs.existsSync(target)) {
+					continue
+				}
+				const buf = fs.readFileSync(btmon)
+				if (buf.length === 0) {
+					continue
+				}
+				fs.writeFileSync(target, formatHci(parseHci(buf)), "utf8")
+				decoded.push(target)
+			} catch (e) {
+				console.warn(`[Nordic HCI] decode failed for ${btmon}: ${e instanceof Error ? e.message : String(e)}`)
+			}
+		}
+
+		if (decoded.length === 0) {
+			return "HCI monitor was enabled but no frames were decoded (the .btmon capture may be empty — confirm CONFIG_BT_DEBUG_MONITOR_RTT=y and that BLE activity occurred during capture)."
+		}
+		const list = decoded.map((p) => `  - ${p}`).join("\n")
+		return (
+			`Decoded HCI monitor trace (host ↔ controller) written to:\n${list}\n` +
+			`Read the .hci.log file(s), then present a SHORT readable summary in chat: a framing line, a key-frame ` +
+			`timeline (only the frames that matter — not every frame, no raw hex), and your diagnosis correlated ` +
+			`with the app log. Point the user to the full .hci.log for detail. The raw .btmon is kept for btmon/Wireshark.`
+		)
+	}
+
+	/**
+	 * Execute a Nordic command in OUR OWN "Adsum nRF" terminal, sourcing the NCS
+	 * toolchain in the background (Tier 1) — falling back to a visible `toolchain
+	 * launch` wrap (Tier 2) and finally the extension's nRF terminal (Tier 3). This
+	 * replaces the old createNcsTerminal path that raced the version QuickPick.
+	 *
+	 * Version resolution for toolchain commands: explicit `ncs_version` param →
+	 * persisted per-project choice → project pin → single install → ask once. When
+	 * the agent supplies `ncs_version`, we persist it so future builds are silent.
+	 */
+	private async executeInAdsumNrfTerminal(
+		config: TaskConfig,
+		block: ToolUse,
+		command: string,
+		opts: { needsToolchain: boolean; isLoggerWrapper?: boolean },
+	): Promise<ToolResponse> {
+		const explicitVersion = (block.params as Record<string, string | undefined>).ncs_version
+		const persistedVersion = this.context.workspaceState?.get<string>(NCS_VERSION_STATE_KEY)
+
+		let prepared: Awaited<ReturnType<typeof prepareNordicExecution>>
+		try {
+			prepared = await prepareNordicExecution({
+				body: command,
+				needsToolchain: opts.needsToolchain,
+				isLoggerWrapper: opts.isLoggerWrapper,
+				explicitVersion,
+				persistedVersion,
+			})
 		} catch (error) {
-			console.warn("Could not activate nRF terminal:", error)
+			const msg = `Failed to prepare the nRF terminal: ${error instanceof Error ? error.message : String(error)}`
+			telemetryService.captureNordicActionError(config.ulid, "executeInAdsumNrfTerminal", msg)
+			await config.callbacks.say("error", msg)
+			return formatResponse.toolError(msg)
 		}
 
-		if (!terminalName) {
-			const errorMessage =
-				"Failed to activate nRF Connect Terminal. Please ensure the 'nRF Connect' extension is installed and you can open a terminal matching 'nRF' or 'Zephyr' manually."
-			telemetryService.captureNordicActionError(config.ulid, "executeInNrfTerminal", errorMessage)
-			await config.callbacks.say("error", errorMessage)
-			return formatResponse.toolError(errorMessage)
+		if (prepared.kind === "needsChoice" || prepared.kind === "error") {
+			const msg = prepared.message
+			telemetryService.captureNordicActionError(config.ulid, "executeInAdsumNrfTerminal", msg)
+			await config.callbacks.say("error", msg)
+			return formatResponse.toolError(msg)
 		}
 
-		// Step 2: Execute command specifically in the named nRF terminal, suppressing missing shell integration warnings natively
-		const [userRejected, result] = await config.callbacks.executeCommandTool(command, undefined, terminalName, true)
+		// The agent made an explicit version choice that resolved — remember it for this project.
+		if (explicitVersion && opts.needsToolchain) {
+			await this.context.workspaceState?.update(NCS_VERSION_STATE_KEY, explicitVersion)
+		}
+
+		const { terminalName, command: finalCommand } = prepared.plan
+		const [userRejected, result] = await config.callbacks.executeCommandTool(finalCommand, undefined, terminalName, true)
 
 		if (userRejected) {
-			telemetryService.captureNordicActionExecuted(config.ulid, "executeInNrfTerminal", { command, status: "rejected" })
+			telemetryService.captureNordicActionExecuted(config.ulid, "executeInAdsumNrfTerminal", {
+				command: finalCommand,
+				status: "rejected",
+			})
 		} else if (result.error) {
-			telemetryService.captureNordicActionError(config.ulid, "executeInNrfTerminal", result.error)
+			telemetryService.captureNordicActionError(config.ulid, "executeInAdsumNrfTerminal", result.error)
 		} else {
-			telemetryService.captureNordicActionExecuted(config.ulid, "executeInNrfTerminal", { command, status: "success" })
+			telemetryService.captureNordicActionExecuted(config.ulid, "executeInAdsumNrfTerminal", {
+				command: finalCommand,
+				status: "success",
+			})
 		}
 
 		return result

@@ -89,3 +89,28 @@ export function detectModeFromTask(task: string): NordicModeId | null {
  * When detected, the UI shows mode buttons again.
  */
 export const TASK_COMPLETE_MARKER = "<!--TASK_COMPLETE-->"
+
+/**
+ * The structural subset of a chat message this helper reads, so it stays dependency-light + unit-testable.
+ */
+type CompletionProbe = { type?: string; say?: string; ask?: string; text?: string; partial?: boolean }
+
+/**
+ * True when the last chat message means the Nordic task is over and the next-step menu should render. TWO
+ * triggers, identical in effect by design:
+ *   1. a plain `text` message carrying the workflow's TASK_COMPLETE_MARKER (the bit's loop-exit signal); and
+ *   2. an attempt_completion result (`completion_result`, whether the `say` or the follow-up `ask`) — the
+ *      harness's OWN completion signal. We honor it even without the marker, so the menu still renders when the
+ *      model completes via the tool — including a *premature* attempt_completion. This is the R4 safety-net:
+ *      the developer always gets a next-step offer at completion, even if the model exited the loop early.
+ * Partial/streaming messages are ignored, so it settles on the final message rather than firing mid-stream.
+ */
+export function isNordicTaskComplete(last?: CompletionProbe | null): boolean {
+	if (!last || last.partial === true) {
+		return false
+	}
+	if (last.type === "say" && last.say === "text" && last.text?.includes(TASK_COMPLETE_MARKER)) {
+		return true
+	}
+	return last.say === "completion_result" || last.ask === "completion_result"
+}
