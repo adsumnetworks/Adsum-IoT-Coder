@@ -72,6 +72,6 @@ For features and large contributions:
 
 ## Contribution Agreement
 
-By submitting a pull request, you agree that your contributions will be licensed under the same license as the project ([Apache 2.0](LICENSE)).
+Adsum IoT Coder is **open-core**: the extension **code** is [Apache-2.0](LICENSE), bundled **knowledge content** (`iot-knowledge/`) is [CC-BY-SA-4.0](iot-knowledge/LICENSE), and some bits ship under Adsum Networks' proprietary terms. **Code** contributions are accepted under Apache-2.0. Because of the multi-license model, **knowledge-content** contributions require a Contributor License Agreement (CLA) that is **not yet in place** — until it is, we don't merge external PRs that add or modify content under `iot-knowledge/` or the registry. (Draft CLA pending review.)
 
 Let's build something amazing together! 🚀

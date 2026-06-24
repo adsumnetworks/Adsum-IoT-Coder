@@ -1,0 +1,24 @@
+Adsum IoT Coder
+Copyright 2026 Adsum Networks.
+
+This product is a derivative work of Cline (https://github.com/cline/cline),
+licensed under the Apache License, Version 2.0.
+[VERIFY: copy the exact upstream copyright line from Cline's LICENSE/NOTICE,
+e.g. "Copyright (c) 2023-2025 Cline Bot Inc." — confirm entity + years.]
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+the extension code except in compliance with the License. You may obtain a copy
+of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Bundled knowledge content under iot-knowledge/ is licensed CC-BY-SA-4.0
+(see iot-knowledge/LICENSE). Downloaded ("registry") bits are proprietary to
+Adsum Networks and are governed by the terms that accompany them — not by the
+open-source licenses above.
+
+Trademarks: nRF, nRF Connect SDK, and Nordic Semiconductor are trademarks of
+Nordic Semiconductor ASA; ESP32 and ESP-IDF are trademarks of Espressif Systems;
+Zephyr is a trademark of the Linux Foundation; Visual Studio Code is a trademark
+of Microsoft. This is an independent project, not affiliated with or endorsed by
+any of them.
+
+[VERIFY other bundled third-party components and their NOTICE requirements.]
