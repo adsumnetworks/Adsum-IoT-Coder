@@ -14,6 +14,8 @@
  * fixture trees — no filesystem side effects in tests.
  */
 
+import { CRA_ARTIFACT_DIR } from "@shared/cra-paths"
+import type { WorkspaceFeatures } from "@shared/workspace-features"
 import { existsSync, readdirSync, readFileSync, statSync } from "fs"
 import { join } from "path"
 
@@ -27,9 +29,14 @@ export interface AppInfo {
 	confidence: "definitive" | "supporting"
 }
 
+// WorkspaceFeatures (the BLE / compliance signal shape + the MOAT INVARIANT) is the single source of truth in
+// @shared/workspace-features so the host probe, the ExtensionMessage wire contract, and the webview agree.
+export type { WorkspaceFeatures } from "@shared/workspace-features"
+
 export interface ClassifierResult {
 	apps: AppInfo[]
 	summary: WorkspaceSummary
+	features: WorkspaceFeatures
 }
 
 // ---------------------------------------------------------------------------
@@ -81,6 +88,36 @@ const NRF_CMAKE_RE = /find_package\s*\(\s*Zephyr/
  */
 const ESP_CMAKE_RE = /IDF_PATH[}"']*\/tools\/cmake\/project\.cmake/
 
+// BLE master-switch detectors. Anchored so a leading `#` (comment) and a trailing value/`=yes`/`=y_x`
+// don't false-match — only `CONFIG_BT=y` (optional surrounding whitespace + optional inline comment).
+/** nRF/Zephyr BLE master switch: `CONFIG_BT=y` in a Kconfig fragment (prj.conf / *.conf / *.overlay).
+ *  Exported so the system-prompt nRF detector (iot_context) shares the SAME anchored test (no drift). */
+export const NRF_BLE_RE = /^\s*CONFIG_BT\s*=\s*y\s*(#.*)?$/im
+/** ESP-IDF Bluetooth enable: `CONFIG_BT_ENABLED=y` in sdkconfig / sdkconfig.defaults / build config. */
+const ESP_BLE_RE = /^\s*CONFIG_BT_ENABLED\s*=\s*y\s*(#.*)?$/im
+
+/** A folder entry whose CONTENT we read for a BLE stack signal: any *.conf / *.overlay fragment plus the
+ *  two unsuffixed ESP configs. Globbing (not a fixed list) catches overlay-bt.conf, prj_<variant>.conf,
+ *  boards/<board>.conf-style fragments, sysbuild.conf, etc. — where BLE is very commonly enabled. */
+const BLE_CONF_EXT_RE = /\.(conf|overlay)$/i
+function isBleConfigFile(name: string): boolean {
+	return BLE_CONF_EXT_RE.test(name) || name === "sdkconfig" || name === "sdkconfig.defaults"
+}
+
+// Build-resolved configs (the source of truth post-build): under a build dir, nRF writes zephyr/.config and
+// ESP writes config/sdkconfig. Checked inside the build scan so an overlay-only / post-build BLE project
+// (CONFIG_BT merged in only at build time) still trips hasBle.
+const BUILD_BLE_CONFIGS = [
+	["zephyr", ".config"],
+	["config", "sdkconfig"],
+] as const
+
+/** True when a file's content enables a BLE/Bluetooth stack (nRF or ESP). */
+function fileEnablesBle(path: string, fs: FsAdapter): boolean {
+	const content = fs.readFile(path)
+	return NRF_BLE_RE.test(content) || ESP_BLE_RE.test(content)
+}
+
 /** Folders to never descend into. */
 const SKIP_DIRS = new Set([
 	"managed_components",
@@ -107,10 +144,20 @@ interface FolderSignals {
 	espDefinitive: boolean
 	nrfSupporting: number
 	espSupporting: number
+	/** Capability/file-presence signals (A3/A10) — OR-accumulated across folders. */
+	ble: boolean
+	compliance: boolean
 }
 
 function checkFolder(folderPath: string, fs: FsAdapter): FolderSignals {
-	const s: FolderSignals = { nrfDefinitive: false, espDefinitive: false, nrfSupporting: 0, espSupporting: 0 }
+	const s: FolderSignals = {
+		nrfDefinitive: false,
+		espDefinitive: false,
+		nrfSupporting: 0,
+		espSupporting: 0,
+		ble: false,
+		compliance: false,
+	}
 
 	// CMakeLists.txt content (the most reliable definitive signal)
 	const cmakePath = join(folderPath, "CMakeLists.txt")
@@ -135,8 +182,23 @@ function checkFolder(folderPath: string, fs: FsAdapter): FolderSignals {
 	if (fs.exists(join(folderPath, "Kconfig.projbuild"))) s.espSupporting++
 	if (fs.exists(join(folderPath, "main", "CMakeLists.txt"))) s.espSupporting++
 
-	// Scan build* subdirectories for platform-specific artifacts
-	for (const entry of fs.listDir(folderPath)) {
+	const entries = fs.listDir(folderPath)
+
+	// Capability signal — a BLE stack enabled in any config fragment (A10 deep-debug sub-line / A3 nudge).
+	// Globs *.conf / *.overlay (+ sdkconfig[.defaults]) so overlay-/variant-enabled BT is caught, not just prj.conf.
+	for (const entry of entries) {
+		if (!isBleConfigFile(entry)) continue
+		if (fileEnablesBle(join(folderPath, entry), fs)) {
+			s.ble = true
+			break
+		}
+	}
+
+	// File-presence signal — CRA/compliance artifacts already generated (A3 nudge demotes once present).
+	if (fs.isDir(join(folderPath, CRA_ARTIFACT_DIR))) s.compliance = true
+
+	// Scan build* subdirectories for platform artifacts + the build-resolved BLE config (the source of truth).
+	for (const entry of entries) {
 		if (!isBuildDir(entry)) continue
 		const buildPath = join(folderPath, entry)
 		if (!fs.isDir(buildPath)) continue
@@ -148,6 +210,17 @@ function checkFolder(folderPath: string, fs: FsAdapter): FolderSignals {
 		// ESP: project_description.json or flasher_args.json directly under build/
 		if (fs.exists(join(buildPath, "project_description.json"))) s.espDefinitive = true
 		if (fs.exists(join(buildPath, "flasher_args.json"))) s.espDefinitive = true
+
+		// BLE from the build-resolved config — CONFIG_BT may be merged in only at build time (overlay/board conf).
+		if (!s.ble) {
+			for (const parts of BUILD_BLE_CONFIGS) {
+				const p = join(buildPath, ...parts)
+				if (fs.exists(p) && fileEnablesBle(p, fs)) {
+					s.ble = true
+					break
+				}
+			}
+		}
 	}
 
 	return s
@@ -178,12 +251,18 @@ function findArtifact(dir: string, names: string[], fs: FsAdapter, depth: number
 export function classifyWorkspace(roots: string[], fsAdapter: FsAdapter = realFsAdapter): ClassifierResult {
 	const apps: AppInfo[] = []
 	const seen = new Set<string>()
+	const features: WorkspaceFeatures = { hasBle: false, hasComplianceArtifacts: false }
 
 	const visitFolder = (folderPath: string) => {
 		if (seen.has(folderPath)) return
 		seen.add(folderPath)
 
 		const sig = checkFolder(folderPath, fsAdapter)
+		// Capability/file-presence signals are OR-accumulated across every visited folder, independent of
+		// whether the folder classifies as an app (a top-level compliance/ dir still counts).
+		if (sig.ble) features.hasBle = true
+		if (sig.compliance) features.hasComplianceArtifacts = true
+
 		const isNrf = sig.nrfDefinitive || sig.nrfSupporting >= 2
 		const isEsp = sig.espDefinitive || sig.espSupporting >= 2
 
@@ -218,7 +297,7 @@ export function classifyWorkspace(roots: string[], fsAdapter: FsAdapter = realFs
 	else if (platforms.has("nrf")) summary = "nrf"
 	else if (platforms.has("esp")) summary = "esp"
 
-	return { apps, summary }
+	return { apps, summary, features }
 }
 
 // ---------------------------------------------------------------------------
@@ -226,7 +305,11 @@ export function classifyWorkspace(roots: string[], fsAdapter: FsAdapter = realFs
 // so the webview learns which platform the open workspace is.
 // ---------------------------------------------------------------------------
 
-let _cachedResult: ClassifierResult = { apps: [], summary: "none" }
+let _cachedResult: ClassifierResult = {
+	apps: [],
+	summary: "none",
+	features: { hasBle: false, hasComplianceArtifacts: false },
+}
 
 /** Re-run classification for the given roots and cache it. Returns the fresh result. */
 export function refreshWorkspaceClassification(roots: string[], fsAdapter: FsAdapter = realFsAdapter): ClassifierResult {
@@ -240,4 +323,8 @@ export function getCachedWorkspaceClassification(): ClassifierResult {
 
 export function getCachedWorkspaceSummary(): WorkspaceSummary {
 	return _cachedResult.summary
+}
+
+export function getCachedWorkspaceFeatures(): WorkspaceFeatures {
+	return _cachedResult.features
 }

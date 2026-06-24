@@ -4,6 +4,7 @@ import type { EspEnvironment } from "@shared/esp"
 import { WorkspaceRoot } from "@shared/multi-root/types"
 import type { NrfEnvironment } from "@shared/nrf"
 import { RemoteConfigFields } from "@shared/storage/state-keys"
+import type { WorkspaceFeatures } from "@shared/workspace-features"
 import type { Environment } from "../config"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
 import { ApiConfiguration } from "./api"
@@ -129,6 +130,8 @@ export interface ExtensionState {
 	espEnvironment?: EspEnvironment
 	/** Which embedded platform(s) the open workspace is — drives platform-aware card copy. */
 	workspaceClassification?: "nrf" | "esp" | "both" | "none"
+	/** Grounded capability/file-presence signals for the open workspace — drives the A3 CRA nudge + A10 sub-line. */
+	workspaceFeatures?: WorkspaceFeatures
 }
 
 export interface ClineMessage {

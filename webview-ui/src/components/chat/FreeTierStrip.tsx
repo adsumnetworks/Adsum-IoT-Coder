@@ -49,7 +49,7 @@ const FreeTierStrip = () => {
 			<span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
 				<i className="codicon codicon-zap" style={{ fontSize: "12px", color: BRAND_CORAL }} />
 				<span>
-					<strong style={{ color: "var(--vscode-foreground)" }}>Free tier</strong> · AI inference by Adsum Networks ·{" "}
+					<strong style={{ color: "var(--vscode-foreground)" }}>Free tier</strong> · inference on Adsum Networks ·{" "}
 					<strong style={{ color: "var(--vscode-foreground)" }}>{tokensLabel}</strong> tokens left
 				</span>
 			</span>
