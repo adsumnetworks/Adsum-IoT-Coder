@@ -26,7 +26,14 @@ import {
 	loadCatalog,
 	type ManifestEntry,
 } from "../src/services/knowledge/kbit/inspect"
-import { deriveId, lintBitContent, lintCorpus, listBitFiles } from "../src/services/knowledge/kbit/lint"
+import {
+	deriveId,
+	lintBitContent,
+	lintCorpus,
+	lintManifestFresh,
+	lintVersionBump,
+	listBitFiles,
+} from "../src/services/knowledge/kbit/lint"
 import { type KBitMeta, kbitMetaSchema } from "../src/services/knowledge/kbit/schema"
 
 const REPO = join(__dirname, "..")
@@ -325,6 +332,87 @@ async function cmdStats(args: string[]): Promise<void> {
 	console.log(`\n${bits.length} bit(s) · ${base} · fetches = registry distributions (cached after first fetch), not raw uses`)
 }
 
+/**
+ * `kbit diff` — LOCAL sync status (no network): for every bit (bundled in iot-knowledge + downloaded in
+ * Adsum-Backend/kbits) show whether its body is in-sync with git HEAD, modified, or new, plus the two
+ * guard flags (needs-bump, stale-manifest). Answers "what have I changed that isn't committed/published
+ * /bumped/regenerated?" without hitting the registry (use `kbit stats` for live registry data).
+ */
+function cmdDiff(): void {
+	const verOf = (yaml: string): string => {
+		try {
+			const v = (yamlLoad(yaml) as { version?: unknown })?.version
+			return typeof v === "string" ? v : "?"
+		} catch {
+			return "?"
+		}
+	}
+	const headText = (repoDir: string, rel: string): string | null => {
+		try {
+			return execSync(`git show HEAD:${rel}`, { cwd: repoDir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+		} catch {
+			return null
+		}
+	}
+	type Row = { kind: string; path: string; version: string; status: string }
+	const rows: Row[] = []
+
+	// Bundled bits (open, ship in the VSIX from iot-knowledge/).
+	const manifestJson = existsSync(MANIFEST) ? readFileSync(MANIFEST, "utf8") : "{}"
+	const bundled = listBitFiles(KB)
+	const stale = new Set(lintManifestFresh(KB, bundled, manifestJson).map((i) => i.file))
+	for (const f of bundled) {
+		const text = readFileSync(join(KB, f), "utf8")
+		const head = headText(REPO, `iot-knowledge/${f}`)
+		const tags: string[] = []
+		if (head == null) {
+			tags.push("new")
+		} else if (extractFrontmatter(head).body.trim() !== extractFrontmatter(text).body.trim()) {
+			tags.push("modified")
+		}
+		if (lintVersionBump(f, text, head).length) {
+			tags.push("needs-bump")
+		}
+		if (stale.has(f)) {
+			tags.push("stale-manifest")
+		}
+		rows.push({
+			kind: "bundled ",
+			path: f,
+			version: verOf(extractFrontmatter(text).yaml),
+			status: tags.join(", ") || "in-sync",
+		})
+	}
+
+	const w = Math.max(4, ...rows.map((r) => r.path.length))
+	console.log(`BUNDLED bits (open, in iot-knowledge/ — what F5/the VSIX read):`)
+	console.log(`  ${"bit".padEnd(w)}  ${"ver".padEnd(7)}  status`)
+	for (const r of rows) {
+		console.log(`  ${r.path.padEnd(w)}  ${r.version.padEnd(7)}  ${r.status}`)
+	}
+	const changed = rows.filter((r) => r.status !== "in-sync").length
+	console.log(`  → ${rows.length} bundled · ${changed} need attention`)
+
+	// Downloaded bits live in the registry; the backend repo is only a mirror. Summarise their count and
+	// how many differ from the backend mirror's committed state — true publish status is `kbit stats`.
+	const backendKbits = join(REPO, "Adsum-Backend", "kbits")
+	if (existsSync(backendKbits)) {
+		const backendRepo = join(REPO, "Adsum-Backend")
+		const files = listBitFiles(backendKbits)
+		let dirty = 0
+		for (const f of files) {
+			const head = headText(backendRepo, `kbits/${f}`)
+			const body = extractFrontmatter(readFileSync(join(backendKbits, f), "utf8")).body.trim()
+			if (head == null || extractFrontmatter(head).body.trim() !== body) {
+				dirty++
+			}
+		}
+		console.log(`\nDOWNLOADED bits (proprietary, registry-served; mirror in Adsum-Backend/kbits/):`)
+		console.log(`  → ${files.length} in the mirror · ${dirty} differ from the backend's committed state`)
+		console.log(`  (run \`kbit stats\` for live registry fetch counts / true publish status)`)
+	}
+}
+
 async function main(): Promise<void> {
 	const [cmd, ...rest] = process.argv.slice(2)
 	switch (cmd) {
@@ -349,8 +437,11 @@ async function main(): Promise<void> {
 		case "stats":
 			await cmdStats(rest)
 			break
+		case "diff":
+			cmdDiff()
+			break
 		default:
-			console.log("usage: kbit <ls|tree|show <id>|lint|new|edit <id>|stats [id]>")
+			console.log("usage: kbit <ls|tree|show <id>|lint|new|edit <id>|stats [id]|diff>")
 			process.exitCode = cmd ? 1 : 0
 	}
 }

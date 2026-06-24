@@ -31,6 +31,7 @@ import {
 	enumerateIdfInstalls,
 	idfAmbiguousMessage,
 	idfNotFoundMessage,
+	parseIdfVersionCmake,
 	parseIdfVersionTxt,
 	resolveIdfPath,
 	type SupportedPlatform,
@@ -85,7 +86,7 @@ function explicitIdfSetting(platform: SupportedPlatform): string | undefined {
  * (from dependencies.lock, via the detector cache). Auto-resolves on a pin match or a sole install;
  * returns `ambiguous` when several installs exist and the project doesn't pin one.
  */
-export function selectHostIdf() {
+export function selectHostIdf(opts: { explicitVersion?: string; persistedVersion?: string } = {}) {
 	const platform = hostPlatform()
 	const explicit = explicitIdfSetting(platform)
 	const listDir = (p: string): string[] => {
@@ -96,15 +97,30 @@ export function selectHostIdf() {
 		}
 	}
 	const readVersion = (idfDir: string): string | undefined => {
-		try {
-			return parseIdfVersionTxt(fs.readFileSync(path.join(idfDir, "version.txt"), "utf8"))
-		} catch {
-			return undefined
+		const read = (p: string): string | undefined => {
+			try {
+				return fs.readFileSync(p, "utf8")
+			} catch {
+				return undefined
+			}
 		}
+		// version.txt first (release tarballs); fall back to tools/cmake/version.cmake, which exists in
+		// every install (extension-managed / git checkouts have NO version.txt) — without this the install
+		// version is undefined and the project pin (e.g. 6.0.0) can never match → ambiguous forever.
+		const txt = read(path.join(idfDir, "version.txt"))
+		const fromTxt = txt ? parseIdfVersionTxt(txt) : undefined
+		if (fromTxt) {
+			return fromTxt
+		}
+		const cmake = read(path.join(idfDir, "tools", "cmake", "version.cmake"))
+		return cmake ? parseIdfVersionCmake(cmake) : undefined
 	}
 	const installs = enumerateIdfInstalls(platform, process.env, fs.existsSync, listDir, readVersion, explicit)
 	const pin = getCachedEspEnvironment().projectIdfVersion
-	return selectIdfInstall(installs, pin, explicit)
+	return selectIdfInstall(installs, pin, explicit, {
+		explicit: opts.explicitVersion,
+		persisted: opts.persistedVersion,
+	})
 }
 
 /**
@@ -170,15 +186,20 @@ export interface BuiltEspCommand {
  * prepend the export script; on resolution failure return an actionable error
  * instead of a broken command.
  */
-export function wrapEspCommand(body: string, needsSourcing: boolean): BuiltEspCommand {
+export function wrapEspCommand(
+	body: string,
+	needsSourcing: boolean,
+	opts: { explicitVersion?: string; persistedVersion?: string } = {},
+): BuiltEspCommand {
 	const platform = hostPlatform()
 	if (!needsSourcing) {
 		return { command: body }
 	}
-	const selection = selectHostIdf()
+	const selection = selectHostIdf(opts)
 	if (selection.kind === "ambiguous") {
-		// Several IDF versions installed and the project pins none — ask the user instead of
-		// silently sourcing one (the v5.5.2-vs-v6.0 bug).
+		// Several IDF versions installed and the project pins none — ask the user ONCE and let the agent
+		// re-run with idf_version (remembered per project), instead of silently sourcing one (the
+		// v5.5.2-vs-v6.0 bug) or pushing the agent off our tool into a plain terminal.
 		return { error: idfAmbiguousMessage(selection.installs) }
 	}
 	const idfPath = selection.kind === "resolved" ? selection.path : resolveHostIdfPath()
