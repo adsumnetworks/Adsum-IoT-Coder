@@ -2,7 +2,7 @@
 id: adsum/cra/workflows/cra-readiness
 title: CRA SBOM & Fix
 type: workflow
-version: 0.2.2
+version: 0.2.3
 owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
@@ -26,7 +26,7 @@ requires:
   - adsum/esp/sdks/esp-idf/cra-advisories
   - adsum/rules/next-step
 created: "2026-06-18"
-updated: "2026-06-23"
+updated: "2026-06-24"
 status: draft
 ---
 
@@ -135,7 +135,11 @@ for whatever's most valuable next. Works on nRF (NCS/Zephyr) and ESP (ESP-IDF).
    *(On the preview-and-ask path these `.md`/`.json` files are written only after consent — otherwise the
    report is inline-only.)*
 
-   **Report skeleton (fill it; don't free-form — the parts below are the ones agents drop):**
+   **Report skeleton (fill it; don't free-form — the parts below are the ones agents drop).** The **title line
+   and the disclaimer blockquote are MANDATORY and VERBATIM, and must be the first two things in the file** —
+   keep the exact `# CRA SBOM & Fix — <project>` title (NEVER retitle it, e.g. to "CRA Readiness Assessment")
+   and the `> Readiness aid — NOT a conformity assessment …` blockquote. A real run dropped **both** and went
+   straight to a verdict checklist — that is the failure this rule exists to stop.
    ```
    # CRA SBOM & Fix — <project>
    > Readiness aid — NOT a conformity assessment, NOT legal advice. Reports your build's literal evidence +
@@ -149,14 +153,36 @@ for whatever's most valuable next. Works on nRF (NCS/Zephyr) and ESP (ESP-IDF).
                             for NCS <x> as of <date>; check live" (never silently omit it)
    ## 4. Worth doing now → dependency-ordered gap list (step 5)
    ```
-   **Before you finish, check:** disclaimer + binding date are in the **written header** (not just chat) ·
-   the posture table is **evidence-mode** (Requirement · Your build shows · You verify — **no ✅/⚠️/❌**, and no
-   status glyphs anywhere incl. the closing summary) · the advisory section is present · **both**
+
+   **Posture rows — the shape that keeps failing (read this).** On a *real* project the model reverts to a
+   pretrained "CRA compliance checklist" and stamps a status column. **There is no status/grade column.**
+   NOT this — every one of these is a banned verdict:
+   `| Secure Boot | ✅ ENABLED | … |` · `| 2(1) Security by design | ✅ MET | … |` · `| CRA Readiness | ✅ READY |`
+   — and never `"cra_readiness": "READY"` / `"secure_boot": "ENABLED"` in the JSON.
+   — also (run #8) **NEVER a numeric grade** (`8/10`, `0/10`, "Aggregate CRA Readiness 5.7/10", "7 out of 10"),
+   **NEVER "non-compliant"**, and **NEVER a fabricated article sub-clause** ("Article 3(8)") — cite ONLY the curated
+   Annex Part I/II + the one curated "Article 14" vulnerability-reporting reference; invent nothing finer.
+   THIS instead — evidence-mode, every row a literal fact + what to verify:
+   `| Boot only verified firmware — Annex I Part I | CONFIG_BOOTLOADER_MCUBOOT=y present | verify the bootloader child image actually built |`
+   The JSON mirrors it: `"secure_boot": "CONFIG_BOOTLOADER_MCUBOOT=y present — verify the child image built"`,
+   never a verdict word (READY / MET / GOOD / ENABLED / PASS / COMPLIANT).
+
+   **Before you finish, check:** the written `.md` **opens with the exact `# CRA SBOM & Fix` title and the
+   `Readiness aid — NOT a conformity assessment` disclaimer blockquote** (not retitled, not dropped — the literal
+   line is present) + binding date in the header (not just chat) · the posture table is **evidence-mode** (Requirement · Your build shows · You verify — **no ✅/⚠️/❌**, and no
+   status glyphs anywhere incl. headings + the closing summary) · the advisory section is present · **both**
    `CRA_READINESS.md` **and** `cra-readiness.json` were written (real project / after consent) ·
    `compliance/sbom/` exists · **the report is internally consistent + fresh:** the posture must agree with the
    SBOM section (an image the SBOM lists — e.g. a `mcuboot` sub-image — must NOT read "not built" in the posture
    row), and if you applied a fix **after** writing the report, the posture rows + SBOM section + gap list
    reflect the **post-fix** state (re-derive per `next-step.md` → *Remediation execution*).
+   **Then re-read your own written `.md` AND `.json` one last time:** if any line contains ✅ / ⚠️ / ❌, or the
+   words **MET · READY · GOOD · ENABLED · PASS · COMPLIANT · CERTIFIED**, or "meets / satisfies a requirement",
+   **rewrite it in evidence-mode before you present results or complete.** This self-check is the last guard —
+   nothing downstream catches a verdict you leave in, so the honesty of the deliverable is on you here. **Also reject
+   (run #8 shapes):** any numeric grade (`N/10`, "score", "aggregate readiness"), the word "non-compliant", and any
+   fabricated article sub-clause (`Article N(M)`) — only "Article 14" + the Annex Part I/II labels are curated and
+   allowed.
 
 ## Honesty rules (cross-cutting essentials — posture-specific detail lives in the posture bit)
 - Real evidence per row or "unknown" — never invent a finding.
@@ -188,10 +214,13 @@ instructions. **Never** promise to "continue after you open a project" (the relo
 
 ## Completion marker (emit ONLY at loop-exit — this drives the funnel + the fallback menu)
 When the next-step loop has **exited** — its high-value backlog is dry, or the developer declined / said
-"done" — end your **final** message with `<!--TASK_COMPLETE-->` (exactly — nothing after it). **If your harness
-ends tasks with a completion tool (e.g. `attempt_completion`), put `<!--TASK_COMPLETE-->` as the last line of
-that result** — don't omit it. This signals
-the host (funnel telemetry + the generic next-step menu, which is the **post-exit fallback**). **Do NOT emit
-it while a grounded offer is still pending** (an `ask_followup_question` offer keeps the task active — that's
-the in-chat path; the marker is for *after* the loop). One offer XOR the menu: don't also print a generic
-text menu — the host renders the menu on completion.
+"done" (the ONLY two exits — see `next-step.md` rule 5) — end your **final** message with
+`<!--TASK_COMPLETE-->` (exactly — nothing after it). **If your harness ends tasks with a completion tool (e.g.
+`attempt_completion`), put `<!--TASK_COMPLETE-->` as the last line of that result** — don't omit it. This signals
+the host (funnel telemetry + the generic next-step menu, which is the **post-exit fallback**). **Do NOT emit it
+— and do NOT call `attempt_completion` — while any high-value posture gap is still un-offered and the dev hasn't
+declined.** You applied one fix? That is not the exit: re-derive the gap list and surface the next gap via
+`ask_followup_question`. *Listing* the remaining gaps inside a completion message is **not** offering them and
+ends the loop early (a real run did exactly this and the dev had to ask "what other issues do I have?"). An
+`ask_followup_question` offer keeps the task active — that's the in-chat path; the marker is for *after* the
+loop. One offer XOR the menu: don't also print a generic text menu — the host renders the menu on completion.

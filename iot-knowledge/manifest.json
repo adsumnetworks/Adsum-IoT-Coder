@@ -21,7 +21,7 @@
 			"id": "adsum/cra/workflows/cra-readiness",
 			"title": "CRA SBOM & Fix",
 			"type": "workflow",
-			"version": "0.2.2",
+			"version": "0.2.3",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
@@ -48,9 +48,9 @@
 			],
 			"status": "draft",
 			"created": "2026-06-18",
-			"updated": "2026-06-23",
+			"updated": "2026-06-24",
 			"path": "cra/workflows/cra-readiness.md",
-			"content_hash": "8a2e29338fd10f2311074ba423e83d538055b37327dc704b78482f234f58ba9d"
+			"content_hash": "22014ee0488e905ec607c96b657fec5a8bb3d915897658f271c35dc9ab0d47cd"
 		},
 		{
 			"id": "adsum/esp/actions/cra-generate-sbom",
@@ -454,7 +454,7 @@
 			"id": "adsum/rules/next-step",
 			"title": "Productive Next-Step Loop",
 			"type": "knowledge",
-			"version": "0.1.2",
+			"version": "0.1.3",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
@@ -464,9 +464,9 @@
 			"platform": "universal",
 			"status": "draft",
 			"created": "2026-06-22",
-			"updated": "2026-06-23",
+			"updated": "2026-06-24",
 			"path": "rules/next-step.md",
-			"content_hash": "04c31eaabfddbb1607310cacb18bfa385df97972ce70a0f5291b138ecc414475"
+			"content_hash": "33abec6c18f5a3f8503938f45b9d14cb17d9cbe23227035960ec692e5cfd1ed2"
 		},
 		{
 			"id": "adsum/rules/tool-routing",
