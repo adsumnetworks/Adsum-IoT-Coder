@@ -7,7 +7,6 @@ import {
 	ESP_FAMILY_VIDS,
 	filterEspPorts,
 	parseDependenciesLockIdfVersion,
-	parseIdfVersionCmake,
 	parseIdfVersionFile,
 	parseProjectDescription,
 	type RawPortData,
@@ -60,32 +59,6 @@ describe("EspEnvironmentDetector — pure helpers", () => {
 
 		it("returns undefined for non-version content", () => {
 			should(parseIdfVersionFile("not-a-version")).be.undefined()
-		})
-	})
-
-	describe("parseIdfVersionCmake", () => {
-		const VERSION_CMAKE = `set(IDF_VERSION_MAJOR 5)
-set(IDF_VERSION_MINOR 5)
-set(IDF_VERSION_PATCH 4)
-set(ENV{IDF_VERSION} "\${IDF_VERSION_MAJOR}.\${IDF_VERSION_MINOR}.\${IDF_VERSION_PATCH}")
-`
-
-		it("parses MAJOR/MINOR/PATCH from version.cmake (git-clone installs have no version.txt)", () => {
-			parseIdfVersionCmake(VERSION_CMAKE)!.should.equal("v5.5.4")
-		})
-
-		it("tolerates extra whitespace inside set()", () => {
-			parseIdfVersionCmake(
-				"set(  IDF_VERSION_MAJOR   5 )\nset(IDF_VERSION_MINOR 3)\nset(IDF_VERSION_PATCH 0)",
-			)!.should.equal("v5.3.0")
-		})
-
-		it("returns undefined when a field is missing", () => {
-			should(parseIdfVersionCmake("set(IDF_VERSION_MAJOR 5)\nset(IDF_VERSION_MINOR 5)")).be.undefined()
-		})
-
-		it("returns undefined for unrelated content", () => {
-			should(parseIdfVersionCmake("# not a version file")).be.undefined()
 		})
 	})
 
