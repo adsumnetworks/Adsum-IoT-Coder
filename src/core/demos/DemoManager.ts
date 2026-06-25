@@ -197,7 +197,10 @@ workflow's PREVIEW path. Detect the platform, generate the SBOM, preview the sec
 the top gap, then offer to start closing it.
 
 Hard rules for this sample run:
-- Load and follow the workflow exactly: read_file ${workflowFile}. It carries the honesty rules — evidence-mode \
+- Load and follow the workflow exactly: read_file ${workflowFile}. **If that read fails (the bit isn't \
+available), STOP: tell the developer the CRA workflow is currently unavailable and do NOT proceed. Never \
+reconstruct the workflow, or template the report, from general knowledge, memory, or a PRIOR CRA run/report — \
+an improvised assessment is ungrounded and not allowed.** It carries the honesty rules — evidence-mode \
 only, NO verdicts / grades / scores (no status glyphs, no "MET"/"READY"/"GOOD", no "N/10" or aggregate score, no \
 "non-compliant"), the mandatory "# CRA SBOM & Fix" title + the "Readiness aid — NOT a conformity assessment" \
 disclaimer, and curated citations only (Annex Part I / Part II + the curated Article 14 — never invent a sub-clause \
