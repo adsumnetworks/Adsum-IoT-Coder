@@ -25,6 +25,21 @@ describe("isNordicTaskComplete", () => {
 		expect(isNordicTaskComplete({ type: "say", say: "text", text: "Here is your SBOM." })).toBe(false)
 	})
 
+	it("does NOT fire when the marker is QUOTED mid-text (workflow echo), only when it ENDS the message", () => {
+		// The cra-readiness workflow file literally says "emit `<!--TASK_COMPLETE-->` (exactly — nothing after
+		// it)". A model that reads + paraphrases the workflow drops the marker into narration with text after it;
+		// that must NOT be read as completion (it latched the next-step menu over a still-running run).
+		expect(
+			isNordicTaskComplete({
+				type: "say",
+				say: "text",
+				text: `I'll follow the workflow and end with ${TASK_COMPLETE_MARKER} exactly, nothing after it.`,
+			}),
+		).toBe(false)
+		// Trailing whitespace after the marker is still a valid completion.
+		expect(isNordicTaskComplete({ type: "say", say: "text", text: `Done.\n${TASK_COMPLETE_MARKER}\n  ` })).toBe(true)
+	})
+
 	it("does NOT fire while a message is still streaming (partial)", () => {
 		expect(isNordicTaskComplete({ type: "say", say: "completion_result", text: "in progress", partial: true })).toBe(false)
 	})

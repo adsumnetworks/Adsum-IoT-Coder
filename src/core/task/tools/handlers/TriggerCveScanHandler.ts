@@ -83,7 +83,13 @@ export class TriggerCveScanHandler implements IFullyManagedTool {
 		const sbomPath = path.isAbsolute(sbom) ? sbom : path.join(cwd, sbom)
 		const buildDir = params.build ? (path.isAbsolute(params.build) ? params.build : path.join(cwd, params.build)) : undefined
 
-		const outDir = path.join(cwd, "compliance")
+		// Write the artifacts NEXT TO THE SBOM (its own compliance/ dir), never the cwd — a bare cwd like the
+		// Desktop gets littered with a stray compliance/ folder and breaks checkpoints (observed on a real run).
+		// The CRA workflow puts the SBOM under <project>/compliance/sbom/, so resolve back to that compliance/;
+		// if the SBOM isn't under a compliance/ dir, fall back to beside the SBOM (still the project, not cwd).
+		const marker = `${path.sep}compliance${path.sep}`
+		const mIdx = sbomPath.lastIndexOf(marker)
+		const outDir = mIdx !== -1 ? sbomPath.slice(0, mIdx + marker.length - 1) : path.join(path.dirname(sbomPath), "compliance")
 		const guard = this.refuseIfProtected(outDir)
 		if (guard) {
 			await config.callbacks.say("error", guard)
@@ -114,7 +120,7 @@ export class TriggerCveScanHandler implements IFullyManagedTool {
 		}
 
 		// Return the evidence-mode markdown for the model to present, plus a pointer to the written artifacts.
-		return `${result.report}\n\n(Wrote compliance/cve-scan-${asOf}.md and compliance/cve-scan-${asOf}.json.)`
+		return `${result.report}\n\n(Wrote ${path.join(outDir, `cve-scan-${asOf}.md`)} and ${path.join(outDir, `cve-scan-${asOf}.json`)}.)`
 	}
 
 	/** Mirror the write-guard: never write into the extension install or a bundled demo-scenarios sample. */
