@@ -82,6 +82,13 @@ describe("kbit schema", () => {
 		assert.equal(ok({ ...validWorkflow, version: "BAD" }), false)
 	})
 
+	test("min_ext (backward-compat gate) is optional + semver", () => {
+		assert.equal(ok(validAction), true) // absent ⇒ universal (the default)
+		assert.equal(ok({ ...validAction, min_ext: "0.1.7" }), true)
+		assert.equal(ok({ ...validAction, min_ext: "0.1" }), false) // must be MAJOR.MINOR.PATCH
+		assert.equal(ok({ ...validAction, min_ext: "latest" }), false)
+	})
+
 	test("enums are enforced (owner/tier/delivery/type/platform/safety)", () => {
 		assert.equal(ok({ ...validAction, owner: "nope" }), false)
 		assert.equal(ok({ ...validAction, tier: "gold" }), false)
