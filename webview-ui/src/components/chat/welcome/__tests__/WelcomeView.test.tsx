@@ -139,12 +139,15 @@ describe("WelcomeView — grounded CRA nudge + deep-debug sub-line (A3/A10 + pre
 		expect(screen.queryByTestId(SUBLINE)).not.toBeInTheDocument()
 	})
 
-	it("project + BLE + SBOM exists → nudge demotes; sub-line shows; CRA card switches to re-run copy", () => {
+	it("project + BLE + SBOM exists → nudge demotes; sub-line shows; CRA card switches to re-run copy but KEEPS the New badge", () => {
 		mockState({ openFolderPaths: PROJ, taskHistory: [], workspaceFeatures: { hasBle: true, hasComplianceArtifacts: true } })
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.queryByTestId("cra-nudge")).not.toBeInTheDocument()
 		expect(screen.getByTestId(SUBLINE)).toBeInTheDocument()
-		expect(screen.getByTestId("intent-card-craCheck").textContent).toContain("Re-run on your build")
+		const craCard = screen.getByTestId("intent-card-craCheck")
+		expect(craCard.textContent).toContain("Re-run on your build")
+		// CRA stays flagged as a new capability even after compliance/ exists.
+		expect(craCard.textContent).toContain("New")
 	})
 
 	it("project, no BLE → neither the nudge nor the sub-line", () => {
