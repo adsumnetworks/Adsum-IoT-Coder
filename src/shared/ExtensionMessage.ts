@@ -224,6 +224,7 @@ export interface ClineSayTool {
 		| "useSkill"
 		| "triggerNordicAction"
 		| "triggerEspAction"
+		| "triggerCveScan"
 	path?: string
 	diff?: string
 	content?: string
