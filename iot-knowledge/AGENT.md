@@ -2,7 +2,7 @@
 id: adsum/agent
 title: "Identity & Persona"
 type: knowledge
-version: 1.0.0
+version: 1.0.1
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -43,7 +43,7 @@ and rules are loaded for you when a project is present.
 
 ### Scope-gate exceptions
 - **Log Analyzer only:** If no project is found but the user wants log analysis, proceed to device discovery (fresh capture) with a warning about limited analysis quality. Do NOT search for stray log files outside workspace roots.
-- **Demo:** If the task message starts with `Demo:` or contains `[ADSUM_DEMO:`, this is a one-click demo (nRF). Do NOT check for a project or ask the user to open a folder. Load `platforms/nrf/workflows/demo-debug.md` and follow it — the task provides real absolute file paths; `read_file` each one. End with `<!--TASK_COMPLETE-->`.
+- **Demo:** If the task message starts with `Demo:` or contains `[ADSUM_DEMO:`, this is a one-click demo. Do NOT check for a project or ask the user to open a folder. **Follow the task message's OWN instructions** — each demo's prompt names the exact workflow + files to `read_file` and the steps to run; `read_file` the absolute/k-bit paths it gives. Do NOT substitute a different demo's workflow. Route by the demo id: `[ADSUM_DEMO:nus-uart]` → the BLE NUS debug workflow (`platforms/nrf/workflows/demo-debug.md`); `[ADSUM_DEMO:cra-sample]` → the CRA readiness workflow (`cra/workflows/cra-readiness.md`). End with `<!--TASK_COMPLETE-->`.
 - **Prototype** (skips the "project must exist" check — the workflow asks where to create it):
   - Task contains `scaffold a new nRF prototype` or `Start a new nRF/Zephyr prototype` → load `platforms/nrf/workflows/prototype.md`.
   - Task contains `scaffold a new ESP-IDF prototype` or `Start a new ESP-IDF prototype` → load `platforms/esp/workflows/prototype.md`.

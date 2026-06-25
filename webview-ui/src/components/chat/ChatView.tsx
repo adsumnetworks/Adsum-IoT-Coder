@@ -413,9 +413,14 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		return text
 	}, [task, nordicPhase])
 
-	// Detect task completion in messages
+	// Detect task completion in messages.
+	// GATED ON `!sendingDisabled` (the agent is idle, not mid-stream): otherwise a marker emitted while the
+	// agent is still working — e.g. a free-tier model quoting the workflow file it just read, which literally
+	// contains `<!--TASK_COMPLETE-->` as an instruction — latches the phase to complete and the NextStepChooser
+	// renders OVER the still-running conversation, hiding it (observed on a live cra-sample run). Only flipping
+	// when the agent has actually stopped means the chooser appears at the real end of the turn.
 	useEffect(() => {
-		if (nordicPhase === "active" && modifiedMessages.length > 0) {
+		if (nordicPhase === "active" && !sendingDisabled && modifiedMessages.length > 0) {
 			const last = modifiedMessages[modifiedMessages.length - 1]
 			// Complete on the workflow's marker OR on attempt_completion (completion_result) — see
 			// isNordicTaskComplete. The latter is the R4 safety-net: the next-step menu renders even when the
@@ -424,7 +429,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				setNordicPhase("task_complete")
 			}
 		}
-	}, [modifiedMessages, setNordicPhase, nordicPhase])
+	}, [modifiedMessages, sendingDisabled, setNordicPhase, nordicPhase])
 
 	// Reset post-task phase when returning to the welcome screen so stale state
 	// doesn't bleed onto the next task or the home view.
