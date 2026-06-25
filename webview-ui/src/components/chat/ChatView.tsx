@@ -479,6 +479,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 							onStartDemo={handleStartDemo}
 							onStartTask={handleStartTask}
 						/>
+						{/* A6 "all states": the disclaimer must show on the completion screen too — exactly when the
+						    dev reviews the result before flashing/shipping (the footer block below is skipped here). */}
+						<AiLimitationsFooter style={{ padding: "10px 14px 4px" }} />
 					</div>
 				)}
 			</div>

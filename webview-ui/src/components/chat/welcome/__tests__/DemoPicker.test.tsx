@@ -13,16 +13,36 @@ describe("DemoPicker", () => {
 		}
 	})
 
-	it("hero: shows each scenario's honest label and platform badge", () => {
+	it("hero: shows each scenario's honest label and platform badge (nRF, properly cased)", () => {
 		render(<DemoPicker onStartDemo={vi.fn()} />)
 		for (const s of DEMO_SCENARIO_LIST) {
 			expect(screen.getByText(s.honestLabel)).toBeInTheDocument()
 		}
-		// Both current samples are nRF — the badge text is the platform, rendered uppercase via CSS.
-		expect(screen.getAllByText("nrf").length).toBeGreaterThanOrEqual(1)
+		// Platform badge is the properly-cased "nRF" (A1: was lowercase "nrf").
+		expect(screen.getAllByText("nRF").length).toBeGreaterThanOrEqual(1)
+		expect(screen.queryByText("nrf")).not.toBeInTheDocument()
 	})
 
-	it("clicking a scenario row fires onStartDemo with that scenario id", () => {
+	it("shows a 'New' badge on the CRA + Omar (isNew) sample rows", () => {
+		render(<DemoPicker onStartDemo={vi.fn()} />)
+		const newCount = DEMO_SCENARIO_LIST.filter((s) => s.isNew).length
+		expect(newCount).toBeGreaterThanOrEqual(1)
+		expect(screen.getAllByText("New").length).toBe(newCount)
+	})
+
+	it("a 'coming soon' placeholder row is disabled, shows 'soon', and never fires onStartDemo (A9 — Omar wires it later)", () => {
+		const onStartDemo = vi.fn()
+		render(<DemoPicker onStartDemo={onStartDemo} />)
+		const placeholder = DEMO_SCENARIO_LIST.find((s) => s.comingSoon)
+		expect(placeholder, "expected a comingSoon placeholder scenario").toBeTruthy()
+		const row = screen.getByTestId(`demo-scenario-${placeholder?.id}`) as HTMLButtonElement
+		expect(row.disabled).toBe(true)
+		expect(screen.getByText("soon")).toBeInTheDocument()
+		fireEvent.click(row)
+		expect(onStartDemo).not.toHaveBeenCalled()
+	})
+
+	it("clicking a runnable scenario row fires onStartDemo with that scenario id", () => {
 		const onStartDemo = vi.fn()
 		render(<DemoPicker onStartDemo={onStartDemo} />)
 		fireEvent.click(screen.getByTestId("demo-scenario-cra-sample"))
