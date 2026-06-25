@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="470" height="232" viewBox="0 0 470 232" role="img" aria-label="nRF52840 Dongle: plug in, press the side RESET button (far from USB, push inward toward the USB connector); the red LED pulses to enter DFU mode.">
+  <rect x="0.5" y="0.5" width="469" height="231" rx="12" fill="#fbfcfd" stroke="#d4d9e0"/>
+  <text x="20" y="30" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#1a2230">nRF52840 Dongle — enter DFU mode</text>
+
+  <!-- dongle body (USB on the RIGHT, reset on the far LEFT edge) -->
+  <rect x="120" y="92" width="250" height="64" rx="8" fill="#2f7d4f" stroke="#205437"/>
+  <!-- SoC -->
+  <rect x="150" y="106" width="40" height="36" rx="4" fill="#1d2730"/>
+  <text x="170" y="128" font-family="monospace" font-size="9" fill="#9fb0c0" text-anchor="middle">U1</text>
+  <!-- USB edge connector (right, gold) -->
+  <rect x="370" y="98" width="36" height="52" rx="3" fill="#e7c15a" stroke="#b9942f"/>
+  <line x1="378" y1="102" x2="378" y2="146" stroke="#b9942f"/>
+  <line x1="386" y1="102" x2="386" y2="146" stroke="#b9942f"/>
+  <line x1="394" y1="102" x2="394" y2="146" stroke="#b9942f"/>
+  <text x="388" y="170" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#6b7785" text-anchor="middle">USB</text>
+
+  <!-- RESET button on the LEFT edge (far side from USB), facing sideways -->
+  <rect x="108" y="112" width="13" height="24" rx="2" fill="#8a939e" stroke="#3c444d" stroke-width="2"/>
+  <!-- push arrow: from outside (left) pushing inward, toward USB (right) -->
+  <line x1="44" y1="124" x2="104" y2="124" stroke="#c0392b" stroke-width="3"/>
+  <path d="M104 118 L116 124 L104 130 Z" fill="#c0392b"/>
+  <text x="40" y="104" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#c0392b">Press RESET (side)</text>
+  <text x="40" y="150" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8a3324">push inward → toward USB</text>
+
+  <!-- LD2 LED (red, pulsing) -->
+  <circle cx="300" cy="124" r="9" fill="#e23b3b" stroke="#9b1c1c"/>
+  <circle cx="300" cy="124" r="9" fill="#e23b3b" opacity="0.4">
+    <animate attributeName="r" values="9;15;9" dur="1.4s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.5;0;0.5" dur="1.4s" repeatCount="indefinite"/>
+  </circle>
+  <text x="300" y="186" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" fill="#9b1c1c" text-anchor="middle">LD2 pulses red</text>
+  <line x1="300" y1="135" x2="300" y2="174" stroke="#9b1c1c" stroke-width="1.5" stroke-dasharray="3 3"/>
+
+  <text x="20" y="216" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11.5" fill="#5b6675">Plug in → press the <tspan font-weight="700">side</tspan> RESET button toward USB → <tspan font-weight="700" fill="#9b1c1c">red pulse</tspan> = DFU ready.  (After flashing: <tspan font-weight="700" fill="#1f7a3d">green blink</tspan> = running.)</text>
+</svg>
