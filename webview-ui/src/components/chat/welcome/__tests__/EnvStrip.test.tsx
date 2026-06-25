@@ -55,4 +55,19 @@ describe("EnvStrip — compact / expand (A5)", () => {
 		render(<EnvStrip />)
 		expect(screen.getByTestId("envstrip-summary").textContent).toMatch(/No SDK detected/)
 	})
+
+	// a11y: the EnvStrip is a disclosure widget — its toggle must announce its state + control region to AT.
+	it("disclosure a11y: toggle has aria-expanded (false→true), aria-label, aria-controls → the region id", () => {
+		mockState()
+		render(<EnvStrip />)
+		const summary = screen.getByTestId("envstrip-summary")
+		expect(summary).toHaveAttribute("aria-expanded", "false")
+		expect(summary).toHaveAttribute("aria-label", "Show environment detail")
+		expect(summary).toHaveAttribute("aria-controls", "envstrip-detail")
+		fireEvent.click(summary)
+		const collapse = screen.getByTestId("envstrip-collapse")
+		expect(collapse).toHaveAttribute("aria-expanded", "true")
+		expect(collapse).toHaveAttribute("aria-label", "Hide environment detail")
+		expect(document.getElementById("envstrip-detail")).toBeInTheDocument()
+	})
 })

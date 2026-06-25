@@ -16,7 +16,7 @@ test("planOsvScan: PURL components queried; cpe-only + no-id skipped honestly", 
 	assert.equal(plan.queries[0].package.purl, "pkg:github/Mbed-TLS/mbedtls@3.5.0")
 	assert.deepEqual(
 		plan.skipped.map((s) => `${s.component.name}:${s.reason}`),
-		["esp_wifi:cpe-only", "vendor_blob:no-identifier"],
+		["esp_wifi:cpe-only", "vendor_blob:no-id"],
 	)
 })
 

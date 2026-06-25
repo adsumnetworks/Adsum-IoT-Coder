@@ -185,9 +185,11 @@ export function buildCraSampleDisplayText(): string {
 
 /** Prompt that runs the cra-readiness workflow on the bundled sample (preview path). Thin trigger; the bit leads. */
 function buildCraSamplePrompt(samplePath: string): string {
-	const workflowFile =
-		resolveBitPathSync("adsum/cra/workflows/cra-readiness") ??
-		path.join(_extensionPath!, "iot-knowledge", "cra", "workflows", "cra-readiness.md")
+	// cra-readiness is a DOWNLOADED (proprietary) bit — migrated to Adsum-Backend/kbits/, no longer bundled in
+	// the VSIX. Reference it by its bare k-bit path: the read_file handler resolves it through the resolver
+	// (loadBitByRel → loadBit), which serves it from the ADSUM_KBIT_LOCAL override in dev (F5) and the registry
+	// in prod (once published + entitled at Phase-D). It is NOT an absolute fs path anymore — no bundled file exists.
+	const workflowFile = "cra/workflows/cra-readiness.md"
 	return `Run CRA SBOM & Fix on the bundled sample project at ${samplePath}.
 
 [ADSUM_DEMO:cra-sample] This is OUR bundled nRF sample (central_uart), NOT the user's own project — it is the \

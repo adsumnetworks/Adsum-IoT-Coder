@@ -68,6 +68,7 @@ export const config = createVariant(ModelFamily.GEMINI_3)
 		ClineDefaultTool.USE_SKILL,
 		ClineDefaultTool.NORDIC_ACTION,
 		ClineDefaultTool.ESP_ACTION,
+		ClineDefaultTool.CVE_SCAN,
 	)
 	.placeholders({
 		MODEL_FAMILY: ModelFamily.GEMINI_3,

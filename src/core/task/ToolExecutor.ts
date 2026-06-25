@@ -36,6 +36,7 @@ import { ReadFileToolHandler } from "./tools/handlers/ReadFileToolHandler"
 import { ReportBugHandler } from "./tools/handlers/ReportBugHandler"
 import { SearchFilesToolHandler } from "./tools/handlers/SearchFilesToolHandler"
 import { SummarizeTaskHandler } from "./tools/handlers/SummarizeTaskHandler"
+import { TriggerCveScanHandler } from "./tools/handlers/TriggerCveScanHandler"
 import { TriggerEspActionHandler } from "./tools/handlers/TriggerEspActionHandler"
 import { TriggerNordicActionHandler } from "./tools/handlers/TriggerNordicActionHandler"
 import { UpdateProjectMemoryHandler } from "./tools/handlers/UpdateProjectMemoryHandler"
@@ -229,6 +230,7 @@ export class ToolExecutor {
 		this.coordinator.register(new GenerateExplanationToolHandler())
 		this.coordinator.register(new TriggerNordicActionHandler(this.context))
 		this.coordinator.register(new TriggerEspActionHandler(this.context))
+		this.coordinator.register(new TriggerCveScanHandler(this.context))
 		this.coordinator.register(new UpdateProjectMemoryHandler())
 	}
 

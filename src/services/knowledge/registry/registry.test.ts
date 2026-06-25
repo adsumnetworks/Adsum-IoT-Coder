@@ -23,7 +23,9 @@ const stubFetch =
 	(manifest: unknown, blobs: Record<string, string>, onCall?: () => void) =>
 	async (url: string): Promise<Response> => {
 		onCall?.()
-		if (url.endsWith("/v1/kbits/manifest")) {
+		// The client appends `?ext=<app version>` to the manifest URL (backward-compat gate) — match on the
+		// path, ignoring the query string.
+		if (url.split("?")[0].endsWith("/v1/kbits/manifest")) {
 			return new Response(JSON.stringify(manifest), { status: 200 })
 		}
 		const m = url.match(/\/v1\/kbits\/blob\/(.+)$/)
@@ -89,6 +91,16 @@ describe("RegistryClient", () => {
 		const rc = new RegistryClient("http://r", stubFetch(manifest, { [hash]: content }))
 		assert.deepEqual((await rc.fetchManifest())?.bits[0].id, "adsum/community/x")
 		assert.equal(await rc.fetchBlob(hash), content)
+	})
+
+	test("fetchManifest sends the client app version as ?ext= (backward-compat gate)", async () => {
+		let seen = ""
+		const rc = new RegistryClient("http://r", async (url: string) => {
+			seen = url
+			return new Response(JSON.stringify({ manifestVersion: 1, bits: [] }), { status: 200 })
+		})
+		await rc.fetchManifest()
+		assert.match(seen, /\/v1\/kbits\/manifest\?ext=\d+\.\d+\.\d+/)
 	})
 
 	test("offline-safe: network throw → null; 404 → null; malformed manifest → null", async () => {
