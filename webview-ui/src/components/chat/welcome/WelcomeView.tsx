@@ -202,11 +202,12 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 					testIdPrefix="intent-card"
 				/>
 
-				{/* Demoted sample — quiet "Try another sample" whenever it isn't the hero (project open, or already run) */}
+				{/* Demoted sample — compact whenever it isn't the hero (project open, or already run). The heading
+				    says "another" ONLY if a sample has actually run (demoDone), not just because a project is open. */}
 				{!heroPicker && (
 					<div className="w-full">
 						{showPicker ? (
-							<DemoPicker onStartDemo={onStartDemo} variant="rerun" />
+							<DemoPicker hasRunDemo={demoDone} onStartDemo={onStartDemo} variant="rerun" />
 						) : (
 							<DemoCard onStartDemo={onStartDemo} variant="rerun" />
 						)}

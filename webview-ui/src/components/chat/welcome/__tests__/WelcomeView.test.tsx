@@ -69,14 +69,19 @@ describe("WelcomeView — sample picker hierarchy (single cyan focal point)", ()
 		expect(screen.queryByText("Try another sample")).not.toBeInTheDocument()
 	})
 
-	it("project open, first run → the primary intent leads; the sample demotes (no competing cyan hero)", () => {
-		// dev-as-hero: with a real project open, "Build, flash & debug" is the focal point — the sample
-		// must NOT render a second cyan hero. It drops to the quiet "Try another sample" form below.
+	it("project open, first run → the primary intent leads; the sample demotes but does NOT say 'another'", () => {
+		// dev-as-hero: with a real project open, "Build, flash & debug" is the focal point — the sample drops to
+		// the quiet compact form (hero-only caption gone). But no sample has run yet, so the heading must read
+		// "Try it on a sample", NOT "Try another sample" (the first-time-with-project wording bug).
 		mockState({ openFolderPaths: ["/Users/me/central_uart"], taskHistory: [] })
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.getByTestId("intent-card-buildFlashDebug")).toBeInTheDocument()
-		expect(screen.queryByText("Try it on a sample")).not.toBeInTheDocument()
-		expect(screen.getByText("Try another sample")).toBeInTheDocument()
+		// demoted/compact: the hero-only caption is hidden, but the picker rows are still present.
+		expect(screen.queryByText(/Run Adsum on our sample/)).not.toBeInTheDocument()
+		expect(screen.getByTestId("demo-scenario-cra-sample")).toBeInTheDocument()
+		// the fix: first-run-with-project → "Try it on a sample", never "another".
+		expect(screen.getByText("Try it on a sample")).toBeInTheDocument()
+		expect(screen.queryByText("Try another sample")).not.toBeInTheDocument()
 	})
 
 	it("after a sample has run → it demotes regardless of project state", () => {
