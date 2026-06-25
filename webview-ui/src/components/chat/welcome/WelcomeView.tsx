@@ -221,9 +221,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 					<HistoryPreview showHistoryView={navigateToHistory} />
 				</div>
 
-				{/* AI-limitations — persistent in every welcome state, before any flash/CRA/demo click. Also rendered
-				    under the chat input during a task (see ChatView) so it stays visible while the dev acts.
-				    The "Full disclaimer →" link is deferred until /legal/limitations exists (no live 404). */}
+				{/* AI-limitations (design/13 A6) — persistent here AND under the chat input during a task (see
+				    ChatView). Links to the live docs disclaimer page (docs.adsumnetworks.com/legal/limitations). */}
 				<AiLimitationsFooter style={{ marginTop: "6px" }} />
 			</div>
 		</div>
