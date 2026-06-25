@@ -155,6 +155,22 @@ const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, 
 								)}
 							</div>
 
+							{/* Connectivity-protocol highlight (e.g. "Wi-Fi") — accented so the row's notable capability stands out. */}
+							{s.protocol && (
+								<span
+									style={{
+										flexShrink: 0,
+										fontSize: "9.5px",
+										fontWeight: 700,
+										letterSpacing: "0.04em",
+										color: BRAND_CYAN_600,
+										border: `1px solid ${BRAND_CYAN_600}`,
+										borderRadius: "4px",
+										padding: "1px 5px",
+									}}>
+									{s.protocol}
+								</span>
+							)}
 							<span
 								style={{
 									flexShrink: 0,

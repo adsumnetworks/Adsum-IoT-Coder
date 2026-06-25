@@ -32,6 +32,8 @@ export interface DemoScenario {
 	comingSoon?: boolean
 	/** Show a "New" badge on the picker row — used for the CRA + the new BLE-observability (Omar) samples. */
 	isNew?: boolean
+	/** Optional connectivity-protocol highlight chip (e.g. "Wi-Fi") — accents the row's notable capability. */
+	protocol?: string
 }
 
 export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
@@ -70,16 +72,18 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		comingSoon: true,
 		isNew: true,
 	},
-	// A8 — ESP sample placeholder. Same pattern as the HCI row: a disabled "soon" roadmap entry at nRF parity;
-	// Omar brings it to life by adding the host [ADSUM_DEMO:esp-coredump] handler + a bundled ESP-IDF sample.
-	"esp-coredump": {
-		id: "esp-coredump",
-		title: "Debug an ESP32 crash from a coredump",
-		honestLabel: "Build, flash & read the serial/coredump on a bundled ESP-IDF sample — the agent finds the crash.",
-		taskPrompt: "Demo: ESP32 crash + coredump debug\n\n[ADSUM_DEMO:esp-coredump]",
-		historyMatch: "Debug an ESP32 crash from a coredump",
+	// A8 — ESP sample placeholder: a Wi-Fi debug session (ESP's connectivity story, parallel to the nRF/BLE HCI
+	// row). Disabled "soon" roadmap entry; Omar brings it to life via the host [ADSUM_DEMO:esp-wifi] handler + a
+	// bundled ESP-IDF Wi-Fi sample. "Wi-Fi" is highlighted as the row's protocol chip.
+	"esp-wifi": {
+		id: "esp-wifi",
+		title: "Debug an ESP32 Wi-Fi connection issue",
+		honestLabel: "Build, flash & stream Wi-Fi logs on a bundled ESP-IDF sample — the agent finds why it won't connect.",
+		taskPrompt: "Demo: ESP32 Wi-Fi connection debug\n\n[ADSUM_DEMO:esp-wifi]",
+		historyMatch: "Debug an ESP32 Wi-Fi connection issue",
 		platform: "esp",
-		icon: "bug",
+		icon: "broadcast",
+		protocol: "Wi-Fi",
 		comingSoon: true,
 		isNew: true,
 	},
