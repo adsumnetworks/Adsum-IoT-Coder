@@ -14,7 +14,7 @@
  * behind a gated-out sibling. Per-CVE findings keep each verdict faithful and match how the advisory map is keyed.
  */
 import { type ApplicabilityHint, assessApplicability, type BuildEvidence } from "./applicability"
-import { type EvidenceReportInput, formatCveScanReport, type ScanFinding } from "./evidenceReport"
+import { type EvidenceReportInput, formatCveScanJson, formatCveScanReport, type ScanFinding } from "./evidenceReport"
 import { type OsvFetcher, type OsvMatch, type SkippedComponent, scanWithOsv } from "./osvMatch"
 import { type NormalizedSbom, normalizeSbom, type SbomComponent, type SbomCoverage } from "./sbomNormalize"
 
@@ -38,6 +38,8 @@ export interface ScanLoopInput {
 export interface ScanLoopResult {
 	/** The §3 evidence-mode markdown — verdict-clean, presented verbatim by the model. */
 	report: string
+	/** The §7 structured `cve-scan-<date>.json` artifact — same data as `report`, machine-readable. */
+	json: string
 	/** One per (component, vulnId), each independently assessed. */
 	findings: ScanFinding[]
 	/** PURL/CPE/unidentified counts from the normalizer (honest coverage). */
@@ -72,6 +74,7 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	}
 	return {
 		report: formatCveScanReport(reportInput),
+		json: formatCveScanJson(reportInput),
 		findings,
 		coverage: normalized.coverage,
 		skipped: scan.skipped,
