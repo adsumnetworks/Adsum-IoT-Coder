@@ -14,6 +14,7 @@
 
 import type { BuildEvidenceReaders } from "./buildEvidence"
 import { readBuildEvidence } from "./buildEvidence"
+import type { ModuleVersionResolver } from "./componentPurlMap"
 import type { OsvVulnFetcher } from "./osvEnrich"
 import type { OsvFetcher } from "./osvMatch"
 import type { HintResolver } from "./scanLoop"
@@ -31,6 +32,8 @@ export interface CveScanHostDeps {
 	source?: string
 	/** Optional severity/fixed enrichment fetcher (§4/§11); omitted → no enrichment, no extra network calls. */
 	vulnFetcher?: OsvVulnFetcher
+	/** Optional NCS-module version source; when provided, the curated PURL map fills missing PURLs (§5). */
+	resolveModuleVersion?: ModuleVersionResolver
 }
 
 export interface CveScanHostInput {
@@ -65,5 +68,6 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 		resolveHint: deps.resolveHint,
 		source: deps.source,
 		vulnFetcher: deps.vulnFetcher,
+		resolveModuleVersion: deps.resolveModuleVersion,
 	})
 }

@@ -14,6 +14,7 @@
  * behind a gated-out sibling. Per-CVE findings keep each verdict faithful and match how the advisory map is keyed.
  */
 import { type ApplicabilityHint, assessApplicability, type BuildEvidence } from "./applicability"
+import { applyCuratedPurls, type ModuleVersionResolver } from "./componentPurlMap"
 import { type EvidenceReportInput, formatCveScanJson, formatCveScanReport, type ScanFinding } from "./evidenceReport"
 import { type EnrichedVuln, enrichVulns, type OsvVulnFetcher } from "./osvEnrich"
 import { type OsvFetcher, type OsvMatch, type SkippedComponent, scanWithOsv } from "./osvMatch"
@@ -34,6 +35,12 @@ export interface ScanLoopInput {
 	/** Curated per-CVE hint lookup; omitted → every match is "unknown" (honest default). */
 	resolveHint?: HintResolver
 	source?: string
+	/**
+	 * Optional NCS-module version source (west.yml / a per-release table). When provided, the curated
+	 * component→PURL map fills missing PURLs (a version + a verified coordinate → a queryable PURL), raising
+	 * coverage on PURL-sparse NCS SBOMs. Omitted → the map is not applied (default behaviour unchanged).
+	 */
+	resolveModuleVersion?: ModuleVersionResolver
 	/**
 	 * Optional severity/fixed-version enrichment (§4/§11). When provided, each matched vuln is fetched and its
 	 * CVSS vector + fixed version are surfaced verbatim. Omitted → no enrichment (and no extra network calls).
@@ -60,7 +67,9 @@ export interface ScanLoopResult {
 
 /** Run the full scan loop. Deterministic given a fixed fetcher + asOf; the only network touch is `fetcher`. */
 export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> {
-	const normalized = normalizeSbom(input.spdxText)
+	const parsed = normalizeSbom(input.spdxText)
+	// Curated map (opt-in): fill missing PURLs from a verified coordinate + an operator-supplied version.
+	const normalized = input.resolveModuleVersion ? applyCuratedPurls(parsed, input.resolveModuleVersion) : parsed
 	// Pass ALL components (not queryableComponents) so planOsvScan keeps the cpe-only / no-identifier skip records.
 	const scan = await scanWithOsv(normalized.components, input.fetcher)
 	const resolve = input.resolveHint ?? (() => undefined)
