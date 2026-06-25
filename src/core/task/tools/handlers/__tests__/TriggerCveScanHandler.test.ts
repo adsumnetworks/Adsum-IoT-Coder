@@ -101,6 +101,21 @@ describe("TriggerCveScanHandler", () => {
 		expect(say.calledWith("tool")).to.equal(true)
 	})
 
+	it("writes artifacts next to the SBOM's compliance/ dir, NOT the cwd (no Desktop littering)", async () => {
+		// Regression for a live run: cwd was the Desktop but the SBOM lived in another project; the scan wrote
+		// compliance/ into the Desktop. Output must derive from the SBOM path, not cwd.
+		const { handler, mkdir, writeFile } = mkHandler()
+		await handler.execute(mkConfig("/Users/me/Desktop"), mkBlock({ sbom: "/Users/me/proj/compliance/sbom/app.spdx" }))
+		expect(mkdir.calledOnceWith("/Users/me/proj/compliance")).to.equal(true)
+		const written = writeFile.getCalls().map((c) => c.args[0])
+		expect(written).to.deep.equal([
+			"/Users/me/proj/compliance/cve-scan-2026-06-25.md",
+			"/Users/me/proj/compliance/cve-scan-2026-06-25.json",
+		])
+		// never the cwd
+		expect(written.some((w) => w.includes("/Desktop/"))).to.equal(false)
+	})
+
 	it("no build param → scan called with buildDir undefined", async () => {
 		const { handler, scan } = mkHandler()
 		await handler.execute(mkConfig("/proj"), mkBlock({ sbom: "app.spdx" }))
