@@ -3,6 +3,7 @@ import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
+import AiLimitationsFooter from "../AiLimitationsFooter"
 import DemoCard from "../DemoCard"
 import { DEFAULT_DEMO_SCENARIO_ID, DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
@@ -220,19 +221,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 					<HistoryPreview showHistoryView={navigateToHistory} />
 				</div>
 
-				{/* AI-limitations — persistent in every welcome state, before any flash/CRA/demo click.
+				{/* AI-limitations — persistent in every welcome state, before any flash/CRA/demo click. Also rendered
+				    under the chat input during a task (see ChatView) so it stays visible while the dev acts.
 				    The "Full disclaimer →" link is deferred until /legal/limitations exists (no live 404). */}
-				<div
-					className="w-full"
-					style={{
-						fontSize: "10.5px",
-						color: "var(--vscode-descriptionForeground)",
-						opacity: 0.75,
-						marginTop: "6px",
-						lineHeight: 1.4,
-					}}>
-					Adsum is an AI-based coding agent and can make mistakes — review its changes before you flash or ship.
-				</div>
+				<AiLimitationsFooter style={{ marginTop: "6px" }} />
 			</div>
 		</div>
 	)
