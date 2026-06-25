@@ -74,3 +74,16 @@ test("the cve-scan k-bit lives in the backend kbits tree (downloaded) and is ref
 		/adsum\/cra\/workflows\/cve-scan/,
 	)
 })
+
+test("triggerCveScan's params (sbom, build) are registered in toolParamNames — else the parser silently drops them", () => {
+	// The assistant-message parser only extracts a tool param if its name is in `toolParamNames`. A tool can be
+	// fully wired (handler + spec + variants + enum) yet still fail at runtime with "Missing value for required
+	// parameter '<x>'" if the param name was never added here. This bit us live: triggerCveScan received no
+	// `sbom` because `sbom`/`build` were absent from the list.
+	const paramList = read("src/core/assistant-message/index.ts")
+	const declared = read("src/core/prompts/system-prompt/tools/trigger_cve_scan.ts")
+	for (const p of ["sbom", "build"]) {
+		assert.match(declared, new RegExp(`name:\\s*"${p}"`), `trigger_cve_scan spec should declare param '${p}'`)
+		assert.match(paramList, new RegExp(`["']${p}["']`), `toolParamNames must include '${p}' or the parser drops <${p}>`)
+	}
+})
