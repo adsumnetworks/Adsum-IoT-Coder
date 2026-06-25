@@ -70,6 +70,19 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		comingSoon: true,
 		isNew: true,
 	},
+	// A8 — ESP sample placeholder. Same pattern as the HCI row: a disabled "soon" roadmap entry at nRF parity;
+	// Omar brings it to life by adding the host [ADSUM_DEMO:esp-coredump] handler + a bundled ESP-IDF sample.
+	"esp-coredump": {
+		id: "esp-coredump",
+		title: "Debug an ESP32 crash from a coredump",
+		honestLabel: "Build, flash & read the serial/coredump on a bundled ESP-IDF sample — the agent finds the crash.",
+		taskPrompt: "Demo: ESP32 crash + coredump debug\n\n[ADSUM_DEMO:esp-coredump]",
+		historyMatch: "Debug an ESP32 crash from a coredump",
+		platform: "esp",
+		icon: "bug",
+		comingSoon: true,
+		isNew: true,
+	},
 }
 
 export const DEFAULT_DEMO_SCENARIO_ID = "nus-uart"

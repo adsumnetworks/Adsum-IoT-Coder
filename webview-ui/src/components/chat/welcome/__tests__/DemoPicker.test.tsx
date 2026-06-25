@@ -30,15 +30,17 @@ describe("DemoPicker", () => {
 		expect(screen.getAllByText("New").length).toBe(newCount)
 	})
 
-	it("a 'coming soon' placeholder row is disabled, shows 'soon', and never fires onStartDemo (A9 — Omar wires it later)", () => {
+	it("every 'coming soon' placeholder row is disabled, shows 'soon', and never fires onStartDemo (A8/A9 — Omar wires them later)", () => {
 		const onStartDemo = vi.fn()
 		render(<DemoPicker onStartDemo={onStartDemo} />)
-		const placeholder = DEMO_SCENARIO_LIST.find((s) => s.comingSoon)
-		expect(placeholder, "expected a comingSoon placeholder scenario").toBeTruthy()
-		const row = screen.getByTestId(`demo-scenario-${placeholder?.id}`) as HTMLButtonElement
-		expect(row.disabled).toBe(true)
-		expect(screen.getByText("soon")).toBeInTheDocument()
-		fireEvent.click(row)
+		const placeholders = DEMO_SCENARIO_LIST.filter((s) => s.comingSoon)
+		expect(placeholders.length, "expected ≥1 comingSoon placeholder scenario").toBeGreaterThanOrEqual(1)
+		expect(screen.getAllByText("soon").length).toBe(placeholders.length)
+		for (const s of placeholders) {
+			const row = screen.getByTestId(`demo-scenario-${s.id}`) as HTMLButtonElement
+			expect(row.disabled, `${s.id} should be disabled`).toBe(true)
+			fireEvent.click(row)
+		}
 		expect(onStartDemo).not.toHaveBeenCalled()
 	})
 
