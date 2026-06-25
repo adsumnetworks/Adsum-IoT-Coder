@@ -36,6 +36,8 @@ export interface SbomComponent {
 	queryable?: boolean
 	/** null iff queryable; otherwise the honest reason it was dropped from the OSV query. Same provenance. */
 	dropReason?: DropReason | null
+	/** Provenance of `purl`: "tool" = emitted by the SBOM tool; "curated" = filled by the curated map. */
+	purlSource?: "tool" | "curated"
 }
 
 export interface SbomCoverage {

@@ -58,6 +58,34 @@ test("orchestrator returns the §7 JSON artifact alongside the markdown (parseab
 	assert.equal(doc.coverage.queryable, r.queriedCount)
 })
 
+test("curated PURL map (opt-in via resolveModuleVersion) makes a version-less NCS module queryable + scannable", async () => {
+	// An NCS-shaped SBOM: a module with a name but NO version + NO purl (the real Fact-1 case).
+	const ncs = `SPDXVersion: SPDX-2.3
+
+PackageName: mcuboot-deps
+`
+	// Without a version source: 0 queryable (honest gap).
+	const off = await runCveScan({ spdxText: ncs, evidence: {}, asOf: "2026-06-25", fetcher: noVulnFetcher })
+	assert.equal(off.queriedCount, 0)
+	// With the operator's version source: the curated coordinate + version → a real OSV query.
+	let queriedPurl = ""
+	const fetcher: OsvFetcher = async (batch) => {
+		queriedPurl = batch.queries[0]?.package.purl ?? ""
+		return JSON.stringify({ results: [{ vulns: [{ id: "CVE-2025-0001" }] }] })
+	}
+	const on = await runCveScan({
+		spdxText: ncs,
+		evidence: {},
+		asOf: "2026-06-25",
+		fetcher,
+		resolveModuleVersion: (n) => (n === "mcuboot" ? "2.1.0" : undefined),
+	})
+	assert.equal(queriedPurl, "pkg:github/mcu-tools/mcuboot@2.1.0")
+	assert.equal(on.queriedCount, 1)
+	assert.equal(on.findings.length, 1)
+	assert.equal(isVerdictClean(on.report), true)
+})
+
 test("enrichment off by default → no enrichment map entries, no extra network", async () => {
 	const r = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-25", fetcher: twoVulnFetcher })
 	assert.equal(r.enrichment.size, 0)
