@@ -11,14 +11,18 @@
  *  - **Network failure masquerading as "no vulns"**: a non-2xx response or transport error THROWS (the caller
  *    surfaces "scan unavailable" honestly); it must never be swallowed into an empty-but-clean result.
  */
+import type { OsvVulnFetcher } from "./osvEnrich"
 import type { OsvFetcher, OsvQueryBatch } from "./osvMatch"
 
 export const OSV_QUERYBATCH_URL = "https://api.osv.dev/v1/querybatch"
+export const osvVulnUrl = (id: string) => `https://api.osv.dev/v1/vulns/${encodeURIComponent(id)}`
 /** OSV's documented per-request query cap. */
 export const OSV_BATCH_LIMIT = 1000
 
 /** Injected transport: POST a JSON body to a URL, return the response text. Throws on a non-2xx / transport error. */
 export type HttpPost = (url: string, body: string) => Promise<string>
+/** Injected transport: GET a URL, return the response text. Throws on a non-2xx / transport error. */
+export type HttpGet = (url: string) => Promise<string>
 
 const defaultHttpPost: HttpPost = async (url, body) => {
 	const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body })
@@ -26,6 +30,19 @@ const defaultHttpPost: HttpPost = async (url, body) => {
 		throw new Error(`OSV query failed: HTTP ${res.status} ${res.statusText}`)
 	}
 	return await res.text()
+}
+
+const defaultHttpGet: HttpGet = async (url) => {
+	const res = await fetch(url)
+	if (!res.ok) {
+		throw new Error(`OSV vuln fetch failed: HTTP ${res.status} ${res.statusText}`)
+	}
+	return await res.text()
+}
+
+/** Build an `OsvVulnFetcher` that GETs a single vuln record by id (for severity/range enrichment). */
+export function makeOsvVulnFetcher(httpGet: HttpGet = defaultHttpGet): OsvVulnFetcher {
+	return (id: string) => httpGet(osvVulnUrl(id))
 }
 
 /** Split into ≤limit-sized chunks (preserves order). */

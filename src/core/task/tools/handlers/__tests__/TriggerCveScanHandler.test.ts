@@ -32,6 +32,7 @@ const fakeResult: ScanLoopResult = {
 		components: [],
 		coverage: { total: 1, withPurl: 1, withCpe: 0, unidentified: 0, queryable: 1, byDropReason: {} },
 	},
+	enrichment: new Map(),
 }
 
 describe("TriggerCveScanHandler", () => {
