@@ -6,7 +6,7 @@ import DemoPicker from "../DemoPicker"
 describe("DemoPicker", () => {
 	it("hero: renders the picker heading and one row per registered scenario", () => {
 		render(<DemoPicker onStartDemo={vi.fn()} />)
-		expect(screen.getByText("Try it on a sample")).toBeInTheDocument()
+		expect(screen.getByText("Try it on a sample project")).toBeInTheDocument()
 		for (const s of DEMO_SCENARIO_LIST) {
 			expect(screen.getByTestId(`demo-scenario-${s.id}`)).toBeInTheDocument()
 			expect(screen.getByText(s.title)).toBeInTheDocument()
@@ -64,12 +64,12 @@ describe("DemoPicker", () => {
 	it("heading says 'another' ONLY when a sample has actually run (hasRunDemo), decoupled from compact styling", () => {
 		// Compact but no sample run yet (e.g. first-time WITH a project open) → must NOT say "another".
 		const { unmount } = render(<DemoPicker onStartDemo={vi.fn()} variant="rerun" />)
-		expect(screen.getByText("Try it on a sample")).toBeInTheDocument()
-		expect(screen.queryByText("Try another sample")).not.toBeInTheDocument()
+		expect(screen.getByText("Try it on a sample project")).toBeInTheDocument()
+		expect(screen.queryByText("Try another sample project")).not.toBeInTheDocument()
 		unmount()
-		// A sample has run → "Try another sample".
+		// A sample has run → "Try another sample project".
 		render(<DemoPicker hasRunDemo onStartDemo={vi.fn()} variant="rerun" />)
-		expect(screen.getByText("Try another sample")).toBeInTheDocument()
+		expect(screen.getByText("Try another sample project")).toBeInTheDocument()
 	})
 
 	it("disabled: rows are disabled and do not fire onStartDemo", () => {

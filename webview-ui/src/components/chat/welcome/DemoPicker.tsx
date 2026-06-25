@@ -9,7 +9,7 @@ interface DemoPickerProps {
 	variant?: "hero" | "rerun"
 	/**
 	 * Whether the user has actually run a sample. Drives ONLY the heading word: "Try **another** sample" iff true,
-	 * else "Try it on a sample". Decoupled from `variant` so a first-time user with a project open (compact, but
+	 * else "Try it on a sample project". Decoupled from `variant` so a first-time user with a project open (compact, but
 	 * no sample run yet) doesn't see "another".
 	 */
 	hasRunDemo?: boolean
@@ -21,11 +21,11 @@ const NEUTRAL_BORDER_HOVER = "color-mix(in srgb, var(--vscode-foreground) 32%, t
 const NEUTRAL_ICON_BG = "color-mix(in srgb, var(--vscode-foreground) 10%, transparent)"
 
 /**
- * "Try it on a sample" — the consolidated sample picker. Renders one row per registered demo scenario
+ * "Try it on a sample project" — the consolidated sample picker. Renders one row per registered demo scenario
  * (BLE bug, CRA readiness, …). Replaces the single-scenario DemoCard once the registry holds ≥2 scenarios.
  *
  * - hero: cyan container, the single first-run focal point (until the user has run any sample once).
- * - rerun: neutral, compact — quiet "Try another sample" once a sample has been seen.
+ * - rerun: neutral, compact — quiet "Try another sample project" once a sample has been seen.
  *
  * Rows are domain-agnostic: they read title / honestLabel / platform / icon straight off each scenario,
  * so adding a sample to DEMO_SCENARIOS surfaces it here with no change to this component.
@@ -53,7 +53,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, 
 					color: "var(--vscode-foreground)",
 					marginBottom: isRerun ? "8px" : "3px",
 				}}>
-				{hasRunDemo ? "Try another sample" : "Try it on a sample"}
+				{hasRunDemo ? "Try another sample project" : "Try it on a sample project"}
 			</div>
 			{!isRerun && (
 				<div
@@ -62,7 +62,8 @@ const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, 
 						color: "var(--vscode-descriptionForeground)",
 						marginBottom: "12px",
 					}}>
-					Run Adsum on our sample — a CRA readiness check, a real BLE bug, and more. No project needed.
+					Run Adsum on our sample project — a CRA readiness check, a real BLE bug, and more. No project of your own
+					needed.
 				</div>
 			)}
 

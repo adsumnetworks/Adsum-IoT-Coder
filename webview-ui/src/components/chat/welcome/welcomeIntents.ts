@@ -170,7 +170,8 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 		id: "craCheck",
 		icon: "shield",
 		title: "Preview CRA readiness",
-		description: "A real SBOM + secure-by-design posture on a bundled sample — not your build. Get ahead of the EU CRA.",
+		description:
+			"A real SBOM + secure-by-design posture on a bundled sample project — not your build. Get ahead of the EU CRA.",
 		pill: "New",
 	},
 	{
