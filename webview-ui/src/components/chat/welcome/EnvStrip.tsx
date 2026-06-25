@@ -421,7 +421,7 @@ const EnvStrip: React.FC = () => {
 
 	return (
 		<div style={containerStyle}>
-			<div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
+			<div id="envstrip-detail" style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
 				{expanded ? (
 					<>
 						<PlatformRow
@@ -438,6 +438,9 @@ const EnvStrip: React.FC = () => {
 							{...esp}
 						/>
 						<button
+							aria-controls="envstrip-detail"
+							aria-expanded={expanded}
+							aria-label="Hide environment detail"
 							data-testid="envstrip-collapse"
 							onClick={() => setExpanded(false)}
 							style={collapseLinkStyle}
@@ -447,6 +450,9 @@ const EnvStrip: React.FC = () => {
 					</>
 				) : (
 					<button
+						aria-controls="envstrip-detail"
+						aria-expanded={expanded}
+						aria-label="Show environment detail"
 						data-testid="envstrip-summary"
 						onClick={() => setExpanded(true)}
 						style={{
