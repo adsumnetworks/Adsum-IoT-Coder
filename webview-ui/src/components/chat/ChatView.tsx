@@ -469,25 +469,29 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				{task && (
 					<MessagesArea
 						chatState={chatState}
+						// The post-task next-step chooser renders INSIDE the scroll (as the list footer) so it scrolls
+						// with the conversation instead of covering it on a short viewport. A6 "all states": the
+						// AI-limitations disclaimer rides along here — the completion screen is exactly where the dev
+						// reviews the result before flashing/shipping.
+						footer={
+							nordicPhase === "task_complete" ? (
+								<>
+									<NextStepChooser
+										isDemoRun={isDemoRun}
+										onSelectMode={handleModeSelect}
+										onStartDemo={handleStartDemo}
+										onStartTask={handleStartTask}
+									/>
+									<AiLimitationsFooter style={{ padding: "10px 14px 4px" }} />
+								</>
+							) : undefined
+						}
 						groupedMessages={groupedMessages}
 						messageHandlers={messageHandlers}
 						modifiedMessages={modifiedMessages}
 						scrollBehavior={scrollBehavior}
 						task={task}
 					/>
-				)}
-				{task && nordicPhase === "task_complete" && (
-					<div className="flex-shrink-0">
-						<NextStepChooser
-							isDemoRun={isDemoRun}
-							onSelectMode={handleModeSelect}
-							onStartDemo={handleStartDemo}
-							onStartTask={handleStartTask}
-						/>
-						{/* A6 "all states": the disclaimer must show on the completion screen too — exactly when the
-						    dev reviews the result before flashing/shipping (the footer block below is skipped here). */}
-						<AiLimitationsFooter style={{ padding: "10px 14px 4px" }} />
-					</div>
 				)}
 			</div>
 			{task && (nordicPhase !== "task_complete" || isDemoRun) && (

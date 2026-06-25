@@ -55,6 +55,11 @@ export const toolParamNames = [
 	"devices",
 	"output",
 	"filename",
+	// triggerCveScan params — MUST be here or the parser silently drops <sbom>/<build> and the handler
+	// reports "Missing value for required parameter 'sbom'" no matter what the model sends (observed on a
+	// live cra-sample run). A tool's params are only extracted if their names are in this list.
+	"sbom",
+	"build",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
