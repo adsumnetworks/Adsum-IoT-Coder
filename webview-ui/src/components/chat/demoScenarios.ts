@@ -24,6 +24,14 @@ export interface DemoScenario {
 	platform: "nrf" | "esp"
 	/** codicon name for the picker row. */
 	icon: string
+	/**
+	 * Placeholder row (A9): shown disabled with a "soon" badge, never runnable, until the owner wires its real
+	 * demo path (host [ADSUM_DEMO:<id>] handler + bundled sample). Keeps the picker honest — the row is visible
+	 * as a roadmap promise but can't be clicked into a dead end.
+	 */
+	comingSoon?: boolean
+	/** Show a "New" badge on the picker row — used for the CRA + the new BLE-observability (Omar) samples. */
+	isNew?: boolean
 }
 
 export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
@@ -46,6 +54,21 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		historyMatch: "Preview CRA readiness on a bundled sample",
 		platform: "nrf",
 		icon: "shield",
+		isNew: true,
+	},
+	// A9 — Omar's placeholder. Visible as a roadmap row (disabled + "soon"); Omar brings it to life by adding the
+	// host [ADSUM_DEMO:hci-sniffer] handler + bundled capture and flipping comingSoon off. HCI lands first; the
+	// radio-sniffer layer is the additive frontier — copy leads with the layers honestly.
+	"hci-sniffer": {
+		id: "hci-sniffer",
+		title: "HCI + sniffer-in-the-loop BLE debug",
+		honestLabel: "Cross-layer BLE — app log ↔ HCI trace ↔ over-the-air sniffer, correlated by the agent.",
+		taskPrompt: "Demo: HCI + sniffer-in-the-loop BLE debug\n\n[ADSUM_DEMO:hci-sniffer]",
+		historyMatch: "HCI + sniffer-in-the-loop BLE debug",
+		platform: "nrf",
+		icon: "radio-tower",
+		comingSoon: true,
+		isNew: true,
 	},
 }
 

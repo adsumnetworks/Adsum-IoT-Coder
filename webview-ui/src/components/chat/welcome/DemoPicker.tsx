@@ -55,97 +55,132 @@ const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, 
 						color: "var(--vscode-descriptionForeground)",
 						marginBottom: "12px",
 					}}>
-					Real firmware, real logs — no board, no setup.
+					Run Adsum on our sample — a CRA readiness check, a real BLE bug, and more. No project needed.
 				</div>
 			)}
 
 			<div style={{ display: "flex", flexDirection: "column", gap: isRerun ? "6px" : "8px" }}>
-				{DEMO_SCENARIO_LIST.map((s) => (
-					<button
-						data-testid={`demo-scenario-${s.id}`}
-						disabled={disabled}
-						key={s.id}
-						onClick={() => onStartDemo(s.id)}
-						onMouseEnter={(e) => {
-							if (!disabled) {
-								e.currentTarget.style.borderColor = NEUTRAL_BORDER_HOVER
-								e.currentTarget.style.background = "var(--vscode-toolbar-hoverBackground)"
-							}
-						}}
-						onMouseLeave={(e) => {
-							e.currentTarget.style.borderColor = NEUTRAL_BORDER
-							e.currentTarget.style.background = "var(--vscode-input-background)"
-						}}
-						style={{
-							width: "100%",
-							display: "flex",
-							alignItems: "center",
-							gap: "12px",
-							padding: isRerun ? "8px 10px" : "10px 12px",
-							background: "var(--vscode-input-background)",
-							border: `1px solid ${NEUTRAL_BORDER}`,
-							borderRadius: "8px",
-							cursor: disabled ? "default" : "pointer",
-							opacity: disabled ? 0.5 : 1,
-							textAlign: "left",
-							transition: "background 0.15s, border-color 0.15s",
-						}}
-						type="button">
-						<div
+				{DEMO_SCENARIO_LIST.map((s) => {
+					// A placeholder ("coming soon") row is disabled like the global disabled state, so it can't be
+					// clicked into a dead end until its owner wires the real demo path.
+					const rowDisabled = disabled || !!s.comingSoon
+					return (
+						<button
+							data-testid={`demo-scenario-${s.id}`}
+							disabled={rowDisabled}
+							key={s.id}
+							onClick={() => {
+								if (!rowDisabled) {
+									onStartDemo(s.id)
+								}
+							}}
+							onMouseEnter={(e) => {
+								if (!rowDisabled) {
+									e.currentTarget.style.borderColor = NEUTRAL_BORDER_HOVER
+									e.currentTarget.style.background = "var(--vscode-toolbar-hoverBackground)"
+								}
+							}}
+							onMouseLeave={(e) => {
+								e.currentTarget.style.borderColor = NEUTRAL_BORDER
+								e.currentTarget.style.background = "var(--vscode-input-background)"
+							}}
 							style={{
-								flexShrink: 0,
-								width: isRerun ? "26px" : "32px",
-								height: isRerun ? "26px" : "32px",
-								borderRadius: "50%",
-								background: isRerun ? NEUTRAL_ICON_BG : BRAND_CYAN_700,
+								width: "100%",
 								display: "flex",
 								alignItems: "center",
-								justifyContent: "center",
-								color: isRerun ? "var(--vscode-descriptionForeground)" : "#fff",
-							}}>
-							<i className={`codicon codicon-${s.icon}`} style={{ fontSize: isRerun ? "13px" : "15px" }} />
-						</div>
-
-						<div style={{ flex: 1, minWidth: 0 }}>
+								gap: "12px",
+								padding: isRerun ? "8px 10px" : "10px 12px",
+								background: "var(--vscode-input-background)",
+								border: `1px solid ${NEUTRAL_BORDER}`,
+								borderRadius: "8px",
+								cursor: rowDisabled ? "default" : "pointer",
+								opacity: rowDisabled ? 0.5 : 1,
+								textAlign: "left",
+								transition: "background 0.15s, border-color 0.15s",
+							}}
+							type="button">
 							<div
 								style={{
-									fontSize: isRerun ? "12.5px" : "13.5px",
-									fontWeight: 600,
-									color: "var(--vscode-foreground)",
-									lineHeight: 1.3,
+									flexShrink: 0,
+									width: isRerun ? "26px" : "32px",
+									height: isRerun ? "26px" : "32px",
+									borderRadius: "50%",
+									background: isRerun ? NEUTRAL_ICON_BG : BRAND_CYAN_700,
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "center",
+									color: isRerun ? "var(--vscode-descriptionForeground)" : "#fff",
 								}}>
-								{s.title}
+								<i className={`codicon codicon-${s.icon}`} style={{ fontSize: isRerun ? "13px" : "15px" }} />
 							</div>
-							{!isRerun && (
+
+							<div style={{ flex: 1, minWidth: 0 }}>
 								<div
 									style={{
-										fontSize: "11px",
-										color: "var(--vscode-descriptionForeground)",
-										opacity: 0.8,
-										marginTop: "2px",
-										lineHeight: 1.35,
+										fontSize: isRerun ? "12.5px" : "13.5px",
+										fontWeight: 600,
+										color: "var(--vscode-foreground)",
+										lineHeight: 1.3,
 									}}>
-									{s.honestLabel}
+									{s.title}
+									{s.isNew && (
+										<span
+											style={{
+												marginLeft: "6px",
+												fontSize: "8.5px",
+												fontWeight: 700,
+												letterSpacing: "0.04em",
+												textTransform: "uppercase",
+												color: BRAND_CYAN_600,
+												border: `1px solid ${BRAND_CYAN_600}`,
+												borderRadius: "4px",
+												padding: "0 4px",
+												verticalAlign: "middle",
+											}}>
+											New
+										</span>
+									)}
 								</div>
-							)}
-						</div>
+								{!isRerun && (
+									<div
+										style={{
+											fontSize: "11px",
+											color: "var(--vscode-descriptionForeground)",
+											opacity: 0.8,
+											marginTop: "2px",
+											lineHeight: 1.35,
+										}}>
+										{s.honestLabel}
+									</div>
+								)}
+							</div>
 
-						<span
-							style={{
-								flexShrink: 0,
-								fontSize: "9.5px",
-								fontWeight: 700,
-								letterSpacing: "0.04em",
-								textTransform: "uppercase",
-								color: "var(--vscode-descriptionForeground)",
-								border: `1px solid ${NEUTRAL_BORDER}`,
-								borderRadius: "4px",
-								padding: "1px 5px",
-							}}>
-							{s.platform}
-						</span>
-					</button>
-				))}
+							<span
+								style={{
+									flexShrink: 0,
+									fontSize: "9.5px",
+									fontWeight: 700,
+									letterSpacing: "0.04em",
+									color: "var(--vscode-descriptionForeground)",
+									border: `1px solid ${NEUTRAL_BORDER}`,
+									borderRadius: "4px",
+									padding: "1px 5px",
+								}}>
+								{s.platform === "nrf" ? "nRF" : "ESP"}
+							</span>
+							{/* A1: consistent right-aligned run affordance (design/mockup). The whole row is the button. */}
+							<span
+								style={{
+									flexShrink: 0,
+									fontSize: "10.5px",
+									fontWeight: 600,
+									color: rowDisabled ? "var(--vscode-descriptionForeground)" : BRAND_CYAN_600,
+								}}>
+								{s.comingSoon ? "soon" : "Run ▸"}
+							</span>
+						</button>
+					)
+				})}
 			</div>
 		</div>
 	)
