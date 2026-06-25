@@ -21,7 +21,7 @@
 			"id": "adsum/esp/platform",
 			"title": "ESP32 — Platform Index",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -30,7 +30,7 @@
 			"domain": "embedded-iot",
 			"platform": "esp",
 			"path": "platforms/esp/PLATFORM.md",
-			"content_hash": "0ea9e21dc1e75def74989190f5cfdf4d62d26916ce0a1cef73f0902aa8e72b87"
+			"content_hash": "ea32b879d7d19a0b016402cffbdb55cf90989a0fccbdd9904208a49821062f82"
 		},
 		{
 			"id": "adsum/esp/rules/device-identity",
@@ -66,7 +66,7 @@
 			"id": "adsum/esp/rules/skill-loading",
 			"title": "ESP Platform Rule: Skill Loading",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -75,7 +75,7 @@
 			"domain": "embedded-iot",
 			"platform": "esp",
 			"path": "platforms/esp/rules/skill-loading.md",
-			"content_hash": "74fb0b588b056d5162af90bf26d769f7867d76fb513dcd0cef505e7a379b93f2"
+			"content_hash": "283207be0c14f0736c555ccfcc75774d5a792f01a4e17b8c9680f9828b82b473"
 		},
 		{
 			"id": "adsum/esp/sdks/esp-idf/sdk",
@@ -134,7 +134,7 @@
 			"id": "adsum/nrf/platform",
 			"title": "Nordic nRF — Platform Index",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.3.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -146,7 +146,7 @@
 				"flash"
 			],
 			"path": "platforms/nrf/PLATFORM.md",
-			"content_hash": "bbc4e2fbc7b53e0bb5864e121ff031ecffbb5f7bdbe1213c986af546c0bab320"
+			"content_hash": "aa09b40c76995077a5404ca0f42cfb58ec6d039670b62593f1634834ba21e0eb"
 		},
 		{
 			"id": "adsum/nrf/rules/device-identity",
@@ -186,7 +186,7 @@
 			"id": "adsum/nrf/rules/skill-loading",
 			"title": "nRF Platform Rule: Skill Loading",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.3.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -198,13 +198,13 @@
 				"flash"
 			],
 			"path": "platforms/nrf/rules/skill-loading.md",
-			"content_hash": "715eb48c32d45af0a7ce91d2e48d5a443d59614cd27225e1a7a296383af98531"
+			"content_hash": "416694b98e131b360afe645b8b754d866b38687f69315f48bfcda8eb87a446b9"
 		},
 		{
 			"id": "adsum/nrf/sdks/ncs/protocols/ble",
 			"title": "BLE Protocol Knowledge — NCS / Zephyr",
 			"type": "knowledge",
-			"version": "1.1.0",
+			"version": "1.2.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -213,7 +213,7 @@
 			"domain": "embedded-iot",
 			"platform": "nrf",
 			"path": "platforms/nrf/sdks/ncs/protocols/BLE.md",
-			"content_hash": "fccb8b6d18ae88d8324454abaabc4f2e1fae34b25451666124c0395393846fc2"
+			"content_hash": "2d9c7a30109ad5e9e1a5028eb9c63d488a4bd271bf007a6bc774f17d1e40d886"
 		},
 		{
 			"id": "adsum/nrf/sdks/ncs/sdk",
