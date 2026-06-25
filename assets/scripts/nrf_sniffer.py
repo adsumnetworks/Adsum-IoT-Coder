@@ -2,11 +2,13 @@
 """nRF Sniffer capture wrapper — over-the-air BLE.
 
 Runs ``nrfutil ble-sniffer sniff`` for a bounded duration against a separate Nordic dongle/DK that is
-flashed with the sniffer firmware, then stops it cleanly so the PCAP is flushed, and prints the path.
+flashed with the sniffer firmware. nrfutil's own ``--timeout`` flag is the primary self-stop mechanism —
+it lets nrfutil exit cleanly and flush the PCAP on its own. The OS-level stop (CTRL_BREAK on Windows,
+SIGINT on POSIX, escalating to terminate/kill) is kept only as a fallback in case nrfutil ever hangs past
+its own timeout.
 
-Windows-first: the child runs in its own process group so it can be stopped with CTRL_BREAK on Windows
-(SIGINT on POSIX) — a clean stop lets nrfutil finalize the PCAP. Hard kill is the last resort; the PCAP
-is written incrementally, so even then the captured packets remain readable.
+Windows-first: the child runs in its own process group so the fallback stop can use CTRL_BREAK on
+Windows (SIGINT on POSIX).
 """
 import argparse
 import os
@@ -20,7 +22,18 @@ IS_WINDOWS = os.name == "nt"
 
 
 def build_command(args):
-    cmd = [args.nrfutil, "ble-sniffer", "sniff", "--port", args.port, "--output-pcap-file", str(args.output)]
+    timeout_ms = max(1000, int(args.duration * 1000))
+    cmd = [
+        args.nrfutil,
+        "ble-sniffer",
+        "sniff",
+        "--port",
+        args.port,
+        "--output-pcap-file",
+        str(args.output),
+        "--timeout",
+        str(timeout_ms),
+    ]
     if args.follow_name:
         cmd += ["--follow-by-name", args.follow_name]
     elif args.follow_addr:
@@ -65,7 +78,10 @@ def main():
     cmd = build_command(args)
 
     print("[sniffer] " + " ".join(cmd), flush=True)
-    print(f"[sniffer] capturing ~{args.duration:.0f}s on {args.port} -> {args.output}", flush=True)
+    print(
+        f"[sniffer] capturing ~{args.duration:.0f}s on {args.port} -> {args.output} (nrfutil self-stops via --timeout)",
+        flush=True,
+    )
     print("[sniffer] reproduce the BLE issue now (advertise / connect / pair) so it lands in the capture.", flush=True)
 
     popen_kwargs = {}
@@ -84,7 +100,9 @@ def main():
         )
         return 2
 
-    deadline = time.time() + max(1.0, args.duration)
+    # nrfutil's own --timeout (above) is the primary self-stop. This deadline is a 10s-buffered
+    # fallback: if nrfutil hangs past its own timeout, we escalate via stop() (signal -> terminate -> kill).
+    deadline = time.time() + max(1.0, args.duration) + 10.0
     try:
         while time.time() < deadline:
             if proc.poll() is not None:
