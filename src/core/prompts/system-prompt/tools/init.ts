@@ -59,6 +59,9 @@ export function registerClineToolSets(): void {
 		...apply_patch_variants,
 		...trigger_nordic_action_variants,
 		...trigger_esp_action_variants,
+		// CVE scan tool is built + service-layer tested but intentionally NOT advertised yet. To enable after the
+		// design/16 spike + a free-tier ground-truth pass: add `...trigger_cve_scan_variants` here (import it above)
+		// and set CVE_SCAN_TOOL_ENABLED = true in trigger_cve_scan.ts.
 	]
 
 	// Register each variant
