@@ -20,6 +20,7 @@ const AiLimitationsFooter: React.FC<{ style?: React.CSSProperties }> = ({ style 
 			color: "var(--vscode-descriptionForeground)",
 			opacity: 0.75,
 			lineHeight: 1.4,
+			textAlign: "center",
 			...style,
 		}}>
 		{AI_LIMITATIONS_TEXT}{" "}
