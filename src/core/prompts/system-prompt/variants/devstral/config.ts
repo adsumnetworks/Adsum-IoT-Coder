@@ -54,6 +54,7 @@ export const config = createVariant(ModelFamily.DEVSTRAL)
 		ClineDefaultTool.USE_SKILL,
 		ClineDefaultTool.NORDIC_ACTION,
 		ClineDefaultTool.ESP_ACTION,
+		ClineDefaultTool.CVE_SCAN,
 	)
 	.placeholders({
 		MODEL_FAMILY: "devstral",

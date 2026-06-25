@@ -7,7 +7,7 @@
  * (never silently dropped) — a future NVD/EUVD path handles CPE (red-team: ESP is CPE-heavy). The batch
  * endpoint returns vuln **IDs only**; range/severity enrichment is a separate follow-up step (documented).
  */
-import type { SbomComponent } from "./sbomNormalize"
+import { classifyComponent, type DropReason, type SbomComponent } from "./sbomNormalize"
 
 export interface OsvQuery {
 	package: { purl: string }
@@ -19,7 +19,7 @@ export interface OsvQueryBatch {
 /** A component left out of the OSV query, with the honest reason (feeds the coverage line). */
 export interface SkippedComponent {
 	component: SbomComponent
-	reason: "cpe-only" | "no-identifier"
+	reason: DropReason
 }
 
 export interface OsvPlan {
@@ -29,19 +29,22 @@ export interface OsvPlan {
 	skipped: SkippedComponent[]
 }
 
-/** Build the OSV querybatch. OSV keys on PURL; CPE-only + unidentified are skipped honestly, not dropped. */
+/**
+ * Build the OSV querybatch. Queryability is decided by the SAME `classifyComponent` the normalizer uses, so the
+ * query set and the stored per-component coverage fact can't drift. OSV keys on PURL; CPE-only + unidentified
+ * are skipped honestly (never silently dropped), carrying the canonical drop reason.
+ */
 export function planOsvScan(components: SbomComponent[]): OsvPlan {
 	const queries: OsvQuery[] = []
 	const queried: SbomComponent[] = []
 	const skipped: SkippedComponent[] = []
 	for (const c of components) {
-		if (c.purl) {
+		const { queryable, dropReason } = classifyComponent(c)
+		if (queryable && c.purl) {
 			queries.push({ package: { purl: c.purl } })
 			queried.push(c)
-		} else if (c.cpe) {
-			skipped.push({ component: c, reason: "cpe-only" })
 		} else {
-			skipped.push({ component: c, reason: "no-identifier" })
+			skipped.push({ component: c, reason: dropReason ?? "no-id" })
 		}
 	}
 	return { queries, queried, skipped }

@@ -1,12 +1,15 @@
 /**
- * Evidence-mode CVE report formatter (CVE scan loop — design/15 §7/§8). Assembles matches + applicability +
- * coverage into the §3 markdown the model presents verbatim. Strictly evidence-mode: every claim is
- * **attributed** (OSV) + **dated** (as-of) + **hedged** (verify); coverage is reported honestly and the
- * no-match case is NEVER framed as "clean". The output is self-checked by `verdictScan` in the test, so the
- * formatter can't drift into a banned verdict. Pure; the `asOf` date is injected (no Date.now in pure code).
+ * Evidence-mode CVE artifact formatters (CVE scan loop — design/15 §7/§8). Assemble matches + applicability +
+ * coverage into the §3 markdown the model presents verbatim (`formatCveScanReport`) AND the structured
+ * `cve-scan-<date>.json` evidence artifact (`formatCveScanJson`) — the two §7 deliverables, built from the SAME
+ * input so they can never disagree. Strictly evidence-mode: every claim is **attributed** (OSV) + **dated**
+ * (as-of) + **hedged** (verify); coverage is reported honestly and the no-match case is NEVER framed as "clean".
+ * Both outputs are self-checked by `verdictScan` in the tests. Pure; `asOf` is injected (no Date.now here).
  */
 import type { ApplicabilityVerdict } from "./applicability"
+import type { EnrichedVuln } from "./osvEnrich"
 import type { OsvMatch, SkippedComponent } from "./osvMatch"
+import type { DropReason } from "./sbomNormalize"
 
 export interface ScanFinding {
 	match: OsvMatch
@@ -20,30 +23,46 @@ export interface EvidenceReportInput {
 	/** ISO date (e.g. "2026-06-24"), injected by the caller. */
 	asOf: string
 	source?: string
+	/** Optional severity/fixed-version enrichment, keyed by vuln id (§4/§11). Surfaced verbatim + attributed. */
+	enrichment?: Map<string, EnrichedVuln>
 }
 
 const advisoryUrl = (id: string) => `https://osv.dev/vulnerability/${id}`
 
+/** Reason breakdown of the skipped set — the single derivation md + json both render (they can't disagree). */
+function dropReasonCounts(skipped: SkippedComponent[]): Partial<Record<DropReason, number>> {
+	const counts: Partial<Record<DropReason, number>> = {}
+	for (const s of skipped) {
+		counts[s.reason] = (counts[s.reason] ?? 0) + 1
+	}
+	return counts
+}
+
+/** The shared data-provenance caption (NOT a legal disclaimer — reuses the advisories "as of" shape, §8.1). */
+const provenanceCaption = (source: string, asOf: string): string =>
+	`${source} matches for your SBOM's component versions, as of ${asOf}. Partial coverage; ` +
+	"version-matching can over- or under-report — open each linked advisory to confirm it applies to your build."
+
 export function formatCveScanReport(input: EvidenceReportInput): string {
 	const source = input.source ?? "OSV"
-	const cpeOnly = input.skipped.filter((s) => s.reason === "cpe-only").length
-	const noId = input.skipped.filter((s) => s.reason === "no-identifier").length
+	const counts = dropReasonCounts(input.skipped)
+	const cpeOnly = counts["cpe-only"] ?? 0
+	const noId = counts["no-id"] ?? 0
+	const noVersion = counts["no-version"] ?? 0
 
-	const lines: string[] = [
-		`## CVE scan — ${source}, as of ${input.asOf}`,
-		"",
-		// Data-provenance caption (NOT a legal disclaimer — reuses the advisories "as of" caption shape, §8.1).
-		`> ${source} matches for your SBOM's component versions, as of ${input.asOf}. Partial coverage; ` +
-			"version-matching can over- or under-report — open each linked advisory to confirm it applies to your build.",
-		"",
-	]
+	const lines: string[] = [`## CVE scan — ${source}, as of ${input.asOf}`, "", `> ${provenanceCaption(source, input.asOf)}`, ""]
 
+	// Parity rule (§8.4): when there are gaps we ALWAYS render the reason breakdown — never a bare count — so
+	// nRF and ESP are described with equal honesty even though ESP's queryable ratio is structurally lower.
 	const coverage = [`${input.queriedCount} queryable`]
 	if (cpeOnly > 0) {
 		coverage.push(`${cpeOnly} cpe-only (not OSV-queryable)`)
 	}
 	if (noId > 0) {
 		coverage.push(`${noId} with no identifier`)
+	}
+	if (noVersion > 0) {
+		coverage.push(`${noVersion} with no version`)
 	}
 	lines.push(`Coverage: ${coverage.join(" · ")}.`, "")
 
@@ -58,7 +77,65 @@ export function formatCveScanReport(input: EvidenceReportInput): string {
 	for (const f of input.findings) {
 		const c = f.match.component
 		const idLinks = f.match.vulnIds.map((id) => `[${id}](${advisoryUrl(id)})`).join(", ")
-		lines.push(`- **${c.name}@${c.version}** — ${source} reports ${idLinks} (as of ${input.asOf}). ${f.applicability.note}`)
+		let line = `- **${c.name}@${c.version}** — ${source} reports ${idLinks} (as of ${input.asOf}). ${f.applicability.note}`
+		// Enrichment (findings are per-id): surface OSV's CVSS vector + fixed version VERBATIM, attributed + dated.
+		const enr = input.enrichment?.get(f.match.vulnIds[0])
+		if (enr) {
+			if (enr.severities.length > 0) {
+				line += ` ${source} severity: ${enr.severities.map((s) => `${s.type} ${s.score}`).join("; ")}.`
+			}
+			if (enr.fixedVersions.length > 0) {
+				line += ` ${source} reports fixed in ${enr.fixedVersions.join(" / ")} (as of ${input.asOf}) — verify against your build.`
+			}
+		}
+		lines.push(line)
 	}
 	return lines.join("\n")
+}
+
+/** The structured `compliance/cve-scan-<date>.json` artifact (§7) — mirrors the markdown, same input, same data. */
+export interface CveScanJson {
+	schema: "adsum.cve-scan/1"
+	source: string
+	asOf: string
+	/** The same provenance caption the markdown renders (verbatim) — honest about partial coverage. */
+	provenance: string
+	/** Coverage mirror: queryable count + the honest drop-reason breakdown (never a bare number when gaps exist). */
+	coverage: { queryable: number; byDropReason: Partial<Record<DropReason, number>> }
+	findings: Array<{
+		component: string
+		version: string
+		/** Per advisory: id + url, plus OSV-verbatim severities (CVSS vectors) + fixed versions when enriched. */
+		advisories: Array<{ id: string; url: string; severities: OsvSeverityJson[]; fixedVersions: string[] }>
+		/** Applicability is an EXCLUSION signal + a hedged note ending in "verify" — never a conformity verdict. */
+		applicability: { signal: ApplicabilityVerdict["signal"]; note: string }
+	}>
+	skipped: Array<{ component: string; version: string; reason: DropReason }>
+}
+
+interface OsvSeverityJson {
+	type: string
+	score: string
+}
+
+export function formatCveScanJson(input: EvidenceReportInput): string {
+	const source = input.source ?? "OSV"
+	const doc: CveScanJson = {
+		schema: "adsum.cve-scan/1",
+		source,
+		asOf: input.asOf,
+		provenance: provenanceCaption(source, input.asOf),
+		coverage: { queryable: input.queriedCount, byDropReason: dropReasonCounts(input.skipped) },
+		findings: input.findings.map((f) => ({
+			component: f.match.component.name,
+			version: f.match.component.version,
+			advisories: f.match.vulnIds.map((id) => {
+				const enr = input.enrichment?.get(id)
+				return { id, url: advisoryUrl(id), severities: enr?.severities ?? [], fixedVersions: enr?.fixedVersions ?? [] }
+			}),
+			applicability: { signal: f.applicability.signal, note: f.applicability.note },
+		})),
+		skipped: input.skipped.map((s) => ({ component: s.component.name, version: s.component.version, reason: s.reason })),
+	}
+	return JSON.stringify(doc, null, 2)
 }

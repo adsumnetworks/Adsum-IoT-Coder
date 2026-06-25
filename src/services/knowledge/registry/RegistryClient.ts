@@ -1,4 +1,5 @@
 import { ClineEnv } from "@/config"
+import { ExtensionRegistryInfo } from "@/registry"
 
 /**
  * RegistryClient — read-only access to the K-bit registry (P2). Fetches the **downloadable**
@@ -40,7 +41,11 @@ export class RegistryClient {
 
 	/** The downloadable catalog, or null if unreachable/malformed. */
 	async fetchManifest(): Promise<DownloadedManifest | null> {
-		const text = await this.get("/v1/kbits/manifest")
+		// Send our app version so the registry serves the latest version of each bit COMPATIBLE with this
+		// client (a bit version may declare `min_ext` = the minimum app it needs). Omitting it would make the
+		// server fall back to universal-only bits. The version is baked at build time (ExtensionRegistryInfo).
+		const ext = encodeURIComponent(ExtensionRegistryInfo.version)
+		const text = await this.get(`/v1/kbits/manifest?ext=${ext}`)
 		if (text === null) {
 			return null
 		}

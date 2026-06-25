@@ -24,6 +24,14 @@ export interface DemoScenario {
 	platform: "nrf" | "esp"
 	/** codicon name for the picker row. */
 	icon: string
+	/**
+	 * Placeholder row (A9): shown disabled with a "soon" badge, never runnable, until the owner wires its real
+	 * demo path (host [ADSUM_DEMO:<id>] handler + bundled sample). Keeps the picker honest — the row is visible
+	 * as a roadmap promise but can't be clicked into a dead end.
+	 */
+	comingSoon?: boolean
+	/** Show a "New" badge on the picker row — used for the CRA + the new BLE-observability (Omar) samples. */
+	isNew?: boolean
 }
 
 export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
@@ -40,19 +48,60 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 	"cra-sample": {
 		id: "cra-sample",
 		title: "Preview CRA readiness on a sample",
-		honestLabel: "Runs the real CRA workflow on our bundled nRF sample — not your build.",
+		honestLabel: "Runs the real CRA workflow on our bundled nRF sample project — not your build.",
 		taskPrompt: "Demo: CRA SBOM & Fix on a bundled sample — no project needed\n\n[ADSUM_DEMO:cra-sample]",
 		// Sync with DemoManager.buildCraSampleDisplayText() leading text.
 		historyMatch: "Preview CRA readiness on a bundled sample",
 		platform: "nrf",
 		icon: "shield",
+		isNew: true,
+	},
+	// A9 — Omar's placeholder. Visible as a roadmap row (disabled + "soon"); Omar brings it to life by adding the
+	// host [ADSUM_DEMO:hci-sniffer] handler + bundled capture and flipping comingSoon off. HCI lands first; the
+	// radio-sniffer layer is the additive frontier — copy leads with the layers honestly.
+	"hci-sniffer": {
+		id: "hci-sniffer",
+		title: "HCI + sniffer-in-the-loop BLE debug",
+		honestLabel: "Cross-layer BLE — app log ↔ HCI trace ↔ over-the-air sniffer, correlated by the agent.",
+		taskPrompt: "Demo: HCI + sniffer-in-the-loop BLE debug\n\n[ADSUM_DEMO:hci-sniffer]",
+		historyMatch: "HCI + sniffer-in-the-loop BLE debug",
+		platform: "nrf",
+		icon: "radio-tower",
+		comingSoon: true,
+		isNew: true,
+	},
+	// A8 — ESP sample placeholder: a Wi-Fi debug session (ESP's connectivity story, parallel to the nRF/BLE HCI
+	// row). Disabled "soon" roadmap entry; Omar brings it to life via the host [ADSUM_DEMO:esp-wifi] handler + a
+	// bundled ESP-IDF Wi-Fi sample. "Wi-Fi" is highlighted as the row's protocol chip.
+	"esp-wifi": {
+		id: "esp-wifi",
+		title: "Debug an ESP32 Wi-Fi connection issue",
+		honestLabel:
+			"Build, flash & stream Wi-Fi logs on a bundled ESP-IDF sample project — the agent finds why it won't connect.",
+		taskPrompt: "Demo: ESP32 Wi-Fi connection debug\n\n[ADSUM_DEMO:esp-wifi]",
+		historyMatch: "Debug an ESP32 Wi-Fi connection issue",
+		platform: "esp",
+		icon: "broadcast",
+		comingSoon: true,
+		isNew: true,
 	},
 }
 
 export const DEFAULT_DEMO_SCENARIO_ID = "nus-uart"
 
-/** All registered scenarios. The picker renders these; the count gates whether the picker shows (≥2). */
-export const DEMO_SCENARIO_LIST: DemoScenario[] = Object.values(DEMO_SCENARIOS)
+/**
+ * All registered scenarios, ordered for the picker: runnable rows first, "coming soon" placeholders LAST (never
+ * lead with a row you can't click), and within each group the "New" rows first (surface new capabilities).
+ */
+export const DEMO_SCENARIO_LIST: DemoScenario[] = Object.values(DEMO_SCENARIOS).sort((a, b) => {
+	if (!!a.comingSoon !== !!b.comingSoon) {
+		return a.comingSoon ? 1 : -1
+	}
+	if (!!a.isNew !== !!b.isNew) {
+		return a.isNew ? -1 : 1
+	}
+	return 0
+})
 
 /**
  * Stable prefix of the DEFAULT (nus-uart) demo's bubble text. Kept as a named export for the existing

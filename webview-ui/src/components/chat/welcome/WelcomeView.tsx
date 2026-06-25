@@ -3,6 +3,7 @@ import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
+import AiLimitationsFooter from "../AiLimitationsFooter"
 import DemoCard from "../DemoCard"
 import { DEFAULT_DEMO_SCENARIO_ID, DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
@@ -102,8 +103,9 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	// Precedence (one grounded promotion per paint): the A10 deep-debug sub-line is suppressed while the nudge shows.
 	const showDebugSubline = hasBle && !craBanner
 
-	// Adaptive intent set: inject the A10 sub-line on Build/flash/debug; once compliance/ exists, demote the
-	// CRA card (drop its "New" pill + switch to re-run copy). No project → the no-project set, untouched.
+	// Adaptive intent set: inject the A10 sub-line on Build/flash/debug; once compliance/ exists, switch the CRA
+	// card to re-run copy. The "New" pill STAYS (CRA is a new product capability — keep it flagged on all CRA
+	// surfaces). No project → the no-project set, untouched.
 	const intents: IntentDef[] = hasWorkspace
 		? PROJECT_INTENTS.map((i) => {
 				if (i.id === "buildFlashDebug" && showDebugSubline) {
@@ -112,7 +114,6 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				if (i.id === "craCheck" && hasCompliance) {
 					return {
 						...i,
-						pill: undefined,
 						description: "Re-run on your build — refresh the SBOM & posture after changes.",
 					}
 				}
@@ -201,11 +202,12 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 					testIdPrefix="intent-card"
 				/>
 
-				{/* Demoted sample — quiet "Try another sample" whenever it isn't the hero (project open, or already run) */}
+				{/* Demoted sample — compact whenever it isn't the hero (project open, or already run). The heading
+				    says "another" ONLY if a sample has actually run (demoDone), not just because a project is open. */}
 				{!heroPicker && (
 					<div className="w-full">
 						{showPicker ? (
-							<DemoPicker onStartDemo={onStartDemo} variant="rerun" />
+							<DemoPicker hasRunDemo={demoDone} onStartDemo={onStartDemo} variant="rerun" />
 						) : (
 							<DemoCard onStartDemo={onStartDemo} variant="rerun" />
 						)}
@@ -220,19 +222,9 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 					<HistoryPreview showHistoryView={navigateToHistory} />
 				</div>
 
-				{/* AI-limitations — persistent in every welcome state, before any flash/CRA/demo click.
-				    The "Full disclaimer →" link is deferred until /legal/limitations exists (no live 404). */}
-				<div
-					className="w-full"
-					style={{
-						fontSize: "10.5px",
-						color: "var(--vscode-descriptionForeground)",
-						opacity: 0.75,
-						marginTop: "6px",
-						lineHeight: 1.4,
-					}}>
-					Adsum is an AI-based coding agent and can make mistakes — review its changes before you flash or ship.
-				</div>
+				{/* AI-limitations (design/13 A6) — persistent here AND under the chat input during a task (see
+				    ChatView). Links to the live docs disclaimer page (docs.adsumnetworks.com/legal/limitations). */}
+				<AiLimitationsFooter style={{ marginTop: "6px" }} />
 			</div>
 		</div>
 	)

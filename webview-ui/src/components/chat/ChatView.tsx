@@ -13,6 +13,7 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useShowNavbar } from "@/context/PlatformContext"
 import { FileServiceClient, UiServiceClient } from "@/services/grpc-client"
 import { Navbar } from "../menu/Navbar"
+import AiLimitationsFooter from "./AiLimitationsFooter"
 import AutoApproveBar from "./auto-approve-menu/AutoApproveBar"
 // Import utilities and hooks from the new structure
 import {
@@ -478,6 +479,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 							onStartDemo={handleStartDemo}
 							onStartTask={handleStartTask}
 						/>
+						{/* A6 "all states": the disclaimer must show on the completion screen too — exactly when the
+						    dev reviews the result before flashing/shipping (the footer block below is skipped here). */}
+						<AiLimitationsFooter style={{ padding: "10px 14px 4px" }} />
 					</div>
 				)}
 			</div>
@@ -505,6 +509,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						selectFilesAndImages={selectFilesAndImages}
 						shouldDisableFilesAndImages={shouldDisableFilesAndImages}
 					/>
+					{/* Persistent AI-limitations disclaimer — visible while the dev acts on the agent's output. */}
+					<AiLimitationsFooter style={{ padding: "2px 14px 6px" }} />
 				</footer>
 			)}
 		</ChatLayout>
