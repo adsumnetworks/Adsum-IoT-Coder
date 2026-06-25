@@ -6,7 +6,7 @@
 			"id": "adsum/agent",
 			"title": "Identity & Persona",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.0.1",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -15,7 +15,7 @@
 			"domain": "embedded-iot",
 			"platform": "universal",
 			"path": "AGENT.md",
-			"content_hash": "b0b52ef24b79031b0825a92eb095919b5eeb6438b5f6ae7005278adcffc37b93"
+			"content_hash": "14ff63f2eb2cf5561a86920c55592caa91e9d8642ea18dd0536c8282f7f5b431"
 		},
 		{
 			"id": "adsum/esp/platform",
