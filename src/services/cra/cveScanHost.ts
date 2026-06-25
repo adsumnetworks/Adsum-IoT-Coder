@@ -14,6 +14,7 @@
 
 import type { BuildEvidenceReaders } from "./buildEvidence"
 import { readBuildEvidence } from "./buildEvidence"
+import type { OsvVulnFetcher } from "./osvEnrich"
 import type { OsvFetcher } from "./osvMatch"
 import type { HintResolver } from "./scanLoop"
 import { runCveScan, type ScanLoopResult } from "./scanLoop"
@@ -28,6 +29,8 @@ export interface CveScanHostDeps {
 	/** Curated CVE→hint resolver; omitted → every match is honestly "unknown". */
 	resolveHint?: HintResolver
 	source?: string
+	/** Optional severity/fixed enrichment fetcher (§4/§11); omitted → no enrichment, no extra network calls. */
+	vulnFetcher?: OsvVulnFetcher
 }
 
 export interface CveScanHostInput {
@@ -61,5 +64,6 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 		fetcher: deps.fetcher,
 		resolveHint: deps.resolveHint,
 		source: deps.source,
+		vulnFetcher: deps.vulnFetcher,
 	})
 }

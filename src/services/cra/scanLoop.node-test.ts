@@ -58,6 +58,28 @@ test("orchestrator returns the §7 JSON artifact alongside the markdown (parseab
 	assert.equal(doc.coverage.queryable, r.queriedCount)
 })
 
+test("enrichment off by default → no enrichment map entries, no extra network", async () => {
+	const r = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-25", fetcher: twoVulnFetcher })
+	assert.equal(r.enrichment.size, 0)
+})
+
+test("enrichment on (vulnFetcher provided) → severity + fixed surfaced verbatim, verdict-clean", async () => {
+	const vulnFetcher = async (id: string) =>
+		JSON.stringify({
+			id,
+			severity: [{ type: "CVSS_V3", score: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H" }],
+			affected: [{ ranges: [{ events: [{ fixed: "3.5.1" }] }] }],
+		})
+	const r = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-25", fetcher: twoVulnFetcher, vulnFetcher })
+	assert.ok(r.enrichment.size >= 1)
+	assert.match(r.report, /CVSS:3\.1\//) // vector surfaced verbatim
+	assert.match(r.report, /fixed in 3\.5\.1 \(as of 2026-06-25\) — verify/)
+	assert.equal(isVerdictClean(r.report), true) // attributed + dated + hedged stays clean
+	const doc = JSON.parse(r.json)
+	assert.equal(doc.findings[0].advisories[0].fixedVersions[0], "3.5.1")
+	assert.equal(doc.findings[0].advisories[0].severities[0].type, "CVSS_V3")
+})
+
 test("per-CVE findings: one finding per (component, vulnId), not collapsed per component", async () => {
 	const r = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-25", fetcher: twoVulnFetcher })
 	assert.equal(r.findings.length, 2) // mbedtls carried 2 CVEs → 2 findings

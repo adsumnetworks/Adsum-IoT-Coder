@@ -15,6 +15,7 @@
  */
 import { type ApplicabilityHint, assessApplicability, type BuildEvidence } from "./applicability"
 import { type EvidenceReportInput, formatCveScanJson, formatCveScanReport, type ScanFinding } from "./evidenceReport"
+import { type EnrichedVuln, enrichVulns, type OsvVulnFetcher } from "./osvEnrich"
 import { type OsvFetcher, type OsvMatch, type SkippedComponent, scanWithOsv } from "./osvMatch"
 import { type NormalizedSbom, normalizeSbom, type SbomComponent, type SbomCoverage } from "./sbomNormalize"
 
@@ -33,6 +34,11 @@ export interface ScanLoopInput {
 	/** Curated per-CVE hint lookup; omitted → every match is "unknown" (honest default). */
 	resolveHint?: HintResolver
 	source?: string
+	/**
+	 * Optional severity/fixed-version enrichment (§4/§11). When provided, each matched vuln is fetched and its
+	 * CVSS vector + fixed version are surfaced verbatim. Omitted → no enrichment (and no extra network calls).
+	 */
+	vulnFetcher?: OsvVulnFetcher
 }
 
 export interface ScanLoopResult {
@@ -48,6 +54,8 @@ export interface ScanLoopResult {
 	skipped: SkippedComponent[]
 	queriedCount: number
 	normalized: NormalizedSbom
+	/** Severity/fixed enrichment keyed by vuln id (empty unless a `vulnFetcher` was provided). */
+	enrichment: Map<string, EnrichedVuln>
 }
 
 /** Run the full scan loop. Deterministic given a fixed fetcher + asOf; the only network touch is `fetcher`. */
@@ -65,12 +73,21 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 		}
 	}
 
+	// Optional enrichment: only touches the network when a vulnFetcher is provided.
+	const enrichment = input.vulnFetcher
+		? await enrichVulns(
+				findings.map((f) => f.match.vulnIds[0]),
+				input.vulnFetcher,
+			)
+		: new Map<string, EnrichedVuln>()
+
 	const reportInput: EvidenceReportInput = {
 		findings,
 		skipped: scan.skipped,
 		queriedCount: scan.queriedCount,
 		asOf: input.asOf,
 		source: input.source,
+		enrichment,
 	}
 	return {
 		report: formatCveScanReport(reportInput),
@@ -80,5 +97,6 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 		skipped: scan.skipped,
 		queriedCount: scan.queriedCount,
 		normalized,
+		enrichment,
 	}
 }

@@ -7,6 +7,7 @@
  * Both outputs are self-checked by `verdictScan` in the tests. Pure; `asOf` is injected (no Date.now here).
  */
 import type { ApplicabilityVerdict } from "./applicability"
+import type { EnrichedVuln } from "./osvEnrich"
 import type { OsvMatch, SkippedComponent } from "./osvMatch"
 import type { DropReason } from "./sbomNormalize"
 
@@ -22,6 +23,8 @@ export interface EvidenceReportInput {
 	/** ISO date (e.g. "2026-06-24"), injected by the caller. */
 	asOf: string
 	source?: string
+	/** Optional severity/fixed-version enrichment, keyed by vuln id (§4/§11). Surfaced verbatim + attributed. */
+	enrichment?: Map<string, EnrichedVuln>
 }
 
 const advisoryUrl = (id: string) => `https://osv.dev/vulnerability/${id}`
@@ -74,7 +77,18 @@ export function formatCveScanReport(input: EvidenceReportInput): string {
 	for (const f of input.findings) {
 		const c = f.match.component
 		const idLinks = f.match.vulnIds.map((id) => `[${id}](${advisoryUrl(id)})`).join(", ")
-		lines.push(`- **${c.name}@${c.version}** — ${source} reports ${idLinks} (as of ${input.asOf}). ${f.applicability.note}`)
+		let line = `- **${c.name}@${c.version}** — ${source} reports ${idLinks} (as of ${input.asOf}). ${f.applicability.note}`
+		// Enrichment (findings are per-id): surface OSV's CVSS vector + fixed version VERBATIM, attributed + dated.
+		const enr = input.enrichment?.get(f.match.vulnIds[0])
+		if (enr) {
+			if (enr.severities.length > 0) {
+				line += ` ${source} severity: ${enr.severities.map((s) => `${s.type} ${s.score}`).join("; ")}.`
+			}
+			if (enr.fixedVersions.length > 0) {
+				line += ` ${source} reports fixed in ${enr.fixedVersions.join(" / ")} (as of ${input.asOf}) — verify against your build.`
+			}
+		}
+		lines.push(line)
 	}
 	return lines.join("\n")
 }
@@ -91,11 +105,17 @@ export interface CveScanJson {
 	findings: Array<{
 		component: string
 		version: string
-		advisories: Array<{ id: string; url: string }>
+		/** Per advisory: id + url, plus OSV-verbatim severities (CVSS vectors) + fixed versions when enriched. */
+		advisories: Array<{ id: string; url: string; severities: OsvSeverityJson[]; fixedVersions: string[] }>
 		/** Applicability is an EXCLUSION signal + a hedged note ending in "verify" — never a conformity verdict. */
 		applicability: { signal: ApplicabilityVerdict["signal"]; note: string }
 	}>
 	skipped: Array<{ component: string; version: string; reason: DropReason }>
+}
+
+interface OsvSeverityJson {
+	type: string
+	score: string
 }
 
 export function formatCveScanJson(input: EvidenceReportInput): string {
@@ -109,7 +129,10 @@ export function formatCveScanJson(input: EvidenceReportInput): string {
 		findings: input.findings.map((f) => ({
 			component: f.match.component.name,
 			version: f.match.component.version,
-			advisories: f.match.vulnIds.map((id) => ({ id, url: advisoryUrl(id) })),
+			advisories: f.match.vulnIds.map((id) => {
+				const enr = input.enrichment?.get(id)
+				return { id, url: advisoryUrl(id), severities: enr?.severities ?? [], fixedVersions: enr?.fixedVersions ?? [] }
+			}),
 			applicability: { signal: f.applicability.signal, note: f.applicability.note },
 		})),
 		skipped: input.skipped.map((s) => ({ component: s.component.name, version: s.component.version, reason: s.reason })),
