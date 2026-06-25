@@ -50,6 +50,14 @@ test("end-to-end: normalize → scan → assess → report (verdict-clean, attri
 	})
 })
 
+test("orchestrator returns the §7 JSON artifact alongside the markdown (parseable, same findings)", async () => {
+	const r = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-25", fetcher: twoVulnFetcher })
+	const doc = JSON.parse(r.json)
+	assert.equal(doc.schema, "adsum.cve-scan/1")
+	assert.equal(doc.findings.length, r.findings.length) // json + md built from the same findings
+	assert.equal(doc.coverage.queryable, r.queriedCount)
+})
+
 test("per-CVE findings: one finding per (component, vulnId), not collapsed per component", async () => {
 	const r = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-25", fetcher: twoVulnFetcher })
 	assert.equal(r.findings.length, 2) // mbedtls carried 2 CVEs → 2 findings
