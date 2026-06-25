@@ -27,7 +27,12 @@
 				"IS_DEV": "true",
 				"IOT_PLATFORM": "nrf",
 				"DEV_WORKSPACE_FOLDER": "${workspaceFolder}",
-				"CLINE_ENVIRONMENT": "production"
+				"CLINE_ENVIRONMENT": "production",
+				// Dev override: resolve DOWNLOADED (proprietary) bits — incl. the 10 CRA bits — from the
+				// Adsum-Backend/kbits/ tree on disk, so F5 has the same edit-and-run loop as bundled bits.
+				// Gated on IS_DEV; esbuild dead-codes it out of any shipped VSIX. Adjust the path if the
+				// Adsum-Backend checkout lives elsewhere relative to this repo.
+				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/../Adsum-Backend/kbits"
 			}
 		},
 		{
@@ -52,7 +57,11 @@
 				"IS_DEV": "true",
 				"IOT_PLATFORM": "esp",
 				"DEV_WORKSPACE_FOLDER": "${workspaceFolder}",
-				"CLINE_ENVIRONMENT": "production"
+				"CLINE_ENVIRONMENT": "production",
+				// Dev override: resolve DOWNLOADED (proprietary) bits — incl. the 10 CRA bits — from the
+				// Adsum-Backend/kbits/ tree on disk (see the nRF config above). Gated on IS_DEV; dead-coded
+				// out of any shipped VSIX by esbuild.
+				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/../Adsum-Backend/kbits"
 			}
 		},
 		{
