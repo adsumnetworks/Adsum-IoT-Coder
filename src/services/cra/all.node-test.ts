@@ -3,5 +3,6 @@
 import "./sbomNormalize.node-test"
 import "./osvMatch.node-test"
 import "./applicability.node-test"
+import "./scanLoop.node-test"
 import "./evidenceReport.node-test"
 import "./vexEmit.node-test"
