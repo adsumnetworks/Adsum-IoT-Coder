@@ -1,3 +1,5 @@
+import { espToolActive, nrfToolActive } from "@/services/platform/platformRouting"
+import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { ModelFamily } from "@/shared/prompts"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ClineToolSpec } from "../spec"
@@ -7,15 +9,20 @@ import type { ClineToolSpec } from "../spec"
  * evidence) and writes `compliance/cve-scan-<date>.{md,json}`; the model triggers it and presents the result
  * (D11-R — the model never fabricates a CVE).
  *
- * ⚠️ GATED OFF. `CVE_SCAN_TOOL_ENABLED` is false AND these variants are not yet added to
- * system-prompt/tools/init.ts, so the tool is not advertised to any model. Enabling is deliberate and TWO steps,
- * to be done only AFTER the design/16 spike (PURL coverage, OSV false-positive rate, gc-sections soundness) and a
- * free-tier ground-truth pass: (1) set CVE_SCAN_TOOL_ENABLED = true; (2) register trigger_cve_scan_variants in
- * init.ts. The handler + service layer are built and unit-tested; only the model-facing advertisement is held.
+ * Advertised on the same predicate as the nRF/ESP device tools (nrf/esp/both/none) — i.e. wherever a firmware
+ * SBOM could plausibly exist. `CVE_SCAN_TOOL_ENABLED` remains as a single kill-switch. Output is honest by
+ * construction (attributed + dated + hedged, verdictScan-clean); the design/16 spike further TUNES precision
+ * (linked-symbol soundness, real fixture swap) but is not a correctness gate for the hedged output.
  */
-const CVE_SCAN_TOOL_ENABLED = false
+const CVE_SCAN_TOOL_ENABLED = true
 
-const isCveScanActive = (): boolean => CVE_SCAN_TOOL_ENABLED
+const isCveScanActive = (): boolean => {
+	if (!CVE_SCAN_TOOL_ENABLED) {
+		return false
+	}
+	const summary = getCachedWorkspaceSummary()
+	return nrfToolActive(summary) || espToolActive(summary)
+}
 
 const TECHNICAL_REFERENCE = `
 Evidence-mode only. Every advisory is attributed to its source (OSV), dated ("as of"), and hedged ("verify") —

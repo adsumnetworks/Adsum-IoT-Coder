@@ -370,6 +370,24 @@ Usage:
 <idf_version>5.5.2</idf_version>
 </triggerEspAction>
 
+## triggerCveScan
+Description: Scan a generated SBOM for known CVEs (host-run, evidence-mode).
+
+Evidence-mode only. Every advisory is attributed to its source (OSV), dated ("as of"), and hedged ("verify") —
+this is a triage aid, never a clean bill of health. Run the CRA SBOM step FIRST (this needs a generated SBOM).
+Pass "build" (the verified build dir) so applicability can use the merged .config + ELF symbols to rule things
+OUT (config-disabled / symbol-stripped ⇒ "likely not applicable; verify") — it never asserts "not affected".
+Components without a PURL (CPE-only / unidentified) are reported as an honest coverage gap, not silently dropped.
+
+Parameters:
+- sbom: (required) Path to the SBOM to scan (SPDX tag-value or JSON), e.g. compliance/sbom/app.spdx — generate it first via the CRA SBOM step.
+- build: (optional) The verified build directory (e.g. build or build/<image>). Supplies the merged .config + ELF symbols for applicability. Omit if there is no build.
+Usage:
+<triggerCveScan>
+<sbom>compliance/sbom/app.spdx</sbom>
+<build>build</build>
+</triggerCveScan>
+
 # Tool Use Examples
 
 ## Example 1: Requesting to execute a command

@@ -369,6 +369,7 @@
 		"test:workspace": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/platform/WorkspaceClassifier.node-test.ts",
 		"test:cve": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/cra/all.node-test.ts",
 		"test:cve:network": "RUN_OSV_NETWORK=1 ts-node --transpile-only -P tsconfig.unit-test.json src/services/cra/osvFetcher.integration.node-test.ts",
+		"test:tool-wiring": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/tools/toolWiring.node-test.ts",
 		"test:cra": "npm-run-all test:kbits test:cra-honesty test:cra-artifact test:workspace test:cve",
 		"kbit": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit.ts",
 		"qa": "bash qa/regression/run.sh",

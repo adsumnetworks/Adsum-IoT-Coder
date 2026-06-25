@@ -268,14 +268,14 @@ describe("lintBitContent", () => {
 // ---------------------------------------------------------------- regression (real corpus)
 
 describe("regression: live corpus", () => {
-	// 26 bits: the 17 post-un-bundle core/demo bits (delivery: bundled, open) + the 9 CRA "SBOM & Fix"
-	// bits (delivery: downloaded, LicenseRef-Adsum-Proprietary — license-follows-delivery). The CRA bits
-	// are still in the tree/manifest pre-Phase-D (resolver-loaded; bundled-wins serves them in dev); the
-	// Phase-D cutover publishes them to the registry and removes them from the manifest (count → 17).
-	test("corpus is fully migrated and lint-clean: 26 bits, 0 errors, 0 unmigrated", () => {
+	// 27 bits: the 17 post-un-bundle core/demo bits (delivery: bundled, open) + the 10 CRA "SBOM & Fix"
+	// bits (delivery: downloaded, LicenseRef-Adsum-Proprietary — license-follows-delivery; incl. the CVE-scan
+	// workflow). The CRA bits are still in the tree/manifest pre-Phase-D (resolver-loaded; bundled-wins serves
+	// them in dev); the Phase-D cutover publishes them to the registry and removes them from the manifest.
+	test("corpus is fully migrated and lint-clean: 27 bits, 0 errors, 0 unmigrated", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
-		assert.equal(files.length, 26)
-		assert.equal(migrated, 26)
+		assert.equal(files.length, 27)
+		assert.equal(migrated, 27)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
 		assert.equal(unmigrated.length, 0)
@@ -304,9 +304,10 @@ describe("regression: live corpus", () => {
 	// Fix" bits, which are delivery: downloaded + proprietary and are still in the manifest **pending the
 	// Phase-D cutover** (publish to the registry → remove from the manifest). The nRF demo-forced bits MUST
 	// stay bundled (DemoManager sync-loads them); un-bundled bits must not return. When Phase D lands, the
-	// CRA ids should leave the manifest and CRA_PENDING_PUBLISH should shrink to empty.
+	// CRA ids (10, incl. the CVE-scan workflow) should leave the manifest and CRA_PENDING_PUBLISH → empty.
 	const CRA_PENDING_PUBLISH = new Set([
 		"adsum/cra/workflows/cra-readiness",
+		"adsum/cra/workflows/cve-scan",
 		"adsum/rules/next-step",
 		"adsum/nrf/actions/cra-generate-sbom",
 		"adsum/nrf/actions/cra-generate-sbom-fallbacks",
