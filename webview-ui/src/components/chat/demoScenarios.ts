@@ -32,8 +32,6 @@ export interface DemoScenario {
 	comingSoon?: boolean
 	/** Show a "New" badge on the picker row — used for the CRA + the new BLE-observability (Omar) samples. */
 	isNew?: boolean
-	/** Optional connectivity-protocol highlight chip (e.g. "Wi-Fi") — accents the row's notable capability. */
-	protocol?: string
 }
 
 export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
@@ -83,7 +81,6 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		historyMatch: "Debug an ESP32 Wi-Fi connection issue",
 		platform: "esp",
 		icon: "broadcast",
-		protocol: "Wi-Fi",
 		comingSoon: true,
 		isNew: true,
 	},
@@ -91,8 +88,19 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 
 export const DEFAULT_DEMO_SCENARIO_ID = "nus-uart"
 
-/** All registered scenarios. The picker renders these; the count gates whether the picker shows (≥2). */
-export const DEMO_SCENARIO_LIST: DemoScenario[] = Object.values(DEMO_SCENARIOS)
+/**
+ * All registered scenarios, ordered for the picker: runnable rows first, "coming soon" placeholders LAST (never
+ * lead with a row you can't click), and within each group the "New" rows first (surface new capabilities).
+ */
+export const DEMO_SCENARIO_LIST: DemoScenario[] = Object.values(DEMO_SCENARIOS).sort((a, b) => {
+	if (!!a.comingSoon !== !!b.comingSoon) {
+		return a.comingSoon ? 1 : -1
+	}
+	if (!!a.isNew !== !!b.isNew) {
+		return a.isNew ? -1 : 1
+	}
+	return 0
+})
 
 /**
  * Stable prefix of the DEFAULT (nus-uart) demo's bubble text. Kept as a named export for the existing
