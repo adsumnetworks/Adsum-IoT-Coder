@@ -11,7 +11,7 @@ const mbed: OsvMatch = {
 }
 const skipped: SkippedComponent[] = [
 	{ component: { name: "esp_wifi", version: "5.1.2", cpe: "cpe:2.3:a" }, reason: "cpe-only" },
-	{ component: { name: "blob", version: "1.0" }, reason: "no-identifier" },
+	{ component: { name: "blob", version: "1.0" }, reason: "no-id" },
 ]
 
 test("report with matches is verdict-clean (self-checked by verdictScan)", () => {

@@ -51,9 +51,20 @@ test("tag-value: parses components + extracts PURL and CPE", () => {
 	assert.equal(mbed?.cpe, "cpe:2.3:a:arm:mbed_tls:3.5.0:*:*:*:*:*:*:*")
 })
 
-test("tag-value: coverage counts (4 total, 2 purl, 1 cpe, 2 unidentified)", () => {
-	const { coverage } = normalizeSbom(TAG_VALUE)
-	assert.deepEqual(coverage, { total: 4, withPurl: 2, withCpe: 1, unidentified: 2 })
+test("tag-value: coverage counts + per-component record (queryable, byDropReason)", () => {
+	const { components, coverage } = normalizeSbom(TAG_VALUE)
+	assert.deepEqual(coverage, {
+		total: 4,
+		withPurl: 2,
+		withCpe: 1,
+		unidentified: 2,
+		queryable: 2, // mbedtls (purl), lwip (purl)
+		byDropReason: { "no-id": 2 }, // my_app, vendor_blob — named+versioned but no machine id
+	})
+	// §5: the per-component coverage fact is stored ON the component (single source of truth).
+	assert.equal(components.find((c) => c.name === "mbedtls")?.queryable, true)
+	assert.equal(components.find((c) => c.name === "mbedtls")?.dropReason, null)
+	assert.equal(components.find((c) => c.name === "vendor_blob")?.dropReason, "no-id")
 })
 
 test("json: parses versionInfo + externalRefs (purl & cpe)", () => {
@@ -61,15 +72,22 @@ test("json: parses versionInfo + externalRefs (purl & cpe)", () => {
 	assert.equal(components.length, 3)
 	assert.equal(components.find((c) => c.name === "esp_wifi")?.cpe?.startsWith("cpe:2.3:a:espressif"), true)
 	assert.equal(components.find((c) => c.name === "mbedtls")?.purl, "pkg:github/Mbed-TLS/mbedtls@3.4.0")
-	assert.deepEqual(coverage, { total: 3, withPurl: 1, withCpe: 1, unidentified: 1 })
+	assert.deepEqual(coverage, {
+		total: 3,
+		withPurl: 1,
+		withCpe: 1,
+		unidentified: 1,
+		queryable: 1, // mbedtls (purl)
+		byDropReason: { "cpe-only": 1, "no-id": 1 }, // esp_wifi (cpe-only), app (no id)
+	})
 })
 
-test("queryableComponents = those with a PURL or CPE (drops the unidentified)", () => {
+test("queryableComponents = those with an OSV-usable id (a PURL); cpe-only + unidentified excluded", () => {
 	const sbom = normalizeSbom(TAG_VALUE)
 	const q = queryableComponents(sbom)
-	assert.equal(q.length, 2) // mbedtls (purl+cpe), lwip (purl); my_app + vendor_blob excluded
+	assert.equal(q.length, 2) // mbedtls (purl), lwip (purl); my_app + vendor_blob excluded
 	assert.equal(
-		q.every((c) => c.purl || c.cpe),
+		q.every((c) => !!c.purl),
 		true,
 	)
 })
@@ -77,7 +95,7 @@ test("queryableComponents = those with a PURL or CPE (drops the unidentified)", 
 test("malformed JSON → empty, not a throw", () => {
 	assert.deepEqual(normalizeSbom("{ not valid json"), {
 		components: [],
-		coverage: { total: 0, withPurl: 0, withCpe: 0, unidentified: 0 },
+		coverage: { total: 0, withPurl: 0, withCpe: 0, unidentified: 0, queryable: 0, byDropReason: {} },
 	})
 })
 

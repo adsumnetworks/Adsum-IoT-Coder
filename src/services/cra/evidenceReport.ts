@@ -27,7 +27,8 @@ const advisoryUrl = (id: string) => `https://osv.dev/vulnerability/${id}`
 export function formatCveScanReport(input: EvidenceReportInput): string {
 	const source = input.source ?? "OSV"
 	const cpeOnly = input.skipped.filter((s) => s.reason === "cpe-only").length
-	const noId = input.skipped.filter((s) => s.reason === "no-identifier").length
+	const noId = input.skipped.filter((s) => s.reason === "no-id").length
+	const noVersion = input.skipped.filter((s) => s.reason === "no-version").length
 
 	const lines: string[] = [
 		`## CVE scan — ${source}, as of ${input.asOf}`,
@@ -38,12 +39,17 @@ export function formatCveScanReport(input: EvidenceReportInput): string {
 		"",
 	]
 
+	// Parity rule (§8.4): when there are gaps we ALWAYS render the reason breakdown — never a bare count — so
+	// nRF and ESP are described with equal honesty even though ESP's queryable ratio is structurally lower.
 	const coverage = [`${input.queriedCount} queryable`]
 	if (cpeOnly > 0) {
 		coverage.push(`${cpeOnly} cpe-only (not OSV-queryable)`)
 	}
 	if (noId > 0) {
 		coverage.push(`${noId} with no identifier`)
+	}
+	if (noVersion > 0) {
+		coverage.push(`${noVersion} with no version`)
 	}
 	lines.push(`Coverage: ${coverage.join(" · ")}.`, "")
 
