@@ -281,3 +281,40 @@ describe("verdictScan — API", () => {
 		assert.deepEqual(scanForVerdictLeaks(report), [])
 	})
 })
+
+describe("verdictScan — shape-primitive guards (catch verdict SHAPES, not just enumerated phrasings)", () => {
+	const leaks: Array<[string, string]> = [
+		["verdict cell 'MET'", "| Secure Boot | MET |"],
+		["verdict cell 'READY'", "| Update path | READY |"],
+		["verdict cell 'GOOD'", "| SBOM | GOOD |"],
+		["label verdict 'Overall: COMPLIANT'", "Overall: COMPLIANT"],
+		["label verdict 'Verdict: READY'", "Verdict: READY"],
+		["label verdict 'Conformity: ACHIEVED'", "Conformity: ACHIEVED"],
+		["bullet label '- Secure boot: DONE'", "- Secure boot: DONE"],
+		["✓ checkmark cell", "| TF-M | ✓ |"],
+		["✓ bullet status", "- ✓ MCUboot built"],
+		["letter grade 'Grade: A'", "Grade: A"],
+		["letter grade with sign", "Readiness Grade: B+"],
+		["device-state 'is secure'", "Good news — your device is secure."],
+		["'production-ready'", "Your firmware is production-ready."],
+	]
+	for (const [name, sample] of leaks) {
+		test(`catches: ${name}`, () => {
+			assert.equal(isVerdictClean(sample), false, sample)
+		})
+	}
+
+	const clean: Array<[string, string]> = [
+		["'We met the team' (met as a verb)", "We met the team and reviewed the build."],
+		["'MET office' (proper noun, uppercase)", "The MET office issued a forecast."],
+		["'secure boot is configured' (feature, not a verdict)", "Secure boot is configured — verify on your build."],
+		["'upgrade path' (grade substring is safe)", "Upgrade path: bump NCS, then verify."],
+		["attributed-dated severity (not a verdict)", "OSV reports CVE-2024-1 (CVSS:3.1/AV:N) as of 2026-06-25 — verify."],
+		["coverage caption hedged with 'confirm'", "Coverage: 3 queryable. Partial coverage; confirm each."],
+	]
+	for (const [name, sample] of clean) {
+		test(`stays clean: ${name}`, () => {
+			assert.equal(isVerdictClean(sample), true, sample)
+		})
+	}
+})
