@@ -39,8 +39,15 @@ test("end-to-end: normalize → scan → assess → report (verdict-clean, attri
 	assert.match(r.report, /CVE scan — OSV, as of 2026-06-25/)
 	assert.match(r.report, /CVE-2024-23170/)
 	assert.equal(r.queriedCount, 1) // only mbedtls had a PURL
-	// Coverage comes from the normalizer: 4 total, 1 purl, 1 cpe, 2 unidentified.
-	assert.deepEqual(r.coverage, { total: 4, withPurl: 1, withCpe: 1, unidentified: 2 })
+	// Coverage comes from the normalizer: 4 total, 1 purl, 1 cpe, 2 unidentified, with the reason breakdown.
+	assert.deepEqual(r.coverage, {
+		total: 4,
+		withPurl: 1,
+		withCpe: 1,
+		unidentified: 2,
+		queryable: 1, // mbedtls (purl)
+		byDropReason: { "no-id": 2, "cpe-only": 1 }, // app + vendor_blob (no id), esp_wifi (cpe-only)
+	})
 })
 
 test("per-CVE findings: one finding per (component, vulnId), not collapsed per component", async () => {
