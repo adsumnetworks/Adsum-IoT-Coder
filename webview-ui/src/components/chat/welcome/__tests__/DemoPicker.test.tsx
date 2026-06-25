@@ -53,14 +53,23 @@ describe("DemoPicker", () => {
 		expect(onStartDemo).toHaveBeenCalledWith("nus-uart")
 	})
 
-	it("rerun: quiet heading, rows still present, honest labels hidden", () => {
+	it("rerun (compact): rows still present, honest labels hidden", () => {
 		render(<DemoPicker onStartDemo={vi.fn()} variant="rerun" />)
-		expect(screen.getByText("Try another sample")).toBeInTheDocument()
-		expect(screen.queryByText("Try it on a sample")).not.toBeInTheDocument()
 		for (const s of DEMO_SCENARIO_LIST) {
 			expect(screen.getByTestId(`demo-scenario-${s.id}`)).toBeInTheDocument()
 			expect(screen.queryByText(s.honestLabel)).not.toBeInTheDocument()
 		}
+	})
+
+	it("heading says 'another' ONLY when a sample has actually run (hasRunDemo), decoupled from compact styling", () => {
+		// Compact but no sample run yet (e.g. first-time WITH a project open) → must NOT say "another".
+		const { unmount } = render(<DemoPicker onStartDemo={vi.fn()} variant="rerun" />)
+		expect(screen.getByText("Try it on a sample")).toBeInTheDocument()
+		expect(screen.queryByText("Try another sample")).not.toBeInTheDocument()
+		unmount()
+		// A sample has run → "Try another sample".
+		render(<DemoPicker hasRunDemo onStartDemo={vi.fn()} variant="rerun" />)
+		expect(screen.getByText("Try another sample")).toBeInTheDocument()
 	})
 
 	it("disabled: rows are disabled and do not fire onStartDemo", () => {

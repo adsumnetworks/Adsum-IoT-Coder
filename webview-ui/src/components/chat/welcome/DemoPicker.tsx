@@ -5,7 +5,14 @@ import { DEMO_SCENARIO_LIST } from "../demoScenarios"
 interface DemoPickerProps {
 	onStartDemo: (scenarioId: string) => void
 	disabled?: boolean
+	/** Visual treatment: "hero" = cyan focal card; "rerun" = neutral/compact (demoted, e.g. a project is open). */
 	variant?: "hero" | "rerun"
+	/**
+	 * Whether the user has actually run a sample. Drives ONLY the heading word: "Try **another** sample" iff true,
+	 * else "Try it on a sample". Decoupled from `variant` so a first-time user with a project open (compact, but
+	 * no sample run yet) doesn't see "another".
+	 */
+	hasRunDemo?: boolean
 }
 
 // Neutral surfaces for the demoted "rerun" state — quiet, no brand fill (the samples are no longer the hero).
@@ -23,7 +30,7 @@ const NEUTRAL_ICON_BG = "color-mix(in srgb, var(--vscode-foreground) 10%, transp
  * Rows are domain-agnostic: they read title / honestLabel / platform / icon straight off each scenario,
  * so adding a sample to DEMO_SCENARIOS surfaces it here with no change to this component.
  */
-const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, variant = "hero" }) => {
+const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, variant = "hero", hasRunDemo = false }) => {
 	const isRerun = variant === "rerun"
 	const containerBorder = isRerun ? NEUTRAL_BORDER : BRAND_CYAN_600
 	const containerBg = isRerun ? "transparent" : brandSubtle(BRAND_CYAN_600, 5)
@@ -46,7 +53,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, 
 					color: "var(--vscode-foreground)",
 					marginBottom: isRerun ? "8px" : "3px",
 				}}>
-				{isRerun ? "Try another sample" : "Try it on a sample"}
+				{hasRunDemo ? "Try another sample" : "Try it on a sample"}
 			</div>
 			{!isRerun && (
 				<div
