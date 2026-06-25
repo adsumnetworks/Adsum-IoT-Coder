@@ -35,8 +35,6 @@ export enum ClineDefaultTool {
 	UPDATE_MEMORY = "update_project_memory",
 	NORDIC_ACTION = "triggerNordicAction",
 	ESP_ACTION = "triggerEspAction",
-	// Built + service-layer tested; NOT advertised to the model yet (see system-prompt/tools/init.ts +
-	// the CVE_SCAN_TOOL_ENABLED gate in trigger_cve_scan.ts) — pending the design/16 spike + ground-truth.
 	CVE_SCAN = "triggerCveScan",
 }
 

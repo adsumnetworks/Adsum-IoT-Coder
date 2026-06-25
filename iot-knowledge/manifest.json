@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 26,
+	"count": 27,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -21,7 +21,7 @@
 			"id": "adsum/cra/workflows/cra-readiness",
 			"title": "CRA SBOM & Fix",
 			"type": "workflow",
-			"version": "0.2.3",
+			"version": "0.2.4",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "LicenseRef-Adsum-Proprietary",
@@ -44,13 +44,43 @@
 				"adsum/esp/rules/cra-posture",
 				"adsum/nrf/sdks/ncs/cra-advisories",
 				"adsum/esp/sdks/esp-idf/cra-advisories",
+				"adsum/cra/workflows/cve-scan",
 				"adsum/rules/next-step"
 			],
 			"status": "draft",
 			"created": "2026-06-18",
-			"updated": "2026-06-24",
+			"updated": "2026-06-25",
 			"path": "cra/workflows/cra-readiness.md",
-			"content_hash": "22014ee0488e905ec607c96b657fec5a8bb3d915897658f271c35dc9ab0d47cd"
+			"content_hash": "6e3d107c7e42d6cc5ee745b1fc2c5194b5b60ada7e34739b8cba0de8a26075fb"
+		},
+		{
+			"id": "adsum/cra/workflows/cve-scan",
+			"title": "CVE Scan (SBOM → Scan → Evidence)",
+			"type": "workflow",
+			"version": "0.1.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "LicenseRef-Adsum-Proprietary",
+			"tier": "certified",
+			"delivery": "downloaded",
+			"domain": "cra",
+			"platform": "universal",
+			"triggers": [
+				"CVE scan",
+				"scan for CVEs",
+				"scan my SBOM",
+				"check for vulnerabilities",
+				"known vulnerabilities"
+			],
+			"requires": [
+				"adsum/nrf/sdks/ncs/cra-advisories",
+				"adsum/esp/sdks/esp-idf/cra-advisories",
+				"adsum/rules/next-step"
+			],
+			"status": "draft",
+			"created": "2026-06-25",
+			"path": "cra/workflows/cve-scan.md",
+			"content_hash": "bcb7785ef2133df6ae1b5bc99c1e43da9af0bad3a50ad71f13355846727d0786"
 		},
 		{
 			"id": "adsum/esp/actions/cra-generate-sbom",

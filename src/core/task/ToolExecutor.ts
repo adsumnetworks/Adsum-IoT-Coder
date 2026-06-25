@@ -230,7 +230,6 @@ export class ToolExecutor {
 		this.coordinator.register(new GenerateExplanationToolHandler())
 		this.coordinator.register(new TriggerNordicActionHandler(this.context))
 		this.coordinator.register(new TriggerEspActionHandler(this.context))
-		// Routable but not advertised to the model yet (not in system-prompt/tools/init.ts) — see TriggerCveScanHandler.
 		this.coordinator.register(new TriggerCveScanHandler(this.context))
 		this.coordinator.register(new UpdateProjectMemoryHandler())
 	}

@@ -7,11 +7,31 @@ import { resolveAdvisoryHint } from "@/services/cra/advisoryHints"
 import { defaultBuildEvidenceReaders } from "@/services/cra/buildEvidence"
 import { runCveScanHost } from "@/services/cra/cveScanHost"
 import { makeOsvFetcher } from "@/services/cra/osvFetcher"
+import type { ScanLoopResult } from "@/services/cra/scanLoop"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
+
+/** Injectable seams (network/fs/clock) so execute() is unit-testable; production uses the real defaults. */
+export interface CveScanHandlerDeps {
+	scan: (args: { sbomPath: string; buildDir?: string; asOf: string }) => Promise<ScanLoopResult>
+	mkdir: (dir: string) => void
+	writeFile: (filePath: string, content: string) => void
+	now: () => string
+}
+
+const defaultDeps: CveScanHandlerDeps = {
+	scan: ({ sbomPath, buildDir, asOf }) =>
+		runCveScanHost(
+			{ sbomPath, buildDir },
+			{ fetcher: makeOsvFetcher(), readers: defaultBuildEvidenceReaders(), resolveHint: resolveAdvisoryHint, asOf },
+		),
+	mkdir: (dir) => mkdirSync(dir, { recursive: true }),
+	writeFile: (filePath, content) => writeFileSync(filePath, content, "utf8"),
+	now: () => new Date().toISOString().slice(0, 10),
+}
 
 /**
  * CVE scan trigger (CVE scan loop — design/15). The host-owned counterpart to the SBOM step: given a generated
@@ -20,10 +40,10 @@ import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
  * `compliance/cve-scan-<date>.{md,json}` artifacts faithfully. D11-R: the host produces the CVE evidence; the
  * model never fabricates a CVE — it triggers this and presents the result.
  *
- * STATUS: built + unit-tested at the service layer (src/services/cra), but NOT advertised to the model yet —
- * it is intentionally left out of the prompt tool-set (system-prompt/tools/init.ts) and gated by
- * CVE_SCAN_TOOL_ENABLED in trigger_cve_scan.ts, pending the design/16 spike + a free-tier ground-truth pass.
- * This handler is registered (routable) so enabling is a one-step prompt change once validated.
+ * STATUS: enabled — registered + advertised (system-prompt/tools/trigger_cve_scan.ts, gated by
+ * CVE_SCAN_TOOL_ENABLED + the firmware-workspace predicate) + driven by the cve-scan k-bit. Output is honest by
+ * construction (attributed + dated + hedged, verdictScan-clean). REMAINING (operator): a free-tier ground-truth
+ * pass on the bit, and the design/16 spike to TUNE precision (linked-symbol soundness, swap real SPDX fixtures).
  *
  * Risk mitigations:
  *  - **Write-guard**: refuses to write artifacts inside the extension install or a bundled `demo-scenarios`
@@ -32,8 +52,14 @@ import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
  */
 export class TriggerCveScanHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.CVE_SCAN
+	private readonly deps: CveScanHandlerDeps
 
-	constructor(private context: vscode.ExtensionContext) {}
+	constructor(
+		private context: vscode.ExtensionContext,
+		deps: Partial<CveScanHandlerDeps> = {},
+	) {
+		this.deps = { ...defaultDeps, ...deps }
+	}
 
 	getDescription(block: ToolUse): string {
 		const params = block.params as Record<string, string | undefined>
@@ -66,18 +92,10 @@ export class TriggerCveScanHandler implements IFullyManagedTool {
 
 		await config.callbacks.say("tool", JSON.stringify({ tool: "triggerCveScan", path: sbom }))
 
-		const asOf = new Date().toISOString().slice(0, 10)
-		let result: Awaited<ReturnType<typeof runCveScanHost>>
+		const asOf = this.deps.now()
+		let result: ScanLoopResult
 		try {
-			result = await runCveScanHost(
-				{ sbomPath, buildDir },
-				{
-					fetcher: makeOsvFetcher(),
-					readers: defaultBuildEvidenceReaders(),
-					resolveHint: resolveAdvisoryHint,
-					asOf,
-				},
-			)
+			result = await this.deps.scan({ sbomPath, buildDir, asOf })
 		} catch (err) {
 			const msg = `CVE scan could not run: ${err instanceof Error ? err.message : String(err)}`
 			await config.callbacks.say("error", msg)
@@ -86,9 +104,9 @@ export class TriggerCveScanHandler implements IFullyManagedTool {
 
 		// Write the §7 artifacts host-side so the machine-readable JSON is exact (not re-typed by the model).
 		try {
-			mkdirSync(outDir, { recursive: true })
-			writeFileSync(path.join(outDir, `cve-scan-${asOf}.md`), result.report, "utf8")
-			writeFileSync(path.join(outDir, `cve-scan-${asOf}.json`), result.json, "utf8")
+			this.deps.mkdir(outDir)
+			this.deps.writeFile(path.join(outDir, `cve-scan-${asOf}.md`), result.report)
+			this.deps.writeFile(path.join(outDir, `cve-scan-${asOf}.json`), result.json)
 		} catch (err) {
 			const msg = `CVE scan ran but the artifact could not be written: ${err instanceof Error ? err.message : String(err)}`
 			await config.callbacks.say("error", msg)

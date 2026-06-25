@@ -2,7 +2,7 @@
 id: adsum/cra/workflows/cra-readiness
 title: CRA SBOM & Fix
 type: workflow
-version: 0.2.3
+version: 0.2.4
 owner: adsum-core
 author: adsum
 license: LicenseRef-Adsum-Proprietary
@@ -24,9 +24,10 @@ requires:
   - adsum/esp/rules/cra-posture
   - adsum/nrf/sdks/ncs/cra-advisories
   - adsum/esp/sdks/esp-idf/cra-advisories
+  - adsum/cra/workflows/cve-scan
   - adsum/rules/next-step
 created: "2026-06-18"
-updated: "2026-06-24"
+updated: "2026-06-25"
 status: draft
 ---
 
@@ -109,6 +110,11 @@ for whatever's most valuable next. Works on nRF (NCS/Zephyr) and ESP (ESP-IDF).
      NVD / any network source at runtime** (advisories are authored at build time). If empty, surface the
      live-source links and say "no bundled advisories for <sdk> <ver> as of <date>; check live" — never imply
      the project is therefore clear. This populates report section 3 on both platforms.
+   - **Going deeper — host CVE scan (optional).** For a dated, evidence-mode CVE list matched from the SBOM,
+     hand off to `cra/workflows/cve-scan.md`. That scan is **host-run** (the host queries OSV — distinct from
+     the build-time advisory snapshot above, and consistent with its no-auto-populate fence: *you* still never
+     synthesize a CVE). It stays attributed + dated + hedged, reports coverage honestly, and never emits an
+     affected/not-affected verdict.
 
 6. **Bridge — the productive next step. MANDATORY SKILL LOAD.** `read_file` → `rules/next-step.md` and follow
    it. Candidate source for this workflow: the posture's **finite, evidence-grounded Kconfig gap list**
