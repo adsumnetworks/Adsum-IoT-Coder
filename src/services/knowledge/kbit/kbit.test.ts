@@ -268,14 +268,15 @@ describe("lintBitContent", () => {
 // ---------------------------------------------------------------- regression (real corpus)
 
 describe("regression: live corpus", () => {
-	// 27 bits: the 17 post-un-bundle core/demo bits (delivery: bundled, open) + the 10 CRA "SBOM & Fix"
-	// bits (delivery: downloaded, LicenseRef-Adsum-Proprietary — license-follows-delivery; incl. the CVE-scan
-	// workflow). The CRA bits are still in the tree/manifest pre-Phase-D (resolver-loaded; bundled-wins serves
-	// them in dev); the Phase-D cutover publishes them to the registry and removes them from the manifest.
-	test("corpus is fully migrated and lint-clean: 27 bits, 0 errors, 0 unmigrated", () => {
+	// 17 bits: the post-un-bundle core/demo bits (delivery: bundled, open). The 10 CRA "SBOM & Fix" bits
+	// (delivery: downloaded, LicenseRef-Adsum-Proprietary) were migrated OUT of this repo to
+	// `Adsum-Backend/kbits/` (their single home, per Omar's K-bit dev workflow — "where the file lives = its
+	// delivery"). They are no longer bundled in the VSIX: served from the registry in prod, and from the
+	// `ADSUM_KBIT_LOCAL` dev override in F5. So the open corpus here holds only bundled bits.
+	test("corpus is fully migrated and lint-clean: 17 bits, 0 errors, 0 unmigrated", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
-		assert.equal(files.length, 27)
-		assert.equal(migrated, 27)
+		assert.equal(files.length, 17)
+		assert.equal(migrated, 17)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
 		assert.equal(unmigrated.length, 0)
@@ -299,13 +300,13 @@ describe("regression: live corpus", () => {
 		assert.equal(manifest.count, migrated)
 	})
 
-	// Step guard: workflows/actions/boards + ESP protocols are un-bundled (delivery: downloaded, served by
-	// the registry). The bundled manifest must hold ONLY delivery: bundled bits — EXCEPT the 9 CRA "SBOM &
-	// Fix" bits, which are delivery: downloaded + proprietary and are still in the manifest **pending the
-	// Phase-D cutover** (publish to the registry → remove from the manifest). The nRF demo-forced bits MUST
-	// stay bundled (DemoManager sync-loads them); un-bundled bits must not return. When Phase D lands, the
-	// CRA ids (10, incl. the CVE-scan workflow) should leave the manifest and CRA_PENDING_PUBLISH → empty.
-	const CRA_PENDING_PUBLISH = new Set([
+	// Step guard: ALL downloaded bits — the general nRF/ESP corpus AND the 10 CRA "SBOM & Fix" bits — are
+	// un-bundled (delivery: downloaded, served by the registry / the ADSUM_KBIT_LOCAL dev override). The
+	// bundled manifest must now hold ONLY delivery: bundled bits — no exceptions. The CRA bits were migrated
+	// to `Adsum-Backend/kbits/` (Phase-D + the single-home placement fix), so their ids must be absent from
+	// the manifest AND their files gone from this tree. The nRF demo-forced bits MUST stay bundled
+	// (DemoManager sync-loads them); un-bundled bits must not return.
+	const CRA_MIGRATED = new Set([
 		"adsum/cra/workflows/cra-readiness",
 		"adsum/cra/workflows/cve-scan",
 		"adsum/rules/next-step",
@@ -317,26 +318,34 @@ describe("regression: live corpus", () => {
 		"adsum/nrf/sdks/ncs/cra-advisories",
 		"adsum/esp/sdks/esp-idf/cra-advisories",
 	])
-	test("bundled manifest holds only bundled bits (+ CRA downloaded bits pending Phase-D); demo bits stay; un-bundled bits absent", () => {
+	test("bundled manifest holds ONLY bundled bits; CRA bits migrated out (absent from manifest + tree); demo bits stay; un-bundled bits absent", () => {
 		const bits = JSON.parse(readFileSync(join(KNOWLEDGE_ROOT, "manifest.json"), "utf8")).bits as Array<{
 			id: string
 			delivery: string
 		}>
 		const ids = new Set(bits.map((b) => b.id))
 		for (const b of bits) {
-			if (CRA_PENDING_PUBLISH.has(b.id)) {
-				assert.equal(
-					b.delivery,
-					"downloaded",
-					`${b.id} should be delivery="downloaded" (proprietary, pending Phase-D publish)`,
-				)
-				continue
-			}
+			assert.equal(
+				CRA_MIGRATED.has(b.id),
+				false,
+				`${b.id} is a migrated CRA bit and must NOT be in the bundled manifest (now in Adsum-Backend/kbits/)`,
+			)
 			assert.equal(
 				b.delivery,
 				"bundled",
 				`${b.id} is in the bundled manifest but delivery="${b.delivery}" (unexpected downloaded bit)`,
 			)
+		}
+		// the migrated CRA bits must be gone from the bundled tree (no proprietary content in the VSIX)
+		for (const p of [
+			"cra/workflows/cra-readiness.md",
+			"cra/workflows/cve-scan.md",
+			"rules/next-step.md",
+			"platforms/nrf/actions/cra-generate-sbom.md",
+			"platforms/esp/rules/cra-posture.md",
+			"platforms/nrf/sdks/ncs/cra-advisories.md",
+		]) {
+			assert.equal(existsSync(join(KNOWLEDGE_ROOT, p)), false, `${p} must be removed from the bundled tree (migrated)`)
 		}
 		// demo-forced bits MUST remain bundled (DemoManager resolveBitPathSync needs them)
 		for (const id of [

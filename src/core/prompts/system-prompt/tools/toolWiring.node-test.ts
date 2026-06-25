@@ -54,9 +54,23 @@ test("the handler is registered in ToolExecutor (routable)", () => {
 	assert.match(exec, /new TriggerCveScanHandler\(/)
 })
 
-test("the cve-scan k-bit is in the corpus and referenced by cra-readiness (discoverable)", () => {
-	const bit = read("iot-knowledge/cra/workflows/cve-scan.md")
+test("the cve-scan k-bit lives in the backend kbits tree (downloaded) and is referenced by cra-readiness (discoverable)", () => {
+	// The CRA bits are downloaded/proprietary → their single home is Adsum-Backend/kbits/, NOT this repo's
+	// bundled tree (they must never ship in the Apache VSIX). Verify the wiring against that home. If the
+	// backend checkout isn't present (e.g. a code-only CI runner), skip rather than fail — the discoverability
+	// invariant is enforced by kbit.test.ts (mapping guard) inside whichever repo holds the bit.
+	const BACKEND_KBITS = path.resolve(REPO_ROOT, "../Adsum-Backend/kbits")
+	let bit: string
+	try {
+		bit = readFileSync(path.join(BACKEND_KBITS, "cra/workflows/cve-scan.md"), "utf8")
+	} catch {
+		console.warn("[tool-wiring] Adsum-Backend/kbits not found — skipping cve-scan placement check")
+		return
+	}
 	assert.match(bit, /id:\s*adsum\/cra\/workflows\/cve-scan/)
 	assert.match(bit, /delivery:\s*downloaded/)
-	assert.match(read("iot-knowledge/cra/workflows/cra-readiness.md"), /adsum\/cra\/workflows\/cve-scan/)
+	assert.match(
+		readFileSync(path.join(BACKEND_KBITS, "cra/workflows/cra-readiness.md"), "utf8"),
+		/adsum\/cra\/workflows\/cve-scan/,
+	)
 })
