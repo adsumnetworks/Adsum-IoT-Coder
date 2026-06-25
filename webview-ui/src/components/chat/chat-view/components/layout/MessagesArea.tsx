@@ -14,6 +14,12 @@ interface MessagesAreaProps {
 	scrollBehavior: ScrollBehavior
 	chatState: ChatState
 	messageHandlers: MessageHandlers
+	/**
+	 * Optional content rendered at the END of the scrollable list (Virtuoso footer) — e.g. the post-task
+	 * NextStepChooser. Putting it inside the scroller (not as a pinned sibling) means the chooser scrolls WITH
+	 * the conversation instead of covering it on a short viewport.
+	 */
+	footer?: React.ReactNode
 }
 
 /**
@@ -27,6 +33,7 @@ export const MessagesArea: React.FC<MessagesAreaProps> = ({
 	scrollBehavior,
 	chatState,
 	messageHandlers,
+	footer,
 }) => {
 	const { clineMessages } = useExtensionState()
 
@@ -110,7 +117,14 @@ export const MessagesArea: React.FC<MessagesAreaProps> = ({
 					atBottomThreshold={10} // trick to make sure virtuoso re-renders when task changes, and we use initialTopMostItemIndex to start at the bottom
 					className="scrollable grow overflow-y-scroll"
 					components={{
-						Footer: () => <div className="min-h-1" />, // Add empty padding at the bottom
+						// Footer renders at the end of the scroll: optional `footer` (e.g. the post-task
+						// NextStepChooser) so it scrolls WITH the chat, then a sliver of bottom padding.
+						Footer: () => (
+							<>
+								{footer}
+								<div className="min-h-1" />
+							</>
+						),
 					}}
 					data={groupedMessages}
 					// increasing top by 3_000 to prevent jumping around when user collapses a row
