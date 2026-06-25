@@ -65,31 +65,31 @@ describe("WelcomeView — sample picker hierarchy (single cyan focal point)", ()
 		mockState({ openFolderPaths: [], taskHistory: [] })
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.getByTestId("demo-picker")).toBeInTheDocument()
-		expect(screen.getByText("Try it on a sample")).toBeInTheDocument()
-		expect(screen.queryByText("Try another sample")).not.toBeInTheDocument()
+		expect(screen.getByText("Try it on a sample project")).toBeInTheDocument()
+		expect(screen.queryByText("Try another sample project")).not.toBeInTheDocument()
 	})
 
 	it("project open, first run → the primary intent leads; the sample demotes but does NOT say 'another'", () => {
 		// dev-as-hero: with a real project open, "Build, flash & debug" is the focal point — the sample drops to
 		// the quiet compact form (hero-only caption gone). But no sample has run yet, so the heading must read
-		// "Try it on a sample", NOT "Try another sample" (the first-time-with-project wording bug).
+		// "Try it on a sample project", NOT "Try another sample project" (the first-time-with-project wording bug).
 		mockState({ openFolderPaths: ["/Users/me/central_uart"], taskHistory: [] })
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.getByTestId("intent-card-buildFlashDebug")).toBeInTheDocument()
 		// demoted/compact: the hero-only caption is hidden, but the picker rows are still present.
 		expect(screen.queryByText(/Run Adsum on our sample/)).not.toBeInTheDocument()
 		expect(screen.getByTestId("demo-scenario-cra-sample")).toBeInTheDocument()
-		// the fix: first-run-with-project → "Try it on a sample", never "another".
-		expect(screen.getByText("Try it on a sample")).toBeInTheDocument()
-		expect(screen.queryByText("Try another sample")).not.toBeInTheDocument()
+		// the fix: first-run-with-project → "Try it on a sample project", never "another".
+		expect(screen.getByText("Try it on a sample project")).toBeInTheDocument()
+		expect(screen.queryByText("Try another sample project")).not.toBeInTheDocument()
 	})
 
 	it("after a sample has run → it demotes regardless of project state", () => {
 		// Regression: demotion keys off task history (hasRunDemo, ANY registered scenario), not a transient flag.
 		mockState({ openFolderPaths: [], taskHistory: [{ task: DEMO_TASK }] })
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.queryByText("Try it on a sample")).not.toBeInTheDocument()
-		expect(screen.getByText("Try another sample")).toBeInTheDocument()
+		expect(screen.queryByText("Try it on a sample project")).not.toBeInTheDocument()
+		expect(screen.getByText("Try another sample project")).toBeInTheDocument()
 	})
 })
 

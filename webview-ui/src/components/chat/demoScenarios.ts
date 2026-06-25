@@ -48,7 +48,7 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 	"cra-sample": {
 		id: "cra-sample",
 		title: "Preview CRA readiness on a sample",
-		honestLabel: "Runs the real CRA workflow on our bundled nRF sample — not your build.",
+		honestLabel: "Runs the real CRA workflow on our bundled nRF sample project — not your build.",
 		taskPrompt: "Demo: CRA SBOM & Fix on a bundled sample — no project needed\n\n[ADSUM_DEMO:cra-sample]",
 		// Sync with DemoManager.buildCraSampleDisplayText() leading text.
 		historyMatch: "Preview CRA readiness on a bundled sample",
@@ -76,7 +76,8 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 	"esp-wifi": {
 		id: "esp-wifi",
 		title: "Debug an ESP32 Wi-Fi connection issue",
-		honestLabel: "Build, flash & stream Wi-Fi logs on a bundled ESP-IDF sample — the agent finds why it won't connect.",
+		honestLabel:
+			"Build, flash & stream Wi-Fi logs on a bundled ESP-IDF sample project — the agent finds why it won't connect.",
 		taskPrompt: "Demo: ESP32 Wi-Fi connection debug\n\n[ADSUM_DEMO:esp-wifi]",
 		historyMatch: "Debug an ESP32 Wi-Fi connection issue",
 		platform: "esp",
