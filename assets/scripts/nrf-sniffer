@@ -1,0 +1,13 @@
+#!/bin/bash
+# nRF Sniffer Wrapper Script — over-the-air BLE capture via `nrfutil ble-sniffer sniff`
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_SCRIPT="${SCRIPT_DIR}/nrf_sniffer.py"
+
+if [ ! -f "$PYTHON_SCRIPT" ]; then
+    echo "ERROR: nrf_sniffer.py not found at $PYTHON_SCRIPT"
+    exit 1
+fi
+
+# Isolate from user-site .pth conflicts (PYTHONNOUSERSITE rule), then exec the capture wrapper.
+exec env PYTHONNOUSERSITE=1 python3 "$PYTHON_SCRIPT" "$@"

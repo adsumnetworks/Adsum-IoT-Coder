@@ -7,6 +7,7 @@ import { prepareNordicExecution } from "@/hosts/vscode/hostbridge/workspace/exec
 import { getCachedCapabilities } from "@/platform/nordicProjectDetector"
 import { formatHci } from "@/services/nrf/hci/format"
 import { parseHci } from "@/services/nrf/hci/hciParser"
+import { decodeSnifferPcap } from "@/services/nrf/sniffer/format"
 import { telemetryService } from "@/services/telemetry"
 
 import { ClineDefaultTool } from "@/shared/tools"
@@ -117,7 +118,8 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 	private async handleLogDevice(config: TaskConfig, block: ToolUse): Promise<ToolResponse> {
 		const operation = block.params.operation
-		let { port, duration, devices, output, reset, auto_detect, list_nrf, transport, monitor } = block.params as any
+		let { port, duration, devices, output, reset, auto_detect, list_nrf, transport, monitor, follow_name } =
+			block.params as any
 
 		// ROBUST TRANSPORT DETECTION with explicit user input priority
 		if (!transport) {
@@ -202,6 +204,12 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 				}),
 			)
 			return this.executeInAdsumNrfTerminal(config, block, "nrfutil device list", { needsToolchain: false })
+		}
+
+		// 1c. Handle "sniff" operation — over-the-air BLE capture via a SEPARATE sniffer dongle.
+		// Different rail from RTT/UART: own wrapper (nrfutil ble-sniffer) + PCAP decode, not the loggers.
+		if (operation === "sniff") {
+			return this.handleSniff(config, block, { port, duration, output, followName: follow_name })
 		}
 
 		// 2. Resolve paths for "capture" / "test" / "monitor"
@@ -424,6 +432,134 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			`Read the .hci.log file(s), then present a SHORT readable summary in chat: a framing line, a key-frame ` +
 			`timeline (only the frames that matter — not every frame, no raw hex), and your diagnosis correlated ` +
 			`with the app log. Point the user to the full .hci.log for detail. The raw .btmon is kept for btmon/Wireshark.`
+		)
+	}
+
+	/**
+	 * Over-the-air BLE sniffer capture. Runs the `nrf-sniffer` wrapper (`nrfutil ble-sniffer sniff`)
+	 * against a SEPARATE dongle for a bounded window → `logs/sniffer/<base>.pcap`, then decodes it to a
+	 * readable `<base>.sniffer.log` the agent reads. The dongle must already be flashed with the sniffer
+	 * firmware (the `ble-sniffer` workflow guides that). Windows-first: wrapper picks `.bat`, paths quoted.
+	 */
+	private async handleSniff(
+		config: TaskConfig,
+		block: ToolUse,
+		opts: { port?: string; duration?: string | number; output?: string; followName?: string },
+	): Promise<ToolResponse> {
+		const { port, duration, output, followName } = opts
+		if (!port) {
+			return formatResponse.toolError(
+				"Operation 'sniff' requires 'port' — the serial port of the SNIFFER dongle (e.g. COM7 or /dev/ttyACM0), " +
+					"not the device under test. Run operation='list' to find it.",
+			)
+		}
+
+		const isWindows = process.platform === "win32"
+		const quoteIfNeeded = (s: string): string => (s.includes(" ") ? `"${s}"` : s)
+
+		// Wrapper script (relative to workspace for clean output; `.bat` on Windows).
+		const wrapperName = isWindows ? "nrf-sniffer.bat" : "nrf-sniffer"
+		const absoluteWrapperPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", wrapperName)
+		let wrapperPath = absoluteWrapperPath
+		if (config.cwd) {
+			try {
+				const rel = path.relative(config.cwd, absoluteWrapperPath)
+				if (!rel.startsWith("..") && rel.length < absoluteWrapperPath.length) {
+					wrapperPath = "./" + rel
+				}
+			} catch {
+				// keep absolute
+			}
+		}
+		wrapperPath = quoteIfNeeded(wrapperPath)
+
+		// Output PCAP under logs/sniffer/. Default = timestamped name; an explicit `.pcap` is used as-is,
+		// anything else is treated as the target folder.
+		const stamp = new Date().toISOString().replace(/[:.]/g, "-").replace("T", "_").slice(0, 19)
+		const baseDir = config.cwd ?? process.cwd()
+		let pcapPath: string
+		if (output && output.toLowerCase().endsWith(".pcap")) {
+			pcapPath = path.isAbsolute(output) ? output : path.join(baseDir, output)
+		} else {
+			const dir = output
+				? path.isAbsolute(output)
+					? output
+					: path.join(baseDir, output)
+				: path.join(baseDir, "logs", "sniffer")
+			pcapPath = path.join(dir, `sniffer_${stamp}.pcap`)
+		}
+
+		const durSec = duration ? Number(duration) : 20
+		const args = [wrapperPath, "--port", port, "--output", quoteIfNeeded(pcapPath), "--duration", String(durSec)]
+		if (followName) {
+			args.push("--follow-name", quoteIfNeeded(String(followName)))
+		}
+
+		config.taskState.consecutiveMistakeCount = 0
+		await config.callbacks.say(
+			"tool",
+			JSON.stringify({ tool: "triggerNordicAction", path: `Nordic Sniffer: capture (${durSec}s)` }),
+		)
+
+		const captureResult = await this.executeInAdsumNrfTerminal(config, block, args.join(" "), {
+			needsToolchain: false,
+			isLoggerWrapper: true,
+		})
+
+		// Decode the PCAP the capture just wrote (executeCommandTool blocks until the wrapper exits).
+		const note = this.decodeSnifferCapture(pcapPath, config.cwd)
+		if (note) {
+			return typeof captureResult === "string" ? `${captureResult}\n\n${note}` : captureResult
+		}
+		return captureResult
+	}
+
+	/**
+	 * Decode a sniffer `.pcap` into a readable `<base>.sniffer.log` under `logs/sniffer/` and return an
+	 * agent-facing note. Best-effort: a missing/empty/unsupported PCAP is reported, never thrown.
+	 */
+	private decodeSnifferCapture(pcapPath: string, cwd?: string): string | undefined {
+		let buf: Buffer
+		try {
+			buf = fs.readFileSync(pcapPath)
+		} catch {
+			return (
+				`The sniffer capture produced no PCAP at ${pcapPath}. Confirm the dongle is flashed with the ` +
+				`sniffer firmware and that the --port was the SNIFFER dongle (not the device under test).`
+			)
+		}
+		if (buf.length === 0) {
+			return `The sniffer PCAP at ${pcapPath} is empty — no packets were captured.`
+		}
+
+		const { text, result } = decodeSnifferPcap(buf)
+		const outDir = cwd ? path.join(cwd, "logs", "sniffer") : path.dirname(pcapPath)
+		try {
+			fs.mkdirSync(outDir, { recursive: true })
+		} catch {
+			// fall back to writing beside the .pcap
+		}
+		const target = path.join(
+			fs.existsSync(outDir) ? outDir : path.dirname(pcapPath),
+			`${path.basename(pcapPath, ".pcap")}.sniffer.log`,
+		)
+		try {
+			fs.writeFileSync(target, text, "utf8")
+		} catch (e) {
+			return `Decoded the sniffer capture but could not write ${target}: ${e instanceof Error ? e.message : String(e)}`
+		}
+
+		if (result.totalFrames === 0) {
+			return (
+				`Decoded ${pcapPath} but found 0 BLE packets (${target}). The dongle may not have seen traffic — ` +
+				`check it followed the right device and that the device was active during the capture window.`
+			)
+		}
+		return (
+			`Decoded over-the-air sniffer capture (${result.totalFrames} packets) written to:\n  - ${target}\n` +
+			`Read the .sniffer.log, then present a SHORT readable summary in chat: a framing line, a key-frame timeline ` +
+			`(advertising / CONNECT_IND / key LL control — not every packet, no raw hex), and your diagnosis correlated ` +
+			`with the HCI trace and the app log. Point the user to the full .sniffer.log; the raw .pcap is kept for Wireshark.`
 		)
 	}
 

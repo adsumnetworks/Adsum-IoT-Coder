@@ -77,11 +77,12 @@ remembered for this project, so you won't be asked again.`,
 	{
 		name: "operation",
 		required: false,
-		instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor", "device_info".
+		instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor", "sniff", "device_info".
 - "list": List connected nRF devices
 - "test": Quick connection test to a device
 - "capture": Capture logs for a specified duration and save to file
 - "monitor": Continuous live log monitoring (no file save)
+- "sniff": Capture over-the-air BLE traffic with a SEPARATE sniffer dongle (nrfutil ble-sniffer), then auto-decode to a readable logs/sniffer/*.sniffer.log. The "port" here is the SNIFFER dongle, not the device under test. Load the ble-sniffer workflow first (it covers flashing the dongle).
 - "device_info": Get detailed device information`,
 		usage: "capture",
 	},
@@ -170,6 +171,12 @@ Use role-specific labels (central, peripheral) ONLY when the role has been confi
 		required: false,
 		instruction: `Optional, RTT only. When true, also captures the HCI Monitor stream (host↔controller commands/events) on RTT channel 1 and auto-decodes it to a readable logs/hci/*.hci.log the user and you can read. Pass monitor="true" for BLE debugging — pairing/connection/PHY/GATT/controller issues — where controller-level evidence helps. Auto-enabled when prj.conf has CONFIG_BT_DEBUG_MONITOR_RTT=y (you need not pass it then). Requires that Kconfig in the firmware; if missing, enable it first (see the BLE knowledge / log-generator workflow).`,
 		usage: "true",
+	},
+	{
+		name: "follow_name",
+		required: false,
+		instruction: `Optional, operation="sniff" only. Advertised name of the device under test to lock the sniffer onto (nrfutil ble-sniffer --follow-by-name). Without it the sniffer captures all nearby advertising. Use the DUT's CONFIG_BT_DEVICE_NAME.`,
+		usage: "MyDevice",
 	},
 ]
 
