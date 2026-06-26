@@ -24,6 +24,10 @@ export interface SnifferEntry {
 	pduType: string
 	summary: string
 	fields?: SnifferField[]
+	/** Declared PDU payload length in bytes (from the LL header's length field — Wireshark's "Length"). */
+	pduLen: number
+	/** Coarse, honest protocol label — link-layer only, never ATT/L2CAP/SMP (that's Wireshark's job). */
+	proto: "ADV" | "LL-CTRL" | "DATA" | "LL(empty)" | "LL"
 	/** First bytes of the BLE LL PDU as hex (capped); full bytes live in the raw .pcap. */
 	payloadHex: string
 }

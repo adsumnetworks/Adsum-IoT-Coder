@@ -1,20 +1,21 @@
 // Decodes the nRF Sniffer for Bluetooth LE PCAP (LINKTYPE_NORDIC_BLE, 272), UART protocol v3.
 //
-// Per-record layout (deduced from real captures; offsets driven by the self-describing length fields,
-// not hardcoded, so a future header-length change degrades gracefully):
+// Per-record layout, confirmed 2026-06-26 against a real capture (nrfutil ble-sniffer 0.17.1, sniffer
+// firmware 4.1.1 on a PCA10059 dongle — see Adsum-Planning/operations/hardware-in-the-loop-testing.md).
+// There is NO separate header_length byte — the meta prefix is a fixed 7 bytes; only the flags-block
+// length (byte [7]) is still self-describing, so a flags-block change still degrades gracefully:
 //   [0]      board id
-//   [1]      header_length (HLEN, =6 in v3)
-//   [2..3]   payload_length (LE)
-//   [4]      protocol_version (=3)
-//   [5..6]   packet_counter (LE)
-//   [7]      packet_id                         ← last header byte (within HLEN region [2..1+HLEN])
-//   [2+HLEN]            flags_block_length (=10)
-//   [2+HLEN+1]          flags  (bit0 CRC ok · bits1-2 aux type · bit3 addr resolved · bits4-6 PHY)
-//   [2+HLEN+2]          channel index
-//   [2+HLEN+3]          rssi   (magnitude; dBm = -value)
-//   [2+HLEN+4..+5]      event counter (LE)
-//   [2+HLEN+6..+9]      timestamp µs (LE)
-//   [2+HLEN+flags_block_length ..]  BLE Link Layer: access address(4 LE) + PDU header(2) + payload + CRC(3)
+//   [1..2]   payload_length (LE) — byte count of (flags-block + LL data) that follows byte [6]
+//   [3]      protocol_version (=3)
+//   [4..5]   packet_counter (LE)
+//   [6]      packet_id
+//   [7]      flags_block_length (=10)
+//   [8]      flags  (bit0 CRC ok · bits1-2 aux type · bit3 addr resolved · bits4-6 PHY)
+//   [9]      channel index
+//   [10]     rssi   (magnitude; dBm = -value)
+//   [11..12] event counter (LE)
+//   [13..16] timestamp µs (LE)
+//   [7+flags_block_length ..]  BLE Link Layer: access address(4 LE) + PDU header(2) + payload + CRC(3)
 
 import type { SnifferEntry, SnifferField, SnifferParseResult } from "./snifferTypes"
 
@@ -96,11 +97,14 @@ function hexCapped(buf: Buffer, off: number, len: number, cap = 16): string {
 	return parts.join(" ")
 }
 
+/** Coarse, honest protocol label for the Wireshark-style "Proto" column — we decode link-layer only. */
+type SnifferProto = SnifferEntry["proto"]
+
 /** Decode the BLE Link-Layer PDU (access address + header + payload). */
-function decodeLl(ll: Buffer): { pduType: string; summary: string; fields: SnifferField[] } {
+function decodeLl(ll: Buffer): { pduType: string; summary: string; fields: SnifferField[]; len: number; proto: SnifferProto } {
 	const fields: SnifferField[] = []
 	if (ll.length < 6) {
-		return { pduType: "malformed", summary: `LL too short (${ll.length}B)`, fields }
+		return { pduType: "malformed", summary: `LL too short (${ll.length}B)`, fields, len: 0, proto: "LL" }
 	}
 	const accessAddress = ll.readUInt32LE(0)
 	const h0 = ll[4]
@@ -121,7 +125,7 @@ function decodeLl(ll: Buffer): { pduType: string; summary: string; fields: Sniff
 			const advA = macLE(ll, payOff + 6)
 			fields.push({ name: "Initiator", value: initA })
 			fields.push({ name: "Advertiser", value: advA })
-			return { pduType: name, summary: `CONNECT_IND ${initA} → ${advA}`, fields }
+			return { pduType: name, summary: `CONNECT_IND ${initA} → ${advA}`, fields, len, proto: "ADV" }
 		}
 		if (type === 0x3 && ll.length >= payOff + 12) {
 			// SCAN_REQ: ScanA(6) + AdvA(6)
@@ -129,15 +133,15 @@ function decodeLl(ll: Buffer): { pduType: string; summary: string; fields: Sniff
 			const advA = macLE(ll, payOff + 6)
 			fields.push({ name: "Scanner", value: scanA })
 			fields.push({ name: "Advertiser", value: advA })
-			return { pduType: name, summary: `SCAN_REQ ${scanA} → ${advA}`, fields }
+			return { pduType: name, summary: `SCAN_REQ ${scanA} → ${advA}`, fields, len, proto: "ADV" }
 		}
 		if (ADV_HAS_ADVA.has(type) && ll.length >= payOff + 6) {
 			const advA = macLE(ll, payOff)
 			fields.push({ name: "Advertiser", value: advA })
-			return { pduType: name, summary: `${name} from ${advA} (${len}B)`, fields }
+			return { pduType: name, summary: `${name} from ${advA} (${len}B)`, fields, len, proto: "ADV" }
 		}
 		// Extended (0x7) and anything else: name + length only (ext header layout varies).
-		return { pduType: name, summary: `${name} (${len}B)`, fields }
+		return { pduType: name, summary: `${name} (${len}B)`, fields, len, proto: "ADV" }
 	}
 
 	// Data-channel PDU (a connection's access address). Header: LLID(2) NESN(1) SN(1) MD(1) RFU(3) | len.
@@ -155,31 +159,35 @@ function decodeLl(ll: Buffer): { pduType: string; summary: string; fields: Sniff
 			const reason = ll[payOff + 1]
 			const reasonName = LL_ERROR[reason] ?? `0x${reason.toString(16)}`
 			fields.push({ name: "Reason", value: reasonName, isError: reason !== 0 })
-			return { pduType: opName, summary: `${opName} reason=${reasonName}`, fields }
+			return { pduType: opName, summary: `${opName} reason=${reasonName}`, fields, len, proto: "LL-CTRL" }
 		}
-		return { pduType: opName, summary: opName, fields }
+		return { pduType: opName, summary: opName, fields, len, proto: "LL-CTRL" }
 	}
 	if (llid === 0x1) {
-		return { pduType: "LL Data", summary: len === 0 ? "LL Empty PDU" : `LL Data (cont) ${len}B`, fields }
+		const proto: SnifferProto = len === 0 ? "LL(empty)" : "DATA"
+		return { pduType: "LL Data", summary: len === 0 ? "LL Empty PDU" : `LL Data (cont) ${len}B`, fields, len, proto }
 	}
 	if (llid === 0x2) {
-		return { pduType: "LL Data", summary: `LL Data (start) ${len}B`, fields }
+		return { pduType: "LL Data", summary: `LL Data (start) ${len}B`, fields, len, proto: "DATA" }
 	}
-	return { pduType: "LL", summary: `LL reserved PDU (${len}B)`, fields }
+	return { pduType: "LL", summary: `LL reserved PDU (${len}B)`, fields, len, proto: "LL" }
 }
+
+/** Fixed meta-prefix length: board id(1) + payload_length(2) + protocol_version(1) + packet_counter(2) + packet_id(1). */
+const META_PREFIX_LEN = 7
 
 /**
  * Parse one Nordic-BLE PCAP record blob → a SnifferEntry, or null if it isn't a valid v3 meta frame.
- * Offsets come from the header's own length fields (HLEN, flags-block length) so the decode is
- * resilient to a length change and never reads past the buffer.
+ * The flags-block length (byte [7]) is still self-describing, so the decode degrades gracefully if
+ * that block grows; the meta prefix itself is a fixed 7 bytes (no header_length field — see the file
+ * header comment for how this was confirmed against real hardware).
  */
 export function parseNordicBleRecord(buf: Buffer, frameNo: number): SnifferEntry | null {
-	if (buf.length < 8) {
+	if (buf.length < META_PREFIX_LEN + 1) {
 		return null
 	}
-	const headerLen = buf[1]
-	const protocolVersion = buf[4]
-	const flagsOff = 2 + headerLen
+	const protocolVersion = buf[3]
+	const flagsOff = META_PREFIX_LEN
 	if (protocolVersion !== 3 || flagsOff + 10 > buf.length) {
 		return null
 	}
@@ -196,7 +204,7 @@ export function parseNordicBleRecord(buf: Buffer, frameNo: number): SnifferEntry
 	const crcOk = (flags & 0x01) === 1
 	const phy = phyName((flags >> 4) & 0x07)
 	const ll = buf.subarray(bleStart)
-	const { pduType, summary, fields } = decodeLl(ll)
+	const { pduType, summary, fields, len, proto } = decodeLl(ll)
 	if (!crcOk) {
 		fields.push({ name: "CRC", value: "FAILED", isError: true })
 	}
@@ -211,6 +219,8 @@ export function parseNordicBleRecord(buf: Buffer, frameNo: number): SnifferEntry
 		pduType,
 		summary,
 		fields,
+		pduLen: len,
+		proto,
 		payloadHex: hexCapped(ll, 4, Math.max(0, ll.length - 4)), // from the PDU header onward
 	}
 }

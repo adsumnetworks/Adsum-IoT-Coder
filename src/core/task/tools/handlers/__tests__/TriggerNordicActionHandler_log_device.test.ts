@@ -26,7 +26,8 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		mockVscode = {
 			ExtensionContext: class {},
 			Uri: { file: (path: string) => ({ fsPath: path }) },
-			workspace: { workspaceFolders: [] },
+			workspace: { workspaceFolders: [], getConfiguration: () => ({ get: () => undefined }) },
+			"@noCallThru": true,
 		}
 
 		// Mock ExtensionContext
@@ -54,6 +55,12 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 			},
 			"@/platform/pythonDetector": {
 				default: sandbox.stub().resolves("python3"),
+			},
+			"@/hosts/vscode/hostbridge/workspace/wiresharkResolver": {
+				resolveWiresharkBinary: sandbox.stub().returns(undefined),
+			},
+			"@/utils/env": {
+				openWithApp: sandbox.stub().resolves(),
 			},
 			"@/shared/tools": {
 				ClineDefaultTool: { NORDIC_ACTION: "trigger_nordic_action" },

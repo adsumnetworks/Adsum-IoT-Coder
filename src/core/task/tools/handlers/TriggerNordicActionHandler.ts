@@ -4,13 +4,14 @@ import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
 import { prepareNordicExecution } from "@/hosts/vscode/hostbridge/workspace/executeNordicCommand"
+import { resolveWiresharkBinary, type SupportedPlatform } from "@/hosts/vscode/hostbridge/workspace/wiresharkResolver"
 import { getCachedCapabilities } from "@/platform/nordicProjectDetector"
 import { formatHci } from "@/services/nrf/hci/format"
 import { parseHci } from "@/services/nrf/hci/hciParser"
 import { decodeSnifferPcap } from "@/services/nrf/sniffer/format"
 import { telemetryService } from "@/services/telemetry"
-
 import { ClineDefaultTool } from "@/shared/tools"
+import { openWithApp } from "@/utils/env"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { TaskConfig } from "../types/TaskConfig"
@@ -212,6 +213,12 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			return this.handleSniff(config, block, { port, duration, output, followName: follow_name })
 		}
 
+		// 1d. Handle "open_capture" — generic Wireshark hand-off for a sniffer .pcap or HCI .btmon.
+		// Bypasses the nRF terminal: Wireshark is a desktop app, not an NCS toolchain command.
+		if (operation === "open_capture") {
+			return this.handleOpenCapture(config, block)
+		}
+
 		// 2. Resolve paths for "capture" / "test" / "monitor"
 
 		// Determine which wrapper script to use based on transport
@@ -373,6 +380,77 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		return captureResult
 	}
 
+	/** Maps Node's broader `process.platform` onto the 3 platforms `wiresharkResolver` knows how to search. */
+	private wiresharkPlatform(): SupportedPlatform {
+		if (process.platform === "win32") return "win32"
+		if (process.platform === "darwin") return "darwin"
+		return "linux"
+	}
+
+	/**
+	 * Resolves the Wireshark binary (user override setting → known install paths → PATH), Windows-first.
+	 * Returns `undefined` if Wireshark isn't installed anywhere we checked.
+	 */
+	private resolveWireshark(): string | undefined {
+		const override = vscode.workspace.getConfiguration("adsum-iot-coder").get<string>("wiresharkPath")
+		return resolveWiresharkBinary(this.wiresharkPlatform(), process.env, fs.existsSync, override || undefined)
+	}
+
+	/**
+	 * The gate that stops the agent offering a tool the user doesn't have: appended to every decode note
+	 * so the agent only offers `operation="open_capture"` when Wireshark was actually detected.
+	 */
+	private wiresharkOfferNote(captureExt: "pcap" | "btmon"): string {
+		const found = this.resolveWireshark()
+		return found
+			? `Wireshark detected (${found}) — after presenting, you MAY offer to open the raw .${captureExt} in Wireshark (operation="open_capture", capture_path=<the .${captureExt} path>).`
+			: "Wireshark was not detected on this machine — do not offer to open the capture in Wireshark."
+	}
+
+	/**
+	 * Operation "open_capture" — hands a captured `.pcap`/`.btmon` off to Wireshark, the generic
+	 * Wireshark-hand-off path shared by the sniffer and HCI rails. Bypasses the nRF terminal entirely
+	 * (Wireshark is a normal desktop app, not an NCS toolchain command).
+	 */
+	private async handleOpenCapture(config: TaskConfig, block: ToolUse): Promise<ToolResponse> {
+		const capturePath = (block.params as Record<string, string | undefined>).capture_path
+		if (!capturePath) {
+			return formatResponse.toolError(
+				"Operation 'open_capture' requires 'capture_path' — the .pcap or .btmon file to open in Wireshark.",
+			)
+		}
+		const resolvedPath = path.isAbsolute(capturePath) ? capturePath : path.join(config.cwd ?? process.cwd(), capturePath)
+		if (!fs.existsSync(resolvedPath)) {
+			return formatResponse.toolError(`Capture file not found: ${resolvedPath}`)
+		}
+
+		const wiresharkPath = this.resolveWireshark()
+		if (!wiresharkPath) {
+			return formatResponse.toolError(
+				`Wireshark was not found on this machine. The raw capture is at ${resolvedPath} — install Wireshark ` +
+					"to open it, or inspect it with your own tooling.",
+			)
+		}
+
+		await config.callbacks.say(
+			"tool",
+			JSON.stringify({ tool: "triggerNordicAction", path: `Open in Wireshark: ${path.basename(resolvedPath)}` }),
+		)
+
+		try {
+			await openWithApp(resolvedPath, wiresharkPath)
+		} catch (e) {
+			const msg = `Failed to launch Wireshark: ${e instanceof Error ? e.message : String(e)}`
+			telemetryService.captureNordicActionError(config.ulid, "handleOpenCapture", msg)
+			return formatResponse.toolError(msg)
+		}
+		telemetryService.captureNordicActionExecuted(config.ulid, "handleOpenCapture", {
+			command: `open_capture ${resolvedPath}`,
+			status: "success",
+		})
+		return `Opened ${resolvedPath} in Wireshark (${wiresharkPath}).`
+	}
+
 	/**
 	 * Decode every raw `.btmon` in `captureDir` (the BT Monitor binary from RTT channel 1) into a
 	 * human-readable `<base>.hci.log` under `<cwd>/logs/hci/`. Returns an agent-facing note listing the
@@ -431,7 +509,8 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			`Decoded HCI monitor trace (host ↔ controller) written to:\n${list}\n` +
 			`Read the .hci.log file(s), then present a SHORT readable summary in chat: a framing line, a key-frame ` +
 			`timeline (only the frames that matter — not every frame, no raw hex), and your diagnosis correlated ` +
-			`with the app log. Point the user to the full .hci.log for detail. The raw .btmon is kept for btmon/Wireshark.`
+			`with the app log. Point the user to the full .hci.log for detail. The raw .btmon is kept for btmon/Wireshark.\n` +
+			this.wiresharkOfferNote("btmon")
 		)
 	}
 
@@ -559,7 +638,8 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			`Decoded over-the-air sniffer capture (${result.totalFrames} packets) written to:\n  - ${target}\n` +
 			`Read the .sniffer.log, then present a SHORT readable summary in chat: a framing line, a key-frame timeline ` +
 			`(advertising / CONNECT_IND / key LL control — not every packet, no raw hex), and your diagnosis correlated ` +
-			`with the HCI trace and the app log. Point the user to the full .sniffer.log; the raw .pcap is kept for Wireshark.`
+			`with the HCI trace and the app log. Point the user to the full .sniffer.log; the raw .pcap is kept for Wireshark.\n` +
+			this.wiresharkOfferNote("pcap")
 		)
 	}
 

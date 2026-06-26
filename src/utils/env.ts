@@ -42,3 +42,19 @@ export async function openExternal(url: string): Promise<void> {
 	console.log("Opening browser:", url)
 	await open(url)
 }
+
+/**
+ * Opens `filePath` in a specific application (by binary path/name) rather than the OS default —
+ * e.g. handing a captured `.pcap`/`.btmon` off to Wireshark. Spawns detached; resolves once launched,
+ * does not wait for the app to exit.
+ * @throws Error if the operation fails
+ */
+export async function openWithApp(filePath: string, appPath: string): Promise<void> {
+	console.log("Opening in app:", appPath, filePath)
+	try {
+		await open(filePath, { app: { name: appPath } })
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error)
+		throw new Error(`Failed to open ${filePath} in ${appPath}: ${errorMessage}`)
+	}
+}

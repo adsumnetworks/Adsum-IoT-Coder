@@ -378,6 +378,9 @@
         },
         "follow_name": {
           "type": "STRING"
+        },
+        "capture_path": {
+          "type": "STRING"
         }
       },
       "required": [

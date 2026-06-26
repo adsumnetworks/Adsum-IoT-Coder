@@ -77,13 +77,14 @@ remembered for this project, so you won't be asked again.`,
 	{
 		name: "operation",
 		required: false,
-		instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor", "sniff", "device_info".
+		instruction: `Required if action="log_device". Options: "list", "test", "capture", "monitor", "sniff", "device_info", "open_capture".
 - "list": List connected nRF devices
 - "test": Quick connection test to a device
 - "capture": Capture logs for a specified duration and save to file
 - "monitor": Continuous live log monitoring (no file save)
 - "sniff": Capture over-the-air BLE traffic with a SEPARATE sniffer dongle (nrfutil ble-sniffer), then auto-decode to a readable logs/sniffer/*.sniffer.log. The "port" here is the SNIFFER dongle, not the device under test. Load the ble-sniffer workflow first (it covers flashing the dongle).
-- "device_info": Get detailed device information`,
+- "device_info": Get detailed device information
+- "open_capture": Open a raw .pcap (sniffer) or .btmon (HCI) capture in Wireshark. ONLY use this when a prior decode note told you Wireshark was detected — never offer or call it otherwise. Requires "capture_path".`,
 		usage: "capture",
 	},
 	{
@@ -177,6 +178,12 @@ Use role-specific labels (central, peripheral) ONLY when the role has been confi
 		required: false,
 		instruction: `Optional, operation="sniff" only. Advertised name of the device under test to lock the sniffer onto (nrfutil ble-sniffer --follow-by-name). Without it the sniffer captures all nearby advertising. Use the DUT's CONFIG_BT_DEVICE_NAME.`,
 		usage: "MyDevice",
+	},
+	{
+		name: "capture_path",
+		required: false,
+		instruction: `Required if operation="open_capture". Path to the raw capture file to open in Wireshark — the .pcap from a "sniff" capture, or the .btmon from a "capture"/"monitor" run with monitor="true". Use the exact path a prior decode note pointed you to.`,
+		usage: "logs/sniffer/sniffer_2026-06-26_10-00-00.pcap",
 	},
 ]
 
