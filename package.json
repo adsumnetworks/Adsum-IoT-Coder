@@ -323,6 +323,11 @@
 						"telemetry",
 						"usesOnlineServices"
 					]
+				},
+				"adsum-iot-coder.wiresharkPath": {
+					"type": "string",
+					"default": "",
+					"markdownDescription": "Path to the Wireshark executable, used to open captured `.pcap`/`.btmon` files. Leave empty to auto-detect (checks the standard install location for your OS, then `PATH`)."
 				}
 			}
 		}
@@ -385,6 +390,8 @@
 		"test:unit": "cross-env TS_NODE_PROJECT=./tsconfig.unit-test.json mocha",
 		"test:nordic": "cross-env TS_NODE_PROJECT=./tsconfig.unit-test.json mocha --config mocha-nordic.json",
 		"test:nordic:scripts": "bash scripts/test-nordic-scripts.sh",
+		"test:hil": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-test.ts",
+		"dev:decode": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/decode-capture.ts",
 		"test:coverage": "vscode-test --coverage",
 		"test:sca-server": "npx tsx watch scripts/test-standalone-core-api-server.ts",
 		"test:tp-orchestrator": "npx tsx scripts/testing-platform-orchestrator.ts",
