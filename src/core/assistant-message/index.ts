@@ -60,6 +60,11 @@ export const toolParamNames = [
 	// live cra-sample run). A tool's params are only extracted if their names are in this list.
 	"sbom",
 	"build",
+	// triggerNordicAction param — MUST be here or the parser silently drops <ncs_version>, so multi-NCS
+	// disambiguation can NEVER resolve: the explicit override never reaches selectNcsInstall and every command
+	// fails "Multiple NCS versions installed… re-run with ncs_version" even when one IS supplied (observed on a
+	// live run with v3.2.1 + v3.3.1 both installed — the agent + user picked a version 8× and it was ignored).
+	"ncs_version",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]

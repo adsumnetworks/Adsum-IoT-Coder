@@ -1,5 +1,6 @@
 import type { ClineMessage } from "@shared/ExtensionMessage"
 import { useMemo } from "react"
+import { BRAND_CYAN_600, brandAlpha } from "../brandColors"
 
 /**
  * CRA progress rail (Tier 2). A thin, host-process-aware strip that shows which of the CRA workflow's five
@@ -83,7 +84,9 @@ function segStates(p: CraProgress): SegState[] {
 	})
 }
 
-const ACCENT = "var(--vscode-progressBar-background, #2fd4d4)"
+// Brand cyan = PROGRESS accent (matches DemoPicker/IntentCard focal treatment); neutral tokens for pending/text.
+const ACCENT = BRAND_CYAN_600
+const ACCENT_GLOW = brandAlpha(BRAND_CYAN_600, 0.22)
 const MUTED = "var(--vscode-descriptionForeground, #8a93a0)"
 const DONE_INK = "var(--vscode-foreground, #e6edf3)"
 
@@ -118,8 +121,7 @@ export const CraProgressRail = ({ messages }: { messages: ClineMessage[] }) => {
 								flex: "none",
 								border: `2px solid ${s.status === "pending" ? MUTED : ACCENT}`,
 								background: s.status === "done" ? ACCENT : "transparent",
-								boxShadow:
-									s.status === "active" ? `0 0 0 3px color-mix(in srgb, ${ACCENT} 22%, transparent)` : "none",
+								boxShadow: s.status === "active" ? `0 0 0 3px ${ACCENT_GLOW}` : "none",
 							}}
 						/>
 						{i < segs.length - 1 && (

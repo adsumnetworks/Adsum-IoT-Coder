@@ -3,6 +3,7 @@ import { describe, it } from "mocha"
 import {
 	buildNordicLoggerCommand,
 	buildToolchainCommand,
+	compareNcsVersionsDesc,
 	ncsAmbiguousMessage,
 	normalizeNcsVersion,
 	parseToolchainEnv,
@@ -58,12 +59,23 @@ describe("nordicEnvResolver", () => {
 			const sel = selectNcsInstall(["v3.2.1"], { pinned: "v9.9.9" })
 			expect(sel).to.deep.equal({ kind: "resolved", version: "3.2.1" })
 		})
-		it("is ambiguous with several installs and no decisive input", () => {
+		it("is ambiguous with several installs and no decisive input — listed NEWEST-FIRST (so 'use latest' is the top choice)", () => {
 			expect(selectNcsInstall(installed).kind).to.equal("ambiguous")
-			expect((selectNcsInstall(installed) as any).versions).to.deep.equal(["3.2.1", "3.3.0"])
+			expect((selectNcsInstall(installed) as any).versions).to.deep.equal(["3.3.0", "3.2.1"])
+			// real-world case from the live bug: v3.2.1 + v3.3.1 both installed → newest first
+			expect((selectNcsInstall(["v3.2.1", "v3.3.1"]) as any).versions).to.deep.equal(["3.3.1", "3.2.1"])
 		})
 		it("is none when nothing is installed", () => {
 			expect(selectNcsInstall([]).kind).to.equal("none")
+		})
+		it("compareNcsVersionsDesc orders newest-first and is stable on junk", () => {
+			expect(["3.2.1", "3.10.0", "3.3.1", "3.2.10"].sort(compareNcsVersionsDesc)).to.deep.equal([
+				"3.10.0",
+				"3.3.1",
+				"3.2.10",
+				"3.2.1",
+			])
+			expect(compareNcsVersionsDesc("3.2.1", "3.2.1")).to.equal(0)
 		})
 		it("matches a pin written without the v against v-prefixed installs", () => {
 			const sel = selectNcsInstall(["v3.2.1", "v3.3.0"], { pinned: "3.3.0" })

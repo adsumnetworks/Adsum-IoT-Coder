@@ -1,3 +1,4 @@
+import { BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha } from "../brandColors"
 import { CRA_STEPS } from "./CraProgressRail"
 
 /**
@@ -8,7 +9,9 @@ import { CRA_STEPS } from "./CraProgressRail"
  * 5-step model, three surfaces). COLOUR = PROGRESS ONLY (cyan), never a findings verdict.
  */
 
-const ACCENT = "var(--vscode-progressBar-background, #2fd4d4)"
+// Brand cyan = PROGRESS accent (matches the rail + DemoPicker/IntentCard); neutral token for pending.
+const ACCENT = BRAND_CYAN_600
+const ACCENT_GLOW = brandAlpha(BRAND_CYAN_600, 0.22)
 const MUTED = "var(--vscode-descriptionForeground, #8a93a0)"
 
 /** Parse a heading's text → {step,title} when it's a CRA step banner ("Step 3/5 · Read the posture"), else null. */
@@ -36,7 +39,7 @@ const MiniDots = ({ current }: { current: number }) => (
 						borderRadius: "50%",
 						background: lit ? ACCENT : "transparent",
 						border: `1.5px solid ${lit ? ACCENT : MUTED}`,
-						boxShadow: step === current ? `0 0 0 2px color-mix(in srgb, ${ACCENT} 22%, transparent)` : "none",
+						boxShadow: step === current ? `0 0 0 2px ${ACCENT_GLOW}` : "none",
 					}}
 				/>
 			)
@@ -64,8 +67,8 @@ export const CraStepMarker = ({ step, title }: { step: number; title: string }) 
 				width: 22,
 				height: 22,
 				borderRadius: "50%",
-				background: ACCENT,
-				color: "var(--vscode-editor-background, #1e1e1e)",
+				background: BRAND_CYAN_700,
+				color: "#ffffff",
 				fontWeight: 800,
 				fontSize: 12,
 				display: "flex",
