@@ -16,8 +16,9 @@
 import { type ApplicabilityHint, assessApplicability, type BuildEvidence } from "./applicability"
 import { applyCuratedPurls, type ModuleVersionResolver } from "./componentPurlMap"
 import { type EvidenceReportInput, formatCveScanJson, formatCveScanReport, type ScanFinding } from "./evidenceReport"
+import { type NvdFetcher, scanWithNvd } from "./nvdMatch"
 import { type EnrichedVuln, enrichVulns, type OsvVulnFetcher } from "./osvEnrich"
-import { type OsvFetcher, type OsvMatch, type SkippedComponent, scanWithOsv } from "./osvMatch"
+import { type OsvFetcher, type SkippedComponent, scanWithOsv } from "./osvMatch"
 import { type NormalizedSbom, normalizeSbom, type SbomComponent, type SbomCoverage } from "./sbomNormalize"
 
 /** Curated applicability lookup: (CVE/OSV id, component) → hint, or undefined → honest "unknown". */
@@ -46,6 +47,12 @@ export interface ScanLoopInput {
 	 * CVSS vector + fixed version are surfaced verbatim. Omitted → no enrichment (and no extra network calls).
 	 */
 	vulnFetcher?: OsvVulnFetcher
+	/**
+	 * Optional CPE→NVD fetcher (F11). When provided, components bearing a CPE are ALSO queried against NVD —
+	 * the path that finds CVEs for the embedded C libs OSV doesn't index by PURL (mbed TLS et al.). Omitted →
+	 * no NVD path (default behaviour unchanged, no extra network).
+	 */
+	nvdFetcher?: NvdFetcher
 }
 
 export interface ScanLoopResult {
@@ -71,16 +78,44 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	// Curated map (opt-in): fill missing PURLs from a verified coordinate + an operator-supplied version.
 	const normalized = input.resolveModuleVersion ? applyCuratedPurls(parsed, input.resolveModuleVersion) : parsed
 	// Pass ALL components (not queryableComponents) so planOsvScan keeps the cpe-only / no-identifier skip records.
-	const scan = await scanWithOsv(normalized.components, input.fetcher)
+	const osvScan = await scanWithOsv(normalized.components, input.fetcher)
+	// CPE→NVD (F11, opt-in): query the components OSV can't reach — embedded C libs keyed by CPE, not PURL.
+	const nvdScan = input.nvdFetcher
+		? await scanWithNvd(normalized.components, input.nvdFetcher)
+		: { matches: [], skipped: [], queriedCount: 0 }
 	const resolve = input.resolveHint ?? (() => undefined)
 
+	// ONE finding per (component, vulnId), deduped across both sources (a CVE can surface in OSV AND NVD).
 	const findings: ScanFinding[] = []
-	for (const m of scan.matches) {
+	const seen = new Set<string>()
+	const addFinding = (component: SbomComponent, id: string) => {
+		const key = `${component.name}@${component.version}::${id}`
+		if (seen.has(key)) {
+			return
+		}
+		seen.add(key)
+		findings.push({
+			match: { component, vulnIds: [id] },
+			applicability: assessApplicability(resolve(id, component), input.evidence),
+		})
+	}
+	for (const m of osvScan.matches) {
 		for (const id of m.vulnIds) {
-			const singleMatch: OsvMatch = { component: m.component, vulnIds: [id] }
-			findings.push({ match: singleMatch, applicability: assessApplicability(resolve(id, m.component), input.evidence) })
+			addFinding(m.component, id)
 		}
 	}
+	for (const m of nvdScan.matches) {
+		for (const v of m.vulns) {
+			addFinding(m.component, v.id)
+		}
+	}
+
+	// Coverage when the NVD path ran: a CPE-bearing component is now queryable (it was "cpe-only" → skipped
+	// under OSV-only). Credit it honestly — skipped shrinks to the truly unidentified; queriedCount counts
+	// components with a PURL OR a CPE. Without the NVD path, coverage is exactly as before.
+	const nvdRan = !!input.nvdFetcher
+	const skipped = nvdRan ? osvScan.skipped.filter((s) => !s.component.cpe) : osvScan.skipped
+	const queriedCount = nvdRan ? normalized.components.filter((c) => c.purl || c.cpe).length : osvScan.queriedCount
 
 	// Optional enrichment: only touches the network when a vulnFetcher is provided.
 	const enrichment = input.vulnFetcher
@@ -92,8 +127,8 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 
 	const reportInput: EvidenceReportInput = {
 		findings,
-		skipped: scan.skipped,
-		queriedCount: scan.queriedCount,
+		skipped,
+		queriedCount,
 		asOf: input.asOf,
 		source: input.source,
 		enrichment,
@@ -103,8 +138,8 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 		json: formatCveScanJson(reportInput),
 		findings,
 		coverage: normalized.coverage,
-		skipped: scan.skipped,
-		queriedCount: scan.queriedCount,
+		skipped,
+		queriedCount,
 		normalized,
 		enrichment,
 	}

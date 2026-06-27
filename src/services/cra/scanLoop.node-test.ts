@@ -5,6 +5,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { isVerdictClean } from "../knowledge/honesty/verdictScan"
+import type { NvdFetcher } from "./nvdMatch"
 import type { OsvFetcher } from "./osvMatch"
 import { type HintResolver, runCveScan } from "./scanLoop"
 
@@ -32,6 +33,27 @@ const twoVulnFetcher: OsvFetcher = async () =>
 	JSON.stringify({ results: [{ vulns: [{ id: "CVE-2024-23170" }, { id: "CVE-2099-0001" }] }] })
 
 const noVulnFetcher: OsvFetcher = async () => JSON.stringify({ results: [{}] })
+
+// NVD returns one HIGH CVE for any queried CPE (here: esp_wifi, which OSV skipped as cpe-only).
+const nvdFetcher: NvdFetcher = async () =>
+	JSON.stringify({
+		vulnerabilities: [{ cve: { id: "CVE-2023-1111", metrics: { cvssMetricV31: [{ cvssData: { baseSeverity: "HIGH" } }] } } }],
+	})
+
+test("F11: CPE→NVD path queries the cpe-only component OSV skipped, surfaces its CVE, credits coverage", async () => {
+	const r = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-25", fetcher: noVulnFetcher, nvdFetcher })
+	assert.equal(isVerdictClean(r.report), true, `report tripped verdictScan:\n${r.report}`)
+	assert.match(r.report, /CVE-2023-1111/)
+	assert.ok(r.findings.some((f) => f.match.component.name === "esp_wifi" && f.match.vulnIds[0] === "CVE-2023-1111"))
+	assert.equal(r.queriedCount, 2) // mbedtls (purl, OSV) + esp_wifi (cpe, NVD)
+	assert.ok(!r.skipped.some((s) => s.component.name === "esp_wifi")) // no longer cpe-only-skipped
+})
+
+test("F11: no nvdFetcher → behaviour unchanged (cpe-only still skipped, 1 queryable)", async () => {
+	const r = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-25", fetcher: noVulnFetcher })
+	assert.equal(r.queriedCount, 1)
+	assert.ok(r.skipped.some((s) => s.component.name === "esp_wifi" && s.reason === "cpe-only"))
+})
 
 test("end-to-end: normalize → scan → assess → report (verdict-clean, attributed + dated)", async () => {
 	const r = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-25", fetcher: twoVulnFetcher })

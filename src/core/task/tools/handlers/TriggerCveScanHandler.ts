@@ -8,6 +8,7 @@ import * as vscode from "vscode"
 import { resolveAdvisoryHint } from "@/services/cra/advisoryHints"
 import { defaultBuildEvidenceReaders } from "@/services/cra/buildEvidence"
 import { runCveScanHost } from "@/services/cra/cveScanHost"
+import { makeNvdFetcher } from "@/services/cra/nvdFetcher"
 import { makeOsvFetcher } from "@/services/cra/osvFetcher"
 import type { ScanLoopResult } from "@/services/cra/scanLoop"
 import { makeModuleVersionResolver, parseWestList, parseWestManifest } from "@/services/cra/westVersions"
@@ -74,6 +75,10 @@ const defaultDeps: CveScanHandlerDeps = {
 				asOf,
 				// F5: enrich PURL-sparse west SBOMs with curated coordinates keyed on the real module versions.
 				resolveModuleVersion: await resolveWestModuleVersions(buildDir),
+				// F11: also scan CPE-bearing components against NVD — the path that finds CVEs OSV misses for
+				// embedded C libs (mbed TLS et al.). Offline-safe degradation: a network error throws and is
+				// surfaced as "scan unavailable", never a false-clean.
+				nvdFetcher: makeNvdFetcher(),
 			},
 		),
 	mkdir: (dir) => mkdirSync(dir, { recursive: true }),
