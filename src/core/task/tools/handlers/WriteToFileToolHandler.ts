@@ -9,6 +9,7 @@ import { ClineSayTool } from "@shared/ExtensionMessage"
 import { fileExistsAtPath } from "@utils/fs"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
+import { formatIntegrityError, gatherAndCheckReadinessIntegrity } from "@/services/cra/reportIntegrity"
 import { telemetryService } from "@/services/telemetry"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
@@ -339,6 +340,18 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 					return formatResponse.toolDenied()
 				}
 				throw error
+			}
+
+			// CRA report integrity (F1): the readiness report is composed by the model and otherwise saved
+			// unchecked, so a run can persist fabricated SBOM/CVE claims. Before committing, cross-check the
+			// content against the artifacts this run actually produced (the SPDX + cve-scan json); on a provable
+			// contradiction, cancel the write so the model rewrites with the real figures. Fails open on any
+			// guard error (never blocks a legitimate report).
+			const craIntegrityIssues = gatherAndCheckReadinessIntegrity(absolutePath, newContent)
+			if (craIntegrityIssues.length > 0) {
+				await config.services.diffViewProvider.revertChanges()
+				await config.services.diffViewProvider.reset()
+				return formatResponse.toolError(formatIntegrityError(craIntegrityIssues))
 			}
 
 			// Mark the file as edited by Cline
