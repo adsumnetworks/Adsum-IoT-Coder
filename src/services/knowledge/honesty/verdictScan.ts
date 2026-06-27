@@ -146,6 +146,11 @@ const LEAK_PATTERNS: LeakPattern[] = [
 	// Annex Part I/II + the one curated "Article 14" reference (which has NO sub-clause), so matching the `(N)`
 	// sub-clause shape catches the invention without touching the legitimate "Article 14 / Art. 14".
 	{ rule: "fabricated-article", re: /\bart(?:icle|\.)\s*\d+\s*\(\d+\)/gi },
+	// run 2706h2 — FABRICATED Annex sub-clause granularity ("Annex I Part I (2)(e)", "Annex I Part II (2)").
+	// The bit cites ONLY the bare "Annex I Part I" / "Annex I Part II" label — any parenthesized sub-clause after
+	// the Part numeral is invented (guessed clause letters are frequently wrong + reopen the liability failure).
+	// Matching the `Part <num> (N)` shape catches the invention while leaving the bare label untouched.
+	{ rule: "fabricated-annex-clause", re: /\bAnnex\s+[IVX]+\s+Part\s+[IVX]+\s*\(\d+\)/gi },
 	// "now/fully compliant|certified|resolved|fixed|…"
 	{
 		rule: "now-verdict",
