@@ -327,10 +327,12 @@
 
 		pre > code .hljs-deletion {
 			@apply inline-block w-full bg-diff-removed;
+			color: var(--vscode-editor-foreground);
 		}
 
 		pre > code .hljs-addition {
 			@apply inline-block w-full bg-diff-added;
+			color: var(--vscode-editor-foreground);
 		}
 
 		code span.line:empty {

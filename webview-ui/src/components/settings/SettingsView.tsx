@@ -18,6 +18,7 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { cn } from "@/lib/utils"
 import { StateServiceClient } from "@/services/grpc-client"
 import { getEnvironmentColor } from "@/utils/environmentColors"
+import { IS_DEV } from "@/utils/isDev"
 import { Tab, TabContent, TabHeader, TabList, TabTrigger } from "../common/Tab"
 import SectionHeader from "./SectionHeader"
 import AboutSection from "./sections/AboutSection"
@@ -27,8 +28,6 @@ import DebugSection from "./sections/DebugSection"
 import FeatureSettingsSection from "./sections/FeatureSettingsSection"
 import GeneralSettingsSection from "./sections/GeneralSettingsSection"
 import TerminalSettingsSection from "./sections/TerminalSettingsSection"
-
-const IS_DEV = process.env.IS_DEV
 
 // Tab definitions
 interface SettingsTab {
