@@ -52,3 +52,45 @@ describe("CraProgressRail", () => {
 		expect(screen.getByText(/CRA preview complete/)).toBeInTheDocument()
 	})
 })
+
+describe("CraProgressRail — real-project remediation loop", () => {
+	it("parses the remediation loop banner (gap N of M + name + history)", () => {
+		const p = parseCraProgress([
+			say("### Step 4/5 · Triage"),
+			say("### Step 5/5 · Remediate — gap 1 of 4 · secure boot"),
+			say("### Step 5/5 · Remediate — gap 2 of 4 · signed FOTA"),
+		])
+		expect(p?.current).toBe(5)
+		expect(p?.done).toBe(false)
+		expect(p?.remediation).toEqual({
+			gap: 2,
+			total: 4,
+			currentName: "signed FOTA",
+			history: [
+				{ gap: 1, name: "secure boot" },
+				{ gap: 2, name: "signed FOTA" },
+			],
+		})
+	})
+
+	it("renders step 5 as a spinning loop node + the gap caption + iteration list (not 'done')", () => {
+		render(<CraProgressRail messages={[say("### Step 5/5 · Remediate — gap 2 of 4 · signed FOTA")]} />)
+		expect(screen.getByTestId("cra-loop-node")).toBeInTheDocument()
+		expect(screen.getByText(/Remediate — gap 2 of 4 · signed FOTA/)).toBeInTheDocument()
+		expect(screen.getByText(/more gap.*pending/)).toBeInTheDocument()
+	})
+
+	it("loop only reaches 'done' at a real exit (completion_result)", () => {
+		const a = parseCraProgress([say("### Step 5/5 · Remediate — gap 2 of 4 · signed FOTA")])
+		expect(a?.done).toBe(false)
+		const b = parseCraProgress([say("### Step 5/5 · Remediate — gap 2 of 4 · signed FOTA"), done()])
+		expect(b?.done).toBe(true)
+	})
+
+	it("the SAMPLE preview step-5 is unchanged (no loop node, linear 'Next')", () => {
+		render(<CraProgressRail messages={[say("### Step 5/5 · One concrete next step")]} />)
+		expect(screen.queryByTestId("cra-loop-node")).toBeNull()
+		expect(screen.getByText(/Step 5\/5 · Next/)).toBeInTheDocument()
+		expect(screen.getByText(/highest-value thing to do next/)).toBeInTheDocument()
+	})
+})
