@@ -16,6 +16,7 @@
 import { type ApplicabilityHint, assessApplicability, type BuildEvidence } from "./applicability"
 import { applyCuratedPurls, type ModuleVersionResolver } from "./componentPurlMap"
 import { type EvidenceReportInput, formatCveScanJson, formatCveScanReport, type ScanFinding } from "./evidenceReport"
+import { applyModuleRefs, type ModuleRefsResolver } from "./moduleSecurityRefs"
 import { type NvdFetcher, scanWithNvd } from "./nvdMatch"
 import { type EnrichedVuln, enrichVulns, type OsvVulnFetcher } from "./osvEnrich"
 import { type OsvFetcher, type SkippedComponent, scanWithOsv } from "./osvMatch"
@@ -42,6 +43,12 @@ export interface ScanLoopInput {
 	 * coverage on PURL-sparse NCS SBOMs. Omitted → the map is not applied (default behaviour unchanged).
 	 */
 	resolveModuleVersion?: ModuleVersionResolver
+	/**
+	 * Optional `zephyr/module.yml` security-refs lookup (F5). When provided, components missing a CPE/PURL are
+	 * filled from each module's own declarations — so the CPE→NVD path works even when the SBOM tool didn't emit
+	 * CPEs (older `ncs-sbom`). Omitted → no module.yml enrichment.
+	 */
+	resolveModuleRefs?: ModuleRefsResolver
 	/**
 	 * Optional severity/fixed-version enrichment (§4/§11). When provided, each matched vuln is fetched and its
 	 * CVSS vector + fixed version are surfaced verbatim. Omitted → no enrichment (and no extra network calls).
@@ -76,7 +83,11 @@ export interface ScanLoopResult {
 export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> {
 	const parsed = normalizeSbom(input.spdxText)
 	// Curated map (opt-in): fill missing PURLs from a verified coordinate + an operator-supplied version.
-	const normalized = input.resolveModuleVersion ? applyCuratedPurls(parsed, input.resolveModuleVersion) : parsed
+	let normalized = input.resolveModuleVersion ? applyCuratedPurls(parsed, input.resolveModuleVersion) : parsed
+	// module.yml refs (F5, opt-in): fill CPE/PURL the SBOM tool didn't emit, from the modules' own declarations.
+	if (input.resolveModuleRefs) {
+		normalized = applyModuleRefs(normalized, input.resolveModuleRefs)
+	}
 	// Pass ALL components (not queryableComponents) so planOsvScan keeps the cpe-only / no-identifier skip records.
 	const osvScan = await scanWithOsv(normalized.components, input.fetcher)
 	// CPE→NVD (F11, opt-in): query the components OSV can't reach — embedded C libs keyed by CPE, not PURL.
