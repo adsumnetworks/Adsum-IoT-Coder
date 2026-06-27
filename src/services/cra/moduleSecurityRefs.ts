@@ -15,6 +15,8 @@
  */
 import { readFileSync } from "node:fs"
 import { load as yamlLoad } from "js-yaml"
+import { normalizeModuleName } from "./componentPurlMap"
+import { classifyComponent, type NormalizedSbom, type SbomComponent } from "./sbomNormalize"
 
 export interface ModuleSecurityRefs {
 	/** Module name from the module.yml `name:` field, if present. */
@@ -63,4 +65,55 @@ export function readModuleSecurityRefs(moduleYmlPath: string): ModuleSecurityRef
 	} catch {
 		return null
 	}
+}
+
+/** Canonical-module-name → its declared security refs, or undefined. */
+export type ModuleRefsResolver = (componentName: string) => ModuleSecurityRefs | undefined
+
+/**
+ * Fill missing CPE/PURL on SBOM components from vendor `module.yml` refs (the authoritative source), over a
+ * copy, re-deriving coverage. Tool-emitted ids always win (never overwritten) — we only fill blanks. This is
+ * what lets the CPE→NVD path work even when the SBOM tool didn't emit CPEs (older `ncs-sbom`): the module
+ * declares its own `cpe:2.3:…`. Coverage's `queryable`/drop-reasons are recomputed honestly.
+ */
+export function applyModuleRefs(sbom: NormalizedSbom, resolve: ModuleRefsResolver): NormalizedSbom {
+	const components: SbomComponent[] = sbom.components.map((c) => {
+		const refs = resolve(normalizeModuleName(c.name))
+		if (!refs) {
+			return c
+		}
+		const cpe = c.cpe ?? refs.cpes[0]
+		const purl = c.purl ?? refs.purls[0]
+		if (cpe === c.cpe && purl === c.purl) {
+			return c
+		}
+		const filled: SbomComponent = { ...c, cpe, purl, purlSource: c.purl ? c.purlSource : purl ? "curated" : c.purlSource }
+		const verdict = classifyComponent(filled)
+		filled.queryable = verdict.queryable
+		filled.dropReason = verdict.dropReason
+		return filled
+	})
+
+	const byDropReason: NormalizedSbom["coverage"]["byDropReason"] = {}
+	let queryable = 0
+	let withPurl = 0
+	let withCpe = 0
+	let unidentified = 0
+	for (const c of components) {
+		if (c.purl) {
+			withPurl++
+		}
+		if (c.cpe) {
+			withCpe++
+		}
+		if (!c.purl && !c.cpe) {
+			unidentified++
+		}
+		if (c.queryable) {
+			queryable++
+		} else if (c.dropReason) {
+			byDropReason[c.dropReason] = (byDropReason[c.dropReason] ?? 0) + 1
+		}
+	}
+	return { components, coverage: { total: components.length, withPurl, withCpe, unidentified, queryable, byDropReason } }
 }

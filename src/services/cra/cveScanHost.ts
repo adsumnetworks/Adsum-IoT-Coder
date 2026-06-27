@@ -15,6 +15,7 @@
 import type { BuildEvidenceReaders } from "./buildEvidence"
 import { readBuildEvidence } from "./buildEvidence"
 import type { ModuleVersionResolver } from "./componentPurlMap"
+import type { ModuleRefsResolver } from "./moduleSecurityRefs"
 import type { NvdFetcher } from "./nvdMatch"
 import type { OsvVulnFetcher } from "./osvEnrich"
 import type { OsvFetcher } from "./osvMatch"
@@ -35,6 +36,8 @@ export interface CveScanHostDeps {
 	vulnFetcher?: OsvVulnFetcher
 	/** Optional NCS-module version source; when provided, the curated PURL map fills missing PURLs (§5). */
 	resolveModuleVersion?: ModuleVersionResolver
+	/** Optional zephyr/module.yml security-refs lookup (F5); fills CPE/PURL the SBOM tool didn't emit. */
+	resolveModuleRefs?: ModuleRefsResolver
 	/** Optional CPE→NVD fetcher (F11); when provided, CPE-bearing components are also scanned against NVD. */
 	nvdFetcher?: NvdFetcher
 }
@@ -72,6 +75,7 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 		source: deps.source,
 		vulnFetcher: deps.vulnFetcher,
 		resolveModuleVersion: deps.resolveModuleVersion,
+		resolveModuleRefs: deps.resolveModuleRefs,
 		nvdFetcher: deps.nvdFetcher,
 	})
 }

@@ -7,7 +7,9 @@ import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
 import { resolveAdvisoryHint } from "@/services/cra/advisoryHints"
 import { defaultBuildEvidenceReaders } from "@/services/cra/buildEvidence"
+import { normalizeModuleName } from "@/services/cra/componentPurlMap"
 import { runCveScanHost } from "@/services/cra/cveScanHost"
+import { type ModuleRefsResolver, type ModuleSecurityRefs, readModuleSecurityRefs } from "@/services/cra/moduleSecurityRefs"
 import { makeNvdFetcher } from "@/services/cra/nvdFetcher"
 import { makeOsvFetcher } from "@/services/cra/osvFetcher"
 import type { ScanLoopResult } from "@/services/cra/scanLoop"
@@ -56,6 +58,48 @@ async function resolveWestModuleVersions(buildDir?: string) {
 	return undefined
 }
 
+/**
+ * Build a module→security-refs resolver (F5) from each west module's `zephyr/module.yml`
+ * `security: external-references` — the vendor-declared CPE/PURL. Lets the CPE→NVD path work even when the SBOM
+ * tool didn't emit CPEs. Uses `west list -f '{name} {abspath}'`; returns undefined if west is unavailable or no
+ * module declares refs (scan then runs without module.yml enrichment — no regression). Never throws.
+ */
+async function resolveWestModuleRefs(buildDir?: string): Promise<ModuleRefsResolver | undefined> {
+	if (!buildDir) {
+		return undefined
+	}
+	let stdout: string
+	try {
+		;({ stdout } = await execFileAsync("west", ["list", "-f", "{name} {abspath}"], {
+			cwd: buildDir,
+			timeout: 15_000,
+			maxBuffer: 4 * 1024 * 1024,
+		}))
+	} catch {
+		return undefined // west not on PATH / not a west workspace
+	}
+	const map = new Map<string, ModuleSecurityRefs>()
+	for (const line of stdout.split(/\r?\n/)) {
+		const trimmed = line.trim()
+		const sp = trimmed.indexOf(" ")
+		if (sp < 0) {
+			continue
+		}
+		const name = trimmed.slice(0, sp)
+		const modPath = trimmed.slice(sp + 1).trim()
+		const refs =
+			readModuleSecurityRefs(path.join(modPath, "zephyr", "module.yml")) ??
+			readModuleSecurityRefs(path.join(modPath, "module.yml"))
+		if (refs && (refs.cpes.length > 0 || refs.purls.length > 0)) {
+			map.set(normalizeModuleName(name), refs)
+		}
+	}
+	if (map.size === 0) {
+		return undefined
+	}
+	return (componentName) => map.get(componentName)
+}
+
 /** Injectable seams (network/fs/clock) so execute() is unit-testable; production uses the real defaults. */
 export interface CveScanHandlerDeps {
 	scan: (args: { sbomPath: string; buildDir?: string; asOf: string }) => Promise<ScanLoopResult>
@@ -75,6 +119,8 @@ const defaultDeps: CveScanHandlerDeps = {
 				asOf,
 				// F5: enrich PURL-sparse west SBOMs with curated coordinates keyed on the real module versions.
 				resolveModuleVersion: await resolveWestModuleVersions(buildDir),
+				// F5: fill CPE/PURL the SBOM tool didn't emit, from each module's own zephyr/module.yml.
+				resolveModuleRefs: await resolveWestModuleRefs(buildDir),
 				// F11: also scan CPE-bearing components against NVD — the path that finds CVEs OSV misses for
 				// embedded C libs (mbed TLS et al.). Offline-safe degradation: a network error throws and is
 				// surfaced as "scan unavailable", never a false-clean.
