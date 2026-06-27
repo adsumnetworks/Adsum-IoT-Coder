@@ -174,7 +174,12 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				{/* Hero sample — the single cyan focal point ONLY when there's no project to act on and no sample has
 				    run yet. With a project open, the primary intent below is the hero instead. Picker when ≥2 samples
 				    are registered; single hero card otherwise (graceful fallback). */}
-				{heroPicker && (showPicker ? <DemoPicker onStartDemo={onStartDemo} /> : <DemoCard onStartDemo={onStartDemo} />)}
+				{heroPicker &&
+					(showPicker ? (
+						<DemoPicker excludeScenarioId={!hasWorkspace ? "cra-sample" : undefined} onStartDemo={onStartDemo} />
+					) : (
+						<DemoCard onStartDemo={onStartDemo} />
+					))}
 
 				{/* Orienting heading — ALWAYS shown; the disoriented first-timer needs the framing question most */}
 				<div className="w-full">
@@ -196,6 +201,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				<IntentList
 					intents={intents}
 					onSelectMode={onSelectMode}
+					onStartDemo={onStartDemo}
 					onStartTask={onStartTask}
 					platform={platform}
 					projectName={projectName ?? undefined}
@@ -207,7 +213,12 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				{!heroPicker && (
 					<div className="w-full">
 						{showPicker ? (
-							<DemoPicker hasRunDemo={demoDone} onStartDemo={onStartDemo} variant="rerun" />
+							<DemoPicker
+								excludeScenarioId={!hasWorkspace ? "cra-sample" : undefined}
+								hasRunDemo={demoDone}
+								onStartDemo={onStartDemo}
+								variant="rerun"
+							/>
 						) : (
 							<DemoCard onStartDemo={onStartDemo} variant="rerun" />
 						)}

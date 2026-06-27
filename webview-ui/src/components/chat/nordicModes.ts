@@ -93,7 +93,7 @@ export const TASK_COMPLETE_MARKER = "<!--TASK_COMPLETE-->"
 /**
  * The structural subset of a chat message this helper reads, so it stays dependency-light + unit-testable.
  */
-type CompletionProbe = { type?: string; say?: string; ask?: string; text?: string; partial?: boolean }
+type CompletionProbe = { type?: string; say?: string; ask?: string; text?: string; partial?: boolean; ts?: number }
 
 /**
  * True when the last chat message means the Nordic task is over and the next-step menu should render. TWO
@@ -119,4 +119,25 @@ export function isNordicTaskComplete(last?: CompletionProbe | null): boolean {
 		return true
 	}
 	return last.say === "completion_result" || last.ask === "completion_result"
+}
+
+/**
+ * True when `last` is a completion that has NOT already flipped the phase to task_complete — i.e. a *fresh*
+ * completion the next-step menu should latch onto. `lastLatchedTs` is the ts of the completion that last
+ * latched (undefined if none yet).
+ *
+ * This is the F3 guard. When a developer clicks a next-step card, the phase goes back to "active" but the last
+ * chat message is still the PREVIOUS completion until the new turn streams. Without this check the latch would
+ * immediately re-fire on that stale completion — re-pinning the chooser as a list footer that the new answer
+ * then shoves down, and hiding the input bar. Comparing message-ts to message-ts (same host clock domain) means
+ * we only latch a genuinely new completion. A completion with a ts equal to the already-consumed one is ignored.
+ */
+export function isFreshNordicCompletion(last: CompletionProbe | null | undefined, lastLatchedTs: number | undefined): boolean {
+	if (!last || typeof last.ts !== "number") {
+		return false
+	}
+	if (last.ts === lastLatchedTs) {
+		return false
+	}
+	return isNordicTaskComplete(last)
 }
