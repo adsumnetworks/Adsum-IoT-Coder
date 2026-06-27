@@ -4,9 +4,21 @@ import { describe, expect, it } from "vitest"
 import CraProgressRail, { parseCraProgress } from "../CraProgressRail"
 
 const say = (text: string): ClineMessage => ({ ts: 1, type: "say", say: "text", text })
+const tool = (text: string): ClineMessage => ({ ts: 1, type: "say", say: "tool", text })
 const done = (): ClineMessage => ({ ts: 2, type: "say", say: "completion_result", text: "preview complete" })
 
 describe("parseCraProgress", () => {
+	it("IGNORES banners in non-model messages — the workflow file's read-result must NOT drive the rail", () => {
+		// The bit's own text contains EXAMPLE banners "Step 1/5 … Step 5/5 · Remediate"; a read_file result
+		// (say:"tool") carrying it must NOT make the rail jump to the end the instant the workflow loads.
+		const bitReadResult = tool(
+			"### Step 1/5 · Inventory\n### Step 5/5 · Remediate — gap 2 of 4 · signed FOTA\nWRITE the report to scratch…",
+		)
+		expect(parseCraProgress([bitReadResult])).toBeNull()
+		// but the model's OWN banner (say:"text") still drives it
+		expect(parseCraProgress([bitReadResult, say("### Step 2/5 · Scan")])).toEqual({ current: 2, done: false })
+	})
+
 	it("returns null when there is no CRA run (no step banner) — the rail self-hides", () => {
 		expect(parseCraProgress([say("just a normal chat message"), say("### Heading, not a step")])).toBeNull()
 	})

@@ -14,14 +14,26 @@ const ACCENT = BRAND_CYAN_600
 const ACCENT_GLOW = brandAlpha(BRAND_CYAN_600, 0.22)
 const MUTED = "var(--vscode-descriptionForeground, #8a93a0)"
 
+/** A real banner is short; cap the title so a model that dumps a wall of text can't render as a giant marker. */
+const MAX_TITLE_LEN = 80
+
 /** Parse a heading's text → {step,title} when it's a CRA step banner ("Step 3/5 · Read the posture"), else null. */
 export function parseStepHeading(text: string): { step: number; title: string } | null {
-	const m = /^\s*Step\s+([1-5])\s*\/\s*5\s*[·:\-—]?\s*(.*)$/i.exec(text.trim())
+	const trimmed = text.trim()
+	// Defensive: only short, single-line headings are real banners (a dumped bit becomes one huge "heading").
+	if (trimmed.length > MAX_TITLE_LEN + 12 || /[\r\n]/.test(trimmed)) {
+		return null
+	}
+	const m = /^\s*Step\s+([1-5])\s*\/\s*5\s*[·:\-—]?\s*(.*)$/i.exec(trimmed)
 	if (!m) {
 		return null
 	}
 	const step = Number(m[1])
-	return { step, title: m[2].trim() || CRA_STEPS[step - 1] }
+	const title = m[2].trim()
+	if (title.length > MAX_TITLE_LEN) {
+		return null
+	}
+	return { step, title: title || CRA_STEPS[step - 1] }
 }
 
 const MiniDots = ({ current }: { current: number }) => (
