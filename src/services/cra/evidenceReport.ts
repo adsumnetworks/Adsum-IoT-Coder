@@ -38,6 +38,21 @@ function dropReasonCounts(skipped: SkippedComponent[]): Partial<Record<DropReaso
 	return counts
 }
 
+/**
+ * Triage funnel counts (host-derived, never a verdict). "Not reachable" = the build evidence excludes the
+ * affected code (config-gated-out OR not-linked); everything else is "review" (linked = weak/may-be-reachable,
+ * unknown = no signal). Both md + json render from this single derivation so they can't disagree.
+ */
+function summarizeTriage(findings: ScanFinding[]): { total: number; notReachable: number; review: number } {
+	let notReachable = 0
+	for (const f of findings) {
+		if (f.applicability.signal === "not-linked" || f.applicability.signal === "config-gated-out") {
+			notReachable++
+		}
+	}
+	return { total: findings.length, notReachable, review: findings.length - notReachable }
+}
+
 /** The shared data-provenance caption (NOT a legal disclaimer — reuses the advisories "as of" shape, §8.1). */
 const provenanceCaption = (source: string, asOf: string): string =>
 	`${source} matches for your SBOM's component versions, as of ${asOf}. Partial coverage; ` +
@@ -74,6 +89,18 @@ export function formatCveScanReport(input: EvidenceReportInput): string {
 		return lines.join("\n")
 	}
 
+	// Triage funnel (host-derived counts, never a verdict): how many advisories the build evidence makes
+	// likely-not-reachable vs still-to-review. Only shown once the evidence actually triaged something, so we
+	// never imply an applicability pass that didn't run. "Likely not reachable" stays hedged — verify is the rule.
+	const triage = summarizeTriage(input.findings)
+	if (triage.notReachable > 0) {
+		lines.push(
+			`Triage (from your build evidence): ${triage.total} advisories — ${triage.notReachable} likely not ` +
+				`reachable in your build (verify) · ${triage.review} to review.`,
+			"",
+		)
+	}
+
 	for (const f of input.findings) {
 		const c = f.match.component
 		const idLinks = f.match.vulnIds.map((id) => `[${id}](${advisoryUrl(id)})`).join(", ")
@@ -102,6 +129,8 @@ export interface CveScanJson {
 	provenance: string
 	/** Coverage mirror: queryable count + the honest drop-reason breakdown (never a bare number when gaps exist). */
 	coverage: { queryable: number; byDropReason: Partial<Record<DropReason, number>> }
+	/** Triage funnel mirror (host-derived counts): total advisories, likely-not-reachable, to-review. */
+	triage: { total: number; notReachable: number; review: number }
 	findings: Array<{
 		component: string
 		version: string
@@ -126,6 +155,7 @@ export function formatCveScanJson(input: EvidenceReportInput): string {
 		asOf: input.asOf,
 		provenance: provenanceCaption(source, input.asOf),
 		coverage: { queryable: input.queriedCount, byDropReason: dropReasonCounts(input.skipped) },
+		triage: summarizeTriage(input.findings),
 		findings: input.findings.map((f) => ({
 			component: f.match.component.name,
 			version: f.match.component.version,

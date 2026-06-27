@@ -65,6 +65,9 @@ describe("verdictScan — leaks that MUST be caught", () => {
 		["aggregate readiness score", "Aggregate CRA Readiness 5.7/10 — two fixes raise it."],
 		["'out of 10' grade", "Secure boot scores 7 out of 10."],
 		["fabricated CRA article sub-clause", "Vulnerabilities cannot be patched under CRA Article 3(8)."],
+		// run 2706h2 — fabricated Annex sub-clause granularity (the bit allows only the bare "Part I"/"Part II" label)
+		["fabricated Annex sub-clause (2)(e)", "**Annex I Part I (2)(e):** Minimise data processing — RTT logging is verbose."],
+		["fabricated Annex sub-clause Part II (2)", "Annex I Part II (2): SBOM generated — verify the inventory."],
 	]
 	for (const [name, sample] of leaks) {
 		test(name, () => {

@@ -23,29 +23,53 @@ import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 const execFileAsync = promisify(execFile)
 
 /**
+ * Candidate working dirs to run `west` from, most-likely-a-west-workspace first. `west` walks up to find
+ * `.west/`, so the project SOURCE dir is the best bet — NOT the build dir (a `build/` tree is not a workspace,
+ * and a project copied outside the SDK tree has no workspace at all). This was the 2706g bug: every `west list`
+ * ran in `build/` and silently returned nothing, so F5 enrichment never engaged. Falls back to the build dir +
+ * its parent. De-dupes, drops undefined, preserves order.
+ */
+function westCwdCandidates(projectDir?: string, buildDir?: string): string[] {
+	const out: string[] = []
+	for (const c of [projectDir, buildDir, buildDir ? path.join(buildDir, "..") : undefined]) {
+		if (c && !out.includes(c)) {
+			out.push(c)
+		}
+	}
+	return out
+}
+
+/**
  * Build a module→version resolver for the CVE scan's curated PURL enrichment (F5). Prefers `west list`
  * (resolves manifest imports → the actual pinned revisions of the security-relevant modules), then a flat
- * west.yml. Returns undefined if neither is reachable — the scan then runs without enrichment, exactly as
- * before (no regression). Never throws. (west list is read-only; fixed args; no shell interpolation.)
+ * west.yml. Tries each candidate cwd (project dir first — see westCwdCandidates) until one resolves inside a
+ * workspace. Returns undefined if none is reachable — the scan then runs without enrichment, exactly as before
+ * (no regression). Never throws. (west list is read-only; fixed args; no shell interpolation.)
  */
-async function resolveWestModuleVersions(buildDir?: string) {
-	if (!buildDir) {
-		return undefined
-	}
-	try {
-		const { stdout } = await execFileAsync("west", ["list", "-f", "{name} {revision}"], {
-			cwd: buildDir,
-			timeout: 15_000,
-			maxBuffer: 4 * 1024 * 1024,
-		})
-		const versions = parseWestList(stdout)
-		if (Object.keys(versions).length > 0) {
-			return makeModuleVersionResolver(versions)
+async function resolveWestModuleVersions(projectDir?: string, buildDir?: string) {
+	for (const cwd of westCwdCandidates(projectDir, buildDir)) {
+		try {
+			const { stdout } = await execFileAsync("west", ["list", "-f", "{name} {revision}"], {
+				cwd,
+				timeout: 15_000,
+				maxBuffer: 4 * 1024 * 1024,
+			})
+			const versions = parseWestList(stdout)
+			if (Object.keys(versions).length > 0) {
+				return makeModuleVersionResolver(versions)
+			}
+		} catch {
+			// `west` not on PATH / not a west workspace from here — try the next candidate cwd.
 		}
-	} catch {
-		// `west` not on PATH / not a west workspace — fall through to the manifest fallback.
 	}
-	for (const candidate of [path.join(buildDir, "..", "west.yml"), path.join(buildDir, "west.yml")]) {
+	for (const candidate of [
+		projectDir ? path.join(projectDir, "west.yml") : undefined,
+		buildDir ? path.join(buildDir, "..", "west.yml") : undefined,
+		buildDir ? path.join(buildDir, "west.yml") : undefined,
+	]) {
+		if (!candidate) {
+			continue
+		}
 		try {
 			const versions = parseWestManifest(readFileSync(candidate, "utf8"))
 			if (Object.keys(versions).length > 0) {
@@ -61,22 +85,27 @@ async function resolveWestModuleVersions(buildDir?: string) {
 /**
  * Build a module→security-refs resolver (F5) from each west module's `zephyr/module.yml`
  * `security: external-references` — the vendor-declared CPE/PURL. Lets the CPE→NVD path work even when the SBOM
- * tool didn't emit CPEs. Uses `west list -f '{name} {abspath}'`; returns undefined if west is unavailable or no
- * module declares refs (scan then runs without module.yml enrichment — no regression). Never throws.
+ * tool didn't emit CPEs. Uses `west list -f '{name} {abspath}'` from the project workspace (tries each candidate
+ * cwd — see westCwdCandidates); returns undefined if west is unavailable or no module declares refs (scan then
+ * runs without module.yml enrichment — no regression). Never throws.
  */
-async function resolveWestModuleRefs(buildDir?: string): Promise<ModuleRefsResolver | undefined> {
-	if (!buildDir) {
-		return undefined
+async function resolveWestModuleRefs(projectDir?: string, buildDir?: string): Promise<ModuleRefsResolver | undefined> {
+	let stdout: string | undefined
+	for (const cwd of westCwdCandidates(projectDir, buildDir)) {
+		try {
+			const res = await execFileAsync("west", ["list", "-f", "{name} {abspath}"], {
+				cwd,
+				timeout: 15_000,
+				maxBuffer: 4 * 1024 * 1024,
+			})
+			stdout = res.stdout
+			break
+		} catch {
+			// west not on PATH / not a west workspace from here — try the next candidate cwd.
+		}
 	}
-	let stdout: string
-	try {
-		;({ stdout } = await execFileAsync("west", ["list", "-f", "{name} {abspath}"], {
-			cwd: buildDir,
-			timeout: 15_000,
-			maxBuffer: 4 * 1024 * 1024,
-		}))
-	} catch {
-		return undefined // west not on PATH / not a west workspace
+	if (stdout === undefined) {
+		return undefined
 	}
 	const map = new Map<string, ModuleSecurityRefs>()
 	for (const line of stdout.split(/\r?\n/)) {
@@ -102,14 +131,14 @@ async function resolveWestModuleRefs(buildDir?: string): Promise<ModuleRefsResol
 
 /** Injectable seams (network/fs/clock) so execute() is unit-testable; production uses the real defaults. */
 export interface CveScanHandlerDeps {
-	scan: (args: { sbomPath: string; buildDir?: string; asOf: string }) => Promise<ScanLoopResult>
+	scan: (args: { sbomPath: string; buildDir?: string; projectDir?: string; asOf: string }) => Promise<ScanLoopResult>
 	mkdir: (dir: string) => void
 	writeFile: (filePath: string, content: string) => void
 	now: () => string
 }
 
 const defaultDeps: CveScanHandlerDeps = {
-	scan: async ({ sbomPath, buildDir, asOf }) =>
+	scan: async ({ sbomPath, buildDir, projectDir, asOf }) =>
 		runCveScanHost(
 			{ sbomPath, buildDir },
 			{
@@ -118,9 +147,9 @@ const defaultDeps: CveScanHandlerDeps = {
 				resolveHint: resolveAdvisoryHint,
 				asOf,
 				// F5: enrich PURL-sparse west SBOMs with curated coordinates keyed on the real module versions.
-				resolveModuleVersion: await resolveWestModuleVersions(buildDir),
+				resolveModuleVersion: await resolveWestModuleVersions(projectDir, buildDir),
 				// F5: fill CPE/PURL the SBOM tool didn't emit, from each module's own zephyr/module.yml.
-				resolveModuleRefs: await resolveWestModuleRefs(buildDir),
+				resolveModuleRefs: await resolveWestModuleRefs(projectDir, buildDir),
 				// F11: also scan CPE-bearing components against NVD — the path that finds CVEs OSV misses for
 				// embedded C libs (mbed TLS et al.). Offline-safe degradation: a network error throws and is
 				// surfaced as "scan unavailable", never a false-clean.
@@ -200,7 +229,7 @@ export class TriggerCveScanHandler implements IFullyManagedTool {
 		const asOf = this.deps.now()
 		let result: ScanLoopResult
 		try {
-			result = await this.deps.scan({ sbomPath, buildDir, asOf })
+			result = await this.deps.scan({ sbomPath, buildDir, projectDir: cwd, asOf })
 		} catch (err) {
 			const msg = `CVE scan could not run: ${err instanceof Error ? err.message : String(err)}`
 			await config.callbacks.say("error", msg)

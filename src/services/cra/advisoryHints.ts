@@ -20,10 +20,39 @@ export interface VerifiedAdvisoryHint extends ApplicabilityHint {
 }
 
 /**
- * Seed map: CVE/OSV id → verified hint. EMPTY until entries are confirmed on a real build (design/16). Grown by
- * the §10 SBOM-feedback loop (which gaps recur → which to verify+map next). Do NOT add speculative entries.
+ * Seed map: CVE/OSV id → verified hint. Entries are confirmed on a REAL build (design/16 + the 2026-06-27
+ * NCS 3.2.1 / nrf52840dk verification). Grown by the §10 SBOM-feedback loop. Do NOT add speculative entries —
+ * every codeSymbol below was confirmed ABSENT from a real linked image (including any `cc_`-prefixed HW-crypto
+ * variants), so the engine's exclusion is a true "stripped/not-linked", not a false clear. NEVER map a CVE
+ * whose affected code IS linked (e.g. the CTR_DRBG PRNG CVEs — `cc_mbedtls_ctr_drbg_*` is present → they must
+ * stay "unknown"/review, not be cleared).
  */
-export const ADVISORY_HINTS: Record<string, VerifiedAdvisoryHint> = {}
+export const ADVISORY_HINTS: Record<string, VerifiedAdvisoryHint> = {
+	// mbed TLS — SSL/TLS context & session serialization (CVSS 9.8). The whole TLS layer is absent in a BLE app.
+	"CVE-2026-34877": {
+		codeSymbol: "mbedtls_ssl_context_save",
+		verifiedNote:
+			"Affects mbed TLS SSL/TLS context-and-session serialization (mbedtls_ssl_context_save/load). " +
+			"Verified 2026-06-27 (NCS 3.2.1, nrf52840dk, central_uart + peripheral_uart): ZERO mbedtls_ssl_* symbols " +
+			"linked — these are BLE apps with no TLS layer. Exclusion = not-linked.",
+	},
+	// mbed TLS — finite-field Diffie-Hellman (FFDH) contributory-behaviour flaw (CVSS 9.1). BLE uses ECDH, not FFDH.
+	"CVE-2026-34872": {
+		codeSymbol: "mbedtls_dhm_make_public",
+		verifiedNote:
+			"Affects mbed TLS finite-field DH (the DHM module, mbedtls_dhm_*). Verified 2026-06-27 (NCS 3.2.1, " +
+			"nrf52840dk): no mbedtls_dhm_* symbols linked — BLE LE Secure Connections uses ECDH (bt_dh_key_gen), " +
+			"NOT mbed TLS FFDH. Exclusion = not-linked.",
+	},
+	// hostap/hostapd — crafted-RADIUS-packet processing (no Wi-Fi on nRF52840; module listed in SBOM, code stripped).
+	"CVE-2025-24912": {
+		codeSymbol: "radius_msg_verify",
+		verifiedNote:
+			"Affects hostapd RADIUS packet processing. Verified 2026-06-27 (NCS 3.2.1, nrf52840dk): no hostap/hostapd " +
+			"code linked — nRF52840 has no Wi-Fi; west spdx lists the hostap module from the manifest but its code is " +
+			"gc-section stripped. Exclusion = not-linked.",
+	},
+}
 
 /** Resolver wired into `runCveScan`. Returns a hint only for a verified CVE; unknown CVEs → undefined → "unknown". */
 export const resolveAdvisoryHint: HintResolver = (vulnId) => {

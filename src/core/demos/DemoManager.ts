@@ -193,8 +193,9 @@ function buildCraSamplePrompt(samplePath: string): string {
 	return `Run CRA SBOM & Fix on the bundled sample project at ${samplePath}.
 
 [ADSUM_DEMO:cra-sample] This is OUR bundled nRF sample (central_uart), NOT the user's own project — it is the \
-workflow's PREVIEW path. Detect the platform, generate the SBOM, preview the secure-by-design posture, surface \
-the top gap, then offer to start closing it.
+workflow's PREVIEW path. Detect the platform, generate the SBOM, scan for CVEs, preview the secure-by-design \
+posture, then offer the top FINDING-DRIVEN next step per the workflow (a CVE action first if the scan flagged \
+any to review, otherwise the top posture gap — never frame a posture gap as mitigating a CVE).
 
 Hard rules for this sample run:
 - Load and follow the workflow exactly: read_file ${workflowFile}. **If that read fails (the bit isn't \
@@ -205,8 +206,11 @@ only, NO verdicts / grades / scores (no status glyphs, no "MET"/"READY"/"GOOD", 
 "non-compliant"), the mandatory "# CRA SBOM & Fix" title + the "Readiness aid — NOT a conformity assessment" \
 disclaimer, and curated citations only (Annex Part I / Part II + the curated Article 14 — never invent a sub-clause \
 such as "Article 3(8)").
-- It is our READ-ONLY sample: NEVER write into it or the extension. Show the report INLINE; ask via \
-ask_followup_question before saving, and only on consent save to a namespaced folder under the user's Desktop. \
+- It is our READ-ONLY sample: NEVER write into it or the extension. Per the workflow, WRITE the report to an \
+OS-temp scratch compliance/ FIRST (this runs the host honesty guard on the written file — required; never present \
+an unwritten report), then present only a THIN headline (at-a-glance counts + the top-gap offer + the written \
+path), and offer via ask_followup_question to save a copy to a namespaced folder under the user's Desktop. Do NOT \
+re-render the posture/CVE/verification tables in chat — point to the written report. \
 State plainly the result describes the sample, not the user's product — for their own build they run it on their code.
 - Follow the productive next-step loop: after the preview, offer the top gap as one concrete, decline-able step; \
 do NOT call attempt_completion while a high-value gap is still un-offered and the user has not declined.`
