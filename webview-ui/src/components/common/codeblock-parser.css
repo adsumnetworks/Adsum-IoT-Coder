@@ -154,16 +154,17 @@
 	font-weight: bold;
 }
 
-/* Deletion (for diffs) */
+/* Deletion (for diffs). Keep the editor foreground for the text — the removed-line *background* var was
+   being used as the text color, i.e. red-on-red, illegible in light theme (F7). */
 .hljs-deletion {
 	background-color: var(--vscode-diffEditor-removedTextBackground);
-	color: var(--vscode-diffEditor-removedLineBackground);
+	color: var(--vscode-editor-foreground);
 }
 
-/* Addition (for diffs) */
+/* Addition (for diffs). Same fix — was green-on-green (inserted-line *background* var used as text color). */
 .hljs-addition {
 	background-color: var(--vscode-diffEditor-insertedTextBackground);
-	color: var(--vscode-diffEditor-insertedLineBackground);
+	color: var(--vscode-editor-foreground);
 }
 
 /* Section headers - slightly emphasized */

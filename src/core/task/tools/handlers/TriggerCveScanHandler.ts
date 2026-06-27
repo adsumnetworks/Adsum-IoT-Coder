@@ -1,5 +1,7 @@
-import { mkdirSync, writeFileSync } from "node:fs"
+import { execFile } from "node:child_process"
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
+import { promisify } from "node:util"
 import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
@@ -8,11 +10,50 @@ import { defaultBuildEvidenceReaders } from "@/services/cra/buildEvidence"
 import { runCveScanHost } from "@/services/cra/cveScanHost"
 import { makeOsvFetcher } from "@/services/cra/osvFetcher"
 import type { ScanLoopResult } from "@/services/cra/scanLoop"
+import { makeModuleVersionResolver, parseWestList, parseWestManifest } from "@/services/cra/westVersions"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
+
+const execFileAsync = promisify(execFile)
+
+/**
+ * Build a module→version resolver for the CVE scan's curated PURL enrichment (F5). Prefers `west list`
+ * (resolves manifest imports → the actual pinned revisions of the security-relevant modules), then a flat
+ * west.yml. Returns undefined if neither is reachable — the scan then runs without enrichment, exactly as
+ * before (no regression). Never throws. (west list is read-only; fixed args; no shell interpolation.)
+ */
+async function resolveWestModuleVersions(buildDir?: string) {
+	if (!buildDir) {
+		return undefined
+	}
+	try {
+		const { stdout } = await execFileAsync("west", ["list", "-f", "{name} {revision}"], {
+			cwd: buildDir,
+			timeout: 15_000,
+			maxBuffer: 4 * 1024 * 1024,
+		})
+		const versions = parseWestList(stdout)
+		if (Object.keys(versions).length > 0) {
+			return makeModuleVersionResolver(versions)
+		}
+	} catch {
+		// `west` not on PATH / not a west workspace — fall through to the manifest fallback.
+	}
+	for (const candidate of [path.join(buildDir, "..", "west.yml"), path.join(buildDir, "west.yml")]) {
+		try {
+			const versions = parseWestManifest(readFileSync(candidate, "utf8"))
+			if (Object.keys(versions).length > 0) {
+				return makeModuleVersionResolver(versions)
+			}
+		} catch {
+			// not at this path — try the next candidate.
+		}
+	}
+	return undefined
+}
 
 /** Injectable seams (network/fs/clock) so execute() is unit-testable; production uses the real defaults. */
 export interface CveScanHandlerDeps {
@@ -23,10 +64,17 @@ export interface CveScanHandlerDeps {
 }
 
 const defaultDeps: CveScanHandlerDeps = {
-	scan: ({ sbomPath, buildDir, asOf }) =>
+	scan: async ({ sbomPath, buildDir, asOf }) =>
 		runCveScanHost(
 			{ sbomPath, buildDir },
-			{ fetcher: makeOsvFetcher(), readers: defaultBuildEvidenceReaders(), resolveHint: resolveAdvisoryHint, asOf },
+			{
+				fetcher: makeOsvFetcher(),
+				readers: defaultBuildEvidenceReaders(),
+				resolveHint: resolveAdvisoryHint,
+				asOf,
+				// F5: enrich PURL-sparse west SBOMs with curated coordinates keyed on the real module versions.
+				resolveModuleVersion: await resolveWestModuleVersions(buildDir),
+			},
 		),
 	mkdir: (dir) => mkdirSync(dir, { recursive: true }),
 	writeFile: (filePath, content) => writeFileSync(filePath, content, "utf8"),
