@@ -14,11 +14,12 @@ interface DemoPickerProps {
 	 */
 	hasRunDemo?: boolean
 	/**
-	 * Scenario id to omit from the list. Used to drop "cra-sample" when no project is open, because the
-	 * no-project "Preview CRA readiness" intent card already runs that sample — so the picker would otherwise
-	 * show two buttons for the one action (F2).
+	 * When true (no project open), the reduced/"rerun" picker keeps the runnable **New** sample (CRA readiness)
+	 * visually featured — brand border, full opacity — while the other rows dim, so the flagship sample stays the
+	 * focal point even after a sample has run (F2). Ignored in the hero variant (everything is already prominent)
+	 * and left false when a project is open (the reduced picker stays uniformly quiet, exactly as before).
 	 */
-	excludeScenarioId?: string
+	emphasizeNew?: boolean
 }
 
 // Neutral surfaces for the demoted "rerun" state — quiet, no brand fill (the samples are no longer the hero).
@@ -41,9 +42,8 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 	disabled = false,
 	variant = "hero",
 	hasRunDemo = false,
-	excludeScenarioId,
+	emphasizeNew = false,
 }) => {
-	const scenarios = DEMO_SCENARIO_LIST.filter((s) => s.id !== excludeScenarioId)
 	const isRerun = variant === "rerun"
 	const containerBorder = isRerun ? NEUTRAL_BORDER : BRAND_CYAN_600
 	const containerBg = isRerun ? "transparent" : brandSubtle(BRAND_CYAN_600, 5)
@@ -81,10 +81,15 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 			)}
 
 			<div style={{ display: "flex", flexDirection: "column", gap: isRerun ? "6px" : "8px" }}>
-				{scenarios.map((s) => {
+				{DEMO_SCENARIO_LIST.map((s) => {
 					// A placeholder ("coming soon") row is disabled like the global disabled state, so it can't be
 					// clicked into a dead end until its owner wires the real demo path.
 					const rowDisabled = disabled || !!s.comingSoon
+					// F2: in the reduced picker with no project, keep the runnable New sample (CRA) featured while
+					// the others fade — so the flagship stays the focal point even after a sample has run.
+					const featured = isRerun && emphasizeNew && !!s.isNew && !s.comingSoon
+					const restBorder = featured ? BRAND_CYAN_600 : NEUTRAL_BORDER
+					const faded = isRerun && emphasizeNew && !featured && !rowDisabled
 					return (
 						<button
 							data-testid={`demo-scenario-${s.id}`}
@@ -102,7 +107,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 								}
 							}}
 							onMouseLeave={(e) => {
-								e.currentTarget.style.borderColor = NEUTRAL_BORDER
+								e.currentTarget.style.borderColor = restBorder
 								e.currentTarget.style.background = "var(--vscode-input-background)"
 							}}
 							style={{
@@ -112,10 +117,10 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 								gap: "12px",
 								padding: isRerun ? "8px 10px" : "10px 12px",
 								background: "var(--vscode-input-background)",
-								border: `1px solid ${NEUTRAL_BORDER}`,
+								border: `1px solid ${restBorder}`,
 								borderRadius: "8px",
 								cursor: rowDisabled ? "default" : "pointer",
-								opacity: rowDisabled ? 0.5 : 1,
+								opacity: rowDisabled ? 0.5 : faded ? 0.5 : 1,
 								textAlign: "left",
 								transition: "background 0.15s, border-color 0.15s",
 							}}
@@ -126,11 +131,11 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 									width: isRerun ? "26px" : "32px",
 									height: isRerun ? "26px" : "32px",
 									borderRadius: "50%",
-									background: isRerun ? NEUTRAL_ICON_BG : BRAND_CYAN_700,
+									background: featured || !isRerun ? BRAND_CYAN_700 : NEUTRAL_ICON_BG,
 									display: "flex",
 									alignItems: "center",
 									justifyContent: "center",
-									color: isRerun ? "var(--vscode-descriptionForeground)" : "#fff",
+									color: featured || !isRerun ? "#fff" : "var(--vscode-descriptionForeground)",
 								}}>
 								<i className={`codicon codicon-${s.icon}`} style={{ fontSize: isRerun ? "13px" : "15px" }} />
 							</div>

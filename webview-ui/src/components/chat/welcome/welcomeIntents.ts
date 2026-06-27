@@ -167,14 +167,6 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 		description: "Tell me what you're building — I'll scaffold from the right verified sample.",
 	},
 	{
-		id: "craCheck",
-		icon: "shield",
-		title: "Preview CRA readiness",
-		description:
-			"A real SBOM + secure-by-design posture on a bundled sample project — not your build. Get ahead of the EU CRA.",
-		pill: "New",
-	},
-	{
 		id: "openProject",
 		icon: "folder-opened",
 		title: "Open my project",
