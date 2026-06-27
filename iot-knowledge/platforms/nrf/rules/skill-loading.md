@@ -2,7 +2,7 @@
 id: adsum/nrf/rules/skill-loading
 title: "nRF Platform Rule: Skill Loading"
 type: knowledge
-version: 1.0.0
+version: 1.3.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -47,8 +47,12 @@ This table is organized by what you, the agent, are about to *do* — not by wha
 | Build firmware · Flash firmware · run the Build → Flash → Capture → Analyze → Fix iteration cycle | `platforms/nrf/workflows/debug-loop.md` |
 | Capture device logs (UART/RTT) · perform log analysis · diagnose runtime behaviour from logs | `platforms/nrf/workflows/log-analyzer.md` |
 | Inject `LOG_*` macros into source · configure the log backend in `prj.conf` · enable deep BLE stack logging · prepare a project for future log capture | `platforms/nrf/workflows/log-generator.md` |
+| **Debug a BLE problem that app/stack logs don't explain** — pairing fails on one side · conn params won't update · PHY won't switch · GATT works on a phone but not a peer · a crash inside the controller · any timing-sensitive BLE bug | `platforms/nrf/workflows/hci-trace.md` (host↔controller HCI evidence) |
+| **Anything about the BLE sniffer** — set up / flash / plug in the sniffer dongle, enter DFU, OR confirm what actually transmitted over the air (HCI shows a command went out but no result · "is the device even advertising / being connected to?" · range/interference) | `platforms/nrf/workflows/ble-sniffer.md` (it walks dongle setup + capture) |
 
 If an upcoming operation does not match any row, you are not in a Workflow's scope and may proceed with standard tool use (consult `AGENT.md` Scope Gate first).
+
+**BLE debugging is layered — do not skip to a guess.** For any BLE bug: app/stack logs first; if they don't explain it, you MUST escalate to **HCI** (`hci-trace`) before offering a root cause; if HCI shows a request went out but the outcome never came, escalate to the **air** (`ble-sniffer`). Never diagnose a BLE failure from general BLE knowledge when the matching curated workflow exists — load it.
 
 ---
 
@@ -73,6 +77,8 @@ you are in, how you entered it, or how confident you feel.
 | Capture device logs (`log_device`, any logger script) | `platforms/nrf/actions/capture-logs.md` |
 | Open / read / interpret a captured log under `logs/` | `platforms/nrf/actions/analyze-logs.md` |
 | A fault signature appears in a log | `platforms/nrf/actions/decode-fault.md` |
+| **Read / interpret a decoded HCI monitor capture** (`logs/hci/*.hci.log` or a `.btmon`) | `platforms/nrf/actions/analyze-hci.md` (it loads `protocols/BLE/hci-monitor.md`) |
+| **Read / interpret an over-the-air sniffer capture** (`logs/sniffer/*.sniffer.log` or a `.pcap`) | `platforms/nrf/actions/analyze-sniffer.md` (it loads `protocols/BLE/ota-sniffer.md`) |
 | Run `twister` (simulator or `--device-testing`) | `platforms/nrf/actions/run-twister.md` |
 | Pick a Nordic sample to copy or port from | `platforms/nrf/actions/find-sample.md` |
 | Create/edit a CI workflow for firmware tests | `platforms/nrf/actions/setup-ci.md` |

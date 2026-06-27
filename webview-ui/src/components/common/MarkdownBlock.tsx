@@ -7,6 +7,7 @@ import { useRemark } from "react-remark"
 import rehypeHighlight, { Options } from "rehype-highlight"
 import type { Node } from "unist"
 import { visit } from "unist-util-visit"
+import { resolveAgentImage } from "@/assets/agentImages"
 import MermaidBlock from "@/components/common/MermaidBlock"
 import { Button } from "@/components/ui/button"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -464,6 +465,28 @@ const MarkdownBlock = memo(({ markdown, compact, showCursor }: MarkdownBlockProp
 					}
 
 					return <strong {...props} />
+				},
+				img: ({ src, alt }: ComponentProps<"img">) => {
+					// SECURITY: only render bundled, whitelisted agent assets (adsum-asset:<key>). An
+					// arbitrary remote/file image from agent text is never rendered — fall back to alt text.
+					const asset = resolveAgentImage(typeof src === "string" ? src : undefined)
+					if (!asset) {
+						return alt ? <span>{alt}</span> : null
+					}
+					return (
+						<img
+							alt={asset.alt}
+							src={asset.src}
+							style={{
+								display: "block",
+								margin: "8px 0",
+								width: "100%",
+								maxWidth: asset.maxWidth,
+								height: "auto",
+								borderRadius: 6,
+							}}
+						/>
+					)
 				},
 			},
 		},

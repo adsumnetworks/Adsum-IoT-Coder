@@ -2,7 +2,7 @@
 id: adsum/esp/rules/skill-loading
 title: "ESP Platform Rule: Skill Loading"
 type: knowledge
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -37,8 +37,11 @@ This table is organized by what you, the agent, are about to *do* — not by wha
 | Build firmware · Flash firmware · run the Build → Flash → Capture → Analyze → Fix cycle · diagnose a crash/panic/WDT/brownout | `platforms/esp/workflows/debug-loop.md` |
 | Capture serial logs · analyze logs · diagnose runtime behaviour on a board **already running** (no reflash) | `platforms/esp/workflows/log-analyzer.md` |
 | Add `ESP_LOG*` instrumentation to existing source · prepare a project for future log capture | `platforms/esp/workflows/log-generator.md` |
+| **Debug a Wi-Fi / networking problem** — won't connect, auth/DHCP fails, drops, low throughput, can't reach a server | `platforms/esp/workflows/debug-loop.md` — **and** load `sdks/esp-idf/protocols/WIFI.md` for the failure-mode reference (see the Command Gate). |
 
 If an upcoming operation matches no row, you are not in a Workflow's scope — answer from knowledge with the `AGENT.md` Scope Gate applied.
+
+**Protocol bugs use the curated protocol bit, not general knowledge.** Before you diagnose a Wi-Fi or BLE problem, the matching protocol reference (`protocols/WIFI.md` / `protocols/BLE.md`) MUST be in your context — the Command Gate below enforces it. These carry version-pinned failure modes you cannot reliably derive from pre-training.
 
 ## Workflows vs Actions (Hierarchy)
 - **Workflows** are the **only** valid entry points. You load them via this rule.
@@ -54,6 +57,8 @@ The table above fires on *intent*. This gate fires on the *act*: the instant you
 | Capture serial logs (`action="monitor"`) | `platforms/esp/actions/capture-logs.md` |
 | Open / read / interpret a captured log under `logs/` | `platforms/esp/actions/analyze-logs.md` |
 | A panic / `Guru Meditation` backtrace appears in a log | `platforms/esp/actions/decode-fault.md` |
+| **Diagnose a Wi-Fi problem** (connect / auth / DHCP / disconnect / throughput) | `platforms/esp/sdks/esp-idf/protocols/WIFI.md` |
+| **Diagnose a BLE (NimBLE) problem** | `platforms/esp/sdks/esp-idf/protocols/BLE.md` |
 | Change a Kconfig value (`sdkconfig` / `sdkconfig.defaults`) | `platforms/esp/actions/configure.md` |
 | Run Unity tests (host `linux` / QEMU / on-hardware pytest) | `platforms/esp/actions/run-tests.md` |
 | Pick an IDF example / registry component to copy or pull from | `platforms/esp/actions/find-sample.md` |
