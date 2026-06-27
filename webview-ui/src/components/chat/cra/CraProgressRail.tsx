@@ -62,6 +62,12 @@ export function parseCraProgress(messages: ClineMessage[]): CraProgress | null {
 		if (m.say === "completion_result") {
 			sawCompletion = true
 		}
+		// ONLY count banners the MODEL narrated (say:"text"). Tool results / user messages — especially the
+		// read_file RESULT of the workflow bit itself, which contains the EXAMPLE banners "Step 1/5 … Step 5/5 ·
+		// Remediate" — must NOT drive the rail, or it jumps to the end the instant the workflow is loaded.
+		if (m.say !== "text") {
+			continue
+		}
 		const text = m.text
 		if (!text) {
 			continue

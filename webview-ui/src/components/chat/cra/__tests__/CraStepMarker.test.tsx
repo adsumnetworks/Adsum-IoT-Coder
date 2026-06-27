@@ -23,6 +23,14 @@ describe("parseStepHeading", () => {
 	it("falls back to the canonical label when the title is empty", () => {
 		expect(parseStepHeading("Step 1/5")).toEqual({ step: 1, title: "Inventory" })
 	})
+
+	it("DEFENSIVE: a dumped wall of bit text is NOT treated as a banner (no giant marker)", () => {
+		const dump =
+			'Step 5/5 · Remediate — gap 2 of 4 · signed FOTA`. This keeps the rail showing a LOOP (not "done") across iterations — it only reads complete at a real loop exit. Align the to-do list to these SAME five steps…'
+		expect(parseStepHeading(dump)).toBeNull()
+		// a multi-line blob is also rejected
+		expect(parseStepHeading("Step 5/5 · Remediate — gap 2 of 4\nThen a second line of dumped instructions")).toBeNull()
+	})
 })
 
 describe("CraStepMarker", () => {
