@@ -15,6 +15,7 @@
 import type { BuildEvidenceReaders } from "./buildEvidence"
 import { readBuildEvidence } from "./buildEvidence"
 import type { ModuleVersionResolver } from "./componentPurlMap"
+import type { NvdFetcher } from "./nvdMatch"
 import type { OsvVulnFetcher } from "./osvEnrich"
 import type { OsvFetcher } from "./osvMatch"
 import type { HintResolver } from "./scanLoop"
@@ -34,6 +35,8 @@ export interface CveScanHostDeps {
 	vulnFetcher?: OsvVulnFetcher
 	/** Optional NCS-module version source; when provided, the curated PURL map fills missing PURLs (§5). */
 	resolveModuleVersion?: ModuleVersionResolver
+	/** Optional CPE→NVD fetcher (F11); when provided, CPE-bearing components are also scanned against NVD. */
+	nvdFetcher?: NvdFetcher
 }
 
 export interface CveScanHostInput {
@@ -69,5 +72,6 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 		source: deps.source,
 		vulnFetcher: deps.vulnFetcher,
 		resolveModuleVersion: deps.resolveModuleVersion,
+		nvdFetcher: deps.nvdFetcher,
 	})
 }
