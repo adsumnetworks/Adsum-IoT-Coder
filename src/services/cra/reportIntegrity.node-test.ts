@@ -1,0 +1,96 @@
+/**
+ * Tests for the CRA readiness-report integrity guard (F1). node:test, runs via `npm run test:cve` (ts-node)
+ * on the default toolchain. Pure cross-check only — no disk (the fs wrapper is exercised in integration).
+ */
+import assert from "node:assert/strict"
+import { test } from "node:test"
+import {
+	checkReadinessReportIntegrity,
+	detectSbomTool,
+	extractClaimedPackageCount,
+	looksLikeReadinessReport,
+} from "./reportIntegrity"
+import { normalizeSbom } from "./sbomNormalize"
+
+// A real-shaped west ncs-sbom SPDX: one unidentified package, no PURL (the toothless-CVE case). total = 1.
+const NCS_SBOM = `SPDXVersion: SPDX-2.2
+DataLicense: CC0-1.0
+CreatorComment: <text>Generated with west-ncs-sbom.</text>
+
+PackageName: unknown-package
+PackageVersion: NoneVersion
+PackageDownloadLocation: NONE
+`
+
+// A small package-level SPDX with 2 packages (one PURL'd).
+const PKG_SBOM = `SPDXVersion: SPDX-2.3
+DataLicense: CC0-1.0
+Creator: Tool: west spdx
+
+PackageName: my_app
+PackageVersion: 0.1.0
+
+PackageName: mbedtls
+PackageVersion: 3.6.4
+ExternalRef: PACKAGE-MANAGER purl pkg:github/Mbed-TLS/mbedtls@3.6.4
+`
+
+const DISCLAIMER = "Readiness aid — NOT a conformity assessment."
+const HEDGED_DATED = "Verify against your notified body. CVE scan: OSV, as of 2026-06-27."
+
+test("detectSbomTool: reads the generator from prose or an SPDX creator field", () => {
+	assert.equal(detectSbomTool("generated via west spdx from build"), "west spdx")
+	assert.equal(detectSbomTool("Generated with west-ncs-sbom."), "west ncs-sbom")
+	assert.equal(detectSbomTool("esp-idf-sbom create ..."), "esp-idf-sbom")
+	assert.equal(detectSbomTool("no tool named here"), null)
+})
+
+test("extractClaimedPackageCount: pulls the SBOM-summary package count", () => {
+	assert.equal(extractClaimedPackageCount("| Total packages | 91 |"), 91)
+	assert.equal(extractClaimedPackageCount("Total packages: 2"), 2)
+	assert.equal(extractClaimedPackageCount("no count stated"), null)
+})
+
+test("looksLikeReadinessReport: markdown + disclaimer + SBOM mention", () => {
+	assert.equal(looksLikeReadinessReport("/p/compliance/CRA_READINESS.md", `${DISCLAIMER}\n## SBOM`), true)
+	assert.equal(looksLikeReadinessReport("/p/compliance/sbom/app.spdx", `${DISCLAIMER}\n## SBOM`), false) // not .md
+	assert.equal(looksLikeReadinessReport("/p/notes.md", "just some notes"), false) // no disclaimer
+})
+
+test("blocks the 2706b fabrication: wrong tool + inflated package count", () => {
+	const report = `# CRA SBOM & Fix\n${DISCLAIMER}\n${HEDGED_DATED}\n## SBOM\nGenerated via west spdx.\n| Total packages | 91 |\n`
+	const issues = checkReadinessReportIntegrity({
+		reportText: report,
+		sbom: normalizeSbom(NCS_SBOM), // real total = 1
+		sbomText: NCS_SBOM, // real tool = west ncs-sbom
+	})
+	const kinds = issues.map((i) => i.kind)
+	assert.ok(kinds.includes("sbom-tool"), `expected sbom-tool issue, got ${kinds.join(",")}`)
+	assert.ok(kinds.includes("package-count"), `expected package-count issue, got ${kinds.join(",")}`)
+})
+
+test("blocks 0-queryable CVE framed as a clean result without the coverage caveat", () => {
+	const report = `# CRA\n${DISCLAIMER}\n${HEDGED_DATED}\n## SBOM (west spdx)\nNo CVEs detected in the SBOM packages.\n`
+	const issues = checkReadinessReportIntegrity({ reportText: report, sbomText: PKG_SBOM, cveQueryable: 0 })
+	assert.ok(
+		issues.some((i) => i.kind === "cve-framing"),
+		"expected cve-framing issue",
+	)
+})
+
+test("passes an honest 0-queryable report (coverage caveat present)", () => {
+	const report = `# CRA\n${DISCLAIMER}\n${HEDGED_DATED}\n## SBOM\nGenerated via west spdx.\n| Total packages | 2 |\nCVE scan: 0 queryable, 1 unidentified — not a complete check. No OSV matches.\n`
+	const issues = checkReadinessReportIntegrity({
+		reportText: report,
+		sbom: normalizeSbom(PKG_SBOM), // total = 2 (matches the report)
+		sbomText: PKG_SBOM, // tool = west spdx (matches the report)
+		cveQueryable: 0,
+	})
+	assert.deepEqual(issues, [], `expected no issues, got ${JSON.stringify(issues)}`)
+})
+
+test("does NOT flag a package count that matches the SBOM", () => {
+	const report = `# CRA\n${DISCLAIMER}\n${HEDGED_DATED}\nGenerated with west-ncs-sbom.\n| Total packages | 1 |\n`
+	const issues = checkReadinessReportIntegrity({ reportText: report, sbom: normalizeSbom(NCS_SBOM), sbomText: NCS_SBOM })
+	assert.ok(!issues.some((i) => i.kind === "package-count" || i.kind === "sbom-tool"))
+})
