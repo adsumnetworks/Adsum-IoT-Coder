@@ -94,3 +94,28 @@ test("does NOT flag a package count that matches the SBOM", () => {
 	const issues = checkReadinessReportIntegrity({ reportText: report, sbom: normalizeSbom(NCS_SBOM), sbomText: NCS_SBOM })
 	assert.ok(!issues.some((i) => i.kind === "package-count" || i.kind === "sbom-tool"))
 })
+
+// F12 — harden against the 2706f regressions.
+test("F12: blocks a verdict-glyph / verdict-word posture table", () => {
+	const report = `# CRA\n${DISCLAIMER}\n${HEDGED_DATED}\n| Secure boot | CONFIG_BOOTLOADER_MCUBOOT=y | ✅ Enabled |\n`
+	const issues = checkReadinessReportIntegrity({ reportText: report })
+	assert.ok(
+		issues.some((i) => i.kind === "verdict-leak"),
+		`expected verdict-leak, got ${issues.map((i) => i.kind).join(",")}`,
+	)
+})
+
+test("F12: blocks a CVE id the scan did not produce (fabricated)", () => {
+	const report = `# CRA\n${DISCLAIMER}\n${HEDGED_DATED}\nThe scan found CVE-2024-49010 on zephyr/docs.\n`
+	const issues = checkReadinessReportIntegrity({ reportText: report, scannedCveIds: [] })
+	assert.ok(
+		issues.some((i) => i.kind === "cve-fabricated"),
+		"expected cve-fabricated",
+	)
+})
+
+test("F12: allows a CVE id that IS in the scan results", () => {
+	const report = `# CRA\n${DISCLAIMER}\n${HEDGED_DATED}\nScan found CVE-2024-45491 in libexpat.\n`
+	const issues = checkReadinessReportIntegrity({ reportText: report, scannedCveIds: ["CVE-2024-45491"] })
+	assert.ok(!issues.some((i) => i.kind === "cve-fabricated"))
+})
