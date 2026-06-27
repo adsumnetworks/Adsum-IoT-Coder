@@ -22,7 +22,11 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { scanForMissingStructure } from "../knowledge/honesty/structureScan"
+import { scanForVerdictLeaks } from "../knowledge/honesty/verdictScan"
 import { type NormalizedSbom, normalizeSbom } from "./sbomNormalize"
+
+/** CVE id, e.g. CVE-2024-49010. */
+const CVE_ID_RE = /\bCVE-\d{4}-\d{4,7}\b/gi
 
 export interface IntegrityIssue {
 	kind: string
@@ -80,6 +84,10 @@ export function checkReadinessReportIntegrity(input: {
 	sbomText?: string | null
 	/** `coverage.queryable` from the run's cve-scan json, if a CVE scan was run. */
 	cveQueryable?: number | null
+	/** Every CVE id present in the run's cve-scan json. If provided, any CVE the report cites that is NOT in
+	 *  this set is flagged as fabricated (F12 — a real run claimed "scan found CVE-2024-49010" that the host
+	 *  scan never produced). Undefined = no scan ran → don't validate cited ids. */
+	scannedCveIds?: string[] | null
 }): IntegrityIssue[] {
 	const issues: IntegrityIssue[] = []
 	const text = input.reportText
@@ -112,6 +120,29 @@ export function checkReadinessReportIntegrity(input: {
 		})
 	}
 
+	// F12: verdict-mode leaks — ✅/⚠️/❌, ENABLED/MET/READY/COMPLIANT, numeric scores. A CRA report is
+	// evidence-mode; a real run wrote a "✅ Enabled" posture table at the wrap-up (default "prose" mode).
+	const verdictLeaks = scanForVerdictLeaks(text)
+	if (verdictLeaks.length > 0) {
+		const samples = [...new Set(verdictLeaks.map((l) => l.match))].slice(0, 5).join(", ")
+		issues.push({
+			kind: "verdict-leak",
+			detail: `Report uses verdict-style status (${samples}${verdictLeaks.length > 5 ? ", …" : ""}). CRA reports are evidence-mode: no ✅/⚠️/❌, no ENABLED/MET/READY/COMPLIANT, no scores — state the literal evidence + what to verify.`,
+		})
+	}
+
+	// F12: any CVE the report attributes must come from the scan. A real run fabricated "scan found CVE-2024-49010".
+	if (input.scannedCveIds) {
+		const known = new Set(input.scannedCveIds.map((s) => s.toUpperCase()))
+		const fabricated = [...new Set((text.match(CVE_ID_RE) ?? []).map((s) => s.toUpperCase()))].filter((id) => !known.has(id))
+		if (fabricated.length > 0) {
+			issues.push({
+				kind: "cve-fabricated",
+				detail: `Report cites CVE id(s) the scan did not produce: ${fabricated.join(", ")}. Cite only CVEs from compliance/cve-scan-*.json — remove these or re-run the scan.`,
+			})
+		}
+	}
+
 	for (const m of scanForMissingStructure(text, "cra-readiness")) {
 		issues.push({ kind: `missing-${m.id}`, detail: m.why })
 	}
@@ -134,16 +165,18 @@ function findSiblingSpdx(reportDir: string): string | null {
 	return null
 }
 
-/** `coverage.queryable` from a sibling `cve-scan-*.json`, or null if none/unreadable. */
-function findSiblingCveQueryable(reportDir: string): number | null {
+/** From a sibling `cve-scan-*.json`: the queryable count + every CVE id present. null if none/unreadable. */
+function findSiblingCve(reportDir: string): { queryable: number | null; cveIds: string[] } | null {
 	try {
 		const f = fs.readdirSync(reportDir).find((n) => /^cve-scan.*\.json$/i.test(n))
 		if (!f) {
 			return null
 		}
-		const j = JSON.parse(fs.readFileSync(path.join(reportDir, f), "utf8"))
+		const raw = fs.readFileSync(path.join(reportDir, f), "utf8")
+		const j = JSON.parse(raw)
 		const q = j?.coverage?.queryable
-		return typeof q === "number" ? q : null
+		const cveIds = [...new Set((raw.match(CVE_ID_RE) ?? []).map((s) => s.toUpperCase()))]
+		return { queryable: typeof q === "number" ? q : null, cveIds }
 	} catch {
 		return null
 	}
@@ -160,11 +193,13 @@ export function gatherAndCheckReadinessIntegrity(absolutePath: string, content: 
 		}
 		const dir = path.dirname(absolutePath)
 		const sbomText = findSiblingSpdx(dir)
+		const cve = findSiblingCve(dir)
 		return checkReadinessReportIntegrity({
 			reportText: content,
 			sbom: sbomText ? normalizeSbom(sbomText) : null,
 			sbomText,
-			cveQueryable: findSiblingCveQueryable(dir),
+			cveQueryable: cve?.queryable ?? null,
+			scannedCveIds: cve?.cveIds ?? null,
 		})
 	} catch {
 		return []
