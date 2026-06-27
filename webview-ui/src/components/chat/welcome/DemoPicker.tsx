@@ -13,6 +13,12 @@ interface DemoPickerProps {
 	 * no sample run yet) doesn't see "another".
 	 */
 	hasRunDemo?: boolean
+	/**
+	 * Scenario id to omit from the list. Used to drop "cra-sample" when no project is open, because the
+	 * no-project "Preview CRA readiness" intent card already runs that sample — so the picker would otherwise
+	 * show two buttons for the one action (F2).
+	 */
+	excludeScenarioId?: string
 }
 
 // Neutral surfaces for the demoted "rerun" state — quiet, no brand fill (the samples are no longer the hero).
@@ -30,7 +36,14 @@ const NEUTRAL_ICON_BG = "color-mix(in srgb, var(--vscode-foreground) 10%, transp
  * Rows are domain-agnostic: they read title / honestLabel / platform / icon straight off each scenario,
  * so adding a sample to DEMO_SCENARIOS surfaces it here with no change to this component.
  */
-const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, variant = "hero", hasRunDemo = false }) => {
+const DemoPicker: React.FC<DemoPickerProps> = ({
+	onStartDemo,
+	disabled = false,
+	variant = "hero",
+	hasRunDemo = false,
+	excludeScenarioId,
+}) => {
+	const scenarios = DEMO_SCENARIO_LIST.filter((s) => s.id !== excludeScenarioId)
 	const isRerun = variant === "rerun"
 	const containerBorder = isRerun ? NEUTRAL_BORDER : BRAND_CYAN_600
 	const containerBg = isRerun ? "transparent" : brandSubtle(BRAND_CYAN_600, 5)
@@ -68,7 +81,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, 
 			)}
 
 			<div style={{ display: "flex", flexDirection: "column", gap: isRerun ? "6px" : "8px" }}>
-				{DEMO_SCENARIO_LIST.map((s) => {
+				{scenarios.map((s) => {
 					// A placeholder ("coming soon") row is disabled like the global disabled state, so it can't be
 					// clicked into a dead end until its owner wires the real demo path.
 					const rowDisabled = disabled || !!s.comingSoon
