@@ -170,7 +170,8 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 		id: "openProject",
 		icon: "folder-opened",
 		title: "Open my project",
-		description: "Point me at your firmware folder — I'll build it, debug live logs, and add features to your real code.",
+		description:
+			"Point me at your firmware folder — I'll help you build it, stream live logs while you debug, and add features to your real code.",
 	},
 ]
 

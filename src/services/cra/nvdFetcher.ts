@@ -15,8 +15,22 @@ export const nvdCveUrl = (cpeName: string) => `${NVD_CVE_API}?cpeName=${encodeUR
 /** Injected transport: GET a URL with optional headers, return the response text. Throws on non-2xx / transport error. */
 export type HttpGet = (url: string, headers?: Record<string, string>) => Promise<string>
 
+/** Per-request deadline: a hung NVD socket must NOT hang the whole scan (no progress indicator → an open
+ *  connection looks "stuck" forever). On timeout we THROW → the caller surfaces "scan unavailable". */
+const HTTP_TIMEOUT_MS = 25_000
+
 const defaultHttpGet: HttpGet = async (url, headers) => {
-	const res = await fetch(url, headers ? { headers } : undefined)
+	let res: Response
+	try {
+		res = await fetch(url, { headers, signal: AbortSignal.timeout(HTTP_TIMEOUT_MS) })
+	} catch (e) {
+		if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
+			throw new Error(
+				`NVD query timed out after ${HTTP_TIMEOUT_MS / 1000}s (network slow, unreachable, or rate-limited) — scan unavailable, not a clean result`,
+			)
+		}
+		throw new Error(`NVD query failed: ${e instanceof Error ? e.message : String(e)}`)
+	}
 	if (!res.ok) {
 		throw new Error(`NVD query failed: HTTP ${res.status} ${res.statusText}`)
 	}

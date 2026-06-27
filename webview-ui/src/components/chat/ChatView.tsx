@@ -31,6 +31,7 @@ import {
 	useMessageHandlers,
 	useScrollBehavior,
 } from "./chat-view"
+import CraProgressRail from "./cra/CraProgressRail"
 import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
 import { isFreshNordicCompletion, NORDIC_MODES, type NordicModeId } from "./nordicModes"
@@ -453,6 +454,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			<div className="flex flex-col flex-1 overflow-hidden">
 				{showNavbar && <Navbar />}
 				<FreeTierStrip />
+				{task && <CraProgressRail messages={messages} />}
 				{task ? (
 					<TaskSection
 						apiMetrics={apiMetrics}
