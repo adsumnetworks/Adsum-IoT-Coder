@@ -9,6 +9,7 @@ import { resolveAdvisoryHint } from "@/services/cra/advisoryHints"
 import { defaultBuildEvidenceReaders } from "@/services/cra/buildEvidence"
 import { normalizeModuleName } from "@/services/cra/componentPurlMap"
 import { runCveScanHost } from "@/services/cra/cveScanHost"
+import { makeEuvdFetcher } from "@/services/cra/euvdFetcher"
 import { type ModuleRefsResolver, type ModuleSecurityRefs, readModuleSecurityRefs } from "@/services/cra/moduleSecurityRefs"
 import { makeNvdFetcher } from "@/services/cra/nvdFetcher"
 import { makeOsvFetcher } from "@/services/cra/osvFetcher"
@@ -154,6 +155,12 @@ const defaultDeps: CveScanHandlerDeps = {
 				// embedded C libs (mbed TLS et al.). Offline-safe degradation: a network error throws and is
 				// surfaced as "scan unavailable", never a false-clean.
 				nvdFetcher: makeNvdFetcher(),
+				// EUVD: confirm each matched CVE against the EU Vulnerability Database (the CRA's named source) →
+				// EUVD id + EPSS + KEV. Per-id failures degrade (never fail the scan). NVD/OSV stay the version-
+				// precise matchers (EUVD carries no CPE); EUVD is the EU-authoritative confirmation layer.
+				euvdFetcher: makeEuvdFetcher(),
+				// Source attribution reflects what actually ran (was "OSV"-only, inaccurate — 2806g).
+				source: "EUVD + NVD + OSV",
 			},
 		),
 	mkdir: (dir) => mkdirSync(dir, { recursive: true }),

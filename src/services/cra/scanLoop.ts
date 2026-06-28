@@ -15,6 +15,7 @@
  */
 import { type ApplicabilityHint, assessApplicability, type BuildEvidence } from "./applicability"
 import { applyCuratedPurls, type ModuleVersionResolver } from "./componentPurlMap"
+import { type EuvdFetcher, type EuvdRecord, enrichWithEuvd } from "./euvdFetcher"
 import { type EvidenceReportInput, formatCveScanJson, formatCveScanReport, type ScanFinding } from "./evidenceReport"
 import { applyModuleRefs, type ModuleRefsResolver } from "./moduleSecurityRefs"
 import { type NvdFetcher, scanWithNvd } from "./nvdMatch"
@@ -60,6 +61,12 @@ export interface ScanLoopInput {
 	 * no NVD path (default behaviour unchanged, no extra network).
 	 */
 	nvdFetcher?: NvdFetcher
+	/**
+	 * Optional EUVD confirmation fetcher. When provided, each matched CVE id is looked up in the EU Vulnerability
+	 * Database (the CRA's named source) → its EUVD id + EPSS + KEV flag are surfaced. Per-id failures degrade
+	 * (never fail the scan). Omitted → no EUVD calls (default behaviour unchanged).
+	 */
+	euvdFetcher?: EuvdFetcher
 }
 
 export interface ScanLoopResult {
@@ -136,6 +143,14 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 			)
 		: new Map<string, EnrichedVuln>()
 
+	// Optional EUVD confirmation: only touches the network when an euvdFetcher is provided; per-id failures degrade.
+	const euvd = input.euvdFetcher
+		? await enrichWithEuvd(
+				findings.flatMap((f) => f.match.vulnIds),
+				input.euvdFetcher,
+			)
+		: new Map<string, EuvdRecord>()
+
 	const reportInput: EvidenceReportInput = {
 		findings,
 		skipped,
@@ -143,6 +158,7 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 		asOf: input.asOf,
 		source: input.source,
 		enrichment,
+		euvd,
 	}
 	return {
 		report: formatCveScanReport(reportInput),

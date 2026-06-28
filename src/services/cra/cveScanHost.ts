@@ -15,6 +15,7 @@
 import type { BuildEvidenceReaders } from "./buildEvidence"
 import { readBuildEvidence } from "./buildEvidence"
 import type { ModuleVersionResolver } from "./componentPurlMap"
+import type { EuvdFetcher } from "./euvdFetcher"
 import type { ModuleRefsResolver } from "./moduleSecurityRefs"
 import type { NvdFetcher } from "./nvdMatch"
 import type { OsvVulnFetcher } from "./osvEnrich"
@@ -40,6 +41,9 @@ export interface CveScanHostDeps {
 	resolveModuleRefs?: ModuleRefsResolver
 	/** Optional CPE→NVD fetcher (F11); when provided, CPE-bearing components are also scanned against NVD. */
 	nvdFetcher?: NvdFetcher
+	/** Optional EUVD confirmation fetcher; when provided, matched CVEs are confirmed against the EU Vulnerability
+	 *  Database (the CRA's named source) → EUVD id + EPSS + KEV. Per-id failures degrade. */
+	euvdFetcher?: EuvdFetcher
 }
 
 export interface CveScanHostInput {
@@ -77,5 +81,6 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 		resolveModuleVersion: deps.resolveModuleVersion,
 		resolveModuleRefs: deps.resolveModuleRefs,
 		nvdFetcher: deps.nvdFetcher,
+		euvdFetcher: deps.euvdFetcher,
 	})
 }
