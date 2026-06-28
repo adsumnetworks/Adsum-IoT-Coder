@@ -1,20 +1,17 @@
-import { BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha } from "../brandColors"
+import { BRAND_CYAN_700 } from "../brandColors"
 
-/** The five CRA phases, in order. The in-flow step marker is the progress surface (the floating rail was removed
- * in favour of the harness checklist + model-emitted mermaid progress diagrams). */
+/** The five CRA phases, in order. Progress is shown by the harness checklist (the tracker) + the model's
+ * per-step mermaid diagram (the visual); this marker is the scannable in-flow chapter title. */
 export const CRA_STEPS = ["Inventory", "Scan CVEs", "Posture", "Triage", "Next"] as const
 
 /**
  * In-flow CRA step marker (the "big title as the conversation evolves" piece). The cra-readiness workflow emits
  * a `### Step N/5 · Title` banner as it starts each phase; MarkdownBlock renders any heading matching that shape
- * as THIS styled chapter marker — a step chip + a big title + a mini progress strip — so the progressing line
- * appears in the conversation at every relevant step, aligned with the floating rail + the to-do checklist (one
- * 5-step model, three surfaces). COLOUR = PROGRESS ONLY (cyan), never a findings verdict.
+ * as THIS styled chapter marker — a step chip + a big title + a `/5` counter — so the phase is easy to find when
+ * scrolling a long run. Progress *indication* lives in the checklist + the per-step mermaid; the marker no longer
+ * duplicates it with dots (one job each: title here, progress there). COLOUR = PROGRESS ONLY (cyan), never a verdict.
  */
 
-// Brand cyan = PROGRESS accent (matches the rail + DemoPicker/IntentCard); neutral token for pending.
-const ACCENT = BRAND_CYAN_600
-const ACCENT_GLOW = brandAlpha(BRAND_CYAN_600, 0.22)
 const MUTED = "var(--vscode-descriptionForeground, #8a93a0)"
 
 /** A real banner is short; cap the title so a model that dumps a wall of text can't render as a giant marker. */
@@ -38,29 +35,6 @@ export function parseStepHeading(text: string): { step: number; title: string } 
 	}
 	return { step, title: title || CRA_STEPS[step - 1] }
 }
-
-const MiniDots = ({ current }: { current: number }) => (
-	<span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
-		{CRA_STEPS.map((label, i) => {
-			const step = i + 1
-			const lit = step <= current
-			return (
-				<span
-					aria-hidden
-					key={label}
-					style={{
-						width: 7,
-						height: 7,
-						borderRadius: "50%",
-						background: lit ? ACCENT : "transparent",
-						border: `1.5px solid ${lit ? ACCENT : MUTED}`,
-						boxShadow: step === current ? `0 0 0 2px ${ACCENT_GLOW}` : "none",
-					}}
-				/>
-			)
-		})}
-	</span>
-)
 
 /** The styled chapter marker rendered in place of a `### Step N/5 ·` heading. */
 export const CraStepMarker = ({ step, title }: { step: number; title: string }) => (
@@ -95,7 +69,6 @@ export const CraStepMarker = ({ step, title }: { step: number; title: string }) 
 		<span style={{ fontSize: 15, fontWeight: 700, color: "var(--vscode-foreground, #e6edf3)", flex: 1, minWidth: 0 }}>
 			{title}
 		</span>
-		<MiniDots current={step} />
 		<span style={{ fontSize: 10.5, color: MUTED, flex: "none" }}>
 			{step}/{CRA_STEPS.length}
 		</span>
