@@ -4,7 +4,16 @@
  */
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { applyCuratedPurls, COMPONENT_PURL_MAP, curatedCount, curatedPurlFor, normalizeModuleName } from "./componentPurlMap"
+import {
+	applyCuratedCpes,
+	applyCuratedPurls,
+	COMPONENT_CPE_MAP,
+	COMPONENT_PURL_MAP,
+	curatedCount,
+	curatedCpeFor,
+	curatedPurlFor,
+	normalizeModuleName,
+} from "./componentPurlMap"
 import { normalizeSbom } from "./sbomNormalize"
 
 test("normalizeModuleName: strips -deps, lowercases, _→-", () => {
@@ -87,4 +96,44 @@ PackageVersion: 1.9.4
 	const after = applyCuratedPurls(sbom)
 	assert.equal(after.components[0].purl, "pkg:github/lz4/lz4@1.9.4")
 	assert.equal(after.components[0].purlSource, "curated")
+})
+
+// --- curated CPE map (platform cores the SBOM tool omits — Zephyr/MCUboot) ---
+
+test("normalizeModuleName: strips -sources too (zephyr-sources → zephyr, the west spdx core name)", () => {
+	assert.equal(normalizeModuleName("zephyr-sources"), "zephyr")
+})
+
+test("COMPONENT_CPE_MAP: every entry has a cpe:2.3 prefix + a verifiedNote", () => {
+	for (const [k, v] of Object.entries(COMPONENT_CPE_MAP)) {
+		assert.match(v.prefix, /^cpe:2\.3:[oah]:/, `${k} prefix must be a CPE 2.3 vendor:product`)
+		assert.ok(v.verifiedNote.length > 0, `${k} needs a verifiedNote`)
+	}
+})
+
+test("curatedCpeFor: semver → CPE; a git SHA → undefined (never fabricates a version match)", () => {
+	assert.equal(curatedCpeFor("zephyr", "4.2.99"), "cpe:2.3:o:zephyrproject:zephyr:4.2.99:*:*:*:*:*:*:*")
+	assert.equal(curatedCpeFor("zephyr-sources", "v4.2.99"), "cpe:2.3:o:zephyrproject:zephyr:4.2.99:*:*:*:*:*:*:*")
+	assert.equal(curatedCpeFor("zephyr", "ec78104f15691cccd94682cf4b22e0a013f28dd8"), undefined) // SHA → no CPE
+	assert.equal(curatedCpeFor("zephyr", undefined), undefined)
+	assert.equal(curatedCpeFor("totally-unknown", "4.2.99"), undefined) // unmapped → no CPE
+})
+
+test("applyCuratedCpes: the SHA-versioned Zephyr core + a semver resolver → CPE filled, NVD-queryable", () => {
+	// Real shape: west spdx emits the Zephyr core as `zephyr-sources` with a git SHA and NO CPE/PURL.
+	const sbom = normalizeSbom(`SPDXVersion: SPDX-2.3
+
+PackageName: zephyr-sources
+PackageVersion: ec78104f15691cccd94682cf4b22e0a013f28dd8-dirty
+`)
+	const before = sbom.components[0]
+	assert.equal(before.cpe, undefined)
+	// No resolver → the SHA can't form a CPE → stays an honest gap (no fabrication).
+	assert.equal(applyCuratedCpes(sbom).components[0].cpe, undefined)
+	// With a semver resolver (zephyr/VERSION) → CPE filled, marked curated, now CPE-bearing (NVD-queryable).
+	const after = applyCuratedCpes(sbom, (n) => (n === "zephyr" ? "4.2.99" : undefined))
+	const z = after.components[0]
+	assert.equal(z.cpe, "cpe:2.3:o:zephyrproject:zephyr:4.2.99:*:*:*:*:*:*:*")
+	assert.equal(z.cpeSource, "curated")
+	assert.equal(after.coverage.withCpe, 1)
 })

@@ -199,3 +199,39 @@ test("zero matches from a real query → honest no-match framing (not 'clean')",
 	assert.match(r.report, /not a complete check/)
 	assert.equal(isVerdictClean(r.report), true)
 })
+
+test("Zephyr CORE detection (P1a): curated CPE + semver resolver → CPE→NVD finds the core's CVE", async () => {
+	// Real shape: `west spdx` emits the Zephyr core as `zephyr-sources` with a git SHA and NO CPE/PURL — so it is
+	// undetectable as-is. Fake NVD returns a Zephyr CVE ONLY for the zephyr CPE (proving the curated CPE reached it).
+	const zephyrSbom = `SPDXVersion: SPDX-2.3
+
+PackageName: zephyr-sources
+PackageVersion: ec78104f15691cccd94682cf4b22e0a013f28dd8-dirty
+`
+	const nvd: NvdFetcher = async (cpe) =>
+		cpe.includes("zephyrproject:zephyr")
+			? JSON.stringify({ vulnerabilities: [{ cve: { id: "CVE-2025-10456" } }] })
+			: JSON.stringify({ vulnerabilities: [] })
+
+	// WITHOUT the core resolver: the SHA can't form a CPE → Zephyr stays a gap → no NVD query → no finding (honest).
+	const without = await runCveScan({
+		spdxText: zephyrSbom,
+		evidence: {},
+		asOf: "2026-06-28",
+		fetcher: noVulnFetcher,
+		nvdFetcher: nvd,
+	})
+	assert.equal(without.findings.length, 0)
+
+	// WITH the core resolver (zephyr/VERSION → 4.2.99): curated CPE filled → NVD queried → the real CVE surfaces.
+	const withCore = await runCveScan({
+		spdxText: zephyrSbom,
+		evidence: {},
+		asOf: "2026-06-28",
+		fetcher: noVulnFetcher,
+		nvdFetcher: nvd,
+		resolveCoreVersion: (n) => (n === "zephyr" ? "4.2.99" : undefined),
+	})
+	const ids = withCore.findings.flatMap((f) => f.match.vulnIds)
+	assert.ok(ids.includes("CVE-2025-10456"), `expected the Zephyr core CVE; got ${ids.join(",") || "none"}`)
+})

@@ -14,7 +14,7 @@
  * behind a gated-out sibling. Per-CVE findings keep each verdict faithful and match how the advisory map is keyed.
  */
 import { type ApplicabilityHint, assessApplicability, type BuildEvidence } from "./applicability"
-import { applyCuratedPurls, type ModuleVersionResolver } from "./componentPurlMap"
+import { applyCuratedCpes, applyCuratedPurls, type ModuleVersionResolver } from "./componentPurlMap"
 import { type EuvdFetcher, type EuvdRecord, enrichWithEuvd } from "./euvdFetcher"
 import { type EvidenceReportInput, formatCveScanJson, formatCveScanReport, type ScanFinding } from "./evidenceReport"
 import { applyModuleRefs, type ModuleRefsResolver } from "./moduleSecurityRefs"
@@ -50,6 +50,12 @@ export interface ScanLoopInput {
 	 * CPEs (older `ncs-sbom`). Omitted → no module.yml enrichment.
 	 */
 	resolveModuleRefs?: ModuleRefsResolver
+	/**
+	 * Optional platform-core SEMVER resolver (e.g. zephyr/VERSION → "4.2.99"). When provided, the curated CPE map
+	 * fills a CPE on the cores the SBOM tool omits (Zephyr, MCUboot) so the CPE→NVD path detects their CVEs. Must
+	 * yield a semver, NOT the git SHA the SBOM records. Omitted → no core-CPE enrichment.
+	 */
+	resolveCoreVersion?: ModuleVersionResolver
 	/**
 	 * Optional severity/fixed-version enrichment (§4/§11). When provided, each matched vuln is fetched and its
 	 * CVSS vector + fixed version are surfaced verbatim. Omitted → no enrichment (and no extra network calls).
@@ -94,6 +100,11 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	// module.yml refs (F5, opt-in): fill CPE/PURL the SBOM tool didn't emit, from the modules' own declarations.
 	if (input.resolveModuleRefs) {
 		normalized = applyModuleRefs(normalized, input.resolveModuleRefs)
+	}
+	// Curated CPE map (opt-in): give the platform cores (Zephyr, MCUboot) the CPE west spdx omits, keyed on an
+	// SDK-resolved semver — so the CPE→NVD path below can detect their CVEs (Zephyr is otherwise undetectable).
+	if (input.resolveCoreVersion) {
+		normalized = applyCuratedCpes(normalized, input.resolveCoreVersion)
 	}
 	// Pass ALL components (not queryableComponents) so planOsvScan keeps the cpe-only / no-identifier skip records.
 	const osvScan = await scanWithOsv(normalized.components, input.fetcher)
