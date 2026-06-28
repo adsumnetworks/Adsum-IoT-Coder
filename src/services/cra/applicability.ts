@@ -10,7 +10,7 @@
  *    as a verdict — only "likely … verify". Deterministic + fixture-testable; no network, no model content.
  */
 
-export type ApplicabilitySignal = "config-gated-out" | "not-linked" | "linked" | "unknown"
+export type ApplicabilitySignal = "config-gated-out" | "not-linked" | "linked" | "config-present" | "unknown"
 
 export interface ApplicabilityVerdict {
 	signal: ApplicabilitySignal
@@ -76,6 +76,15 @@ export function assessApplicability(hint: ApplicabilityHint | undefined, evidenc
 		return {
 			signal: "linked",
 			note: `${hint.codeSymbol} is linked into your build — it may be reachable; verify against the advisory.`,
+		}
+	}
+	// Weak POSITIVE (design/28): the gating Kconfig is ENABLED → the affected code is compiled, so the CVE may be
+	// reachable. Stays asymmetric — a hedged "may be reachable; verify", NEVER a confident "affected". Lets a
+	// config-only hint (no shippable symbol) promote a finding from "unknown" to an actionable "verify this one".
+	if (hint?.gateSymbol && evidence.dotConfig && kconfigState(evidence.dotConfig, hint.gateSymbol) === true) {
+		return {
+			signal: "config-present",
+			note: `${hint.gateSymbol} is enabled in your build, so the affected code is compiled — may be reachable; verify.`,
 		}
 	}
 	return {

@@ -31,8 +31,10 @@ export interface EvidenceReportInput {
 	 *  EUVD data to render this run" (a pure-formatter input) — absent → nothing rendered. */
 	euvd?: Map<string, EuvdRecord>
 	/** EUVD discover-by-product CANDIDATES (not version-matched by OSV/NVD) — the EU-authoritative catch for CVEs
-	 *  NVD's CPE configs miss, surfaced as a hedged "version not auto-confirmed; verify" list. Core; `?` = none this run. */
-	euvdCandidates?: EuvdRecord[]
+	 *  NVD's CPE configs miss, surfaced as a hedged "version not auto-confirmed; verify" list. Core; `?` = none this run.
+	 *  design/28: each may carry an `applicability` verdict (from a curated hint + build evidence) — a reachable one
+	 *  (config-present / linked) is surfaced FIRST, above the cap, so a hero CVE like CVE-2025-10456 isn't buried. */
+	euvdCandidates?: Array<EuvdRecord & { applicability?: ApplicabilityVerdict }>
 	/** Label for that candidate set, e.g. "zephyr 4.2.99". */
 	euvdProductLabel?: string
 	/** T3 (design/25): set when the SBOM file was non-empty but parsed to 0 components — almost always the WRONG
@@ -42,6 +44,9 @@ export interface EvidenceReportInput {
 	/** Per-source raw return counts (design/28) — the "what each DB returned" brief for the interactive Phase-2
 	 *  view. Facts, not a verdict. Absent → the sources line is omitted. */
 	sources?: { osv: number; nvd: number; euvdProduct: number; euvdConfirmed: number }
+	/** Per-source availability (design/28 graceful degradation). A wired source that FAILED is "unavailable" → the
+	 *  report renders a PARTIAL scan ("<source> didn't run — NOT a clean result"). `undefined` = source not wired. */
+	sourceStatus?: { osv?: "ok" | "unavailable"; nvd?: "ok" | "unavailable" }
 }
 
 /** Max EUVD discover-by-product candidates rendered inline (the rest summarised as "+N more"). */
@@ -88,39 +93,64 @@ const provenanceCaption = (source: string, asOf: string): string =>
  * component; applicability to your exact build is not auto-determined; verify". Evidence-mode (CVSS/EPSS/KEV are
  * sourced facts), every line ends in "verify". Empty when there are no candidates.
  */
+/** The id · CVSS · EPSS · KEV fact bits for one EUVD candidate (sourced facts, never a verdict). */
+function euvdBits(c: EuvdRecord): string {
+	const bits = [`[${c.cveId}](https://euvd.enisa.europa.eu) (${c.euvdId})`]
+	if (c.baseScore != null) {
+		bits.push(`CVSS ${c.baseScore}`)
+	}
+	if (c.epss != null) {
+		bits.push(`EPSS ${Math.round(c.epss * 100)}%`)
+	}
+	if (c.exploited) {
+		bits.push("flagged actively exploited (KEV)")
+	}
+	return bits.join(" · ")
+}
+
 function renderEuvdCandidates(input: EvidenceReportInput): string[] {
 	const cands = input.euvdCandidates ?? []
 	if (cands.length === 0) {
 		return []
 	}
-	// Sort policy (design/25 T6): EPSS-first (exploit-likelihood), CVSS baseScore-second — documented in cve-scan.md.
-	const sorted = [...cands].sort((a, b) => (b.epss ?? 0) - (a.epss ?? 0) || (b.baseScore ?? 0) - (a.baseScore ?? 0))
-	const shown = sorted.slice(0, EUVD_CANDIDATE_CAP)
+	// design/28: a candidate the build evidence makes REACHABLE (a curated hint → config-present / linked) is the
+	// signal worth the dev's attention — surface it FIRST and ALWAYS (above the EPSS cap) so a hero like
+	// CVE-2025-10456 isn't buried. The rest stay EPSS-first (design/25 T6), capped.
+	const isReachable = (c: { applicability?: ApplicabilityVerdict }) =>
+		c.applicability?.signal === "config-present" || c.applicability?.signal === "linked"
+	const byEpss = (a: EuvdRecord, b: EuvdRecord) => (b.epss ?? 0) - (a.epss ?? 0) || (b.baseScore ?? 0) - (a.baseScore ?? 0)
+	const reachable = [...cands].filter(isReachable).sort(byEpss)
+	const rest = [...cands].filter((c) => !isReachable(c)).sort(byEpss)
+	const shownRest = rest.slice(0, EUVD_CANDIDATE_CAP)
 	const label = input.euvdProductLabel ? ` for ${input.euvdProductLabel}` : ""
+	const upgradeTarget = input.euvdProductLabel ? input.euvdProductLabel.split(" ")[0] : "the SDK"
+
 	const out: string[] = [
 		"",
 		`## Additional EU Vulnerability Database advisories${label} (version not auto-confirmed — verify)`,
 		"",
 		"> The EU Vulnerability Database (EUVD) lists these for this component, but does not publish machine-readable " +
-			"version ranges — so applicability to YOUR exact build is not auto-determined. Open each and verify. " +
-			"High-severity first.",
+			"version ranges — so applicability to YOUR exact build is not auto-determined. Open each and verify.",
 		"",
 	]
-	for (const c of shown) {
-		const bits = [`[${c.cveId}](https://euvd.enisa.europa.eu) (${c.euvdId})`]
-		if (c.baseScore != null) {
-			bits.push(`CVSS ${c.baseScore}`)
+	if (reachable.length > 0) {
+		out.push("Likely reachable in your build (build evidence) — verify + act first:")
+		for (const c of reachable) {
+			const note = c.applicability?.note ?? "may be reachable; verify."
+			out.push(
+				`- ${euvdBits(c)} — ${note} Mitigate: upgrade ${upgradeTarget} past the fix, then re-scan to confirm it cleared.`,
+			)
 		}
-		if (c.epss != null) {
-			bits.push(`EPSS ${Math.round(c.epss * 100)}%`)
+		out.push("")
+		if (rest.length > 0) {
+			out.push("Other advisories to verify (version not auto-confirmed):")
 		}
-		if (c.exploited) {
-			bits.push("flagged actively exploited (KEV)")
-		}
-		out.push(`- ${bits.join(" · ")} — verify whether it applies to your build.`)
 	}
-	if (sorted.length > shown.length) {
-		out.push(`- … +${sorted.length - shown.length} more in the EU DB (open the EUVD for the full list).`)
+	for (const c of shownRest) {
+		out.push(`- ${euvdBits(c)} — verify whether it applies to your build.`)
+	}
+	if (rest.length > shownRest.length) {
+		out.push(`- … +${rest.length - shownRest.length} more in the EU DB (open the EUVD for the full list).`)
 	}
 	return out
 }
@@ -138,6 +168,19 @@ export function formatCveScanReport(input: EvidenceReportInput): string {
 	// the "0 queryable" below is never read as "0 vulnerabilities / clean".
 	if (input.sbomParseWarning) {
 		lines.push(`> Note — ${input.sbomParseWarning}`, "")
+	}
+
+	// design/28: a wired source that FAILED → loud PARTIAL-scan banner so absent findings are never read as clean.
+	const downSources = [
+		input.sourceStatus?.nvd === "unavailable" ? "NVD" : null,
+		input.sourceStatus?.osv === "unavailable" ? "OSV" : null,
+	].filter(Boolean)
+	if (downSources.length > 0) {
+		lines.push(
+			`> PARTIAL SCAN — ${downSources.join(" + ")} did not run this scan (timed out / unreachable / rate-limited). ` +
+				"Coverage is INCOMPLETE — this is NOT a clean result; re-run to include it. Absent findings here do not mean none exist.",
+			"",
+		)
 	}
 
 	// Parity rule (§8.4): when there are gaps we ALWAYS render the reason breakdown — never a bare count — so
@@ -158,8 +201,10 @@ export function formatCveScanReport(input: EvidenceReportInput): string {
 	// (NVD by CPE + OSV by PURL → findings, EUVD-confirmed) is kept distinct from EUVD discover-by-product leads.
 	if (input.sources) {
 		const s = input.sources
+		const nvdCell = input.sourceStatus?.nvd === "unavailable" ? "unavailable (re-run)" : `${s.nvd}`
+		const osvCell = input.sourceStatus?.osv === "unavailable" ? "unavailable (re-run)" : `${s.osv}`
 		lines.push(
-			`Sources queried (as of ${input.asOf}): NVD by CPE ${s.nvd} · OSV by PURL ${s.osv} → ${input.findings.length} version-matched findings` +
+			`Sources queried (as of ${input.asOf}): NVD by CPE ${nvdCell} · OSV by PURL ${osvCell} → ${input.findings.length} version-matched findings` +
 				` (EUVD-confirmed ${s.euvdConfirmed}); EU Vulnerability Database (ENISA) by product ${s.euvdProduct} additional advisories to verify.`,
 			"",
 		)
@@ -249,7 +294,15 @@ export interface CveScanJson {
 	skipped: Array<{ component: string; version: string; reason: DropReason }>
 	/** EUVD discover-by-product candidates (present only when found) — the EU-authoritative list for the detected
 	 *  SDK that NVD's CPE may miss; NOT version-confirmed (EUVD has no ranges), so hedged + "verify". */
-	euvdCandidates?: Array<{ id: string; euvdId: string; baseScore: number | null; epss: number | null; exploited: boolean }>
+	euvdCandidates?: Array<{
+		id: string
+		euvdId: string
+		baseScore: number | null
+		epss: number | null
+		exploited: boolean
+		/** Applicability when a curated hint + build evidence assessed it (design/28); omitted when "unknown". */
+		applicability?: { signal: ApplicabilityVerdict["signal"]; note: string }
+	}>
 }
 
 interface OsvSeverityJson {
@@ -295,6 +348,10 @@ export function formatCveScanJson(input: EvidenceReportInput): string {
 						baseScore: c.baseScore ?? null,
 						epss: c.epss ?? null,
 						exploited: c.exploited,
+						// Only emit applicability when a hint actually assessed it (signal !== "unknown") — keeps the JSON honest.
+						...(c.applicability && c.applicability.signal !== "unknown"
+							? { applicability: { signal: c.applicability.signal, note: c.applicability.note } }
+							: {}),
 					})),
 				}
 			: {}),

@@ -326,3 +326,73 @@ test("design/28: per-source counts (the 'what each DB returned' brief) are expos
 	assert.deepEqual(JSON.parse(r.json).sources, { osv: 2, nvd: 1, euvdProduct: 2, euvdConfirmed: 0 })
 	assert.equal(isVerdictClean(r.report), true) // the ribbon stays verdict-clean (facts, not a grade)
 })
+
+test("design/28: NVD failure DEGRADES gracefully — partial scan, OSV/EUVD survive, never a false clean", async () => {
+	const nvdBoom: NvdFetcher = async () => {
+		throw new Error("NVD query timed out after 25s")
+	}
+	// OSV finds a CVE on mbedtls; NVD blows up; the scan must NOT throw — it returns a PARTIAL result.
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-06-28",
+		fetcher: twoVulnFetcher,
+		nvdFetcher: nvdBoom,
+	})
+	assert.match(r.report, /PARTIAL SCAN — NVD did not run/)
+	assert.match(r.report, /NOT a clean result/)
+	assert.match(r.report, /NVD by CPE unavailable \(re-run\)/)
+	assert.ok(r.findings.length > 0, "OSV findings must survive an NVD failure")
+	assert.equal(isVerdictClean(r.report), true)
+})
+
+test("design/28: 0 findings + a failed source reads as PARTIAL, never clean", async () => {
+	const nvdBoom: NvdFetcher = async () => {
+		throw new Error("NVD 503")
+	}
+	const r = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-28", fetcher: noVulnFetcher, nvdFetcher: nvdBoom })
+	assert.match(r.report, /PARTIAL SCAN/)
+	assert.match(r.report, /NOT a clean result/)
+	assert.equal(isVerdictClean(r.report), true)
+})
+
+test("design/28 Part A: a reachable EUVD candidate (CVE-2025-10456, CONFIG_BT_SMP=y) is PROMOTED above the cap", async () => {
+	const { resolveAdvisoryHint } = await import("./advisoryHints")
+	// 12 high-EPSS dummies (no hint → unknown → capped) + the hero with LOW epss but a CONFIG_BT_SMP hint.
+	const dummies = Array.from({ length: 12 }, (_, i) => ({
+		euvdId: `EUVD-X-${i}`,
+		cveId: `CVE-2099-${1000 + i}`,
+		baseScore: 9,
+		epss: 0.9,
+		exploited: false,
+		references: [],
+	}))
+	const hero = {
+		euvdId: "EUVD-2025-30238",
+		cveId: "CVE-2025-10456",
+		baseScore: 7.1,
+		epss: 0.2,
+		exploited: false,
+		references: [],
+	}
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: { dotConfig: "CONFIG_BT_SMP=y\n" }, // build evidence: SMP enabled → the hint fires
+		asOf: "2026-06-28",
+		fetcher: noVulnFetcher,
+		resolveHint: resolveAdvisoryHint,
+		euvdProductFetcher: async () => [...dummies, hero],
+		euvdProductLabel: "zephyr 4.2.99",
+	})
+	const section = r.report.split("Additional EU")[1] ?? ""
+	assert.match(section, /Likely reachable in your build/)
+	// the hero is in the reachable block WITH a mitigation, despite 12 higher-EPSS candidates (cap is 10)
+	const reachableBlock = section.split("Other advisories")[0]
+	assert.match(reachableBlock, /CVE-2025-10456/)
+	assert.match(reachableBlock, /enabled in your build.*may be reachable; verify/)
+	assert.match(reachableBlock, /Mitigate: upgrade zephyr past the fix, then re-scan/)
+	assert.equal(isVerdictClean(r.report), true)
+	// JSON carries the applicability signal on the candidate
+	const cand = JSON.parse(r.json).euvdCandidates.find((c: { id: string }) => c.id === "CVE-2025-10456")
+	assert.equal(cand.applicability.signal, "config-present")
+})

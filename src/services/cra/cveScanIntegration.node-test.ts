@@ -72,12 +72,16 @@ test("applicability flows from real build evidence + the advisory resolver (conf
 	assert.equal(isVerdictClean(r.report), true)
 })
 
-test("a transport error propagates out (the host scan fails loudly, never a false clean)", async () => {
+test("a transport error DEGRADES gracefully (design/28) — PARTIAL scan, loud, never a false clean", async () => {
 	const failing: HttpPost = async () => {
 		throw new Error("HTTP 503")
 	}
-	await assert.rejects(
-		() => runCveScanHost({ sbomText: SBOM }, { fetcher: makeOsvFetcher(failing), readers: readers({}), asOf: "2026-06-25" }),
-		/503/,
+	// OSV is the only wired source and it fails → the scan does NOT throw; it returns a PARTIAL report that names
+	// the down source and refuses to read as clean. (No-SBOM still hard-errors — see the dedicated test.)
+	const r = await runCveScanHost(
+		{ sbomText: SBOM },
+		{ fetcher: makeOsvFetcher(failing), readers: readers({}), asOf: "2026-06-25" },
 	)
+	assert.match(r.report, /PARTIAL SCAN — .*OSV/)
+	assert.match(r.report, /NOT a clean result/)
 })

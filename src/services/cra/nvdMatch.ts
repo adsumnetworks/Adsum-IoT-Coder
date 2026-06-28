@@ -33,6 +33,9 @@ export interface NvdScanResult {
 	matches: NvdMatch[]
 	skipped: NvdSkipped[]
 	queriedCount: number
+	/** "ok" = every CPE was queried; "unavailable" = the fetcher failed (timeout/rate-limit) and the NVD lane is
+	 *  INCOMPLETE — partial matches are kept, but the scan must report this as partial, never a clean result. */
+	status: "ok" | "unavailable"
 }
 
 // Minimal shape of the NVD /cves/2.0 response we read (kept narrow — NVD returns much more).
@@ -77,22 +80,33 @@ export function parseNvdResponse(responseJson: string): NvdVuln[] {
 /**
  * Scan components against NVD by CPE — one request per CPE-bearing component (NVD has no batch endpoint).
  * Components without a CPE are skipped honestly (their PURL path is osvMatch's job — never silently dropped).
- * Throws if the fetcher does (network failure ≠ "no vulns").
+ *
+ * Graceful degradation (design/28): a fetcher failure (timeout / rate-limit / transport) does NOT throw and kill
+ * the whole scan. It STOPS the NVD lane (no point hammering a throttled API), keeps whatever matched so far, and
+ * returns `status: "unavailable"`. The caller surfaces this as a PARTIAL scan ("NVD didn't run — not a clean
+ * result"), so OSV + EUVD still deliver value while the absence of NVD findings is never mistaken for "no CVEs".
  */
 export async function scanWithNvd(components: SbomComponent[], fetcher: NvdFetcher): Promise<NvdScanResult> {
 	const matches: NvdMatch[] = []
 	const skipped: NvdSkipped[] = []
 	let queriedCount = 0
+	let status: "ok" | "unavailable" = "ok"
 	for (const c of components) {
 		if (!c.cpe) {
 			skipped.push({ component: c, reason: "no-cpe" })
 			continue
 		}
 		queriedCount++
-		const vulns = parseNvdResponse(await fetcher(c.cpe))
-		if (vulns.length > 0) {
-			matches.push({ component: c, vulns })
+		try {
+			const vulns = parseNvdResponse(await fetcher(c.cpe))
+			if (vulns.length > 0) {
+				matches.push({ component: c, vulns })
+			}
+		} catch {
+			// NVD unreachable/throttled — stop the lane, keep partial matches, flag it. Honest partial, not a clean.
+			status = "unavailable"
+			break
 		}
 	}
-	return { matches, skipped, queriedCount }
+	return { matches, skipped, queriedCount, status }
 }
