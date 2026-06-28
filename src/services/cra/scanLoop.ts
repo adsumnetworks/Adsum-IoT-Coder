@@ -123,7 +123,7 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	// CPE→NVD (F11, opt-in): query the components OSV can't reach — embedded C libs keyed by CPE, not PURL.
 	const nvdScan = input.nvdFetcher
 		? await scanWithNvd(normalized.components, input.nvdFetcher)
-		: { matches: [], skipped: [], queriedCount: 0 }
+		: { matches: [], skipped: [], queriedCount: 0, status: "ok" as const }
 	const resolve = input.resolveHint ?? (() => undefined)
 
 	// ONE finding per (component, vulnId), deduped across both sources (a CVE can surface in OSV AND NVD).
@@ -178,7 +178,13 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	// already version-matched by OSV/NVD, as hedged "version-not-confirmed" candidates (never as confirmed matches).
 	const foundIds = new Set(findings.flatMap((f) => f.match.vulnIds.map((id) => id.toUpperCase())))
 	const euvdProduct = input.euvdProductFetcher ? await input.euvdProductFetcher() : []
-	const euvdCandidates = euvdProduct.filter((c) => !foundIds.has(c.cveId.toUpperCase()))
+	// design/28: assess each candidate against build evidence via a curated hint, so a reachable lead (e.g.
+	// CVE-2025-10456, gated by CONFIG_BT_SMP) is promoted out of the buried list. EUVD candidates are product-level
+	// (no SBOM component), and resolveAdvisoryHint keys on the CVE id only, so a label-derived stub component suffices.
+	const euvdComp: SbomComponent = { name: (input.euvdProductLabel ?? "core").split(" ")[0], version: "" }
+	const euvdCandidates = euvdProduct
+		.filter((c) => !foundIds.has(c.cveId.toUpperCase()))
+		.map((c) => ({ ...c, applicability: assessApplicability(resolve(c.cveId, euvdComp), input.evidence) }))
 
 	// T3 (design/25): a non-empty SBOM that normalized to 0 components is almost always the WRONG file (not SPDX,
 	// or `app.spdx` with no ids) — not a clean result. Surface it so "0 queryable" is never read as "0 CVEs".
@@ -196,6 +202,14 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 		nvd: nvdScan.matches.reduce((n, m) => n + m.vulns.length, 0),
 		euvdProduct: euvdProduct.length, // EUVD discover-by-product advisories (leads, version-not-confirmed)
 		euvdConfirmed: euvd.size, // matched CVEs also confirmed in the EU Vulnerability Database
+	}
+
+	// Per-source availability (design/28 graceful degradation): a wired source that FAILED → "unavailable" so the
+	// report renders a PARTIAL scan ("<source> didn't run — not a clean result"), never a false clean. EUVD lanes
+	// degrade silently to partial inside their fetchers (existing), so only OSV/NVD carry a hard status here.
+	const sourceStatus = {
+		osv: osvScan.status,
+		nvd: input.nvdFetcher ? nvdScan.status : undefined,
 	}
 
 	// D1 (design/25): the source attribution must reflect what ACTUALLY ran, not a hard-coded string. OSV always
@@ -218,6 +232,7 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 		euvdProductLabel: input.euvdProductLabel,
 		sbomParseWarning,
 		sources,
+		sourceStatus,
 	}
 	return {
 		report: formatCveScanReport(reportInput),

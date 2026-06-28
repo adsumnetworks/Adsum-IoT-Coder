@@ -5,11 +5,12 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { ADVISORY_HINTS, resolveAdvisoryHint } from "./advisoryHints"
 
-test("ships only HARDWARE-VERIFIED entries — the 3 confirmed not-linked exclusions, each provenanced", () => {
-	// Curated 2026-06-27 on NCS 3.2.1 / nrf52840dk: each codeSymbol confirmed ABSENT from a real linked image.
-	assert.deepEqual(Object.keys(ADVISORY_HINTS).sort(), ["CVE-2025-24912", "CVE-2026-34872", "CVE-2026-34877"])
+test("ships only VERIFIED entries — 3 not-linked exclusions + 1 config-present positive (design/28), each provenanced", () => {
+	// 3 not-linked exclusions (codeSymbol confirmed ABSENT, NCS 3.2.1/nrf52840dk) + CVE-2025-10456, a config-present
+	// POSITIVE (CONFIG_BT_SMP=y verified in central_uart prj.conf → "may be reachable; verify", never "affected").
+	assert.deepEqual(Object.keys(ADVISORY_HINTS).sort(), ["CVE-2025-10456", "CVE-2025-24912", "CVE-2026-34872", "CVE-2026-34877"])
 	for (const hint of Object.values(ADVISORY_HINTS)) {
-		assert.ok(/Verified 2026-/.test(hint.verifiedNote), "every entry must cite its hardware verification date")
+		assert.ok(/[Vv]erified 2026-/.test(hint.verifiedNote), "every entry must cite its verification date")
 	}
 })
 

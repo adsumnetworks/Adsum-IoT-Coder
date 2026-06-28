@@ -16,9 +16,10 @@ test("config-gated-out: '# CONFIG_X is not set' form", () => {
 	assert.equal(v.signal, "config-gated-out")
 })
 
-test("config enabled (=y) but no symbol info → unknown (never claims affected)", () => {
+test("config enabled (=y), no symbol info → config-present weak positive (design/28; never claims affected)", () => {
 	const v = assessApplicability({ gateSymbol: "CONFIG_BT_SMP" }, { dotConfig: "CONFIG_BT_SMP=y\n" })
-	assert.equal(v.signal, "unknown")
+	assert.equal(v.signal, "config-present")
+	assert.match(v.note, /may be reachable; verify/) // hedged — NOT "affected"
 })
 
 test("not-linked: code symbol absent from the image → strong exclusion hint", () => {
@@ -58,4 +59,16 @@ test("every note ends in 'verify' and carries no conformity verdict word", () =>
 		assert.match(v.note, /verify/i)
 		assert.doesNotMatch(v.note, /\b(compliant|certified|passes|fixed|resolved|clear)\b/i)
 	}
+})
+
+test("config-present (design/28): gating Kconfig ENABLED → weak POSITIVE 'may be reachable; verify', never 'affected'", () => {
+	const v = assessApplicability({ gateSymbol: "CONFIG_BT_SMP" }, { dotConfig: "CONFIG_BT_SMP=y\n" })
+	assert.equal(v.signal, "config-present")
+	assert.match(v.note, /enabled in your build/)
+	assert.match(v.note, /may be reachable; verify/)
+	// asymmetry held: gate DISABLED still excludes (config-gated-out wins over config-present)
+	assert.equal(
+		assessApplicability({ gateSymbol: "CONFIG_BT_SMP" }, { dotConfig: "# CONFIG_BT_SMP is not set\n" }).signal,
+		"config-gated-out",
+	)
 })

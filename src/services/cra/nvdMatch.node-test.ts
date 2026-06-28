@@ -43,12 +43,17 @@ test("scanWithNvd: queries CPE-bearing components, skips the rest (never silentl
 	assert.deepEqual(res.skipped, [{ component: comps[1], reason: "no-cpe" }])
 })
 
-test("scanWithNvd: a fetcher error propagates (a network failure is NOT a clean result)", async () => {
-	await assert.rejects(
-		scanWithNvd([{ name: "x", version: "1", cpe: "cpe:2.3:a:x:x:1:*:*:*:*:*:*:*" }], async () => {
-			throw new Error("HTTP 503")
-		}),
-	)
+test("scanWithNvd: a fetcher error DEGRADES gracefully (design/28) — status 'unavailable', never a clean result", async () => {
+	// Two CPE components: the first fetch throws → the lane stops, keeps partial, flags unavailable (no throw).
+	const comps = [
+		{ name: "a", version: "1", cpe: "cpe:2.3:a:a:a:1:*:*:*:*:*:*:*" },
+		{ name: "b", version: "1", cpe: "cpe:2.3:a:b:b:1:*:*:*:*:*:*:*" },
+	]
+	const res = await scanWithNvd(comps, async () => {
+		throw new Error("HTTP 503")
+	})
+	assert.equal(res.status, "unavailable") // the caller surfaces this as a PARTIAL scan, not "0 CVEs"
+	assert.equal(res.matches.length, 0)
 })
 
 // Proves the real CPE→NVD path finds CVEs that PURL→OSV misses for embedded C libs. Run: RUN_NVD_NETWORK=1.

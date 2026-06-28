@@ -52,6 +52,17 @@ export const ADVISORY_HINTS: Record<string, VerifiedAdvisoryHint> = {
 			"code linked — nRF52840 has no Wi-Fi; west spdx lists the hostap module from the manifest but its code is " +
 			"gc-section stripped. Exclusion = not-linked.",
 	},
+	// Zephyr BLE host — fixed-channel (SMP/ATT) disconnect flaw (CVSS 7.1, EUVD-2025-30238). This is a POSITIVE
+	// (config-present) hint, NOT an exclusion: the affected code is the BLE host's fixed-channel handling, compiled
+	// whenever SMP is enabled. A BLE Central with pairing genuinely runs it → promotes this from a buried EUVD
+	// lead to an actionable "may be reachable; verify". gc-section can't strip it (BLE is the app's core function).
+	"CVE-2025-10456": {
+		gateSymbol: "CONFIG_BT_SMP",
+		verifiedNote:
+			"Affects Zephyr BLE host fixed-channel (SMP/ATT) disconnect handling. Verified 2026-06-28 (NCS 3.2.1): " +
+			"CONFIG_BT_SMP=y in the central_uart prj.conf → the affected BLE host code is compiled. Config-present " +
+			"POSITIVE: 'may be reachable; verify' — never a confident 'affected'. Fix: upgrade NCS past the fix, re-scan.",
+	},
 }
 
 /** Resolver wired into `runCveScan`. Returns a hint only for a verified CVE; unknown CVEs → undefined → "unknown". */
