@@ -39,6 +39,9 @@ export interface CveScanHostDeps {
 	resolveModuleVersion?: ModuleVersionResolver
 	/** Optional zephyr/module.yml security-refs lookup (F5); fills CPE/PURL the SBOM tool didn't emit. */
 	resolveModuleRefs?: ModuleRefsResolver
+	/** Optional platform-core semver resolver (zephyr/VERSION → "4.2.99"); enables curated-CPE detection of the
+	 *  cores (Zephyr/MCUboot) the SBOM tool omits. Must be a semver, not the git SHA. */
+	resolveCoreVersion?: ModuleVersionResolver
 	/** Optional CPE→NVD fetcher (F11); when provided, CPE-bearing components are also scanned against NVD. */
 	nvdFetcher?: NvdFetcher
 	/** Optional EUVD confirmation fetcher; when provided, matched CVEs are confirmed against the EU Vulnerability
@@ -80,6 +83,7 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 		vulnFetcher: deps.vulnFetcher,
 		resolveModuleVersion: deps.resolveModuleVersion,
 		resolveModuleRefs: deps.resolveModuleRefs,
+		resolveCoreVersion: deps.resolveCoreVersion,
 		nvdFetcher: deps.nvdFetcher,
 		euvdFetcher: deps.euvdFetcher,
 	})

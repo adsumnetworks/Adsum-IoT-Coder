@@ -7,7 +7,7 @@ import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
 import { resolveAdvisoryHint } from "@/services/cra/advisoryHints"
 import { defaultBuildEvidenceReaders } from "@/services/cra/buildEvidence"
-import { normalizeModuleName } from "@/services/cra/componentPurlMap"
+import { type ModuleVersionResolver, normalizeModuleName } from "@/services/cra/componentPurlMap"
 import { runCveScanHost } from "@/services/cra/cveScanHost"
 import { makeEuvdFetcher } from "@/services/cra/euvdFetcher"
 import { type ModuleRefsResolver, type ModuleSecurityRefs, readModuleSecurityRefs } from "@/services/cra/moduleSecurityRefs"
@@ -130,6 +130,45 @@ async function resolveWestModuleRefs(projectDir?: string, buildDir?: string): Pr
 	return (componentName) => map.get(componentName)
 }
 
+/**
+ * Resolve the platform CORE versions as **semvers** from the SDK itself — NOT the git SHA the SBOM records (which
+ * doesn't version-match). Today: Zephyr, via `west topdir` → `<topdir>/zephyr/VERSION` → "MAJOR.MINOR.PATCHLEVEL".
+ * This is the key that makes the Zephyr core (the biggest component, tagged with no CPE by `west spdx`)
+ * detectable: a curated CPE + this semver → CPE→NVD finds its CVEs. Returns undefined if unresolvable (scan runs
+ * without core-CPE enrichment — no regression). Never throws. (esp-idf added in the ESP-IDF phase.)
+ */
+async function resolveCoreVersions(projectDir?: string, buildDir?: string): Promise<ModuleVersionResolver | undefined> {
+	let topdir: string | undefined
+	for (const cwd of westCwdCandidates(projectDir, buildDir)) {
+		try {
+			const { stdout } = await execFileAsync("west", ["topdir"], { cwd, timeout: 15_000 })
+			const t = stdout.trim()
+			if (t) {
+				topdir = t
+				break
+			}
+		} catch {
+			// west not on PATH / not a workspace from here — try the next candidate.
+		}
+	}
+	if (!topdir) {
+		return undefined
+	}
+	try {
+		const txt = readFileSync(path.join(topdir, "zephyr", "VERSION"), "utf8")
+		const maj = txt.match(/VERSION_MAJOR\s*=\s*(\d+)/)?.[1]
+		const min = txt.match(/VERSION_MINOR\s*=\s*(\d+)/)?.[1]
+		const pat = txt.match(/PATCHLEVEL\s*=\s*(\d+)/)?.[1]
+		if (maj && min) {
+			const semver = `${maj}.${min}.${pat ?? "0"}`
+			return (name) => (name === "zephyr" ? semver : undefined)
+		}
+	} catch {
+		// no zephyr/VERSION at the topdir — leave the core unversioned (honest gap).
+	}
+	return undefined
+}
+
 /** Injectable seams (network/fs/clock) so execute() is unit-testable; production uses the real defaults. */
 export interface CveScanHandlerDeps {
 	scan: (args: { sbomPath: string; buildDir?: string; projectDir?: string; asOf: string }) => Promise<ScanLoopResult>
@@ -151,6 +190,9 @@ const defaultDeps: CveScanHandlerDeps = {
 				resolveModuleVersion: await resolveWestModuleVersions(projectDir, buildDir),
 				// F5: fill CPE/PURL the SBOM tool didn't emit, from each module's own zephyr/module.yml.
 				resolveModuleRefs: await resolveWestModuleRefs(projectDir, buildDir),
+				// Platform-core CPE detection: resolve the Zephyr core's SEMVER (zephyr/VERSION, not the SHA) so the
+				// curated CPE map makes the core — the biggest component, untagged by west spdx — NVD-detectable.
+				resolveCoreVersion: await resolveCoreVersions(projectDir, buildDir),
 				// F11: also scan CPE-bearing components against NVD — the path that finds CVEs OSV misses for
 				// embedded C libs (mbed TLS et al.). Offline-safe degradation: a network error throws and is
 				// surfaced as "scan unavailable", never a false-clean.
