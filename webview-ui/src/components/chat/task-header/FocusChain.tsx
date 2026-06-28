@@ -3,6 +3,7 @@ import { isCompletedFocusChainItem, isFocusChainItem } from "@shared/focus-chain
 import { StringRequest } from "@shared/proto/cline/common"
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
 import React, { memo, useCallback, useMemo, useState } from "react"
+import { BRAND_CYAN_600, brandAlpha } from "@/components/chat/brandColors"
 import ChecklistRenderer from "@/components/common/ChecklistRenderer"
 import LightMarkdown from "@/components/common/LightMarkdown"
 import { FileServiceClient } from "@/services/grpc-client"
@@ -190,7 +191,7 @@ export const FocusChain: React.FC<FocusChainProps> = memo(
 		return (
 			<div
 				aria-label={isExpanded ? "Collapse focus chain" : "Expand focus chain"}
-				className="relative rounded-sm bg-toolbar-hover/65 flex flex-col gap-1.5 select-none hover:bg-toolbar-hover overflow-hidden opacity-80 hover:opacity-100 transition-[transform,box-shadow] duration-200 cursor-pointer"
+				className="relative rounded-sm flex flex-col gap-1.5 select-none overflow-hidden opacity-90 hover:opacity-100 transition-[transform,box-shadow] duration-200 cursor-pointer"
 				onClick={handleToggle}
 				onKeyDown={(e) => {
 					if (e.key === "Enter" || e.key === " ") {
@@ -199,6 +200,7 @@ export const FocusChain: React.FC<FocusChainProps> = memo(
 						handleToggle()
 					}
 				}}
+				style={{ backgroundColor: brandAlpha(BRAND_CYAN_600, 0.16) }}
 				tabIndex={0}
 				title={CLICK_TO_EDIT_TITLE}>
 				<ToDoListHeader isExpanded={isExpanded} todoInfo={todoInfo} />
