@@ -61,6 +61,26 @@ export function isLikelyVersion(revision: string): boolean {
 }
 
 /**
+ * Parse the ESP-IDF core SEMVER from a `build/project_description.json` text — the ESP analogue of reading
+ * `zephyr/VERSION`. `git_revision` carries the IDF tag (e.g. "v6.0.1") on every build; `idf_version` exists only
+ * on some IDF versions (absent in v6.0.1) — prefer git_revision, fall back to idf_version. Returns the bare semver
+ * ("6.0.1") or undefined (not an ESP build / no tag — a dev checkout between tags resolves to undefined honestly).
+ * Ground-truthed 2026-06-28 against a real esp-idf v6.0.1 build (only git_revision held the version).
+ */
+export function parseEspIdfVersion(projectDescriptionJson: string): string | undefined {
+	try {
+		const pd = JSON.parse(projectDescriptionJson)
+		const raw =
+			(typeof pd?.git_revision === "string" ? pd.git_revision : undefined) ??
+			(typeof pd?.idf_version === "string" ? pd.idf_version : undefined)
+		// "v6.0.1" / "v5.3.1-dirty" → "6.0.1" / "5.3.1" (semver prefix only; drop the leading v + any -suffix).
+		return raw?.match(/^v?(\d+\.\d+(?:\.\d+)?)/)?.[1]
+	} catch {
+		return undefined
+	}
+}
+
+/**
  * Build a `ModuleVersionResolver` from a version table (from `parseWestList` / `parseWestManifest`). Returns a
  * version only when west pins one that looks matchable; a commit-SHA revision → undefined (honest miss, not a
  * mis-match). Pass the result as `resolveModuleVersion` to `runCveScan` / `runCveScanHost`.

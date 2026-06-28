@@ -14,7 +14,7 @@ import { type ModuleRefsResolver, type ModuleSecurityRefs, readModuleSecurityRef
 import { makeNvdFetcher } from "@/services/cra/nvdFetcher"
 import { makeOsvFetcher } from "@/services/cra/osvFetcher"
 import type { ScanLoopResult } from "@/services/cra/scanLoop"
-import { makeModuleVersionResolver, parseWestList, parseWestManifest } from "@/services/cra/westVersions"
+import { makeModuleVersionResolver, parseEspIdfVersion, parseWestList, parseWestManifest } from "@/services/cra/westVersions"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
@@ -177,12 +177,9 @@ async function resolveCoreVersions(projectDir?: string, buildDir?: string): Prom
 			continue
 		}
 		try {
-			const pd = JSON.parse(readFileSync(path.join(dir, "project_description.json"), "utf8"))
-			const raw = typeof pd?.idf_version === "string" ? pd.idf_version : undefined
-			// "v6.0.1" / "v5.3.1-dirty" → "6.0.1" / "5.3.1" (semver prefix only; drop the leading v + any -suffix).
-			const m = raw?.match(/^v?(\d+\.\d+(?:\.\d+)?)/)
-			if (m) {
-				cores.set("esp-idf", m[1])
+			const idf = parseEspIdfVersion(readFileSync(path.join(dir, "project_description.json"), "utf8"))
+			if (idf) {
+				cores.set("esp-idf", idf)
 			}
 		} catch {
 			// no project_description.json / not an ESP build here — honest gap.
