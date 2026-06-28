@@ -71,8 +71,8 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 	if (spdxText === undefined) {
 		throw new Error(
 			input.sbomPath
-				? `Could not read the SBOM at ${input.sbomPath} — generate it first (the CRA SBOM step), then scan.`
-				: "No SBOM provided — generate an SBOM first (the CRA SBOM step), then scan.",
+				? `Could not read the SBOM at ${input.sbomPath} — generate an SBOM first, then scan.`
+				: "No SBOM provided — generate an SBOM first, then scan.",
 		)
 	}
 	const evidence = readBuildEvidence(

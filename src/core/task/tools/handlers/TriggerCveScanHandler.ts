@@ -9,7 +9,7 @@ import { resolveAdvisoryHint } from "@/services/cra/advisoryHints"
 import { defaultBuildEvidenceReaders } from "@/services/cra/buildEvidence"
 import { type ModuleVersionResolver, normalizeModuleName } from "@/services/cra/componentPurlMap"
 import { runCveScanHost } from "@/services/cra/cveScanHost"
-import { discoverByProduct, makeEuvdFetcher } from "@/services/cra/euvdFetcher"
+import { discoverByProduct, EUVD_DISCOVER_MIN_SCORE, type EuvdRecord, makeEuvdFetcher } from "@/services/cra/euvdFetcher"
 import { type ModuleRefsResolver, type ModuleSecurityRefs, readModuleSecurityRefs } from "@/services/cra/moduleSecurityRefs"
 import { makeNvdFetcher } from "@/services/cra/nvdFetcher"
 import { makeOsvFetcher } from "@/services/cra/osvFetcher"
@@ -132,12 +132,18 @@ async function resolveWestModuleRefs(projectDir?: string, buildDir?: string): Pr
 
 /**
  * Resolve the platform CORE versions as **semvers** from the SDK itself — NOT the git SHA the SBOM records (which
- * doesn't version-match). Today: Zephyr, via `west topdir` → `<topdir>/zephyr/VERSION` → "MAJOR.MINOR.PATCHLEVEL".
- * This is the key that makes the Zephyr core (the biggest component, tagged with no CPE by `west spdx`)
- * detectable: a curated CPE + this semver → CPE→NVD finds its CVEs. Returns undefined if unresolvable (scan runs
- * without core-CPE enrichment — no regression). Never throws. (esp-idf added in the ESP-IDF phase.)
+ * doesn't version-match). Covers both platforms:
+ *  - **Zephyr** (nRF/NCS): `west topdir` → `<topdir>/zephyr/VERSION` → "MAJOR.MINOR.PATCHLEVEL".
+ *  - **esp-idf** (ESP): `<buildDir>/project_description.json` → `idf_version` (e.g. "v6.0.1" → "6.0.1").
+ * This is the key that makes the cores (the biggest components, tagged with no CPE by `west spdx`/`esp-idf-sbom`)
+ * detectable: a curated CPE + this semver → CPE→NVD finds their CVEs, and it signals which platform to query for
+ * EUVD discover-by-product. Returns a resolver mapping the core name → semver (or undefined if neither resolves,
+ * so the scan runs without core enrichment — no regression). Never throws.
  */
 async function resolveCoreVersions(projectDir?: string, buildDir?: string): Promise<ModuleVersionResolver | undefined> {
+	const cores = new Map<string, string>()
+
+	// Zephyr (nRF/NCS): west topdir → zephyr/VERSION.
 	let topdir: string | undefined
 	for (const cwd of westCwdCandidates(projectDir, buildDir)) {
 		try {
@@ -151,22 +157,42 @@ async function resolveCoreVersions(projectDir?: string, buildDir?: string): Prom
 			// west not on PATH / not a workspace from here — try the next candidate.
 		}
 	}
-	if (!topdir) {
+	if (topdir) {
+		try {
+			const txt = readFileSync(path.join(topdir, "zephyr", "VERSION"), "utf8")
+			const maj = txt.match(/VERSION_MAJOR\s*=\s*(\d+)/)?.[1]
+			const min = txt.match(/VERSION_MINOR\s*=\s*(\d+)/)?.[1]
+			const pat = txt.match(/PATCHLEVEL\s*=\s*(\d+)/)?.[1]
+			if (maj && min) {
+				cores.set("zephyr", `${maj}.${min}.${pat ?? "0"}`)
+			}
+		} catch {
+			// no zephyr/VERSION at the topdir — leave the core unversioned (honest gap).
+		}
+	}
+
+	// esp-idf (ESP): the build's project_description.json records the exact IDF version it built against.
+	for (const dir of [buildDir, projectDir ? path.join(projectDir, "build") : undefined]) {
+		if (!dir || cores.has("esp-idf")) {
+			continue
+		}
+		try {
+			const pd = JSON.parse(readFileSync(path.join(dir, "project_description.json"), "utf8"))
+			const raw = typeof pd?.idf_version === "string" ? pd.idf_version : undefined
+			// "v6.0.1" / "v5.3.1-dirty" → "6.0.1" / "5.3.1" (semver prefix only; drop the leading v + any -suffix).
+			const m = raw?.match(/^v?(\d+\.\d+(?:\.\d+)?)/)
+			if (m) {
+				cores.set("esp-idf", m[1])
+			}
+		} catch {
+			// no project_description.json / not an ESP build here — honest gap.
+		}
+	}
+
+	if (cores.size === 0) {
 		return undefined
 	}
-	try {
-		const txt = readFileSync(path.join(topdir, "zephyr", "VERSION"), "utf8")
-		const maj = txt.match(/VERSION_MAJOR\s*=\s*(\d+)/)?.[1]
-		const min = txt.match(/VERSION_MINOR\s*=\s*(\d+)/)?.[1]
-		const pat = txt.match(/PATCHLEVEL\s*=\s*(\d+)/)?.[1]
-		if (maj && min) {
-			const semver = `${maj}.${min}.${pat ?? "0"}`
-			return (name) => (name === "zephyr" ? semver : undefined)
-		}
-	} catch {
-		// no zephyr/VERSION at the topdir — leave the core unversioned (honest gap).
-	}
-	return undefined
+	return (name) => cores.get(name)
 }
 
 /** Injectable seams (network/fs/clock) so execute() is unit-testable; production uses the real defaults. */
@@ -179,10 +205,24 @@ export interface CveScanHandlerDeps {
 
 const defaultDeps: CveScanHandlerDeps = {
 	scan: async ({ sbomPath, buildDir, projectDir, asOf }) => {
-		// Resolve the Zephyr core SEMVER once (zephyr/VERSION, not the SHA): enables curated-CPE NVD detection of
-		// the core AND signals "this is a Zephyr build" → wire EUVD discover-by-product for it.
+		// Resolve the core SEMVERs once (zephyr/VERSION or esp-idf project_description.json, not the SHA): enables
+		// curated-CPE NVD detection of the core AND signals which platform to query for EUVD discover-by-product.
 		const coreResolver = await resolveCoreVersions(projectDir, buildDir)
 		const zephyrVer = coreResolver?.("zephyr")
+		const espVer = coreResolver?.("esp-idf")
+		// EUVD discover-by-product for the detected SDK — the EU-authoritative catch for core CVEs NVD's CPE configs
+		// miss. One platform per build; Zephyr → zephyrproject/zephyr, ESP → espressif/esp-idf (both EUVD-verified).
+		const euvdProduct: { fetch: () => Promise<EuvdRecord[]>; label: string } | undefined = zephyrVer
+			? {
+					fetch: () => discoverByProduct("zephyrproject", "zephyr", undefined, { fromScore: EUVD_DISCOVER_MIN_SCORE }),
+					label: `zephyr ${zephyrVer}`,
+				}
+			: espVer
+				? {
+						fetch: () => discoverByProduct("espressif", "esp-idf", undefined, { fromScore: EUVD_DISCOVER_MIN_SCORE }),
+						label: `esp-idf ${espVer}`,
+					}
+				: undefined
 		return runCveScanHost(
 			{ sbomPath, buildDir },
 			{
@@ -204,14 +244,11 @@ const defaultDeps: CveScanHandlerDeps = {
 				// EUVD (CORE — the CRA's named DB): confirm each matched CVE → EUVD id + EPSS + KEV.
 				euvdFetcher: makeEuvdFetcher(),
 				// EUVD discover-by-product (CORE): for the detected SDK, list the EU DB's high-severity advisories —
-				// the CRA-authoritative catch for CVEs NVD's CPE configs miss (e.g. CVE-2025-10456). Hedged,
-				// version-not-confirmed candidates. Wired whenever a platform is detected (Zephyr today; ESP next).
-				euvdProductFetcher: zephyrVer
-					? () => discoverByProduct("zephyrproject", "zephyr", undefined, { fromScore: 7 })
-					: undefined,
-				euvdProductLabel: zephyrVer ? `zephyr ${zephyrVer}` : undefined,
-				// Source attribution reflects what actually ran (was "OSV"-only, inaccurate — 2806g).
-				source: "EUVD + NVD + OSV",
+				// the CRA-authoritative catch for CVEs NVD's CPE configs miss (e.g. CVE-2025-10456 on Zephyr,
+				// esp-idf core CVEs on ESP). Hedged, version-not-confirmed candidates. Wired for both platforms.
+				euvdProductFetcher: euvdProduct?.fetch,
+				euvdProductLabel: euvdProduct?.label,
+				// `source` is derived by the scan loop from the fetchers actually wired (D1) — not hard-coded here.
 			},
 		)
 	},

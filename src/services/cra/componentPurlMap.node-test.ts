@@ -119,6 +119,11 @@ test("curatedCpeFor: semver → CPE; a git SHA → undefined (never fabricates a
 	assert.equal(curatedCpeFor("totally-unknown", "4.2.99"), undefined) // unmapped → no CPE
 })
 
+test("curatedCpeFor: esp-idf core → NVD-verified CPE (design/25 Tranche B, ESP parity)", () => {
+	assert.equal(curatedCpeFor("esp-idf", "6.0.1"), "cpe:2.3:a:espressif:esp-idf:6.0.1:*:*:*:*:*:*:*")
+	assert.equal(curatedCpeFor("esp-idf", "v5.3.1"), "cpe:2.3:a:espressif:esp-idf:5.3.1:*:*:*:*:*:*:*")
+})
+
 test("applyCuratedCpes: the SHA-versioned Zephyr core + a semver resolver → CPE filled, NVD-queryable", () => {
 	// Real shape: west spdx emits the Zephyr core as `zephyr-sources` with a git SHA and NO CPE/PURL.
 	const sbom = normalizeSbom(`SPDXVersion: SPDX-2.3

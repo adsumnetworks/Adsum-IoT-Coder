@@ -18,7 +18,9 @@
  * design/06 + design/07 + the red-team MF4.
  */
 
-/** The permanent-ban verdict vocabulary (never attributable to anyone): readiness-not-compliance. */
+/** A short illustrative sample of permanent-ban verdict vocabulary (readiness-not-compliance). NOTE (design/25 D3):
+ *  this is NOT the operative ban list — the real, comprehensive rules are `LEAK_PATTERNS` below. Do not consume
+ *  this as the complete set; it is kept only as a human-readable example. */
 export const VERDICT_TERMS = ["compliant", "certified", "passes", "affected", "fixed", "done", "resolved", "clear"] as const
 
 export interface VerdictLeak {

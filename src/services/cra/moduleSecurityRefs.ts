@@ -82,8 +82,10 @@ export function applyModuleRefs(sbom: NormalizedSbom, resolve: ModuleRefsResolve
 		if (!refs) {
 			return c
 		}
-		const cpe = c.cpe ?? refs.cpes[0]
-		const purl = c.purl ?? refs.purls[0]
+		// D5 (design/25): a module may declare several CPEs/PURLs — prefer a VERSIONED one (it actually version-matches)
+		// over whatever happens to be first; fall back to [0] if none carry a version.
+		const cpe = c.cpe ?? refs.cpes.find((x) => /^cpe:2\.3(?::[^:]*){5}:[^:*][^:]*/i.test(x)) ?? refs.cpes[0]
+		const purl = c.purl ?? refs.purls.find((x) => /@/.test(x)) ?? refs.purls[0]
 		if (cpe === c.cpe && purl === c.purl) {
 			return c
 		}

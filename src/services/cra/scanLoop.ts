@@ -178,16 +178,34 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	const euvdProduct = input.euvdProductFetcher ? await input.euvdProductFetcher() : []
 	const euvdCandidates = euvdProduct.filter((c) => !foundIds.has(c.cveId.toUpperCase()))
 
+	// T3 (design/25): a non-empty SBOM that normalized to 0 components is almost always the WRONG file (not SPDX,
+	// or `app.spdx` with no ids) — not a clean result. Surface it so "0 queryable" is never read as "0 CVEs".
+	const sbomParseWarning =
+		input.spdxText.trim().length > 0 && parsed.components.length === 0
+			? "the SBOM file was not empty but no components were parsed from it — this usually means it is not an SPDX " +
+				"file (tag-value or JSON) or is the wrong file (e.g. app.spdx with no identifiers). This is NOT a clean " +
+				"result; regenerate/point at the CPE/PURL-bearing SBOM (modules-deps.spdx or all.spdx) and re-scan."
+			: undefined
+
+	// D1 (design/25): the source attribution must reflect what ACTUALLY ran, not a hard-coded string. OSV always
+	// runs (fetcher is required); NVD/EUVD only when their fetcher is wired. An explicit input.source still wins.
+	const source =
+		input.source ??
+		[input.euvdFetcher || input.euvdProductFetcher ? "EUVD" : null, input.nvdFetcher ? "NVD" : null, "OSV"]
+			.filter(Boolean)
+			.join(" + ")
+
 	const reportInput: EvidenceReportInput = {
 		findings,
 		skipped,
 		queriedCount,
 		asOf: input.asOf,
-		source: input.source,
+		source,
 		enrichment,
 		euvd,
 		euvdCandidates,
 		euvdProductLabel: input.euvdProductLabel,
+		sbomParseWarning,
 	}
 	return {
 		report: formatCveScanReport(reportInput),

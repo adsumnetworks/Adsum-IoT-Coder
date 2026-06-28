@@ -157,3 +157,28 @@ test("F12: allows a CVE id that IS in the scan results", () => {
 	const issues = checkReadinessReportIntegrity({ reportText: report, scannedCveIds: ["CVE-2024-45491"] })
 	assert.ok(!issues.some((i) => i.kind === "cve-fabricated"))
 })
+
+test("T2b: blocks a report that DROPS a version-matched scan finding (under-reporting)", () => {
+	// The scan matched two CVEs; the report mentions only one → the other was silently dropped.
+	const report = `# CRA\n${DISCLAIMER}\n${HEDGED_DATED}\nScan found CVE-2024-45491 in libexpat.\n`
+	const issues = checkReadinessReportIntegrity({
+		reportText: report,
+		scannedCveIds: ["CVE-2024-45491", "CVE-2025-10456"],
+		matchedCveIds: ["CVE-2024-45491", "CVE-2025-10456"],
+	})
+	assert.ok(
+		issues.some((i) => i.kind === "cve-underreported" && i.detail.includes("CVE-2025-10456")),
+		`expected cve-underreported naming the dropped id, got ${issues.map((i) => i.kind).join(",")}`,
+	)
+})
+
+test("T2b: a report that lists every matched finding is NOT flagged; EUVD candidates never trigger under-report", () => {
+	const report = `# CRA\n${DISCLAIMER}\n${HEDGED_DATED}\nFindings: CVE-2024-45491 and CVE-2025-10456 — both to verify.\n`
+	const issues = checkReadinessReportIntegrity({
+		reportText: report,
+		// scannedCveIds is the superset (incl. a capped EUVD candidate the report need not list); matched is the must-list set.
+		scannedCveIds: ["CVE-2024-45491", "CVE-2025-10456", "CVE-2099-9999"],
+		matchedCveIds: ["CVE-2024-45491", "CVE-2025-10456"],
+	})
+	assert.ok(!issues.some((i) => i.kind === "cve-underreported"), "matched findings all listed → no under-report")
+})

@@ -131,13 +131,23 @@ export function parseEuvdList(jsonText: string): EuvdRecord[] {
  * raw candidate list. Paginates up to `maxPages`. A page failure stops pagination (returns what we have) — never
  * throws / never a false "clean". The mandatory custom User-Agent is sent.
  */
+/**
+ * EUVD discover-by-product policy knobs (design/25 T6 — named + documented, not magic numbers). Governing bit:
+ * `cra/workflows/cve-scan.md` ("which databases"). Both are reviewable there; the host just executes them.
+ *  - MIN_SCORE: only surface CVSS ≥ 7 (high/critical) product advisories — the discover-by-product list is a
+ *    broad net (a product can have hundreds), so we cap it to the severities worth the dev's verify-effort.
+ *  - MAX_PAGES: 4 × 100 = 400 advisories — more than any real product carries as of 2026; a runaway-page guard.
+ */
+export const EUVD_DISCOVER_MIN_SCORE = 7
+export const EUVD_DISCOVER_MAX_PAGES = 4
+
 export async function discoverByProduct(
 	vendor: string,
 	product: string,
 	httpGet: HttpGet = defaultHttpGet,
 	opts?: { fromScore?: number; maxPages?: number },
 ): Promise<EuvdRecord[]> {
-	const maxPages = opts?.maxPages ?? 4
+	const maxPages = opts?.maxPages ?? EUVD_DISCOVER_MAX_PAGES
 	const fromScore = opts?.fromScore ?? 0
 	const seen = new Map<string, EuvdRecord>()
 	for (let page = 0; page < maxPages; page++) {

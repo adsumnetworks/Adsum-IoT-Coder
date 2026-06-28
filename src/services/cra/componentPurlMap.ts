@@ -79,6 +79,10 @@ export const COMPONENT_CPE_MAP: Record<string, CpeCoordinate> = {
 		prefix: "cpe:2.3:a:mcuboot:mcuboot",
 		verifiedNote: "canonical NVD vendor/product for MCUboot; complements its PURL coordinate",
 	},
+	"esp-idf": {
+		prefix: "cpe:2.3:a:espressif:esp-idf",
+		verifiedNote: "NVD-confirmed (2026-06-28: cpe:2.3:a:espressif:esp-idf exists, 173 entries); the ESP core",
+	},
 }
 
 /** A version is usable for a CPE only if it's a semver-ish string, NOT a git SHA (SHAs don't version-match). */
