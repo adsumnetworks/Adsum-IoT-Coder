@@ -14,7 +14,13 @@ import { type ModuleRefsResolver, type ModuleSecurityRefs, readModuleSecurityRef
 import { makeNvdFetcher } from "@/services/cra/nvdFetcher"
 import { makeOsvFetcher } from "@/services/cra/osvFetcher"
 import type { ScanLoopResult } from "@/services/cra/scanLoop"
-import { makeModuleVersionResolver, parseEspIdfVersion, parseWestList, parseWestManifest } from "@/services/cra/westVersions"
+import {
+	makeModuleVersionResolver,
+	parseEspIdfVersion,
+	parseWestList,
+	parseWestManifest,
+	parseZephyrVersionH,
+} from "@/services/cra/westVersions"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
@@ -143,31 +149,53 @@ async function resolveWestModuleRefs(projectDir?: string, buildDir?: string): Pr
 async function resolveCoreVersions(projectDir?: string, buildDir?: string): Promise<ModuleVersionResolver | undefined> {
 	const cores = new Map<string, string>()
 
-	// Zephyr (nRF/NCS): west topdir → zephyr/VERSION.
-	let topdir: string | undefined
-	for (const cwd of westCwdCandidates(projectDir, buildDir)) {
-		try {
-			const { stdout } = await execFileAsync("west", ["topdir"], { cwd, timeout: 15_000 })
-			const t = stdout.trim()
-			if (t) {
-				topdir = t
-				break
+	// Zephyr (nRF/NCS) — PRIMARY: the build's generated version.h. It carries the version the build actually
+	// compiled and lives in the build OUTPUT, so it survives a sample copied OUT of the west workspace (the demo
+	// builds central_uart in /tmp, where `west topdir` finds no `.west/` → the 2806i bug: the Zephyr core never got
+	// its CPE). The build dir is already required for .config/ELF evidence, so it's reliably present.
+	for (const dir of [buildDir, projectDir ? path.join(projectDir, "build") : undefined]) {
+		if (!dir || cores.has("zephyr")) {
+			continue
+		}
+		for (const rel of ["zephyr/include/generated/zephyr/version.h", "zephyr/include/generated/version.h"]) {
+			try {
+				const v = parseZephyrVersionH(readFileSync(path.join(dir, rel), "utf8"))
+				if (v) {
+					cores.set("zephyr", v)
+					break
+				}
+			} catch {
+				// not at this candidate — try the next.
 			}
-		} catch {
-			// west not on PATH / not a workspace from here — try the next candidate.
 		}
 	}
-	if (topdir) {
-		try {
-			const txt = readFileSync(path.join(topdir, "zephyr", "VERSION"), "utf8")
-			const maj = txt.match(/VERSION_MAJOR\s*=\s*(\d+)/)?.[1]
-			const min = txt.match(/VERSION_MINOR\s*=\s*(\d+)/)?.[1]
-			const pat = txt.match(/PATCHLEVEL\s*=\s*(\d+)/)?.[1]
-			if (maj && min) {
-				cores.set("zephyr", `${maj}.${min}.${pat ?? "0"}`)
+	// Zephyr FALLBACK: west topdir → zephyr/VERSION (for an in-workspace project with no build dir handy).
+	if (!cores.has("zephyr")) {
+		let topdir: string | undefined
+		for (const cwd of westCwdCandidates(projectDir, buildDir)) {
+			try {
+				const { stdout } = await execFileAsync("west", ["topdir"], { cwd, timeout: 15_000 })
+				const t = stdout.trim()
+				if (t) {
+					topdir = t
+					break
+				}
+			} catch {
+				// west not on PATH / not a workspace from here — try the next candidate.
 			}
-		} catch {
-			// no zephyr/VERSION at the topdir — leave the core unversioned (honest gap).
+		}
+		if (topdir) {
+			try {
+				const txt = readFileSync(path.join(topdir, "zephyr", "VERSION"), "utf8")
+				const maj = txt.match(/VERSION_MAJOR\s*=\s*(\d+)/)?.[1]
+				const min = txt.match(/VERSION_MINOR\s*=\s*(\d+)/)?.[1]
+				const pat = txt.match(/PATCHLEVEL\s*=\s*(\d+)/)?.[1]
+				if (maj && min) {
+					cores.set("zephyr", `${maj}.${min}.${pat ?? "0"}`)
+				}
+			} catch {
+				// no zephyr/VERSION at the topdir — leave the core unversioned (honest gap).
+			}
 		}
 	}
 

@@ -6,7 +6,14 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { applyCuratedPurls } from "./componentPurlMap"
 import { normalizeSbom } from "./sbomNormalize"
-import { isLikelyVersion, makeModuleVersionResolver, parseEspIdfVersion, parseWestList, parseWestManifest } from "./westVersions"
+import {
+	isLikelyVersion,
+	makeModuleVersionResolver,
+	parseEspIdfVersion,
+	parseWestList,
+	parseWestManifest,
+	parseZephyrVersionH,
+} from "./westVersions"
 
 const WEST_LIST = `mcuboot        v2.1.0
 mbedtls        v3.6.5
@@ -90,4 +97,20 @@ test("parseEspIdfVersion: git_revision is the reliable IDF version source (groun
 	// Not an ESP build / no tag / garbage → undefined (honest miss, never a fabricated version).
 	assert.equal(parseEspIdfVersion(JSON.stringify({ version: "1.3" })), undefined)
 	assert.equal(parseEspIdfVersion("{not json"), undefined)
+})
+
+test("parseZephyrVersionH: reads the build's generated version.h (survives a /tmp sample copy; the 2806i fix)", () => {
+	// Real shape from <build>/zephyr/include/generated/zephyr/version.h on an NCS 3.2.1 build.
+	const real = `#define KERNEL_VERSION_MAJOR            4
+#define KERNEL_VERSION_MINOR            2
+#define KERNEL_PATCHLEVEL               99
+#define KERNEL_VERSION_STRING           "4.2.99"`
+	assert.equal(parseZephyrVersionH(real), "4.2.99")
+	// Falls back to the MAJOR/MINOR/PATCHLEVEL triple if the string macro is absent.
+	assert.equal(
+		parseZephyrVersionH("#define KERNEL_VERSION_MAJOR 3\n#define KERNEL_VERSION_MINOR 6\n#define KERNEL_PATCHLEVEL 0"),
+		"3.6.0",
+	)
+	// Not a version header → undefined (honest miss, never fabricates).
+	assert.equal(parseZephyrVersionH("// nothing here"), undefined)
 })
