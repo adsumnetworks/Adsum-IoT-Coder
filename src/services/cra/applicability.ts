@@ -51,7 +51,12 @@ function symbolPresent(symbols: string, sym: string): boolean {
 	return new RegExp(`\\b${esc}\\b`).test(symbols)
 }
 
-/** Assess applicability for one match. Returns the strongest available EXCLUSION signal, else "unknown". */
+/**
+ * Assess applicability for one match. Returns the strongest available EXCLUSION signal, else "unknown".
+ * design/25 T4: the `note` strings below are the HOST's home-of-record for the applicability hedges — the model
+ * presents them verbatim (anti-fabrication, D11-R: a drifting model must not soften "verify" into "safe"). So the
+ * bit must NOT restate this wording — it says "present the host's note verbatim." Edit the hedges HERE only.
+ */
 export function assessApplicability(hint: ApplicabilityHint | undefined, evidence: BuildEvidence): ApplicabilityVerdict {
 	// Strongest exclusion: the gating Kconfig is disabled → the affected code is not compiled.
 	if (hint?.gateSymbol && evidence.dotConfig && kconfigState(evidence.dotConfig, hint.gateSymbol) === false) {

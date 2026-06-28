@@ -130,6 +130,11 @@ export function checkReadinessReportIntegrity(input: {
 	 *  this set is flagged as fabricated (F12 — a real run claimed "scan found CVE-2024-49010" that the host
 	 *  scan never produced). Undefined = no scan ran → don't validate cited ids. */
 	scannedCveIds?: string[] | null
+	/** The VERSION-MATCHED finding ids (cve-scan json `findings[].advisories[].id`) — the to-review CVEs the report
+	 *  MUST NOT silently drop (guardrail item 6: "never report fewer CVEs than the scan returned"). Distinct from
+	 *  `scannedCveIds`, which also includes EUVD discover-by-product *candidates* (capped leads the report need not
+	 *  list in full) — keying under-report on the matched set avoids false-positives on those. */
+	matchedCveIds?: string[] | null
 }): IntegrityIssue[] {
 	const issues: IntegrityIssue[] = []
 	const text = input.reportText
@@ -185,6 +190,22 @@ export function checkReadinessReportIntegrity(input: {
 		}
 	}
 
+	// T2b (golden-lens audit, design/25): the inverse of fabrication — UNDER-reporting. The guard caught fabricated
+	// EXTRAS but not a report that silently DROPS scan findings (a real failure mode: a model rescanned 0 and
+	// overwrote "0 CVEs", erasing real to-review findings). Flag any version-matched finding the report never
+	// mentions. Keyed on the matched set (not EUVD candidates) so capped leads never false-positive.
+	if (input.matchedCveIds && input.matchedCveIds.length > 0) {
+		const cited = new Set([...(text.match(CVE_ID_RE) ?? [])].map((s) => s.toUpperCase()))
+		const dropped = [...new Set(input.matchedCveIds.map((s) => s.toUpperCase()))].filter((id) => !cited.has(id))
+		if (dropped.length > 0) {
+			const shown = dropped.slice(0, 10).join(", ")
+			issues.push({
+				kind: "cve-underreported",
+				detail: `The scan found ${dropped.length} version-matched CVE id(s) the report does not mention: ${shown}${dropped.length > 10 ? ", …" : ""}. Never report fewer CVEs than the scan returned — list every to-review CVE from compliance/cve-scan-*.json (each with its applicability note), do not drop findings.`,
+			})
+		}
+	}
+
 	for (const m of scanForMissingStructure(text, "cra-readiness")) {
 		issues.push({ kind: `missing-${m.id}`, detail: m.why })
 	}
@@ -207,8 +228,12 @@ function findSiblingSpdx(reportDir: string): string | null {
 	return null
 }
 
-/** From a sibling `cve-scan-*.json`: the queryable count + every CVE id present. null if none/unreadable. */
-function findSiblingCve(reportDir: string): { queryable: number | null; cveIds: string[] } | null {
+/**
+ * From a sibling `cve-scan-*.json`: the queryable count, every CVE id present (for the fabrication check), and the
+ * VERSION-MATCHED finding ids (`findings[].advisories[].id`, for the under-report check — distinct from the EUVD
+ * discover-by-product *candidates*, which are capped leads). null if none/unreadable.
+ */
+function findSiblingCve(reportDir: string): { queryable: number | null; cveIds: string[]; matchedIds: string[] } | null {
 	try {
 		const f = fs.readdirSync(reportDir).find((n) => /^cve-scan.*\.json$/i.test(n))
 		if (!f) {
@@ -218,7 +243,18 @@ function findSiblingCve(reportDir: string): { queryable: number | null; cveIds: 
 		const j = JSON.parse(raw)
 		const q = j?.coverage?.queryable
 		const cveIds = [...new Set((raw.match(CVE_ID_RE) ?? []).map((s) => s.toUpperCase()))]
-		return { queryable: typeof q === "number" ? q : null, cveIds }
+		// Matched (to-review) ids only — the set the report must not drop. EUVD candidates are excluded by design.
+		const matchedIds = [
+			...new Set(
+				(Array.isArray(j?.findings) ? j.findings : [])
+					.flatMap((fd: { advisories?: Array<{ id?: string }> }) =>
+						Array.isArray(fd?.advisories) ? fd.advisories : [],
+					)
+					.map((a: { id?: string }) => (typeof a?.id === "string" ? a.id.toUpperCase() : ""))
+					.filter((id: string) => /^CVE-\d{4}-\d{4,7}$/.test(id)),
+			),
+		] as string[]
+		return { queryable: typeof q === "number" ? q : null, cveIds, matchedIds }
 	} catch {
 		return null
 	}
@@ -242,6 +278,7 @@ export function gatherAndCheckReadinessIntegrity(absolutePath: string, content: 
 			sbomText,
 			cveQueryable: cve?.queryable ?? null,
 			scannedCveIds: cve?.cveIds ?? null,
+			matchedCveIds: cve?.matchedIds ?? null,
 		})
 	} catch {
 		return []

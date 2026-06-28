@@ -35,6 +35,10 @@ export interface EvidenceReportInput {
 	euvdCandidates?: EuvdRecord[]
 	/** Label for that candidate set, e.g. "zephyr 4.2.99". */
 	euvdProductLabel?: string
+	/** T3 (design/25): set when the SBOM file was non-empty but parsed to 0 components — almost always the WRONG
+	 *  file (not SPDX, or `app.spdx` with no ids), not a clean result. Rendered as a prominent warning so "0
+	 *  queryable" is never mistaken for "0 vulnerabilities". Absent → normal. */
+	sbomParseWarning?: string
 }
 
 /** Max EUVD discover-by-product candidates rendered inline (the rest summarised as "+N more"). */
@@ -66,7 +70,11 @@ function summarizeTriage(findings: ScanFinding[]): { total: number; notReachable
 	return { total: findings.length, notReachable, review: findings.length - notReachable }
 }
 
-/** The shared data-provenance caption (NOT a legal disclaimer — reuses the advisories "as of" shape, §8.1). */
+/**
+ * The shared data-provenance caption (NOT a legal disclaimer — reuses the advisories "as of" shape, §8.1).
+ * design/25 T4: this hedge wording is the HOST's home-of-record — the model presents it verbatim (anti-fabrication,
+ * D11-R), so the bit must NOT restate it (the bit says "present the host's caption verbatim"). Edit it HERE.
+ */
 const provenanceCaption = (source: string, asOf: string): string =>
 	`${source} matches for your SBOM's component versions, as of ${asOf}. Partial coverage; ` +
 	"version-matching can over- or under-report — open each linked advisory to confirm it applies to your build."
@@ -82,6 +90,7 @@ function renderEuvdCandidates(input: EvidenceReportInput): string[] {
 	if (cands.length === 0) {
 		return []
 	}
+	// Sort policy (design/25 T6): EPSS-first (exploit-likelihood), CVSS baseScore-second — documented in cve-scan.md.
 	const sorted = [...cands].sort((a, b) => (b.epss ?? 0) - (a.epss ?? 0) || (b.baseScore ?? 0) - (a.baseScore ?? 0))
 	const shown = sorted.slice(0, EUVD_CANDIDATE_CAP)
 	const label = input.euvdProductLabel ? ` for ${input.euvdProductLabel}` : ""
@@ -121,6 +130,12 @@ export function formatCveScanReport(input: EvidenceReportInput): string {
 	const noVersion = counts["no-version"] ?? 0
 
 	const lines: string[] = [`## CVE scan — ${source}, as of ${input.asOf}`, "", `> ${provenanceCaption(source, input.asOf)}`, ""]
+
+	// T3: a non-empty SBOM that parsed to 0 components is almost certainly the WRONG file — surface it loudly so
+	// the "0 queryable" below is never read as "0 vulnerabilities / clean".
+	if (input.sbomParseWarning) {
+		lines.push(`> Note — ${input.sbomParseWarning}`, "")
+	}
 
 	// Parity rule (§8.4): when there are gaps we ALWAYS render the reason breakdown — never a bare count — so
 	// nRF and ESP are described with equal honesty even though ESP's queryable ratio is structurally lower.

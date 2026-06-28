@@ -261,3 +261,45 @@ test("EUVD discover-by-product (P1b): EUVD-only candidates surface (deduped vs m
 	assert.ok(doc.euvdCandidates.some((c: { id: string }) => c.id === "CVE-2025-10456"))
 	assert.ok(!doc.euvdCandidates.some((c: { id: string }) => c.id === "CVE-2024-23170"))
 })
+
+test("T3 (design/25): a non-empty NON-SPDX file → loud parse warning, never a silent 0-queryable 'clean'", async () => {
+	const r = await runCveScan({
+		spdxText: "{ this is not spdx — a JSON blob or the wrong file }",
+		evidence: {},
+		asOf: "2026-06-28",
+		fetcher: noVulnFetcher,
+	})
+	assert.match(r.report, /no components were parsed/i)
+	assert.match(r.report, /NOT a clean result/i)
+	assert.equal(isVerdictClean(r.report), true) // the warning itself stays verdict-clean
+})
+
+test("T3: a real SPDX with components → NO spurious parse warning", async () => {
+	const r = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-28", fetcher: noVulnFetcher })
+	assert.doesNotMatch(r.report, /no components were parsed/i)
+})
+
+test("D1 (design/25): source attribution is DERIVED from the fetchers that ran, not hard-coded", async () => {
+	// OSV only.
+	const osvOnly = await runCveScan({ spdxText: SPDX, evidence: {}, asOf: "2026-06-28", fetcher: noVulnFetcher })
+	assert.match(osvOnly.report, /## CVE scan — OSV, as of/)
+	// OSV + NVD + EUVD discover → full attribution.
+	const all = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-06-28",
+		fetcher: noVulnFetcher,
+		nvdFetcher,
+		euvdProductFetcher: async () => [],
+	})
+	assert.match(all.report, /## CVE scan — EUVD \+ NVD \+ OSV, as of/)
+	// An explicit source still wins (back-compat).
+	const explicit = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-06-28",
+		fetcher: noVulnFetcher,
+		source: "Custom",
+	})
+	assert.match(explicit.report, /## CVE scan — Custom, as of/)
+})

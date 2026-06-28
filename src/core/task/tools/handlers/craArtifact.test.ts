@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { classifyCraArtifactPath, commandGeneratesCraSbom } from "./craArtifact"
+import { classifyCraArtifactPath, commandGeneratesCraSbom, commandWritesCraReport } from "./craArtifact"
 
 /**
  * C3 — the CRA funnel path-classifier (the pure logic behind cra_sbom_generated / cra_fix_completed).
@@ -54,5 +54,21 @@ describe("commandGeneratesCraSbom", () => {
 		assert.equal(commandGeneratesCraSbom("cat compliance/sbom/app.spdx"), false)
 		assert.equal(commandGeneratesCraSbom("ls compliance/sbom/"), false)
 		assert.equal(commandGeneratesCraSbom("idf.py build"), false)
+	})
+})
+
+describe("commandWritesCraReport (design/25 T2a — shell-redirect backstop)", () => {
+	test("a shell write of the readiness report → true (must be refused; the guard only runs on write_to_file)", () => {
+		assert.equal(commandWritesCraReport('echo "# CRA SBOM & Fix" > compliance/CRA_READINESS.md'), true)
+		assert.equal(commandWritesCraReport("cat report.md >> compliance/CRA_READINESS.md"), true)
+		assert.equal(commandWritesCraReport("printf '%s' x | tee compliance/CRA_READINESS.md"), true)
+		assert.equal(commandWritesCraReport("cp /tmp/draft.md compliance/CRA_READINESS.md"), true)
+		assert.equal(commandWritesCraReport("mv cra-readiness-2026-06-28.md compliance/"), true) // retitled variant
+	})
+	test("reads, SBOM writes, and non-report writes → false (no false-positives on the golden path)", () => {
+		assert.equal(commandWritesCraReport("cat compliance/CRA_READINESS.md"), false) // reading is fine
+		assert.equal(commandWritesCraReport("west spdx -d build -o compliance/sbom/app.spdx"), false) // SBOM, not the report
+		assert.equal(commandWritesCraReport("echo hi > notes.txt"), false)
+		assert.equal(commandWritesCraReport("ls compliance/"), false)
 	})
 })
