@@ -5,6 +5,7 @@ import { formatResponse } from "@core/prompts/responses"
 import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { showSystemNotification } from "@integrations/notifications"
 import { getInstallId } from "@services/adsum/InstallIdentity"
+import { looksLikeInlineCraReport } from "@services/cra/reportIntegrity"
 import { telemetryService } from "@services/telemetry"
 import { findLastIndex } from "@shared/array"
 import { COMPLETION_RESULT_CHANGES_FLAG } from "@shared/ExtensionMessage"
@@ -58,6 +59,21 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 		if (!result) {
 			config.taskState.consecutiveMistakeCount++
 			return await config.callbacks.sayAndCreateMissingParamError(this.name, "result")
+		}
+
+		// CRA write-seam seatbelt (2806e): the full readiness report must be WRITTEN via write_to_file (where the
+		// honesty guard runs), never pasted inline into the completion. Block an inline report → force the guarded
+		// write + a thin completion. Scoped to CRA-report-shaped text, so normal completions are unaffected.
+		if (looksLikeInlineCraReport(result)) {
+			config.taskState.consecutiveMistakeCount++
+			return formatResponse.toolError(
+				"This completion contains the full CRA readiness report inline. The report MUST be written to " +
+					"`compliance/CRA_READINESS.md` with the `write_to_file` tool (the honesty guard runs ONLY there) " +
+					"plus `compliance/cra-readiness.json` — never inline and never via a shell redirect. The completion/chat " +
+					"is a THIN pointer: the at-a-glance counts, the one-line evidence legend, 'full report written to " +
+					"<absolute path>', and one decline-able next step. Write the report via write_to_file, then call " +
+					"attempt_completion again with only that thin summary.",
+			)
 		}
 
 		config.taskState.consecutiveMistakeCount = 0

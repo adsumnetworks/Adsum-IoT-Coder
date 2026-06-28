@@ -8,6 +8,7 @@ import {
 	checkReadinessReportIntegrity,
 	detectSbomTool,
 	extractClaimedPackageCount,
+	looksLikeInlineCraReport,
 	looksLikeReadinessReport,
 } from "./reportIntegrity"
 import { normalizeSbom } from "./sbomNormalize"
@@ -68,6 +69,30 @@ test("looksLikeReadinessReport: a RETITLED, disclaimer-stripped report still cla
 		looksLikeReadinessReport("/p/compliance/cve-scan-2026-06-28.md", "## CVE scan — OSV\nmatches for your SBOM"),
 		false,
 	)
+})
+
+test("looksLikeInlineCraReport: the write-seam seatbelt blocks an inline report, passes a thin pointer (2806e)", () => {
+	// 2806e pasted the whole report into attempt_completion (no write_to_file) → unguarded. The seatbelt detects
+	// the report body (title/disclaimer + tables/sections/CONFIG_) and blocks it.
+	const inlineReport =
+		`# CRA SBOM & Fix — peripheral_uart\n${DISCLAIMER}\n\nProduct type: assumed · Binding date: 11 Dec 2027.\n\n` +
+		"## 1. SBOM\nGenerated via west spdx (SPDX 2.3) from the real build — 44 modules-deps packages; 3 carry CPE.\n\n" +
+		"## 2. Posture preview\n| Check | Your build shows | You verify |\n" +
+		"| Secure boot | CONFIG_BOOTLOADER_MCUBOOT not set | verify the bootloader child image actually built |\n" +
+		"| BLE pairing | CONFIG_BT_SMP=y present; CONFIG_BT_SMP_SC_ONLY not set | confirm SC-only in production |\n" +
+		"| Memory protection | CONFIG_ARM_MPU=y present; CONFIG_STACK_SENTINEL not present | verify fits threat model |\n\n" +
+		"## 3. Advisories\nNo bundled advisories for NCS v3.2.1 as of 2026-06-18; check live (EUVD, Nordic PSIRT).\n\n" +
+		"## 4. Worth doing now\nThread A — 3 mbed TLS CVEs to review. Thread B — secure boot, APPROTECT, PSA ITS."
+	assert.ok(inlineReport.length > 400)
+	assert.equal(looksLikeInlineCraReport(inlineReport), true)
+	// a correct THIN completion (counts + legend + pointer + offer) is short and structureless → passes.
+	const thin =
+		"CRA preview complete — 44 components · 6 CVEs · 3 likely not reachable · 6 gaps. Each line is build " +
+		"evidence — present/not set + what to verify, not a pass/fail verdict. Full report written to " +
+		"/tmp/adsum-cra/compliance/CRA_READINESS.md. Next: assess the 3 mbed TLS CVEs?"
+	assert.equal(looksLikeInlineCraReport(thin), false)
+	// a non-CRA completion is never affected.
+	assert.equal(looksLikeInlineCraReport("Fixed the BLE disconnect bug; all tests pass. ".repeat(20)), false)
 })
 
 test("blocks the 2706b fabrication: wrong tool + inflated package count", () => {

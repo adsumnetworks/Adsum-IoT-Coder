@@ -1,5 +1,8 @@
 import { BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha } from "../brandColors"
-import { CRA_STEPS } from "./CraProgressRail"
+
+/** The five CRA phases, in order. The in-flow step marker is the progress surface (the floating rail was removed
+ * in favour of the harness checklist + model-emitted mermaid progress diagrams). */
+export const CRA_STEPS = ["Inventory", "Scan CVEs", "Posture", "Triage", "Next"] as const
 
 /**
  * In-flow CRA step marker (the "big title as the conversation evolves" piece). The cra-readiness workflow emits
