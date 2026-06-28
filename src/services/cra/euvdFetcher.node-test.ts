@@ -6,11 +6,13 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import {
+	discoverByProduct,
 	type EuvdFetcher,
 	enrichWithEuvd,
 	euvdSearchByCveUrl,
 	type HttpGet,
 	makeEuvdFetcher,
+	parseEuvdList,
 	parseEuvdSearch,
 } from "./euvdFetcher"
 
@@ -87,4 +89,44 @@ test("enrichWithEuvd: maps ids → records, de-dupes, and a per-id failure degra
 	assert.equal(map.size, 1) // dup collapsed; the failing id degraded out
 	assert.ok(map.has("CVE-2026-5068"))
 	assert.equal(map.has("CVE-FAIL"), false)
+})
+
+// --- discover-by-product (the EU-authoritative source that catches what NVD's CPE misses) ---
+
+const ZEPHYR_PAGE = JSON.stringify({
+	total: 2,
+	items: [
+		{ id: "EUVD-2025-30238", aliases: "CVE-2025-10456", baseScore: 7.1, epss: 0.2 },
+		{ id: "EUVD-2026-35353", aliases: "CVE-2026-5068\nGHSA-qrcq-hxwj-mqxm", baseScore: 7.6, epss: 0.17 },
+		{ id: "EUVD-x", aliases: "GSD-only-no-cve" }, // no CVE alias → skipped
+	],
+})
+
+test("parseEuvdList: one record per item with a CVE alias; non-CVE items skipped", () => {
+	const recs = parseEuvdList(ZEPHYR_PAGE)
+	assert.equal(recs.length, 2)
+	assert.deepEqual(recs.map((r) => r.cveId).sort(), ["CVE-2025-10456", "CVE-2026-5068"])
+	assert.equal(parseEuvdList("{bad json").length, 0) // never throws
+})
+
+test("discoverByProduct: lists a product's EUVD CVEs (incl. CVE-2025-10456 that NVD-CPE missed), de-duped", async () => {
+	let lastUrl = ""
+	const httpGet: HttpGet = async (url, headers) => {
+		lastUrl = url
+		assert.match(headers?.["User-Agent"] ?? "", /AdsumIoTCoder/) // custom UA sent
+		return ZEPHYR_PAGE // <100 items → pagination stops after page 0
+	}
+	const recs = await discoverByProduct("zephyrproject", "zephyr", httpGet, { fromScore: 7 })
+	assert.match(lastUrl, /vendor=zephyrproject&product=zephyr&fromScore=7/)
+	assert.ok(
+		recs.some((r) => r.cveId === "CVE-2025-10456"),
+		"discover-by-product must surface the EUVD-only CVE NVD's CPE missed",
+	)
+})
+
+test("discoverByProduct: a page failure degrades to what we have (never throws / never a false clean)", async () => {
+	const httpGet: HttpGet = async () => {
+		throw new Error("EUVD 503")
+	}
+	assert.deepEqual(await discoverByProduct("zephyrproject", "zephyr", httpGet), [])
 })

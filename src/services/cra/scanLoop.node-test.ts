@@ -5,6 +5,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { isVerdictClean } from "../knowledge/honesty/verdictScan"
+import type { EuvdRecord } from "./euvdFetcher"
 import type { NvdFetcher } from "./nvdMatch"
 import type { OsvFetcher } from "./osvMatch"
 import { type HintResolver, runCveScan } from "./scanLoop"
@@ -234,4 +235,29 @@ PackageVersion: ec78104f15691cccd94682cf4b22e0a013f28dd8-dirty
 	})
 	const ids = withCore.findings.flatMap((f) => f.match.vulnIds)
 	assert.ok(ids.includes("CVE-2025-10456"), `expected the Zephyr core CVE; got ${ids.join(",") || "none"}`)
+})
+
+test("EUVD discover-by-product (P1b): EUVD-only candidates surface (deduped vs matched), hedged + verdict-clean", async () => {
+	// twoVulnFetcher matches CVE-2024-23170 + CVE-2099-0001 (OSV). EUVD-by-product returns one of those (must be
+	// deduped out of the candidate list) + CVE-2025-10456 (EUVD-only — the catch NVD's CPE missed; must surface).
+	const euvdProductFetcher = async (): Promise<EuvdRecord[]> => [
+		{ euvdId: "EUVD-2024-x", cveId: "CVE-2024-23170", baseScore: 9, epss: 0.5, exploited: false, references: [] },
+		{ euvdId: "EUVD-2025-30238", cveId: "CVE-2025-10456", baseScore: 7.1, epss: 0.2, exploited: false, references: [] },
+	]
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-06-28",
+		fetcher: twoVulnFetcher,
+		euvdProductFetcher,
+		euvdProductLabel: "zephyr 4.2.99",
+	})
+	assert.match(r.report, /Additional EU Vulnerability Database advisories for zephyr 4\.2\.99/)
+	assert.match(r.report, /CVE-2025-10456.*EUVD-2025-30238/) // the EUVD-only CVE surfaces
+	const candSection = r.report.split("Additional EU")[1] ?? ""
+	assert.doesNotMatch(candSection, /CVE-2024-23170/) // already version-matched → deduped out of candidates
+	assert.equal(isVerdictClean(r.report), true) // hedged + "verify" → no verdict leak
+	const doc = JSON.parse(r.json)
+	assert.ok(doc.euvdCandidates.some((c: { id: string }) => c.id === "CVE-2025-10456"))
+	assert.ok(!doc.euvdCandidates.some((c: { id: string }) => c.id === "CVE-2024-23170"))
 })

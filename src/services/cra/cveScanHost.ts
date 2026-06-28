@@ -15,7 +15,7 @@
 import type { BuildEvidenceReaders } from "./buildEvidence"
 import { readBuildEvidence } from "./buildEvidence"
 import type { ModuleVersionResolver } from "./componentPurlMap"
-import type { EuvdFetcher } from "./euvdFetcher"
+import type { EuvdFetcher, EuvdRecord } from "./euvdFetcher"
 import type { ModuleRefsResolver } from "./moduleSecurityRefs"
 import type { NvdFetcher } from "./nvdMatch"
 import type { OsvVulnFetcher } from "./osvEnrich"
@@ -44,9 +44,15 @@ export interface CveScanHostDeps {
 	resolveCoreVersion?: ModuleVersionResolver
 	/** Optional CPE→NVD fetcher (F11); when provided, CPE-bearing components are also scanned against NVD. */
 	nvdFetcher?: NvdFetcher
-	/** Optional EUVD confirmation fetcher; when provided, matched CVEs are confirmed against the EU Vulnerability
-	 *  Database (the CRA's named source) → EUVD id + EPSS + KEV. Per-id failures degrade. */
+	/** EUVD confirmation fetcher — the CRA's named database, a CORE source (the `?` is a test seam; production wires
+	 *  it unconditionally). Matched CVEs are confirmed against the EU Vulnerability Database → EUVD id + EPSS + KEV.
+	 *  Per-id failures degrade. */
 	euvdFetcher?: EuvdFetcher
+	/** EUVD discover-by-product source for the detected SDK (the CRA-authoritative catch for CVEs NVD's CPE misses).
+	 *  Surfaced as hedged "version not auto-confirmed" candidates. Core; production wires it per detected platform. */
+	euvdProductFetcher?: () => Promise<EuvdRecord[]>
+	/** Label for the discover-by-product set, e.g. "zephyr 4.2.99". */
+	euvdProductLabel?: string
 }
 
 export interface CveScanHostInput {
@@ -86,5 +92,7 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 		resolveCoreVersion: deps.resolveCoreVersion,
 		nvdFetcher: deps.nvdFetcher,
 		euvdFetcher: deps.euvdFetcher,
+		euvdProductFetcher: deps.euvdProductFetcher,
+		euvdProductLabel: deps.euvdProductLabel,
 	})
 }

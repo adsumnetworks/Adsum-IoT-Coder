@@ -68,11 +68,21 @@ export interface ScanLoopInput {
 	 */
 	nvdFetcher?: NvdFetcher
 	/**
-	 * Optional EUVD confirmation fetcher. When provided, each matched CVE id is looked up in the EU Vulnerability
-	 * Database (the CRA's named source) → its EUVD id + EPSS + KEV flag are surfaced. Per-id failures degrade
-	 * (never fail the scan). Omitted → no EUVD calls (default behaviour unchanged).
+	 * EUVD confirmation fetcher — the CRA's named database, a CORE source (NOT an operational opt-in): each matched
+	 * CVE is looked up in the EU Vulnerability Database → its EUVD id + EPSS + KEV flag surfaced. The `?` is a
+	 * unit-test injection seam only (like nvdFetcher/vulnFetcher); production wires it UNCONDITIONALLY. Per-id
+	 * failures degrade (never fail the scan / never a false clean).
 	 */
 	euvdFetcher?: EuvdFetcher
+	/**
+	 * EUVD discover-by-product source — the EU-authoritative list for the detected SDK (e.g. zephyr) that catches
+	 * CVEs NVD's CPE configs miss. CORE for a CRA scan; production wires it for every detected platform (the `?` is
+	 * the test seam). EUVD has no version ranges, so these are surfaced SEPARATELY as hedged "version not
+	 * auto-confirmed; verify" candidates (deduped against the version-matched findings), never as confirmed matches.
+	 */
+	euvdProductFetcher?: () => Promise<EuvdRecord[]>
+	/** Human label for the discover-by-product set, e.g. "zephyr 4.2.99". */
+	euvdProductLabel?: string
 }
 
 export interface ScanLoopResult {
@@ -162,6 +172,12 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 			)
 		: new Map<string, EuvdRecord>()
 
+	// EUVD discover-by-product (opt-in): the EU-authoritative list for the detected SDK. Surface ONLY the ones not
+	// already version-matched by OSV/NVD, as hedged "version-not-confirmed" candidates (never as confirmed matches).
+	const foundIds = new Set(findings.flatMap((f) => f.match.vulnIds.map((id) => id.toUpperCase())))
+	const euvdProduct = input.euvdProductFetcher ? await input.euvdProductFetcher() : []
+	const euvdCandidates = euvdProduct.filter((c) => !foundIds.has(c.cveId.toUpperCase()))
+
 	const reportInput: EvidenceReportInput = {
 		findings,
 		skipped,
@@ -170,6 +186,8 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 		source: input.source,
 		enrichment,
 		euvd,
+		euvdCandidates,
+		euvdProductLabel: input.euvdProductLabel,
 	}
 	return {
 		report: formatCveScanReport(reportInput),

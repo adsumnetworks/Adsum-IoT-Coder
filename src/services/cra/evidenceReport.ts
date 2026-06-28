@@ -26,10 +26,19 @@ export interface EvidenceReportInput {
 	source?: string
 	/** Optional severity/fixed-version enrichment, keyed by vuln id (§4/§11). Surfaced verbatim + attributed. */
 	enrichment?: Map<string, EnrichedVuln>
-	/** Optional EU Vulnerability Database (EUVD) confirmation, keyed by CVE id — the CRA's named source: the EUVD
-	 *  id + EPSS + KEV/exploited flag. Sourced facts, never a verdict. Empty/absent → nothing rendered. */
+	/** EU Vulnerability Database (EUVD) confirmation, keyed by CVE id — the CRA's named source (a CORE source, not
+	 *  an opt-in): the EUVD id + EPSS + KEV/exploited flag. Sourced facts, never a verdict. The `?` is just "no
+	 *  EUVD data to render this run" (a pure-formatter input) — absent → nothing rendered. */
 	euvd?: Map<string, EuvdRecord>
+	/** EUVD discover-by-product CANDIDATES (not version-matched by OSV/NVD) — the EU-authoritative catch for CVEs
+	 *  NVD's CPE configs miss, surfaced as a hedged "version not auto-confirmed; verify" list. Core; `?` = none this run. */
+	euvdCandidates?: EuvdRecord[]
+	/** Label for that candidate set, e.g. "zephyr 4.2.99". */
+	euvdProductLabel?: string
 }
+
+/** Max EUVD discover-by-product candidates rendered inline (the rest summarised as "+N more"). */
+const EUVD_CANDIDATE_CAP = 10
 
 const advisoryUrl = (id: string) => `https://osv.dev/vulnerability/${id}`
 
@@ -62,6 +71,48 @@ const provenanceCaption = (source: string, asOf: string): string =>
 	`${source} matches for your SBOM's component versions, as of ${asOf}. Partial coverage; ` +
 	"version-matching can over- or under-report — open each linked advisory to confirm it applies to your build."
 
+/**
+ * The EUVD discover-by-product candidates section (hedged, capped, high-severity-first). Separate from the
+ * version-matched findings BECAUSE EUVD has no machine version-ranges — these are "the EU DB lists this for your
+ * component; applicability to your exact build is not auto-determined; verify". Evidence-mode (CVSS/EPSS/KEV are
+ * sourced facts), every line ends in "verify". Empty when there are no candidates.
+ */
+function renderEuvdCandidates(input: EvidenceReportInput): string[] {
+	const cands = input.euvdCandidates ?? []
+	if (cands.length === 0) {
+		return []
+	}
+	const sorted = [...cands].sort((a, b) => (b.epss ?? 0) - (a.epss ?? 0) || (b.baseScore ?? 0) - (a.baseScore ?? 0))
+	const shown = sorted.slice(0, EUVD_CANDIDATE_CAP)
+	const label = input.euvdProductLabel ? ` for ${input.euvdProductLabel}` : ""
+	const out: string[] = [
+		"",
+		`## Additional EU Vulnerability Database advisories${label} (version not auto-confirmed — verify)`,
+		"",
+		"> The EU Vulnerability Database (EUVD) lists these for this component, but does not publish machine-readable " +
+			"version ranges — so applicability to YOUR exact build is not auto-determined. Open each and verify. " +
+			"High-severity first.",
+		"",
+	]
+	for (const c of shown) {
+		const bits = [`[${c.cveId}](https://euvd.enisa.europa.eu) (${c.euvdId})`]
+		if (c.baseScore != null) {
+			bits.push(`CVSS ${c.baseScore}`)
+		}
+		if (c.epss != null) {
+			bits.push(`EPSS ${Math.round(c.epss * 100)}%`)
+		}
+		if (c.exploited) {
+			bits.push("flagged actively exploited (KEV)")
+		}
+		out.push(`- ${bits.join(" · ")} — verify whether it applies to your build.`)
+	}
+	if (sorted.length > shown.length) {
+		out.push(`- … +${sorted.length - shown.length} more in the EU DB (open the EUVD for the full list).`)
+	}
+	return out
+}
+
 export function formatCveScanReport(input: EvidenceReportInput): string {
 	const source = input.source ?? "OSV"
 	const counts = dropReasonCounts(input.skipped)
@@ -90,6 +141,7 @@ export function formatCveScanReport(input: EvidenceReportInput): string {
 			`No ${source} matches as of ${input.asOf} for the ${input.queriedCount} queryable components. ` +
 				"This is not a complete check — components without an identifier were not scanned; open the live advisories to confirm.",
 		)
+		lines.push(...renderEuvdCandidates(input)) // EUVD discover-by-product may still have candidates to verify
 		return lines.join("\n")
 	}
 
@@ -133,6 +185,7 @@ export function formatCveScanReport(input: EvidenceReportInput): string {
 		}
 		lines.push(line)
 	}
+	lines.push(...renderEuvdCandidates(input)) // EU-authoritative discover-by-product candidates (hedged, capped)
 	return lines.join("\n")
 }
 
@@ -163,6 +216,9 @@ export interface CveScanJson {
 		applicability: { signal: ApplicabilityVerdict["signal"]; note: string }
 	}>
 	skipped: Array<{ component: string; version: string; reason: DropReason }>
+	/** EUVD discover-by-product candidates (present only when found) — the EU-authoritative list for the detected
+	 *  SDK that NVD's CPE may miss; NOT version-confirmed (EUVD has no ranges), so hedged + "verify". */
+	euvdCandidates?: Array<{ id: string; euvdId: string; baseScore: number | null; epss: number | null; exploited: boolean }>
 }
 
 interface OsvSeverityJson {
@@ -198,6 +254,18 @@ export function formatCveScanJson(input: EvidenceReportInput): string {
 			applicability: { signal: f.applicability.signal, note: f.applicability.note },
 		})),
 		skipped: input.skipped.map((s) => ({ component: s.component.name, version: s.component.version, reason: s.reason })),
+		// Additive: only present when discover-by-product found candidates → existing JSON output is unchanged otherwise.
+		...(input.euvdCandidates?.length
+			? {
+					euvdCandidates: input.euvdCandidates.map((c) => ({
+						id: c.cveId,
+						euvdId: c.euvdId,
+						baseScore: c.baseScore ?? null,
+						epss: c.epss ?? null,
+						exploited: c.exploited,
+					})),
+				}
+			: {}),
 	}
 	return JSON.stringify(doc, null, 2)
 }
