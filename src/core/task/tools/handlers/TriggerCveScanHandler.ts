@@ -9,7 +9,7 @@ import { resolveAdvisoryHint } from "@/services/cra/advisoryHints"
 import { defaultBuildEvidenceReaders } from "@/services/cra/buildEvidence"
 import { type ModuleVersionResolver, normalizeModuleName } from "@/services/cra/componentPurlMap"
 import { runCveScanHost } from "@/services/cra/cveScanHost"
-import { makeEuvdFetcher } from "@/services/cra/euvdFetcher"
+import { discoverByProduct, makeEuvdFetcher } from "@/services/cra/euvdFetcher"
 import { type ModuleRefsResolver, type ModuleSecurityRefs, readModuleSecurityRefs } from "@/services/cra/moduleSecurityRefs"
 import { makeNvdFetcher } from "@/services/cra/nvdFetcher"
 import { makeOsvFetcher } from "@/services/cra/osvFetcher"
@@ -178,8 +178,12 @@ export interface CveScanHandlerDeps {
 }
 
 const defaultDeps: CveScanHandlerDeps = {
-	scan: async ({ sbomPath, buildDir, projectDir, asOf }) =>
-		runCveScanHost(
+	scan: async ({ sbomPath, buildDir, projectDir, asOf }) => {
+		// Resolve the Zephyr core SEMVER once (zephyr/VERSION, not the SHA): enables curated-CPE NVD detection of
+		// the core AND signals "this is a Zephyr build" → wire EUVD discover-by-product for it.
+		const coreResolver = await resolveCoreVersions(projectDir, buildDir)
+		const zephyrVer = coreResolver?.("zephyr")
+		return runCveScanHost(
 			{ sbomPath, buildDir },
 			{
 				fetcher: makeOsvFetcher(),
@@ -190,21 +194,27 @@ const defaultDeps: CveScanHandlerDeps = {
 				resolveModuleVersion: await resolveWestModuleVersions(projectDir, buildDir),
 				// F5: fill CPE/PURL the SBOM tool didn't emit, from each module's own zephyr/module.yml.
 				resolveModuleRefs: await resolveWestModuleRefs(projectDir, buildDir),
-				// Platform-core CPE detection: resolve the Zephyr core's SEMVER (zephyr/VERSION, not the SHA) so the
-				// curated CPE map makes the core — the biggest component, untagged by west spdx — NVD-detectable.
-				resolveCoreVersion: await resolveCoreVersions(projectDir, buildDir),
+				// Platform-core CPE detection: the curated CPE map makes the Zephyr core — the biggest component,
+				// untagged by west spdx — NVD-detectable, keyed on its semver.
+				resolveCoreVersion: coreResolver,
 				// F11: also scan CPE-bearing components against NVD — the path that finds CVEs OSV misses for
 				// embedded C libs (mbed TLS et al.). Offline-safe degradation: a network error throws and is
 				// surfaced as "scan unavailable", never a false-clean.
 				nvdFetcher: makeNvdFetcher(),
-				// EUVD: confirm each matched CVE against the EU Vulnerability Database (the CRA's named source) →
-				// EUVD id + EPSS + KEV. Per-id failures degrade (never fail the scan). NVD/OSV stay the version-
-				// precise matchers (EUVD carries no CPE); EUVD is the EU-authoritative confirmation layer.
+				// EUVD (CORE — the CRA's named DB): confirm each matched CVE → EUVD id + EPSS + KEV.
 				euvdFetcher: makeEuvdFetcher(),
+				// EUVD discover-by-product (CORE): for the detected SDK, list the EU DB's high-severity advisories —
+				// the CRA-authoritative catch for CVEs NVD's CPE configs miss (e.g. CVE-2025-10456). Hedged,
+				// version-not-confirmed candidates. Wired whenever a platform is detected (Zephyr today; ESP next).
+				euvdProductFetcher: zephyrVer
+					? () => discoverByProduct("zephyrproject", "zephyr", undefined, { fromScore: 7 })
+					: undefined,
+				euvdProductLabel: zephyrVer ? `zephyr ${zephyrVer}` : undefined,
 				// Source attribution reflects what actually ran (was "OSV"-only, inaccurate — 2806g).
 				source: "EUVD + NVD + OSV",
 			},
-		),
+		)
+	},
 	mkdir: (dir) => mkdirSync(dir, { recursive: true }),
 	writeFile: (filePath, content) => writeFileSync(filePath, content, "utf8"),
 	now: () => new Date().toISOString().slice(0, 10),

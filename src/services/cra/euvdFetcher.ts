@@ -94,6 +94,77 @@ export function parseEuvdSearch(jsonText: string, cveId: string): EuvdRecord | n
 	}
 }
 
+/**
+ * Pure parser: the EUVD `/search` JSON → one EuvdRecord per item that carries a CVE alias (the CVE id is the
+ * first `CVE-…` alias). Used by discover-by-product. Returns [] on malformed JSON — never throws.
+ */
+export function parseEuvdList(jsonText: string): EuvdRecord[] {
+	let data: any
+	try {
+		data = JSON.parse(jsonText)
+	} catch {
+		return []
+	}
+	const items: any[] = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : []
+	const out: EuvdRecord[] = []
+	for (const it of items) {
+		const cveId = splitLines(it?.aliases).find((a) => /^CVE-\d{4}-\d+$/i.test(a))
+		if (!cveId) {
+			continue
+		}
+		out.push({
+			euvdId: typeof it.id === "string" ? it.id : "",
+			cveId: cveId.toUpperCase(),
+			baseScore: num(it.baseScore),
+			epss: num(it.epss),
+			exploited: Boolean(it.exploitedSince) || it.exploited === true,
+			references: splitLines(it.references),
+		})
+	}
+	return out
+}
+
+/**
+ * Discover-by-product: list the EUVD CVEs for a vendor/product (e.g. zephyrproject/zephyr) — the EU-authoritative
+ * source that catches CVEs NVD's CPE configs miss (verified: EUVD has CVE-2025-10456, NVD-by-CPE didn't). EUVD
+ * carries no version ranges, so the CALLER must version-filter (e.g. the git fix-in-tree check); this returns the
+ * raw candidate list. Paginates up to `maxPages`. A page failure stops pagination (returns what we have) — never
+ * throws / never a false "clean". The mandatory custom User-Agent is sent.
+ */
+export async function discoverByProduct(
+	vendor: string,
+	product: string,
+	httpGet: HttpGet = defaultHttpGet,
+	opts?: { fromScore?: number; maxPages?: number },
+): Promise<EuvdRecord[]> {
+	const maxPages = opts?.maxPages ?? 4
+	const fromScore = opts?.fromScore ?? 0
+	const seen = new Map<string, EuvdRecord>()
+	for (let page = 0; page < maxPages; page++) {
+		const url =
+			`${EUVD_SEARCH_URL}?vendor=${encodeURIComponent(vendor)}&product=${encodeURIComponent(product)}` +
+			`&fromScore=${fromScore}&page=${page}&size=100`
+		let recs: EuvdRecord[]
+		try {
+			recs = parseEuvdList(await httpGet(url, { "User-Agent": EUVD_USER_AGENT }))
+		} catch {
+			break // a flaky page stops pagination; we keep what we have (never a false clean)
+		}
+		if (recs.length === 0) {
+			break
+		}
+		for (const r of recs) {
+			if (!seen.has(r.cveId)) {
+				seen.set(r.cveId, r)
+			}
+		}
+		if (recs.length < 100) {
+			break // last page
+		}
+	}
+	return [...seen.values()]
+}
+
 /** A function that returns the raw EUVD search JSON for a CVE id. Throws on transport error (caller degrades). */
 export type EuvdFetcher = (cveId: string) => Promise<string>
 
