@@ -100,6 +100,8 @@ export interface ScanLoopResult {
 	normalized: NormalizedSbom
 	/** Severity/fixed enrichment keyed by vuln id (empty unless a `vulnFetcher` was provided). */
 	enrichment: Map<string, EnrichedVuln>
+	/** Per-source raw return counts (the "what each DB returned" brief) — for the interactive Phase-2 view. */
+	sources: { osv: number; nvd: number; euvdProduct: number; euvdConfirmed: number }
 }
 
 /** Run the full scan loop. Deterministic given a fixed fetcher + asOf; the only network touch is `fetcher`. */
@@ -187,6 +189,15 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 				"result; regenerate/point at the CPE/PURL-bearing SBOM (modules-deps.spdx or all.spdx) and re-scan."
 			: undefined
 
+	// Per-source counts — the honest "what each DB returned" brief for the interactive Phase-2 presentation
+	// (design/28). Raw per-source returns (may overlap across sources before dedup); `findings` is the merged set.
+	const sources = {
+		osv: osvScan.matches.reduce((n, m) => n + m.vulnIds.length, 0),
+		nvd: nvdScan.matches.reduce((n, m) => n + m.vulns.length, 0),
+		euvdProduct: euvdProduct.length, // EUVD discover-by-product advisories (leads, version-not-confirmed)
+		euvdConfirmed: euvd.size, // matched CVEs also confirmed in the EU Vulnerability Database
+	}
+
 	// D1 (design/25): the source attribution must reflect what ACTUALLY ran, not a hard-coded string. OSV always
 	// runs (fetcher is required); NVD/EUVD only when their fetcher is wired. An explicit input.source still wins.
 	const source =
@@ -206,6 +217,7 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 		euvdCandidates,
 		euvdProductLabel: input.euvdProductLabel,
 		sbomParseWarning,
+		sources,
 	}
 	return {
 		report: formatCveScanReport(reportInput),
@@ -216,5 +228,6 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 		queriedCount,
 		normalized,
 		enrichment,
+		sources,
 	}
 }

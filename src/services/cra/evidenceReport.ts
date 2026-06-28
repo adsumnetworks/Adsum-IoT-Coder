@@ -39,6 +39,9 @@ export interface EvidenceReportInput {
 	 *  file (not SPDX, or `app.spdx` with no ids), not a clean result. Rendered as a prominent warning so "0
 	 *  queryable" is never mistaken for "0 vulnerabilities". Absent → normal. */
 	sbomParseWarning?: string
+	/** Per-source raw return counts (design/28) — the "what each DB returned" brief for the interactive Phase-2
+	 *  view. Facts, not a verdict. Absent → the sources line is omitted. */
+	sources?: { osv: number; nvd: number; euvdProduct: number; euvdConfirmed: number }
 }
 
 /** Max EUVD discover-by-product candidates rendered inline (the rest summarised as "+N more"). */
@@ -151,6 +154,17 @@ export function formatCveScanReport(input: EvidenceReportInput): string {
 	}
 	lines.push(`Coverage: ${coverage.join(" · ")}.`, "")
 
+	// design/28: the per-source "what each DB returned" brief (facts, never a verdict). Version-matched lane
+	// (NVD by CPE + OSV by PURL → findings, EUVD-confirmed) is kept distinct from EUVD discover-by-product leads.
+	if (input.sources) {
+		const s = input.sources
+		lines.push(
+			`Sources queried (as of ${input.asOf}): NVD by CPE ${s.nvd} · OSV by PURL ${s.osv} → ${input.findings.length} version-matched findings` +
+				` (EUVD-confirmed ${s.euvdConfirmed}); EU Vulnerability Database (ENISA) by product ${s.euvdProduct} additional advisories to verify.`,
+			"",
+		)
+	}
+
 	if (input.findings.length === 0) {
 		lines.push(
 			`No ${source} matches as of ${input.asOf} for the ${input.queriedCount} queryable components. ` +
@@ -213,6 +227,8 @@ export interface CveScanJson {
 	provenance: string
 	/** Coverage mirror: queryable count + the honest drop-reason breakdown (never a bare number when gaps exist). */
 	coverage: { queryable: number; byDropReason: Partial<Record<DropReason, number>> }
+	/** Per-source raw return counts (design/28) — what each DB returned. Present only when the scan provided them. */
+	sources?: { osv: number; nvd: number; euvdProduct: number; euvdConfirmed: number }
 	/** Triage funnel mirror (host-derived counts): total advisories, likely-not-reachable, to-review. */
 	triage: { total: number; notReachable: number; review: number }
 	findings: Array<{
@@ -249,6 +265,7 @@ export function formatCveScanJson(input: EvidenceReportInput): string {
 		asOf: input.asOf,
 		provenance: provenanceCaption(source, input.asOf),
 		coverage: { queryable: input.queriedCount, byDropReason: dropReasonCounts(input.skipped) },
+		...(input.sources ? { sources: input.sources } : {}),
 		triage: summarizeTriage(input.findings),
 		findings: input.findings.map((f) => ({
 			component: f.match.component.name,
