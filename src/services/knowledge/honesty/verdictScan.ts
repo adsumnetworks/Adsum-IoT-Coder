@@ -121,6 +121,16 @@ const LEAK_PATTERNS: LeakPattern[] = [
 	// "⚠️ debug key") — evidence-mode output carries NO status glyphs. Anchored to clause/bullet start, so the
 	// disclaimer's mid-sentence "A ✅ means …" (preceded by "A ") never trips. `g` flag → the exec-loop ends.
 	{ rule: "glyph-bullet", re: /^\s*(?:[-*+]|\d+[.)])?\s*\*{0,2}\s*[✅✔✓❌✗⚠]/g },
+	// 2806c — TRAFFIC-LIGHT EMOJI used as a status mark ("| 🟢 Good |", "🔴 gap"). These have NO evidence-mode use,
+	// so match them ANYWHERE (unlike the ✅ rules, which are anchored to avoid the disclaimer's "A ✅ means…" prose;
+	// the coloured circles never appear in legitimate evidence text). `u` flag for the astral code points.
+	{ rule: "glyph-emoji", re: /[🔴🟡🟢🟠🔵⚪⚫]/gu },
+	// A status glyph inside a TABLE CELL ("| ✓ enabled |", "| ✗ gap |") — the glyph-bullet rule anchors to a line/
+	// bullet start, so a glyph after a `|` cell wall slipped it (2806b). Anchor to the `|` instead.
+	{ rule: "glyph-cell", re: /\|\s*\*{0,2}\s*[✅✔✓❌✗⚠]/g },
+	// GOOD / BAD as a verdict in a table cell ("| 🟢 Good |", "| Good |", "| BAD |"). Cell-anchored so prose
+	// ("a good practice to verify") never trips — only a cell whose content is the bare verdict word.
+	{ rule: "good-bad-cell", re: /\|\s*\*{0,2}\s*(?:GOOD|BAD|Good|Bad)\s*\*{0,2}\s*\|/g },
 	// A PASS/FAIL grade — standalone UPPERCASE token (case-sensitive): "Secure boot: PASS", "| FAIL |".
 	// Uppercase-only avoids prose "pass"/"fail" and substrings (BYPASS, FAILURE, PASSED).
 	{ rule: "passfail", re: /(?<![A-Za-z])(?:PASS|FAIL)(?![A-Za-z])/g },
@@ -150,7 +160,16 @@ const LEAK_PATTERNS: LeakPattern[] = [
 	// The bit cites ONLY the bare "Annex I Part I" / "Annex I Part II" label — any parenthesized sub-clause after
 	// the Part numeral is invented (guessed clause letters are frequently wrong + reopen the liability failure).
 	// Matching the `Part <num> (N)` shape catches the invention while leaving the bare label untouched.
-	{ rule: "fabricated-annex-clause", re: /\bAnnex\s+[IVX]+\s+Part\s+[IVX]+\s*\(\d+\)/gi },
+	// 2806b/2806c — tolerate a comma between "Annex I" and "Part I" ("Annex I, Part I (1)(c)" evaded the no-comma
+	// form and shipped). The `,?` closes that hole.
+	{ rule: "fabricated-annex-clause", re: /\bAnnex\s+[IVX]+\s*,?\s*Part\s+[IVX]+\s*\(\d+\)/gi },
+	// 2806b/2806c — the BARE "Part I (2)(d)" / "Part II (2)" form (no leading "Annex"). The curated label is the
+	// bare "Part I" / "Part II" with NO paren, so a parenthesized sub-clause after the Part numeral is fabricated.
+	{ rule: "fabricated-part-clause", re: /\bPart\s+[IVX]+\s*\(\d+\)/gi },
+	// 2806c — the SHORT scorecard form "I(2)(a)" … "I(2)(i)" (roman numeral immediately followed by `(digit)(letter)`),
+	// a whole fabricated compliance grid. Case-sensitive roman + the `(N)(x)` shape; the lookbehind keeps it from
+	// firing mid-word. No legitimate curated citation has this shape.
+	{ rule: "fabricated-scorecard-clause", re: /(?<![A-Za-z])[IVX]{1,3}\s*\(\d+\)\s*\([a-z]\)/g },
 	// "now/fully compliant|certified|resolved|fixed|…"
 	{
 		rule: "now-verdict",

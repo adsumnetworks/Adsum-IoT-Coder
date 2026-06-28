@@ -73,7 +73,24 @@ export function looksLikeReadinessReport(absolutePath: string, content: string):
 	if (!/\.md$/i.test(absolutePath)) {
 		return false
 	}
-	return /not a conformity assessment/i.test(content) && /\bSBOM\b/i.test(content)
+	// (1) Canonical signal: the disclaimer phrase + an SBOM mention.
+	if (/not a conformity assessment/i.test(content) && /\bSBOM\b/i.test(content)) {
+		return true
+	}
+	// (2) Drift-proofing (2806c): a RETITLED report that DROPPED the disclaimer phrase ("CRA Readiness Assessment",
+	// no "not a conformity assessment") otherwise slipped past (1) → the guard never ran and glyphs + fabricated
+	// clauses shipped. Re-detect by location + the consolidated report's own shape (SBOM section + a posture/Annex
+	// signal), so a renamed or disclaimer-stripped report still classifies — then structureScan rejects it for the
+	// missing disclaimer. Filename markers catch the date-stamped `cra-readiness-<date>.md`; the `compliance/` path
+	// catches arbitrary renames. The consolidated shape (SBOM + posture/Kconfig/Annex) excludes the CVE-scan-only
+	// `cve-scan-*.md` and the `.spdx` inventories, which carry neither a posture section nor Annex citations.
+	const filenameMarks = /(?:^|[\\/])(?:cra[_-]?readiness|cra[_-]?sbom|CRA_READINESS)[^\\/]*\.md$/i.test(absolutePath)
+	const inCompliance = /[\\/]compliance[\\/]/i.test(absolutePath)
+	const consolidated = /\bSBOM\b/i.test(content) && /\b(?:posture|Kconfig|CONFIG_[A-Z]|Annex\s+[IVX])/i.test(content)
+	if ((filenameMarks || inCompliance) && consolidated) {
+		return true
+	}
+	return false
 }
 
 /** Pure cross-check: the report's claims vs the real artifacts. Returns only provable contradictions + missing primitives. */

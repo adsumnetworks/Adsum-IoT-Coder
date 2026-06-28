@@ -57,6 +57,19 @@ test("looksLikeReadinessReport: markdown + disclaimer + SBOM mention", () => {
 	assert.equal(looksLikeReadinessReport("/p/notes.md", "just some notes"), false) // no disclaimer
 })
 
+test("looksLikeReadinessReport: a RETITLED, disclaimer-stripped report still classifies (2806c drift-proofing)", () => {
+	// 2806c retitled to "CRA Readiness Assessment" and dropped "not a conformity assessment", so the canonical
+	// signal missed it and the guard never ran. Re-detected by location + consolidated shape (SBOM + posture/Annex).
+	const retitled =
+		"# CRA Readiness Assessment — peripheral_uart\n## SBOM\n## Build-Time Posture\nCONFIG_BT_SMP=y\nAnnex I Part I"
+	assert.equal(looksLikeReadinessReport("/p/compliance/cra-readiness-2026-06-28.md", retitled), true)
+	// but the CVE-scan-only artifact (no posture/Annex section) must NOT be mistaken for the readiness report
+	assert.equal(
+		looksLikeReadinessReport("/p/compliance/cve-scan-2026-06-28.md", "## CVE scan — OSV\nmatches for your SBOM"),
+		false,
+	)
+})
+
 test("blocks the 2706b fabrication: wrong tool + inflated package count", () => {
 	const report = `# CRA SBOM & Fix\n${DISCLAIMER}\n${HEDGED_DATED}\n## SBOM\nGenerated via west spdx.\n| Total packages | 91 |\n`
 	const issues = checkReadinessReportIntegrity({
