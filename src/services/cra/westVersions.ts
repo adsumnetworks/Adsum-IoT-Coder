@@ -81,6 +81,24 @@ export function parseEspIdfVersion(projectDescriptionJson: string): string | und
 }
 
 /**
+ * Parse the Zephyr core SEMVER from a build's generated `version.h`
+ * (`<build>/zephyr/include/generated/zephyr/version.h` or `.../generated/version.h`). This is the version the build
+ * ACTUALLY compiled, and it lives in the build output — so it survives a sample copied OUT of the west workspace
+ * (the demo builds central_uart in /tmp, where `west topdir` finds no `.west/`). Prefers `KERNEL_VERSION_STRING`,
+ * falls back to the MAJOR/MINOR/PATCHLEVEL triple. Returns "4.2.99" or undefined (no build / unparsable).
+ */
+export function parseZephyrVersionH(versionH: string): string | undefined {
+	const s = versionH.match(/KERNEL_VERSION_STRING\s+"([0-9]+\.[0-9]+(?:\.[0-9]+)?)"/)
+	if (s) {
+		return s[1]
+	}
+	const maj = versionH.match(/KERNEL_VERSION_MAJOR\s+(\d+)/)?.[1]
+	const min = versionH.match(/KERNEL_VERSION_MINOR\s+(\d+)/)?.[1]
+	const pat = versionH.match(/KERNEL_PATCHLEVEL\s+(\d+)/)?.[1]
+	return maj && min ? `${maj}.${min}.${pat ?? "0"}` : undefined
+}
+
+/**
  * Build a `ModuleVersionResolver` from a version table (from `parseWestList` / `parseWestManifest`). Returns a
  * version only when west pins one that looks matchable; a commit-SHA revision → undefined (honest miss, not a
  * mis-match). Pass the result as `resolveModuleVersion` to `runCveScan` / `runCveScanHost`.
