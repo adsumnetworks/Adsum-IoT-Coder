@@ -6,7 +6,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { applyCuratedPurls } from "./componentPurlMap"
 import { normalizeSbom } from "./sbomNormalize"
-import { isLikelyVersion, makeModuleVersionResolver, parseWestList, parseWestManifest } from "./westVersions"
+import { isLikelyVersion, makeModuleVersionResolver, parseEspIdfVersion, parseWestList, parseWestManifest } from "./westVersions"
 
 const WEST_LIST = `mcuboot        v2.1.0
 mbedtls        v3.6.5
@@ -78,4 +78,16 @@ PackageName: hal_nordic-deps
 	const mcuboot = after.components.find((c) => c.name === "mcuboot-deps")
 	assert.equal(mcuboot?.purl, "pkg:github/mcu-tools/mcuboot@v2.1.0")
 	assert.equal(after.coverage.queryable, 1)
+})
+
+test("parseEspIdfVersion: git_revision is the reliable IDF version source (ground-truthed esp-idf v6.0.1)", () => {
+	// Real shape: v6.0.1's project_description.json has git_revision but NO idf_version.
+	assert.equal(parseEspIdfVersion(JSON.stringify({ git_revision: "v6.0.1", version: "1.3" })), "6.0.1")
+	// Some IDF versions carry idf_version — accepted as a fallback.
+	assert.equal(parseEspIdfVersion(JSON.stringify({ idf_version: "v5.3.1" })), "5.3.1")
+	// git_revision wins when both present; a -dirty/-suffix is stripped to the semver prefix.
+	assert.equal(parseEspIdfVersion(JSON.stringify({ git_revision: "v5.4.0-dirty", idf_version: "v5.3.1" })), "5.4.0")
+	// Not an ESP build / no tag / garbage → undefined (honest miss, never a fabricated version).
+	assert.equal(parseEspIdfVersion(JSON.stringify({ version: "1.3" })), undefined)
+	assert.equal(parseEspIdfVersion("{not json"), undefined)
 })
