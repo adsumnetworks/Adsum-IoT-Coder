@@ -303,3 +303,26 @@ test("D1 (design/25): source attribution is DERIVED from the fetchers that ran, 
 	})
 	assert.match(explicit.report, /## CVE scan — Custom, as of/)
 })
+
+test("design/28: per-source counts (the 'what each DB returned' brief) are exposed in result + report + json", async () => {
+	// mbedtls (purl) → OSV returns 2; esp_wifi (cpe) → NVD returns 1; EUVD discover-by-product returns 2 leads.
+	const euvdProductFetcher = async () => [
+		{ euvdId: "EUVD-2025-1", cveId: "CVE-2025-0001", baseScore: 8, epss: 0.3, exploited: false, references: [] },
+		{ euvdId: "EUVD-2025-2", cveId: "CVE-2025-0002", baseScore: 7, epss: 0.1, exploited: false, references: [] },
+	]
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-06-28",
+		fetcher: twoVulnFetcher,
+		nvdFetcher,
+		euvdProductFetcher,
+	})
+	assert.equal(r.sources.osv, 2) // twoVulnFetcher → 2 CVEs on mbedtls
+	assert.equal(r.sources.nvd, 1) // nvdFetcher → 1 CVE on esp_wifi
+	assert.equal(r.sources.euvdProduct, 2) // 2 discover-by-product leads
+	assert.match(r.report, /Sources queried \(as of 2026-06-28\): NVD by CPE 1 · OSV by PURL 2/)
+	assert.match(r.report, /EU Vulnerability Database \(ENISA\) by product 2 additional advisories/)
+	assert.deepEqual(JSON.parse(r.json).sources, { osv: 2, nvd: 1, euvdProduct: 2, euvdConfirmed: 0 })
+	assert.equal(isVerdictClean(r.report), true) // the ribbon stays verdict-clean (facts, not a grade)
+})
