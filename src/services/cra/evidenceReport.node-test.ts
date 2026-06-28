@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { isVerdictClean } from "../knowledge/honesty/verdictScan"
 import { assessApplicability } from "./applicability"
+import type { EuvdRecord } from "./euvdFetcher"
 import { type CveScanJson, formatCveScanJson, formatCveScanReport } from "./evidenceReport"
 import type { OsvMatch, SkippedComponent } from "./osvMatch"
 
@@ -27,6 +28,42 @@ test("report with matches is verdict-clean (self-checked by verdictScan)", () =>
 	assert.match(report, /OSV reports/)
 	assert.match(report, /as of 2026-06-24/)
 	assert.match(report, /Coverage: 3 queryable · 1 cpe-only/)
+})
+
+test("EUVD confirmation surfaces in report + json (id + EPSS + KEV) and stays verdict-clean", () => {
+	const euvd = new Map<string, EuvdRecord>([
+		[
+			"CVE-2024-23170",
+			{
+				euvdId: "EUVD-2026-35353",
+				cveId: "CVE-2024-23170",
+				baseScore: 7.6,
+				epss: 0.17,
+				exploited: true,
+				references: ["https://euvd.enisa.europa.eu"],
+			},
+		],
+	])
+	const input = {
+		findings: [
+			{ match: mbed, applicability: assessApplicability({ codeSymbol: "mbedtls_ssl_handshake" }, { symbols: "main" }) },
+		],
+		skipped,
+		queriedCount: 3,
+		asOf: "2026-06-24",
+		euvd,
+	}
+	const report = formatCveScanReport(input)
+	assert.match(report, /EU Vulnerability Database: EUVD-2026-35353/)
+	assert.match(report, /EPSS 17%/)
+	assert.match(report, /actively exploited \(KEV\)/)
+	// EPSS/KEV are sourced facts, not a verdict — must not trip the honesty scanner.
+	assert.equal(isVerdictClean(report), true, `EUVD line tripped verdictScan:\n${report}`)
+	const json = JSON.parse(formatCveScanJson(input)) as CveScanJson
+	const adv = json.findings[0].advisories.find((a) => a.id === "CVE-2024-23170")
+	assert.equal(adv?.euvd?.id, "EUVD-2026-35353")
+	assert.equal(adv?.euvd?.exploited, true)
+	assert.equal(adv?.euvd?.epss, 0.17)
 })
 
 test("each applicability branch keeps the report verdict-clean", () => {

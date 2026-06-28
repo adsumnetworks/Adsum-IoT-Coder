@@ -7,6 +7,7 @@
  * Both outputs are self-checked by `verdictScan` in the tests. Pure; `asOf` is injected (no Date.now here).
  */
 import type { ApplicabilityVerdict } from "./applicability"
+import type { EuvdRecord } from "./euvdFetcher"
 import type { EnrichedVuln } from "./osvEnrich"
 import type { OsvMatch, SkippedComponent } from "./osvMatch"
 import type { DropReason } from "./sbomNormalize"
@@ -25,6 +26,9 @@ export interface EvidenceReportInput {
 	source?: string
 	/** Optional severity/fixed-version enrichment, keyed by vuln id (§4/§11). Surfaced verbatim + attributed. */
 	enrichment?: Map<string, EnrichedVuln>
+	/** Optional EU Vulnerability Database (EUVD) confirmation, keyed by CVE id — the CRA's named source: the EUVD
+	 *  id + EPSS + KEV/exploited flag. Sourced facts, never a verdict. Empty/absent → nothing rendered. */
+	euvd?: Map<string, EuvdRecord>
 }
 
 const advisoryUrl = (id: string) => `https://osv.dev/vulnerability/${id}`
@@ -115,6 +119,18 @@ export function formatCveScanReport(input: EvidenceReportInput): string {
 				line += ` ${source} reports fixed in ${enr.fixedVersions.join(" / ")} (as of ${input.asOf}) — verify against your build.`
 			}
 		}
+		// EUVD confirmation (the CRA's named DB): the EUVD id + EPSS + KEV — sourced facts, hedged, never a verdict.
+		const ev = input.euvd?.get(f.match.vulnIds[0])
+		if (ev?.euvdId) {
+			line += ` EU Vulnerability Database: ${ev.euvdId}`
+			if (ev.epss != null) {
+				line += `, EPSS ${Math.round(ev.epss * 100)}% (exploit-likelihood, as of ${input.asOf})`
+			}
+			if (ev.exploited) {
+				line += `, flagged actively exploited (KEV)`
+			}
+			line += ` — verify against your build.`
+		}
 		lines.push(line)
 	}
 	return lines.join("\n")
@@ -134,8 +150,15 @@ export interface CveScanJson {
 	findings: Array<{
 		component: string
 		version: string
-		/** Per advisory: id + url, plus OSV-verbatim severities (CVSS vectors) + fixed versions when enriched. */
-		advisories: Array<{ id: string; url: string; severities: OsvSeverityJson[]; fixedVersions: string[] }>
+		/** Per advisory: id + url, plus OSV-verbatim severities (CVSS vectors) + fixed versions when enriched, plus
+		 *  the EUVD confirmation (EU Vulnerability Database id + EPSS + KEV flag) when present. */
+		advisories: Array<{
+			id: string
+			url: string
+			severities: OsvSeverityJson[]
+			fixedVersions: string[]
+			euvd?: { id: string; epss: number | null; exploited: boolean; references: string[] }
+		}>
 		/** Applicability is an EXCLUSION signal + a hedged note ending in "verify" — never a conformity verdict. */
 		applicability: { signal: ApplicabilityVerdict["signal"]; note: string }
 	}>
@@ -161,7 +184,16 @@ export function formatCveScanJson(input: EvidenceReportInput): string {
 			version: f.match.component.version,
 			advisories: f.match.vulnIds.map((id) => {
 				const enr = input.enrichment?.get(id)
-				return { id, url: advisoryUrl(id), severities: enr?.severities ?? [], fixedVersions: enr?.fixedVersions ?? [] }
+				const ev = input.euvd?.get(id)
+				return {
+					id,
+					url: advisoryUrl(id),
+					severities: enr?.severities ?? [],
+					fixedVersions: enr?.fixedVersions ?? [],
+					...(ev?.euvdId
+						? { euvd: { id: ev.euvdId, epss: ev.epss ?? null, exploited: ev.exploited, references: ev.references } }
+						: {}),
+				}
 			}),
 			applicability: { signal: f.applicability.signal, note: f.applicability.note },
 		})),
