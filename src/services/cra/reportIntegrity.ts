@@ -93,6 +93,31 @@ export function looksLikeReadinessReport(absolutePath: string, content: string):
 	return false
 }
 
+/**
+ * Write-seam seatbelt (2806e): detect the FULL CRA readiness report pasted INLINE into free text — a chat
+ * message or an `attempt_completion` result — rather than written via `write_to_file`. The honesty guard only
+ * runs on a `write_to_file` of the `.md`, so an inline report ships unguarded (a real run shipped an inline
+ * `✅`-laden report + fabricated Article clauses this way). A correct CRA completion is a THIN pointer, so it has
+ * no report body — only the full report has the title/disclaimer PLUS report structure (tables / section headers
+ * / many `CONFIG_` symbols). Length-gated so a short thin headline (which legitimately mentions "SBOM") passes.
+ */
+export function looksLikeInlineCraReport(text: string): boolean {
+	if (!text || text.length < 400) {
+		return false
+	}
+	const craSignal =
+		/not a conformity assessment/i.test(text) || /#\s*CRA\s+SBOM\s*&\s*Fix/i.test(text) || /\bCRA\s+readiness\b/i.test(text)
+	if (!craSignal) {
+		return false
+	}
+	const tableRows = (text.match(/^\s*\|.*\|.*\|/gm) || []).length
+	const sectionHeaders = (
+		text.match(/^#{1,3}\s+\d?\.?\s*(?:SBOM|Posture|Advisor|Worth doing|Posture map|Verification|Known CVE)/gim) || []
+	).length
+	const configMentions = (text.match(/\bCONFIG_[A-Z0-9_]+/g) || []).length
+	return tableRows >= 2 || sectionHeaders >= 2 || configMentions >= 3
+}
+
 /** Pure cross-check: the report's claims vs the real artifacts. Returns only provable contradictions + missing primitives. */
 export function checkReadinessReportIntegrity(input: {
 	reportText: string
