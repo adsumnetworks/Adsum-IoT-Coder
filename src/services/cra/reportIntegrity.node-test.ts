@@ -8,6 +8,7 @@ import {
 	checkReadinessReportIntegrity,
 	detectSbomTool,
 	extractClaimedPackageCount,
+	looksLikeCraReportContent,
 	looksLikeInlineCraReport,
 	looksLikeReadinessReport,
 } from "./reportIntegrity"
@@ -93,6 +94,31 @@ test("looksLikeInlineCraReport: the write-seam seatbelt blocks an inline report,
 	assert.equal(looksLikeInlineCraReport(thin), false)
 	// a non-CRA completion is never affected.
 	assert.equal(looksLikeInlineCraReport("Fixed the BLE disconnect bug; all tests pass. ".repeat(20)), false)
+})
+
+test("looksLikeCraReportContent: the completion seatbelt also catches the posture preview dumped in a say (2906c)", () => {
+	// 2906c ran out of context and dumped the full posture preview into a chat `say` (not the attempt_completion
+	// result), then completed thin. This broader detector fires on that posture content so the host can refuse the
+	// completion when no report was written. It catches the secure-by-design preview even without an SBOM table.
+	const posturePreview =
+		"## Secure-by-Design Checks — nRF52840 (Cortex-M4, no TrustZone)\n" +
+		"Readiness aid — NOT a conformity assessment. Each check is evidence-mode: the literal symbol from your\n" +
+		"merged .config, neutrally reported — the conclusion is yours.\n\n" +
+		"**1 · Secure boot** — your build shows: CONFIG_BOOTLOADER_MCUBOOT is not set; CONFIG_SECURE_BOOT is not set;\n" +
+		"CONFIG_NCS_MCUBOOT_IN_BUILD is not set. You verify: enable MCUboot at the sysbuild level if you intend it.\n" +
+		"**3 · BLE pairing** — your build shows: CONFIG_BT_SMP=y; CONFIG_BT_SMP_SC_PAIR_ONLY=y; CONFIG_BT_BONDABLE=y;\n" +
+		"CONFIG_BT_SMP_ENFORCE_MITM=y. You verify: confirm no Just-Works fallback in production.\n" +
+		"**5 · Crypto** — your build shows: CONFIG_NRF_SECURITY=y; CONFIG_PSA_CRYPTO_C=y; CONFIG_TRUSTED_STORAGE is\n" +
+		"not set. You verify: keys likely use raw NVS/flash — consider PSA ITS.\n"
+	assert.ok(posturePreview.length > 400)
+	assert.equal(looksLikeCraReportContent(posturePreview), true)
+	// the thin pointer still passes (no report body) — a correct completion isn't blocked.
+	const thin =
+		"CRA preview complete — 44 components · 6 CVEs · 3 likely not reachable. Each line is build evidence, not a " +
+		"verdict. Full report written to /tmp/adsum-cra/compliance/cra-2026-06-29/CRA_READINESS.md. Next: assess the CVEs?"
+	assert.equal(looksLikeCraReportContent(thin), false)
+	// and a normal non-CRA completion is untouched.
+	assert.equal(looksLikeCraReportContent("Refactored the UART driver; all tests pass. ".repeat(20)), false)
 })
 
 test("blocks the 2706b fabrication: wrong tool + inflated package count", () => {

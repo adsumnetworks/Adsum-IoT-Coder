@@ -144,7 +144,13 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	const matchPairs: Array<{ component: SbomComponent; id: string }> = []
 	const seenPair = new Set<string>()
 	const addPair = (component: SbomComponent, id: string) => {
-		const key = `${component.name}@${component.version}::${id}`
+		// Dedup on the MATCH COORDINATE (cpe/purl), not name@version: `west spdx` emits the Zephyr core as BOTH a
+		// `zephyr` module package and a `zephyr-sources` package, and `all.spdx` concatenates docs that carry each.
+		// Both normalize to the same core → the same curated CPE → the SAME CVE was listed twice (2906c: 5 Zephyr
+		// CVEs double-counted, inflating "16 version-matched"). Keying on the CPE/PURL collapses those aliases of
+		// one product+version into one finding; falls back to name@version only when there's no coordinate.
+		const coord = component.cpe ?? component.purl ?? `${component.name}@${component.version}`
+		const key = `${coord}::${id.toUpperCase()}`
 		if (!seenPair.has(key)) {
 			seenPair.add(key)
 			matchPairs.push({ component, id })

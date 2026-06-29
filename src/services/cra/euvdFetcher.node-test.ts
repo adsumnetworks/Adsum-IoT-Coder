@@ -130,3 +130,29 @@ test("discoverByProduct: a page failure degrades to what we have (never throws /
 	}
 	assert.deepEqual(await discoverByProduct("zephyrproject", "zephyr", httpGet), [])
 })
+
+test("P2a (2906c): EPSS > 1 is rejected (not rendered as a >100% bogus percent), valid 0–1 kept", () => {
+	// A live EUVD response returned epss like 2.88 / 3.40 for some records — the renderer (× 100) turned those
+	// into "288% / 340%". EPSS is a 0–1 probability; an out-of-range value is dropped (honest absence), a valid one kept.
+	const bogus = JSON.stringify({ items: [{ id: "EUVD-2020-2536", epss: 3.4, baseScore: 9, aliases: "CVE-2020-10071" }] })
+	const ok = JSON.stringify({ items: [{ id: "EUVD-2025-7660", epss: 0.72, baseScore: 7, aliases: "CVE-2025-24912" }] })
+	assert.equal(parseEuvdSearch(bogus, "CVE-2020-10071")?.epss, undefined)
+	assert.equal(parseEuvdSearch(ok, "CVE-2025-24912")?.epss, 0.72)
+	// discover-by-product path (parseEuvdList) clamps identically.
+	assert.equal(parseEuvdList(bogus)[0].epss, undefined)
+	assert.equal(parseEuvdList(ok)[0].epss, 0.72)
+})
+
+test("P2a: EPSS exactly 0 and 1 are valid; negative is rejected", () => {
+	const edge = JSON.stringify({
+		items: [
+			{ id: "E0", epss: 0, aliases: "CVE-2000-0001" },
+			{ id: "E1", epss: 1, aliases: "CVE-2000-0002" },
+			{ id: "E2", epss: -0.1, aliases: "CVE-2000-0003" },
+		],
+	})
+	const list = parseEuvdList(edge)
+	assert.equal(list.find((r) => r.cveId === "CVE-2000-0001")?.epss, 0)
+	assert.equal(list.find((r) => r.cveId === "CVE-2000-0002")?.epss, 1)
+	assert.equal(list.find((r) => r.cveId === "CVE-2000-0003")?.epss, undefined)
+})
