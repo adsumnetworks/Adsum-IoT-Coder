@@ -438,3 +438,31 @@ test("design/30 P2: a fix-present EUVD candidate is omitted from 'to verify' (ke
 	const cand = JSON.parse(r.json).euvdCandidates.find((c: { id: string }) => c.id === "CVE-2099-8888")
 	assert.equal(cand.applicability.signal, "fix-present")
 })
+
+test("design/30 auto: an UNCURATED CVE's fix commit is AUTO-resolved (OSV) → fix-present when in the tree", async () => {
+	const oneVuln: OsvFetcher = async () => JSON.stringify({ results: [{ vulns: [{ id: "CVE-2099-6543" }] }] })
+	// no resolveHint (uncurated) — the SHA comes from the auto resolver; the checker confirms it's in the tree.
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-06-29",
+		fetcher: oneVuln,
+		fixCommitResolver: async (id) => (id === "CVE-2099-6543" ? "cafebabecafebabecafebabecafebabecafebabe" : undefined),
+		fixCommitChecker: async (sha) => sha === "cafebabecafebabecafebabecafebabecafebabe",
+	})
+	assert.equal(r.findings.find((f) => f.match.vulnIds[0] === "CVE-2099-6543")?.applicability.signal, "fix-present")
+	assert.equal(isVerdictClean(r.report), true)
+})
+
+test("design/30 API-resilience: resolver returns undefined (OSV down/404) → NOT fix-present, falls through to hedge", async () => {
+	const oneVuln: OsvFetcher = async () => JSON.stringify({ results: [{ vulns: [{ id: "CVE-2099-6543" }] }] })
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-06-29",
+		fetcher: oneVuln,
+		fixCommitResolver: async () => undefined, // OSV unreachable / not carried
+		fixCommitChecker: async () => true, // even if the checker would say yes, no SHA → never called → no false claim
+	})
+	assert.notEqual(r.findings.find((f) => f.match.vulnIds[0] === "CVE-2099-6543")?.applicability.signal, "fix-present")
+})

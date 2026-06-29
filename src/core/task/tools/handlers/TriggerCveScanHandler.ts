@@ -10,6 +10,7 @@ import { defaultBuildEvidenceReaders } from "@/services/cra/buildEvidence"
 import { type ModuleVersionResolver, normalizeModuleName } from "@/services/cra/componentPurlMap"
 import { runCveScanHost } from "@/services/cra/cveScanHost"
 import { discoverByProduct, EUVD_DISCOVER_MIN_SCORE, type EuvdRecord, makeEuvdFetcher } from "@/services/cra/euvdFetcher"
+import { makeOsvFixCommitResolver } from "@/services/cra/fixCommitResolver"
 import { type ModuleRefsResolver, type ModuleSecurityRefs, readModuleSecurityRefs } from "@/services/cra/moduleSecurityRefs"
 import { makeNvdFetcher } from "@/services/cra/nvdFetcher"
 import { makeOsvFetcher } from "@/services/cra/osvFetcher"
@@ -306,6 +307,8 @@ const defaultDeps: CveScanHandlerDeps = {
 				asOf,
 				// P2 (design/30): is a CVE's upstream fix commit already backported into the source tree? → "patched".
 				fixCommitChecker: sourceTree ? (sha) => gitFixPresent(sourceTree, sha) : undefined,
+				// P2 auto-discovery: when no curated SHA, pull the fix commit from OSV's GIT range (API-resilient).
+				fixCommitResolver: sourceTree ? makeOsvFixCommitResolver() : undefined,
 				// F5: enrich PURL-sparse west SBOMs with curated coordinates keyed on the real module versions.
 				resolveModuleVersion: await resolveWestModuleVersions(projectDir, buildDir),
 				// F5: fill CPE/PURL the SBOM tool didn't emit, from each module's own zephyr/module.yml.
