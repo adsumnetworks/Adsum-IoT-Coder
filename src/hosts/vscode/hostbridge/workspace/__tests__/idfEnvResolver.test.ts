@@ -6,6 +6,7 @@ import {
 	buildEspShellCommand,
 	buildIdfCommand,
 	detectShell,
+	eimActivateScript,
 	enumerateIdfInstalls,
 	getExportScriptName,
 	getIdfPathCandidates,
@@ -149,7 +150,40 @@ describe("idfEnvResolver", () => {
 		})
 	})
 
+	describe("eimActivateScript", () => {
+		it("returns the EIM activation script for ~/.espressif/v<ver>/esp-idf (macOS EIM — the real install)", () => {
+			const idf = "/Users/dev/.espressif/v6.0.1/esp-idf"
+			const script = "/Users/dev/.espressif/tools/activate_idf_v6.0.1.sh"
+			expect(eimActivateScript("darwin", idf, "zsh", (p) => p === script)).to.equal(script)
+		})
+		it("PowerShell → the .ps1 activator", () => {
+			const idf = "C:\\Users\\dev\\.espressif\\v6.0.1\\esp-idf"
+			const script = "C:\\Users\\dev\\.espressif\\tools\\activate_idf_v6.0.1.ps1"
+			expect(eimActivateScript("win32", idf, "powershell", (p) => p === script)).to.equal(script)
+		})
+		it("classic ~/esp/esp-idf (verDir is not v<ver>) → undefined, caller uses export.sh", () => {
+			expect(eimActivateScript("linux", "/home/dev/esp/esp-idf", "bash", () => true)).to.be.undefined
+		})
+		it("EIM shape but the script is absent → undefined (no false positive)", () => {
+			expect(eimActivateScript("darwin", "/Users/dev/.espressif/v6.0.1/esp-idf", "zsh", () => false)).to.be.undefined
+		})
+		it("cmd has no EIM activator → undefined", () => {
+			expect(eimActivateScript("win32", "C:\\Users\\dev\\.espressif\\v6.0.1\\esp-idf", "cmd", () => true)).to.be.undefined
+		})
+	})
+
 	describe("buildEspShellCommand", () => {
+		it("sources the EIM activation script instead of export.sh when provided", () => {
+			const cmd = buildEspShellCommand({
+				platform: "darwin",
+				shell: "zsh",
+				needsSourcing: true,
+				body: 'idf.py -C "/p" build',
+				idfPath: "/Users/dev/.espressif/v6.0.1/esp-idf",
+				activateScript: "/Users/dev/.espressif/tools/activate_idf_v6.0.1.sh",
+			})
+			expect(cmd).to.equal('. "/Users/dev/.espressif/tools/activate_idf_v6.0.1.sh" && idf.py -C "/p" build')
+		})
 		it("returns the body verbatim when the terminal is already sourced (Tier 1)", () => {
 			const cmd = buildEspShellCommand({
 				platform: "linux",

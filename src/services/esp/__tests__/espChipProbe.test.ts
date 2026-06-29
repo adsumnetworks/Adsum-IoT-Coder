@@ -77,6 +77,15 @@ describe("espChipProbe — resolveIdfPython", () => {
 		resolveIdfPython(deps)!.should.equal(py)
 	})
 
+	it("finds the EIM venv tools/python/<ver>/venv/bin/python when there is NO python_env (the macOS EIM gap)", () => {
+		// EIM (the new official installer) does not create python_env; the venv lives at
+		// ~/.espressif/tools/python/v6.0.1/venv/bin/python (verified on the real macOS install).
+		const eimRoot = join("/home/dev", ".espressif", "tools", "python")
+		const py = join(eimRoot, "v6.0.1", "venv", "bin", "python")
+		const deps = make("darwin", [eimRoot, py], { [eimRoot]: ["v6.0.1"] })
+		resolveIdfPython(deps)!.should.equal(py)
+	})
+
 	it("finds Scripts/python.exe on Windows via %USERPROFILE%\\.espressif", () => {
 		const root = join("C:\\Users\\dev", ".espressif", "python_env")
 		const py = join(root, "idf5.3_py3.11_env", "Scripts", "python.exe")
