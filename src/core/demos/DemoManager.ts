@@ -195,16 +195,17 @@ ${escalation}`
 /** Chat-bubble text for the CRA-on-sample preview. Its prefix is what hasRunDemo matches for this scenario. */
 export function buildCraSampleDisplayText(): string {
 	return (
-		"Preview CRA readiness on a pre-built reference sample — a real SBOM + a live CVE scan + a secure-by-design " +
-		"posture for the EU Cyber Resilience Act, on our nRF sample (a simulated run, not your build)."
+		"Run CRA SBOM & Fix on a pre-built reference sample — a REAL SBOM + a live CVE scan + a secure-by-design " +
+		"posture for the EU Cyber Resilience Act, on our nRF sample (a reference firmware, not your build)."
 	)
 }
 
 /**
- * Prompt for the CRA Sample run (design/34): a SIMULATED run on a PRE-CANNED reference bundle — no build, ever
- * (the user almost never has the exact SDK our sample was built on). The host scan reads the bundle's shipped
- * SBOM + merged `.config` + `symbols.nm` + `version.h` (laid out like a build dir), runs the LIVE CVE databases,
- * and the report is clearly labelled a reference sample. It ALWAYS ends by offering the real, live run on the
+ * Prompt for the CRA Sample run (design/34): a REAL CRA analysis of a PRE-BUILT reference sample — no build on the
+ * user's machine (the user almost never has the exact SDK our sample was built on, so we ship the build artifacts).
+ * The SBOM is real (`west spdx`), the CVE scan is LIVE, the posture is from the real merged `.config` — nothing is
+ * "simulated"; only the build was done ahead of time, by us. The host scan reads the bundle's shipped SBOM +
+ * `.config` + `symbols.nm` + `version.h` (laid out like a build dir). It ALWAYS ends by offering the real run on the
  * user's own project. `bundlePath` is the WRITABLE copy from prepareCraBundle().
  */
 function buildCraSamplePrompt(bundlePath: string): string {
@@ -213,24 +214,29 @@ function buildCraSamplePrompt(bundlePath: string): string {
 	const workflowFile = "cra/workflows/cra-readiness.md"
 	return `Run the CRA SBOM & Fix **Sample run** on our pre-built reference bundle at ${bundlePath}.
 
-[ADSUM_DEMO:cra-sample] This is the SAMPLE run — a SIMULATED run on OUR pre-built nRF reference (central_uart, \
-NCS 3.2.1 / Zephyr 4.2.99), NOT the user's own project, and regardless of whether they have a project open. \
-**Do NOT build anything** — the user almost never has the exact SDK our sample was built on, so the build is \
-pre-canned. Scan the SHIPPED artifacts in the bundle and present the result, clearly labelled as a reference sample.
+[ADSUM_DEMO:cra-sample] This is the SAMPLE run — a REAL CRA analysis of OUR pre-built nRF reference firmware \
+(central_uart, NCS 3.2.1 / Zephyr 4.2.99), regardless of whether the user has a project open. It is NOT "simulated": \
+the SBOM is a real \`west spdx\` build, the CVE scan is LIVE, the posture is the real merged .config. The ONLY thing \
+not happening on the user's machine is the build — we pre-built it (the user almost never has our exact SDK). The one \
+honest caveat: this describes OUR reference firmware, NOT the user's build.
 
 Hard rules for this Sample run:
 - Load and follow the workflow's **Sample-run (pre-canned) mode**: read_file ${workflowFile}. **If that read fails, \
 STOP: tell the developer the CRA workflow is currently unavailable and do NOT proceed. Never reconstruct the \
 workflow or template the report from memory or a prior run.** It carries the honesty rules (evidence-mode only; NO \
-verdicts/grades/scores; the mandatory "# CRA SBOM & Fix" title + "Readiness aid — NOT a conformity assessment" \
-disclaimer; curated Annex Part I/Part II + Article 14 citations only).
+verdicts/grades/scores; the "# CRA SBOM & Fix — central_uart (reference sample)" title + "Readiness aid — NOT a \
+conformity assessment" disclaimer; curated Annex Part I/Part II + Article 14 citations only).
+- **Use the workflow's standard FIVE plain-English task_progress phases** (Inventory your build · Scan for known CVEs \
+· Read the security posture · Triage what affects you · One concrete next step) — do NOT turn these internal \
+mechanics (load workflow / scan the SBOM / write the report) into the checklist.
 - **No build, no SBOM generation.** Trigger the host CVE scan directly on the pre-canned bundle: \
 triggerCveScan with sbom=${bundlePath}/sbom/all.spdx and build=${bundlePath} (the bundle ships the merged \
 .config, the symbol dump, and the SDK version, so applicability + posture + version-fixed all run with no toolchain). \
 For the posture, grep ${bundlePath}/zephyr/.config for the posture symbols (per the posture bit) — do not build.
-- **Label it a SIMULATED reference run:** the report's Method is "pre-built reference SBOM (simulated)"; the headline \
-says plainly this describes OUR reference sample (NCS 3.2.1 / Zephyr 4.2.99, captured 2026-06-29), NOT the user's build.
-- Write the report under ${bundlePath}/compliance/cra-<date>/CRA_READINESS.md via write_to_file FIRST (the host \
+- **Label it a REFERENCE sample (not "simulated"):** the report Method is "pre-built reference SBOM"; the headline \
+says plainly this is a real analysis of OUR reference firmware (NCS 3.2.1 / Zephyr 4.2.99, captured 2026-06-29), \
+NOT the user's build. The "components" count is the SBOM total (~180), not the queryable count.
+- Write the report to an OS-temp scratch compliance/cra-<date>/CRA_READINESS.md via write_to_file FIRST (the host \
 honesty guard runs there), then present a THIN headline (at-a-glance counts + the top finding + the written path). \
 Do NOT re-render the posture/CVE tables in chat.
 - **ALWAYS end with the real-run CTA** (ask_followup_question): "Want this on YOUR firmware? Open your project \
