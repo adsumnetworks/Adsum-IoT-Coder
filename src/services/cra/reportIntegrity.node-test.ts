@@ -39,6 +39,12 @@ ExternalRef: PACKAGE-MANAGER purl pkg:github/Mbed-TLS/mbedtls@3.6.4
 
 const DISCLAIMER = "Readiness aid — NOT a conformity assessment."
 const HEDGED_DATED = "Verify against your notified body. CVE scan: OSV, as of 2026-06-27."
+// The header primitives the structure scan now requires on every readiness report (parity, 2906i): the canonical
+// H1, the at-a-glance counts line, and the Adsum attribution. Prepend to a body to make a structurally-complete report.
+const HEADER =
+	"# CRA SBOM & Fix — my_app\n" +
+	"> SDK: NCS 3.2.1 · Generated: 2026-06-27 by Adsum IoT Coder (CRA SBOM & Fix) · Method: west spdx\n" +
+	"> **At a glance** — 2 components · 0 CVEs found · 0 likely not reachable · 0 gaps.\n"
 
 test("detectSbomTool: reads the generator from prose or an SPDX creator field", () => {
 	assert.equal(detectSbomTool("generated via west spdx from build"), "west spdx")
@@ -143,7 +149,7 @@ test("blocks 0-queryable CVE framed as a clean result without the coverage cavea
 })
 
 test("passes an honest 0-queryable report (coverage caveat present)", () => {
-	const report = `# CRA\n${DISCLAIMER}\n${HEDGED_DATED}\n## SBOM\nGenerated via west spdx.\n| Total packages | 2 |\nCVE scan: 0 queryable, 1 unidentified — not a complete check. No OSV matches.\n`
+	const report = `${HEADER}${DISCLAIMER}\n${HEDGED_DATED}\n## SBOM\nGenerated via west spdx.\n| Total packages | 2 |\nCVE scan: 0 queryable, 1 unidentified — not a complete check. No OSV matches.\n`
 	const issues = checkReadinessReportIntegrity({
 		reportText: report,
 		sbom: normalizeSbom(PKG_SBOM), // total = 2 (matches the report)
@@ -151,6 +157,39 @@ test("passes an honest 0-queryable report (coverage caveat present)", () => {
 		cveQueryable: 0,
 	})
 	assert.deepEqual(issues, [], `expected no issues, got ${JSON.stringify(issues)}`)
+})
+
+// Parity (2906i): the ESP run shipped a structurally-complete-looking report that had been RETITLED, with no
+// at-a-glance line and no attribution — the old checks (disclaimer/hedged/dated) all passed, so it diverged from
+// every nRF report. These assert the structure scan now enforces the canonical header on BOTH platforms.
+test("parity: blocks a RETITLED report (canonical H1 missing) even with the disclaimer present", () => {
+	// The exact ESP-2906i shape: a different H1, disclaimer phrase still present, hedged + dated.
+	const report =
+		`# Bluedroid_Beacon — CRA Secure-by-Design Preview\n${DISCLAIMER}\n${HEDGED_DATED}\n` +
+		"> **At a glance** — 172 components · 4 CVEs · 0 not reachable · 2 gaps.\n" +
+		"> Generated: 2026-06-29 by Adsum IoT Coder (CRA SBOM & Fix)\n## SBOM\n"
+	const issues = checkReadinessReportIntegrity({ reportText: report })
+	assert.ok(
+		issues.some((i) => i.kind === "missing-canonical-title"),
+		`expected missing-canonical-title, got ${issues.map((i) => i.kind).join(",")}`,
+	)
+})
+
+test("parity: blocks a report missing the at-a-glance counts line and the Adsum attribution", () => {
+	const report = `# CRA SBOM & Fix — my_app\n${DISCLAIMER}\n${HEDGED_DATED}\n## SBOM\nGenerated via west spdx.\n`
+	const kinds = checkReadinessReportIntegrity({ reportText: report }).map((i) => i.kind)
+	assert.ok(kinds.includes("missing-at-a-glance"), `expected missing-at-a-glance, got ${kinds.join(",")}`)
+	assert.ok(kinds.includes("missing-attribution"), `expected missing-attribution, got ${kinds.join(",")}`)
+	// the canonical title IS present here → must not be flagged
+	assert.ok(!kinds.includes("missing-canonical-title"), "canonical title present → not flagged")
+})
+
+test("parity: a fully canonical header passes all structure checks", () => {
+	const report = `${HEADER}${DISCLAIMER}\n${HEDGED_DATED}\n## SBOM\nGenerated via west spdx.\n`
+	const kinds = checkReadinessReportIntegrity({ reportText: report }).map((i) => i.kind)
+	for (const k of ["missing-canonical-title", "missing-at-a-glance", "missing-attribution"]) {
+		assert.ok(!kinds.includes(k), `canonical report should not be flagged ${k}, got ${kinds.join(",")}`)
+	}
 })
 
 test("does NOT flag a package count that matches the SBOM", () => {

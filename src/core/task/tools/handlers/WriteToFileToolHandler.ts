@@ -359,6 +359,9 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 			// integrity check so only a real, guard-passing report counts.
 			if (looksLikeReadinessReport(absolutePath, newContent)) {
 				config.taskState.craReadinessReportWritten = true
+				// Remember the run folder so attempt_completion can verify the `cra-readiness.json` twin landed here too
+				// (parity, 2906i: a real ESP run shipped the `.md` without its machine-readable twin).
+				config.taskState.craReadinessReportDir = path.dirname(absolutePath)
 			}
 
 			// Mark the file as edited by Cline
