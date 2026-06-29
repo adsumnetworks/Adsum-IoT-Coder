@@ -332,13 +332,22 @@ export class TriggerCveScanHandler implements IFullyManagedTool {
 		const sbomPath = path.isAbsolute(sbom) ? sbom : path.join(cwd, sbom)
 		const buildDir = params.build ? (path.isAbsolute(params.build) ? params.build : path.join(cwd, params.build)) : undefined
 
-		// Write the artifacts NEXT TO THE SBOM (its own compliance/ dir), never the cwd — a bare cwd like the
-		// Desktop gets littered with a stray compliance/ folder and breaks checkpoints (observed on a real run).
-		// The CRA workflow puts the SBOM under <project>/compliance/sbom/, so resolve back to that compliance/;
-		// if the SBOM isn't under a compliance/ dir, fall back to beside the SBOM (still the project, not cwd).
-		const marker = `${path.sep}compliance${path.sep}`
-		const mIdx = sbomPath.lastIndexOf(marker)
-		const outDir = mIdx !== -1 ? sbomPath.slice(0, mIdx + marker.length - 1) : path.join(path.dirname(sbomPath), "compliance")
+		// Write the CVE artifacts into the SBOM's OWN compliance folder, beside its `sbom/` dir — never the cwd (a
+		// bare cwd like the Desktop gets littered + breaks checkpoints). The workflow puts the SBOM under
+		// `<compliance-dir>/sbom/`, where <compliance-dir> is `compliance/` OR a dated `compliance/cra-<date>/`
+		// (design/29). So resolve to the PARENT of the `sbom/` dir → the cve-scan lands next to the report + SBOM in
+		// the SAME (possibly dated) folder, which is exactly where the integrity guard looks for siblings.
+		const sbomDirMarker = `${path.sep}sbom${path.sep}`
+		const sIdx = sbomPath.lastIndexOf(sbomDirMarker)
+		let outDir: string
+		if (sIdx !== -1) {
+			outDir = sbomPath.slice(0, sIdx) // parent of `sbom/` → the (possibly dated) compliance folder
+		} else {
+			// SBOM not under a `sbom/` dir — fall back to its enclosing `compliance/`, else a sibling compliance/.
+			const marker = `${path.sep}compliance${path.sep}`
+			const mIdx = sbomPath.lastIndexOf(marker)
+			outDir = mIdx !== -1 ? sbomPath.slice(0, mIdx + marker.length - 1) : path.join(path.dirname(sbomPath), "compliance")
+		}
 		const guard = this.refuseIfProtected(outDir)
 		if (guard) {
 			await config.callbacks.say("error", guard)
