@@ -65,6 +65,25 @@ describe("verdictScan — leaks that MUST be caught", () => {
 		["aggregate readiness score", "Aggregate CRA Readiness 5.7/10 — two fixes raise it."],
 		["'out of 10' grade", "Secure boot scores 7 out of 10."],
 		["fabricated CRA article sub-clause", "Vulnerabilities cannot be patched under CRA Article 3(8)."],
+		// run 2706h2 — fabricated Annex sub-clause granularity (the bit allows only the bare "Part I"/"Part II" label)
+		["fabricated Annex sub-clause (2)(e)", "**Annex I Part I (2)(e):** Minimise data processing — RTT logging is verbose."],
+		["fabricated Annex sub-clause Part II (2)", "Annex I Part II (2): SBOM generated — verify the inventory."],
+		// 2806b — the COMMA between "Annex I" and "Part I" evaded the no-comma form and shipped in the final report.
+		["fabricated Annex clause with comma", "Cited under Annex I, Part I (1)(c) for multi-user environments."],
+		// 2806b/2806c — the bare "Part II (2)(d)" form (no leading "Annex").
+		["fabricated bare Part clause", "Part II (2)(d) — confidentiality and integrity by state-of-the-art techniques."],
+		// 2806c — the short scorecard form "I(2)(a)" … "I(2)(i)" (a whole fabricated compliance grid).
+		["fabricated short scorecard clause", "| **I(2)(a)** — Security-by-design & default | … |"],
+		["fabricated short scorecard clause (f)", "automated vulnerability monitoring required by Annex I(2)(f)."],
+		// 2806c — TRAFFIC-LIGHT EMOJI status marks + a GOOD verdict cell (the guard never fired on this run; these
+		// glyphs slipped because only ✅/⚠️/❌ were matched, and "Good" was in a cell).
+		["emoji 🟢 + Good verdict cell", "| **I(2)(c)** — Secure updates | 🟢 Good |"],
+		["emoji 🔴 gap marker", "| LE Privacy (RPA) | 🔴 gap | CONFIG_BT_PRIVACY not set |"],
+		["emoji 🟡 partial marker", "| Watchdog | 🟡 partial | CONFIG_WATCHDOG not set |"],
+		["bare GOOD verdict cell", "| SBOM Completeness | GOOD |"],
+		// 2806b — a ✓/✗ status glyph inside a TABLE CELL (glyph-bullet only anchored to line/bullet start).
+		["✓ enabled table cell", "| Secure Connections Only | ✓ enabled | CONFIG_BT_SMP_SC_ONLY=y |"],
+		["✗ gap table cell", "| LE Privacy (RPA) | ✗ gap | CONFIG_BT_PRIVACY not set |"],
 	]
 	for (const [name, sample] of leaks) {
 		test(name, () => {
@@ -122,6 +141,11 @@ describe("verdictScan — disclaimers / evidence-mode that MUST NOT trip", () =>
 		["version numbers stay clean", "SBOM is SPDX 2.3; the SDK is NCS 3.2.1."],
 		["evidence count (3/3) stays clean", "3/3 images present in the build."],
 		["meta 'never call it non-compliant' stays clean", "I will never call your build non-compliant."],
+		// 2806b/2806c carve-outs — the new rules must NOT fire on prose "good", a non-cell mention, or the bare
+		// "Part I"/"Part of" without a parenthesized sub-clause:
+		["prose 'good practice' stays clean", "It's good practice to verify the bootloader child image actually built."],
+		["bare 'Part of' stays clean", "MCUboot is part of the sysbuild image set; Part I of the build is the app."],
+		["bare 'Part I' label (no paren) stays clean", "Boot only verified firmware — Annex I Part I; CONFIG present."],
 	]
 	for (const [name, sample] of clean) {
 		test(name, () => {

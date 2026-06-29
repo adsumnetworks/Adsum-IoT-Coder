@@ -88,6 +88,9 @@ export interface OsvScanResult {
 	matches: OsvMatch[]
 	skipped: SkippedComponent[]
 	queriedCount: number
+	/** "ok" = the batch query ran; "unavailable" = the fetcher failed → the OSV lane is INCOMPLETE (partial scan,
+	 *  never a clean result). Graceful degradation (design/28): OSV failing doesn't kill the NVD/EUVD lanes. */
+	status: "ok" | "unavailable"
 }
 
 /** The injected network call — the real impl POSTs to https://api.osv.dev/v1/querybatch (host-side). */
@@ -97,8 +100,18 @@ export type OsvFetcher = (batch: OsvQueryBatch) => Promise<string>
 export async function scanWithOsv(components: SbomComponent[], fetcher: OsvFetcher): Promise<OsvScanResult> {
 	const plan = planOsvScan(components)
 	if (plan.queries.length === 0) {
-		return { matches: [], skipped: plan.skipped, queriedCount: 0 }
+		return { matches: [], skipped: plan.skipped, queriedCount: 0, status: "ok" }
 	}
-	const responseJson = await fetcher({ queries: plan.queries })
-	return { matches: parseOsvBatch(responseJson, plan.queried), skipped: plan.skipped, queriedCount: plan.queried.length }
+	try {
+		const responseJson = await fetcher({ queries: plan.queries })
+		return {
+			matches: parseOsvBatch(responseJson, plan.queried),
+			skipped: plan.skipped,
+			queriedCount: plan.queried.length,
+			status: "ok",
+		}
+	} catch {
+		// OSV unreachable — keep the coverage gaps we know, flag the lane unavailable (honest partial, not clean).
+		return { matches: [], skipped: plan.skipped, queriedCount: plan.queried.length, status: "unavailable" }
+	}
 }

@@ -8,6 +8,8 @@ interface IntentListProps {
 	intents: IntentDef[]
 	onSelectMode: (mode: NordicModeId) => void
 	onStartTask: (text: string) => void | Promise<void>
+	/** Launch a bundled sample demo — lets the no-project CRA card run the sample instead of dead-ending. */
+	onStartDemo?: (scenarioId: string) => void
 	projectName?: string
 	/** Detected workspace platform — drives platform-aware card copy + prompts. */
 	platform?: WorkspacePlatform
@@ -24,6 +26,7 @@ const IntentList: React.FC<IntentListProps> = ({
 	intents,
 	onSelectMode,
 	onStartTask,
+	onStartDemo,
 	projectName,
 	platform = "both",
 	testIdPrefix,
@@ -37,7 +40,7 @@ const IntentList: React.FC<IntentListProps> = ({
 			description={intentDescription(intent, projectName, platform)}
 			icon={intent.icon}
 			key={intent.id}
-			onClick={() => runIntent(intent.id, { onSelectMode, onStartTask, projectName, platform })}
+			onClick={() => runIntent(intent.id, { onSelectMode, onStartTask, onStartDemo, projectName, platform })}
 			pill={intent.pill}
 			primary={intent.primary}
 			subline={intent.subline}

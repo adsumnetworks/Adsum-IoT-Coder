@@ -327,10 +327,12 @@
 
 		pre > code .hljs-deletion {
 			@apply inline-block w-full bg-diff-removed;
+			color: var(--vscode-editor-foreground);
 		}
 
 		pre > code .hljs-addition {
 			@apply inline-block w-full bg-diff-added;
+			color: var(--vscode-editor-foreground);
 		}
 
 		code span.line:empty {
@@ -340,8 +342,17 @@
 			@apply break-words rounded-xs;
 		}
 
+		/* Wide tables in the narrow side panel must SCROLL, not collapse to one-char-per-line.
+		   display:block + max-content + max-width:100% makes the table a horizontal-scroll container when its
+		   natural width exceeds the panel, and shrink-to-fit when it doesn't; the cell min-width is the hard
+		   floor that stops the per-character collapse. (CRA posture tables are authored as stacked blocks now —
+		   this is the renderer-level backstop for any other wide markdown table.) */
 		table {
-			@apply w-full border-collapse my-4 text-sm;
+			@apply border-collapse my-4 text-sm;
+			display: block;
+			width: max-content;
+			max-width: 100%;
+			overflow-x: auto;
 			border: 1px solid var(--vscode-editorGroup-border, rgba(255, 255, 255, 0.1));
 		}
 		th,
@@ -349,6 +360,8 @@
 			border: 1px solid var(--vscode-editorGroup-border, rgba(255, 255, 255, 0.1));
 			padding: 6px 12px;
 			text-align: left;
+			min-width: 7rem;
+			vertical-align: top;
 		}
 		th {
 			background: var(--vscode-editor-background, rgba(0, 0, 0, 0.2));

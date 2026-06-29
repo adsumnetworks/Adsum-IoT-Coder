@@ -6,13 +6,15 @@
  * Extracted from WriteToFileToolHandler so the path-detection (the part that matters) is unit-testable
  * without the handler's heavy import graph / live telemetry. See design/08 + the pinned {surface,key} table.
  */
-import { CRA_ARTIFACT_DIR, CRA_SBOM_SUBDIR } from "@shared/cra-paths"
+import { CRA_ARTIFACT_DIR } from "@shared/cra-paths"
 
 export type CraArtifactKind = "sbom" | "fix" | null
 
 // Built from the shared CRA path constants so a bit-side dir rename changes ONE place (see @shared/cra-paths).
-const SBOM_PATH_RE = new RegExp(`(^|/)${CRA_SBOM_SUBDIR}/`)
-const FIX_PATH_RE = new RegExp(`(^|/)${CRA_ARTIFACT_DIR}/cra-remediation[^/]*\\.md$`)
+// `(?:[^/]+/)?` allows an optional dated run-folder segment (design/29: `compliance/cra-<date>/sbom/…` and
+// `compliance/cra-<date>/cra-remediation-*.md`) as well as the flat `compliance/sbom/…` layout.
+const SBOM_PATH_RE = new RegExp(`(^|/)${CRA_ARTIFACT_DIR}/(?:[^/]+/)?sbom/`)
+const FIX_PATH_RE = new RegExp(`(^|/)${CRA_ARTIFACT_DIR}/(?:[^/]+/)?cra-remediation[^/]*\\.md$`)
 
 /**
  * - `"sbom"` — an SBOM file under `compliance/sbom/` (the door cleared).
@@ -47,4 +49,24 @@ export function commandGeneratesCraSbom(command: string): boolean {
 		/\bsbom-create\b/i.test(command) || // ESP native wrapper: idf.py sbom-create
 		/\bwest\s+spdx\b/i.test(command) // fallback A: west spdx
 	)
+}
+
+// The CRA readiness report filename(s) — the exact `CRA_READINESS.md` plus the retitled variants real runs used
+// (`cra-readiness-<date>.md`, `cra-sbom*.md`). The host honesty/integrity guard ONLY runs on a `write_to_file` of
+// this report; a shell write (`echo … > …`, `tee`, `cp`, `mv`, heredoc) skips the write seam entirely.
+const CRA_REPORT_FILE_RE = /(?:CRA_READINESS|cra[_-]?readiness|cra[_-]?sbom)[^\s'"]*\.md\b/i
+// A shell write MECHANISM (so `cat …/CRA_READINESS.md` is NOT flagged — only writes).
+const SHELL_WRITE_OP_RE = /(?:>>?|\btee\b|\bdd\b[^|]*\bof=|\bcp\b|\bmv\b|\binstall\b)/i
+
+/**
+ * True if a shell command would WRITE the CRA readiness report (vs the model using `write_to_file`). The guarded
+ * write seam (WriteToFileToolHandler → reportIntegrity) never sees a shell write, so a model that shell-redirects
+ * around it ships the report UNGUARDED — a real failure mode (2706n). The bits forbid this; this is the host
+ * backstop. Keyed on the report filename + a write operator to keep false-positives low (an `.spdx` SBOM written
+ * via shell into `compliance/sbom/` is the legitimate golden path and is NOT matched — it's not a `*readiness*.md`).
+ * A generic-rename-via-shell (`> compliance/foo.md`) remains a rarer residual the content classifier catches on
+ * the write_to_file path.
+ */
+export function commandWritesCraReport(command: string): boolean {
+	return CRA_REPORT_FILE_RE.test(command) && SHELL_WRITE_OP_RE.test(command)
 }
