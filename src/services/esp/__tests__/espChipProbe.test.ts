@@ -1,7 +1,7 @@
 import { describe, it } from "mocha"
 import "should"
 import { join } from "path"
-import { type IdfPythonDeps, idfToolsPath, parseEsptoolChip, resolveIdfPython } from "../espChipProbe"
+import { type IdfPythonDeps, idfToolsPath, parseEsptoolChip, parseEsptoolMac, resolveIdfPython } from "../espChipProbe"
 
 describe("espChipProbe — parseEsptoolChip", () => {
 	it("parses 'Chip is ESP32-S3 (revision v0.2)'", () => {
@@ -33,6 +33,29 @@ describe("espChipProbe — parseEsptoolChip", () => {
 	it("returns empty for unrelated output", () => {
 		const r = parseEsptoolChip("A fatal error occurred: Failed to connect")
 		;(r.chip === undefined).should.be.true()
+	})
+
+	it("also surfaces the base MAC alongside the chip", () => {
+		const r = parseEsptoolChip("Chip is ESP32-C6 (revision v0.1)\nMAC: ac:eb:e6:ff:fe:0c:f8:c0\nBASE MAC: ac:eb:e6:0c:f8:c0")
+		r.chip!.should.equal("ESP32-C6")
+		r.mac!.should.equal("ac:eb:e6:0c:f8:c0")
+	})
+})
+
+describe("espChipProbe — parseEsptoolMac", () => {
+	it("prefers the 6-octet BASE MAC over the 8-octet EUI-64 MAC line", () => {
+		const out = "MAC: ac:eb:e6:ff:fe:0c:f8:c0\nBASE MAC: ac:eb:e6:0c:f8:c0"
+		parseEsptoolMac(out)!.should.equal("ac:eb:e6:0c:f8:c0")
+	})
+
+	it("falls back to a 6-octet 'MAC:' line (ESP32 classic, no BASE MAC) and never grabs 6/8 of an EUI-64", () => {
+		parseEsptoolMac("MAC: 24:6f:28:01:02:03")!.should.equal("24:6f:28:01:02:03")
+		// an 8-octet EUI-64 with no BASE MAC must NOT be truncated to a bogus 6-octet base
+		;(parseEsptoolMac("MAC: ac:eb:e6:ff:fe:0c:f8:c0") === undefined).should.be.true()
+	})
+
+	it("returns undefined when no MAC is present", () => {
+		;(parseEsptoolMac("Chip is ESP32-S3\nFeatures: WiFi") === undefined).should.be.true()
 	})
 })
 
@@ -74,6 +97,15 @@ describe("espChipProbe — resolveIdfPython", () => {
 		const root = join("/home/dev", ".espressif", "python_env")
 		const py = join(root, "idf5.3_py3.11_env", "bin", "python")
 		const deps = make("linux", [root, py], { [root]: ["idf5.3_py3.11_env"] })
+		resolveIdfPython(deps)!.should.equal(py)
+	})
+
+	it("finds the EIM venv tools/python/<ver>/venv/bin/python when there is NO python_env (the macOS EIM gap)", () => {
+		// EIM (the new official installer) does not create python_env; the venv lives at
+		// ~/.espressif/tools/python/v6.0.1/venv/bin/python (verified on the real macOS install).
+		const eimRoot = join("/home/dev", ".espressif", "tools", "python")
+		const py = join(eimRoot, "v6.0.1", "venv", "bin", "python")
+		const deps = make("darwin", [eimRoot, py], { [eimRoot]: ["v6.0.1"] })
 		resolveIdfPython(deps)!.should.equal(py)
 	})
 

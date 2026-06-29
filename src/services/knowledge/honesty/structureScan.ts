@@ -56,6 +56,26 @@ const PROFILES: Record<StructureProfile, RequiredPrimitive[]> = {
 	// The model-produced CRA readiness report (cra/workflows/cra-readiness.md).
 	"cra-readiness": [
 		{
+			// Parity (2906i): the ESP run retitled the H1 to "Bluedroid_Beacon — CRA Secure-by-Design Preview". The
+			// disclaimer phrase was still present (so the old checks passed), but the report shipped a different shape
+			// than every nRF report. The title is a fixed honesty-surface guarantee — enforce the canonical H1 on BOTH
+			// platforms so the report can never be silently rebranded. Matches the H1 only (line-start '#'), not the
+			// blockquoted '> #' inside the disclaimer, so a retitle with a verbatim disclaimer is still caught.
+			id: "canonical-title",
+			why: "the report's H1 must be the exact '# CRA SBOM & Fix — <project>' — NEVER retitled (a real ESP run renamed it, dodging parity with nRF). Restore the canonical title + the verbatim disclaimer block.",
+			present: (c) => /^#\s+CRA SBOM & Fix\b/m.test(c),
+		},
+		{
+			id: "at-a-glance",
+			why: "the mandatory 'At a glance' counts line (N components · M CVEs · K not reachable · G gaps) must be in the header — a real ESP run shipped without it. Take the numbers VERBATIM from the host figures.",
+			present: (c) => /at[\s-]a[\s-]glance/i.test(c),
+		},
+		{
+			id: "attribution",
+			why: "the report must carry the 'Generated: <date> by Adsum IoT Coder (CRA SBOM & Fix)' attribution line — a real ESP run dropped it. Add it to the header method line.",
+			present: (c) => /by Adsum IoT Coder/i.test(c),
+		},
+		{
 			id: "readiness-disclaimer",
 			why: "the mandatory readiness disclaimer must be present + verbatim — fix-D: the model dropped it before a verdict",
 			present: (c) => /not a conformity assessment/i.test(c),

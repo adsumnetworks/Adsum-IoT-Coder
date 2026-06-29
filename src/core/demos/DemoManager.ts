@@ -86,6 +86,23 @@ export async function prepareDemoWorkspace(): Promise<DemoWorkspace> {
 }
 
 /**
+ * Copy the read-only pre-built CRA reference bundle (design/34) to a WRITABLE location so the CVE scan can write
+ * its artifacts (cve-scan-*.{md,json}) next to the SBOM and the report can be written into the run-folder. The
+ * shipped bundle (`demo-scenarios/cra-prebuilt/<platform>`) is read-only in a published install. Re-copied each run.
+ * Returns the writable bundle path (laid out like a build dir: `sbom/all.spdx`, `zephyr/{.config,symbols.nm,…}`).
+ */
+export async function prepareCraBundle(platform: "nrf" | "esp" = "nrf"): Promise<string> {
+	if (!_extensionPath || !_globalStoragePath) {
+		throw new Error("DemoManager not initialized — call initDemoManager() in activate()")
+	}
+	const version = ExtensionRegistryInfo.version
+	const dest = path.join(_globalStoragePath, "demo", `cra-prebuilt-${platform}-${version}`)
+	const src = path.join(_extensionPath, "demo-scenarios", "cra-prebuilt", platform)
+	await copyDir(src, dest)
+	return dest
+}
+
+/**
  * Short, honest one-liner shown in the chat bubble in place of the full runbook.
  * No file paths, no five-beat framing, no escalation copy, no SDK version, no build steps —
  * just the human framing a developer would actually see when launching the demo.
@@ -178,38 +195,54 @@ ${escalation}`
 /** Chat-bubble text for the CRA-on-sample preview. Its prefix is what hasRunDemo matches for this scenario. */
 export function buildCraSampleDisplayText(): string {
 	return (
-		"Preview CRA readiness on a bundled sample — a real SBOM + a secure-by-design posture for the EU Cyber " +
-		"Resilience Act, on our nRF sample (not your build)."
+		"Run CRA SBOM & Fix on a pre-built reference sample — a REAL SBOM + a live CVE scan + a secure-by-design " +
+		"posture for the EU Cyber Resilience Act, on our nRF sample (a reference firmware, not your build)."
 	)
 }
 
-/** Prompt that runs the cra-readiness workflow on the bundled sample (preview path). Thin trigger; the bit leads. */
-function buildCraSamplePrompt(samplePath: string): string {
-	// cra-readiness is a DOWNLOADED (proprietary) bit — migrated to Adsum-Backend/kbits/, no longer bundled in
-	// the VSIX. Reference it by its bare k-bit path: the read_file handler resolves it through the resolver
-	// (loadBitByRel → loadBit), which serves it from the ADSUM_KBIT_LOCAL override in dev (F5) and the registry
-	// in prod (once published + entitled at Phase-D). It is NOT an absolute fs path anymore — no bundled file exists.
+/**
+ * Prompt for the CRA Sample run (design/34): a REAL CRA analysis of a PRE-BUILT reference sample — no build on the
+ * user's machine (the user almost never has the exact SDK our sample was built on, so we ship the build artifacts).
+ * The SBOM is real (`west spdx`), the CVE scan is LIVE, the posture is from the real merged `.config` — nothing is
+ * "simulated"; only the build was done ahead of time, by us. The host scan reads the bundle's shipped SBOM +
+ * `.config` + `symbols.nm` + `version.h` (laid out like a build dir). It ALWAYS ends by offering the real run on the
+ * user's own project. `bundlePath` is the WRITABLE copy from prepareCraBundle().
+ */
+function buildCraSamplePrompt(bundlePath: string): string {
+	// cra-readiness is a DOWNLOADED (proprietary) bit — referenced by its bare k-bit path (resolver serves it from
+	// ADSUM_KBIT_LOCAL in dev / the registry in prod). It carries the honesty rules + the Sample-run (pre-canned) mode.
 	const workflowFile = "cra/workflows/cra-readiness.md"
-	return `Run CRA SBOM & Fix on the bundled sample project at ${samplePath}.
+	return `Run the CRA SBOM & Fix **Sample run** on our pre-built reference bundle at ${bundlePath}.
 
-[ADSUM_DEMO:cra-sample] This is OUR bundled nRF sample (central_uart), NOT the user's own project — it is the \
-workflow's PREVIEW path. Detect the platform, generate the SBOM, preview the secure-by-design posture, surface \
-the top gap, then offer to start closing it.
+[ADSUM_DEMO:cra-sample] This is the SAMPLE run — a REAL CRA analysis of OUR pre-built nRF reference firmware \
+(central_uart, NCS 3.2.1 / Zephyr 4.2.99), regardless of whether the user has a project open. It is NOT "simulated": \
+the SBOM is a real \`west spdx\` build, the CVE scan is LIVE, the posture is the real merged .config. The ONLY thing \
+not happening on the user's machine is the build — we pre-built it (the user almost never has our exact SDK). The one \
+honest caveat: this describes OUR reference firmware, NOT the user's build.
 
-Hard rules for this sample run:
-- Load and follow the workflow exactly: read_file ${workflowFile}. **If that read fails (the bit isn't \
-available), STOP: tell the developer the CRA workflow is currently unavailable and do NOT proceed. Never \
-reconstruct the workflow, or template the report, from general knowledge, memory, or a PRIOR CRA run/report — \
-an improvised assessment is ungrounded and not allowed.** It carries the honesty rules — evidence-mode \
-only, NO verdicts / grades / scores (no status glyphs, no "MET"/"READY"/"GOOD", no "N/10" or aggregate score, no \
-"non-compliant"), the mandatory "# CRA SBOM & Fix" title + the "Readiness aid — NOT a conformity assessment" \
-disclaimer, and curated citations only (Annex Part I / Part II + the curated Article 14 — never invent a sub-clause \
-such as "Article 3(8)").
-- It is our READ-ONLY sample: NEVER write into it or the extension. Show the report INLINE; ask via \
-ask_followup_question before saving, and only on consent save to a namespaced folder under the user's Desktop. \
-State plainly the result describes the sample, not the user's product — for their own build they run it on their code.
-- Follow the productive next-step loop: after the preview, offer the top gap as one concrete, decline-able step; \
-do NOT call attempt_completion while a high-value gap is still un-offered and the user has not declined.`
+Hard rules for this Sample run:
+- Load and follow the workflow's **Sample-run (pre-canned) mode**: read_file ${workflowFile}. **If that read fails, \
+STOP: tell the developer the CRA workflow is currently unavailable and do NOT proceed. Never reconstruct the \
+workflow or template the report from memory or a prior run.** It carries the honesty rules (evidence-mode only; NO \
+verdicts/grades/scores; the "# CRA SBOM & Fix — central_uart (reference sample)" title + "Readiness aid — NOT a \
+conformity assessment" disclaimer; curated Annex Part I/Part II + Article 14 citations only).
+- **Use the workflow's standard FIVE plain-English task_progress phases** (Inventory your build · Scan for known CVEs \
+· Read the security posture · Triage what affects you · One concrete next step) — do NOT turn these internal \
+mechanics (load workflow / scan the SBOM / write the report) into the checklist.
+- **No build, no SBOM generation.** Trigger the host CVE scan directly on the pre-canned bundle: \
+triggerCveScan with sbom=${bundlePath}/sbom/all.spdx and build=${bundlePath} (the bundle ships the merged \
+.config, the symbol dump, and the SDK version, so applicability + posture + version-fixed all run with no toolchain). \
+For the posture, grep ${bundlePath}/zephyr/.config for the posture symbols (per the posture bit) — do not build.
+- **Label it a REFERENCE sample (not "simulated"):** the report Method is "pre-built reference SBOM"; the headline \
+says plainly this is a real analysis of OUR reference firmware (NCS 3.2.1 / Zephyr 4.2.99, captured 2026-06-29), \
+NOT the user's build. The "components" count is the SBOM total (~180), not the queryable count.
+- Write the report to an OS-temp scratch compliance/cra-<date>/CRA_READINESS.md via write_to_file FIRST (the host \
+honesty guard runs there), then present a THIN headline (at-a-glance counts + the top finding + the written path). \
+Do NOT re-render the posture/CVE tables in chat.
+- **ALWAYS end with the real-run CTA** (ask_followup_question): "Want this on YOUR firmware? Open your project \
+(File ▸ Open Folder — VS Code reloads), then click CRA SBOM & Fix — I'll build on your SDK, generate a live SBOM, \
+and run the full CRA process on your real build." Offer to save a copy of this sample report to the user's Desktop. \
+Do NOT call attempt_completion before offering the CTA.`
 }
 
 // ── Generic bundled-scenario prep (esp-wifi, hci-sniffer) ─────────────────────
@@ -386,8 +419,9 @@ const HOST_DEMO_SCENARIOS: Record<string, HostDemoScenario> = {
 		id: "cra-sample",
 		triggerToken: "[ADSUM_DEMO:cra-sample]",
 		async buildTask() {
-			const ws = await prepareDemoWorkspace()
-			return { taskText: buildCraSamplePrompt(ws.centralPath), displayText: buildCraSampleDisplayText() }
+			// design/34: the Sample run scans a PRE-CANNED reference bundle (no build), copied to a writable location.
+			const bundlePath = await prepareCraBundle("nrf")
+			return { taskText: buildCraSamplePrompt(bundlePath), displayText: buildCraSampleDisplayText() }
 		},
 	},
 	"esp-wifi": {

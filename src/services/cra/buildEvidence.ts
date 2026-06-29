@@ -32,12 +32,22 @@ export interface BuildEvidenceInput {
 	dotConfigPath?: string
 	/** Explicit ELF path — overrides the buildDir default. */
 	elfPath?: string
+	/** Explicit PRE-COMPUTED symbol-dump path (an `nm` output text file) — overrides everything; no `nm` is run.
+	 *  Used by the pre-canned CRA Sample bundle (design/34): ship the small dump instead of a multi-MB ELF, and
+	 *  don't depend on the user having a working `nm`. A real build leaves this unset → the `nm`-on-ELF path runs. */
+	symbolsPath?: string
 }
 
 /** Candidate merged-Kconfig locations under a build dir: Zephyr (`zephyr/.config`) then a flat `.config` (ESP). */
 const dotConfigCandidates = (buildDir: string): string[] => [
 	path.join(buildDir, "zephyr", ".config"),
 	path.join(buildDir, ".config"),
+]
+
+/** Candidate pre-computed symbol-dump locations under a build dir (the Sample bundle ships `zephyr/symbols.nm`). */
+const symbolsDumpCandidates = (buildDir: string): string[] => [
+	path.join(buildDir, "zephyr", "symbols.nm"),
+	path.join(buildDir, "symbols.nm"),
 ]
 
 /** Default Zephyr ELF location under a build dir. */
@@ -57,10 +67,25 @@ export function readBuildEvidence(input: BuildEvidenceInput, readers: BuildEvide
 		}
 	}
 
+	// Symbols: prefer a PRE-COMPUTED dump (explicit path, or a `symbols.nm` shipped in the bundle) — read as text,
+	// no `nm` run. Only when no dump exists do we run `nm` on the ELF (the real-build path). This lets the Sample
+	// bundle avoid shipping the ELF / depending on `nm`, while a real build behaves exactly as before.
 	let symbols: string | undefined
-	const elf = input.elfPath ?? (input.buildDir ? defaultElf(input.buildDir) : undefined)
-	if (elf) {
-		symbols = readers.nm(elf)
+	if (input.symbolsPath) {
+		symbols = readers.readText(input.symbolsPath)
+	} else if (input.buildDir) {
+		for (const candidate of symbolsDumpCandidates(input.buildDir)) {
+			symbols = readers.readText(candidate)
+			if (symbols !== undefined) {
+				break
+			}
+		}
+	}
+	if (symbols === undefined) {
+		const elf = input.elfPath ?? (input.buildDir ? defaultElf(input.buildDir) : undefined)
+		if (elf) {
+			symbols = readers.nm(elf)
+		}
 	}
 
 	return { dotConfig, symbols }
