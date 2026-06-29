@@ -1,5 +1,7 @@
 @echo off
-REM nRF Sniffer Wrapper Script (Windows) — over-the-air BLE capture via `nrfutil ble-sniffer sniff`
+REM nRF Sniffer Wrapper Script (Windows) - over-the-air BLE capture via "nrfutil ble-sniffer sniff".
+REM Keep this file PURE ASCII: under a UTF-8 console (PowerShell) cmd mis-parses multibyte chars in a
+REM REM line and spills a fragment as a command ('M' is not recognized ...). Confirmed on real hardware.
 
 setlocal enabledelayedexpansion
 
