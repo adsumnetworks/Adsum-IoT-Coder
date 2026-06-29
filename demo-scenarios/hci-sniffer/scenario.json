@@ -1,0 +1,23 @@
+{
+	"id": "hci-sniffer",
+	"title": "HCI + sniffer-in-the-loop BLE debug",
+	"description": "A real one-directional BLE NUS bug seen across all three observability layers, captured from nRF hardware: the central connects and discovers the peripheral's Nordic UART Service but never subscribes (it skips bt_nus_subscribe_receive), so peripheral→central data is silently dropped. The app log shows nothing received, the HCI host↔controller trace shows no CCCD write, and the over-the-air sniffer shows no notifications. Hardware-adaptive: explained from pre-captured logs with no hardware, or reproduced live on a connected DK (+ sniffer dongle).",
+	"platform": "nrf",
+	"protocol": "BLE NUS (HCI monitor + over-the-air sniffer)",
+	"bugFile": "central/src/main.c",
+	"bugFunction": "discovery_complete",
+	"bugSummary": "discovery_complete() calls bt_nus_handles_assign() but never bt_nus_subscribe_receive(), so the central never subscribes to the peripheral's NUS TX notifications — peripheral→central data is silently dropped. Visible at all three layers: no CCCD write in HCI, no notifications on air, nothing received in the app log.",
+	"captures": {
+		"buggy": {
+			"app": "logs/buggy/app.log",
+			"hci": "logs/buggy/hci.hci.log",
+			"sniffer": "logs/buggy/sniffer.sniffer.log"
+		},
+		"fixed": {
+			"app": "logs/fixed/app.log",
+			"hci": "logs/fixed/hci.hci.log",
+			"sniffer": "logs/fixed/sniffer.sniffer.log"
+		}
+	},
+	"honestLabel": "Real captures from live nRF DKs + an nRF Sniffer dongle: app RTT, HCI monitor (CONFIG_BT_DEBUG_MONITOR_RTT), and over-the-air PCAP — buggy and fixed runs, all decoded by Adsum's own rail."
+}

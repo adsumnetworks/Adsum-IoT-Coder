@@ -1,0 +1,1374 @@
+# BLE over-the-air sniffer decode (nRF Sniffer, what actually transmitted between devices)
+# 327 frames · 0 undecoded · span 11295 ms
+# This is the AIR layer: advertising packets, CONNECT_IND, and link-layer control/data PDUs.
+# We decode the link layer only — never ATT/L2CAP/SMP. Open the .pcap in Wireshark for that depth.
+#
+# Legend (beginner):
+#   Δt(ms) = time since the previous frame (≈ the connection interval, once connected)
+#   Ch     = RF channel index — 37/38/39 are the 3 advertising channels, 0-36 are data channels
+#   Proto  = ADV (advertising) · LL-CTRL (connection control) · DATA (payload) · LL(empty) (keep-alive, no data)
+#   CRC    = ok (frame verified) or BAD (radio noise/collision — ignore that frame's content)
+#
+# Wireshark bridge (expert) — open the .pcap next to this file and try:
+#   btle                            all BLE link-layer frames
+#   !(btle.data_header.length==0)  hide empty keep-alive PDUs
+#   btle.advertising_address        filter by device address
+#   nordic_ble.channel == 37        filter by RF channel
+#
+# Columns:  No.    Time(rel)    Δt(ms)   Ch     RSSI    PHY    Proto      Len   CRC  Info
+#
+#    1  00.000    --.-  ch37   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#    2  00.000     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#    3  00.001     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#    4  00.108   107.0  ch37   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#    5  00.108     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#    6  00.109     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#    7  00.212   103.3  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#    8  00.213     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#    9  00.213     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   10  00.313    99.5  ch37   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   11  00.313     0.6  ch38   -33dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   12  00.314     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   13  00.417   103.3  ch37   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   14  00.418     0.6  ch38   -33dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   15  00.418     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   16  00.524   105.8  ch37   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   17  00.524     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   18  00.525     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   19  00.625    99.5  ch37   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   20  00.625     0.6  ch38   -33dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   21  00.626     0.6  ch39   -39dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   22  00.729   103.3  ch37   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   23  00.729     0.6  ch38   -33dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   24  00.730     0.6  ch39   -38dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   25  00.837   107.0  ch37   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   26  00.838     0.6  ch38   -33dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   27  00.838     0.6  ch39   -39dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   28  00.938   100.1  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   29  00.939     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   30  00.939     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   31  01.041   102.0  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   32  01.042     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   33  01.043     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   34  01.143   100.8  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   35  01.144     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   36  01.144     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   37  01.243    98.9  ch37   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   38  01.244     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   39  01.244     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   40  01.352   107.6  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   41  01.353     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   42  01.353     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   43  01.461   108.3  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   44  01.462     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   45  01.463     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   46  01.568   105.1  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   47  01.568     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   48  01.569     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   49  01.671   102.6  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   50  01.672     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   51  01.673     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   52  01.778   105.1  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   53  01.778     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   54  01.779     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   55  01.883   104.5  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   56  01.884     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   57  01.884     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   58  01.993   108.3  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   59  01.993     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   60  01.994     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   61  02.093    99.5  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   62  02.094     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   63  02.094     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   64  02.195   100.8  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   65  02.196     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   66  02.196     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   67  02.298   102.0  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   68  02.299     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   69  02.299     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   70  02.405   105.1  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   71  02.405     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   72  02.406     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   73  02.510   104.5  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   74  02.511     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   75  02.511     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   76  02.611   100.1  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   77  02.612     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   78  02.613     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   79  02.713   100.8  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   80  02.714     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   81  02.714     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   82  02.815   100.1  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   83  02.815     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   84  02.816     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   85  02.915    98.9  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   86  02.915     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   87  02.916     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   88  03.018   102.6  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   89  03.019     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   90  03.019     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   91  03.118    98.9  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   92  03.119     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   93  03.119     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   94  03.219    99.5  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   95  03.220     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   96  03.220     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   97  03.320    99.5  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   98  03.320     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#   99  03.321     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  100  03.425   103.9  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  101  03.425     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  102  03.426     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  103  03.528   102.6  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  104  03.529     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  105  03.529     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  106  03.631   101.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  107  03.631     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  108  03.632     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  109  03.733   100.8  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  110  03.733     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  111  03.734     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  112  03.840   106.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  113  03.841     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  114  03.841     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  115  03.947   105.8  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  116  03.948     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  117  03.948     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  118  04.053   105.1  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  119  04.054     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  120  04.054     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  121  04.163   108.3  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  122  04.163     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  123  04.164     0.6  ch39   -34dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  124  04.269   105.1  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  125  04.270     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  126  04.270     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  127  04.378   107.6  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  128  04.378     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  129  04.379     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  130  04.478    99.5  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  131  04.479     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  132  04.479     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  133  04.579    99.5  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  134  04.580     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  135  04.580     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  136  04.682   101.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  137  04.682     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  138  04.683     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  139  04.784   101.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  140  04.785     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  141  04.785     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  142  04.884    98.9  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  143  04.885     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  144  04.885     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  145  04.990   105.1  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  146  04.991     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  147  04.991     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  148  05.098   106.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  149  05.098     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  150  05.099     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  151  05.202   103.3  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  152  05.203     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  153  05.203     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  154  05.308   104.5  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  155  05.308     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  156  05.309     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  157  05.408    98.9  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  158  05.408     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  159  05.409     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  160  05.510   101.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  161  05.511     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  162  05.511     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  163  05.616   104.5  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  164  05.616     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  165  05.617     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  166  05.722   104.5  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  167  05.722     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  168  05.723     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  169  05.830   107.0  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  170  05.830     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  171  05.831     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  172  05.937   106.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  173  05.938     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  174  05.938     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  175  06.042   103.9  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  176  06.043     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  177  06.043     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  178  06.150   107.0  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  179  06.151     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  180  06.151     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  181  06.253   101.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  182  06.253     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  183  06.254     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  184  06.362   107.6  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  185  06.362     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  186  06.363     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  187  06.467   104.5  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  188  06.468     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  189  06.468     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  190  06.571   102.6  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  191  06.571     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  192  06.572     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  193  06.671    98.9  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  194  06.671     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  195  06.672     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  196  06.778   105.8  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  197  06.778     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  198  06.779     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  199  06.881   102.0  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  200  06.882     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  201  06.882     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  202  06.982   100.1  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  203  06.983     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  204  06.983     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  205  07.090   106.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  206  07.090     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  207  07.091     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  208  07.194   103.3  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  209  07.195     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  210  07.195     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  211  07.298   102.6  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  212  07.298     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  213  07.299     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  214  07.402   103.3  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  215  07.403     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  216  07.403     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  217  07.506   102.6  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  218  07.507     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  219  07.507     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  220  07.614   107.0  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  221  07.615     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  222  07.615     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  223  07.717   102.0  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  224  07.718     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  225  07.718     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  226  07.818   100.1  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  227  07.819     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  228  07.820     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  229  07.924   104.5  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  230  07.925     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  231  07.925     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  232  08.031   105.8  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  233  08.032     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  234  08.032     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  235  08.136   103.9  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  236  08.137     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  237  08.137     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  238  08.242   105.1  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  239  08.243     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  240  08.243     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  241  08.344   100.8  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  242  08.345     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  243  08.345     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  244  08.453   108.3  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  245  08.454     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  246  08.455     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  247  08.557   102.6  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  248  08.558     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  249  08.558     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  250  08.665   107.0  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  251  08.666     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  252  08.666     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  253  08.773   106.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  254  08.773     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  255  08.774     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  256  08.879   105.1  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  257  08.880     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  258  08.880     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  259  08.980   100.1  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  260  08.981     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  261  08.981     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  262  09.087   105.8  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  263  09.088     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  264  09.088     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  265  09.196   107.6  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  266  09.197     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  267  09.197     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  268  09.299   101.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  269  09.299     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  270  09.300     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  271  09.402   102.6  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  272  09.403     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  273  09.403     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  274  09.509   105.8  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  275  09.510     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  276  09.510     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  277  09.614   103.9  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  278  09.615     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  279  09.615     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  280  09.718   102.6  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  281  09.718     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  282  09.719     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  283  09.819    99.5  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  284  09.819     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  285  09.820     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  286  09.925   105.8  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  287  09.926     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  288  09.927     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  289  10.026    99.5  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  290  10.027     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  291  10.027     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  292  10.131   103.9  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  293  10.132     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  294  10.132     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  295  10.233   100.8  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  296  10.233     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  297  10.234     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  298  10.340   106.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  299  10.341     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  300  10.342     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  301  10.448   106.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  302  10.448     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  303  10.449     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  304  10.551   102.0  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  305  10.552     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  306  10.552     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  307  10.659   106.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  308  10.659     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  309  10.660     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  310  10.759    99.5  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  311  10.760     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  312  10.760     0.6  ch39   -35dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  313  10.864   103.9  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  314  10.865     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  315  10.865     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  316  10.972   107.0  ch37   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  317  10.973     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  318  10.973     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  319  11.082   108.3  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  320  11.082     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  321  11.083     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  322  11.184   101.4  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  323  11.185     0.6  ch38   -31dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  324  11.185     0.6  ch39   -36dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  325  11.294   108.3  ch37   -30dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  326  11.294     0.6  ch38   -32dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#  327  11.295     0.6  ch39   -37dBm 1M    ADV         37B ok   ADV_NONCONN_IND from 3f:88:cb:1e:e4:7a (37B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: 3f:88:cb:1e:e4:7a
+           payload: 42 25 7a e4 1e cb 88 3f 1e ff 06 00 01 09 20 22 …
+#
+# --- suggested chat sequence diagram (mermaid) ---
+# Lift the lines below (strip the leading '# ') into a ```mermaid fence when presenting in chat.
+# sequenceDiagram
+#     participant C as Central
+#     participant P as Peripheral (3f:88:cb:1e:e4:7a)
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_NONCONN_IND
+#     Note over C,P: (additional lifecycle events truncated — see .pcap in Wireshark for the full sequence)

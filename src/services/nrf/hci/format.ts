@@ -107,6 +107,7 @@ export function buildHciMermaid(entries: HciEntry[]): string | undefined {
 	let runLen = 0
 	let eventCount = 0
 	let truncated = false
+	let emitted = false // any arrow or Note actually rendered? (a MON/SYS/INDEX-only capture emits none)
 
 	const flushRun = () => {
 		if (runLen === 0) {
@@ -116,6 +117,7 @@ export function buildHciMermaid(entries: HciEntry[]): string | undefined {
 			`    Note over H,Ctrl: ${runLen} ACL data packet${runLen > 1 ? "s" : ""} (GATT traffic — see .btmon in Wireshark for ATT/L2CAP detail)`,
 		)
 		runLen = 0
+		emitted = true
 	}
 
 	for (const e of entries) {
@@ -137,10 +139,12 @@ export function buildHciMermaid(entries: HciEntry[]): string | undefined {
 		if (e.type === "CMD") {
 			lines.push(`    H->>Ctrl: ${e.summary.replace(/^TX CMD /, "")}`)
 			eventCount++
+			emitted = true
 		} else if (e.type === "EVT") {
 			const arrowOp = e.summary.includes("Disconnection Complete") ? "--x" : "-->>"
 			lines.push(`    Ctrl${arrowOp}H: ${e.summary.replace(/^RX EVT /, "")}`)
 			eventCount++
+			emitted = true
 		}
 	}
 	flushRun()
@@ -148,6 +152,11 @@ export function buildHciMermaid(entries: HciEntry[]): string | undefined {
 		lines.push(
 			"    Note over H,Ctrl: (additional lifecycle events truncated — see .btmon in Wireshark for the full sequence)",
 		)
+	}
+	// A capture of only MON/SYS/INDEX bookkeeping renders no arrows or notes — return nothing rather than
+	// a header-only `sequenceDiagram` skeleton (which shows up as an empty/broken diagram in chat).
+	if (!emitted) {
+		return undefined
 	}
 	return lines.join("\n")
 }

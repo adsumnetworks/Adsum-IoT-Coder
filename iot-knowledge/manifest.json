@@ -204,7 +204,7 @@
 			"id": "adsum/nrf/sdks/ncs/protocols/ble",
 			"title": "BLE Protocol Knowledge — NCS / Zephyr",
 			"type": "knowledge",
-			"version": "1.2.0",
+			"version": "1.3.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -213,7 +213,7 @@
 			"domain": "embedded-iot",
 			"platform": "nrf",
 			"path": "platforms/nrf/sdks/ncs/protocols/BLE.md",
-			"content_hash": "2d9c7a30109ad5e9e1a5028eb9c63d488a4bd271bf007a6bc774f17d1e40d886"
+			"content_hash": "8d505a16a3ae5b45de58b38e32254721fa8e4e04e465275f450bdc71659e2883"
 		},
 		{
 			"id": "adsum/nrf/sdks/ncs/sdk",

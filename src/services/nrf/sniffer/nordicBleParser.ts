@@ -33,8 +33,10 @@ const ADV_PDU: Record<number, string> = {
 	7: "ADV_EXT_IND", // extended: AUX_ADV_IND / AUX_SYNC_IND / AUX_CHAIN_IND / AUX_SCAN_RSP
 	8: "AUX_CONNECT_RSP",
 }
-// PDU types that carry the advertiser address as the first 6 payload bytes (legacy).
-const ADV_HAS_ADVA = new Set([0x0, 0x1, 0x2, 0x4, 0x6])
+// Legacy PDU types whose payload is a single advertiser address (first 6 bytes).
+// NOTE: ADV_DIRECT_IND (0x1) is intentionally NOT here — it carries TWO addresses
+// (AdvA + TargetA) and is decoded by its own branch below, like CONNECT_IND/SCAN_REQ.
+const ADV_HAS_ADVA = new Set([0x0, 0x2, 0x4, 0x6])
 
 // LL Control PDU opcodes (the ones worth naming for debugging).
 const LL_CONTROL: Record<number, string> = {
@@ -135,6 +137,15 @@ function decodeLl(ll: Buffer): { pduType: string; summary: string; fields: Sniff
 			fields.push({ name: "Advertiser", value: advA })
 			return { pduType: name, summary: `SCAN_REQ ${scanA} → ${advA}`, fields, len, proto: "ADV" }
 		}
+		if (type === 0x1 && ll.length >= payOff + 12) {
+			// ADV_DIRECT_IND: AdvA(6) + TargetA(6) — directed advertising aimed at one specific peer.
+			// Two addresses, so it can't go through the single-AdvA branch (that dropped TargetA).
+			const advA = macLE(ll, payOff)
+			const targetA = macLE(ll, payOff + 6)
+			fields.push({ name: "Advertiser", value: advA })
+			fields.push({ name: "Target", value: targetA })
+			return { pduType: name, summary: `ADV_DIRECT_IND ${advA} → ${targetA}`, fields, len, proto: "ADV" }
+		}
 		if (ADV_HAS_ADVA.has(type) && ll.length >= payOff + 6) {
 			const advA = macLE(ll, payOff)
 			fields.push({ name: "Advertiser", value: advA })
@@ -146,7 +157,9 @@ function decodeLl(ll: Buffer): { pduType: string; summary: string; fields: Sniff
 
 	// Data-channel PDU (a connection's access address). Header: LLID(2) NESN(1) SN(1) MD(1) RFU(3) | len.
 	const llid = h0 & 0x03
-	const len = h1 & 0x1f
+	// Full second header octet (8-bit length) — BLE 4.2 Data Length Extension. Masking to 5 bits
+	// (h1 & 0x1f) truncated any DLE frame (payload > 31B) to a wrong, smaller length.
+	const len = h1
 	const aaHex = `0x${accessAddress.toString(16).padStart(8, "0")}`
 	fields.push({ name: "Access Address", value: aaHex })
 	if (llid === 0x3) {
@@ -239,9 +252,14 @@ export function parseNordicBle(records: Buffer[], linkType?: number): SnifferPar
 			parseErrors++
 		}
 	}
-	const durationMs =
+	let durationMs =
 		entries.length >= 2 && entries[0].tsMs !== undefined && entries[entries.length - 1].tsMs !== undefined
 			? entries[entries.length - 1].tsMs! - entries[0].tsMs!
 			: undefined
+	// The sniffer timestamp is a 32-bit µs counter that wraps (~71 min), so last < first yields a bogus
+	// negative span. We can't know the wrap count, so report "unknown" rather than a wrong negative number.
+	if (durationMs !== undefined && durationMs < 0) {
+		durationMs = undefined
+	}
 	return { entries, totalFrames: frameNo, parseErrors, durationMs, linkType }
 }

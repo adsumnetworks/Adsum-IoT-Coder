@@ -62,12 +62,12 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 	"hci-sniffer": {
 		id: "hci-sniffer",
 		title: "HCI + sniffer-in-the-loop BLE debug",
-		honestLabel: "Cross-layer BLE — app log ↔ HCI trace ↔ over-the-air sniffer, correlated by the agent.",
+		honestLabel:
+			"A real one-directional BLE bug across all 3 layers — app log, HCI trace, over-the-air — from nRF hardware. Runs with or without your own boards.",
 		taskPrompt: "Demo: HCI + sniffer-in-the-loop BLE debug\n\n[ADSUM_DEMO:hci-sniffer]",
 		historyMatch: "HCI + sniffer-in-the-loop BLE debug",
 		platform: "nrf",
 		icon: "radio-tower",
-		comingSoon: true,
 		isNew: true,
 	},
 	// A8 — ESP sample placeholder: a Wi-Fi debug session (ESP's connectivity story, parallel to the nRF/BLE HCI

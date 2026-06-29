@@ -1,0 +1,220 @@
+# HCI Monitor decode (host ↔ controller traffic, from CONFIG_BT_DEBUG_MONITOR_RTT)
+# 51 frames · 0 parse error(s) · span 16406 ms
+# Layers: CMD host→ctrl command · EVT ctrl→host event · ACL data · MON app log · SYS/INDEX monitor meta
+# Columns:  #frame  time(uptime)  direction  TYPE  code  summary
+#
+#    1  00:00:00.021  monitor     INDEX  hci        HCI Index: SDC
+           payload: 00 00 00 00 00 00 00 00 53 44 43 00 00 00 00 00
+#    2  00:00:00.029  monitor     SYS    SYS        BT Monitor opcode 0x08 (0B)
+#    3  00:00:00.029  host → ctrl  CMD    0x0C03     TX CMD Reset (0B)
+           payload: 03 0c 00
+#    4  00:00:00.030  ctrl → host  EVT    0x0E       RX EVT Command Complete Reset (status: Success)
+           Num Packets: 1
+           Command: Reset
+           Status: Success
+           payload: 0e 04 01 03 0c 00
+#    5  00:00:00.030  host → ctrl  CMD    0x1003     TX CMD Read Local Supported Features (0B)
+           payload: 03 10 00
+#    6  00:00:00.030  ctrl → host  EVT    0x0E       RX EVT Command Complete Read Local Supported Features (status: Success)
+           Num Packets: 1
+           Command: Read Local Supported Features
+           Status: Success
+           payload: 0e 0c 01 03 10 00 00 00 00 00 60 00 00 00
+#    7  00:00:00.030  host → ctrl  CMD    0x1001     TX CMD Read Local Version Information (0B)
+           payload: 01 10 00
+#    8  00:00:00.030  ctrl → host  EVT    0x0E       RX EVT Command Complete Read Local Version Information (status: Success)
+           Num Packets: 1
+           Command: Read Local Version Information
+           Status: Success
+           payload: 0e 0c 01 01 10 00 10 20 10 10 59 00 20 10
+#    9  00:00:00.030  host → ctrl  CMD    0x1002     TX CMD Read Local Supported Commands (0B)
+           payload: 02 10 00
+#   10  00:00:00.031  ctrl → host  EVT    0x0E       RX EVT Command Complete Read Local Supported Commands (status: Success)
+           Num Packets: 1
+           Command: Read Local Supported Commands
+           Status: Success
+           payload: 0e 44 01 02 10 00 20 00 80 00 00 c0 00 00 00 00 …
+#   11  00:00:00.031  host → ctrl  CMD    0x2003     TX CMD LE Read Local Supported Features (0B)
+           payload: 03 20 00
+#   12  00:00:00.031  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Read Local Supported Features (status: Success)
+           Num Packets: 1
+           Command: LE Read Local Supported Features
+           Status: Success
+           payload: 0e 0c 01 03 20 00 7d 41 00 00 00 00 00 00
+#   13  00:00:00.031  host → ctrl  CMD    0x2002     TX CMD LE Read Buffer Size (0B)
+           payload: 02 20 00
+#   14  00:00:00.031  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Read Buffer Size (status: Success)
+           Num Packets: 1
+           Command: LE Read Buffer Size
+           Status: Success
+           payload: 0e 07 01 02 20 00 45 00 03
+#   15  00:00:00.032  host → ctrl  CMD    0x201C     TX CMD LE Read Supported States (0B)
+           payload: 1c 20 00
+#   16  00:00:00.032  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Read Supported States (status: Success)
+           Num Packets: 1
+           Command: LE Read Supported States
+           Status: Success
+           payload: 0e 0c 01 1c 20 00 8f 00 03 00 c0 00 00 00
+#   17  00:00:00.032  host → ctrl  CMD    0x202F     TX CMD LE Read PHY (0B)
+           payload: 2f 20 00
+#   18  00:00:00.032  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Read PHY (status: Success)
+           Num Packets: 1
+           Command: LE Read PHY
+           Status: Success
+           payload: 0e 0c 01 2f 20 00 fb 00 48 08 fb 00 48 08
+#   19  00:00:00.032  host → ctrl  CMD    0x2024     TX CMD LE Read Transmit Power (4B)
+           payload: 24 20 04 fb 00 48 08
+#   20  00:00:00.032  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Read Transmit Power (status: Success)
+           Num Packets: 1
+           Command: LE Read Transmit Power
+           Status: Success
+           payload: 0e 04 01 24 20 00
+#   21  00:00:00.033  host → ctrl  CMD    0x202A     TX CMD LE Set Privacy Mode (0B)
+           payload: 2a 20 00
+#   22  00:00:00.033  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Set Privacy Mode (status: Success)
+           Num Packets: 1
+           Command: LE Set Privacy Mode
+           Status: Success
+           payload: 0e 05 01 2a 20 00 08
+#   23  00:00:00.033  host → ctrl  CMD    0x2001     TX CMD LE Set Event Mask (8B)
+           payload: 01 20 08 5e 0a 00 00 00 00 00 00
+#   24  00:00:00.033  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Set Event Mask (status: Success)
+           Num Packets: 1
+           Command: LE Set Event Mask
+           Status: Success
+           payload: 0e 04 01 01 20 00
+#   25  00:00:00.033  host → ctrl  CMD    0x0C01     TX CMD Set Event Mask (8B)
+           payload: 01 0c 08 90 88 00 02 00 80 00 20
+#   26  00:00:00.033  ctrl → host  EVT    0x0E       RX EVT Command Complete Set Event Mask (status: Success)
+           Num Packets: 1
+           Command: Set Event Mask
+           Status: Success
+           payload: 0e 04 01 01 0c 00
+#   27  00:00:00.034  host → ctrl  CMD    0xFC01     TX CMD Unknown Command (0xFC01) (0B)
+           payload: 01 fc 00
+#   28  00:00:00.034  ctrl → host  EVT    0x0E       RX EVT Command Complete Unknown Command (0xFC01) (status: Success)
+           Num Packets: 1
+           Command: Unknown Command (0xFC01)
+           Status: Success
+           payload: 0e 10 01 01 fc 00 02 00 02 00 00 9b 8f ac c3 1d …
+#   29  00:00:00.034  host → ctrl  CMD    0xFC02     TX CMD Unknown Command (0xFC02) (0B)
+           payload: 02 fc 00
+#   30  00:00:00.034  ctrl → host  EVT    0x0E       RX EVT Command Complete Unknown Command (0xFC02) (status: Success)
+           Num Packets: 1
+           Command: Unknown Command (0xFC02)
+           Status: Success
+           payload: 0e 44 01 02 fc 00 23 07 02 00 00 9b 8f ac c3 1d …
+#   31  00:00:00.035  host → ctrl  CMD    0x1009     TX CMD Read BD ADDR (0B)
+           payload: 09 10 00
+#   32  00:00:00.035  ctrl → host  EVT    0x0E       RX EVT Command Complete Read BD ADDR (status: Success)
+           Num Packets: 1
+           Command: Read BD ADDR
+           Status: Success
+           payload: 0e 0a 01 09 10 00 00 00 00 00 00 00
+#   33  00:00:00.035  host → ctrl  CMD    0xFC09     TX CMD Unknown Command (0xFC09) (0B)
+           payload: 09 fc 00
+#   34  00:00:00.035  ctrl → host  EVT    0x0E       RX EVT Command Complete Unknown Command (0xFC09) (status: Success)
+           Num Packets: 1
+           Command: Unknown Command (0xFC09)
+           Status: Success
+           payload: 0e 1b 01 09 fc 00 01 d5 c0 32 c8 c3 c3 47 14 4f …
+#   35  00:00:00.037  host → ctrl  CMD    0x2005     TX CMD LE Set Random Address (6B)
+           payload: 05 20 06 d5 c0 32 c8 c3 c3
+#   36  00:00:00.037  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Set Random Address (status: Success)
+           Num Packets: 1
+           Command: LE Set Random Address
+           Status: Success
+           payload: 0e 04 01 05 20 00
+#   37  00:00:00.038  host → ctrl  CMD    0x2006     TX CMD LE Set Advertising Parameters (15B)
+           payload: 06 20 0f a0 00 f0 00 00 01 00 00 00 00 00 00 00 …
+#   38  00:00:00.038  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Set Advertising Parameters (status: Success)
+           Num Packets: 1
+           Command: LE Set Advertising Parameters
+           Status: Success
+           payload: 0e 04 01 06 20 00
+#   39  00:00:00.038  host → ctrl  CMD    0x2008     TX CMD LE Set Advertising Data (32B)
+           payload: 08 20 20 12 02 01 06 0e 09 46 61 72 6d 53 65 6e …
+#   40  00:00:00.038  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Set Advertising Data (status: Success)
+           Num Packets: 1
+           Command: LE Set Advertising Data
+           Status: Success
+           payload: 0e 04 01 08 20 00
+#   41  00:00:00.038  host → ctrl  CMD    0x2009     TX CMD LE Set Scan Response Data (32B)
+           payload: 09 20 20 12 11 07 9e ca dc 24 0e e5 a9 e0 93 f3 …
+#   42  00:00:00.038  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Set Scan Response Data (status: Success)
+           Num Packets: 1
+           Command: LE Set Scan Response Data
+           Status: Success
+           payload: 0e 04 01 09 20 00
+#   43  00:00:00.039  host → ctrl  CMD    0x200A     TX CMD LE Set Advertising Enable (1B)
+           payload: 0a 20 01 01
+#   44  00:00:00.039  ctrl → host  EVT    0x0E       RX EVT Command Complete LE Set Advertising Enable (status: Success)
+           Num Packets: 1
+           Command: LE Set Advertising Enable
+           Status: Success
+           payload: 0e 04 01 0a 20 00
+#   45  00:00:05.754  host → ctrl  ACL_TX h=0x0000   TX ACL handle=0x0000 16B
+           payload: 00 00 10 00 0c 00 05 00 12 01 08 00 18 00 28 00 …
+#   46  00:00:05.810  ctrl → host  EVT    0x13       RX EVT Number of Completed Packets (5B)
+           Event Code: 0x13
+           Length: 5B
+           payload: 13 05 01 00 00 01 00
+#   47  00:00:05.810  ctrl → host  ACL_RX h=0x0000   RX ACL handle=0x0000 10B
+           payload: 00 20 0a 00 06 00 05 00 13 01 02 00 00 00
+#   48  00:00:06.138  ctrl → host  EVT    0x3E       RX EVT LE Connection Update Complete (status: Success)
+           Subevent: LE Connection Update Complete
+           Status: Success
+           payload: 3e 0a 03 00 00 00 28 00 00 00 2a 00
+#   49  00:00:05.502  app log     MON    MON        [bt] farm_sensor: Battery level: 100%
+           payload: 06 03 62 74 00 66 61 72 6d 5f 73 65 6e 73 6f 72 …
+#   50  00:00:10.965  app log     MON    MON        [bt] farm_sensor: Battery level: 100%
+           payload: 06 03 62 74 00 66 61 72 6d 5f 73 65 6e 73 6f 72 …
+#   51  00:00:16.427  app log     MON    MON        [bt] farm_sensor: Battery level: 100%
+           payload: 06 03 62 74 00 66 61 72 6d 5f 73 65 6e 73 6f 72 …
+#
+# --- suggested chat sequence diagram (mermaid) ---
+# Lift the lines below (strip the leading '# ') into a ```mermaid fence when presenting in chat.
+# sequenceDiagram
+#     participant H as Host
+#     participant Ctrl as Controller
+#     H->>Ctrl: Reset (0B)
+#     Ctrl-->>H: Command Complete Reset (status: Success)
+#     H->>Ctrl: Read Local Supported Features (0B)
+#     Ctrl-->>H: Command Complete Read Local Supported Features (status: Success)
+#     H->>Ctrl: Read Local Version Information (0B)
+#     Ctrl-->>H: Command Complete Read Local Version Information (status: Success)
+#     H->>Ctrl: Read Local Supported Commands (0B)
+#     Ctrl-->>H: Command Complete Read Local Supported Commands (status: Success)
+#     H->>Ctrl: LE Read Local Supported Features (0B)
+#     Ctrl-->>H: Command Complete LE Read Local Supported Features (status: Success)
+#     H->>Ctrl: LE Read Buffer Size (0B)
+#     Ctrl-->>H: Command Complete LE Read Buffer Size (status: Success)
+#     H->>Ctrl: LE Read Supported States (0B)
+#     Ctrl-->>H: Command Complete LE Read Supported States (status: Success)
+#     H->>Ctrl: LE Read PHY (0B)
+#     Ctrl-->>H: Command Complete LE Read PHY (status: Success)
+#     H->>Ctrl: LE Read Transmit Power (4B)
+#     Ctrl-->>H: Command Complete LE Read Transmit Power (status: Success)
+#     H->>Ctrl: LE Set Privacy Mode (0B)
+#     Ctrl-->>H: Command Complete LE Set Privacy Mode (status: Success)
+#     H->>Ctrl: LE Set Event Mask (8B)
+#     Ctrl-->>H: Command Complete LE Set Event Mask (status: Success)
+#     H->>Ctrl: Set Event Mask (8B)
+#     Ctrl-->>H: Command Complete Set Event Mask (status: Success)
+#     H->>Ctrl: Unknown Command (0xFC01) (0B)
+#     Ctrl-->>H: Command Complete Unknown Command (0xFC01) (status: Success)
+#     H->>Ctrl: Unknown Command (0xFC02) (0B)
+#     Ctrl-->>H: Command Complete Unknown Command (0xFC02) (status: Success)
+#     H->>Ctrl: Read BD ADDR (0B)
+#     Ctrl-->>H: Command Complete Read BD ADDR (status: Success)
+#     H->>Ctrl: Unknown Command (0xFC09) (0B)
+#     Ctrl-->>H: Command Complete Unknown Command (0xFC09) (status: Success)
+#     H->>Ctrl: LE Set Random Address (6B)
+#     Ctrl-->>H: Command Complete LE Set Random Address (status: Success)
+#     H->>Ctrl: LE Set Advertising Parameters (15B)
+#     Ctrl-->>H: Command Complete LE Set Advertising Parameters (status: Success)
+#     H->>Ctrl: LE Set Advertising Data (32B)
+#     Ctrl-->>H: Command Complete LE Set Advertising Data (status: Success)
+#     H->>Ctrl: LE Set Scan Response Data (32B)
+#     Ctrl-->>H: Command Complete LE Set Scan Response Data (status: Success)
+#     Note over H,Ctrl: (additional lifecycle events truncated — see .btmon in Wireshark for the full sequence)

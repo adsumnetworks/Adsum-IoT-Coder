@@ -13,8 +13,9 @@ interface NextStepChooserProps {
 }
 
 const NextStepChooser: React.FC<NextStepChooserProps> = ({ isDemoRun, onSelectMode, onStartTask, onStartDemo }) => {
-	const { openFolderPaths, workspaceClassification, nrfEnvironment, espEnvironment } = useExtensionState()
+	const { openFolderPaths, workspaceClassification, nrfEnvironment, espEnvironment, workspaceFeatures } = useExtensionState()
 	const hasWorkspace = openFolderPaths.length > 0
+	const hasBle = !!workspaceFeatures?.hasBle
 	const projectName = hasWorkspace ? (openFolderPaths[0].split("/").pop() ?? undefined) : undefined
 	const intents = hasWorkspace ? PROJECT_INTENTS : NO_PROJECT_INTENTS
 	// Open project's classification wins; with no project, bias by installed toolchain
@@ -38,6 +39,7 @@ const NextStepChooser: React.FC<NextStepChooserProps> = ({ isDemoRun, onSelectMo
 			</div>
 
 			<IntentList
+				hasBle={hasBle}
 				intents={intents}
 				onSelectMode={onSelectMode}
 				onStartTask={onStartTask}
