@@ -2,13 +2,19 @@
 """nRF Sniffer capture wrapper — over-the-air BLE.
 
 Runs ``nrfutil ble-sniffer sniff`` for a bounded duration against a separate Nordic dongle/DK that is
-flashed with the sniffer firmware. nrfutil's own ``--timeout`` flag is the primary self-stop mechanism —
-it lets nrfutil exit cleanly and flush the PCAP on its own. The OS-level stop (CTRL_BREAK on Windows,
-SIGINT on POSIX, escalating to terminate/kill) is kept only as a fallback in case nrfutil ever hangs past
-its own timeout.
+flashed with the sniffer firmware.
 
-Windows-first: the child runs in its own process group so the fallback stop can use CTRL_BREAK on
-Windows (SIGINT on POSIX).
+THE WRAPPER IS AUTHORITATIVE FOR THE CAPTURE WINDOW. nrfutil's ``--timeout`` is an idle/safety bound
+(default 500 ms), NOT a wall-clock cap: against a busy advertising channel the timer keeps resetting and
+the capture never self-stops. CONFIRMED ON REAL HARDWARE (PCA10059, nrfutil-ble-sniffer 4.1.1): a 15 s
+request ran ~25 s, stopping only when this wrapper's own deadline fired. So we time the window here and
+stop nrfutil ourselves after ``duration`` seconds; ``--timeout`` is passed only as a backstop.
+
+Windows-first: the child runs in its own process group (CTRL_BREAK to flush the PCAP cleanly), and the
+forceful escalation is a process-TREE kill (taskkill /F /T) — nrfutil spawns ``nrfutil-ble-sniffer`` as a
+child, and a plain terminate() kills only the launcher, orphaning that child (which keeps holding the
+dongle's COM port → the next capture hangs until it's force-killed; that's the "sniffs forever, works on
+the 2nd try" symptom).
 """
 import argparse
 import os
@@ -42,9 +48,16 @@ def build_command(args):
 
 
 def stop(proc):
-    """Stop nrfutil cleanly (so it flushes the PCAP), escalating to terminate/kill if it won't exit."""
+    """Stop nrfutil cleanly (so it flushes the PCAP), escalating to a process-TREE kill if it won't exit.
+
+    The forceful step takes down the whole tree, not just ``proc``: on Windows nrfutil spawns
+    ``nrfutil-ble-sniffer`` as a child, and terminating only the launcher orphans that child, which keeps
+    the dongle's serial port open and makes the next capture hang. ``taskkill /F /T`` (Windows) and a
+    process-group SIGKILL (POSIX) avoid the orphan.
+    """
     if proc.poll() is not None:
         return
+    # 1. Graceful: CTRL_BREAK (Windows) / SIGINT (POSIX) lets nrfutil flush the PCAP and exit.
     try:
         if IS_WINDOWS:
             proc.send_signal(signal.CTRL_BREAK_EVENT)
@@ -57,7 +70,18 @@ def stop(proc):
         return
     except subprocess.TimeoutExpired:
         pass
-    proc.terminate()
+    # 2. Forceful TREE kill — don't orphan the nrfutil-ble-sniffer child (it holds the COM port).
+    if IS_WINDOWS:
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    else:
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except Exception:
+            proc.kill()
     try:
         proc.wait(timeout=4)
     except subprocess.TimeoutExpired:
@@ -100,9 +124,11 @@ def main():
         )
         return 2
 
-    # nrfutil's own --timeout (above) is the primary self-stop. This deadline is a 10s-buffered
-    # fallback: if nrfutil hangs past its own timeout, we escalate via stop() (signal -> terminate -> kill).
-    deadline = time.time() + max(1.0, args.duration) + 10.0
+    # The wrapper owns the capture window: nrfutil's --timeout does NOT reliably cap wall-clock (see the
+    # module docstring), so we stop it ourselves after `duration` seconds. A small startup grace keeps the
+    # effective window close to what was requested without a wrong-by-10s overrun.
+    STARTUP_GRACE_S = 1.5
+    deadline = time.time() + max(1.0, args.duration) + STARTUP_GRACE_S
     try:
         while time.time() < deadline:
             if proc.poll() is not None:
