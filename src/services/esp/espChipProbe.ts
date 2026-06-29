@@ -30,6 +30,8 @@ export type EspPlatform = "win32" | "darwin" | "linux"
 export interface ChipResult {
 	chip?: string
 	chipRevision?: string
+	/** Chip base MAC (6 octets, e.g. "ac:eb:e6:0c:f8:c0"), parsed from esptool's connect banner when present. */
+	mac?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -37,22 +39,39 @@ export interface ChipResult {
 // ---------------------------------------------------------------------------
 
 /**
+ * Extract the 6-octet BASE MAC from esptool output. esptool prints both a "BASE MAC:" (6 octets) and, on chips
+ * with an EUI-64, a longer "MAC:" (8 octets) — we want the 6-octet base, which matches what a native-USB port
+ * reports as its USB serial number. The `(?!:)` guard stops us grabbing the first 6 octets of an 8-octet line.
+ * Pure; exported for tests.
+ */
+export function parseEsptoolMac(stdout: string): string | undefined {
+	const base = stdout.match(/BASE MAC:\s*([0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5})/)
+	if (base) {
+		return base[1].toLowerCase()
+	}
+	const m = stdout.match(/\bMAC:\s*([0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5})(?!:)/)
+	return m ? m[1].toLowerCase() : undefined
+}
+
+/**
  * Parse the chip identity out of esptool stdout. Pure; exported for tests.
  * Handles both "Chip is ESP32-S3 (revision v0.2)" and the older
  * "Detecting chip type... ESP32-S3" line, returning the most specific match.
+ * Also surfaces the base MAC (when present) so callers can fold a board's two USB interfaces into one.
  */
 export function parseEsptoolChip(stdout: string): ChipResult {
+	const mac = parseEsptoolMac(stdout)
 	// Preferred: "Chip is ESP32-S3 (revision v0.2)"
 	const chipIs = stdout.match(/Chip is ([A-Za-z0-9-]+)(?:\s*\(revision\s*([^)]+)\))?/)
 	if (chipIs) {
-		return { chip: chipIs[1].trim(), chipRevision: chipIs[2]?.trim() }
+		return { chip: chipIs[1].trim(), chipRevision: chipIs[2]?.trim(), mac }
 	}
 	// Fallback: "Detecting chip type... ESP32-S3"
 	const detecting = stdout.match(/Detecting chip type\.\.\.\s*([A-Za-z0-9-]+)/)
 	if (detecting) {
-		return { chip: detecting[1].trim() }
+		return { chip: detecting[1].trim(), mac }
 	}
-	return {}
+	return { mac }
 }
 
 // ---------------------------------------------------------------------------
