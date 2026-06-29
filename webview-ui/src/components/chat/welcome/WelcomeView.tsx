@@ -5,7 +5,7 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import AiLimitationsFooter from "../AiLimitationsFooter"
 import DemoCard from "../DemoCard"
-import { DEFAULT_DEMO_SCENARIO_ID, DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
+import { DEFAULT_DEMO_SCENARIO_ID, DEMO_SCENARIO_LIST, hasRunDemo, ranScenarioIds } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
 import CraNudge from "./CraNudge"
@@ -66,6 +66,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	})
 
 	const demoDone = hasRunDemo(taskHistory)
+	const ranIds = ranScenarioIds(taskHistory)
 	// ≥2 registered samples → the consolidated "Try it on a sample" picker; otherwise the single hero card.
 	const showPicker = DEMO_SCENARIO_LIST.length >= 2
 	// Exactly ONE cyan focal point per state:
@@ -208,12 +209,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				{!heroPicker && (
 					<div className="w-full">
 						{showPicker ? (
-							<DemoPicker
-								emphasizeNew={!hasWorkspace}
-								hasRunDemo={demoDone}
-								onStartDemo={onStartDemo}
-								variant="rerun"
-							/>
+							<DemoPicker hasRunDemo={demoDone} onStartDemo={onStartDemo} ranIds={ranIds} variant="rerun" />
 						) : (
 							<DemoCard onStartDemo={onStartDemo} variant="rerun" />
 						)}

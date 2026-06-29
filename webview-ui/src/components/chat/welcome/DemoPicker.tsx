@@ -14,12 +14,10 @@ interface DemoPickerProps {
 	 */
 	hasRunDemo?: boolean
 	/**
-	 * When true (no project open), the reduced/"rerun" picker keeps the runnable **New** sample (CRA readiness)
-	 * visually featured — brand border, full opacity — while the other rows dim, so the flagship sample stays the
-	 * focal point even after a sample has run (F2). Ignored in the hero variant (everything is already prominent)
-	 * and left false when a project is open (the reduced picker stays uniformly quiet, exactly as before).
+	 * Scenario ids the user has already run at least once → those runnable rows show **"Re-run ▸"** instead of
+	 * "Run ▸", so it's clear they can be run again (not dead like a "soon" row).
 	 */
-	emphasizeNew?: boolean
+	ranIds?: Set<string>
 }
 
 // Neutral surfaces for the demoted "rerun" state — quiet, no brand fill (the samples are no longer the hero).
@@ -42,7 +40,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 	disabled = false,
 	variant = "hero",
 	hasRunDemo = false,
-	emphasizeNew = false,
+	ranIds,
 }) => {
 	const isRerun = variant === "rerun"
 	const containerBorder = isRerun ? NEUTRAL_BORDER : BRAND_CYAN_600
@@ -85,11 +83,16 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 					// A placeholder ("coming soon") row is disabled like the global disabled state, so it can't be
 					// clicked into a dead end until its owner wires the real demo path.
 					const rowDisabled = disabled || !!s.comingSoon
-					// F2: in the reduced picker with no project, keep the runnable New sample (CRA) featured while
-					// the others fade — so the flagship stays the focal point even after a sample has run.
-					const featured = isRerun && emphasizeNew && !!s.isNew && !s.comingSoon
+					// Rule (operator): a NEW + runnable sample card carries the cyan contour (the "New" badge and the
+					// contour go together) — the flagship stays the focal point in BOTH reduced views (project-open
+					// and no-project), identically. "soon" roadmap rows stay as-is (neutral, dimmed) even when New.
+					const featured = isRerun && !!s.isNew && !s.comingSoon
 					const restBorder = featured ? BRAND_CYAN_600 : NEUTRAL_BORDER
-					const faded = isRerun && emphasizeNew && !featured && !rowDisabled
+					// Three opacity tiers in the reduced picker: runnable (featured OR not) = 80% (clearly active),
+					// "soon" = 50% (dimmed). The hero variant stays full-opacity for runnable rows.
+					const rowOpacity = rowDisabled ? 0.5 : isRerun ? 0.8 : 1
+					// A runnable row the user already ran reads "Re-run ▸" so it's clearly repeatable, not dead.
+					const runLabel = s.comingSoon ? "soon" : ranIds?.has(s.id) ? "Re-run ▸" : "Run ▸"
 					return (
 						<button
 							data-testid={`demo-scenario-${s.id}`}
@@ -120,7 +123,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 								border: `1px solid ${restBorder}`,
 								borderRadius: "8px",
 								cursor: rowDisabled ? "default" : "pointer",
-								opacity: rowDisabled ? 0.5 : faded ? 0.5 : 1,
+								opacity: rowOpacity,
 								textAlign: "left",
 								transition: "background 0.15s, border-color 0.15s",
 							}}
@@ -202,7 +205,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 									fontWeight: 600,
 									color: rowDisabled ? "var(--vscode-descriptionForeground)" : BRAND_CYAN_600,
 								}}>
-								{s.comingSoon ? "soon" : "Run ▸"}
+								{runLabel}
 							</span>
 						</button>
 					)
