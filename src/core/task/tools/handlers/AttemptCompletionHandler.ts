@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs"
+import path from "node:path"
 import type Anthropic from "@anthropic-ai/sdk"
 import { AdsumFreeHandler } from "@core/api/providers/adsum-free"
 import type { ToolUse } from "@core/assistant-message"
@@ -99,6 +101,23 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 						"low on context, writing the report file is the PRIORITY — the chat summary is optional. Then call " +
 						"attempt_completion again with only a THIN pointer (at-a-glance counts, one-line evidence legend, " +
 						"'full report written to <absolute path>', one decline-able next step).",
+				)
+			}
+		}
+
+		// CRA twin seatbelt (parity, 2906i): the skeleton mandates BOTH the readiness `.md` AND its machine-readable
+		// twin `cra-readiness.json` in the same run folder — a real ESP run shipped only the `.md`, so the nRF/ESP
+		// outputs diverged. Once a report cleared the write seam, refuse completion until the json twin is on disk next
+		// to it. Fails open: only fires when we recorded a report dir AND the twin is genuinely absent.
+		if (config.taskState.craReadinessReportWritten && config.taskState.craReadinessReportDir) {
+			const twin = path.join(config.taskState.craReadinessReportDir, "cra-readiness.json")
+			if (!existsSync(twin)) {
+				config.taskState.consecutiveMistakeCount++
+				return formatResponse.toolError(
+					`This CRA readiness run wrote the report but not its machine-readable twin. Write ${twin} with ` +
+						`write_to_file (the same folder as CRA_READINESS.md) — the JSON twin carries the structured ` +
+						`components / CVE findings / posture so the report is auditable, and it is mandatory on every ` +
+						`platform. Then call attempt_completion again.`,
 				)
 			}
 		}
