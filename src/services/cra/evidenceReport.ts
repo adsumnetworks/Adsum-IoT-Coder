@@ -72,8 +72,9 @@ function summarizeTriage(findings: ScanFinding[]): { total: number; notReachable
 	let notReachable = 0
 	for (const f of findings) {
 		const s = f.applicability.signal
-		// Excluded by build evidence: gated-out, stripped (not-linked), OR patched in the tree (fix-present, P2).
-		if (s === "not-linked" || s === "config-gated-out" || s === "fix-present") {
+		// Excluded by build evidence: gated-out, stripped (not-linked), patched in the tree (fix-present, P2), OR
+		// the build's version is past the fix (version-fixed, design/32).
+		if (s === "not-linked" || s === "config-gated-out" || s === "fix-present" || s === "version-fixed") {
 			notReachable++
 		}
 	}
@@ -112,10 +113,13 @@ function euvdBits(c: EuvdRecord): string {
 
 function renderEuvdCandidates(input: EvidenceReportInput): string[] {
 	const all = input.euvdCandidates ?? []
-	// P2: a candidate whose upstream fix is already in the tree (fix-present) is patched — drop it from the "to
-	// verify" list (it stays in the JSON for the record). Note the count so the omission is transparent.
-	const patched = all.filter((c) => c.applicability?.signal === "fix-present").length
-	const cands = all.filter((c) => c.applicability?.signal !== "fix-present")
+	// P2 + design/32: a candidate already patched — its upstream fix is in the tree (fix-present) OR the build's
+	// version is past the fix (version-fixed) — is dropped from the "to verify" list (it stays in the JSON for the
+	// record). Note the count so the omission is transparent.
+	const isPatched = (c: { applicability?: ApplicabilityVerdict }) =>
+		c.applicability?.signal === "fix-present" || c.applicability?.signal === "version-fixed"
+	const patched = all.filter(isPatched).length
+	const cands = all.filter((c) => !isPatched(c))
 	if (cands.length === 0 && patched === 0) {
 		return []
 	}

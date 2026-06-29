@@ -57,16 +57,19 @@ export const ADVISORY_HINTS: Record<string, VerifiedAdvisoryHint> = {
 	// whenever SMP is enabled. A BLE Central with pairing genuinely runs it → promotes this from a buried EUVD
 	// lead to an actionable "may be reachable; verify". gc-section can't strip it (BLE is the app's core function).
 	"CVE-2025-10456": {
-		gateSymbol: "CONFIG_BT_SMP",
-		// P2 (design/30): add `fixCommitSha` here once VERIFIED — the upstream fix is Zephyr PR 93576 /
-		// GHSA-hcc8-3qr7-c9m8 ("fixed in main for v4.2.0"). To curate: get the merged commit SHA from the GHSA/PR,
-		// then confirm with git in a real tree that it's `merge-base --is-ancestor` of a FIXED checkout and NOT of a
-		// vulnerable one. NOTE: NCS v3.2.1 is Zephyr 4.2.99 (post-4.2.0 dev) — it MAY already carry the fix, in which
-		// case the scan will (correctly) downgrade this to "fix-present / patched". Left unset until verified.
+		// GHSA-hcc8-3qr7-c9m8 (CVSS 7.1): a BLE fixed-channel (SMP/ATT) disconnect flaw whose actual bug is an
+		// integer overflow in L2CAP credit handling (`le_credits`, subsys/bluetooth/host/l2cap.c, CWE-190). The gate
+		// is therefore any BLE build (CONFIG_BT), not specifically SMP — l2cap.c is compiled in every BLE app.
+		gateSymbol: "CONFIG_BT",
+		// design/32: the GHSA states **Affected versions <= 4.1**, fix merged in PR 93576 → Zephyr **4.2.0**. So any
+		// build on Zephyr >= 4.2.0 is past the fix. This resolves the unversioned EUVD lead by VERSION (cleaner than
+		// a fix-commit SHA for forks): NCS v3.2.1 = Zephyr 4.2.99 → version-fixed → "very likely already fixed; verify".
+		fixedInVersion: "4.2.0",
 		verifiedNote:
-			"Affects Zephyr BLE host fixed-channel (SMP/ATT) disconnect handling. Verified 2026-06-28 (NCS 3.2.1): " +
-			"CONFIG_BT_SMP=y in the central_uart prj.conf → the affected BLE host code is compiled. Config-present " +
-			"POSITIVE: 'may be reachable; verify' — never a confident 'affected'. Fix: upgrade NCS past the fix, re-scan.",
+			"Zephyr BLE L2CAP credit-overflow → fixed-channel disconnect (GHSA-hcc8-3qr7-c9m8, le_credits in " +
+			"subsys/bluetooth/host/l2cap.c, CWE-190). GHSA: affected Zephyr <= 4.1, fixed in 4.2.0 (PR 93576). " +
+			"Verified 2026-06-29: NCS v3.2.1 = Zephyr 4.2.99, which is >= 4.2.0 → version-fixed (very likely already " +
+			"fixed; verify). On a build < 4.2.0 with CONFIG_BT=y it falls back to config-present (may be reachable).",
 	},
 }
 
@@ -76,6 +79,11 @@ export const resolveAdvisoryHint: HintResolver = (vulnId) => {
 	if (!hint) {
 		return undefined
 	}
-	// Strip the provenance field — the engine consumes gateSymbol/codeSymbol + the P2 fixCommitSha.
-	return { gateSymbol: hint.gateSymbol, codeSymbol: hint.codeSymbol, fixCommitSha: hint.fixCommitSha }
+	// Strip the provenance field — the engine consumes gateSymbol/codeSymbol + P2 fixCommitSha + version-fixed.
+	return {
+		gateSymbol: hint.gateSymbol,
+		codeSymbol: hint.codeSymbol,
+		fixCommitSha: hint.fixCommitSha,
+		fixedInVersion: hint.fixedInVersion,
+	}
 }

@@ -209,12 +209,24 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 		return sha ? fixPresentBySha.get(sha) : undefined
 	}
 
-	// ONE finding per (component, vulnId), each assessed (incl. the P2 fix-present check).
+	// design/32: the version to compare against a hint's fixedInVersion. Prefer the CPE's version field (the
+	// curated core CPE carries the real semver, e.g. zephyr:4.2.99), else the component version if it's a semver
+	// (not a git SHA). For EUVD candidates the version rides in the product label ("zephyr 4.2.99").
+	const SEMVER_RE = /^\d+\.\d+(?:\.\d+)?/
+	const cpeVersion = (cpe?: string): string | undefined => {
+		const v = cpe?.split(":")[5]
+		return v && SEMVER_RE.test(v) ? v : undefined
+	}
+	const componentVersionOf = (c: SbomComponent): string | undefined =>
+		cpeVersion(c.cpe) ?? (c.version && SEMVER_RE.test(c.version) ? c.version : undefined)
+	const euvdLabelVersion = SEMVER_RE.exec(input.euvdProductLabel?.split(" ").slice(1).join(" ") ?? "")?.[0]
+
+	// ONE finding per (component, vulnId), each assessed (incl. the P2 fix-present check + design/32 version-fixed).
 	const findings: ScanFinding[] = matchPairs.map((p) => {
 		const hint = effHint(p.id, resolve(p.id, p.component))
 		return {
 			match: { component: p.component, vulnIds: [p.id] },
-			applicability: assessApplicability(hint, input.evidence, fixPresentForCve(p.id)),
+			applicability: assessApplicability(hint, input.evidence, fixPresentForCve(p.id), componentVersionOf(p.component)),
 		}
 	})
 
@@ -246,7 +258,10 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	// fix-present check (a backported-fixed lead is downgraded to patched).
 	const euvdCandidates = euvdRaw.map((c) => {
 		const hint = effHint(c.cveId, resolve(c.cveId, euvdComp))
-		return { ...c, applicability: assessApplicability(hint, input.evidence, fixPresentForCve(c.cveId)) }
+		return {
+			...c,
+			applicability: assessApplicability(hint, input.evidence, fixPresentForCve(c.cveId), euvdLabelVersion),
+		}
 	})
 
 	// T3 (design/25): a non-empty SBOM that normalized to 0 components is almost always the WRONG file (not SPDX,
