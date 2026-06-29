@@ -330,7 +330,7 @@ async function resolveEspChips(devices: EspDevice[]): Promise<void> {
 		// show the passive "ESP32-family" label, and the board is never reset. Make the cause visible.
 		console.info(
 			`[esp-detect] chip unresolved — no IDF python found (looked under idf.toolsPath / $IDF_TOOLS_PATH / ~/.espressif/python_env). ` +
-				`Board shows as "ESP32-family"; install ESP-IDF tools or set idf.toolsPath.`,
+				`The device shows its unresolved label — install ESP-IDF tools or set idf.toolsPath to resolve the exact chip.`,
 		)
 		return
 	}
@@ -351,7 +351,7 @@ async function resolveEspChips(devices: EspDevice[]): Promise<void> {
 				d.chipRevision = result.chipRevision
 			} else {
 				console.info(
-					`[esp-detect] esptool found no chip on ${d.port} — staying "ESP32-family" (port busy? board not in download mode?)`,
+					`[esp-detect] esptool found no chip on ${d.port} — staying unresolved (port busy? board not in download mode?)`,
 				)
 			}
 		}),
