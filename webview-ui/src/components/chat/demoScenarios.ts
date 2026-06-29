@@ -48,10 +48,10 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 	"cra-sample": {
 		id: "cra-sample",
 		title: "Preview CRA readiness on a sample",
-		honestLabel: "Runs the real CRA workflow on our bundled nRF sample project — not your build.",
+		honestLabel: "Runs the real CRA workflow on our pre-built nRF reference sample — not your build.",
 		taskPrompt: "Demo: CRA SBOM & Fix on a bundled sample — no project needed\n\n[ADSUM_DEMO:cra-sample]",
-		// Sync with DemoManager.buildCraSampleDisplayText() leading text.
-		historyMatch: "Preview CRA readiness on a bundled sample",
+		// Sync with DemoManager.buildCraSampleDisplayText() leading text (the chat-bubble prefix recorded in history).
+		historyMatch: "Run CRA SBOM & Fix on a pre-built reference sample",
 		platform: "nrf",
 		icon: "shield",
 		isNew: true,
@@ -115,4 +115,18 @@ export function hasRunDemo(tasks: ReadonlyArray<{ task: string }> | undefined): 
 		return false
 	}
 	return tasks.some((t) => DEMO_SCENARIO_LIST.some((s) => t.task?.startsWith(s.historyMatch)))
+}
+
+/** The set of scenario ids the user has run at least once (by history-prefix match) → drives the "Re-run ▸" label. */
+export function ranScenarioIds(tasks: ReadonlyArray<{ task: string }> | undefined): Set<string> {
+	const ran = new Set<string>()
+	if (!tasks) {
+		return ran
+	}
+	for (const s of DEMO_SCENARIO_LIST) {
+		if (tasks.some((t) => t.task?.startsWith(s.historyMatch))) {
+			ran.add(s.id)
+		}
+	}
+	return ran
 }
