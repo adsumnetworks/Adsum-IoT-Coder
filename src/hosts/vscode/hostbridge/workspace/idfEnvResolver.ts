@@ -61,7 +61,8 @@ export function getIdfPathCandidates(platform: SupportedPlatform, env: NodeJS.Pr
 			joinFor("win32", "C:\\", "Espressif", "frameworks", "esp-idf"),
 		]
 	}
-	// macOS + Linux share the ~/esp layout
+	// macOS + Linux share the ~/esp layout. (Versioned EIM-installer checkouts ~/.espressif/v<ver>/esp-idf are
+	// found by the container-dir GLOB in idfContainerDirs, not by this fixed list — see enumerateIdfInstalls.)
 	return [
 		joinFor(platform, home, "esp", "esp-idf"),
 		joinFor(platform, home, "esp", "v5.5", "esp-idf"),
@@ -176,7 +177,8 @@ export function parseIdfVersionCmake(content: string): string | undefined {
  * Container directories whose children are scanned for IDF installs. The IDF
  * root can sit in two shapes under a container, and we don't assume which:
  *   - `<container>/<ver>/esp-idf`  — the Espressif VS Code extension's Express
- *     layout (e.g. `C:\esp\v5.5.4\esp-idf`, `~/esp/v5.5.2/esp-idf`).
+ *     layout AND the new EIM installer (e.g. `C:\esp\v5.5.4\esp-idf`,
+ *     `~/esp/v5.5.2/esp-idf`, `~/.espressif/v6.0.1/esp-idf`).
  *   - `<container>/esp-idf-v5.x.x` — the standalone IDF Tools installer, which
  *     drops the checkout directly under `C:\Espressif\frameworks\`.
  * `enumerateIdfInstalls` probes both the entry itself and `<entry>/esp-idf` for
@@ -190,11 +192,13 @@ function idfContainerDirs(platform: SupportedPlatform, env: NodeJS.ProcessEnv): 
 			joinFor("win32", userProfile, "esp"), // extension Express default: %USERPROFILE%\esp\<ver>\esp-idf
 			joinFor("win32", "C:\\", "esp"), // extension with container on C:\ : C:\esp\<ver>\esp-idf
 			joinFor("win32", "C:\\", "Espressif", "frameworks"), // IDF Tools installer: C:\Espressif\frameworks\esp-idf-v5.x
+			joinFor("win32", userProfile, ".espressif"), // EIM installer: %USERPROFILE%\.espressif\v<ver>\esp-idf
 		]
 	}
 	return [
 		joinFor(platform, home, "esp"), // ~/esp/<ver>/esp-idf
 		joinFor(platform, "/opt", "esp"), // /opt/esp/<ver>/esp-idf (shared/system installs)
+		joinFor(platform, home, ".espressif"), // EIM installer (the new official one): ~/.espressif/v<ver>/esp-idf
 	]
 }
 
@@ -341,18 +345,50 @@ export function idfAmbiguousMessage(installs: IdfInstall[]): string {
  * command. The export script is quoted to tolerate spaces. `idfPath` is required
  * only when `needsSourcing` is true.
  */
+/**
+ * EIM (ESP-IDF Installation Manager — the new official installer) layout: the IDF checkout sits at
+ * `<base>/v<ver>/esp-idf` and its env is activated NOT by the in-tree `export.sh` (which looks for the venv at the
+ * classic `~/.espressif/python_env/...` that EIM doesn't create → "virtual environment not found") but by a
+ * generated script `<base>/tools/activate_idf_v<ver>.sh` (POSIX) / `.ps1` (PowerShell). Given an `idfPath` of the
+ * EIM shape, return that activation script iff it exists; otherwise undefined (→ caller uses export.sh as before).
+ * Pure (fs injected). Verified on macOS: `. activate_idf_v6.0.1.sh && idf.py` works where `export.sh` fails.
+ */
+export function eimActivateScript(
+	platform: SupportedPlatform,
+	idfPath: string,
+	shell: SupportedShell,
+	exists: (p: string) => boolean,
+): string | undefined {
+	if (shell === "cmd") {
+		return undefined // EIM has no .bat activator; cmd falls back to export.bat
+	}
+	// Platform-aware path ops (the host may compute Windows paths on a POSIX runner — same reason joinFor exists).
+	const p = platform === "win32" ? path.win32 : path.posix
+	const verDir = p.basename(p.dirname(idfPath)) // ".../<base>/v6.0.1/esp-idf" → "v6.0.1"
+	const base = p.dirname(p.dirname(idfPath)) // → "<base>" (e.g. ~/.espressif)
+	if (!verDir.startsWith("v")) {
+		return undefined // not the versioned EIM shape
+	}
+	const ext = shell === "powershell" ? "ps1" : "sh"
+	const script = joinFor(platform, base, "tools", `activate_idf_${verDir}.${ext}`)
+	return exists(script) ? script : undefined
+}
+
 export function buildEspShellCommand(opts: {
 	platform: SupportedPlatform
 	shell: SupportedShell
 	needsSourcing: boolean
 	body: string
 	idfPath?: string
+	/** EIM activation script (from {@link eimActivateScript}); when set, sourced INSTEAD of the in-tree export.sh. */
+	activateScript?: string
 }): string {
-	const { platform, shell, needsSourcing, body, idfPath } = opts
+	const { platform, shell, needsSourcing, body, idfPath, activateScript } = opts
 	if (!needsSourcing) {
 		return body
 	}
-	const exportScript = joinFor(platform, idfPath ?? "", getExportScriptName(shell))
+	// EIM installs activate via their generated script; classic installs via the in-tree export script.
+	const exportScript = activateScript ?? joinFor(platform, idfPath ?? "", getExportScriptName(shell))
 	if (shell === "cmd") {
 		return `"${exportScript}" && ${body}`
 	}

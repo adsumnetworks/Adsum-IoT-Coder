@@ -6,6 +6,7 @@ import {
 	buildEspShellCommand,
 	buildIdfCommand,
 	detectShell,
+	eimActivateScript,
 	enumerateIdfInstalls,
 	getExportScriptName,
 	getIdfPathCandidates,
@@ -149,7 +150,40 @@ describe("idfEnvResolver", () => {
 		})
 	})
 
+	describe("eimActivateScript", () => {
+		it("returns the EIM activation script for ~/.espressif/v<ver>/esp-idf (macOS EIM — the real install)", () => {
+			const idf = "/Users/dev/.espressif/v6.0.1/esp-idf"
+			const script = "/Users/dev/.espressif/tools/activate_idf_v6.0.1.sh"
+			expect(eimActivateScript("darwin", idf, "zsh", (p) => p === script)).to.equal(script)
+		})
+		it("PowerShell → the .ps1 activator", () => {
+			const idf = "C:\\Users\\dev\\.espressif\\v6.0.1\\esp-idf"
+			const script = "C:\\Users\\dev\\.espressif\\tools\\activate_idf_v6.0.1.ps1"
+			expect(eimActivateScript("win32", idf, "powershell", (p) => p === script)).to.equal(script)
+		})
+		it("classic ~/esp/esp-idf (verDir is not v<ver>) → undefined, caller uses export.sh", () => {
+			expect(eimActivateScript("linux", "/home/dev/esp/esp-idf", "bash", () => true)).to.be.undefined
+		})
+		it("EIM shape but the script is absent → undefined (no false positive)", () => {
+			expect(eimActivateScript("darwin", "/Users/dev/.espressif/v6.0.1/esp-idf", "zsh", () => false)).to.be.undefined
+		})
+		it("cmd has no EIM activator → undefined", () => {
+			expect(eimActivateScript("win32", "C:\\Users\\dev\\.espressif\\v6.0.1\\esp-idf", "cmd", () => true)).to.be.undefined
+		})
+	})
+
 	describe("buildEspShellCommand", () => {
+		it("sources the EIM activation script instead of export.sh when provided", () => {
+			const cmd = buildEspShellCommand({
+				platform: "darwin",
+				shell: "zsh",
+				needsSourcing: true,
+				body: 'idf.py -C "/p" build',
+				idfPath: "/Users/dev/.espressif/v6.0.1/esp-idf",
+				activateScript: "/Users/dev/.espressif/tools/activate_idf_v6.0.1.sh",
+			})
+			expect(cmd).to.equal('. "/Users/dev/.espressif/tools/activate_idf_v6.0.1.sh" && idf.py -C "/p" build')
+		})
 		it("returns the body verbatim when the terminal is already sourced (Tier 1)", () => {
 			const cmd = buildEspShellCommand({
 				platform: "linux",
@@ -313,6 +347,19 @@ describe("idfEnvResolver", () => {
 			const byPath = Object.fromEntries(installs.map((i) => [i.path, i.version]))
 			expect(byPath[v552]).to.equal("5.5.2")
 			expect(byPath[v60]).to.equal("6.0")
+		})
+		it("finds the EIM installer layout ~/.espressif/v<ver>/esp-idf (the macOS regression)", () => {
+			// The new official ESP-IDF Installation Manager (EIM) drops checkouts under ~/.espressif/v<ver>/esp-idf
+			// (NOT ~/esp). Omar tested ~/esp on Linux/Win; this is the macOS gap that read "ESP-IDF not installed".
+			const espressif = path.posix.join(os.homedir(), ".espressif")
+			const idf = path.posix.join(espressif, "v6.0.1", "esp-idf")
+			const exists = (p: string) => p === `${idf}/export.sh`
+			// ~/.espressif also holds non-IDF dirs (tools, dist) — they must be ignored (no export.sh).
+			const listDir = (p: string) => (p === espressif ? ["dist", "tools", "v6.0.1"] : [])
+			const readVersion = (dir: string) => (dir === idf ? "v6.0.1" : undefined)
+			const installs = enumerateIdfInstalls("darwin", {}, exists, listDir, readVersion)
+			expect(installs.map((i) => i.path)).to.include(idf)
+			expect(installs.find((i) => i.path === idf)?.version).to.equal("6.0.1")
 		})
 		it("finds C:\\esp\\<ver>\\esp-idf (extension container on C:, the win32 regression)", () => {
 			const idf = "C:\\esp\\v5.5.4\\esp-idf"
