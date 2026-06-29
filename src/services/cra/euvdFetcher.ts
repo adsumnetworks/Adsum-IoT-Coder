@@ -68,6 +68,17 @@ const splitLines = (s: unknown): string[] =>
 const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined)
 
 /**
+ * EPSS is defined as a probability in [0, 1]; the renderer turns it into a percentage (`× 100`). A live EUVD
+ * response returned values like `2.88` / `3.40` for some records (rendered as a nonsensical "288% / 340%"
+ * exploit-likelihood) — the API's EPSS scale is not consistent across records. We will NOT fabricate a
+ * confidence number we can't trust: accept EPSS only when it's a valid 0–1 probability; anything else
+ * (>1, <0, NaN, non-number) → undefined → the field is simply omitted (honest absence over a bogus percent). */
+const epssProb = (v: unknown): number | undefined => {
+	const n = num(v)
+	return n != null && n >= 0 && n <= 1 ? n : undefined
+}
+
+/**
  * Pure parser: given the raw EUVD `/search` JSON text and the CVE id we searched for, return the matching record
  * (the item whose `aliases` contains that CVE id). Returns null on no match / malformed JSON — never throws.
  */
@@ -88,7 +99,7 @@ export function parseEuvdSearch(jsonText: string, cveId: string): EuvdRecord | n
 		euvdId: typeof hit.id === "string" ? hit.id : "",
 		cveId,
 		baseScore: num(hit.baseScore),
-		epss: num(hit.epss),
+		epss: epssProb(hit.epss),
 		exploited: Boolean(hit.exploitedSince) || hit.exploited === true,
 		references: splitLines(hit.references),
 	}
@@ -116,7 +127,7 @@ export function parseEuvdList(jsonText: string): EuvdRecord[] {
 			euvdId: typeof it.id === "string" ? it.id : "",
 			cveId: cveId.toUpperCase(),
 			baseScore: num(it.baseScore),
-			epss: num(it.epss),
+			epss: epssProb(it.epss),
 			exploited: Boolean(it.exploitedSince) || it.exploited === true,
 			references: splitLines(it.references),
 		})

@@ -118,6 +118,29 @@ export function looksLikeInlineCraReport(text: string): boolean {
 	return tableRows >= 2 || sectionHeaders >= 2 || configMentions >= 3
 }
 
+/**
+ * Completion seatbelt (design/31, from 2906c): a CRA readiness run that PRESENTS the report but never WRITES it.
+ * 2906c ran out of context, dumped the full posture preview into a chat `say` (not the `attempt_completion`
+ * result, so `looksLikeInlineCraReport` on the result alone missed it), then completed with a thin summary — no
+ * `CRA_READINESS.md` on disk, the honesty guard never ran, and the disclaimer's "the written report is the
+ * record" became false. This detector scans ANY run text (a say message OR the completion result) for
+ * report-shaped CRA content; the caller blocks completion when a match is found AND no report cleared the
+ * guarded write seam this task. Broader than `looksLikeInlineCraReport` (it also fires on the standalone
+ * posture preview, which carries the disclaimer + many `CONFIG_` symbols but maybe no SBOM table). */
+export function looksLikeCraReportContent(text: string): boolean {
+	if (looksLikeInlineCraReport(text)) {
+		return true
+	}
+	if (!text || text.length < 400) {
+		return false
+	}
+	const craSignal = /not a conformity assessment/i.test(text) || /\bsecure[-\s]?by[-\s]?design\b/i.test(text)
+	const configMentions = (text.match(/\bCONFIG_[A-Z0-9_]+/g) || []).length
+	// The posture preview is the distinctive shape: the disclaimer / secure-by-design framing + a wall of literal
+	// Kconfig evidence. A thin completion pointer mentions neither at this density, so it passes.
+	return craSignal && configMentions >= 4
+}
+
 /** Pure cross-check: the report's claims vs the real artifacts. Returns only provable contradictions + missing primitives. */
 export function checkReadinessReportIntegrity(input: {
 	reportText: string

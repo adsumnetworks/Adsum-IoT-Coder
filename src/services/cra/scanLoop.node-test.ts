@@ -466,3 +466,36 @@ test("design/30 API-resilience: resolver returns undefined (OSV down/404) → NO
 	})
 	assert.notEqual(r.findings.find((f) => f.match.vulnIds[0] === "CVE-2099-6543")?.applicability.signal, "fix-present")
 })
+
+// P2b (2906c): `west spdx` emits the Zephyr core as BOTH `zephyr` and `zephyr-sources`, and `all.spdx`
+// concatenates docs carrying each. Both share one CPE → the same CVE was double-listed (16 inflated from 11).
+const DUP_CORE_SPDX = `SPDXVersion: SPDX-2.3
+DataLicense: CC0-1.0
+
+PackageName: zephyr
+PackageVersion: 4.2.99
+ExternalRef: SECURITY cpe23Type cpe:2.3:o:zephyrproject:zephyr:4.2.99:*:*:*:*:*:*:*
+
+PackageName: zephyr-sources
+PackageVersion: ec78104-dirty
+ExternalRef: SECURITY cpe23Type cpe:2.3:o:zephyrproject:zephyr:4.2.99:*:*:*:*:*:*:*
+`
+
+test("P2b dedup: zephyr + zephyr-sources sharing one CPE → the same CVE is ONE finding, not two", async () => {
+	const oneCve: NvdFetcher = async () =>
+		JSON.stringify({
+			vulnerabilities: [
+				{ cve: { id: "CVE-2099-7777", metrics: { cvssMetricV31: [{ cvssData: { baseSeverity: "HIGH" } }] } } },
+			],
+		})
+	const r = await runCveScan({
+		spdxText: DUP_CORE_SPDX,
+		evidence: {},
+		asOf: "2026-06-29",
+		fetcher: noVulnFetcher,
+		nvdFetcher: oneCve,
+	})
+	const hits = r.findings.filter((f) => f.match.vulnIds[0] === "CVE-2099-7777")
+	assert.equal(hits.length, 1, `expected one deduped finding, got ${hits.length}`)
+	assert.equal(isVerdictClean(r.report), true)
+})

@@ -9,7 +9,7 @@ import { ClineSayTool } from "@shared/ExtensionMessage"
 import { fileExistsAtPath } from "@utils/fs"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
-import { formatIntegrityError, gatherAndCheckReadinessIntegrity } from "@/services/cra/reportIntegrity"
+import { formatIntegrityError, gatherAndCheckReadinessIntegrity, looksLikeReadinessReport } from "@/services/cra/reportIntegrity"
 import { telemetryService } from "@/services/telemetry"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
@@ -352,6 +352,13 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 				await config.services.diffViewProvider.revertChanges()
 				await config.services.diffViewProvider.reset()
 				return formatResponse.toolError(formatIntegrityError(craIntegrityIssues))
+			}
+
+			// CRA completion seatbelt (design/31): record that the readiness report cleared the guarded write seam,
+			// so attempt_completion can refuse a CRA run that only inline-dumped the report (2906c). Set AFTER the
+			// integrity check so only a real, guard-passing report counts.
+			if (looksLikeReadinessReport(absolutePath, newContent)) {
+				config.taskState.craReadinessReportWritten = true
 			}
 
 			// Mark the file as edited by Cline
