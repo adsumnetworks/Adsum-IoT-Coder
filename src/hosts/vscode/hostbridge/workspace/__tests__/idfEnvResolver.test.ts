@@ -314,6 +314,19 @@ describe("idfEnvResolver", () => {
 			expect(byPath[v552]).to.equal("5.5.2")
 			expect(byPath[v60]).to.equal("6.0")
 		})
+		it("finds the EIM installer layout ~/.espressif/v<ver>/esp-idf (the macOS regression)", () => {
+			// The new official ESP-IDF Installation Manager (EIM) drops checkouts under ~/.espressif/v<ver>/esp-idf
+			// (NOT ~/esp). Omar tested ~/esp on Linux/Win; this is the macOS gap that read "ESP-IDF not installed".
+			const espressif = path.posix.join(os.homedir(), ".espressif")
+			const idf = path.posix.join(espressif, "v6.0.1", "esp-idf")
+			const exists = (p: string) => p === `${idf}/export.sh`
+			// ~/.espressif also holds non-IDF dirs (tools, dist) — they must be ignored (no export.sh).
+			const listDir = (p: string) => (p === espressif ? ["dist", "tools", "v6.0.1"] : [])
+			const readVersion = (dir: string) => (dir === idf ? "v6.0.1" : undefined)
+			const installs = enumerateIdfInstalls("darwin", {}, exists, listDir, readVersion)
+			expect(installs.map((i) => i.path)).to.include(idf)
+			expect(installs.find((i) => i.path === idf)?.version).to.equal("6.0.1")
+		})
 		it("finds C:\\esp\\<ver>\\esp-idf (extension container on C:, the win32 regression)", () => {
 			const idf = "C:\\esp\\v5.5.4\\esp-idf"
 			const exists = fakeExists([`${idf}\\export.sh`], "win32")

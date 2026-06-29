@@ -61,7 +61,8 @@ export function getIdfPathCandidates(platform: SupportedPlatform, env: NodeJS.Pr
 			joinFor("win32", "C:\\", "Espressif", "frameworks", "esp-idf"),
 		]
 	}
-	// macOS + Linux share the ~/esp layout
+	// macOS + Linux share the ~/esp layout. (Versioned EIM-installer checkouts ~/.espressif/v<ver>/esp-idf are
+	// found by the container-dir GLOB in idfContainerDirs, not by this fixed list — see enumerateIdfInstalls.)
 	return [
 		joinFor(platform, home, "esp", "esp-idf"),
 		joinFor(platform, home, "esp", "v5.5", "esp-idf"),
@@ -176,7 +177,8 @@ export function parseIdfVersionCmake(content: string): string | undefined {
  * Container directories whose children are scanned for IDF installs. The IDF
  * root can sit in two shapes under a container, and we don't assume which:
  *   - `<container>/<ver>/esp-idf`  — the Espressif VS Code extension's Express
- *     layout (e.g. `C:\esp\v5.5.4\esp-idf`, `~/esp/v5.5.2/esp-idf`).
+ *     layout AND the new EIM installer (e.g. `C:\esp\v5.5.4\esp-idf`,
+ *     `~/esp/v5.5.2/esp-idf`, `~/.espressif/v6.0.1/esp-idf`).
  *   - `<container>/esp-idf-v5.x.x` — the standalone IDF Tools installer, which
  *     drops the checkout directly under `C:\Espressif\frameworks\`.
  * `enumerateIdfInstalls` probes both the entry itself and `<entry>/esp-idf` for
@@ -190,11 +192,13 @@ function idfContainerDirs(platform: SupportedPlatform, env: NodeJS.ProcessEnv): 
 			joinFor("win32", userProfile, "esp"), // extension Express default: %USERPROFILE%\esp\<ver>\esp-idf
 			joinFor("win32", "C:\\", "esp"), // extension with container on C:\ : C:\esp\<ver>\esp-idf
 			joinFor("win32", "C:\\", "Espressif", "frameworks"), // IDF Tools installer: C:\Espressif\frameworks\esp-idf-v5.x
+			joinFor("win32", userProfile, ".espressif"), // EIM installer: %USERPROFILE%\.espressif\v<ver>\esp-idf
 		]
 	}
 	return [
 		joinFor(platform, home, "esp"), // ~/esp/<ver>/esp-idf
 		joinFor(platform, "/opt", "esp"), // /opt/esp/<ver>/esp-idf (shared/system installs)
+		joinFor(platform, home, ".espressif"), // EIM installer (the new official one): ~/.espressif/v<ver>/esp-idf
 	]
 }
 
