@@ -130,6 +130,22 @@ describe("buildHciMermaid", () => {
 		expect((mermaid?.match(/->>|-->>|--x/g) ?? []).length).to.equal(1)
 	})
 
+	it("returns undefined for a capture of only INDEX/MON/SYS frames (no empty skeleton)", () => {
+		// NEW_INDEX (0x0000) bookkeeping only — no CMD/EVT/ACL — must yield NO diagram, not a
+		// header-only `sequenceDiagram` that renders blank/broken in chat.
+		const idx1 = makeFrame(0x0000, 100, Buffer.alloc(16))
+		const idx2 = makeFrame(0x0000, 200, Buffer.alloc(16))
+		const { entries } = parseHci(Buffer.concat([idx1, idx2]))
+		expect(entries.length).to.be.greaterThan(0) // frames decoded…
+		expect(buildHciMermaid(entries)).to.be.undefined // …but no host↔controller exchange to draw
+	})
+
+	it("emits no mermaid footer in formatHci for an INDEX-only capture", () => {
+		const idx = makeFrame(0x0000, 100, Buffer.alloc(16))
+		const text = formatHci(parseHci(idx))
+		expect(text).to.not.contain("sequenceDiagram")
+	})
+
 	it("truncates after the event cap and says so, never silently dropping the marker", () => {
 		const frames: Buffer[] = []
 		for (let i = 0; i < 45; i++) {

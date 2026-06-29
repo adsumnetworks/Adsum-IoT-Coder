@@ -33,9 +33,10 @@ describe("DemoPicker", () => {
 	it("every 'coming soon' placeholder row is disabled, shows 'soon', and never fires onStartDemo (A8/A9 — Omar wires them later)", () => {
 		const onStartDemo = vi.fn()
 		render(<DemoPicker onStartDemo={onStartDemo} />)
+		// All scenarios may now be live (zero placeholders) — that's valid (e.g. hci-sniffer + esp-wifi
+		// shipped). Whatever the count, the "soon" badge count must equal the placeholder count.
 		const placeholders = DEMO_SCENARIO_LIST.filter((s) => s.comingSoon)
-		expect(placeholders.length, "expected ≥1 comingSoon placeholder scenario").toBeGreaterThanOrEqual(1)
-		expect(screen.getAllByText("soon").length).toBe(placeholders.length)
+		expect(screen.queryAllByText("soon").length).toBe(placeholders.length)
 		for (const s of placeholders) {
 			const row = screen.getByTestId(`demo-scenario-${s.id}`) as HTMLButtonElement
 			expect(row.disabled, `${s.id} should be disabled`).toBe(true)

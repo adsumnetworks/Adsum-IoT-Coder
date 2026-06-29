@@ -1,0 +1,14 @@
+{
+	"id": "esp-wifi",
+	"title": "ESP32 Wi-Fi — connected but offline",
+	"description": "An ESP32-S3 station associates with the AP and logs 'connected', but the first DNS lookup fails. The app starts using the network on WIFI_EVENT_STA_CONNECTED (link up) instead of waiting for IP_EVENT_STA_GOT_IP (address assigned), so it runs before DHCP completes — a classic, subtle ESP-IDF Wi-Fi bug.",
+	"platform": "esp32s3",
+	"protocol": "Wi-Fi (station)",
+	"projects": [
+		"."
+	],
+	"bugFile": "main/station_example_main.c",
+	"bugFunction": "event_handler",
+	"bugSummary": "The app signals 'network ready' on WIFI_EVENT_STA_CONNECTED (the radio link is up, but there is no IP yet) rather than on IP_EVENT_STA_GOT_IP. check_connectivity() then resolves a hostname before DHCP has assigned an address, so getaddrinfo fails — the device is 'connected' but offline. The IP arrives ~3 s later, after the failure.",
+	"honestLabel": "Serial logs captured from a real ESP32-S3 (CH343) — a buggy run and a fixed run. SSID sanitized."
+}

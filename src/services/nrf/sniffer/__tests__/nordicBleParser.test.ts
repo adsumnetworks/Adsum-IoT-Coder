@@ -99,6 +99,27 @@ describe("nordicBleParser — link-layer PDUs", () => {
 		expect(entry.proto).to.equal("ADV")
 	})
 
+	it("decodes ADV_DIRECT_IND with both AdvA and TargetA (two-address PDU)", () => {
+		// ADV_DIRECT_IND payload = AdvA(6) + TargetA(6). The advertiser is ADV_A; the directed target is targetA.
+		const targetA = [0x09, 0xee, 0xdd, 0xcc, 0xbb, 0xaa] // → aa:bb:cc:dd:ee:09
+		const ll = advLl(0x41, 0x0c, Buffer.concat([Buffer.from(ADV_A), Buffer.from(targetA)]))
+		const entry = parseNordicBleRecord(metaFrame({ channel: 37, rssi: 45, flags: 0x01, tsUs: 0, ll }), 1)!
+		expect(entry.pduType).to.equal("ADV_DIRECT_IND")
+		expect(entry.summary).to.contain("d7:0b:55:ef:16:30") // AdvA (advertiser)
+		expect(entry.summary).to.contain("aa:bb:cc:dd:ee:09") // TargetA (directed target) — must NOT be dropped
+		expect(entry.fields?.some((f) => f.name === "Advertiser" && f.value === "d7:0b:55:ef:16:30")).to.equal(true)
+		expect(entry.fields?.some((f) => f.name === "Target" && f.value === "aa:bb:cc:dd:ee:09")).to.equal(true)
+		expect(entry.proto).to.equal("ADV")
+	})
+
+	it("decodes a data PDU length beyond 31 bytes (LE Data Length Extension)", () => {
+		// h1 = 0xf5 (245). The old 5-bit mask (h1 & 0x1f) would truncate this to 21 — DLE frames are larger.
+		const ll = dataLl([0x78, 0x56, 0x34, 0x12], 0x02 /* LLID start */, 0xf5, Buffer.alloc(8))
+		const entry = parseNordicBleRecord(metaFrame({ channel: 6, rssi: 50, flags: 0x01, tsUs: 0, ll }), 1)!
+		expect(entry.pduLen).to.equal(0xf5) // 245, not 0x15 (21)
+		expect(entry.proto).to.equal("DATA")
+	})
+
 	it("decodes LL_TERMINATE_IND with a decoded reason code", () => {
 		const ll = dataLl([0x78, 0x56, 0x34, 0x12], 0x03 /* LLID control */, 0x02, Buffer.from([0x02, 0x13]))
 		const entry = parseNordicBleRecord(metaFrame({ channel: 10, rssi: 60, flags: 0x01, tsUs: 0, ll }), 1)!

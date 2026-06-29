@@ -8,6 +8,8 @@ export interface IntentActionHandlers {
 	onStartTask: (text: string) => void | Promise<void>
 	projectName?: string
 	platform?: WorkspacePlatform
+	/** BLE project (CONFIG_BT=y) — drives the buildFlashDebug 3-layer observability branch. */
+	hasBle?: boolean
 }
 
 /**
@@ -25,6 +27,8 @@ export function runIntent(id: IntentId, handlers: IntentActionHandlers): void {
 		void FileServiceClient.openFolder(StringRequest.create({ value: "" }))
 	} else {
 		// Neutral "both" when the platform is unknown — never silently assume nRF.
-		void handlers.onStartTask(buildIntentPrompt(id, handlers.projectName ?? undefined, handlers.platform ?? "both"))
+		void handlers.onStartTask(
+			buildIntentPrompt(id, handlers.projectName ?? undefined, handlers.platform ?? "both", handlers.hasBle ?? false),
+		)
 	}
 }

@@ -1,0 +1,21 @@
+# RTT Log from central (683907940)
+# Started: 2026-06-06T16:29:35.669839
+# Interface: SWD, Speed: 4000 kHz, Channel: 0
+------------------------------------------------------------
+[16:29:35.669] [00:00:00.017,852] [0m<inf> fs_nvs: 2 Sectors of 4096 bytes[0m
+[16:29:35.669] [00:00:00.017,883] [0m<inf> fs_nvs: alloc wra: 0, fb8[0m
+[16:29:35.669] [00:00:00.017,883] [0m<inf> fs_nvs: data wra: 0, 6c[0m
+[16:29:35.669] [00:00:00.018,035] [0m<inf> bt_sdc_hci_driver: SoftDevice Controller build revision: 
+[16:29:35.669]                                             9b 8f ac c3 1d 42 ae 44  fa cd 1f c3 48 a0 b4 2f |.....B.D ....H../
+[16:29:35.669]                                             cf 29 ee 3d                                      |.).=             [0m
+[16:29:35.669] [00:00:00.022,033] [0m<inf> bt_hci_core: HW Platform: Nordic Semiconductor (0x0002)[0m
+[16:29:35.669] [00:00:00.022,064] [0m<inf> bt_hci_core: HW Variant: nRF52x (0x0002)[0m
+[16:29:35.669] [00:00:00.022,094] [0m<inf> bt_hci_core: Firmware: Standard Bluetooth controller (0x00) Version 155.44175 Build 2923568579[0m
+[16:29:35.669] [00:00:00.022,491] [0m<inf> bt_hci_core: No ID address. App must call settings_load()[0m
+[16:29:35.669] [00:00:00.022,491] [0m<inf> central_uart: Bluetooth initialized[0m
+[16:29:35.669] [00:00:00.023,284] [0m<inf> bt_hci_core: HCI transport: SDC[0m
+[16:29:36.727] [00:00:00.291,717] [0m<inf> central_uart: Filters matched. Address: DB:96:E9:19:7C:47 (random) connectable: 1[0m
+[16:29:36.728] [00:00:00.401,275] [0m<inf> central_uart: Connected: DB:96:E9:19:7C:47 (random)[0m
+[16:29:36.728] [00:00:00.752,655] [0m<inf> central_uart: Security changed: DB:96:E9:19:7C:47 (random) level 2[0m
+[16:29:36.728] [00:00:01.002,807] [0m<inf> central_uart: MTU exchange done[0m
+[16:29:38.119] [00:00:01.702,575] [0m<inf> central_uart: Service discovery completed[0m

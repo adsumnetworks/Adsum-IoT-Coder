@@ -212,6 +212,150 @@ State plainly the result describes the sample, not the user's product — for th
 do NOT call attempt_completion while a high-value gap is still un-offered and the user has not declined.`
 }
 
+// ── Generic bundled-scenario prep (esp-wifi, hci-sniffer) ─────────────────────
+// Copies demo-scenarios/<id> to a writable globalStorage location, like prepareDemoWorkspace
+// but for any id-keyed scenario whose evidence is bundled capture files (not the NUS sample).
+
+async function prepareScenarioBundle(id: string): Promise<string> {
+	if (!_extensionPath || !_globalStoragePath) {
+		throw new Error("DemoManager not initialized — call initDemoManager() in activate()")
+	}
+	const version = ExtensionRegistryInfo.version
+	const bundleRoot = path.join(_globalStoragePath, "demo", `${id}-${version}`)
+	await copyDir(path.join(_extensionPath, "demo-scenarios", id), bundleRoot)
+	return bundleRoot
+}
+
+// ── ESP32 Wi-Fi "connected but offline" scenario (esp-wifi) ────────────────────
+
+export function buildEspWifiDisplayText(): string {
+	// Leading text MUST stay in sync with demoScenarios.ts historyMatch for "esp-wifi".
+	return (
+		"Debug an ESP32 Wi-Fi connection issue — the board says 'connected' but the first DNS lookup fails. " +
+		"Serial logs captured from a real ESP32-S3."
+	)
+}
+
+function buildEspWifiPrompt(bundleRoot: string): string {
+	const buggyLog = path.join(bundleRoot, "logs", "wifi_buggy.log")
+	const fixedLog = path.join(bundleRoot, "logs", "wifi_fixed.log")
+	const source = path.join(bundleRoot, "main", "station_example_main.c")
+	const espKnowledge =
+		resolveBitPathSync("adsum/esp/platform") ?? path.join(_extensionPath!, "iot-knowledge", "platforms", "esp", "PLATFORM.md")
+
+	return `Demo: ESP32 Wi-Fi connection debug — no setup needed
+
+[ADSUM_DEMO:esp-wifi] You are debugging a real ESP-IDF Wi-Fi station. The serial logs were captured from a real ESP32-S3; the SSID is sanitized.
+
+CRITICAL — read this before doing anything:
+- Open with a short hook (2–3 sentences) TO the developer: frame the mission — an ESP32 that associates with the AP and logs "connected", yet its first network call fails — name the evidence you're bringing in (the captured serial log of the failing run, the ESP Wi-Fi platform knowledge, and the firmware source), and invite them to follow you to the root cause and the one-line fix. Name evidence by ROLE only; say nothing about what any file CONTAINS.
+- Read all three files SILENTLY, in order, before reacting. Do NOT state a cause before the reads finish.
+- Do NOT name the fix (the WIFI_EVENT_STA_CONNECTED vs IP_EVENT_STA_GOT_IP event swap) before you have shown, from the log, the timeline that proves it: the DNS failure happens BEFORE the IP is assigned.
+
+Files (read all three silently, in order):
+1. Failing serial log:   ${buggyLog}
+2. ESP Wi-Fi knowledge:  ${espKnowledge}
+3. Firmware source:      ${source}
+
+After the reads, walk the developer through it:
+- The log shows the radio associates and the app logs "connected", then getaddrinfo (DNS) fails — and the "got ip" line lands ~3 seconds AFTER that failure. That ordering is the whole story.
+- In the source (event_handler), the app signals network-ready on WIFI_EVENT_STA_CONNECTED (link up, no IP yet) instead of IP_EVENT_STA_GOT_IP. So check_connectivity() runs before DHCP finishes.
+- The fix is one event: signal readiness on IP_EVENT_STA_GOT_IP, not WIFI_EVENT_STA_CONNECTED. Then the first network call only runs once an address exists.
+
+Be direct and educational — you are showing an embedded developer a real, common ESP-IDF Wi-Fi gotcha. Cite the evidence (timestamps from the log), never assert from memory.
+
+Then present the next step as BUTTONS via ask_followup_question. Ask: "That's the bug — the app used the network before it had an IP. Want to see proof?"
+Options:
+- "Show me the fixed run"
+- "I've seen enough — wrap up"
+
+If they pick "Show me the fixed run": read ${fixedLog} and point out that with readiness gated on IP_EVENT_STA_GOT_IP, the order is now "got ip" → DNS resolves successfully — same board, same network, fixed by the one-event change. Then call attempt_completion with a one-line conclusion and end the final message with exactly: <!--TASK_COMPLETE-->
+If they pick "I've seen enough — wrap up": give a two-sentence recap (root cause + the one-event fix), invite them to point Adsum at their own ESP-IDF project, and end with <!--TASK_COMPLETE-->`
+}
+
+// ── BLE HCI + over-the-air sniffer cross-layer scenario (hci-sniffer) ──────────
+
+export function buildHciSnifferDisplayText(): string {
+	// Leading text MUST stay in sync with demoScenarios.ts historyMatch for "hci-sniffer".
+	return (
+		"HCI + sniffer-in-the-loop BLE debug — a real one-directional BLE bug seen across all three layers " +
+		"(app log, HCI host↔controller trace, over-the-air sniffer), captured from nRF hardware."
+	)
+}
+
+/** The three buggy decoded logs the host opens in editor tabs at launch (relative to the bundle root). */
+export function hciSnifferOpenInEditor(bundleRoot: string): string[] {
+	return [
+		path.join(bundleRoot, "logs", "buggy", "app.log"),
+		path.join(bundleRoot, "logs", "buggy", "hci.hci.log"),
+		path.join(bundleRoot, "logs", "buggy", "sniffer.sniffer.log"),
+	]
+}
+
+export function buildHciSnifferPrompt(bundleRoot: string, capability: DemoCapability): string {
+	const L = (tier: "buggy" | "fixed", layer: string) => path.join(bundleRoot, "logs", tier, layer)
+	const bleFile =
+		resolveBitPathSync("adsum/nrf/sdks/ncs/protocols/ble") ??
+		path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "sdks", "ncs", "protocols", "BLE.md")
+
+	return `Demo: HCI + sniffer-in-the-loop BLE debug — no setup needed
+
+[ADSUM_DEMO:hci-sniffer] You are running Adsum's flagship BLE observability demo for a developer EVALUATING the tool — this is a first impression and an acquisition moment. The three real captures (app log, HCI trace, over-the-air sniffer) are ALREADY OPEN in their editor tabs. Make them say "wow", fast.
+
+=== STYLE CONTRACT — follow exactly, this is the point of the redesign ===
+- Lead with the goal. NO "let me walk you through what I'm going to do", no meta-narration.
+- SHORT. Titled sections ("## App layer", etc.), ≤2 sentences each, cite the ONE decisive line — never paragraphs, never a wall of text. Developers won't read walls.
+- Use a mermaid \`sequenceDiagram\` for any flow — never describe a flow in prose.
+- END EVERY STEP with an ask_followup_question button choice. Never dump everything at once.
+
+=== THE BUG ===
+One-directional NUS: the central connects and discovers the peripheral's Nordic UART Service, but never SUBSCRIBES to its TX characteristic (it skips bt_nus_subscribe_receive after bt_nus_handles_assign). So the peripheral's notifications are silently dropped — peripheral→central data never arrives. The signature is visible at all three layers: no CCCD write in HCI, no notifications on air, nothing received in the app log.
+
+=== STEP 1 — Hook + scan (your FIRST message, keep it tiny) ===
+- One sentence of framing, then this mermaid VERBATIM:
+\`\`\`mermaid
+sequenceDiagram
+  participant P as Peripheral
+  participant C as Central
+  C->>P: connect + discover NUS
+  Note over C: never subscribes (the bug)
+  P-->>C: notify "hello" — dropped, no subscriber
+\`\`\`
+- Then SCAN their hardware so they SEE you read their bench: call triggerNordicAction with action="log_device", operation="list". In ONE line, report what's connected — a DK is a board like PCA10056/PCA10040 (J-Link); a sniffer is "nRF Sniffer for Bluetooth LE" or, if unflashed, "Open DFU Bootloader" / PCA10059.
+- Then ask with buttons. Include ONLY options their hardware supports; the captured-walkthrough is ALWAYS offered. (Host capability hint: capability=${capability} — "hardware" means at least one DK is present.)
+  ask_followup_question — Question: "How do you want to see it?"
+  Options:
+    - "Walk me through the captured bug"            ← ALWAYS include
+    - "Capture HCI live on my own board"            ← include ONLY if you scanned a connected DK
+    - "Capture live + sniff it over the air"        ← include ONLY if you scanned a DK AND a sniffer dongle
+
+=== STEP 2A — "Walk me through the captured bug" (the hero path; works with NO hardware) ===
+The three buggy logs are already open in their editor. Walk the three layers — each a short titled section citing the ONE decisive line, naming the open file:
+- ## App layer (buggy/app.log): the peripheral sends, the central never prints it — the dropped-data line.
+- ## HCI layer (buggy/hci.hci.log): the central's host↔controller trace shows service discovery but NO GATT write to the CCCD — the subscribe never happens.
+- ## Over-the-air (buggy/sniffer.sniffer.log): the air shows the connection but no CCCD write and no peripheral→central notifications.
+Then ONE cross-layer mermaid tying app-intent → HCI → air. Then:
+- ## The one-line fix: add \`bt_nus_subscribe_receive(nus);\` right after \`bt_nus_handles_assign(dm, nus);\` — that single line makes the central subscribe, so the CCCD write goes out and the notifications flow.
+- ## Proof — try to read the FIXED captures (${L("fixed", "hci.hci.log")}, ${L("fixed", "sniffer.sniffer.log")}, ${L("fixed", "app.log")}). IF they exist, show the before/after: the CCCD write + notifications now appear in HCI + air and the data arrives in the app log — same boards, one line. IF a fixed capture is missing, do NOT fabricate it: just show the fix in code and say the fixed run can be reproduced live on connected boards.
+Close with buttons — Question: "That's the whole loop. Where to next?"
+Options: ["Run this on my own nRF project", "I've seen enough — wrap up"].
+
+=== STEP 2B / 2C — live on their hardware (only if they picked it) ===
+Reproduce the SAME signature on their board(s); do not improvise raw shell. Load the action/workflow bits first (read_file the relevant ones: ${bleFile} for the layer map, plus the hci-trace and — for 2C — ble-sniffer workflows). Then:
+- Flash the buggy NUS central + peripheral (HCI monitor enabled) to their DK(s) by serial, let them connect.
+- Capture HCI live: triggerNordicAction action="log_device", operation="capture", transport="rtt", monitor="true". Show the live trace has the SAME missing-CCCD signature as the captured one.
+- 2C only: also sniff over the air — triggerNordicAction operation="sniff" with the dongle's port — and correlate with the live HCI.
+- Then reveal the one-line fix, reflash central, and show the CCCD write + notifications now appear live. No phone needed.
+Close with the same final buttons.
+
+=== Reference files (read on demand, never dumped) ===
+- BLE layer map (the 3-layer escalation): ${bleFile}
+- Buggy captures (already open): ${L("buggy", "app.log")} · ${L("buggy", "hci.hci.log")} · ${L("buggy", "sniffer.sniffer.log")}
+- Fixed captures (for the proof): ${L("fixed", "app.log")} · ${L("fixed", "hci.hci.log")} · ${L("fixed", "sniffer.sniffer.log")}
+
+Call attempt_completion only after a final button choice resolves; end the final message with exactly, nothing after it: <!--TASK_COMPLETE-->`
+}
+
 // ── Scenario registry (id-keyed) ──────────────────────────────────────────────
 // A1: the demo system is generalizing from a single hardcoded scenario to an id-keyed registry so the
 // welcome "Try it on a sample" picker can host more than one demo (CRA-on-sample, Omar's HCI). Today the
@@ -222,8 +366,10 @@ export interface HostDemoScenario {
 	id: string
 	/** The exact trigger token the webview sends for this scenario. */
 	triggerToken: string
-	/** Prepare the bundle (if any) + build the full agent prompt and the chat-bubble display text. */
-	buildTask(env: NrfEnvironment | undefined): Promise<{ taskText: string; displayText: string }>
+	/** Prepare the bundle (if any) + build the full agent prompt and the chat-bubble display text.
+	 * Optionally returns absolute paths the host should OPEN in editor tabs at launch (e.g. pre-captured
+	 * demo logs the user should see — used by hci-sniffer, which runs with no workspace open). */
+	buildTask(env: NrfEnvironment | undefined): Promise<{ taskText: string; displayText: string; openInEditor?: string[] }>
 }
 
 const HOST_DEMO_SCENARIOS: Record<string, HostDemoScenario> = {
@@ -242,6 +388,27 @@ const HOST_DEMO_SCENARIOS: Record<string, HostDemoScenario> = {
 		async buildTask() {
 			const ws = await prepareDemoWorkspace()
 			return { taskText: buildCraSamplePrompt(ws.centralPath), displayText: buildCraSampleDisplayText() }
+		},
+	},
+	"esp-wifi": {
+		id: "esp-wifi",
+		triggerToken: "[ADSUM_DEMO:esp-wifi]",
+		async buildTask() {
+			const bundleRoot = await prepareScenarioBundle("esp-wifi")
+			return { taskText: buildEspWifiPrompt(bundleRoot), displayText: buildEspWifiDisplayText() }
+		},
+	},
+	"hci-sniffer": {
+		id: "hci-sniffer",
+		triggerToken: "[ADSUM_DEMO:hci-sniffer]",
+		async buildTask(env) {
+			const bundleRoot = await prepareScenarioBundle("hci-sniffer")
+			const capability = classifyDemoCapability(env)
+			return {
+				taskText: buildHciSnifferPrompt(bundleRoot, capability),
+				displayText: buildHciSnifferDisplayText(),
+				openInEditor: hciSnifferOpenInEditor(bundleRoot),
+			}
 		},
 	},
 }

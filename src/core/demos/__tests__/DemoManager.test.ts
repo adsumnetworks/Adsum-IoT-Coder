@@ -4,8 +4,11 @@ import { describe, it } from "mocha"
 import {
 	buildDemoDisplayText,
 	buildDemoPrompt,
+	buildHciSnifferDisplayText,
+	buildHciSnifferPrompt,
 	classifyDemoCapability,
 	type DemoWorkspace,
+	hciSnifferOpenInEditor,
 	initDemoManager,
 } from "../DemoManager"
 
@@ -159,5 +162,46 @@ describe("buildDemoPrompt", () => {
 		expect(norm).to.contain("BLE.md")
 		expect(norm).to.contain(ws.centralPath)
 		expect(norm).to.contain(ws.peripheralPath)
+	})
+})
+
+describe("hci-sniffer demo (hardware-adaptive 3-layer)", () => {
+	before(() => {
+		initDemoManager("/ext", "/storage")
+	})
+
+	it("display text is synced with the demoScenarios.ts historyMatch prefix", () => {
+		expect(buildHciSnifferDisplayText().startsWith("HCI + sniffer-in-the-loop BLE debug")).to.equal(true)
+	})
+
+	it("opens the three buggy logs (app · hci · sniffer) in the editor", () => {
+		const files = hciSnifferOpenInEditor("/storage/demo/hci-sniffer-1").map((f) => f.replace(/\\/g, "/"))
+		expect(files.length).to.equal(3)
+		expect(files.some((f) => f.endsWith("logs/buggy/app.log"))).to.equal(true)
+		expect(files.some((f) => f.endsWith("logs/buggy/hci.hci.log"))).to.equal(true)
+		expect(files.some((f) => f.endsWith("logs/buggy/sniffer.sniffer.log"))).to.equal(true)
+	})
+
+	it("leads with a device scan + a mermaid + the always-on captured-walkthrough button", () => {
+		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned")
+		expect(p).to.contain('operation="list"') // scans connected hardware in-chat
+		expect(p).to.contain("mermaid")
+		expect(p).to.contain("sequenceDiagram")
+		expect(p).to.contain("Walk me through the captured bug")
+		expect(p).to.contain("ask_followup_question")
+	})
+
+	it("offers live-capture options gated on hardware (DK / dongle)", () => {
+		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "hardware")
+		expect(p).to.contain("Capture HCI live on my own board") // DK tier
+		expect(p).to.contain("Capture live + sniff it over the air") // DK + dongle tier
+		expect(p).to.contain("capability=hardware") // host hint is passed through
+	})
+
+	it("names the one-line fix and enforces the brevity/mermaid style contract", () => {
+		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned")
+		expect(p).to.contain("bt_nus_subscribe_receive(nus);")
+		expect(p).to.contain("STYLE CONTRACT")
+		expect(p.trimEnd().endsWith("<!--TASK_COMPLETE-->")).to.equal(true)
 	})
 })

@@ -194,6 +194,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 
 				{/* Adaptive intent cards */}
 				<IntentList
+					hasBle={hasBle}
 					intents={intents}
 					onSelectMode={onSelectMode}
 					onStartTask={onStartTask}

@@ -11,6 +11,8 @@ interface IntentListProps {
 	projectName?: string
 	/** Detected workspace platform — drives platform-aware card copy + prompts. */
 	platform?: WorkspacePlatform
+	/** BLE project (CONFIG_BT=y) — drives the buildFlashDebug 3-layer observability branch. */
+	hasBle?: boolean
 	/** Prefix for each card's testId, e.g. "intent-card" (welcome) or "next-step" (post-task). */
 	testIdPrefix: string
 }
@@ -26,6 +28,7 @@ const IntentList: React.FC<IntentListProps> = ({
 	onStartTask,
 	projectName,
 	platform = "both",
+	hasBle = false,
 	testIdPrefix,
 }) => {
 	const live = intents.filter((i) => !i.comingSoon)
@@ -37,7 +40,7 @@ const IntentList: React.FC<IntentListProps> = ({
 			description={intentDescription(intent, projectName, platform)}
 			icon={intent.icon}
 			key={intent.id}
-			onClick={() => runIntent(intent.id, { onSelectMode, onStartTask, projectName, platform })}
+			onClick={() => runIntent(intent.id, { onSelectMode, onStartTask, projectName, platform, hasBle })}
 			pill={intent.pill}
 			primary={intent.primary}
 			subline={intent.subline}

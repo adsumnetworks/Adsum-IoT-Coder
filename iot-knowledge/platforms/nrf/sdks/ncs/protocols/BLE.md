@@ -2,7 +2,7 @@
 id: adsum/nrf/sdks/ncs/protocols/ble
 title: "BLE Protocol Knowledge — NCS / Zephyr"
 type: knowledge
-version: 1.2.0
+version: 1.3.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -142,6 +142,17 @@ three observability layers; debug them in order and STOP guessing at each bounda
    `read_file` `workflows/hci-trace` and capture/decode HCI **before** offering a cause.
 3. **Over-the-air** (the radio, *between* devices) — if HCI shows a command went out but the outcome
    never came, escalate to `workflows/ble-sniffer` to see what actually transmitted.
+
+**Debug-entry (proactive) — when the developer opens a BLE debug session** (e.g. "build, flash &
+debug" on a BLE project), don't silently default to app logs. Briefly offer the three observability
+layers and **recommend by what's connected**:
+- **App logs** — build + flash + stream RTT/UART (the inner loop).
+- **Over-the-air sniffer** — passive; needs only an nRF Sniffer dongle plugged in, **no rebuild**. Check the serial ports for a dongle; if one is present, this is ready now.
+- **HCI trace** — needs `CONFIG_BT_DEBUG_MONITOR_RTT`; if it's off, enabling it requires a rebuild + flash. Check whether it's already enabled before recommending.
+
+Recommend the path needing the least setup or best matching the symptom, then **load the matching
+workflow bit** (`hci-trace` / `ble-sniffer`) before running it. Same HARD RULE applies — never decode
+or diagnose from general knowledge when the curated bit exists.
 
 These bits are **fetched on demand** (downloaded). This map is how you learn they exist — load the one
 whose symptom matches; never skip it.

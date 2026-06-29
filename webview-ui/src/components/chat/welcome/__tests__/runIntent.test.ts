@@ -51,6 +51,22 @@ describe("runIntent — shared intent routing", () => {
 		expect(onStartTask.mock.calls[0][0]).toContain("central_uart")
 	})
 
+	it("buildFlashDebug on a BLE project offers the 3 observability layers (not a plain build/flash default)", () => {
+		runIntent("buildFlashDebug", { onSelectMode, onStartTask, projectName: "peripheral_uart", platform: "nrf", hasBle: true })
+		const prompt = onStartTask.mock.calls[0][0] as string
+		expect(prompt).toContain("Over-the-air sniffer")
+		expect(prompt).toContain("HCI host↔controller trace")
+		expect(prompt).toContain("ble-sniffer")
+		expect(prompt).toContain("hci-trace")
+	})
+
+	it("buildFlashDebug without BLE keeps the plain build/flash/stream prompt", () => {
+		runIntent("buildFlashDebug", { onSelectMode, onStartTask, projectName: "blinky", platform: "nrf", hasBle: false })
+		const prompt = onStartTask.mock.calls[0][0] as string
+		expect(prompt).toContain("Build, flash and debug blinky")
+		expect(prompt).not.toContain("Over-the-air sniffer")
+	})
+
 	it("demo intent carries the ADSUM_DEMO trigger so the host intercepts it", () => {
 		runIntent("demo", { onSelectMode, onStartTask })
 		expect(onStartTask.mock.calls[0][0]).toContain("[ADSUM_DEMO:nus-uart]")
