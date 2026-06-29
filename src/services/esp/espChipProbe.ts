@@ -123,6 +123,7 @@ export function resolveIdfPython(deps: IdfPythonDeps): string | undefined {
 		add(join(deps.home, ".espressif")) // macOS / Linux manual install
 	}
 	const rel = deps.platform === "win32" ? join("Scripts", "python.exe") : join("bin", "python")
+	// Classic layout: <base>/python_env/<env>/{bin/python | Scripts/python.exe}.
 	for (const base of bases) {
 		const pythonEnvRoot = join(base, "python_env")
 		if (!deps.exists(pythonEnvRoot)) continue
@@ -130,6 +131,18 @@ export function resolveIdfPython(deps: IdfPythonDeps): string | undefined {
 		// Prefer the last (highest version when names sort lexically, e.g. idf5.3_…).
 		for (let i = envDirs.length - 1; i >= 0; i--) {
 			const candidate = join(pythonEnvRoot, envDirs[i], rel)
+			if (deps.exists(candidate)) return candidate
+		}
+	}
+	// EIM installer layout (the new official one): <base>/tools/python/<ver>/venv/{bin/python | Scripts/python.exe}.
+	// EIM does NOT create python_env (verified on macOS: ~/.espressif/tools/python/v6.0.1/venv/bin/python) — without
+	// this the chip probe finds no python and the board degrades to the generic "ESP32-family".
+	for (const base of bases) {
+		const eimPythonRoot = join(base, "tools", "python")
+		if (!deps.exists(eimPythonRoot)) continue
+		const verDirs = deps.listDir(eimPythonRoot).sort()
+		for (let i = verDirs.length - 1; i >= 0; i--) {
+			const candidate = join(eimPythonRoot, verDirs[i], "venv", rel)
 			if (deps.exists(candidate)) return candidate
 		}
 	}
