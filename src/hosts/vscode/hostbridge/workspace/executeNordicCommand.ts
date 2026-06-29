@@ -12,6 +12,7 @@ import {
 	ncsAmbiguousMessage,
 	parseToolchainEnv,
 	pathListSep,
+	resolveDeviceCommand,
 	type SupportedShell,
 	selectNcsInstall,
 	toNcsVersionFlag,
@@ -525,9 +526,16 @@ export async function prepareNordicExecution(opts: {
 		const env = buildNordicTerminalEnv(platform, nrfutil)
 		// Reuse any open "Adsum nRF" terminal (it already has nrfutil on PATH) — don't thrash it.
 		const terminal = await prepareAdsumNrfTerminal({ env, reuseAnyExisting: true })
-		const command = opts.isLoggerWrapper
-			? buildNordicLoggerCommand({ platform, shell, wrapperInvocation: opts.body })
-			: opts.body
+		// Normalize a bare `nrfutil device …` to the resolved device binary. On stock Windows the
+		// only nrfutil is the extension's split `nrfutil-device.exe` (no `nrfutil` launcher on PATH),
+		// so the bare form fails with "not recognized" — see resolveDeviceCommand. A rewrite produces
+		// a (possibly quoted) absolute path, so it needs the same shell shaping as a logger wrapper
+		// (PowerShell's `&` call operator).
+		const resolvedBody = opts.isLoggerWrapper ? opts.body : resolveDeviceCommand(opts.body, nrfutil.devicePrefix)
+		const needsShellShaping = opts.isLoggerWrapper || resolvedBody !== opts.body
+		const command = needsShellShaping
+			? buildNordicLoggerCommand({ platform, shell, wrapperInvocation: resolvedBody })
+			: resolvedBody
 		return { kind: "ready", plan: { terminalName: terminal.name, command, tier: 1 } }
 	}
 

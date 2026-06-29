@@ -7,6 +7,7 @@ import {
 	normalizeNcsVersion,
 	parseToolchainEnv,
 	pathListSep,
+	resolveDeviceCommand,
 	selectNcsInstall,
 	toNcsVersionFlag,
 } from "../nordicEnvResolver"
@@ -124,6 +125,34 @@ describe("nordicEnvResolver", () => {
 		it("runs the quoted wrapper bare on cmd", () => {
 			const win = '".\\assets\\scripts\\rtt-logger.bat" --capture --port 1050000000'
 			expect(buildNordicLoggerCommand({ platform: "win32", shell: "cmd", wrapperInvocation: win })).to.equal(win)
+		})
+	})
+
+	describe("resolveDeviceCommand", () => {
+		// The nRF Connect extension's split binary (stock Windows: no `nrfutil` launcher on PATH).
+		const splitPrefix = '"C:\\Users\\u\\.vscode\\extensions\\nordic\\platform\\nrfutil\\bin\\nrfutil-device.exe"'
+		// A launcher-style install (common on Linux/macOS dev boxes).
+		const launcherPrefix = '"/home/u/.nrfutil/bin/nrfutil" device'
+
+		it("rewrites `nrfutil device list` to the split binary (the Windows bug)", () => {
+			expect(resolveDeviceCommand("nrfutil device list", splitPrefix)).to.equal(`${splitPrefix} list`)
+		})
+		it("rewrites `device-info --serial-number …` keeping its args", () => {
+			expect(resolveDeviceCommand("nrfutil device device-info --serial-number FC2ABDFBE10A", splitPrefix)).to.equal(
+				`${splitPrefix} device-info --serial-number FC2ABDFBE10A`,
+			)
+		})
+		it("rewrites to the launcher form (keeps the `device` subcommand)", () => {
+			expect(resolveDeviceCommand("nrfutil device list", launcherPrefix)).to.equal(`${launcherPrefix} list`)
+		})
+		it("leaves a non-device command unchanged", () => {
+			expect(resolveDeviceCommand("west build -b nrf52840dk/nrf52840 .", splitPrefix)).to.equal(
+				"west build -b nrf52840dk/nrf52840 .",
+			)
+			expect(resolveDeviceCommand("nrfutil sdk-manager list", splitPrefix)).to.equal("nrfutil sdk-manager list")
+		})
+		it("tolerates leading whitespace and collapses the trailing split", () => {
+			expect(resolveDeviceCommand("  nrfutil device list ", splitPrefix)).to.equal(`${splitPrefix} list`)
 		})
 	})
 
