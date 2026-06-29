@@ -396,3 +396,45 @@ test("design/28 Part A: a reachable EUVD candidate (CVE-2025-10456, CONFIG_BT_SM
 	const cand = JSON.parse(r.json).euvdCandidates.find((c: { id: string }) => c.id === "CVE-2025-10456")
 	assert.equal(cand.applicability.signal, "config-present")
 })
+
+test("design/30 P2: a backported-fix CVE is downgraded to fix-present (patched) + excluded from to-review", async () => {
+	const resolveHint: HintResolver = (id) => (id === "CVE-2099-7777" ? { fixCommitSha: "deadbeefcafe1234" } : undefined)
+	const oneVuln: OsvFetcher = async () => JSON.stringify({ results: [{ vulns: [{ id: "CVE-2099-7777" }] }] })
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-06-29",
+		fetcher: oneVuln,
+		resolveHint,
+		fixCommitChecker: async (sha) => sha === "deadbeefcafe1234", // present in the tree
+	})
+	const f = r.findings.find((x) => x.match.vulnIds[0] === "CVE-2099-7777")
+	assert.equal(f?.applicability.signal, "fix-present")
+	assert.match(r.report, /very likely already includes this fix/)
+	assert.match(r.report, /likely not reachable/) // triage counts a patched CVE as not-reachable
+	assert.equal(isVerdictClean(r.report), true)
+	assert.equal(JSON.parse(r.json).triage.notReachable >= 1, true)
+})
+
+test("design/30 P2: a fix-present EUVD candidate is omitted from 'to verify' (kept in JSON), with an honest note", async () => {
+	const resolveHint: HintResolver = (id) => (id === "CVE-2099-8888" ? { fixCommitSha: "feedface00112233" } : undefined)
+	const euvdProductFetcher = async () => [
+		{ euvdId: "EUVD-X-1", cveId: "CVE-2099-8888", baseScore: 8, epss: 0.5, exploited: false, references: [] },
+	]
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-06-29",
+		fetcher: noVulnFetcher,
+		resolveHint,
+		euvdProductFetcher,
+		euvdProductLabel: "zephyr 4.2.99",
+		fixCommitChecker: async () => true, // the candidate's fix is in the tree
+	})
+	const section = r.report.split("Additional EU")[1] ?? ""
+	assert.doesNotMatch(section, /CVE-2099-8888 — verify/) // not in the to-verify list
+	assert.match(section, /already covered/) // the honest omission note
+	// still in the JSON for the record, marked fix-present
+	const cand = JSON.parse(r.json).euvdCandidates.find((c: { id: string }) => c.id === "CVE-2099-8888")
+	assert.equal(cand.applicability.signal, "fix-present")
+})

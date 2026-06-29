@@ -83,6 +83,14 @@ export interface ScanLoopInput {
 	euvdProductFetcher?: () => Promise<EuvdRecord[]>
 	/** Human label for the discover-by-product set, e.g. "zephyr 4.2.99". */
 	euvdProductLabel?: string
+	/**
+	 * P2 (design/30) — platform-neutral fix-commit check: given an upstream fix-commit SHA, is it present in the
+	 * dev's source tree? (the handler binds this to `git -C <zephyr|esp-idf tree> merge-base --is-ancestor <sha>
+	 * HEAD`). `true` → patched (a forked SDK backported it without a version bump) → the CVE is excluded as
+	 * "fix-present". `false`/`undefined` → not patched / couldn't check → fall through (hedge; never a false claim).
+	 * Run once per unique SHA. Omitted → no fix-commit resolution (behaviour unchanged).
+	 */
+	fixCommitChecker?: (fixSha: string) => Promise<boolean | undefined>
 }
 
 export interface ScanLoopResult {
@@ -126,30 +134,66 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 		: { matches: [], skipped: [], queriedCount: 0, status: "ok" as const }
 	const resolve = input.resolveHint ?? (() => undefined)
 
-	// ONE finding per (component, vulnId), deduped across both sources (a CVE can surface in OSV AND NVD).
-	const findings: ScanFinding[] = []
-	const seen = new Set<string>()
-	const addFinding = (component: SbomComponent, id: string) => {
+	// Collect the (component, vulnId) match pairs (deduped across OSV+NVD) up front — we need the full id set to
+	// pre-compute the P2 fix-commit checks (one git call per unique fix SHA) before building findings.
+	const matchPairs: Array<{ component: SbomComponent; id: string }> = []
+	const seenPair = new Set<string>()
+	const addPair = (component: SbomComponent, id: string) => {
 		const key = `${component.name}@${component.version}::${id}`
-		if (seen.has(key)) {
-			return
+		if (!seenPair.has(key)) {
+			seenPair.add(key)
+			matchPairs.push({ component, id })
 		}
-		seen.add(key)
-		findings.push({
-			match: { component, vulnIds: [id] },
-			applicability: assessApplicability(resolve(id, component), input.evidence),
-		})
 	}
 	for (const m of osvScan.matches) {
 		for (const id of m.vulnIds) {
-			addFinding(m.component, id)
+			addPair(m.component, id)
 		}
 	}
 	for (const m of nvdScan.matches) {
 		for (const v of m.vulns) {
-			addFinding(m.component, v.id)
+			addPair(m.component, v.id)
 		}
 	}
+
+	// EUVD discover-by-product (opt-in) — fetched HERE so its candidate ids join the fix-commit pre-compute. Surface
+	// only the ones not already version-matched by OSV/NVD (deduped), as hedged "version-not-confirmed" candidates.
+	const matchedIds = new Set(matchPairs.map((p) => p.id.toUpperCase()))
+	const euvdProduct = input.euvdProductFetcher ? await input.euvdProductFetcher() : []
+	// EUVD candidates are product-level (no SBOM component); resolveAdvisoryHint keys on the CVE id, so a
+	// label-derived stub component suffices for the hint lookup.
+	const euvdComp: SbomComponent = { name: (input.euvdProductLabel ?? "core").split(" ")[0], version: "" }
+	const euvdRaw = euvdProduct.filter((c) => !matchedIds.has(c.cveId.toUpperCase()))
+
+	// P2 (design/30): pre-compute "is the upstream fix commit in the dev's source tree?" ONCE per unique SHA (a git
+	// merge-base check, injected + cached). A forked SDK can backport a fix without bumping the version → fix-present
+	// means patched. Runs for both matched findings AND EUVD candidates. No checker / no hint SHA → undefined (hedge).
+	const fixPresentBySha = new Map<string, boolean | undefined>()
+	if (input.fixCommitChecker) {
+		const shas = new Set<string>()
+		for (const p of matchPairs) {
+			const s = resolve(p.id, p.component)?.fixCommitSha
+			if (s) shas.add(s)
+		}
+		for (const c of euvdRaw) {
+			const s = resolve(c.cveId, euvdComp)?.fixCommitSha
+			if (s) shas.add(s)
+		}
+		for (const sha of shas) {
+			fixPresentBySha.set(sha, await input.fixCommitChecker(sha))
+		}
+	}
+	const fixPresentFor = (hint: ApplicabilityHint | undefined) =>
+		hint?.fixCommitSha ? fixPresentBySha.get(hint.fixCommitSha) : undefined
+
+	// ONE finding per (component, vulnId), each assessed (incl. the P2 fix-present check).
+	const findings: ScanFinding[] = matchPairs.map((p) => {
+		const hint = resolve(p.id, p.component)
+		return {
+			match: { component: p.component, vulnIds: [p.id] },
+			applicability: assessApplicability(hint, input.evidence, fixPresentFor(hint)),
+		}
+	})
 
 	// Coverage when the NVD path ran: a CPE-bearing component is now queryable (it was "cpe-only" → skipped
 	// under OSV-only). Credit it honestly — skipped shrinks to the truly unidentified; queriedCount counts
@@ -174,17 +218,13 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 			)
 		: new Map<string, EuvdRecord>()
 
-	// EUVD discover-by-product (opt-in): the EU-authoritative list for the detected SDK. Surface ONLY the ones not
-	// already version-matched by OSV/NVD, as hedged "version-not-confirmed" candidates (never as confirmed matches).
-	const foundIds = new Set(findings.flatMap((f) => f.match.vulnIds.map((id) => id.toUpperCase())))
-	const euvdProduct = input.euvdProductFetcher ? await input.euvdProductFetcher() : []
-	// design/28: assess each candidate against build evidence via a curated hint, so a reachable lead (e.g.
-	// CVE-2025-10456, gated by CONFIG_BT_SMP) is promoted out of the buried list. EUVD candidates are product-level
-	// (no SBOM component), and resolveAdvisoryHint keys on the CVE id only, so a label-derived stub component suffices.
-	const euvdComp: SbomComponent = { name: (input.euvdProductLabel ?? "core").split(" ")[0], version: "" }
-	const euvdCandidates = euvdProduct
-		.filter((c) => !foundIds.has(c.cveId.toUpperCase()))
-		.map((c) => ({ ...c, applicability: assessApplicability(resolve(c.cveId, euvdComp), input.evidence) }))
+	// EUVD discover-by-product candidates (fetched + deduped above) — assess each against build evidence via its
+	// curated hint (design/28: a reachable lead like CVE-2025-10456 is promoted out of the buried list) PLUS the P2
+	// fix-present check (a backported-fixed lead is downgraded to patched).
+	const euvdCandidates = euvdRaw.map((c) => {
+		const hint = resolve(c.cveId, euvdComp)
+		return { ...c, applicability: assessApplicability(hint, input.evidence, fixPresentFor(hint)) }
+	})
 
 	// T3 (design/25): a non-empty SBOM that normalized to 0 components is almost always the WRONG file (not SPDX,
 	// or `app.spdx` with no ids) — not a clean result. Surface it so "0 queryable" is never read as "0 CVEs".

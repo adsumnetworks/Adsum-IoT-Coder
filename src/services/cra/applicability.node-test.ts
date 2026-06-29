@@ -72,3 +72,16 @@ test("config-present (design/28): gating Kconfig ENABLED → weak POSITIVE 'may 
 		"config-gated-out",
 	)
 })
+
+test("fix-present (design/30 P2): fix commit in tree → patched (beats config-present); absent/unknown → falls through", () => {
+	const hint = { gateSymbol: "CONFIG_BT_SMP", fixCommitSha: "a1b2c3d4e5f6a1b2" }
+	const cfg = { dotConfig: "CONFIG_BT_SMP=y\n" }
+	// fix IN tree → fix-present, even though CONFIG_BT_SMP=y would otherwise be config-present
+	const v = assessApplicability(hint, cfg, true)
+	assert.equal(v.signal, "fix-present")
+	assert.match(v.note, /very likely already includes this fix; verify/)
+	// fix ABSENT → not patched ≠ confirmed reachable; fall through to config-present
+	assert.equal(assessApplicability(hint, cfg, false).signal, "config-present")
+	// not checked → fall through too (never claims fix-present without a positive check)
+	assert.equal(assessApplicability(hint, cfg, undefined).signal, "config-present")
+})

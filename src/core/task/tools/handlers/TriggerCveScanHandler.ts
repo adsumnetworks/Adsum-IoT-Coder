@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process"
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { promisify } from "node:util"
 import type { ToolUse } from "@core/assistant-message"
@@ -220,6 +220,53 @@ async function resolveCoreVersions(projectDir?: string, buildDir?: string): Prom
 	return (name) => cores.get(name)
 }
 
+/**
+ * P2 (design/30): resolve the detected SDK's CORE git source tree — Zephyr (`<west topdir>/zephyr`) or esp-idf
+ * (`idf_path` from project_description.json). This is the repo the fix-commit check (`git merge-base
+ * --is-ancestor`) runs against. Platform-neutral: returns the first tree found, or undefined (no fix-commit check).
+ */
+async function resolveCoreSourceTree(projectDir?: string, buildDir?: string): Promise<string | undefined> {
+	for (const cwd of westCwdCandidates(projectDir, buildDir)) {
+		try {
+			const { stdout } = await execFileAsync("west", ["topdir"], { cwd, timeout: 15_000 })
+			const t = stdout.trim()
+			if (t && existsSync(path.join(t, "zephyr"))) {
+				return path.join(t, "zephyr")
+			}
+		} catch {
+			// west not on PATH / not a workspace — try the next candidate.
+		}
+	}
+	for (const dir of [buildDir, projectDir ? path.join(projectDir, "build") : undefined]) {
+		if (!dir) {
+			continue
+		}
+		try {
+			const pd = JSON.parse(readFileSync(path.join(dir, "project_description.json"), "utf8"))
+			if (typeof pd?.idf_path === "string" && existsSync(pd.idf_path)) {
+				return pd.idf_path
+			}
+		} catch {
+			// not an ESP build here.
+		}
+	}
+	return undefined
+}
+
+/**
+ * P2: is an upstream fix commit present in the source tree? `git -C <tree> merge-base --is-ancestor <sha> HEAD` —
+ * exit 0 = present (patched) → true; exit 1 = absent → false; anything else (bad SHA, shallow clone, not a repo) →
+ * undefined (couldn't determine → the engine hedges, never a false claim). Read-only, fixed args, no shell.
+ */
+async function gitFixPresent(treeDir: string, fixSha: string): Promise<boolean | undefined> {
+	try {
+		await execFileAsync("git", ["-C", treeDir, "merge-base", "--is-ancestor", fixSha, "HEAD"], { timeout: 10_000 })
+		return true
+	} catch (e) {
+		return (e as { code?: number })?.code === 1 ? false : undefined
+	}
+}
+
 /** Injectable seams (network/fs/clock) so execute() is unit-testable; production uses the real defaults. */
 export interface CveScanHandlerDeps {
 	scan: (args: { sbomPath: string; buildDir?: string; projectDir?: string; asOf: string }) => Promise<ScanLoopResult>
@@ -248,6 +295,8 @@ const defaultDeps: CveScanHandlerDeps = {
 						label: `esp-idf ${espVer}`,
 					}
 				: undefined
+		// P2: the detected SDK's core git tree (Zephyr / esp-idf) — fix-commit checks run here. Resolved once.
+		const sourceTree = await resolveCoreSourceTree(projectDir, buildDir)
 		return runCveScanHost(
 			{ sbomPath, buildDir },
 			{
@@ -255,6 +304,8 @@ const defaultDeps: CveScanHandlerDeps = {
 				readers: defaultBuildEvidenceReaders(),
 				resolveHint: resolveAdvisoryHint,
 				asOf,
+				// P2 (design/30): is a CVE's upstream fix commit already backported into the source tree? → "patched".
+				fixCommitChecker: sourceTree ? (sha) => gitFixPresent(sourceTree, sha) : undefined,
 				// F5: enrich PURL-sparse west SBOMs with curated coordinates keyed on the real module versions.
 				resolveModuleVersion: await resolveWestModuleVersions(projectDir, buildDir),
 				// F5: fill CPE/PURL the SBOM tool didn't emit, from each module's own zephyr/module.yml.

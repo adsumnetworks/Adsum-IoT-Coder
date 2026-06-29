@@ -10,7 +10,7 @@
  *    as a verdict — only "likely … verify". Deterministic + fixture-testable; no network, no model content.
  */
 
-export type ApplicabilitySignal = "config-gated-out" | "not-linked" | "linked" | "config-present" | "unknown"
+export type ApplicabilitySignal = "fix-present" | "config-gated-out" | "not-linked" | "linked" | "config-present" | "unknown"
 
 export interface ApplicabilityVerdict {
 	signal: ApplicabilitySignal
@@ -32,6 +32,10 @@ export interface BuildEvidence {
 export interface ApplicabilityHint {
 	gateSymbol?: string
 	codeSymbol?: string
+	/** P2 (design/30): the upstream fix commit SHA. If it's present in the dev's source tree (a forked SDK can
+	 *  backport a fix WITHOUT bumping the version), the CVE is already patched → "fix-present". The git check is
+	 *  impure/async, so its boolean RESULT is passed into assessApplicability (not run here). */
+	fixCommitSha?: string
 }
 
 /** true (=y) · false (=n / "is not set") · undefined (not mentioned). */
@@ -57,7 +61,21 @@ function symbolPresent(symbols: string, sym: string): boolean {
  * presents them verbatim (anti-fabrication, D11-R: a drifting model must not soften "verify" into "safe"). So the
  * bit must NOT restate this wording — it says "present the host's note verbatim." Edit the hedges HERE only.
  */
-export function assessApplicability(hint: ApplicabilityHint | undefined, evidence: BuildEvidence): ApplicabilityVerdict {
+export function assessApplicability(
+	hint: ApplicabilityHint | undefined,
+	evidence: BuildEvidence,
+	/** P2: did the git check find this hint's fixCommitSha in the dev's source tree? true = patched (definitive
+	 *  exclusion); false = not patched (says nothing about reachability — fall through); undefined = not checked. */
+	fixPresent?: boolean,
+): ApplicabilityVerdict {
+	// STRONGEST signal (P2): the upstream fix commit is in the tree → the CVE is patched, even if the version still
+	// "matches" (a forked SDK backports without a version bump). Definitive exclusion — beats config/symbol.
+	if (hint?.fixCommitSha && fixPresent === true) {
+		return {
+			signal: "fix-present",
+			note: `the upstream fix commit (${hint.fixCommitSha.slice(0, 12)}) is present in your source tree — your build very likely already includes this fix; verify against the advisory.`,
+		}
+	}
 	// Strongest exclusion: the gating Kconfig is disabled → the affected code is not compiled.
 	if (hint?.gateSymbol && evidence.dotConfig && kconfigState(evidence.dotConfig, hint.gateSymbol) === false) {
 		return {
