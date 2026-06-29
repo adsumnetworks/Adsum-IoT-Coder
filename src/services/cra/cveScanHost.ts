@@ -53,6 +53,9 @@ export interface CveScanHostDeps {
 	euvdProductFetcher?: () => Promise<EuvdRecord[]>
 	/** Label for the discover-by-product set, e.g. "zephyr 4.2.99". */
 	euvdProductLabel?: string
+	/** P2 (design/30): platform-neutral fix-commit-in-tree check (handler binds it to `git merge-base
+	 *  --is-ancestor` in the detected SDK's source tree). A backported fix → the CVE is excluded as "fix-present". */
+	fixCommitChecker?: (fixSha: string) => Promise<boolean | undefined>
 }
 
 export interface CveScanHostInput {
@@ -94,5 +97,6 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 		euvdFetcher: deps.euvdFetcher,
 		euvdProductFetcher: deps.euvdProductFetcher,
 		euvdProductLabel: deps.euvdProductLabel,
+		fixCommitChecker: deps.fixCommitChecker,
 	})
 }

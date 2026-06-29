@@ -71,7 +71,9 @@ function dropReasonCounts(skipped: SkippedComponent[]): Partial<Record<DropReaso
 function summarizeTriage(findings: ScanFinding[]): { total: number; notReachable: number; review: number } {
 	let notReachable = 0
 	for (const f of findings) {
-		if (f.applicability.signal === "not-linked" || f.applicability.signal === "config-gated-out") {
+		const s = f.applicability.signal
+		// Excluded by build evidence: gated-out, stripped (not-linked), OR patched in the tree (fix-present, P2).
+		if (s === "not-linked" || s === "config-gated-out" || s === "fix-present") {
 			notReachable++
 		}
 	}
@@ -109,8 +111,12 @@ function euvdBits(c: EuvdRecord): string {
 }
 
 function renderEuvdCandidates(input: EvidenceReportInput): string[] {
-	const cands = input.euvdCandidates ?? []
-	if (cands.length === 0) {
+	const all = input.euvdCandidates ?? []
+	// P2: a candidate whose upstream fix is already in the tree (fix-present) is patched — drop it from the "to
+	// verify" list (it stays in the JSON for the record). Note the count so the omission is transparent.
+	const patched = all.filter((c) => c.applicability?.signal === "fix-present").length
+	const cands = all.filter((c) => c.applicability?.signal !== "fix-present")
+	if (cands.length === 0 && patched === 0) {
 		return []
 	}
 	// design/28: a candidate the build evidence makes REACHABLE (a curated hint → config-present / linked) is the
@@ -151,6 +157,12 @@ function renderEuvdCandidates(input: EvidenceReportInput): string[] {
 	}
 	if (rest.length > shownRest.length) {
 		out.push(`- … +${rest.length - shownRest.length} more in the EU DB (open the EUVD for the full list).`)
+	}
+	if (patched > 0) {
+		out.push(
+			"",
+			`(${patched} further EUVD advisor${patched === 1 ? "y" : "ies"} — the upstream fix commit is present in your source tree, so very likely already covered — omitted here; see the JSON.)`,
+		)
 	}
 	return out
 }

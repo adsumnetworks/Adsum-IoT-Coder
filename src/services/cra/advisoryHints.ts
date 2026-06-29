@@ -58,6 +58,11 @@ export const ADVISORY_HINTS: Record<string, VerifiedAdvisoryHint> = {
 	// lead to an actionable "may be reachable; verify". gc-section can't strip it (BLE is the app's core function).
 	"CVE-2025-10456": {
 		gateSymbol: "CONFIG_BT_SMP",
+		// P2 (design/30): add `fixCommitSha` here once VERIFIED — the upstream fix is Zephyr PR 93576 /
+		// GHSA-hcc8-3qr7-c9m8 ("fixed in main for v4.2.0"). To curate: get the merged commit SHA from the GHSA/PR,
+		// then confirm with git in a real tree that it's `merge-base --is-ancestor` of a FIXED checkout and NOT of a
+		// vulnerable one. NOTE: NCS v3.2.1 is Zephyr 4.2.99 (post-4.2.0 dev) — it MAY already carry the fix, in which
+		// case the scan will (correctly) downgrade this to "fix-present / patched". Left unset until verified.
 		verifiedNote:
 			"Affects Zephyr BLE host fixed-channel (SMP/ATT) disconnect handling. Verified 2026-06-28 (NCS 3.2.1): " +
 			"CONFIG_BT_SMP=y in the central_uart prj.conf → the affected BLE host code is compiled. Config-present " +
@@ -71,6 +76,6 @@ export const resolveAdvisoryHint: HintResolver = (vulnId) => {
 	if (!hint) {
 		return undefined
 	}
-	// Strip the provenance field — the engine only consumes gateSymbol/codeSymbol.
-	return { gateSymbol: hint.gateSymbol, codeSymbol: hint.codeSymbol }
+	// Strip the provenance field — the engine consumes gateSymbol/codeSymbol + the P2 fixCommitSha.
+	return { gateSymbol: hint.gateSymbol, codeSymbol: hint.codeSymbol, fixCommitSha: hint.fixCommitSha }
 }
