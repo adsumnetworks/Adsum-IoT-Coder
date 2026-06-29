@@ -22,6 +22,13 @@ describe("classifyCraArtifactPath", () => {
 		assert.equal(classifyCraArtifactPath("/proj/compliance/cra-remediation.md"), "fix")
 	})
 
+	test("dated run-folder (design/29): compliance/cra-<date>/sbom + remediation still classify", () => {
+		assert.equal(classifyCraArtifactPath("/proj/compliance/cra-2026-06-29/sbom/all.spdx"), "sbom")
+		assert.equal(classifyCraArtifactPath("/proj/compliance/cra-2026-06-29/cra-remediation-2026-06-29.md"), "fix")
+		// the dated segment is optional — the flat layout still works (covered above), and a non-sbom md is null
+		assert.equal(classifyCraArtifactPath("/proj/compliance/cra-2026-06-29/CRA_READINESS.md"), null)
+	})
+
 	test("relative paths (apply_patch may pass these) → classified too", () => {
 		assert.equal(classifyCraArtifactPath("compliance/sbom/app.spdx"), "sbom")
 		assert.equal(classifyCraArtifactPath("compliance/cra-remediation-2026-06-23.md"), "fix")
