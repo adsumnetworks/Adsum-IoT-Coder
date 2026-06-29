@@ -1,0 +1,543 @@
+SPDXVersion: SPDX-2.3
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+DocumentName: modules-deps
+DocumentNamespace: http://spdx.org/spdxdocs/zephyr-8c4e3f12-608b-494d-849e-81edd36c08be/modules-deps
+Creator: Tool: Zephyr SPDX builder
+Created: 2026-06-29T11:04:29Z
+
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-nrf-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-hostap-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-mcuboot-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-mbedtls-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-oberon-psa-crypto-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-trusted-firmware-m-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-psa-arch-tests-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-cjson-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-azure-sdk-for-c-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-cirrus-logic-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-openthread-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-memfault-firmware-sdk-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-coremark-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-canopennode-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-chre-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-lz4-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-tf-m-tests-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-zscilib-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-cmsis-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-cmsis-dsp-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-cmsis-nn-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-cmsis-6-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-fatfs-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-hal-nordic-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-hal-st-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-hal-tdk-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-hal-wurthelektronik-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-liblc3-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-libmetal-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-littlefs-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-loramac-node-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-lvgl-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-mipi-sys-t-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-nanopb-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-nrf-wifi-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-open-amp-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-percepio-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-picolibc-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-segger-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-uoscore-uedhoc-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-zcbor-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-nrfxlib-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-nrf-hw-models-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-connectedhomeip-deps
+
+##### Package: nrf-deps
+
+PackageName: nrf-deps
+SPDXID: SPDXRef-nrf-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: hostap-deps
+
+PackageName: hostap-deps
+SPDXID: SPDXRef-hostap-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+ExternalRef: SECURITY cpe23Type cpe:2.3:a:w1.fi:hostapd:2.11:*:*:*:*:*:*:*
+ExternalRef: PACKAGE_MANAGER purl pkg:generic/hostap@hostap_2_11?vcs_url=git://w1.fi/hostap.git
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: mcuboot-deps
+
+PackageName: mcuboot-deps
+SPDXID: SPDXRef-mcuboot-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: mbedtls-deps
+
+PackageName: mbedtls-deps
+SPDXID: SPDXRef-mbedtls-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+ExternalRef: SECURITY cpe23Type cpe:2.3:a:arm:mbed_tls:3.6.5:*:*:*:*:*:*:*
+ExternalRef: PACKAGE_MANAGER purl pkg:github/Mbed-TLS/mbedtls@v3.6.5
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: oberon-psa-crypto-deps
+
+PackageName: oberon-psa-crypto-deps
+SPDXID: SPDXRef-oberon-psa-crypto-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: trusted-firmware-m-deps
+
+PackageName: trusted-firmware-m-deps
+SPDXID: SPDXRef-trusted-firmware-m-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+ExternalRef: SECURITY cpe23Type cpe:2.3:o:arm:trusted_firmware-m:2.2.0:-:*:*:*:*:*:*
+ExternalRef: PACKAGE_MANAGER purl pkg:generic/trusted-firmware-m@TF-Mv2.2.0?vcs_url=git%2Bhttps://review.trustedfirmware.org/TF-M/trusted-firmware-m
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: psa-arch-tests-deps
+
+PackageName: psa-arch-tests-deps
+SPDXID: SPDXRef-psa-arch-tests-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: cjson-deps
+
+PackageName: cjson-deps
+SPDXID: SPDXRef-cjson-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: azure-sdk-for-c-deps
+
+PackageName: azure-sdk-for-c-deps
+SPDXID: SPDXRef-azure-sdk-for-c-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: cirrus-logic-deps
+
+PackageName: cirrus-logic-deps
+SPDXID: SPDXRef-cirrus-logic-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: openthread-deps
+
+PackageName: openthread-deps
+SPDXID: SPDXRef-openthread-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: memfault-firmware-sdk-deps
+
+PackageName: memfault-firmware-sdk-deps
+SPDXID: SPDXRef-memfault-firmware-sdk-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: coremark-deps
+
+PackageName: coremark-deps
+SPDXID: SPDXRef-coremark-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: canopennode-deps
+
+PackageName: canopennode-deps
+SPDXID: SPDXRef-canopennode-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: chre-deps
+
+PackageName: chre-deps
+SPDXID: SPDXRef-chre-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: lz4-deps
+
+PackageName: lz4-deps
+SPDXID: SPDXRef-lz4-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: tf-m-tests-deps
+
+PackageName: tf-m-tests-deps
+SPDXID: SPDXRef-tf-m-tests-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: zscilib-deps
+
+PackageName: zscilib-deps
+SPDXID: SPDXRef-zscilib-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: cmsis-deps
+
+PackageName: cmsis-deps
+SPDXID: SPDXRef-cmsis-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: cmsis-dsp-deps
+
+PackageName: cmsis-dsp-deps
+SPDXID: SPDXRef-cmsis-dsp-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: cmsis-nn-deps
+
+PackageName: cmsis-nn-deps
+SPDXID: SPDXRef-cmsis-nn-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: cmsis-6-deps
+
+PackageName: cmsis-6-deps
+SPDXID: SPDXRef-cmsis-6-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: fatfs-deps
+
+PackageName: fatfs-deps
+SPDXID: SPDXRef-fatfs-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: hal-nordic-deps
+
+PackageName: hal-nordic-deps
+SPDXID: SPDXRef-hal-nordic-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: hal-st-deps
+
+PackageName: hal-st-deps
+SPDXID: SPDXRef-hal-st-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: hal-tdk-deps
+
+PackageName: hal-tdk-deps
+SPDXID: SPDXRef-hal-tdk-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: hal-wurthelektronik-deps
+
+PackageName: hal-wurthelektronik-deps
+SPDXID: SPDXRef-hal-wurthelektronik-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: liblc3-deps
+
+PackageName: liblc3-deps
+SPDXID: SPDXRef-liblc3-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: libmetal-deps
+
+PackageName: libmetal-deps
+SPDXID: SPDXRef-libmetal-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: littlefs-deps
+
+PackageName: littlefs-deps
+SPDXID: SPDXRef-littlefs-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: loramac-node-deps
+
+PackageName: loramac-node-deps
+SPDXID: SPDXRef-loramac-node-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: lvgl-deps
+
+PackageName: lvgl-deps
+SPDXID: SPDXRef-lvgl-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: mipi-sys-t-deps
+
+PackageName: mipi-sys-t-deps
+SPDXID: SPDXRef-mipi-sys-t-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: nanopb-deps
+
+PackageName: nanopb-deps
+SPDXID: SPDXRef-nanopb-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: nrf-wifi-deps
+
+PackageName: nrf-wifi-deps
+SPDXID: SPDXRef-nrf-wifi-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: open-amp-deps
+
+PackageName: open-amp-deps
+SPDXID: SPDXRef-open-amp-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: percepio-deps
+
+PackageName: percepio-deps
+SPDXID: SPDXRef-percepio-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: picolibc-deps
+
+PackageName: picolibc-deps
+SPDXID: SPDXRef-picolibc-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: segger-deps
+
+PackageName: segger-deps
+SPDXID: SPDXRef-segger-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: uoscore-uedhoc-deps
+
+PackageName: uoscore-uedhoc-deps
+SPDXID: SPDXRef-uoscore-uedhoc-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: zcbor-deps
+
+PackageName: zcbor-deps
+SPDXID: SPDXRef-zcbor-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: nrfxlib-deps
+
+PackageName: nrfxlib-deps
+SPDXID: SPDXRef-nrfxlib-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: nrf-hw-models-deps
+
+PackageName: nrf-hw-models-deps
+SPDXID: SPDXRef-nrf-hw-models-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: connectedhomeip-deps
+
+PackageName: connectedhomeip-deps
+SPDXID: SPDXRef-connectedhomeip-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+

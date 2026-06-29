@@ -13,6 +13,11 @@ interface DemoPickerProps {
 	 * no sample run yet) doesn't see "another".
 	 */
 	hasRunDemo?: boolean
+	/**
+	 * Scenario ids the user has already run at least once → those runnable rows show **"Re-run ▸"** instead of
+	 * "Run ▸", so it's clear they can be run again (not dead like a "soon" row).
+	 */
+	ranIds?: Set<string>
 }
 
 // Neutral surfaces for the demoted "rerun" state — quiet, no brand fill (the samples are no longer the hero).
@@ -30,7 +35,13 @@ const NEUTRAL_ICON_BG = "color-mix(in srgb, var(--vscode-foreground) 10%, transp
  * Rows are domain-agnostic: they read title / honestLabel / platform / icon straight off each scenario,
  * so adding a sample to DEMO_SCENARIOS surfaces it here with no change to this component.
  */
-const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, variant = "hero", hasRunDemo = false }) => {
+const DemoPicker: React.FC<DemoPickerProps> = ({
+	onStartDemo,
+	disabled = false,
+	variant = "hero",
+	hasRunDemo = false,
+	ranIds,
+}) => {
 	const isRerun = variant === "rerun"
 	const containerBorder = isRerun ? NEUTRAL_BORDER : BRAND_CYAN_600
 	const containerBg = isRerun ? "transparent" : brandSubtle(BRAND_CYAN_600, 5)
@@ -72,6 +83,16 @@ const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, 
 					// A placeholder ("coming soon") row is disabled like the global disabled state, so it can't be
 					// clicked into a dead end until its owner wires the real demo path.
 					const rowDisabled = disabled || !!s.comingSoon
+					// Rule (operator): a NEW + runnable sample card carries the cyan contour (the "New" badge and the
+					// contour go together) — the flagship stays the focal point in BOTH reduced views (project-open
+					// and no-project), identically. "soon" roadmap rows stay as-is (neutral, dimmed) even when New.
+					const featured = isRerun && !!s.isNew && !s.comingSoon
+					const restBorder = featured ? BRAND_CYAN_600 : NEUTRAL_BORDER
+					// Three opacity tiers in the reduced picker: runnable (featured OR not) = 80% (clearly active),
+					// "soon" = 50% (dimmed). The hero variant stays full-opacity for runnable rows.
+					const rowOpacity = rowDisabled ? 0.5 : isRerun ? 0.8 : 1
+					// A runnable row the user already ran reads "Re-run ▸" so it's clearly repeatable, not dead.
+					const runLabel = s.comingSoon ? "soon" : ranIds?.has(s.id) ? "Re-run ▸" : "Run ▸"
 					return (
 						<button
 							data-testid={`demo-scenario-${s.id}`}
@@ -89,7 +110,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, 
 								}
 							}}
 							onMouseLeave={(e) => {
-								e.currentTarget.style.borderColor = NEUTRAL_BORDER
+								e.currentTarget.style.borderColor = restBorder
 								e.currentTarget.style.background = "var(--vscode-input-background)"
 							}}
 							style={{
@@ -99,10 +120,10 @@ const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, 
 								gap: "12px",
 								padding: isRerun ? "8px 10px" : "10px 12px",
 								background: "var(--vscode-input-background)",
-								border: `1px solid ${NEUTRAL_BORDER}`,
+								border: `1px solid ${restBorder}`,
 								borderRadius: "8px",
 								cursor: rowDisabled ? "default" : "pointer",
-								opacity: rowDisabled ? 0.5 : 1,
+								opacity: rowOpacity,
 								textAlign: "left",
 								transition: "background 0.15s, border-color 0.15s",
 							}}
@@ -113,11 +134,11 @@ const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, 
 									width: isRerun ? "26px" : "32px",
 									height: isRerun ? "26px" : "32px",
 									borderRadius: "50%",
-									background: isRerun ? NEUTRAL_ICON_BG : BRAND_CYAN_700,
+									background: featured || !isRerun ? BRAND_CYAN_700 : NEUTRAL_ICON_BG,
 									display: "flex",
 									alignItems: "center",
 									justifyContent: "center",
-									color: isRerun ? "var(--vscode-descriptionForeground)" : "#fff",
+									color: featured || !isRerun ? "#fff" : "var(--vscode-descriptionForeground)",
 								}}>
 								<i className={`codicon codicon-${s.icon}`} style={{ fontSize: isRerun ? "13px" : "15px" }} />
 							</div>
@@ -184,7 +205,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({ onStartDemo, disabled = false, 
 									fontWeight: 600,
 									color: rowDisabled ? "var(--vscode-descriptionForeground)" : BRAND_CYAN_600,
 								}}>
-								{s.comingSoon ? "soon" : "Run ▸"}
+								{runLabel}
 							</span>
 						</button>
 					)

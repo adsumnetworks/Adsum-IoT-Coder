@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { DEFAULT_DEMO_SCENARIO_ID, DEMO_HISTORY_MATCH, DEMO_SCENARIO_LIST, DEMO_SCENARIOS, hasRunDemo } from "../demoScenarios"
+import {
+	DEFAULT_DEMO_SCENARIO_ID,
+	DEMO_HISTORY_MATCH,
+	DEMO_SCENARIO_LIST,
+	DEMO_SCENARIOS,
+	hasRunDemo,
+	ranScenarioIds,
+} from "../demoScenarios"
 
 describe("demoScenarios registry", () => {
 	it("default scenario id resolves to a scenario", () => {
@@ -67,7 +74,7 @@ describe("hasRunDemo — persistent demo-seen detection", () => {
 
 	it("true when an entry matches the cra-sample prefix (any registered scenario counts)", () => {
 		const craItem = {
-			task: "Preview CRA readiness on a bundled sample — a real SBOM + secure-by-design posture, not your build.",
+			task: "Run CRA SBOM & Fix on a pre-built reference sample — a REAL SBOM + a live CVE scan, not your build.",
 		}
 		expect(hasRunDemo([otherItem, craItem])).toBe(true)
 	})
@@ -78,5 +85,22 @@ describe("hasRunDemo — persistent demo-seen detection", () => {
 
 	it("tolerates entries with empty task text", () => {
 		expect(hasRunDemo([{ task: "" }])).toBe(false)
+	})
+})
+
+describe("ranScenarioIds — per-scenario run detection (drives the Re-run label)", () => {
+	it("returns the ids of scenarios whose history prefix matched", () => {
+		const ran = ranScenarioIds([
+			{ task: "Debug a real BLE NUS bug — Central→Peripheral works…" },
+			{ task: "Run CRA SBOM & Fix on a pre-built reference sample — a REAL SBOM…" },
+		])
+		expect(ran.has("nus-uart")).toBe(true)
+		expect(ran.has("cra-sample")).toBe(true)
+		expect(ran.has("hci-sniffer")).toBe(false)
+	})
+
+	it("empty/undefined history → empty set", () => {
+		expect(ranScenarioIds(undefined).size).toBe(0)
+		expect(ranScenarioIds([]).size).toBe(0)
 	})
 })

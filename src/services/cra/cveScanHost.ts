@@ -15,6 +15,9 @@
 import type { BuildEvidenceReaders } from "./buildEvidence"
 import { readBuildEvidence } from "./buildEvidence"
 import type { ModuleVersionResolver } from "./componentPurlMap"
+import type { EuvdFetcher, EuvdRecord } from "./euvdFetcher"
+import type { ModuleRefsResolver } from "./moduleSecurityRefs"
+import type { NvdFetcher } from "./nvdMatch"
 import type { OsvVulnFetcher } from "./osvEnrich"
 import type { OsvFetcher } from "./osvMatch"
 import type { HintResolver } from "./scanLoop"
@@ -34,6 +37,27 @@ export interface CveScanHostDeps {
 	vulnFetcher?: OsvVulnFetcher
 	/** Optional NCS-module version source; when provided, the curated PURL map fills missing PURLs (§5). */
 	resolveModuleVersion?: ModuleVersionResolver
+	/** Optional zephyr/module.yml security-refs lookup (F5); fills CPE/PURL the SBOM tool didn't emit. */
+	resolveModuleRefs?: ModuleRefsResolver
+	/** Optional platform-core semver resolver (zephyr/VERSION → "4.2.99"); enables curated-CPE detection of the
+	 *  cores (Zephyr/MCUboot) the SBOM tool omits. Must be a semver, not the git SHA. */
+	resolveCoreVersion?: ModuleVersionResolver
+	/** Optional CPE→NVD fetcher (F11); when provided, CPE-bearing components are also scanned against NVD. */
+	nvdFetcher?: NvdFetcher
+	/** EUVD confirmation fetcher — the CRA's named database, a CORE source (the `?` is a test seam; production wires
+	 *  it unconditionally). Matched CVEs are confirmed against the EU Vulnerability Database → EUVD id + EPSS + KEV.
+	 *  Per-id failures degrade. */
+	euvdFetcher?: EuvdFetcher
+	/** EUVD discover-by-product source for the detected SDK (the CRA-authoritative catch for CVEs NVD's CPE misses).
+	 *  Surfaced as hedged "version not auto-confirmed" candidates. Core; production wires it per detected platform. */
+	euvdProductFetcher?: () => Promise<EuvdRecord[]>
+	/** Label for the discover-by-product set, e.g. "zephyr 4.2.99". */
+	euvdProductLabel?: string
+	/** P2 (design/30): platform-neutral fix-commit-in-tree check (handler binds it to `git merge-base
+	 *  --is-ancestor` in the detected SDK's source tree). A backported fix → the CVE is excluded as "fix-present". */
+	fixCommitChecker?: (fixSha: string) => Promise<boolean | undefined>
+	/** P2 auto-discovery (design/30): CVE → upstream fix-commit SHA from OSV's GIT range (when not curated). */
+	fixCommitResolver?: (cveId: string) => Promise<string | undefined>
 }
 
 export interface CveScanHostInput {
@@ -45,6 +69,8 @@ export interface CveScanHostInput {
 	buildDir?: string
 	dotConfigPath?: string
 	elfPath?: string
+	/** Pre-computed `nm` symbol-dump path (design/34 Sample bundle) — read as text, no `nm` run. */
+	symbolsPath?: string
 }
 
 export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostDeps): Promise<ScanLoopResult> {
@@ -52,12 +78,17 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 	if (spdxText === undefined) {
 		throw new Error(
 			input.sbomPath
-				? `Could not read the SBOM at ${input.sbomPath} — generate it first (the CRA SBOM step), then scan.`
-				: "No SBOM provided — generate an SBOM first (the CRA SBOM step), then scan.",
+				? `Could not read the SBOM at ${input.sbomPath} — generate an SBOM first, then scan.`
+				: "No SBOM provided — generate an SBOM first, then scan.",
 		)
 	}
 	const evidence = readBuildEvidence(
-		{ buildDir: input.buildDir, dotConfigPath: input.dotConfigPath, elfPath: input.elfPath },
+		{
+			buildDir: input.buildDir,
+			dotConfigPath: input.dotConfigPath,
+			elfPath: input.elfPath,
+			symbolsPath: input.symbolsPath,
+		},
 		deps.readers,
 	)
 	return runCveScan({
@@ -69,5 +100,13 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 		source: deps.source,
 		vulnFetcher: deps.vulnFetcher,
 		resolveModuleVersion: deps.resolveModuleVersion,
+		resolveModuleRefs: deps.resolveModuleRefs,
+		resolveCoreVersion: deps.resolveCoreVersion,
+		nvdFetcher: deps.nvdFetcher,
+		euvdFetcher: deps.euvdFetcher,
+		euvdProductFetcher: deps.euvdProductFetcher,
+		euvdProductLabel: deps.euvdProductLabel,
+		fixCommitChecker: deps.fixCommitChecker,
+		fixCommitResolver: deps.fixCommitResolver,
 	})
 }

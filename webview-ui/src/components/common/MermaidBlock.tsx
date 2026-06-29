@@ -81,17 +81,30 @@ interface MermaidBlockProps {
 }
 
 /**
- * Some models emit the whole diagram on a single line with literal "\n" (backslash-n)
- * escapes instead of real newlines; mermaid then fails to parse and we fall back to
- * showing the raw "\n" text. When the source has NO real newlines but DOES contain
- * literal "\n"/"\t" sequences, treat them as the intended line breaks. Multi-line
- * sources are left untouched (a real "\n" inside a node label stays intact).
+ * Some models emit the whole diagram on a single line — mermaid needs statement breaks, so it fails to parse and
+ * we fall back to showing the raw text. Two single-line shapes are recovered (multi-line sources are left
+ * untouched — a real "\n" inside a node label stays intact):
+ *  (a) literal "\n"/"\t" escapes instead of real newlines → treat them as the intended line breaks;
+ *  (b) a flat real-space line like `flowchart LR a-->b classDef done ...; classDef active ...` → re-introduce
+ *      the breaks mermaid needs: a newline after the graph direction, and each classDef/class/subgraph/style/
+ *      linkStyle/`;`-separated statement on its own line (the node chain `a-->b-->c` legitimately stays one line).
  */
 export function normalizeMermaidSource(src: string): string {
 	if (src.includes("\n")) {
 		return src
 	}
-	return src.replace(/\\n/g, "\n").replace(/\\t/g, "\t")
+	if (/\\n/.test(src)) {
+		return src.replace(/\\n/g, "\n").replace(/\\t/g, "\t")
+	}
+	const m = /^\s*(flowchart|graph)\s+(TB|TD|BT|RL|LR)\b\s*(.*)$/is.exec(src)
+	if (m) {
+		const body = m[3]
+			.replace(/\s+(classDef|class|subgraph|linkStyle|style|end)\b/g, "\n$1")
+			.replace(/;\s*/g, "\n")
+			.trim()
+		return `${m[1]} ${m[2]}\n${body}`
+	}
+	return src
 }
 
 export default function MermaidBlock({ code }: MermaidBlockProps) {
