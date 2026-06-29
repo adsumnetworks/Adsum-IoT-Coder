@@ -69,6 +69,8 @@ export interface CveScanHostInput {
 	buildDir?: string
 	dotConfigPath?: string
 	elfPath?: string
+	/** Pre-computed `nm` symbol-dump path (design/34 Sample bundle) — read as text, no `nm` run. */
+	symbolsPath?: string
 }
 
 export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostDeps): Promise<ScanLoopResult> {
@@ -81,7 +83,12 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 		)
 	}
 	const evidence = readBuildEvidence(
-		{ buildDir: input.buildDir, dotConfigPath: input.dotConfigPath, elfPath: input.elfPath },
+		{
+			buildDir: input.buildDir,
+			dotConfigPath: input.dotConfigPath,
+			elfPath: input.elfPath,
+			symbolsPath: input.symbolsPath,
+		},
 		deps.readers,
 	)
 	return runCveScan({

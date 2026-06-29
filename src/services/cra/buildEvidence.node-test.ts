@@ -41,10 +41,49 @@ test("no build (nothing readable) → undefined evidence, never a throw (honest 
 
 test("nm failure (wrong arch / missing tool) → symbols undefined, .config still read", () => {
 	const readers: BuildEvidenceReaders = {
-		readText: () => "CONFIG_BT=y\n",
+		// path-specific: only the .config is readable; no pre-computed symbols.nm exists → the dump candidate misses
+		// and we fall through to nm (which fails here).
+		readText: (p) => (/\.config$/.test(p) ? "CONFIG_BT=y\n" : undefined),
 		nm: () => undefined, // simulates execFileSync throwing / empty output
 	}
 	const ev = readBuildEvidence({ buildDir: "build" }, readers)
 	assert.match(ev.dotConfig ?? "", /CONFIG_BT=y/)
 	assert.equal(ev.symbols, undefined)
+})
+
+test("design/34 Sample bundle: a pre-computed zephyr/symbols.nm is read as symbols — nm is NEVER run", () => {
+	let nmCalled = false
+	const readers: BuildEvidenceReaders = {
+		readText: (p) =>
+			({ "build/zephyr/.config": "CONFIG_BT=y\n", "build/zephyr/symbols.nm": "0001 T bt_conn_le_create" })[
+				p.replace(/\\/g, "/")
+			],
+		nm: () => {
+			nmCalled = true
+			return "SHOULD-NOT-BE-USED"
+		},
+	}
+	const ev = readBuildEvidence({ buildDir: "build" }, readers)
+	assert.match(ev.symbols ?? "", /bt_conn_le_create/)
+	assert.equal(nmCalled, false, "nm must not run when a pre-computed symbols.nm exists")
+})
+
+test("design/34: explicit symbolsPath overrides everything (no nm, no ELF needed)", () => {
+	const readers: BuildEvidenceReaders = {
+		readText: (p) => (p === "/bundle/symbols.nm" ? "0002 T mbedtls_x509_crt_parse" : undefined),
+		nm: () => {
+			throw new Error("nm must not be called")
+		},
+	}
+	const ev = readBuildEvidence({ symbolsPath: "/bundle/symbols.nm" }, readers)
+	assert.match(ev.symbols ?? "", /mbedtls_x509_crt_parse/)
+})
+
+test("design/34: a real build with NO symbols.nm still runs nm on the ELF (unchanged path)", () => {
+	const readers = readersFrom(
+		{ "build/zephyr/.config": "CONFIG_BT=y\n" }, // no symbols.nm present
+		{ "build/zephyr/zephyr.elf": "0003 T bt_le_scan_start" },
+	)
+	const ev = readBuildEvidence({ buildDir: "build" }, readers)
+	assert.match(ev.symbols ?? "", /bt_le_scan_start/)
 })
