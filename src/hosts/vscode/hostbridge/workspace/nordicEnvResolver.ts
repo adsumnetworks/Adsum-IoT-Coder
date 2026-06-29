@@ -49,6 +49,26 @@ export function toNcsVersionFlag(version: string): string {
 	return n ? `v${n}` : version
 }
 
+/**
+ * Compare two normalized NCS versions ("X.Y.Z") for DESCENDING order (newest first). Used to present the
+ * ambiguous list newest-first so "use the latest SDK" is the obvious top choice — WITHOUT auto-picking (silently
+ * choosing newest could build against an SDK the project doesn't target; the user/persisted/pin still decides).
+ * Unparseable parts compare as 0 (stable), never throw.
+ */
+export function compareNcsVersionsDesc(a: string, b: string): number {
+	const parse = (v: string) => v.split(".").map((n) => Number.parseInt(n, 10))
+	const pa = parse(a)
+	const pb = parse(b)
+	for (let i = 0; i < 3; i++) {
+		const da = Number.isFinite(pa[i]) ? pa[i] : 0
+		const db = Number.isFinite(pb[i]) ? pb[i] : 0
+		if (da !== db) {
+			return db - da
+		}
+	}
+	return 0
+}
+
 export type NcsSelection = { kind: "resolved"; version: string } | { kind: "ambiguous"; versions: string[] } | { kind: "none" }
 
 /**
@@ -94,7 +114,8 @@ export function selectNcsInstall(
 
 	// 5/6. Several installed and nothing decided → ask; none installed → none.
 	if (installedNorm.length === 0) return { kind: "none" }
-	return { kind: "ambiguous", versions: installedNorm }
+	// Present newest-first so "use the latest SDK" is the obvious top choice (we still ASK — no silent auto-pick).
+	return { kind: "ambiguous", versions: [...installedNorm].sort(compareNcsVersionsDesc) }
 }
 
 /**

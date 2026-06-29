@@ -28,6 +28,7 @@ import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import {
 	buildEspShellCommand,
 	detectShell,
+	eimActivateScript,
 	enumerateIdfInstalls,
 	idfAmbiguousMessage,
 	idfNotFoundMessage,
@@ -207,5 +208,8 @@ export function wrapEspCommand(
 		return { error: idfNotFoundMessage(platform) }
 	}
 	const shell = detectShell(vscode.env.shell || "", platform)
-	return { command: buildEspShellCommand({ platform, shell, needsSourcing: true, body, idfPath }) }
+	// EIM installs (~/.espressif/v<ver>/esp-idf) activate via their generated script, NOT the in-tree export.sh
+	// (which fails: "virtual environment not found"). Use it when present; classic installs fall back to export.sh.
+	const activateScript = eimActivateScript(platform, idfPath, shell, fs.existsSync)
+	return { command: buildEspShellCommand({ platform, shell, needsSourcing: true, body, idfPath, activateScript }) }
 }

@@ -1,0 +1,16 @@
+{
+	"platform": "nrf",
+	"sample": "central_uart",
+	"board": "nrf52840dk/nrf52840",
+	"sdk": "NCS 3.2.1 / Zephyr 4.2.99",
+	"sbomTool": "west spdx (SPDX 2.3)",
+	"capturedDate": "2026-06-29",
+	"note": "Pre-built REFERENCE artifacts for the CRA Sample run — a real west spdx build of the bundled central_uart sample. The Sample run scans these without building, then offers the user the live run on their own project. This is a reference sample, NOT the user's build.",
+	"files": {
+		"sbom": "sbom/all.spdx",
+		"sbomCpeBearing": "sbom/modules-deps.spdx",
+		"mergedConfig": "zephyr/.config",
+		"versionHeader": "zephyr/include/generated/zephyr/version.h",
+		"symbols": "zephyr/symbols.nm"
+	}
+}

@@ -46,23 +46,42 @@ test("cve-scan: a bare result with no coverage / no hedge → multiple primitive
 	assert.ok(missing.includes("hedged"))
 })
 
-// ── cra-readiness profile (the fix-D omission) ───────────────────────────────────────────────────────────────
-test("cra-readiness: a report WITH the disclaimer + hedge + date is structurally honest", () => {
-	const report = `# CRA Readiness aid — NOT a conformity assessment
+// ── cra-readiness profile (the fix-D omission + the 2906i parity header) ──────────────────────────────────────
+// The header primitives every readiness report must carry: canonical H1, at-a-glance counts, Adsum attribution
+// (parity, 2906i — a real ESP run shipped a report that dropped all three but kept the disclaimer).
+const CRA_HEADER =
+	"# CRA SBOM & Fix — my_app\n" +
+	"> Generated: 2026-06-25 by Adsum IoT Coder (CRA SBOM & Fix)\n" +
+	"> **At a glance** — 2 components · 0 CVEs · 0 not reachable · 0 gaps.\n"
 
-Posture (as of 2026-06-25): CONFIG_X is enabled in your build — verify against the requirement.`
+test("cra-readiness: a canonical report (header + disclaimer + hedge + date) is structurally honest", () => {
+	const report =
+		`${CRA_HEADER}Readiness aid — NOT a conformity assessment.\n\n` +
+		"Posture (as of 2026-06-25): CONFIG_X is enabled in your build — verify against the requirement."
 	assert.equal(hasHonestStructure(report, "cra-readiness"), true)
 })
 
 test("FIX-D: a report that DROPS the disclaimer is caught by structureScan even when verdict-clean", () => {
 	// No banned verdict word → verdictScan passes; but the mandatory disclaimer is gone → structureScan fails.
-	const noDisclaimer = `# CRA Readiness Assessment
-
-Posture (as of 2026-06-25): MCUboot is configured — verify on your build.`
+	// Canonical header otherwise, so the ONLY missing primitive is the disclaimer (keeps the assertion precise).
+	const noDisclaimer = `${CRA_HEADER}\nPosture (as of 2026-06-25): MCUboot is configured — verify on your build.`
 	assert.equal(isVerdictClean(noDisclaimer), true, "precondition: no banned verdict present")
 	const missing = scanForMissingStructure(noDisclaimer, "cra-readiness").map((m) => m.id)
 	assert.deepEqual(missing, ["readiness-disclaimer"])
 	assert.equal(hasHonestStructure(noDisclaimer, "cra-readiness"), false)
+})
+
+test("parity (2906i): a RETITLED report with no at-a-glance / no attribution is caught even WITH the disclaimer", () => {
+	// The exact ESP-2906i shape — disclaimer + hedge + date all present (old checks passed), but the H1 was renamed
+	// and the at-a-glance + attribution were dropped, so it diverged from every nRF report.
+	const espShape =
+		"# Bluedroid_Beacon — CRA Secure-by-Design Preview\nReadiness aid — NOT a conformity assessment.\n\n" +
+		"Posture (as of 2026-06-29): CONFIG_SECURE_BOOT is not set — verify if you intend hardware secure boot."
+	const missing = scanForMissingStructure(espShape, "cra-readiness").map((m) => m.id)
+	assert.ok(missing.includes("canonical-title"), `expected canonical-title, got ${missing.join(",")}`)
+	assert.ok(missing.includes("at-a-glance"), `expected at-a-glance, got ${missing.join(",")}`)
+	assert.ok(missing.includes("attribution"), `expected attribution, got ${missing.join(",")}`)
+	assert.ok(!missing.includes("readiness-disclaimer"), "disclaimer present → not flagged")
 })
 
 test("cra-readiness: missing hedge + date both flagged", () => {

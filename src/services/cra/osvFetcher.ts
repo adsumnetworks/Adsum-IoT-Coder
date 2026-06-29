@@ -24,21 +24,32 @@ export type HttpPost = (url: string, body: string) => Promise<string>
 /** Injected transport: GET a URL, return the response text. Throws on a non-2xx / transport error. */
 export type HttpGet = (url: string) => Promise<string>
 
-const defaultHttpPost: HttpPost = async (url, body) => {
-	const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body })
+/** Per-request deadline: a hung OSV/NVD socket must NOT hang the whole scan (observed appearing "stuck"
+ *  forever on a slow network). On timeout we THROW → the caller surfaces "scan unavailable", never a false-clean. */
+const HTTP_TIMEOUT_MS = 25_000
+
+async function fetchText(url: string, init: RequestInit | undefined, what: string): Promise<string> {
+	let res: Response
+	try {
+		res = await fetch(url, { ...init, signal: AbortSignal.timeout(HTTP_TIMEOUT_MS) })
+	} catch (e) {
+		if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
+			throw new Error(
+				`${what} timed out after ${HTTP_TIMEOUT_MS / 1000}s (network slow or unreachable) — scan unavailable, not a clean result`,
+			)
+		}
+		throw new Error(`${what} failed: ${e instanceof Error ? e.message : String(e)}`)
+	}
 	if (!res.ok) {
-		throw new Error(`OSV query failed: HTTP ${res.status} ${res.statusText}`)
+		throw new Error(`${what} failed: HTTP ${res.status} ${res.statusText}`)
 	}
 	return await res.text()
 }
 
-const defaultHttpGet: HttpGet = async (url) => {
-	const res = await fetch(url)
-	if (!res.ok) {
-		throw new Error(`OSV vuln fetch failed: HTTP ${res.status} ${res.statusText}`)
-	}
-	return await res.text()
-}
+const defaultHttpPost: HttpPost = (url, body) =>
+	fetchText(url, { method: "POST", headers: { "content-type": "application/json" }, body }, "OSV query")
+
+const defaultHttpGet: HttpGet = (url) => fetchText(url, undefined, "OSV vuln fetch")
 
 /** Build an `OsvVulnFetcher` that GETs a single vuln record by id (for severity/range enrichment). */
 export function makeOsvVulnFetcher(httpGet: HttpGet = defaultHttpGet): OsvVulnFetcher {

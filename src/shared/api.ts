@@ -47,12 +47,17 @@ export type ApiProvider =
 
 export const DEFAULT_API_PROVIDER = "openrouter" as ApiProvider
 
-// Adsum free-tier model. The real model is chosen server-side; the client only
-// ever references the logical "free-default" id.
+// Adsum free-tier model — the SINGLE source of truth for the free model's info. The real model is chosen
+// server-side; the client only ever references the logical "free-default" id. Used by BOTH the webview (provider
+// picker + the task-header context chip, via providerUtils → selectedModelInfo) AND the host provider
+// (src/core/api/providers/adsum-free.ts re-exports ADSUM_FREE_MODEL_INFO from here). `contextWindow` drives the
+// REAL budget — getContextWindowInfo → ContextManager truncation/compaction. Upstream is DeepSeek V4 Pro (1M);
+// 200K gives real-firmware headroom (a CRA run on a big project peaked ~78% of 128K); raise toward 1M if needed.
 export const adsumFreeModels = {
 	"free-default": {
+		name: "Adsum Free Tier",
 		maxTokens: 8192,
-		contextWindow: 128_000,
+		contextWindow: 200_000,
 		supportsImages: false,
 		supportsPromptCache: true,
 		inputPrice: 0,

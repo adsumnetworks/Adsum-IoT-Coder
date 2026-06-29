@@ -38,6 +38,8 @@ export interface SbomComponent {
 	dropReason?: DropReason | null
 	/** Provenance of `purl`: "tool" = emitted by the SBOM tool; "curated" = filled by the curated map. */
 	purlSource?: "tool" | "curated"
+	/** Provenance of `cpe`: "tool" = emitted by the SBOM tool; "curated" = filled by the curated CPE map (cores). */
+	cpeSource?: "tool" | "curated"
 }
 
 export interface SbomCoverage {
