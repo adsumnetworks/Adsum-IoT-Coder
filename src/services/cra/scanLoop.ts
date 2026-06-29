@@ -91,6 +91,11 @@ export interface ScanLoopInput {
 	 * Run once per unique SHA. Omitted → no fix-commit resolution (behaviour unchanged).
 	 */
 	fixCommitChecker?: (fixSha: string) => Promise<boolean | undefined>
+	/**
+	 * P2 auto-discovery (design/30): resolve a CVE → its upstream fix-commit SHA when no curated SHA exists (OSV's
+	 * GIT range). Bounded to the matched findings. API-resilient: returns undefined on any failure (→ hedge).
+	 */
+	fixCommitResolver?: (cveId: string) => Promise<string | undefined>
 }
 
 export interface ScanLoopResult {
@@ -165,33 +170,45 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	const euvdComp: SbomComponent = { name: (input.euvdProductLabel ?? "core").split(" ")[0], version: "" }
 	const euvdRaw = euvdProduct.filter((c) => !matchedIds.has(c.cveId.toUpperCase()))
 
-	// P2 (design/30): pre-compute "is the upstream fix commit in the dev's source tree?" ONCE per unique SHA (a git
-	// merge-base check, injected + cached). A forked SDK can backport a fix without bumping the version → fix-present
-	// means patched. Runs for both matched findings AND EUVD candidates. No checker / no hint SHA → undefined (hedge).
+	// P2 (design/30): resolve each CVE's upstream fix-commit SHA, then ask git whether it's in the dev's tree.
+	// SHA source: curated `advisoryHints.fixCommitSha` (verified) wins; else AUTO from OSV's GIT range
+	// (`fixCommitResolver`, design/30) — bounded to the matched findings to cap OSV calls (the long EUVD-candidate
+	// tail + Zephyr repo-GHSAs aren't in OSV anyway). Both the resolver and the checker are API-resilient: any
+	// failure → undefined → the engine hedges, never a false "patched"/"vulnerable".
+	const fixShaByCve = new Map<string, string>()
+	const addSha = (id: string, sha: string | undefined) => {
+		const k = id.toUpperCase()
+		if (sha && !fixShaByCve.has(k)) fixShaByCve.set(k, sha)
+	}
+	for (const p of matchPairs) {
+		const curated = resolve(p.id, p.component)?.fixCommitSha
+		addSha(p.id, curated ?? (input.fixCommitResolver ? await input.fixCommitResolver(p.id) : undefined))
+	}
+	for (const c of euvdRaw) {
+		addSha(c.cveId, resolve(c.cveId, euvdComp)?.fixCommitSha) // candidates: curated SHA only (no auto-fetch on the tail)
+	}
 	const fixPresentBySha = new Map<string, boolean | undefined>()
 	if (input.fixCommitChecker) {
-		const shas = new Set<string>()
-		for (const p of matchPairs) {
-			const s = resolve(p.id, p.component)?.fixCommitSha
-			if (s) shas.add(s)
-		}
-		for (const c of euvdRaw) {
-			const s = resolve(c.cveId, euvdComp)?.fixCommitSha
-			if (s) shas.add(s)
-		}
-		for (const sha of shas) {
+		for (const sha of new Set(fixShaByCve.values())) {
 			fixPresentBySha.set(sha, await input.fixCommitChecker(sha))
 		}
 	}
-	const fixPresentFor = (hint: ApplicabilityHint | undefined) =>
-		hint?.fixCommitSha ? fixPresentBySha.get(hint.fixCommitSha) : undefined
+	// Graft the resolved SHA onto the hint (so the note shows it + fix-present is looked up), and the per-CVE result.
+	const effHint = (id: string, hint: ApplicabilityHint | undefined): ApplicabilityHint | undefined => {
+		const sha = fixShaByCve.get(id.toUpperCase())
+		return sha ? { ...hint, fixCommitSha: sha } : hint
+	}
+	const fixPresentForCve = (id: string) => {
+		const sha = fixShaByCve.get(id.toUpperCase())
+		return sha ? fixPresentBySha.get(sha) : undefined
+	}
 
 	// ONE finding per (component, vulnId), each assessed (incl. the P2 fix-present check).
 	const findings: ScanFinding[] = matchPairs.map((p) => {
-		const hint = resolve(p.id, p.component)
+		const hint = effHint(p.id, resolve(p.id, p.component))
 		return {
 			match: { component: p.component, vulnIds: [p.id] },
-			applicability: assessApplicability(hint, input.evidence, fixPresentFor(hint)),
+			applicability: assessApplicability(hint, input.evidence, fixPresentForCve(p.id)),
 		}
 	})
 
@@ -222,8 +239,8 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	// curated hint (design/28: a reachable lead like CVE-2025-10456 is promoted out of the buried list) PLUS the P2
 	// fix-present check (a backported-fixed lead is downgraded to patched).
 	const euvdCandidates = euvdRaw.map((c) => {
-		const hint = resolve(c.cveId, euvdComp)
-		return { ...c, applicability: assessApplicability(hint, input.evidence, fixPresentFor(hint)) }
+		const hint = effHint(c.cveId, resolve(c.cveId, euvdComp))
+		return { ...c, applicability: assessApplicability(hint, input.evidence, fixPresentForCve(c.cveId)) }
 	})
 
 	// T3 (design/25): a non-empty SBOM that normalized to 0 components is almost always the WRONG file (not SPDX,
