@@ -18,7 +18,11 @@ export const ADSUM_FREE_MODEL_ID = "free-default"
 export const ADSUM_FREE_MODEL_INFO: ModelInfo = {
 	name: "Adsum Free Tier",
 	maxTokens: 8192,
-	contextWindow: 128_000,
+	// Upstream FREE_MODEL is DeepSeek V4 Pro (1M context) via the Adsum backend, so the real ceiling is far
+	// higher than this number — this is just the client-side budget the extension manages context against
+	// (the context bar + when auto-compact fires). Set to 200K for real-firmware headroom (a CRA run on a big
+	// project peaked ~78% of 128K). Can be raised further toward the upstream 1M if needed.
+	contextWindow: 200_000,
 	supportsImages: false,
 	supportsPromptCache: true,
 	cacheReadsPrice: 0,
