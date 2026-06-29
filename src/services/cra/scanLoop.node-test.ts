@@ -377,12 +377,14 @@ test("design/28 Part A: a reachable EUVD candidate (CVE-2025-10456, CONFIG_BT_SM
 	}
 	const r = await runCveScan({
 		spdxText: SPDX,
-		evidence: { dotConfig: "CONFIG_BT_SMP=y\n" }, // build evidence: SMP enabled → the hint fires
+		// build evidence: BLE enabled (CONFIG_BT gates the l2cap.c bug) on a PRE-fix Zephyr → the hint fires as
+		// config-present. (On 4.2.99 it would instead be version-fixed — see the next test.)
+		evidence: { dotConfig: "CONFIG_BT=y\nCONFIG_BT_SMP=y\n" },
 		asOf: "2026-06-28",
 		fetcher: noVulnFetcher,
 		resolveHint: resolveAdvisoryHint,
 		euvdProductFetcher: async () => [...dummies, hero],
-		euvdProductLabel: "zephyr 4.2.99",
+		euvdProductLabel: "zephyr 4.1.0",
 	})
 	const section = r.report.split("Additional EU")[1] ?? ""
 	assert.match(section, /Likely reachable in your build/)
@@ -395,6 +397,33 @@ test("design/28 Part A: a reachable EUVD candidate (CVE-2025-10456, CONFIG_BT_SM
 	// JSON carries the applicability signal on the candidate
 	const cand = JSON.parse(r.json).euvdCandidates.find((c: { id: string }) => c.id === "CVE-2025-10456")
 	assert.equal(cand.applicability.signal, "config-present")
+})
+
+test("design/32: CVE-2025-10456 on Zephyr 4.2.99 (>= fix 4.2.0) → version-fixed, dropped from the verify-list", async () => {
+	const { resolveAdvisoryHint } = await import("./advisoryHints")
+	const hero = {
+		euvdId: "EUVD-2025-30238",
+		cveId: "CVE-2025-10456",
+		baseScore: 7.1,
+		epss: 0.2,
+		exploited: false,
+		references: [],
+	}
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: { dotConfig: "CONFIG_BT=y\nCONFIG_BT_SMP=y\n" }, // BLE on, but the build is PAST the fix
+		asOf: "2026-06-29",
+		fetcher: noVulnFetcher,
+		resolveHint: resolveAdvisoryHint,
+		euvdProductFetcher: async () => [hero],
+		euvdProductLabel: "zephyr 4.2.99",
+	})
+	// the candidate is patched-by-version → JSON records version-fixed, and it's NOT in the rendered verify-list.
+	const cand = JSON.parse(r.json).euvdCandidates.find((c: { id: string }) => c.id === "CVE-2025-10456")
+	assert.equal(cand.applicability.signal, "version-fixed")
+	const section = r.report.split("Additional EU")[1] ?? ""
+	assert.doesNotMatch(section, /Likely reachable in your build/)
+	assert.equal(isVerdictClean(r.report), true)
 })
 
 test("design/30 P2: a backported-fix CVE is downgraded to fix-present (patched) + excluded from to-review", async () => {

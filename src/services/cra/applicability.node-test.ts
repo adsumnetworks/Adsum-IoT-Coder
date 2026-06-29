@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { assessApplicability } from "./applicability"
+import { assessApplicability, semverGte } from "./applicability"
 
 test("config-gated-out: gating Kconfig '=n' → strong exclusion hint", () => {
 	const v = assessApplicability(
@@ -84,4 +84,32 @@ test("fix-present (design/30 P2): fix commit in tree → patched (beats config-p
 	assert.equal(assessApplicability(hint, cfg, false).signal, "config-present")
 	// not checked → fall through too (never claims fix-present without a positive check)
 	assert.equal(assessApplicability(hint, cfg, undefined).signal, "config-present")
+})
+
+test("design/32 version-fixed: build version at/past the fix → exclusion (very likely fixed; verify)", () => {
+	const hint = { gateSymbol: "CONFIG_BT", fixedInVersion: "4.2.0" }
+	// 4.2.99 >= 4.2.0 → version-fixed wins even though CONFIG_BT=y would otherwise be config-present.
+	const v = assessApplicability(hint, { dotConfig: "CONFIG_BT=y" }, undefined, "4.2.99")
+	assert.equal(v.signal, "version-fixed")
+	assert.match(v.note, /4\.2\.99.*4\.2\.0.*very likely already fixed; verify/)
+})
+
+test("design/32 version-fixed: build version BEFORE the fix → falls back to config-present (may be reachable)", () => {
+	const hint = { gateSymbol: "CONFIG_BT", fixedInVersion: "4.2.0" }
+	const v = assessApplicability(hint, { dotConfig: "CONFIG_BT=y" }, undefined, "4.1.0")
+	assert.equal(v.signal, "config-present")
+})
+
+test("design/32 version-fixed: no componentVersion → no false exclusion (stays config-present)", () => {
+	const hint = { gateSymbol: "CONFIG_BT", fixedInVersion: "4.2.0" }
+	assert.equal(assessApplicability(hint, { dotConfig: "CONFIG_BT=y" }, undefined, undefined).signal, "config-present")
+})
+
+test("design/32 semverGte: numeric major.minor.patch compare; unparseable → false (conservative)", () => {
+	assert.equal(semverGte("4.2.99", "4.2.0"), true)
+	assert.equal(semverGte("4.2.0", "4.2.0"), true)
+	assert.equal(semverGte("4.1.9", "4.2.0"), false)
+	assert.equal(semverGte("10.0.0", "9.9.9"), true)
+	assert.equal(semverGte("abc-dirty", "4.2.0"), false) // a git SHA must never read as "fixed"
+	assert.equal(semverGte("4.2.99", undefined), false)
 })

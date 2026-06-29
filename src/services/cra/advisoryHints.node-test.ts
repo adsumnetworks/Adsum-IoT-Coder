@@ -26,6 +26,12 @@ test("unknown CVE → undefined (engine reports 'unknown', never a fabricated ex
 	assert.equal(resolveAdvisoryHint("CVE-2024-99999", { name: "mbedtls", version: "3.5.0" }), undefined)
 })
 
+test("design/32: CVE-2025-10456 carries fixedInVersion 4.2.0 (GHSA: affected <= 4.1) — resolver passes it through", () => {
+	const h = resolveAdvisoryHint("CVE-2025-10456", { name: "zephyr", version: "4.2.99" })
+	assert.equal(h?.fixedInVersion, "4.2.0")
+	assert.equal(h?.gateSymbol, "CONFIG_BT") // bug is in l2cap.c (any BLE build), not specifically SMP
+})
+
 test("INVARIANT: every entry that IS added must carry a verifiedNote (auditable provenance)", () => {
 	for (const [id, hint] of Object.entries(ADVISORY_HINTS)) {
 		assert.ok(hint.verifiedNote && hint.verifiedNote.length > 0, `${id} added without a verifiedNote`)
