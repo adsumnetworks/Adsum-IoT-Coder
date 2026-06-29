@@ -3,6 +3,7 @@ import { afterEach, describe, it } from "mocha"
 import { tmpdir } from "os"
 import { join } from "path"
 import "should"
+import { dedupeEspDevicesByMac, type EspDevice, isMacShaped } from "@shared/esp"
 import {
 	ESP_FAMILY_VIDS,
 	filterEspPorts,
@@ -260,5 +261,36 @@ describe("EspEnvironmentDetector — pure helpers", () => {
 			mkdirSync(join(root, "main"), { recursive: true })
 			should(readProjectIdfVersionFromLock([root])).be.undefined()
 		})
+	})
+})
+
+// One physical board can expose two USB serial devices (UART bridge + native USB-JTAG) that share the chip's
+// base MAC. dedupeEspDevicesByMac folds them into one entry so the strip never shows a board twice (the real
+// macOS case: a C6 whose bridge resolved to "ESP32-C6" plus its native port as "model unknown").
+describe("EspEnvironmentDetector — dedupeEspDevicesByMac", () => {
+	it("isMacShaped: true only for a 6-octet MAC", () => {
+		isMacShaped("AC:EB:E6:0C:F8:C0").should.be.true()
+		isMacShaped("5B61094644").should.be.false() // a CH34x bridge serial, not a MAC
+		isMacShaped(undefined).should.be.false()
+	})
+
+	it("folds a board's bridge + native interfaces (same base MAC) into the resolved entry", () => {
+		const bridge: EspDevice = { port: "/dev/cu.bridge", vid: 0x1a86, chip: "ESP32-C6", mac: "ac:eb:e6:0c:f8:c0" }
+		const native: EspDevice = {
+			port: "/dev/cu.native",
+			vid: 0x303a,
+			serialNumber: "AC:EB:E6:0C:F8:C0",
+			mac: "AC:EB:E6:0C:F8:C0",
+		}
+		const out = dedupeEspDevicesByMac([native, bridge]) // native first → bridge must still win (it has the chip)
+		out.length.should.equal(1)
+		out[0].chip!.should.equal("ESP32-C6")
+	})
+
+	it("keeps genuinely distinct boards (different MACs) and passes through devices with no MAC", () => {
+		const s3: EspDevice = { port: "/dev/cu.s3", vid: 0x1a86, chip: "ESP32-S3", mac: "11:22:33:44:55:66" }
+		const c6: EspDevice = { port: "/dev/cu.c6", vid: 0x1a86, chip: "ESP32-C6", mac: "aa:bb:cc:dd:ee:ff" }
+		const noMac: EspDevice = { port: "/dev/cu.unknown", vid: 0x10c4 } // unresolved bridge, no MAC → never hidden
+		dedupeEspDevicesByMac([s3, c6, noMac]).length.should.equal(3)
 	})
 })

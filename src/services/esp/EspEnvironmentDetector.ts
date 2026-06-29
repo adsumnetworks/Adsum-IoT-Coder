@@ -16,7 +16,7 @@
  * Extension info (present/version) is injected from extension.ts (vscode.extensions is banned here).
  */
 
-import type { EspDevice, EspEnvironment } from "@shared/esp"
+import { dedupeEspDevicesByMac, type EspDevice, type EspEnvironment, isMacShaped } from "@shared/esp"
 import { exec } from "child_process"
 import { existsSync, readdirSync, readFileSync } from "fs"
 import { join } from "path"
@@ -342,6 +342,7 @@ async function resolveEspChips(devices: EspDevice[]): Promise<void> {
 			if (cached) {
 				d.chip = cached.chip
 				d.chipRevision = cached.chipRevision
+				d.mac = cached.mac
 				return
 			}
 			const result = await probeChip(idfPython, d.port)
@@ -349,6 +350,7 @@ async function resolveEspChips(devices: EspDevice[]): Promise<void> {
 				_chipCache.set(key, result)
 				d.chip = result.chip
 				d.chipRevision = result.chipRevision
+				d.mac = result.mac
 			} else {
 				console.info(
 					`[esp-detect] esptool found no chip on ${d.port} — staying unresolved (port busy? board not in download mode?)`,
@@ -404,9 +406,20 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 	// (mirrors the always-visible nRF strip — honest "not detected" beats showing nothing).
 	const projectDetected = classifyWorkspace(_workspaceRoots).apps.some((a) => a.platform === "esp")
 
-	const espDevices = await probeEspDevices().catch(() => [])
+	const rawDevices = await probeEspDevices().catch(() => [])
 	// Resolve the exact chip (S3/C6/…) via esptool — resets the board, cached per serial.
-	await resolveEspChips(espDevices).catch(() => {})
+	await resolveEspChips(rawDevices).catch(() => {})
+	// A native-USB port (VID 0x303a) reports the chip's base MAC as its USB serial — capture it passively so the
+	// dedupe below can fold a board's two USB interfaces (UART bridge + native USB-JTAG) into one entry.
+	for (const d of rawDevices) {
+		if (!d.mac && isMacShaped(d.serialNumber)) {
+			d.mac = d.serialNumber
+		}
+	}
+	// One physical board can expose two USB serial devices (bridge + native) that share the chip's base MAC.
+	// Collapse them so a board never shows twice (e.g. "ESP32-C6" + a phantom "ESP (model unknown)"). No-op for
+	// single-interface boards (the common case), so it can't regress the Windows/Linux behaviour.
+	const espDevices = dedupeEspDevicesByMac(rawDevices)
 
 	_cache = {
 		status: "ready",
