@@ -393,13 +393,16 @@ class MonitorRTTThread(threading.Thread):
     Channel 1 → raw BT Monitor frames → .btmon file (decoded by the Adsum viewer).
     """
 
-    def __init__(self, name: str, serial: str, final_file: str, btmon_file: str, device_type: str):
+    def __init__(self, name: str, serial: str, final_file: str, btmon_file: str, device_type: str, reset: bool = True):
         super().__init__(daemon=True)
         self.name = name
         self.serial = serial
         self.final_file = final_file
         self.btmon_file = btmon_file
         self.device_type = device_type
+        # Whether to reset the target as part of attaching. Done IN-SESSION via pylink (see run()),
+        # NOT by a blind external nrfutil/nrfjprog reset before attach — that ordering desyncs RTT.
+        self.reset = reset
         self.running = True
         self.line_count = 0
         self.btmon_bytes = 0
@@ -418,7 +421,14 @@ class MonitorRTTThread(threading.Thread):
             jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
             jlink.set_speed(4000)
             jlink.connect(self.device_type, verbose=False)
+            # Attach RTT BEFORE resetting so pylink tracks the control block THROUGH the reboot. The old
+            # order — reset the device (here, or via a blind external nrfutil reset), THEN rtt_start — makes
+            # control-block discovery race the boot sequence: it locks onto a stale CB and channel 1 (the BT
+            # Monitor stream) desyncs into ~1000 garbage frames. A single in-session reset+run, with RTT
+            # already attached, captures the connect/discover/subscribe sequence cleanly (0 parse errors).
             jlink.rtt_start(None)
+            if self.reset:
+                jlink.reset(ms=0, halt=False)  # reset and resume immediately; pylink keeps tracking the CB
             self.attached = True
         except Exception as e:
             print(f"  [{self.name}] pylink connect failed: {e}")
@@ -484,7 +494,10 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     kill_jlink_processes()
 
-    if reset:
+    # The monitor (pylink) path resets IN-SESSION inside MonitorRTTThread, AFTER rtt_start, so a blind
+    # external reset here would desync RTT (see MonitorRTTThread.run). Only the JLinkRTTLogger.exe path,
+    # which has no in-session pylink handle, needs the external reset.
+    if reset and not monitor:
         print(f"  Resetting {len(devices)} device(s)...")
         for name, serial in devices.items():
             reset_device(serial)
@@ -503,7 +516,7 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
             role = name if name in ["central", "peripheral"] else "device"
             final_file = os.path.join(log_dir, f"{role}_{serial}_{timestamp}.log")
             btmon_file = os.path.join(log_dir, f"{role}_{serial}_{timestamp}.btmon")
-            thread = MonitorRTTThread(name, serial, final_file, btmon_file, device_type)
+            thread = MonitorRTTThread(name, serial, final_file, btmon_file, device_type, reset=reset)
             thread.start()
             started.append(("monitor", name, None, thread, None, final_file, btmon_file))
     else:

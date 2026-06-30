@@ -325,11 +325,18 @@ export function hciSnifferOpenInEditor(bundleRoot: string): string[] {
 	]
 }
 
-export function buildHciSnifferPrompt(bundleRoot: string, capability: DemoCapability): string {
+export function buildHciSnifferPrompt(bundleRoot: string, capability: DemoCapability, env?: NrfEnvironment): string {
 	const L = (tier: "buggy" | "fixed", layer: string) => path.join(bundleRoot, "logs", tier, layer)
 	const bleFile =
 		resolveBitPathSync("adsum/nrf/sdks/ncs/protocols/ble") ??
 		path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "sdks", "ncs", "protocols", "BLE.md")
+	const flashDoc =
+		resolveBitPathSync("adsum/nrf/actions/flash") ??
+		path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "flash.md")
+	const captureDoc =
+		resolveBitPathSync("adsum/nrf/actions/capture-logs") ??
+		path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "capture-logs.md")
+	const dkCount = env?.boards?.length ?? 0
 
 	return `Demo: HCI + sniffer-in-the-loop BLE debug — no setup needed
 
@@ -354,12 +361,16 @@ sequenceDiagram
   Note over C: never subscribes (the bug)
   P-->>C: notify "hello" — dropped, no subscriber
 \`\`\`
-- Then SCAN their hardware so they SEE you read their bench: call triggerNordicAction with action="log_device", operation="list". In ONE line, report what's connected — a DK is a board like PCA10056/PCA10040 (J-Link); a sniffer is "nRF Sniffer for Bluetooth LE" or, if unflashed, "Open DFU Bootloader" / PCA10059.
-- Then ask with buttons. Include ONLY options their hardware supports; the captured-walkthrough is ALWAYS offered. (Host capability hint: capability=${capability} — "hardware" means at least one DK is present.)
+- Then SCAN their hardware so they SEE you read their bench: call triggerNordicAction with action="log_device", operation="list". A DK is a board like PCA10056/PCA10095/PCA10040 (J-Link); a sniffer dongle shows up as "nRF Sniffer for Bluetooth LE" (flashed) or "Open DFU Bootloader" / PCA10059 (unflashed) — it is NEVER reported as a DK. In ONE line, report EXACTLY what you found, and if a tier of hardware is missing, say so explicitly so the developer knows what would unlock more — e.g.:
+    - 0 DK, no dongle: "No nRF hardware detected — connect a DK (or two) and an nRF52840 Dongle and I can reproduce this live."
+    - 1 DK, no dongle: "I see 1 DK and no sniffer dongle — plug in a second DK for the full two-board repro, or an nRF52840 Dongle to also see this over the air."
+    - 2 DK, no dongle: "I see 2 DKs but no sniffer dongle — plug in an nRF52840 Dongle to also see this over the air."
+    - 2 DK + dongle: "I see 2 DKs and a sniffer dongle — I can reproduce this live AND show it over the air."
+- Then ask with buttons. Include ONLY options their hardware supports; the captured-walkthrough is ALWAYS offered. (Host hint: capability=${capability}, DKs detected=${dkCount} — "hardware" means at least one DK is present.)
   ask_followup_question — Question: "How do you want to see it?"
   Options:
     - "Walk me through the captured bug"            ← ALWAYS include
-    - "Capture HCI live on my own board"            ← include ONLY if you scanned a connected DK
+    - "Capture HCI live on my own board"            ← include if you scanned at least one connected DK
     - "Capture live + sniff it over the air"        ← include ONLY if you scanned a DK AND a sniffer dongle
 
 === STEP 2A — "Walk me through the captured bug" (the hero path; works with NO hardware) ===
@@ -371,15 +382,42 @@ Then ONE cross-layer mermaid tying app-intent → HCI → air. Then:
 - ## The one-line fix: add \`bt_nus_subscribe_receive(nus);\` right after \`bt_nus_handles_assign(dm, nus);\` — that single line makes the central subscribe, so the CCCD write goes out and the notifications flow.
 - ## Proof — try to read the FIXED captures (${L("fixed", "hci.hci.log")}, ${L("fixed", "sniffer.sniffer.log")}, ${L("fixed", "app.log")}). IF they exist, show the before/after: the CCCD write + notifications now appear in HCI + air and the data arrives in the app log — same boards, one line. IF a fixed capture is missing, do NOT fabricate it: just show the fix in code and say the fixed run can be reproduced live on connected boards.
 Close with buttons — Question: "That's the whole loop. Where to next?"
-Options: ["Run this on my own nRF project", "I've seen enough — wrap up"].
+Options: ["Run this on my own nRF project", "I've seen enough — wrap up"]. If NO hardware was detected in STEP 1, replace the
+close with a recommendation: tell the developer to connect a DK (or two) and an nRF52840 Dongle and you'll reproduce this live
+on their hardware, then offer the same two buttons.
 
-=== STEP 2B / 2C — live on their hardware (only if they picked it) ===
-Reproduce the SAME signature on their board(s); do not improvise raw shell. Load the action/workflow bits first (read_file the relevant ones: ${bleFile} for the layer map, plus the hci-trace and — for 2C — ble-sniffer workflows). Then:
-- Flash the buggy NUS central + peripheral (HCI monitor enabled) to their DK(s) by serial, let them connect.
-- Capture HCI live: triggerNordicAction action="log_device", operation="capture", transport="rtt", monitor="true". Show the live trace has the SAME missing-CCCD signature as the captured one.
-- 2C only: also sniff over the air — triggerNordicAction operation="sniff" with the dongle's port — and correlate with the live HCI.
-- Then reveal the one-line fix, reflash central, and show the CCCD write + notifications now appear live. No phone needed.
-Close with the same final buttons.
+=== STEP 2B/2C/2D — live on their hardware (only if they picked a live option) ===
+Reproduce the SAME signature on their actual bench; do not improvise raw shell for flashing or capture. Load the action/workflow
+bits first (read_file the relevant ones: ${bleFile} for the layer map, ${flashDoc} for flashing, ${captureDoc} for capture, plus
+the hci-trace and — for the OTA tier — ble-sniffer workflows). The product is Windows-first: use whatever shell you're actually
+running in for any copy/remove/process-kill step, never assume POSIX. Branch on what you actually scanned in STEP 1:
+
+- ## 1 DK, no second DK (phone-as-central tier): your one DK plays the PERIPHERAL — flash the buggy peripheral_uart to it
+  (resolve its west board target yourself from its boardVersion, e.g. PCA10056 → \`nrf52840dk/nrf52840\`, PCA10095 →
+  \`nrf5340dk/nrf5340/cpuapp\`, PCA10040 → \`nrf52dk/nrf52832\`; build from a copy in a path with NO SPACES, never in place
+  inside globalStorage, never symlinked). Ask the developer to act as the CENTRAL using their phone — nRF Connect for Mobile
+  or nRF Toolbox — connecting to the peripheral and exercising the NUS service (subscribe + write). Capture RTT and live HCI
+  from the DK side (triggerNordicAction action="log_device", operation="capture", transport="rtt", monitor="true" — this
+  needs \`CONFIG_BT_DEBUG_MONITOR_RTT=y\` and \`CONFIG_SEGGER_RTT_MAX_NUM_UP_BUFFERS=2\` added to the peripheral's prj.conf
+  before building). Show the same missing-CCCD signature live. Close by recommending a SECOND DK for the full two-board
+  repro, and/or an nRF52840 Dongle to also see it over the air.
+
+- ## 2 DK (full two-board repro): resolve EACH DK's correct west board target from its own boardVersion (do not assume a
+  fixed nRF52840DK/nRF5340DK pair — read each board's actual identity) and assign roles, one central, one peripheral. Build
+  both from copies in a path with NO SPACES (never in place inside globalStorage, never symlinked), adding
+  \`CONFIG_BT_DEBUG_MONITOR_RTT=y\` + \`CONFIG_SEGGER_RTT_MAX_NUM_UP_BUFFERS=2\` to the central's prj.conf first so live HCI
+  capture works, then flash both by serial. Reproduce the buggy run (peripheral notification dropped, missing CCCD write in
+  the live HCI trace — same signature as the captured logs), apply the one-line fix to the central copy, rebuild + reflash
+  central, then show the fixed run: the CCCD write and notifications now appear live. Close by recommending an nRF52840
+  Dongle for the over-the-air view, in addition to the normal closing buttons.
+
+- ## 2 DK + dongle (OTA tier): do everything in the 2-DK path above, PLUS a live over-the-air sniff —
+  triggerNordicAction operation="sniff" using the dongle's port, following the DUT named \`Nordic_UART_Service\` — and
+  correlate the captured air trace with the live HCI: no CCCD write and no notifications on air while buggy, both appear
+  once fixed. No phone needed for this tier.
+
+Close every live tier with the same final buttons as STEP 2A, after recommending whatever next hardware tier is still
+missing (more DKs, or a dongle) as described above.
 
 === Reference files (read on demand, never dumped) ===
 - BLE layer map (the 3-layer escalation): ${bleFile}
@@ -439,7 +477,7 @@ const HOST_DEMO_SCENARIOS: Record<string, HostDemoScenario> = {
 			const bundleRoot = await prepareScenarioBundle("hci-sniffer")
 			const capability = classifyDemoCapability(env)
 			return {
-				taskText: buildHciSnifferPrompt(bundleRoot, capability),
+				taskText: buildHciSnifferPrompt(bundleRoot, capability, env),
 				displayText: buildHciSnifferDisplayText(),
 				openInEditor: hciSnifferOpenInEditor(bundleRoot),
 			}
@@ -478,21 +516,17 @@ Options:
 ${askAnything}
 
 If the developer picks "Build it — prove the fix compiles", do the following steps in order. Do NOT edit the demo source in place —
-work on a throwaway copy in /tmp so the demo stays pristine for the next run:
+work on a throwaway copy in a path with NO SPACES so the demo stays pristine for the next run and CMake's space-in-path bug
+never bites. Use whatever copy/remove commands match the shell you're actually running in (PowerShell on Windows, sh/bash
+elsewhere) — pick a scratch directory outside globalStorage (e.g. your OS temp dir) and never symlink:
 
-1. Copy the central project to a clean build location. This also avoids CMake's space-in-path bug:
-   \`\`\`
-   rm -rf /tmp/adsum_demo_central /tmp/adsum_demo_build && cp -R "${ws.centralPath}" /tmp/adsum_demo_central
-   \`\`\`
-2. Apply the fix in the COPY only. In \`/tmp/adsum_demo_central/src/main.c\`, inside \`discovery_complete()\`, add this line immediately after \`bt_nus_handles_assign(dm, nus);\`:
+1. Copy the central project to that clean, space-free build location (remove any stale copy first).
+2. Apply the fix in the COPY only. In the copy's \`src/main.c\`, inside \`discovery_complete()\`, add this line immediately after \`bt_nus_handles_assign(dm, nus);\`:
    \`\`\`c
    bt_nus_subscribe_receive(nus);
    \`\`\`
-   (The demo source you analyzed is the buggy version and is missing this line — that is expected. Add it to the /tmp copy.)
-3. Build with west from inside the NCS workspace:
-   \`\`\`
-   west build -s /tmp/adsum_demo_central -b nrf52840dk/nrf52840 -d /tmp/adsum_demo_build
-   \`\`\`
+   (The demo source you analyzed is the buggy version and is missing this line — that is expected. Add it to the copy.)
+3. Resolve the west board target yourself the same way you would for a real project — it does NOT have to be a specific board; pick any target you can build for (e.g. \`nrf52840dk/nrf52840\` if that's what's available) — then run \`west build -b <the target you resolved>\` from inside the NCS workspace against the copy's source dir (build dir alongside it).
 4. If it compiles clean: tell the developer "The fix compiles on NCS ${sdkVersion}. \`bt_nus_subscribe_receive()\` is a real SDK API — the diagnosis was accurate. Connect two boards to see it run live." Then end the task with \`<!--TASK_COMPLETE-->\`.
 5. If it fails: show the compiler error verbatim and explain what it means. Then end the task with \`<!--TASK_COMPLETE-->\`.
 
@@ -503,6 +537,9 @@ ${wrapUp}
 	if (capability === "hardware") {
 		const boardCount = env?.boards?.length ?? 1
 		const boardWord = boardCount >= 2 ? `${boardCount} boards` : "a board"
+		const boardList = env?.boards?.length
+			? env.boards.map((b) => b.boardVersion ?? "unknown board").join(", ")
+			: "your connected DK"
 		const flashDoc =
 			resolveBitPathSync("adsum/nrf/actions/flash") ??
 			path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "flash.md")
@@ -512,7 +549,7 @@ ${wrapUp}
 		return `
 After your five-beat analysis and one-sentence verdict, present the next step as BUTTONS using the ask_followup_question tool (never as "type this" free text). Ask exactly this:
 
-Question: "That's the bug. Want to see it fail and then pass on your own hardware? You have ${boardWord} connected — I can flash the buggy firmware, capture real RTT, reproduce the failure, then apply the fix and confirm it end-to-end."
+Question: "That's the bug. Want to see it fail and then pass on your own hardware? You have ${boardWord} connected (${boardList}) — I can flash the buggy firmware, capture real RTT, reproduce the failure, then apply the fix and confirm it end-to-end."
 Options:
 - "Flash & run it live on my boards"
 - "Just build it — no boards needed"
@@ -521,59 +558,64 @@ Options:
 ${askAnything}
 
 If the developer picks "Flash & run it live on my boards", reproduce it live using the project's REAL flash and capture actions — do NOT
-improvise with raw shell, and do NOT hand-roll RTT capture. Read and follow these two action guides first:
+improvise with raw shell for flashing or capture, and do NOT hand-roll RTT capture. Read and follow these two action guides first:
 - Flash:   ${flashDoc}
 - Capture: ${captureDoc}
 
-Then do the following in order:
+Then do the following in order. The product is Windows-first, so use whatever shell you're actually running in (PowerShell on
+Windows, sh/bash elsewhere) for any copy/remove/process-kill step — never assume POSIX:
 
-1. Process cleanup, then list devices to get the two J-Link serial numbers (per the flash guide):
+1. Process cleanup, then list devices to identify the two connected DKs and their serial numbers (per the flash guide — use
+   the platform-appropriate kill command, e.g. \`taskkill\` on Windows, \`pkill\` elsewhere):
    \`\`\`
-   pkill -9 JLink 2>/dev/null; pkill -9 nrfutil 2>/dev/null
    nrfutil device list
    \`\`\`
-   Confirm each device's family with \`nrfutil device device-info --serial-number <SN>\` before flashing it —
-   the nRF52840DK runs central_uart, the nRF5340DK runs peripheral_uart. Do not guess which serial is which.
+   Confirm each device's family/board with \`nrfutil device device-info --serial-number <SN>\` (cross-check against
+   \`boardVersion\` from the in-app scan, e.g. PCA10056 / PCA10095 / PCA10040) before flashing it. Assign roles yourself —
+   one DK runs central_uart, the other runs peripheral_uart — do not guess which serial is which.
 
-2. Build BOTH projects (buggy, unfixed) on throwaway /tmp copies. Never build inside the globalStorage path
-   and never symlink — copying to /tmp is what avoids CMake's space-in-path failure:
-   \`\`\`
-   rm -rf /tmp/adsum_demo_central /tmp/adsum_demo_peripheral
-   cp -R "${ws.centralPath}" /tmp/adsum_demo_central
-   cp -R "${ws.peripheralPath}" /tmp/adsum_demo_peripheral
-   west build -s /tmp/adsum_demo_central    -b nrf52840dk/nrf52840    -d /tmp/adsum_demo_central/build
-   west build -s /tmp/adsum_demo_peripheral -b nrf5340dk/nrf5340/cpuapp -d /tmp/adsum_demo_peripheral/build
-   \`\`\`
+2. Resolve each DK's correct west board target yourself from its board version, exactly as you would for a real user
+   project (e.g. PCA10056 → \`nrf52840dk/nrf52840\`, PCA10095 → \`nrf5340dk/nrf5340/cpuapp\`, PCA10040 → \`nrf52dk/nrf52832\`) —
+   do NOT assume a fixed pair of boards.
 
-3. Flash each board by serial (per the flash guide — always use --snr so the right board gets the right image):
-   \`\`\`
-   west flash -d /tmp/adsum_demo_central/build    --snr <central_sn>
-   west flash -d /tmp/adsum_demo_peripheral/build --snr <peripheral_sn>
-   \`\`\`
+3. Build BOTH projects (buggy, unfixed) from COPIES in a path with NO SPACES — this dodges CMake's space-in-path bug.
+   Never build in place inside globalStorage, and never symlink. Copy \`${ws.centralPath}\` and \`${ws.peripheralPath}\`
+   to a scratch location outside globalStorage (e.g. your OS temp dir), removing any stale copy first, then run
+   \`west build\` against each copy with the board target you resolved in step 2, writing each build output alongside
+   its copy.
 
-4. Set up the live proof — this is hands-on for the developer, so teach them first and WAIT. The broken
+4. Flash each board by serial (per the flash guide — always target the specific device with \`--dev-id <serial>\` so the
+   right board gets the right image):
+   \`\`\`
+   west flash -d <central build dir>    --dev-id <central_sn>
+   west flash -d <peripheral build dir> --dev-id <peripheral_sn>
+   \`\`\`
+   If a flash fails with a QSPI / SPIM external-flash error (common on the nRF52840DK's default runner), retry that
+   board with \`--runner jlink\` added (the flash guide covers this); add \`--erase\` if a board still runs a stale image.
+
+5. Set up the live proof — this is hands-on for the developer, so teach them first and WAIT. The broken
    direction (peripheral -> central) only happens when the peripheral has UART input to forward, and the
    central does NOT log received data (it forwards it to its own UART). So the proof is what the developer
    SEES in two serial terminals, backed by the peripheral's RTT. From the device list, identify each board's
-   application UART — the nRF52840DK central's VCOM, and the nRF5340DK peripheral's FIRST VCOM (vcom0) — then
+   application UART — the central's VCOM, and the peripheral's FIRST VCOM (vcom0) — then
    tell the developer exactly what to do and give them as long as they need:
    - "Open a serial terminal to each board at 115200 8N1 — the nRF Connect Serial Terminal app, or
-     \`tio <port> -b 115200\`:"
+     a terminal tool of your choice:"
        - Peripheral (you'll TYPE here): <peripheral vcom0 port>
        - Central (you'll WATCH here):   <central vcom port>
    - Tell them the peripheral waits for DTR, so the terminal must actually open the port (most do by default).
    - Ask them to confirm once BOTH terminals are open. Do NOT start capturing or ask them to type until they
      say they are ready — give them time to figure out the serial terminal.
 
-5. Buggy run: start an RTT capture on the peripheral (generous duration, ~30s) and ask the developer to type
+6. Buggy run: start an RTT capture on the peripheral (generous duration, ~30s) and ask the developer to type
    a short message (e.g. "hello") into the PERIPHERAL terminal. With the bug, the peripheral RTT logs
    "Failed to send data over BLE connection" and nothing arrives in the central terminal. Point both out.
 
-6. Apply the fix to the /tmp central copy only — add \`bt_nus_subscribe_receive(nus);\` immediately after
+7. Apply the fix to the central COPY only — add \`bt_nus_subscribe_receive(nus);\` immediately after
    \`bt_nus_handles_assign(dm, nus);\` in \`discovery_complete()\` — then rebuild and reflash central by serial.
    Leave the developer's terminals open.
 
-7. Fixed run: ask the developer to type another message into the PERIPHERAL terminal. Now it appears in the
+8. Fixed run: ask the developer to type another message into the PERIPHERAL terminal. Now it appears in the
    CENTRAL terminal, and a fresh peripheral RTT capture shows the "Failed to send" failures are gone. That
    round-trip — typed on one board, seen on the other — is the proof the fix works on real hardware. Then
    end the task with \`<!--TASK_COMPLETE-->\`.
@@ -582,14 +624,11 @@ All RTT/UART capture uses the real capture action (log_device) exactly as the ca
 NOT shell out to JLinkRTTLogger or similar. If any step fails, show the real error and stop — do not fall
 back to ad-hoc workarounds.
 
-If the developer picks "Just build it — no boards needed", prove the fix compiles without flashing. Work on a throwaway /tmp copy (this also avoids CMake's space-in-path bug):
-   \`\`\`
-   rm -rf /tmp/adsum_demo_central /tmp/adsum_demo_build && cp -R "${ws.centralPath}" /tmp/adsum_demo_central
-   \`\`\`
-In \`/tmp/adsum_demo_central/src/main.c\`, inside \`discovery_complete()\`, add \`bt_nus_subscribe_receive(nus);\` immediately after \`bt_nus_handles_assign(dm, nus);\`, then build from inside the NCS workspace:
-   \`\`\`
-   west build -s /tmp/adsum_demo_central -b nrf52840dk/nrf52840 -d /tmp/adsum_demo_build
-   \`\`\`
+If the developer picks "Just build it — no boards needed", prove the fix compiles without flashing. Work on a throwaway
+copy in a path with NO SPACES (this also avoids CMake's space-in-path bug), using the copy/remove command for whatever
+shell you're running in — never assume POSIX. Copy \`${ws.centralPath}\` to that scratch location, removing any stale
+copy first.
+In the copy's \`src/main.c\`, inside \`discovery_complete()\`, add \`bt_nus_subscribe_receive(nus);\` immediately after \`bt_nus_handles_assign(dm, nus);\`, then resolve a west board target yourself (any target you can build for — it doesn't need to match the connected boards) and run \`west build -b <that target>\` from inside the NCS workspace against the copy.
 On a clean build, tell the developer the fix compiles and \`bt_nus_subscribe_receive()\` is a real NCS API — the diagnosis was accurate. Then call attempt_completion and end with \`<!--TASK_COMPLETE-->\`.
 
 ${wrapUp}
