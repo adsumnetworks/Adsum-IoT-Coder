@@ -13,10 +13,16 @@ describe("DemoPicker", () => {
 		}
 	})
 
-	it("hero: shows each scenario's honest label and platform badge (nRF, properly cased)", () => {
+	it("hero: shows each scenario's description (brief teaser when coming-soon) + nRF badge", () => {
 		render(<DemoPicker onStartDemo={vi.fn()} />)
 		for (const s of DEMO_SCENARIO_LIST) {
-			expect(screen.getByText(s.honestLabel)).toBeInTheDocument()
+			// Coming-soon rows show a brief teaser instead of the full honestLabel (a dimmed roadmap row
+			// needn't carry the full sell); live rows show the full honestLabel.
+			const shown = s.comingSoon && s.teaser ? s.teaser : s.honestLabel
+			expect(screen.getByText(shown)).toBeInTheDocument()
+			if (s.comingSoon && s.teaser) {
+				expect(screen.queryByText(s.honestLabel)).not.toBeInTheDocument()
+			}
 		}
 		// Platform badge is the properly-cased "nRF" (A1: was lowercase "nrf").
 		expect(screen.getAllByText("nRF").length).toBeGreaterThanOrEqual(1)
