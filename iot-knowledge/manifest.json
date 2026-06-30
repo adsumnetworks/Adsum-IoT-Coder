@@ -268,7 +268,7 @@
 			"id": "adsum/rules/tool-routing",
 			"title": "Tool Routing Directives",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -277,7 +277,7 @@
 			"domain": "embedded-iot",
 			"platform": "universal",
 			"path": "rules/tool-routing.md",
-			"content_hash": "6aaeaea9c53f1ecadbb5d91e1b0bc264455f28ff5ec8de9b0adcb84401718e45"
+			"content_hash": "25ad383b59d9eb959c3f5904bf8899641ae3b20513028a88ce03d3a93949faf2"
 		}
 	]
 }
