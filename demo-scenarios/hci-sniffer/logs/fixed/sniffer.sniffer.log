@@ -1,0 +1,521 @@
+# BLE over-the-air sniffer decode (nRF Sniffer, what actually transmitted between devices)
+# 124 frames · 0 undecoded · span 45347 ms
+# This is the AIR layer: advertising packets, CONNECT_IND, and link-layer control/data PDUs.
+# We decode the link layer only — never ATT/L2CAP/SMP. Open the .pcap in Wireshark for that depth.
+#
+# Legend (beginner):
+#   Δt(ms) = time since the previous frame (≈ the connection interval, once connected)
+#   Ch     = RF channel index — 37/38/39 are the 3 advertising channels, 0-36 are data channels
+#   Proto  = ADV (advertising) · LL-CTRL (connection control) · DATA (payload) · LL(empty) (keep-alive, no data)
+#   CRC    = ok (frame verified) or BAD (radio noise/collision — ignore that frame's content)
+#
+# Wireshark bridge (expert) — open the .pcap next to this file and try:
+#   btle                            all BLE link-layer frames
+#   !(btle.data_header.length==0)  hide empty keep-alive PDUs
+#   btle.advertising_address        filter by device address
+#   nordic_ble.channel == 37        filter by RF channel
+#
+# Columns:  No.    Time(rel)    Δt(ms)   Ch     RSSI    PHY    Proto      Len   CRC  Info
+#
+#    1  00.000    --.-  ch37   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#    2  00.000     0.6  ch38   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#    3  00.001     0.6  ch39   -40dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#    4  00.101   100.2  ch37   -31dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#    5  00.102     0.6  ch38   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#    6  00.102     0.6  ch39   -40dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#    7  00.208   106.3  ch37   -31dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#    8  00.209     0.5  ch37   -33dBm 1M    ADV         12B ok   SCAN_REQ 1a:ff:bd:01:74:a6 → c3:c3:c8:32:c0:d5
+             PDU: SCAN_REQ (TxAdd Random)
+             Scanner: 1a:ff:bd:01:74:a6
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 43 0c a6 74 01 bd ff 1a d5 c0 32 c8 c3 c3 cc 0c …
+#    9  00.209     0.3  ch37   -31dBm 1M    ADV         24B ok   SCAN_RSP from c3:c3:c8:32:c0:d5 (24B)
+             PDU: SCAN_RSP (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 44 18 d5 c0 32 c8 c3 c3 11 07 9e ca dc 24 0e e5 …
+#   10  00.210     0.4  ch38   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   11  00.210     0.6  ch39   -35dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   12  00.318   108.1  ch37   -31dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   13  00.319     0.6  ch38   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   14  00.319     0.6  ch39   -43dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   15  00.320     0.5  ch39   -36dBm 1M    ADV         34B ok   CONNECT_IND e8:2b:68:5e:01:1a → c3:c3:c8:32:c0:d5  ← connection starts (e8:2b:68:5e:01:1a → c3:c3:c8:32:c0:d5)
+             PDU: CONNECT_IND (TxAdd Random)
+             Initiator: e8:2b:68:5e:01:1a
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 45 22 1a 01 5e 68 2b e8 d5 c0 32 c8 c3 c3 33 4a …
+#   16  00.322     1.6  ch17   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 01 00 2f 4a 29
+#   17  00.322     0.2  ch17   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 05 00 fc 4c 29
+#   18  00.372    49.8  ch 9   -43dBm 1M    LL-CTRL     23B ok   LL_ENC_REQ
+             Access Address: 0x4ac14a33
+             Control: LL_ENC_REQ
+           payload: 1f 17 03 00 00 00 00 00 00 00 00 00 00 94 c5 b5 …
+#   19  00.372     0.4  ch 9   -31dBm 1M    LL-CTRL      9B ok   LL_CTRL 0xe
+             Access Address: 0x4ac14a33
+             Control: LL_CTRL 0xe
+           payload: 0b 09 0e 2d 41 00 00 00 00 00 00 d3 36 4a
+#   20  00.422    49.6  ch10   -35dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 01 00 2f 4a 29
+#   21  00.422     0.2  ch10   -32dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 05 00 fc 4c 29
+#   22  00.472    49.8  ch 9   -34dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 0d 00 5a 41 29
+#   23  00.472     0.2  ch 9   -31dBm 1M    LL-CTRL     13B ok   LL_ENC_RSP
+             Access Address: 0x4ac14a33
+             Control: LL_ENC_RSP
+           payload: 0b 0d 04 0c e5 35 ae 38 27 2c a4 1a 57 cd a8 62 …
+#   24  00.522    49.8  ch20   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 01 00 2f 4a 29
+#   25  00.522     0.2  ch20   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 05 00 fc 4c 29
+#   26  00.572    49.8  ch36   -35dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 0d 00 5a 41 29
+#   27  00.572     0.2  ch36   -36dBm 1M    LL-CTRL      1B ok   LL_START_ENC_REQ
+             Access Address: 0x4ac14a33
+             Control: LL_START_ENC_REQ
+           payload: 0b 01 05 50 0d 31
+#   28  00.622    49.8  ch 3   -34dBm 1M    LL-CTRL      5B ok   LL_FEATURE_RSP
+             Access Address: 0x4ac14a33
+             Control: LL_FEATURE_RSP
+           payload: 03 05 09 48 e2 9e be c0 57 9f
+#   29  00.622     0.3  ch 3   -32dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 05 00 fc 4c 29
+#   30  00.672    49.7  ch33   -34dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 0d 00 5a 41 29
+#   31  00.672     0.2  ch33   -33dBm 1M    LL-CTRL      5B ok   LL_CTRL 0xc9
+             Access Address: 0x4ac14a33
+             Control: LL_CTRL 0xc9
+           payload: 0b 05 c9 dd 36 e6 d6 37 ce 58
+#   32  00.722    49.8  ch22   -33dBm 1M    LL-CTRL     13B ok   LL_CTRL 0x7b
+             Access Address: 0x4ac14a33
+             Control: LL_CTRL 0x7b
+           payload: 03 0d 7b d8 c2 3d fe fd ee 77 27 1d 4f 26 4a b0 …
+#   33  00.722     0.3  ch22   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 05 00 fc 4c 29
+#   34  00.772    49.7  ch 3   -33dBm 1M    LL-CTRL     13B ok   LL_CTRL 0xa6
+             Access Address: 0x4ac14a33
+             Control: LL_CTRL 0xa6
+           payload: 0f 0d a6 dc 9c be 3a 5a 22 43 52 ba 56 c0 33 07 …
+#   35  00.772     0.3  ch 3   -31dBm 1M    LL-CTRL     13B ok   LL_CTRL 0x60
+             Access Address: 0x4ac14a33
+             Control: LL_CTRL 0x60
+           payload: 0b 0d 60 e5 87 8f 8a 1c 26 c2 48 0f 55 d4 9c 5b …
+#   36  00.822    49.7  ch14   -37dBm 1M    LL-CTRL     13B ok   LL_CTRL 0xc5
+             Access Address: 0x4ac14a33
+             Control: LL_CTRL 0xc5
+           payload: 03 0d c5 db d3 8c 66 05 93 5a 2b ff 6e 93 a6 be …
+#   37  00.822     0.3  ch14   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 05 00 fc 4c 29
+#   38  00.872    49.7  ch 7   -34dBm 1M    DATA        11B ok   LL Data (start) 11B
+             Access Address: 0x4ac14a33
+           payload: 0e 0b bd ed 1a 8c ca f0 82 84 55 61 f3 6b 5a 65
+#   39  00.872     0.3  ch 7   -31dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 15 00 b0 57 29
+#   40  00.872     0.2  ch 7   -34dBm 1M    DATA        11B ok   LL Data (start) 11B
+             Access Address: 0x4ac14a33
+           payload: 0e 0b bd ed 1a 8c ca f0 82 84 55 61 f3 6b 5a 65
+#   41  00.922    49.5  ch24   -33dBm 1M    DATA        11B ok   LL Data (start) 11B
+             Access Address: 0x4ac14a33
+           payload: 0e 0b bd ed 1a 8c ca f0 82 84 55 61 f3 6b 5a 65
+#   42  00.922     0.3  ch24   -33dBm 1M    LL-CTRL     13B ok   LL_CTRL 0x47
+             Access Address: 0x4ac14a33
+             Control: LL_CTRL 0x47
+           payload: 0b 0d 47 6a 22 7b 0f 6f 23 14 b1 15 61 ef 36 4a …
+#   43  00.972    49.7  ch31   -34dBm 1M    LL-CTRL      7B ok   LL_CTRL 0x8e
+             Access Address: 0x4ac14a33
+             Control: LL_CTRL 0x8e
+           payload: 03 07 8e f4 84 b1 af d3 d6 e1 bc 16
+#   44  00.972     0.3  ch31   -34dBm 1M    DATA        11B ok   LL Data (start) 11B
+             Access Address: 0x4ac14a33
+           payload: 06 0b 73 7a b0 63 17 12 36 6b 4b d8 f2 27 7b 06
+#   45  01.022    49.7  ch28   -33dBm 1M    DATA        31B ok   LL Data (start) 31B
+             Access Address: 0x4ac14a33
+           payload: 0e 1f 30 b6 23 b5 6d 3b 00 27 94 a5 09 4a 9d 23 …
+#   46  01.022     0.5  ch28   -34dBm 1M    LL-CTRL      7B ok   LL_CTRL 0x1d
+             Access Address: 0x4ac14a33
+             Control: LL_CTRL 0x1d
+           payload: 0b 07 1d 3f 21 e1 89 a8 b1 49 e6 db
+#   47  01.072    49.5  ch20   -34dBm 1M    LL-CTRL      9B ok   LL_CTRL 0xd3
+             Access Address: 0x4ac14a33
+             Control: LL_CTRL 0xd3
+           payload: 03 09 d3 83 8c d4 d6 2d 8b e2 27 fd 4f ff
+#   48  01.072     0.3  ch20   -33dBm 1M    DATA        13B ok   LL Data (start) 13B
+             Access Address: 0x4ac14a33
+           payload: 06 0d 5e 0f fb c9 1a 5b d8 e6 a9 94 95 14 fb a7 …
+#   49  01.122    49.7  ch28   -33dBm 1M    DATA        13B ok   LL Data (start) 13B
+             Access Address: 0x4ac14a33
+           payload: 0e 0d a1 8c c3 fa 92 23 7c 9f f5 88 8b 61 84 7d …
+#   50  01.122     0.3  ch28   -34dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 09 00 89 47 29
+#   51  01.172    49.7  ch23   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 01 00 2f 4a 29
+#   52  01.172     0.2  ch23   -33dBm 1M    DATA        14B ok   LL Data (start) 14B
+             Access Address: 0x4ac14a33
+           payload: 06 0e 45 49 19 ed f3 2d 00 ad 28 52 38 8c 9b 55 …
+#   53  01.222    49.8  ch27   -33dBm 1M    DATA        13B ok   LL Data (start) 13B
+             Access Address: 0x4ac14a33
+           payload: 0e 0d 67 fa 99 07 ae 06 51 69 9f 02 24 33 03 b1 …
+#   54  01.222     0.3  ch27   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 09 00 89 47 29
+#   55  01.272    49.7  ch12   -34dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 01 00 2f 4a 29
+#   56  01.272     0.2  ch12   -32dBm 1M    DATA        28B ok   LL Data (start) 28B
+             Access Address: 0x4ac14a33
+           payload: 06 1c 11 74 1a 0b 75 b4 5b 23 a4 ba f7 68 d6 e6 …
+#   57  01.322    49.8  ch 5   -34dBm 1M    DATA        13B ok   LL Data (start) 13B
+             Access Address: 0x4ac14a33
+           payload: 0e 0d ba 6b 62 26 80 f5 fa 65 9e c0 0b d9 fa 73 …
+#   58  01.322     0.3  ch 5   -31dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x4ac14a33
+           payload: 09 00 89 47 29
+#   59  08.435  7113.2  ch37   -70dBm 1M    ADV         23B BAD  ADV_IND from 66:b2:ce:38:8c:ee (23B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: 66:b2:ce:38:8c:ee
+           ✗ CRC: FAILED
+           payload: 40 17 ee 8c 38 ce b2 66 02 01 1a 02 0a 07 0a ff …
+#   60  08.436     0.6  ch38   -69dBm 1M    ADV         23B ok   ADV_IND from 66:b2:ce:38:8c:ee (23B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: 66:b2:ce:38:8c:ee
+           payload: 40 17 ee 8c 38 ce b2 66 02 01 1a 02 0a 07 0a ff …
+#   61  08.436     0.6  ch39   -73dBm 1M    ADV         23B ok   ADV_IND from 66:b2:ce:38:8c:ee (23B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: 66:b2:ce:38:8c:ee
+           payload: 40 17 ee 8c 38 ce b2 66 02 01 1a 02 0a 07 0a ff …
+#   62  08.705   268.8  ch37   -67dBm 1M    ADV         23B ok   ADV_IND from 66:b2:ce:38:8c:ee (23B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: 66:b2:ce:38:8c:ee
+           payload: 40 17 ee 8c 38 ce b2 66 02 01 1a 02 0a 07 0a ff …
+#   63  08.706     0.6  ch38   -73dBm 1M    ADV        215B BAD  ADV_IND from 66:32:ce:38:8c:ee (215B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: 66:32:ce:38:8c:ee
+           ✗ CRC: FAILED
+           payload: 40 d7 ee 8c 38 ce 32 66 02 01 1a 02 0a 07 0e ff …
+#   64  08.892   186.6  ch39   -65dBm 1M    ADV         14B ok   ADV_NONCONN_IND from e7:fc:66:19:eb:4a (14B)
+             PDU: ADV_NONCONN_IND (TxAdd Random)
+             Advertiser: e7:fc:66:19:eb:4a
+           payload: 42 0e 4a eb 19 66 fc e7 07 ff 4c 00 12 02 00 01 …
+#   65  43.886  34993.4  ch37   -31dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   66  43.887     0.6  ch38   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   67  43.887     0.6  ch39   -34dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   68  43.990   103.3  ch37   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   69  43.991     0.6  ch38   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   70  43.992     0.6  ch39   -34dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   71  44.091    99.0  ch37   -31dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   72  44.091     0.6  ch38   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   73  44.092     0.6  ch39   -34dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   74  44.192   100.6  ch37   -31dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   75  44.193     0.6  ch38   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   76  44.194     0.6  ch39   -37dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   77  44.294   100.1  ch37   -31dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   78  44.294     0.6  ch38   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   79  44.295     0.6  ch39   -34dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   80  44.295     0.5  ch39   -37dBm 1M    ADV         12B ok   SCAN_REQ 10:43:68:72:ed:8e → c3:c3:c8:32:c0:d5
+             PDU: SCAN_REQ (TxAdd Random)
+             Scanner: 10:43:68:72:ed:8e
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 43 0c 8e ed 72 68 43 10 d5 c0 32 c8 c3 c3 c5 33 …
+#   81  44.296     0.3  ch39   -34dBm 1M    ADV         24B ok   SCAN_RSP from c3:c3:c8:32:c0:d5 (24B)
+             PDU: SCAN_RSP (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 44 18 d5 c0 32 c8 c3 c3 11 07 9e ca dc 24 0e e5 …
+#   82  44.394    98.1  ch37   -31dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   83  44.394     0.6  ch38   -32dBm 1M    ADV         30B ok   ADV_IND from c3:c3:c8:32:c0:d5 (30B)
+             PDU: ADV_IND (TxAdd Random)
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 40 1e d5 c0 32 c8 c3 c3 02 01 06 14 09 4e 6f 72 …
+#   84  44.395     0.5  ch38   -32dBm 1M    ADV         34B ok   CONNECT_IND e8:2b:68:5e:01:1a → c3:c3:c8:32:c0:d5  ← connection starts (e8:2b:68:5e:01:1a → c3:c3:c8:32:c0:d5)
+             PDU: CONNECT_IND (TxAdd Random)
+             Initiator: e8:2b:68:5e:01:1a
+             Advertiser: c3:c3:c8:32:c0:d5
+           payload: 45 22 1a 01 5e 68 2b e8 d5 c0 32 c8 c3 c3 42 05 …
+#   85  44.396     1.6  ch23   -32dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 01 00 1d a4 10
+#   86  44.397     0.2  ch23   -32dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 05 00 ce a2 10
+#   87  44.446    49.8  ch 0   -31dBm 1M    LL-CTRL     23B ok   LL_ENC_REQ
+             Access Address: 0x84a60542
+             Control: LL_ENC_REQ
+           payload: 1f 17 03 00 00 00 00 00 00 00 00 00 00 f9 03 5b …
+#   88  44.447     0.4  ch 0   -31dBm 1M    LL-CTRL      9B ok   LL_CTRL 0xe
+             Access Address: 0x84a60542
+             Control: LL_CTRL 0xe
+           payload: 0b 09 0e 2d 41 00 00 00 00 00 00 3a 0a 19
+#   89  44.496    49.6  ch28   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 01 00 1d a4 10
+#   90  44.497     0.2  ch28   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 05 00 ce a2 10
+#   91  44.546    49.8  ch31   -32dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 0d 00 68 af 10
+#   92  44.547     0.2  ch31   -33dBm 1M    LL-CTRL     13B ok   LL_ENC_RSP
+             Access Address: 0x84a60542
+             Control: LL_ENC_RSP
+           payload: 0b 0d 04 36 cf 91 12 bf af 8d c9 f0 df 52 15 67 …
+#   93  44.596    49.8  ch16   -31dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 01 00 1d a4 10
+#   94  44.597     0.2  ch16   -32dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 05 00 ce a2 10
+#   95  44.646    49.8  ch25   -32dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 0d 00 68 af 10
+#   96  44.647     0.2  ch25   -33dBm 1M    LL-CTRL      1B ok   LL_START_ENC_REQ
+             Access Address: 0x84a60542
+             Control: LL_START_ENC_REQ
+           payload: 0b 01 05 3e 89 1f
+#   97  44.696    49.8  ch32   -33dBm 1M    LL-CTRL      5B ok   LL_CTRL 0xcc
+             Access Address: 0x84a60542
+             Control: LL_CTRL 0xcc
+           payload: 03 05 cc b2 1a 1b 5e b5 ac 3c
+#   98  44.697     0.3  ch32   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 05 00 ce a2 10
+#   99  44.746    49.7  ch32   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 0d 00 68 af 10
+#  100  44.747     0.2  ch32   -33dBm 1M    LL-CTRL      5B ok   LL_CTRL 0x2f
+             Access Address: 0x84a60542
+             Control: LL_CTRL 0x2f
+           payload: 0b 05 2f 92 b5 b8 9a 05 0e 1b
+#  101  44.796    49.8  ch18   -31dBm 1M    LL-CTRL     13B ok   LL_CTRL 0x56
+             Access Address: 0x84a60542
+             Control: LL_CTRL 0x56
+           payload: 03 0d 56 93 74 6f 58 ef 02 db b7 9f 0a c1 48 a1 …
+#  102  44.797     0.3  ch18   -32dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 05 00 ce a2 10
+#  103  44.846    49.7  ch21   -31dBm 1M    LL-CTRL     13B ok   LL_CTRL 0x96
+             Access Address: 0x84a60542
+             Control: LL_CTRL 0x96
+           payload: 0f 0d 96 db cb 2b 54 3b a2 13 32 a2 f9 32 a9 3e …
+#  104  44.847     0.3  ch21   -33dBm 1M    LL-CTRL     13B ok   LL_CTRL 0xfa
+             Access Address: 0x84a60542
+             Control: LL_CTRL 0xfa
+           payload: 0b 0d fa eb 27 9d 9d 64 9d 6b b8 93 30 44 36 9c …
+#  105  44.896    49.7  ch 2   -30dBm 1M    LL-CTRL     13B ok   LL_CTRL 0x9a
+             Access Address: 0x84a60542
+             Control: LL_CTRL 0x9a
+           payload: 03 0d 9a 46 08 52 a1 a0 ed 33 2f 14 b0 92 bb 43 …
+#  106  44.897     0.3  ch 2   -31dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 05 00 ce a2 10
+#  107  44.946    49.7  ch35   -34dBm 1M    DATA        11B ok   LL Data (start) 11B
+             Access Address: 0x84a60542
+           payload: 0e 0b cd a0 d8 3f a8 d1 de 0c 57 a7 89 28 64 89
+#  108  44.947     0.3  ch35   -33dBm 1M    LL-CTRL     13B ok   LL_FEATURE_RSP
+             Access Address: 0x84a60542
+             Control: LL_FEATURE_RSP
+           payload: 0b 0d 09 83 4c a4 7f 3a b2 8b 70 aa 0f 7f b6 d0 …
+#  109  44.996    49.7  ch 2   -30dBm 1M    LL-CTRL      7B ok   LL_CTRL 0x71
+             Access Address: 0x84a60542
+             Control: LL_CTRL 0x71
+           payload: 03 07 71 a9 f3 d0 cb d2 6f 5f 84 0f
+#  110  44.997     0.3  ch 2   -31dBm 1M    DATA        11B ok   LL Data (start) 11B
+             Access Address: 0x84a60542
+           payload: 06 0b 50 a2 95 82 5c 84 b8 20 4d c9 73 fd 76 b5
+#  111  45.046    49.7  ch21   -32dBm 1M    DATA        31B ok   LL Data (start) 31B
+             Access Address: 0x84a60542
+           payload: 0e 1f 49 be 97 13 fd 75 2e 21 7b 3b 9b 18 6f 2d …
+#  112  45.047     0.5  ch21   -33dBm 1M    LL-CTRL      7B ok   LL_CTRL 0x5a
+             Access Address: 0x84a60542
+             Control: LL_CTRL 0x5a
+           payload: 0b 07 5a aa bc 89 da 3d 1f ee a2 d9
+#  113  45.096    49.5  ch10   -31dBm 1M    LL-CTRL      9B ok   LL_CTRL 0x1e
+             Access Address: 0x84a60542
+             Control: LL_CTRL 0x1e
+           payload: 03 09 1e 2f d1 41 25 1a e4 84 7f 71 be 68
+#  114  45.097     0.3  ch10   -31dBm 1M    DATA        13B ok   LL Data (start) 13B
+             Access Address: 0x84a60542
+           payload: 06 0d d0 a9 6e 44 f0 49 85 7a 5b 77 77 4d 64 25 …
+#  115  45.146    49.7  ch32   -33dBm 1M    DATA        13B ok   LL Data (start) 13B
+             Access Address: 0x84a60542
+           payload: 0e 0d 9f b9 3f 89 ea cf 50 ee 07 80 2a 1a 76 41 …
+#  116  45.147     0.3  ch32   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 09 00 bb a9 10
+#  117  45.196    49.7  ch14   -32dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 01 00 1d a4 10
+#  118  45.197     0.2  ch14   -32dBm 1M    DATA        14B ok   LL Data (start) 14B
+             Access Address: 0x84a60542
+           payload: 06 0e ec c5 ae 8c af 49 06 be 68 53 bf 47 7b 13 …
+#  119  45.246    49.8  ch11   -32dBm 1M    DATA        13B ok   LL Data (start) 13B
+             Access Address: 0x84a60542
+           payload: 0e 0d a4 8e b0 43 c1 01 10 00 1f d2 0c c6 15 4f …
+#  120  45.247     0.3  ch11   -32dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 09 00 bb a9 10
+#  121  45.296    49.7  ch 7   -32dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 01 00 1d a4 10
+#  122  45.297     0.2  ch 7   -32dBm 1M    DATA        28B ok   LL Data (start) 28B
+             Access Address: 0x84a60542
+           payload: 06 1c 29 39 27 b9 13 fc 3b a8 74 d5 b9 c6 c0 a3 …
+#  123  45.346    49.8  ch25   -32dBm 1M    DATA        13B ok   LL Data (start) 13B
+             Access Address: 0x84a60542
+           payload: 0e 0d 40 af 8f 50 52 7f f8 8a 7b 86 ad 98 2a 1f …
+#  124  45.347     0.3  ch25   -33dBm 1M    LL(empty)    0B ok   LL Empty PDU
+             Access Address: 0x84a60542
+           payload: 09 00 bb a9 10
+#
+# --- suggested chat sequence diagram (mermaid) ---
+# Lift the lines below (strip the leading '# ') into a ```mermaid fence when presenting in chat.
+# sequenceDiagram
+#     participant C as Central (e8:2b:68:5e:01:1a)
+#     participant P as Peripheral (c3:c3:c8:32:c0:d5)
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     C->>P: SCAN_REQ
+#     P-->>C: SCAN_RSP
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     C->>P: CONNECT_IND
+#     Note over C,P: 2 empty keep-alive PDUs
+#     C->>P: LL_ENC_REQ
+#     C->>P: LL_CTRL 0xe
+#     Note over C,P: 3 empty keep-alive PDUs
+#     C->>P: LL_ENC_RSP
+#     Note over C,P: 3 empty keep-alive PDUs
+#     C->>P: LL_START_ENC_REQ
+#     C->>P: LL_FEATURE_RSP
+#     Note over C,P: 2 empty keep-alive PDUs
+#     C->>P: LL_CTRL 0xc9
+#     C->>P: LL_CTRL 0x7b
+#     Note over C,P: 1 empty keep-alive PDU
+#     C->>P: LL_CTRL 0xa6
+#     C->>P: LL_CTRL 0x60
+#     C->>P: LL_CTRL 0xc5
+#     Note over C,P: 5 connection-event PDUs (2 empty keep-alive)
+#     C->>P: LL_CTRL 0x47
+#     C->>P: LL_CTRL 0x8e
+#     Note over C,P: 2 data PDUs (GATT traffic — see .pcap in Wireshark for ATT/L2CAP detail)
+#     C->>P: LL_CTRL 0x1d
+#     C->>P: LL_CTRL 0xd3
+#     Note over C,P: 11 connection-event PDUs (5 empty keep-alive)
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_NONCONN_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     P->>C: ADV_IND
+#     Note over C,P: (additional lifecycle events truncated — see .pcap in Wireshark for the full sequence)

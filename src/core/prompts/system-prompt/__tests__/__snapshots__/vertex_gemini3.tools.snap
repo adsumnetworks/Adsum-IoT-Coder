@@ -379,6 +379,9 @@
         "follow_name": {
           "type": "STRING"
         },
+        "follow_addr": {
+          "type": "STRING"
+        },
         "capture_path": {
           "type": "STRING"
         }
