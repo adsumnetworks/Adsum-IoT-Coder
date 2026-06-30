@@ -181,79 +181,82 @@ describe("buildDemoPrompt", () => {
 	})
 })
 
-describe("hci-sniffer demo (hardware-adaptive 3-layer)", () => {
+describe("hci-sniffer demo (v5 — thin orchestrator over the demo-debug-hci bit)", () => {
 	before(() => {
 		initDemoManager("/ext", "/storage")
 	})
+	const norm = (p: string) => p.replace(/\\/g, "/")
 
 	it("display text is synced with the demoScenarios.ts historyMatch prefix", () => {
 		expect(buildHciSnifferDisplayText().startsWith("HCI + sniffer-in-the-loop BLE debug")).to.equal(true)
 	})
 
-	it("opens ONE small curated evidence file, not the raw multi-hundred-line dumps", () => {
-		const files = hciSnifferOpenInEditor("/storage/demo/hci-sniffer-1").map((f) => f.replace(/\\/g, "/"))
-		expect(files.length).to.equal(1)
-		expect(files[0].endsWith("logs/buggy/curated.md")).to.equal(true)
+	it("opens NOTHING at launch (clean entry like NUS — no auto-opened/spoiler file)", () => {
+		expect(hciSnifferOpenInEditor("/storage/demo/hci-sniffer-1")).to.deep.equal([])
 	})
 
-	it("leads with a device scan + a mermaid + the always-on captured-walkthrough button", () => {
+	it("loads the downloaded workflow bit by bare relpath, read-first, with a stop-guard", () => {
 		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned")
-		expect(p).to.contain('operation="list"') // scans connected hardware in-chat
-		expect(p).to.contain("mermaid")
-		expect(p).to.contain("sequenceDiagram")
-		expect(p).to.contain("Walk me through the captured bug")
+		expect(p).to.contain("read_file nrf/workflows/demo-debug-hci.md") // bare relpath (downloaded), not a bundled fs path
+		expect(norm(p)).to.not.contain("iot-knowledge/platforms/nrf/workflows/demo-debug-hci") // must NOT resolve as bundled
+		expect(p).to.contain("If that read FAILS, STOP") // never reconstruct the beats/numbers from memory
+	})
+
+	it("needs-led open: leads with the live kit + offers the choice + scans the bench", () => {
+		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned")
+		expect(p).to.contain("Live on your bench") // lead with what's needed, not what's missing
+		expect(p).to.contain("nRF52840 Dongle") // the OTA-sniffer rung
+		expect(p).to.contain('operation="list"') // a light bench scan
+		expect(p).to.contain("Walk me through the capture") // captured walkthrough always offered
 		expect(p).to.contain("ask_followup_question")
 	})
 
-	it("offers live-capture options gated on hardware (DK / dongle)", () => {
-		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "hardware")
-		expect(p).to.contain("Capture it live on my board") // DK tier
-		expect(p).to.contain("Capture live + sniff over the air") // DK + dongle tier
-		expect(p).to.contain("capability=hardware") // host hint is passed through
+	it("reads the REAL per-layer captures (not a curated cheat-sheet) by path", () => {
+		const p = norm(buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned"))
+		expect(p).to.contain("logs/buggy/app.log")
+		expect(p).to.contain("logs/buggy/hci.hci.log")
+		expect(p).to.contain("logs/fixed/hci.hci.log")
+		expect(p).to.contain("logs/fixed/sniffer.sniffer.log")
+		expect(p).to.contain("central_uart/src/main.c")
+		expect(p).to.not.contain("curated.md") // the spoiler cheat-sheet is gone
 	})
 
-	it("calls out missing hardware and offers the 1-DK phone-as-central + OTA escalation tiers", () => {
-		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "hardware")
-		// STEP 1 must name the dongle (so a missing one is surfaced), not silently omit the option
-		expect(p).to.contain("sniffer dongle")
-		// 1-DK tier uses the phone as the central peer
-		expect(p.toLowerCase()).to.contain("phone")
-		// OTA tier follows the demo peripheral by its advertised name
-		expect(p).to.contain("Nordic_UART_Service")
-		// every tier nudges the next hardware rung
-		expect(p).to.contain("over the air")
+	it("stages the captures as gated beats (app → HCI → reveal → proof → sniffer)", () => {
+		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned")
+		expect(p).to.contain("Tap the HCI bus")
+		expect(p).to.contain("Show me the missing code")
+		expect(p).to.contain("Prove it on the HCI bus")
+		expect(p).to.contain("Sniff the air") // the sniffer is its own gated step
 	})
 
-	it("threads the cached env (DK count) into the prompt", () => {
+	it("offers live-capture options gated on hardware (DK / dongle) + threads the DK count", () => {
 		const p = buildHciSnifferPrompt(
 			"/storage/demo/hci-sniffer-1",
 			"hardware",
 			env({ installedSdkVersions: ["v3.2.1"], nrfutilPresent: true, boards: [board("1"), board("2")] }),
 		)
+		expect(p).to.contain("Capture it live on my board") // DK tier
+		expect(p).to.contain("Capture live + sniff over the air") // DK + dongle tier
+		expect(p).to.contain("capability=hardware")
 		expect(p).to.contain("DKs detected=2")
 	})
 
-	it("names the one-line fix and enforces the brevity/style contract", () => {
+	it("delegates the honesty guard: no-spoiler + buggy air advertising-only (never a fabricated delta)", () => {
 		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned")
-		expect(p).to.contain("bt_nus_subscribe_receive(&nus);")
-		expect(p).to.contain("STYLE CONTRACT")
+		expect(p).to.contain("do NOT name bt_nus_subscribe_receive() before Beat 3") // no-spoiler
+		expect(p).to.contain("advertising-only") // the buggy air honesty caveat
+		expect(p).to.contain("fabricated buggy↔fixed air delta") // never invent the air delta
+	})
+
+	it("closes seamlessly into the CRA sample (inline, same firmware) — readiness aid, not a verdict", () => {
+		const p = norm(
+			buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned", undefined, "/storage/demo/cra-prebuilt-nrf-1"),
+		)
+		expect(p).to.contain("ship-ready")
+		expect(p).to.contain("cra/workflows/cra-readiness.md") // the CRA workflow bit (bare relpath)
+		expect(p).to.contain("triggerCveScan")
+		expect(p).to.contain("/storage/demo/cra-prebuilt-nrf-1/sbom/all.spdx") // wired to the staged CRA bundle
+		expect(p).to.contain("conformity assessment") // framed as a readiness aid, NOT a verdict
 		expect(p.trimEnd().endsWith("<!--TASK_COMPLETE-->")).to.equal(true)
-	})
-
-	it("is honesty-locked: app BLIND, quantified signatures, curated-only reads, no fabricated 'received'", () => {
-		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned")
-		expect(p).to.contain("BLIND") // app layer can't see the bug — the trap that justifies the deeper layers
-		expect(p).to.contain("3 → 22") // real HCI ACL-frame signature (not a fabricated "ATT Write" line)
-		expect(p).to.contain("4 → 25") // real over-the-air DATA-PDU signature
-		expect(p).to.contain("READ ONLY") // token discipline: the curated slices, not the 1374-line raws
-		expect(p).to.contain("curated.md")
-		expect(p).to.contain("Do NOT claim the app log shows") // never fabricate received data
-	})
-
-	it("closes by bridging to the CRA feature (grounded, decline-able, evidence-mode)", () => {
-		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned")
-		expect(p).to.contain("Preview CRA readiness on this build")
-		expect(p).to.contain("Cyber Resilience Act")
-		expect(p).to.contain("conformity verdict") // framed as a readiness aid, NOT a verdict
 	})
 })
