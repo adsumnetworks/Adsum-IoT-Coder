@@ -317,95 +317,87 @@ export function buildHciSnifferDisplayText(): string {
 }
 
 /**
- * Open ONE small, legible curated-evidence file at launch (the decisive slices of all three layers, ~25 lines) —
- * NOT the raw multi-hundred-line decoded captures (the sniffer alone is 1374 lines). Dumping three raw traces in
- * tabs overwhelms the developer and blows the token budget; the curated file is the at-a-glance hook, and the raw
- * captures stay in the bundle for "open the full capture / Wireshark."
+ * Open NOTHING at launch — a clean entry like the NUS Sample run. The agent narrates and reads the real per-layer
+ * captures on-demand as it reaches each beat; auto-opening a file spoils the reveal and reads as a raw dump.
+ * (Param kept for the scenario-registry signature; intentionally unused.)
  */
-export function hciSnifferOpenInEditor(bundleRoot: string): string[] {
-	return [path.join(bundleRoot, "logs", "buggy", "curated.md")]
+export function hciSnifferOpenInEditor(_bundleRoot: string): string[] {
+	return []
 }
 
-export function buildHciSnifferPrompt(bundleRoot: string, capability: DemoCapability, env?: NrfEnvironment): string {
-	const cur = (tier: "buggy" | "fixed") => path.join(bundleRoot, "logs", tier, "curated.md")
-	const raw = (tier: "buggy" | "fixed", layer: string) => path.join(bundleRoot, "logs", tier, layer)
-	const bleFile =
-		resolveBitPathSync("adsum/nrf/sdks/ncs/protocols/ble") ??
-		path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "sdks", "ncs", "protocols", "BLE.md")
-	const flashDoc =
-		resolveBitPathSync("adsum/nrf/actions/flash") ??
-		path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "flash.md")
-	const captureDoc =
-		resolveBitPathSync("adsum/nrf/actions/capture-logs") ??
-		path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "actions", "capture-logs.md")
+/**
+ * Thin orchestrator for the HCI + Sniffer Sample run. The screenplay (beats, diagrams, the verified signatures, the
+ * honesty + no-spoiler rules) lives in the DOWNLOADED bit nrf/workflows/demo-debug-hci.md (referenced by bare relpath,
+ * like cra-sample references cra-readiness). This host prompt only sets up the bench, the real capture/source paths,
+ * the capability-gated buttons, and the seamless CRA closing. `craBundleRoot` is the writable cra-prebuilt/nrf bundle
+ * (prepared by the registry) used by the "ship-ready" branch.
+ */
+export function buildHciSnifferPrompt(
+	bundleRoot: string,
+	capability: DemoCapability,
+	env?: NrfEnvironment,
+	craBundleRoot?: string,
+): string {
+	const log = (tier: "buggy" | "fixed", name: string) => path.join(bundleRoot, "logs", tier, name)
+	const appLog = log("buggy", "app.log")
+	const hciBuggy = log("buggy", "hci.hci.log")
+	const hciFixed = log("fixed", "hci.hci.log")
+	const snifferFixed = log("fixed", "sniffer.sniffer.log")
+	const centralSrc = path.join(bundleRoot, "central_uart", "src", "main.c")
+	const rawSniffer = log("buggy", "sniffer.sniffer.log")
+	const pcap = log("buggy", "sniffer.pcap")
+	const workflowBit = "nrf/workflows/demo-debug-hci.md" // downloaded bit → bare relpath (NOT resolveBitPathSync)
+	const craWorkflow = "cra/workflows/cra-readiness.md"
+	const craSbom = craBundleRoot ? `${craBundleRoot}/sbom/all.spdx` : "<cra-bundle>/sbom/all.spdx"
+	const craBuild = craBundleRoot ?? "<cra-bundle>"
 	const dkCount = env?.boards?.length ?? 0
 
-	return `Demo: HCI + sniffer-in-the-loop BLE debug — no setup needed
+	return `Demo: HCI + Sniffer — a real BLE bug across three layers (no setup needed)
 
-[ADSUM_DEMO:hci-sniffer] You are running Adsum's flagship BLE DEEP-OBSERVABILITY demo for a developer EVALUATING the tool — a first impression, an acquisition moment. The pitch: most tools read your CODE; Adsum reads your RADIO — and DRIVES your bench (flash boards, tap the HCI bus, sniff the air). One real one-directional BLE bug, seen across three layers. Make them say "wow", fast — with minimal tokens and ZERO fabrication.
+[ADSUM_DEMO:hci-sniffer] You are running Adsum's flagship 3-layer BLE deep-observability Sample run for a developer EVALUATING the tool. The full screenplay — the beats, the diagrams, the verified signatures, the honesty rules, the no-spoiler discipline — lives in the workflow bit. Read it FIRST and FOLLOW it; this message only sets up the bench, the real file paths, and the close.
 
-=== STYLE CONTRACT — follow exactly ===
-- Lead with the goal. NO meta-narration ("let me walk you through what I'll do").
-- SHORT. Titled sections (## App layer, ## HCI layer, ## Over the air), ≤2 sentences each, cite the ONE decisive fact. Never a wall of text.
-- Use a mermaid \`sequenceDiagram\` for any flow — never prose a flow.
-- END EVERY STEP with an ask_followup_question button choice. Never dump everything at once.
-- TOKEN DISCIPLINE: the decisive evidence is pre-curated in ${cur("buggy")} and ${cur("fixed")} (~25 lines each). READ ONLY THOSE. Do NOT read the raw decoded captures (${raw("buggy", "hci.hci.log")} is 220 lines, ${raw("buggy", "sniffer.sniffer.log")} is 1374) — those are for the developer to open / load in Wireshark, never for you to ingest.
+=== LOAD THE WORKFLOW (do this first) ===
+read_file ${workflowBit} — the HCI + Sniffer screenplay. If that read FAILS, STOP: tell the developer the demo workflow is currently unavailable and do NOT proceed (never reconstruct the beats or the numbers from memory).
 
-=== HONESTY — this is the moat; never break it ===
-Cite ONLY what the captures actually show. The decisive signatures are QUANTIFIED and real:
-- App layer is BLIND: BOTH the buggy and fixed central logs end at "Service discovery completed" — no data line, no error. Do NOT claim the app log shows "received" / the data arriving — it does not. The app's blindness IS the point (it's why you need the deeper layers).
-- HCI: buggy = 3 ACL data frames (the discovery handshake only); fixed = 22 (the subscribe write + inbound notification packets).
-- Air: buggy = 4 DATA PDUs out of 327 frames (the rest are ADV + empty keep-alives); fixed = 25 DATA PDUs (notifications transmitting).
-Never emit a ✅ / compliance-style verdict badge. ⛔ / ✓ as an OBSERVED bus event (dropped / delivered) is fine — that is real status.
+=== THE REAL CAPTURES — read the ONE file named at each beat; never dump them all ===
+- App layer (central RTT):        ${appLog}
+- HCI bus, buggy:                 ${hciBuggy}
+- Central source (the bug):       ${centralSrc}
+- HCI bus, fixed (the proof):     ${hciFixed}
+- Over the air, fixed (sniffer):  ${snifferFixed}
+(Full raw captures for "open in Wireshark" only — never ingest: ${rawSniffer} · ${pcap}, + the fixed/ equivalents.)
 
-=== THE BUG (your knowledge — reveal it THROUGH the evidence, don't lead with it) ===
-discovery_complete() calls bt_nus_handles_assign() but never bt_nus_subscribe_receive(), so the central never subscribes to the peripheral's NUS TX → the peripheral's notifications are silently dropped.
-
-=== STEP 1 — Hook + scan YOUR bench (first message, keep it tiny) ===
-- One sentence of framing (read your radio / drive your bench), then this mermaid VERBATIM:
-\`\`\`mermaid
-sequenceDiagram
-  participant C as Central
-  participant P as Peripheral
-  C->>P: connect + discover NUS
-  Note over C: never subscribes — the bug
-  P-->>C: notify (sensor data) — dropped, no subscriber
-\`\`\`
-- SCAN their bench so they SEE you read it: triggerNordicAction action="log_device", operation="list". A DK = PCA10056/PCA10095/PCA10040 (J-Link); a sniffer dongle = "nRF Sniffer for Bluetooth LE" (flashed) or "Open DFU Bootloader"/PCA10059 (unflashed) — NEVER reported as a DK. In ONE line report EXACTLY the boards + dongle you found (or none), and name what's missing that would unlock more (a 2nd DK for two-board; a dongle for over-the-air). (Host hint: capability=${capability}, DKs detected=${dkCount}.)
-- Then ask with buttons — include ONLY what the hardware supports; the captured walkthrough is ALWAYS offered:
+=== STEP 1 — needs-led open + scan the bench (first message, keep it tight) ===
+- Open with the bit's credible hook (the bug hides below your code; it's readable across three layers — the app log, the HCI bus, and the air) and render the bit's 3-layer stack mermaid. No hype.
+- Lead with WHAT LIVE NEEDS, then offer the choice (do not just report what's missing):
+  • Captured walkthrough — replay the real capture, layer by layer (no setup).
+  • Live on your bench — 1 nRF DK → live HCI; 2 DKs → both sides + build/flash the fix; + an nRF52840 Dongle → the over-the-air sniffer.
+- THEN scan, so they see you read the bench: triggerNordicAction action="log_device", operation="list". A DK = PCA10056/PCA10095/PCA10040 (J-Link); a sniffer dongle = "nRF Sniffer for Bluetooth LE" (flashed) or "Open DFU Bootloader"/PCA10059 (unflashed) — NEVER reported as a DK. In ONE line report what's connected (or none). (Host hint: capability=${capability}, DKs detected=${dkCount}.)
+- Ask with buttons — include ONLY what the hardware supports; the captured walkthrough is ALWAYS offered:
   ask_followup_question — "How do you want to see it?"
-    - "Walk me through the captured bug"        ← ALWAYS include
-    - "Capture it live on my board"             ← include if you scanned ≥1 DK
-    - "Capture live + sniff over the air"       ← include ONLY if you scanned a DK AND a sniffer dongle
+    - "Walk me through the capture"        ← ALWAYS include
+    - "Capture it live on my board"        ← include if you scanned ≥1 DK
+    - "Capture live + sniff over the air"  ← include ONLY if you scanned a DK AND a sniffer dongle
 
-=== STEP 2A — the captured walkthrough (the hero path; needs NO hardware) ===
-read_file ${cur("buggy")} (ONLY this). Then three tight titled sections, each citing the real signature:
-- ## App layer — BLIND: discovery completes, then nothing — no data, no error. The app can't tell you why. (This is the trap that makes the deeper layers necessary.)
-- ## HCI layer — only 3 ACL data frames in the whole capture: the discovery handshake and nothing after. No subscribe goes out, no notifications come back.
-- ## Over the air — 4 DATA PDUs out of 327 frames; the rest are empty keep-alives. Almost nothing transmits. (The peripheral IS producing data — "farm_sensor: Battery level: 100%" every ~5 s — it just never gets subscribed-to.)
-Then ONE cross-layer mermaid tying app(blind) → HCI(no subscribe) → air(no notifications). Then:
-- ## The one-line fix: add \`bt_nus_subscribe_receive(&nus);\` right after \`bt_nus_handles_assign(dm, &nus);\`.
-- ## Proof — read_file ${cur("fixed")}: the same quantified signatures flip — HCI 3 → 22 ACL frames (the subscribe write + notifications), air 4 → 25 DATA PDUs. Be honest: the app log alone still ends at discovery (blind either way) — the proof lives in HCI + air. Same boards, one line.
-Then go to THE CLOSING.
+=== STEP 2 — the walkthrough (follow the bit's staged beats EXACTLY) ===
+Read the ONE real capture named at each beat (paths above), one layer at a time, ending EVERY beat with an ask_followup_question button (always include a "Skip to the fix" / "Seen enough" escape):
+  Beat 1 App — read ${appLog}            → button "Tap the HCI bus →"
+  Beat 2 HCI buggy — read ${hciBuggy}    → button "Show me the missing code →"
+  Beat 3 reveal + source — read ${centralSrc}, then Beat 4 the fix → button "Prove it on the HCI bus →"
+  Beat 5 HCI proof — read ${hciFixed}    → button "Sniff the air →"
+  Beat 6 sniffer — read ${snifferFixed}  → THE CLOSING
+Honor the bit's no-spoiler rule (do NOT name bt_nus_subscribe_receive() before Beat 3) and its honesty rules — the buggy air capture is advertising-only, so NEVER show a fabricated buggy↔fixed air delta; the real air diff is the live OTA tier.
+If they picked a LIVE option, follow the bit's Live tiers section instead (load nrf/actions/flash, nrf/actions/capture-logs, nrf/workflows/hci-trace, and — for OTA — nrf/workflows/ble-sniffer), with the bit's graceful-degradation rule.
 
-=== STEP 2B/2C/2D — live on their hardware (only if they picked a live option) ===
-Reproduce the SAME signatures (3→22 ACL, 4→25 air DATA) on their bench. Load the bits first (read_file ${bleFile} for the layer map, ${flashDoc} for flashing, ${captureDoc} for capture, + hci-trace and — OTA tier — ble-sniffer). Windows-first: use whatever shell you're actually running in, never assume POSIX. Resolve EACH DK's west target from its OWN boardVersion (PCA10056→\`nrf52840dk/nrf52840\`, PCA10095→\`nrf5340dk/nrf5340/cpuapp\`, PCA10040→\`nrf52dk/nrf52832\`); build from a copy in a NO-SPACES path (never in place in globalStorage, never symlinked); add \`CONFIG_BT_DEBUG_MONITOR_RTT=y\` + \`CONFIG_SEGGER_RTT_MAX_NUM_UP_BUFFERS=2\` to the central's prj.conf for live HCI.
-- ## 1 DK (phone-as-central): the DK is the PERIPHERAL; the developer's phone (nRF Connect / Toolbox) is the central; capture live HCI showing only the discovery ACL frames (no subscribe). Recommend a 2nd DK / a dongle.
-- ## 2 DK: assign roles, build+flash both, reproduce the buggy run (3 ACL frames), apply the one-line fix to the central copy, rebuild+reflash, show the fixed run (22 ACL frames) live. Recommend a dongle for the air view.
-- ## 2 DK + dongle (OTA): everything in 2 DK PLUS a live over-the-air sniff (triggerNordicAction operation="sniff", DUT \`Nordic_UART_Service\`), correlated with the HCI: 4 → 25 air DATA PDUs across the fix. No phone needed.
-GRACEFUL DEGRADATION (honesty): if a live layer fails or decodes thin (flash error, noisy/empty capture), fall back to that layer's curated reference and SAY so plainly — e.g. "live HCI captured ✓; the air capture was noisy, showing the reference air trace." NEVER fabricate a live result. The fix→rebuild→reflash heal is OFFERED, never forced; if a build/flash step fails, show the fix in code + the reference fixed signatures and move on. Then go to THE CLOSING.
-
-=== THE CLOSING — next steps + the CRA bridge (EVERY path ends here) ===
-Lead: "That's the bug, the fix, and the proof — across all three layers. You've seen how it RUNS. One more lens: is it ready to SHIP?" Then ONE grounded, decline-able offer — a connected BLE product genuinely falls under the EU Cyber Resilience Act, so this is grounded, not a random upsell — framed evidence-mode (never "you're compliant / CRA-ready"):
+=== THE CLOSING — unrushed, then the seamless CRA bridge (every path ends here) ===
+Lead with the win (per the bit), then offer — never push CRA onto the demo firmware:
   ask_followup_question — "Where to next?"
-    - "Preview CRA readiness on this build"     ← the latest feature: secure-by-design posture + SBOM, a readiness aid (NOT a conformity verdict)
+    - "See if a build like this is ship-ready"
     - "Run this on my own nRF project"
     - "Wrap up"
-If they choose CRA, route into the CRA SBOM & Fix workflow on this firmware. If NO hardware was detected earlier, also remind them once: connect a DK (or two) + an nRF52840 Dongle to do all of this LIVE next time.
-
-=== Reference (offer on demand, never ingest) ===
-- BLE 3-layer map: ${bleFile}
-- Full raw captures for Wireshark / inspection: ${raw("buggy", "hci.hci.log")} · ${raw("buggy", "sniffer.sniffer.log")} · ${raw("buggy", "sniffer.pcap")} (+ the fixed/ equivalents)
+- If "ship-ready": run the CRA SBOM & Fix Sample INLINE on the SAME central_uart reference. read_file ${craWorkflow} (its Sample-run mode; if that read FAILS, STOP and say CRA is unavailable — never reconstruct it). Then triggerCveScan with sbom=${craSbom} and build=${craBuild}. Follow cra-readiness's Sample-run mode (the 5 plain-English phases; the "# CRA SBOM & Fix — central_uart (reference sample)" title + the "readiness aid — NOT a conformity assessment" disclaimer; write the report, then present a THIN headline), and END with its real-run CTA ("Want this on YOUR firmware? Open your project…").
+- If "Run this on my own nRF project": invite File ▸ Open Folder, then CRA SBOM & Fix / debug on their real build.
+- If "Wrap up": a two-sentence recap (root cause + the one-line fix); if NO hardware was detected, add one nudge to connect a DK (or two) + an nRF52840 Dongle to do all three layers live next time.
 
 Call attempt_completion only after a final button choice resolves; end the final message with exactly, nothing after it: <!--TASK_COMPLETE-->`
 }
@@ -458,9 +450,12 @@ const HOST_DEMO_SCENARIOS: Record<string, HostDemoScenario> = {
 		triggerToken: "[ADSUM_DEMO:hci-sniffer]",
 		async buildTask(env) {
 			const bundleRoot = await prepareScenarioBundle("hci-sniffer")
+			// Stage the CRA reference (same central_uart firmware) so the "ship-ready" close can run the CRA
+			// SBOM & Fix Sample inline, in this same task — no toolchain/hardware needed (pre-built SBOM + .config).
+			const craBundleRoot = await prepareCraBundle("nrf")
 			const capability = classifyDemoCapability(env)
 			return {
-				taskText: buildHciSnifferPrompt(bundleRoot, capability, env),
+				taskText: buildHciSnifferPrompt(bundleRoot, capability, env, craBundleRoot),
 				displayText: buildHciSnifferDisplayText(),
 				openInEditor: hciSnifferOpenInEditor(bundleRoot),
 			}
