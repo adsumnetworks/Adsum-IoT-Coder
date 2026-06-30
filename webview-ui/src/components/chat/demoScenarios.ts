@@ -56,9 +56,9 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		icon: "shield",
 		isNew: true,
 	},
-	// A9 — Omar's placeholder. Visible as a roadmap row (disabled + "soon"); Omar brings it to life by adding the
-	// host [ADSUM_DEMO:hci-sniffer] handler + bundled capture and flipping comingSoon off. HCI lands first; the
-	// radio-sniffer layer is the additive frontier — copy leads with the layers honestly.
+	// HCI + Sniffer (v5) is BUILT — the host handler + the demo-debug-hci kbit (published to the registry) + the
+	// bundled captures are all ready. Held as a "coming soon" roadmap row for THIS release; ship it next release by
+	// flipping comingSoon off (then run the registry-mode F5 pre-release gate + `kbit:check-drift` first).
 	"hci-sniffer": {
 		id: "hci-sniffer",
 		title: "HCI + sniffer-in-the-loop BLE debug",
@@ -68,7 +68,7 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		historyMatch: "HCI + sniffer-in-the-loop BLE debug",
 		platform: "nrf",
 		icon: "radio-tower",
-		isNew: true,
+		comingSoon: true,
 	},
 	// A8 — ESP sample placeholder: a Wi-Fi debug session (ESP's connectivity story, parallel to the nRF/BLE HCI
 	// row). Disabled "soon" roadmap entry; Omar brings it to life via the host [ADSUM_DEMO:esp-wifi] handler + a
@@ -83,7 +83,6 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		platform: "esp",
 		icon: "broadcast",
 		comingSoon: true,
-		isNew: true,
 	},
 }
 

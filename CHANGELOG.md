@@ -24,7 +24,7 @@ When a BLE project is open (`CONFIG_BT=y` detected), the welcome screen now surf
 
 The HCI layer is new: the extension can now parse Host Controller Interface (HCI) event streams and decode them to human-readable BLE protocol events — helping you see exactly what's happening at the controller level, not just the application log.
 
-Try it on the new **HCI + Sniffer sample run** (under "Try it on a sample"): a guided investigation across all three layers — app log → HCI bus → over-the-air — from real nRF captures, landing on the one-line fix and a bridge to the CRA readiness check. With a DK (and an nRF52840 Dongle) connected, the same capture runs live on your bench.
+A guided **HCI + Sniffer sample run** — a three-layer walkthrough (app log → HCI bus → over-the-air) that lands on the one-line fix and bridges to the CRA readiness check — is coming in a follow-up release.
 
 ### nRF terminal — self-contained, version-aware
 
