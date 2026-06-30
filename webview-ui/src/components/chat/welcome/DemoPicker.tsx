@@ -86,9 +86,10 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 					// clicked into a dead end until its owner wires the real demo path.
 					const rowDisabled = disabled || !!s.comingSoon
 					// Rule (operator): a NEW + runnable sample card carries the cyan contour (the "New" badge and the
-					// contour go together) — the flagship stays the focal point in BOTH reduced views (project-open
-					// and no-project), identically. "soon" roadmap rows stay as-is (neutral, dimmed) even when New.
-					const featured = isRerun && !!s.isNew && !s.comingSoon
+					// contour go together), CONSISTENTLY in every state — the hero/expanded picker AND both reduced
+					// views (project-open and no-project). It still reads as the flagship in the hero view because the
+					// sibling runnable rows keep grey borders. "soon" roadmap rows stay neutral + dimmed even when New.
+					const featured = !!s.isNew && !s.comingSoon
 					// Contour tiers: cyan (NEW/featured) → brighter grey (runnable, not NEW) → dim grey (soon/disabled).
 					// A runnable-but-not-NEW row (e.g. an already-run BLE NUS) reads as clearly active, just without
 					// the NEW cyan contour — never as dim as a "soon" row.
