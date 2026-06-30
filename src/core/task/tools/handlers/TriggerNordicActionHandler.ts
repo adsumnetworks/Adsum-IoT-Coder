@@ -119,7 +119,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 	private async handleLogDevice(config: TaskConfig, block: ToolUse): Promise<ToolResponse> {
 		const operation = block.params.operation
-		let { port, duration, devices, output, reset, auto_detect, list_nrf, transport, monitor, follow_name } =
+		let { port, duration, devices, output, reset, auto_detect, list_nrf, transport, monitor, follow_name, follow_addr } =
 			block.params as any
 
 		// ROBUST TRANSPORT DETECTION with explicit user input priority
@@ -210,7 +210,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		// 1c. Handle "sniff" operation — over-the-air BLE capture via a SEPARATE sniffer dongle.
 		// Different rail from RTT/UART: own wrapper (nrfutil ble-sniffer) + PCAP decode, not the loggers.
 		if (operation === "sniff") {
-			return this.handleSniff(config, block, { port, duration, output, followName: follow_name })
+			return this.handleSniff(config, block, { port, duration, output, followName: follow_name, followAddr: follow_addr })
 		}
 
 		// 1d. Handle "open_capture" — generic Wireshark hand-off for a sniffer .pcap or HCI .btmon.
@@ -523,9 +523,9 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 	private async handleSniff(
 		config: TaskConfig,
 		block: ToolUse,
-		opts: { port?: string; duration?: string | number; output?: string; followName?: string },
+		opts: { port?: string; duration?: string | number; output?: string; followName?: string; followAddr?: string },
 	): Promise<ToolResponse> {
-		const { port, duration, output, followName } = opts
+		const { port, duration, output, followName, followAddr } = opts
 		if (!port) {
 			return formatResponse.toolError(
 				"Operation 'sniff' requires 'port' — the serial port of the SNIFFER dongle (e.g. COM7 or /dev/ttyACM0), " +
@@ -568,9 +568,13 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			pcapPath = path.join(dir, `sniffer_${stamp}.pcap`)
 		}
 
-		const durSec = duration ? Number(duration) : 20
+		const durSec = duration ? Number(duration) : 15
 		const args = [wrapperPath, "--port", port, "--output", quoteIfNeeded(pcapPath), "--duration", String(durSec)]
-		if (followName) {
+		// Address-follow takes precedence over name-follow: it's far more reliable when several devices are
+		// advertising (name-follow can lock onto the wrong device). The wrapper accepts only one, so pick addr first.
+		if (followAddr) {
+			args.push("--follow-addr", quoteIfNeeded(String(followAddr)))
+		} else if (followName) {
 			args.push("--follow-name", quoteIfNeeded(String(followName)))
 		}
 
