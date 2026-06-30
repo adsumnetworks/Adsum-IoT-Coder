@@ -22,6 +22,8 @@ import {
 	parseWestManifest,
 	parseZephyrVersionH,
 } from "@/services/cra/westVersions"
+import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
+import { telemetryService } from "@/services/telemetry"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
@@ -430,6 +432,15 @@ export class TriggerCveScanHandler implements IFullyManagedTool {
 			await config.callbacks.say("error", msg)
 			return formatResponse.toolError(msg)
 		}
+
+		// CVE scan succeeded — record aggregate feature health (counts only; never CVE ids or component names).
+		telemetryService.captureCveScanCompleted({
+			iot_platform: getCachedWorkspaceSummary(),
+			findings: result.findings.length,
+			queried: result.queriedCount,
+			coverageTotal: result.coverage.total,
+			coverageQueryable: result.coverage.queryable,
+		})
 
 		// Return the evidence-mode markdown for the model to present, plus a pointer to the written artifacts.
 		return `${result.report}\n\n(Wrote ${path.join(outDir, `cve-scan-${asOf}.md`)} and ${path.join(outDir, `cve-scan-${asOf}.json`)}.)`
