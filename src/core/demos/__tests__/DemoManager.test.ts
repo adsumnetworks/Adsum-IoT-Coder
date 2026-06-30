@@ -190,12 +190,10 @@ describe("hci-sniffer demo (hardware-adaptive 3-layer)", () => {
 		expect(buildHciSnifferDisplayText().startsWith("HCI + sniffer-in-the-loop BLE debug")).to.equal(true)
 	})
 
-	it("opens the three buggy logs (app · hci · sniffer) in the editor", () => {
+	it("opens ONE small curated evidence file, not the raw multi-hundred-line dumps", () => {
 		const files = hciSnifferOpenInEditor("/storage/demo/hci-sniffer-1").map((f) => f.replace(/\\/g, "/"))
-		expect(files.length).to.equal(3)
-		expect(files.some((f) => f.endsWith("logs/buggy/app.log"))).to.equal(true)
-		expect(files.some((f) => f.endsWith("logs/buggy/hci.hci.log"))).to.equal(true)
-		expect(files.some((f) => f.endsWith("logs/buggy/sniffer.sniffer.log"))).to.equal(true)
+		expect(files.length).to.equal(1)
+		expect(files[0].endsWith("logs/buggy/curated.md")).to.equal(true)
 	})
 
 	it("leads with a device scan + a mermaid + the always-on captured-walkthrough button", () => {
@@ -209,15 +207,15 @@ describe("hci-sniffer demo (hardware-adaptive 3-layer)", () => {
 
 	it("offers live-capture options gated on hardware (DK / dongle)", () => {
 		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "hardware")
-		expect(p).to.contain("Capture HCI live on my own board") // DK tier
-		expect(p).to.contain("Capture live + sniff it over the air") // DK + dongle tier
+		expect(p).to.contain("Capture it live on my board") // DK tier
+		expect(p).to.contain("Capture live + sniff over the air") // DK + dongle tier
 		expect(p).to.contain("capability=hardware") // host hint is passed through
 	})
 
 	it("calls out missing hardware and offers the 1-DK phone-as-central + OTA escalation tiers", () => {
 		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "hardware")
-		// STEP 1 must name a missing dongle explicitly, not silently omit the option
-		expect(p).to.contain("no sniffer dongle")
+		// STEP 1 must name the dongle (so a missing one is surfaced), not silently omit the option
+		expect(p).to.contain("sniffer dongle")
 		// 1-DK tier uses the phone as the central peer
 		expect(p.toLowerCase()).to.contain("phone")
 		// OTA tier follows the demo peripheral by its advertised name
@@ -235,10 +233,27 @@ describe("hci-sniffer demo (hardware-adaptive 3-layer)", () => {
 		expect(p).to.contain("DKs detected=2")
 	})
 
-	it("names the one-line fix and enforces the brevity/mermaid style contract", () => {
+	it("names the one-line fix and enforces the brevity/style contract", () => {
 		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned")
-		expect(p).to.contain("bt_nus_subscribe_receive(nus);")
+		expect(p).to.contain("bt_nus_subscribe_receive(&nus);")
 		expect(p).to.contain("STYLE CONTRACT")
 		expect(p.trimEnd().endsWith("<!--TASK_COMPLETE-->")).to.equal(true)
+	})
+
+	it("is honesty-locked: app BLIND, quantified signatures, curated-only reads, no fabricated 'received'", () => {
+		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned")
+		expect(p).to.contain("BLIND") // app layer can't see the bug — the trap that justifies the deeper layers
+		expect(p).to.contain("3 → 22") // real HCI ACL-frame signature (not a fabricated "ATT Write" line)
+		expect(p).to.contain("4 → 25") // real over-the-air DATA-PDU signature
+		expect(p).to.contain("READ ONLY") // token discipline: the curated slices, not the 1374-line raws
+		expect(p).to.contain("curated.md")
+		expect(p).to.contain("Do NOT claim the app log shows") // never fabricate received data
+	})
+
+	it("closes by bridging to the CRA feature (grounded, decline-able, evidence-mode)", () => {
+		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned")
+		expect(p).to.contain("Preview CRA readiness on this build")
+		expect(p).to.contain("Cyber Resilience Act")
+		expect(p).to.contain("conformity verdict") // framed as a readiness aid, NOT a verdict
 	})
 })
