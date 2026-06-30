@@ -5,18 +5,20 @@
  * Tailwind utilities). CSS-variable equivalents live in `theme.css`
  * (`--color-brand-*`) and Tailwind exposes them as `brand-*` utilities.
  *
- * Centered on the logo cyan (#00A9CE). Cyan leads primary actions/demo;
- * coral carries secondary cards & accents.
+ * UI GOLDEN RULES (./UI-GOLDEN-RULES.md): **Coral = identity, Cyan = action.**
+ * The logo brandmark is CORAL; coral carries identity + secondary/supporting surfaces (never the focal CTA).
+ * Cyan is the interactive layer — the focal action + every affordance (buttons, links, New badge, active state).
+ * One feature keeps one action-color across all surfaces. Grey = inactive; semantic = status only (never a verdict).
  */
 
-// Primary — Adsum Cyan
-export const BRAND_CYAN_300 = "#6FD2E6" // light
+// Action / interactive — Adsum Cyan
+export const BRAND_CYAN_300 = "#6FD2E6" // light — text on dark fills
 export const BRAND_CYAN_500 = "#19B6D8" // hover
-export const BRAND_CYAN_600 = "#00A9CE" // base (logo)
+export const BRAND_CYAN_600 = "#00A9CE" // base — primary ACTION color
 export const BRAND_CYAN_700 = "#0089A8" // active / text-on-fill safe
 
-// Secondary — Adsum Coral
-export const BRAND_CORAL = "#D76947" // base
+// Identity / secondary — Adsum Coral
+export const BRAND_CORAL = "#D76947" // base — IDENTITY (the logo mark) + secondary/supporting
 export const BRAND_CORAL_HOVER = "#E07D5F"
 export const BRAND_CORAL_ACTIVE = "#C0542F"
 
