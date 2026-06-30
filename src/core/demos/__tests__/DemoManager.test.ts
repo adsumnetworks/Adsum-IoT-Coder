@@ -136,8 +136,24 @@ describe("buildDemoPrompt", () => {
 			expect(p).to.contain("Flash & run it live on my boards")
 			expect(p).to.contain("Just build it — no boards needed")
 			expect(p).to.contain("west flash")
-			expect(p).to.contain("--snr")
+			expect(p).to.contain("--dev-id") // canonical flag; --snr is deprecated (flash.md)
 			expect(p).to.not.contain('Type **"flash it"**')
+		})
+
+		it("hardware tier is board-flexible + shell-agnostic (no hardcoded board pair / POSIX-only shell)", () => {
+			const p = buildDemoPrompt(
+				ws,
+				"hardware",
+				env({ installedSdkVersions: ["v3.2.1"], nrfutilPresent: true, boards: [board("1"), board("2")] }),
+			)
+			// the live tier must not bake in a fixed /tmp POSIX build path or the deprecated --snr flag
+			expect(p).to.not.contain("/tmp/adsum_demo")
+			expect(p).to.not.contain("--snr")
+			// it must be Windows-first (taskkill, not POSIX-only pkill) ...
+			expect(p).to.contain("taskkill")
+			// ... and tell the agent to resolve the target itself and build from a space-free copy
+			expect(p).to.contain("NO SPACES")
+			expect(p).to.contain("resolve")
 		})
 
 		it("every tier offers the wrap-up / stop option that completes the task", () => {
@@ -196,6 +212,27 @@ describe("hci-sniffer demo (hardware-adaptive 3-layer)", () => {
 		expect(p).to.contain("Capture HCI live on my own board") // DK tier
 		expect(p).to.contain("Capture live + sniff it over the air") // DK + dongle tier
 		expect(p).to.contain("capability=hardware") // host hint is passed through
+	})
+
+	it("calls out missing hardware and offers the 1-DK phone-as-central + OTA escalation tiers", () => {
+		const p = buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "hardware")
+		// STEP 1 must name a missing dongle explicitly, not silently omit the option
+		expect(p).to.contain("no sniffer dongle")
+		// 1-DK tier uses the phone as the central peer
+		expect(p.toLowerCase()).to.contain("phone")
+		// OTA tier follows the demo peripheral by its advertised name
+		expect(p).to.contain("Nordic_UART_Service")
+		// every tier nudges the next hardware rung
+		expect(p).to.contain("over the air")
+	})
+
+	it("threads the cached env (DK count) into the prompt", () => {
+		const p = buildHciSnifferPrompt(
+			"/storage/demo/hci-sniffer-1",
+			"hardware",
+			env({ installedSdkVersions: ["v3.2.1"], nrfutilPresent: true, boards: [board("1"), board("2")] }),
+		)
+		expect(p).to.contain("DKs detected=2")
 	})
 
 	it("names the one-line fix and enforces the brevity/mermaid style contract", () => {

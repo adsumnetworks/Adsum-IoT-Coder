@@ -176,8 +176,14 @@ Use role-specific labels (central, peripheral) ONLY when the role has been confi
 	{
 		name: "follow_name",
 		required: false,
-		instruction: `Optional, operation="sniff" only. Advertised name of the device under test to lock the sniffer onto (nrfutil ble-sniffer --follow-by-name). Without it the sniffer captures all nearby advertising. Use the DUT's CONFIG_BT_DEVICE_NAME.`,
+		instruction: `Optional, operation="sniff" only. Advertised name of the device under test, to lock the sniffer onto it (nrfutil ble-sniffer --follow-by-name). Without a follow target (this or follow_addr) the sniffer stays in advertising-scan mode and captures ONLY advertising — CONNECT_IND and all post-connection data traffic are invisible. follow_addr (a BLE address) is more reliable when several devices advertise or the name is ambiguous; prefer it if you know the address. Use the DUT's CONFIG_BT_DEVICE_NAME here.`,
 		usage: "MyDevice",
+	},
+	{
+		name: "follow_addr",
+		required: false,
+		instruction: `Optional, operation="sniff" only. BLE address of the device under test to lock the sniffer onto (nrfutil ble-sniffer --follow). More reliable than follow_name when several devices are advertising or the name is ambiguous — resolve the address from a short unfollowed pre-scan, then follow by address. Takes precedence over follow_name when both are given.`,
+		usage: "c3:c3:c8:32:c0:d5",
 	},
 	{
 		name: "capture_path",

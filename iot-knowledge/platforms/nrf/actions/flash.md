@@ -2,7 +2,7 @@
 id: adsum/nrf/actions/flash
 title: "Action: Flash Firmware"
 type: action
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -70,6 +70,13 @@ Common flash failures:
   - Linux/Mac: `pkill -9 JLink && pkill -9 nrfutil`
   - Windows: `cmd /c "taskkill /F /IM JLink.exe 2>nul & taskkill /F /IM nrfutil.exe 2>nul"` (wrap in `cmd /c` so it works in PowerShell — `&` is reserved in PowerShell, but cmd.exe parses the quoted string natively)
 - `ERROR: An error occurred while flashing` → Check USB cable, try a different port, or power cycle the DK.
+- `Configured peripheral: SPIM0; supported: [SPIM3, QSPI]` (or similar QSPI/SPIM external-flash error from the
+  default `nrfutil`/`nrfjprog` runner, seen on `nrf52840dk` whose `runners.yaml` configures external flash) →
+  retry with the **J-Link runner**, which bypasses the nRF-specific QSPI handling:
+  ```bash
+  west flash --runner jlink --dev-id <serial_number>
+  ```
+  If the board still runs the wrong image afterward (identity mismatch from a prior flash), add `--erase`.
 
 On flash failure, always offer: `["Retry flash", "Check device connection", "Cancel"]`
 
