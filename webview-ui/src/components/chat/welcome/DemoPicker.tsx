@@ -21,8 +21,10 @@ interface DemoPickerProps {
 }
 
 // Neutral surfaces for the demoted "rerun" state — quiet, no brand fill (the samples are no longer the hero).
-const NEUTRAL_BORDER = "color-mix(in srgb, var(--vscode-foreground) 18%, transparent)"
-const NEUTRAL_BORDER_HOVER = "color-mix(in srgb, var(--vscode-foreground) 32%, transparent)"
+// Three contour tiers: cyan (NEW/featured) > brighter grey (runnable, not NEW) > dim grey (soon/disabled).
+const NEUTRAL_BORDER = "color-mix(in srgb, var(--vscode-foreground) 18%, transparent)" // soon/disabled rows
+const NEUTRAL_BORDER_RUNNABLE = "color-mix(in srgb, var(--vscode-foreground) 30%, transparent)" // runnable, not NEW
+const NEUTRAL_BORDER_HOVER = "color-mix(in srgb, var(--vscode-foreground) 42%, transparent)"
 const NEUTRAL_ICON_BG = "color-mix(in srgb, var(--vscode-foreground) 10%, transparent)"
 
 /**
@@ -87,7 +89,10 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 					// contour go together) — the flagship stays the focal point in BOTH reduced views (project-open
 					// and no-project), identically. "soon" roadmap rows stay as-is (neutral, dimmed) even when New.
 					const featured = isRerun && !!s.isNew && !s.comingSoon
-					const restBorder = featured ? BRAND_CYAN_600 : NEUTRAL_BORDER
+					// Contour tiers: cyan (NEW/featured) → brighter grey (runnable, not NEW) → dim grey (soon/disabled).
+					// A runnable-but-not-NEW row (e.g. an already-run BLE NUS) reads as clearly active, just without
+					// the NEW cyan contour — never as dim as a "soon" row.
+					const restBorder = featured ? BRAND_CYAN_600 : rowDisabled ? NEUTRAL_BORDER : NEUTRAL_BORDER_RUNNABLE
 					// Three opacity tiers in the reduced picker: runnable (featured OR not) = 80% (clearly active),
 					// "soon" = 50% (dimmed). The hero variant stays full-opacity for runnable rows.
 					const rowOpacity = rowDisabled ? 0.5 : isRerun ? 0.8 : 1
