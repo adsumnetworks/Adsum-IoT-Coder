@@ -74,7 +74,7 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		platform: "nrf",
 		icon: "radio-tower",
 		comingSoon: true,
-		teaser: "Find a BLE bug across app, HCI, and the air.",
+		teaser: "BLE, debugged at every layer — app, bus, radio.",
 	},
 	// A8 — ESP sample placeholder: a Wi-Fi debug session (ESP's connectivity story, parallel to the nRF/BLE HCI
 	// row). Disabled "soon" roadmap entry; Omar brings it to life via the host [ADSUM_DEMO:esp-wifi] handler + a
@@ -89,7 +89,7 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		platform: "esp",
 		icon: "broadcast",
 		comingSoon: true,
-		teaser: "Find why an ESP32 won't join Wi-Fi.",
+		teaser: "ESP32 Wi-Fi, debugged on real hardware.",
 	},
 }
 
