@@ -474,6 +474,29 @@ export function getHostDemoScenario(id: string): HostDemoScenario | undefined {
 	return HOST_DEMO_SCENARIOS[id]
 }
 
+/** Recover a demo scenario id from a task's chat-bubble text (the displayText we set at launch). Used at
+ *  attempt_completion to attribute `demo_run_completed` to the RIGHT scenario — not just nus-uart. Each
+ *  displayText headline is the stable prefix the webview's `historyMatch` also keys on, so a startsWith match
+ *  is exact. Returns undefined when the text isn't a demo bubble. */
+export function detectDemoScenarioId(text: string): string | undefined {
+	if (!text) {
+		return undefined
+	}
+	const heads: Array<[string, string]> = [
+		[SCENARIO_ID, buildDemoDisplayText()],
+		["cra-sample", buildCraSampleDisplayText()],
+		["esp-wifi", buildEspWifiDisplayText()],
+		["hci-sniffer", buildHciSnifferDisplayText()],
+	]
+	for (const [id, display] of heads) {
+		const head = display.split("\n")[0].trim()
+		if (head && text.startsWith(head)) {
+			return id
+		}
+	}
+	return undefined
+}
+
 // ── Private helpers ───────────────────────────────────────────────────────────
 
 function buildEscalationBlock(capability: DemoCapability, ws: DemoWorkspace, env?: NrfEnvironment): string {

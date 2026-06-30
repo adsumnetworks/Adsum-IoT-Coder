@@ -3,6 +3,7 @@ import path from "node:path"
 import type Anthropic from "@anthropic-ai/sdk"
 import { AdsumFreeHandler } from "@core/api/providers/adsum-free"
 import type { ToolUse } from "@core/assistant-message"
+import { detectDemoScenarioId } from "@core/demos/DemoManager"
 import { formatResponse } from "@core/prompts/responses"
 import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { showSystemNotification } from "@integrations/notifications"
@@ -19,11 +20,19 @@ import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 
-const DEMO_TASK_PREFIX = "Debug a real BLE NUS bug"
-
-function isCompletingDemoTask(config: TaskConfig): boolean {
+/** The demo scenario id this task is completing (matched from the launch bubble text), or undefined if it's not
+ *  a demo task. Drives `demo_run_completed` attribution across ALL scenarios — previously only NUS was detected. */
+function completingDemoScenarioId(config: TaskConfig): string | undefined {
 	const msgs = config.messageState.getClineMessages()
-	return msgs.some((m) => m.type === "say" && m.say === "text" && m.text?.startsWith(DEMO_TASK_PREFIX))
+	for (const m of msgs) {
+		if (m.type === "say" && m.say === "text" && m.text) {
+			const id = detectDemoScenarioId(m.text)
+			if (id) {
+				return id
+			}
+		}
+	}
+	return undefined
 }
 
 export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHandler {
@@ -195,8 +204,9 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 				if (config.api instanceof AdsumFreeHandler) {
 					telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
 				}
-				if (isCompletingDemoTask(config)) {
-					telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), "nus-uart")
+				const demoScenarioId = completingDemoScenarioId(config)
+				if (demoScenarioId) {
+					telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), demoScenarioId)
 				}
 			} else {
 				// we already sent a command message, meaning the complete completion message has also been sent
@@ -231,8 +241,9 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			if (config.api instanceof AdsumFreeHandler) {
 				telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
 			}
-			if (isCompletingDemoTask(config)) {
-				telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), "nus-uart")
+			const demoScenarioId = completingDemoScenarioId(config)
+			if (demoScenarioId) {
+				telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), demoScenarioId)
 			}
 		}
 

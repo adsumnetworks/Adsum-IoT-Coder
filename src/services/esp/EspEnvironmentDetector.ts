@@ -16,6 +16,7 @@
  * Extension info (present/version) is injected from extension.ts (vscode.extensions is banned here).
  */
 
+import { telemetryService } from "@services/telemetry"
 import { dedupeEspDevicesByMac, type EspDevice, type EspEnvironment, isMacShaped } from "@shared/esp"
 import { exec } from "child_process"
 import { existsSync, readdirSync, readFileSync } from "fs"
@@ -435,6 +436,12 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 		espDevices,
 		lastDetectedAt: Date.now(),
 	}
+
+	telemetryService.captureEspEnvDetected({
+		extensionPresent: _cache.extensionPresent,
+		idfPresent: _cache.idfPresent,
+		deviceCount: _cache.espDevices.length,
+	})
 
 	return _cache
 }
