@@ -134,11 +134,15 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 									width: isRerun ? "26px" : "32px",
 									height: isRerun ? "26px" : "32px",
 									borderRadius: "50%",
-									background: featured || !isRerun ? BRAND_CYAN_700 : NEUTRAL_ICON_BG,
+									// Icon brightness tracks RUNNABLE, not NEW: every runnable row gets the bright cyan-filled
+									// icon so an already-run sample (e.g. BLE NUS — runnable, "Re-run", but not New) reads as
+									// active, not disabled. Only "soon"/disabled rows get the neutral grey icon. The cyan
+									// CONTOUR + "New" badge remain the sole featured-exclusive cues.
+									background: rowDisabled ? NEUTRAL_ICON_BG : BRAND_CYAN_700,
 									display: "flex",
 									alignItems: "center",
 									justifyContent: "center",
-									color: featured || !isRerun ? "#fff" : "var(--vscode-descriptionForeground)",
+									color: rowDisabled ? "var(--vscode-descriptionForeground)" : "#fff",
 								}}>
 								<i className={`codicon codicon-${s.icon}`} style={{ fontSize: isRerun ? "13px" : "15px" }} />
 							</div>
