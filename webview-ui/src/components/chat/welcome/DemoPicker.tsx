@@ -189,7 +189,9 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 											marginTop: "2px",
 											lineHeight: 1.35,
 										}}>
-										{s.honestLabel}
+										{/* coming-soon rows show a brief teaser (a dimmed roadmap row needn't carry the full sell);
+										    live rows keep the full honestLabel. */}
+										{s.comingSoon && s.teaser ? s.teaser : s.honestLabel}
 									</div>
 								)}
 							</div>

@@ -32,6 +32,11 @@ export interface DemoScenario {
 	comingSoon?: boolean
 	/** Show a "New" badge on the picker row — used for the CRA + the new BLE-observability (Omar) samples. */
 	isNew?: boolean
+	/**
+	 * Brief one-line description shown INSTEAD of honestLabel while the row is `comingSoon` — a dimmed roadmap
+	 * teaser doesn't need the full sell. When the row goes live (comingSoon off), the full honestLabel returns.
+	 */
+	teaser?: string
 }
 
 export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
@@ -69,6 +74,7 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		platform: "nrf",
 		icon: "radio-tower",
 		comingSoon: true,
+		teaser: "Find a BLE bug across app, HCI, and the air.",
 	},
 	// A8 — ESP sample placeholder: a Wi-Fi debug session (ESP's connectivity story, parallel to the nRF/BLE HCI
 	// row). Disabled "soon" roadmap entry; Omar brings it to life via the host [ADSUM_DEMO:esp-wifi] handler + a
@@ -83,6 +89,7 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		platform: "esp",
 		icon: "broadcast",
 		comingSoon: true,
+		teaser: "Find why an ESP32 won't join Wi-Fi.",
 	},
 }
 
