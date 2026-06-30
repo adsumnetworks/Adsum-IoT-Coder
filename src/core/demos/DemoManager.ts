@@ -316,17 +316,19 @@ export function buildHciSnifferDisplayText(): string {
 	)
 }
 
-/** The three buggy decoded logs the host opens in editor tabs at launch (relative to the bundle root). */
+/**
+ * Open ONE small, legible curated-evidence file at launch (the decisive slices of all three layers, ~25 lines) —
+ * NOT the raw multi-hundred-line decoded captures (the sniffer alone is 1374 lines). Dumping three raw traces in
+ * tabs overwhelms the developer and blows the token budget; the curated file is the at-a-glance hook, and the raw
+ * captures stay in the bundle for "open the full capture / Wireshark."
+ */
 export function hciSnifferOpenInEditor(bundleRoot: string): string[] {
-	return [
-		path.join(bundleRoot, "logs", "buggy", "app.log"),
-		path.join(bundleRoot, "logs", "buggy", "hci.hci.log"),
-		path.join(bundleRoot, "logs", "buggy", "sniffer.sniffer.log"),
-	]
+	return [path.join(bundleRoot, "logs", "buggy", "curated.md")]
 }
 
 export function buildHciSnifferPrompt(bundleRoot: string, capability: DemoCapability, env?: NrfEnvironment): string {
-	const L = (tier: "buggy" | "fixed", layer: string) => path.join(bundleRoot, "logs", tier, layer)
+	const cur = (tier: "buggy" | "fixed") => path.join(bundleRoot, "logs", tier, "curated.md")
+	const raw = (tier: "buggy" | "fixed", layer: string) => path.join(bundleRoot, "logs", tier, layer)
 	const bleFile =
 		resolveBitPathSync("adsum/nrf/sdks/ncs/protocols/ble") ??
 		path.join(_extensionPath!, "iot-knowledge", "platforms", "nrf", "sdks", "ncs", "protocols", "BLE.md")
@@ -340,89 +342,70 @@ export function buildHciSnifferPrompt(bundleRoot: string, capability: DemoCapabi
 
 	return `Demo: HCI + sniffer-in-the-loop BLE debug — no setup needed
 
-[ADSUM_DEMO:hci-sniffer] You are running Adsum's flagship BLE observability demo for a developer EVALUATING the tool — this is a first impression and an acquisition moment. The three real captures (app log, HCI trace, over-the-air sniffer) are ALREADY OPEN in their editor tabs. Make them say "wow", fast.
+[ADSUM_DEMO:hci-sniffer] You are running Adsum's flagship BLE DEEP-OBSERVABILITY demo for a developer EVALUATING the tool — a first impression, an acquisition moment. The pitch: most tools read your CODE; Adsum reads your RADIO — and DRIVES your bench (flash boards, tap the HCI bus, sniff the air). One real one-directional BLE bug, seen across three layers. Make them say "wow", fast — with minimal tokens and ZERO fabrication.
 
-=== STYLE CONTRACT — follow exactly, this is the point of the redesign ===
-- Lead with the goal. NO "let me walk you through what I'm going to do", no meta-narration.
-- SHORT. Titled sections ("## App layer", etc.), ≤2 sentences each, cite the ONE decisive line — never paragraphs, never a wall of text. Developers won't read walls.
-- Use a mermaid \`sequenceDiagram\` for any flow — never describe a flow in prose.
+=== STYLE CONTRACT — follow exactly ===
+- Lead with the goal. NO meta-narration ("let me walk you through what I'll do").
+- SHORT. Titled sections (## App layer, ## HCI layer, ## Over the air), ≤2 sentences each, cite the ONE decisive fact. Never a wall of text.
+- Use a mermaid \`sequenceDiagram\` for any flow — never prose a flow.
 - END EVERY STEP with an ask_followup_question button choice. Never dump everything at once.
+- TOKEN DISCIPLINE: the decisive evidence is pre-curated in ${cur("buggy")} and ${cur("fixed")} (~25 lines each). READ ONLY THOSE. Do NOT read the raw decoded captures (${raw("buggy", "hci.hci.log")} is 220 lines, ${raw("buggy", "sniffer.sniffer.log")} is 1374) — those are for the developer to open / load in Wireshark, never for you to ingest.
 
-=== THE BUG ===
-One-directional NUS: the central connects and discovers the peripheral's Nordic UART Service, but never SUBSCRIBES to its TX characteristic (it skips bt_nus_subscribe_receive after bt_nus_handles_assign). So the peripheral's notifications are silently dropped — peripheral→central data never arrives. The signature is visible at all three layers: no CCCD write in HCI, no notifications on air, nothing received in the app log.
+=== HONESTY — this is the moat; never break it ===
+Cite ONLY what the captures actually show. The decisive signatures are QUANTIFIED and real:
+- App layer is BLIND: BOTH the buggy and fixed central logs end at "Service discovery completed" — no data line, no error. Do NOT claim the app log shows "received" / the data arriving — it does not. The app's blindness IS the point (it's why you need the deeper layers).
+- HCI: buggy = 3 ACL data frames (the discovery handshake only); fixed = 22 (the subscribe write + inbound notification packets).
+- Air: buggy = 4 DATA PDUs out of 327 frames (the rest are ADV + empty keep-alives); fixed = 25 DATA PDUs (notifications transmitting).
+Never emit a ✅ / compliance-style verdict badge. ⛔ / ✓ as an OBSERVED bus event (dropped / delivered) is fine — that is real status.
 
-=== STEP 1 — Hook + scan (your FIRST message, keep it tiny) ===
-- One sentence of framing, then this mermaid VERBATIM:
+=== THE BUG (your knowledge — reveal it THROUGH the evidence, don't lead with it) ===
+discovery_complete() calls bt_nus_handles_assign() but never bt_nus_subscribe_receive(), so the central never subscribes to the peripheral's NUS TX → the peripheral's notifications are silently dropped.
+
+=== STEP 1 — Hook + scan YOUR bench (first message, keep it tiny) ===
+- One sentence of framing (read your radio / drive your bench), then this mermaid VERBATIM:
 \`\`\`mermaid
 sequenceDiagram
-  participant P as Peripheral
   participant C as Central
+  participant P as Peripheral
   C->>P: connect + discover NUS
-  Note over C: never subscribes (the bug)
-  P-->>C: notify "hello" — dropped, no subscriber
+  Note over C: never subscribes — the bug
+  P-->>C: notify (sensor data) — dropped, no subscriber
 \`\`\`
-- Then SCAN their hardware so they SEE you read their bench: call triggerNordicAction with action="log_device", operation="list". A DK is a board like PCA10056/PCA10095/PCA10040 (J-Link); a sniffer dongle shows up as "nRF Sniffer for Bluetooth LE" (flashed) or "Open DFU Bootloader" / PCA10059 (unflashed) — it is NEVER reported as a DK. In ONE line, report EXACTLY what you found, and if a tier of hardware is missing, say so explicitly so the developer knows what would unlock more — e.g.:
-    - 0 DK, no dongle: "No nRF hardware detected — connect a DK (or two) and an nRF52840 Dongle and I can reproduce this live."
-    - 1 DK, no dongle: "I see 1 DK and no sniffer dongle — plug in a second DK for the full two-board repro, or an nRF52840 Dongle to also see this over the air."
-    - 2 DK, no dongle: "I see 2 DKs but no sniffer dongle — plug in an nRF52840 Dongle to also see this over the air."
-    - 2 DK + dongle: "I see 2 DKs and a sniffer dongle — I can reproduce this live AND show it over the air."
-- Then ask with buttons. Include ONLY options their hardware supports; the captured-walkthrough is ALWAYS offered. (Host hint: capability=${capability}, DKs detected=${dkCount} — "hardware" means at least one DK is present.)
-  ask_followup_question — Question: "How do you want to see it?"
-  Options:
-    - "Walk me through the captured bug"            ← ALWAYS include
-    - "Capture HCI live on my own board"            ← include if you scanned at least one connected DK
-    - "Capture live + sniff it over the air"        ← include ONLY if you scanned a DK AND a sniffer dongle
+- SCAN their bench so they SEE you read it: triggerNordicAction action="log_device", operation="list". A DK = PCA10056/PCA10095/PCA10040 (J-Link); a sniffer dongle = "nRF Sniffer for Bluetooth LE" (flashed) or "Open DFU Bootloader"/PCA10059 (unflashed) — NEVER reported as a DK. In ONE line report EXACTLY the boards + dongle you found (or none), and name what's missing that would unlock more (a 2nd DK for two-board; a dongle for over-the-air). (Host hint: capability=${capability}, DKs detected=${dkCount}.)
+- Then ask with buttons — include ONLY what the hardware supports; the captured walkthrough is ALWAYS offered:
+  ask_followup_question — "How do you want to see it?"
+    - "Walk me through the captured bug"        ← ALWAYS include
+    - "Capture it live on my board"             ← include if you scanned ≥1 DK
+    - "Capture live + sniff over the air"       ← include ONLY if you scanned a DK AND a sniffer dongle
 
-=== STEP 2A — "Walk me through the captured bug" (the hero path; works with NO hardware) ===
-The three buggy logs are already open in their editor. Walk the three layers — each a short titled section citing the ONE decisive line, naming the open file:
-- ## App layer (buggy/app.log): the peripheral sends, the central never prints it — the dropped-data line.
-- ## HCI layer (buggy/hci.hci.log): the central's host↔controller trace shows service discovery but NO GATT write to the CCCD — the subscribe never happens.
-- ## Over-the-air (buggy/sniffer.sniffer.log): the air shows the connection but no CCCD write and no peripheral→central notifications.
-Then ONE cross-layer mermaid tying app-intent → HCI → air. Then:
-- ## The one-line fix: add \`bt_nus_subscribe_receive(nus);\` right after \`bt_nus_handles_assign(dm, nus);\` — that single line makes the central subscribe, so the CCCD write goes out and the notifications flow.
-- ## Proof — try to read the FIXED captures (${L("fixed", "hci.hci.log")}, ${L("fixed", "sniffer.sniffer.log")}, ${L("fixed", "app.log")}). IF they exist, show the before/after: the CCCD write + notifications now appear in HCI + air and the data arrives in the app log — same boards, one line. IF a fixed capture is missing, do NOT fabricate it: just show the fix in code and say the fixed run can be reproduced live on connected boards.
-Close with buttons — Question: "That's the whole loop. Where to next?"
-Options: ["Run this on my own nRF project", "I've seen enough — wrap up"]. If NO hardware was detected in STEP 1, replace the
-close with a recommendation: tell the developer to connect a DK (or two) and an nRF52840 Dongle and you'll reproduce this live
-on their hardware, then offer the same two buttons.
+=== STEP 2A — the captured walkthrough (the hero path; needs NO hardware) ===
+read_file ${cur("buggy")} (ONLY this). Then three tight titled sections, each citing the real signature:
+- ## App layer — BLIND: discovery completes, then nothing — no data, no error. The app can't tell you why. (This is the trap that makes the deeper layers necessary.)
+- ## HCI layer — only 3 ACL data frames in the whole capture: the discovery handshake and nothing after. No subscribe goes out, no notifications come back.
+- ## Over the air — 4 DATA PDUs out of 327 frames; the rest are empty keep-alives. Almost nothing transmits. (The peripheral IS producing data — "farm_sensor: Battery level: 100%" every ~5 s — it just never gets subscribed-to.)
+Then ONE cross-layer mermaid tying app(blind) → HCI(no subscribe) → air(no notifications). Then:
+- ## The one-line fix: add \`bt_nus_subscribe_receive(&nus);\` right after \`bt_nus_handles_assign(dm, &nus);\`.
+- ## Proof — read_file ${cur("fixed")}: the same quantified signatures flip — HCI 3 → 22 ACL frames (the subscribe write + notifications), air 4 → 25 DATA PDUs. Be honest: the app log alone still ends at discovery (blind either way) — the proof lives in HCI + air. Same boards, one line.
+Then go to THE CLOSING.
 
 === STEP 2B/2C/2D — live on their hardware (only if they picked a live option) ===
-Reproduce the SAME signature on their actual bench; do not improvise raw shell for flashing or capture. Load the action/workflow
-bits first (read_file the relevant ones: ${bleFile} for the layer map, ${flashDoc} for flashing, ${captureDoc} for capture, plus
-the hci-trace and — for the OTA tier — ble-sniffer workflows). The product is Windows-first: use whatever shell you're actually
-running in for any copy/remove/process-kill step, never assume POSIX. Branch on what you actually scanned in STEP 1:
+Reproduce the SAME signatures (3→22 ACL, 4→25 air DATA) on their bench. Load the bits first (read_file ${bleFile} for the layer map, ${flashDoc} for flashing, ${captureDoc} for capture, + hci-trace and — OTA tier — ble-sniffer). Windows-first: use whatever shell you're actually running in, never assume POSIX. Resolve EACH DK's west target from its OWN boardVersion (PCA10056→\`nrf52840dk/nrf52840\`, PCA10095→\`nrf5340dk/nrf5340/cpuapp\`, PCA10040→\`nrf52dk/nrf52832\`); build from a copy in a NO-SPACES path (never in place in globalStorage, never symlinked); add \`CONFIG_BT_DEBUG_MONITOR_RTT=y\` + \`CONFIG_SEGGER_RTT_MAX_NUM_UP_BUFFERS=2\` to the central's prj.conf for live HCI.
+- ## 1 DK (phone-as-central): the DK is the PERIPHERAL; the developer's phone (nRF Connect / Toolbox) is the central; capture live HCI showing only the discovery ACL frames (no subscribe). Recommend a 2nd DK / a dongle.
+- ## 2 DK: assign roles, build+flash both, reproduce the buggy run (3 ACL frames), apply the one-line fix to the central copy, rebuild+reflash, show the fixed run (22 ACL frames) live. Recommend a dongle for the air view.
+- ## 2 DK + dongle (OTA): everything in 2 DK PLUS a live over-the-air sniff (triggerNordicAction operation="sniff", DUT \`Nordic_UART_Service\`), correlated with the HCI: 4 → 25 air DATA PDUs across the fix. No phone needed.
+GRACEFUL DEGRADATION (honesty): if a live layer fails or decodes thin (flash error, noisy/empty capture), fall back to that layer's curated reference and SAY so plainly — e.g. "live HCI captured ✓; the air capture was noisy, showing the reference air trace." NEVER fabricate a live result. The fix→rebuild→reflash heal is OFFERED, never forced; if a build/flash step fails, show the fix in code + the reference fixed signatures and move on. Then go to THE CLOSING.
 
-- ## 1 DK, no second DK (phone-as-central tier): your one DK plays the PERIPHERAL — flash the buggy peripheral_uart to it
-  (resolve its west board target yourself from its boardVersion, e.g. PCA10056 → \`nrf52840dk/nrf52840\`, PCA10095 →
-  \`nrf5340dk/nrf5340/cpuapp\`, PCA10040 → \`nrf52dk/nrf52832\`; build from a copy in a path with NO SPACES, never in place
-  inside globalStorage, never symlinked). Ask the developer to act as the CENTRAL using their phone — nRF Connect for Mobile
-  or nRF Toolbox — connecting to the peripheral and exercising the NUS service (subscribe + write). Capture RTT and live HCI
-  from the DK side (triggerNordicAction action="log_device", operation="capture", transport="rtt", monitor="true" — this
-  needs \`CONFIG_BT_DEBUG_MONITOR_RTT=y\` and \`CONFIG_SEGGER_RTT_MAX_NUM_UP_BUFFERS=2\` added to the peripheral's prj.conf
-  before building). Show the same missing-CCCD signature live. Close by recommending a SECOND DK for the full two-board
-  repro, and/or an nRF52840 Dongle to also see it over the air.
+=== THE CLOSING — next steps + the CRA bridge (EVERY path ends here) ===
+Lead: "That's the bug, the fix, and the proof — across all three layers. You've seen how it RUNS. One more lens: is it ready to SHIP?" Then ONE grounded, decline-able offer — a connected BLE product genuinely falls under the EU Cyber Resilience Act, so this is grounded, not a random upsell — framed evidence-mode (never "you're compliant / CRA-ready"):
+  ask_followup_question — "Where to next?"
+    - "Preview CRA readiness on this build"     ← the latest feature: secure-by-design posture + SBOM, a readiness aid (NOT a conformity verdict)
+    - "Run this on my own nRF project"
+    - "Wrap up"
+If they choose CRA, route into the CRA SBOM & Fix workflow on this firmware. If NO hardware was detected earlier, also remind them once: connect a DK (or two) + an nRF52840 Dongle to do all of this LIVE next time.
 
-- ## 2 DK (full two-board repro): resolve EACH DK's correct west board target from its own boardVersion (do not assume a
-  fixed nRF52840DK/nRF5340DK pair — read each board's actual identity) and assign roles, one central, one peripheral. Build
-  both from copies in a path with NO SPACES (never in place inside globalStorage, never symlinked), adding
-  \`CONFIG_BT_DEBUG_MONITOR_RTT=y\` + \`CONFIG_SEGGER_RTT_MAX_NUM_UP_BUFFERS=2\` to the central's prj.conf first so live HCI
-  capture works, then flash both by serial. Reproduce the buggy run (peripheral notification dropped, missing CCCD write in
-  the live HCI trace — same signature as the captured logs), apply the one-line fix to the central copy, rebuild + reflash
-  central, then show the fixed run: the CCCD write and notifications now appear live. Close by recommending an nRF52840
-  Dongle for the over-the-air view, in addition to the normal closing buttons.
-
-- ## 2 DK + dongle (OTA tier): do everything in the 2-DK path above, PLUS a live over-the-air sniff —
-  triggerNordicAction operation="sniff" using the dongle's port, following the DUT named \`Nordic_UART_Service\` — and
-  correlate the captured air trace with the live HCI: no CCCD write and no notifications on air while buggy, both appear
-  once fixed. No phone needed for this tier.
-
-Close every live tier with the same final buttons as STEP 2A, after recommending whatever next hardware tier is still
-missing (more DKs, or a dongle) as described above.
-
-=== Reference files (read on demand, never dumped) ===
-- BLE layer map (the 3-layer escalation): ${bleFile}
-- Buggy captures (already open): ${L("buggy", "app.log")} · ${L("buggy", "hci.hci.log")} · ${L("buggy", "sniffer.sniffer.log")}
-- Fixed captures (for the proof): ${L("fixed", "app.log")} · ${L("fixed", "hci.hci.log")} · ${L("fixed", "sniffer.sniffer.log")}
+=== Reference (offer on demand, never ingest) ===
+- BLE 3-layer map: ${bleFile}
+- Full raw captures for Wireshark / inspection: ${raw("buggy", "hci.hci.log")} · ${raw("buggy", "sniffer.sniffer.log")} · ${raw("buggy", "sniffer.pcap")} (+ the fixed/ equivalents)
 
 Call attempt_completion only after a final button choice resolves; end the final message with exactly, nothing after it: <!--TASK_COMPLETE-->`
 }
