@@ -4,7 +4,7 @@
 
 # Adsum IoT Coder
 
-### ESP &amp; nRF · AI Firmware Debug, Dev &amp; CRA Readiness
+### ESP &amp; nRF · IoT Firmware Debug, Dev &amp; CRA Readiness
 
 **An IoT coding agent for VS Code that works your whole firmware dev loop on Espressif ESP and Nordic nRF: scaffold, build, flash, test, observe, fix. It automates the routine firmware work you would rather not do, and cracks the runtime bugs general agents cannot, because it reads your board, not just your code.**
 
