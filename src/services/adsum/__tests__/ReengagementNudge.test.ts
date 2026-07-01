@@ -77,25 +77,31 @@ describe("classifyReengagement", () => {
 })
 
 describe("buildReengagementMessage", () => {
-	it("with a project → CRA readiness from the build, names the project", () => {
-		const c = buildReengagementMessage({ hasProject: true, projectName: "central_uart" })
+	it("CRA-relevant → CRA readiness from the build, names the project", () => {
+		const c = buildReengagementMessage({ craRelevant: true, projectName: "central_uart", version: "0.1.7" })
 		expect(c.message).to.contain("central_uart")
 		expect(c.message).to.contain("Cyber Resilience Act")
 		expect(c.cta).to.equal("Show me")
 	})
 
-	it("without a project → CRA readiness on a sample", () => {
-		const c = buildReengagementMessage({ hasProject: false })
-		expect(c.message).to.contain("on a sample")
-		expect(c.cta).to.equal("Show me")
+	it("not CRA-relevant → the shared 3-pillar what's-new pitch (never a false per-project CRA claim)", () => {
+		const c = buildReengagementMessage({ craRelevant: false, version: "0.1.7" })
+		expect(c.message).to.contain("What's new in v0.1.7")
+		expect(c.message).to.contain("hardware-in-the-loop")
+		expect(c.cta).to.equal("See what's new")
 	})
 
-	it("appends a free-token hint only when a positive balance is known", () => {
-		const withHint = buildReengagementMessage({ hasProject: true, projectName: "p", freeTokens: 2_000_000 })
+	it("appends a free-token hint only when a positive balance is known (CRA-relevant copy)", () => {
+		const withHint = buildReengagementMessage({
+			craRelevant: true,
+			projectName: "p",
+			freeTokens: 2_000_000,
+			version: "0.1.7",
+		})
 		expect(withHint.message).to.contain("2,000,000 free tokens")
-		const noHint = buildReengagementMessage({ hasProject: true, projectName: "p", freeTokens: 0 })
+		const noHint = buildReengagementMessage({ craRelevant: true, projectName: "p", freeTokens: 0, version: "0.1.7" })
 		expect(noHint.message).to.not.contain("free tokens")
-		const undefinedHint = buildReengagementMessage({ hasProject: true, projectName: "p" })
+		const undefinedHint = buildReengagementMessage({ craRelevant: true, projectName: "p", version: "0.1.7" })
 		expect(undefinedHint.message).to.not.contain("free tokens")
 	})
 })
