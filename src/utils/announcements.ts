@@ -20,5 +20,5 @@ export function getLatestAnnouncementId(): string {
  * of the open project.
  */
 export function whatsNewToastMessage(version: string): string {
-	return `✦ What's new in v${version} — CRA readiness · hardware-in-the-loop debug · expert know-how that augments the AI.`
+	return `✦ What's new in Adsum IoT Coder v${version} — CRA readiness · hardware-in-the-loop debug · expert know-how that augments the AI.`
 }
