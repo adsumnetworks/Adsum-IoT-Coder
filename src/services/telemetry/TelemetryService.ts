@@ -2494,12 +2494,20 @@ export class TelemetryService {
 
 	/** Project-aware upgrade/update toast (the VS Code notification) was shown. targeted = CRA / new-install copy
 	 *  (vs the generic "what's new"); relevant = whether the open project is CRA-relevant. Counts/enums only. */
-	public captureUpgradeToastShown(props: { targeted: boolean; relevant: "cra" | "generic" }) {
+	public captureUpgradeToastShown(props: {
+		targeted: boolean
+		relevant: "cra" | "generic"
+		surface?: "upgrade" | "project_open"
+	}) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.UPGRADE_TOAST_SHOWN, properties: { ...props } })
 	}
 
 	/** The upgrade/update toast CTA was clicked (routes into the panel — never auto-streams). */
-	public captureUpgradeToastClicked(props: { targeted: boolean; relevant: "cra" | "generic" }) {
+	public captureUpgradeToastClicked(props: {
+		targeted: boolean
+		relevant: "cra" | "generic"
+		surface?: "upgrade" | "project_open"
+	}) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.UPGRADE_TOAST_CLICKED, properties: { ...props } })
 	}
 
