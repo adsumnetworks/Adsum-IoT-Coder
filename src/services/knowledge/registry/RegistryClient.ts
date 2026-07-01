@@ -37,6 +37,11 @@ export class RegistryClient {
 		private readonly baseUrl: string = ClineEnv.config().adsumApiBaseUrl,
 		private readonly fetchImpl: FetchLike = fetch,
 		private readonly timeoutMs = 5000,
+		/** Total attempts per request. A single transient blip (timeout / network drop / 5xx) used to make a
+		 *  downloaded bit "vanish" → the agent then improvised the workflow from memory. Bounded retry closes
+		 *  that: 3 attempts with linear backoff. 4xx (bit genuinely absent) is NOT retried — it fails fast. */
+		private readonly maxAttempts = 3,
+		private readonly retryBackoffMs = 250,
 	) {}
 
 	/** The downloadable catalog, or null if unreachable/malformed. */
@@ -63,19 +68,34 @@ export class RegistryClient {
 	}
 
 	private async get(path: string): Promise<string | null> {
-		const controller = new AbortController()
-		const timer = setTimeout(() => controller.abort(), this.timeoutMs)
-		try {
-			const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
-				method: "GET",
-				headers: { Accept: "application/json" },
-				signal: controller.signal,
-			})
-			return res.ok ? await res.text() : null
-		} catch {
-			return null
-		} finally {
-			clearTimeout(timer)
+		const url = `${this.baseUrl}${path}`
+		for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
+			const controller = new AbortController()
+			const timer = setTimeout(() => controller.abort(), this.timeoutMs)
+			try {
+				const res = await this.fetchImpl(url, {
+					method: "GET",
+					headers: { Accept: "application/json" },
+					signal: controller.signal,
+				})
+				if (res.ok) {
+					return await res.text()
+				}
+				// 4xx = permanent (bit genuinely absent / bad request) → fail fast, no retry.
+				// 5xx = transient server error → fall through to retry.
+				if (res.status < 500) {
+					return null
+				}
+			} catch {
+				// Network error / timeout / abort → transient → fall through to retry.
+			} finally {
+				clearTimeout(timer)
+			}
+			// Linear backoff between attempts (none after the last).
+			if (attempt < this.maxAttempts) {
+				await new Promise((resolve) => setTimeout(resolve, this.retryBackoffMs * attempt))
+			}
 		}
+		return null
 	}
 }

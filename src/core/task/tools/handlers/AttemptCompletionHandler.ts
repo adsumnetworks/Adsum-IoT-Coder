@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, readdirSync } from "node:fs"
 import path from "node:path"
 import type Anthropic from "@anthropic-ai/sdk"
 import { AdsumFreeHandler } from "@core/api/providers/adsum-free"
@@ -33,6 +33,32 @@ function completingDemoScenarioId(config: TaskConfig): string | undefined {
 		}
 	}
 	return undefined
+}
+
+/** True if a CRA readiness report already exists on disk under `<cwd>/compliance` (directly or in a `cra-*`
+ *  run folder). The write-seam honesty guard (WriteToFileToolHandler) already validated any such file at write
+ *  time, so on-disk evidence is enough to satisfy the completion guard's "was it actually written?" check.
+ *  This prevents a false "presented but never wrote it" block when the in-memory `craReadinessReportWritten`
+ *  flag was reset — e.g. the report was written in a prior turn, or a mid-session workspace-folder switch
+ *  started a fresh task (a real ESP run was blocked 6× though CRA_READINESS.md existed on disk). */
+function readinessReportOnDisk(cwd: string): boolean {
+	try {
+		const complianceDir = path.join(cwd, "compliance")
+		if (!existsSync(complianceDir)) {
+			return false
+		}
+		if (existsSync(path.join(complianceDir, "CRA_READINESS.md"))) {
+			return true
+		}
+		for (const entry of readdirSync(complianceDir, { withFileTypes: true })) {
+			if (entry.isDirectory() && existsSync(path.join(complianceDir, entry.name, "CRA_READINESS.md"))) {
+				return true
+			}
+		}
+	} catch {
+		// Unreadable compliance dir → treat as "no report on disk" (the guard then behaves as before).
+	}
+	return false
 }
 
 export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHandler {
@@ -100,7 +126,8 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 				.filter((m) => m.type === "say" && (m.say === "text" || m.say === "completion_result"))
 				.map((m) => m.text ?? "")
 			const presentedButUnwritten = looksLikeCraReportContent(result) || sayTexts.some(looksLikeCraReportContent)
-			if (presentedButUnwritten) {
+			// On-disk evidence overrides the reset in-memory flag (prior turn / workspace switch) — don't false-block.
+			if (presentedButUnwritten && !readinessReportOnDisk(config.cwd)) {
 				config.taskState.consecutiveMistakeCount++
 				return formatResponse.toolError(
 					"This CRA readiness run presented the report (posture preview / readiness report content) but never " +
