@@ -1,6 +1,9 @@
 import { basename } from "path"
 import { HostProvider } from "@/hosts/host-provider"
+import { ExtensionRegistryInfo } from "@/registry"
+import { getCachedWorkspaceFeatures, getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { telemetryService } from "@/services/telemetry"
+import { whatsNewToastMessage } from "@/utils/announcements"
 import { readTaskHistoryFromState } from "../../core/storage/disk"
 import { StateManager } from "../../core/storage/StateManager"
 import { ShowMessageType } from "../../shared/proto/host/window"
@@ -88,24 +91,25 @@ export interface ReengagementCopy {
 	cta: string
 }
 
-/** CRA-focused re-engagement copy. General voice (no platform assumption — the simple recurring nudge doesn't
- *  tailor per-platform); names the project when one is open, else points at the sample. Hints free balance. */
+/** CRA-focused re-engagement copy — connectivity-honest. Only claims per-project CRA relevance when BLE/Wi-Fi was
+ *  actually detected (same signal as the CRA card + upgrade toast); otherwise shows the same broad 3-pillar pitch
+ *  as a fresh install. Names the project when connected; hints the free balance. */
 export function buildReengagementMessage(ctx: {
-	hasProject: boolean
+	craRelevant: boolean
 	projectName?: string
 	freeTokens?: number
+	version: string
 }): ReengagementCopy {
 	const quotaHint =
 		ctx.freeTokens && ctx.freeTokens > 0 ? ` You still have ${ctx.freeTokens.toLocaleString()} free tokens.` : ""
-	return ctx.hasProject
-		? {
-				message: `A connected product likely falls under the EU Cyber Resilience Act — preview ${ctx.projectName ?? "your project"}'s CRA readiness from your build.${quotaHint}`,
-				cta: "Show me",
-			}
-		: {
-				message: `A connected product likely falls under the EU Cyber Resilience Act — see the CRA readiness check on a sample.${quotaHint}`,
-				cta: "Show me",
-			}
+	if (ctx.craRelevant) {
+		return {
+			message: `A connected product likely falls under the EU Cyber Resilience Act — preview ${ctx.projectName ?? "your project"}'s CRA readiness from your build.${quotaHint}`,
+			cta: "Show me",
+		}
+	}
+	// Not CRA-relevant (no project / not connected / already compliant) → the same 3-pillar pitch as a fresh install.
+	return { message: whatsNewToastMessage(ctx.version), cta: "See what's new" }
 }
 
 /**
@@ -142,18 +146,25 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 			return
 		}
 
-		// Context for the copy.
-		let hasProject = false
+		// Context for the copy. Only make the per-project CRA claim when connectivity is actually detected — the same
+		// signal the CRA card and the upgrade toast use; otherwise the nudge falls back to the broad 3-pillar pitch.
+		const features = getCachedWorkspaceFeatures()
+		const summary = getCachedWorkspaceSummary()
+		const craRelevant = summary !== "none" && (features.hasBle || features.hasWifi) && !features.hasComplianceArtifacts
 		let projectName: string | undefined
 		try {
 			const roots = (await HostProvider.workspace.getWorkspacePaths({})).paths
-			hasProject = roots.length > 0
-			projectName = hasProject ? basename(roots[0]) : undefined
+			projectName = roots.length > 0 ? basename(roots[0]) : undefined
 		} catch {
-			// No workspace info — fall back to the no-project copy.
+			// No workspace info — fall back to the 3-pillar copy.
 		}
 		const freeTokens = getFreeTierTokensForDisplay()
-		const { message, cta } = buildReengagementMessage({ hasProject, projectName, freeTokens })
+		const { message, cta } = buildReengagementMessage({
+			craRelevant,
+			projectName,
+			freeTokens,
+			version: ExtensionRegistryInfo.version,
+		})
 
 		// Stamp the rate-limit clock before showing; the ignore-streak is updated by the OUTCOME below
 		// (reset on engage, incremented on dismiss) so engaged users are never capped.

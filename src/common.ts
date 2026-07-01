@@ -34,7 +34,7 @@ import { ShowMessageType } from "./shared/proto/host/window"
 import { FeatureFlag } from "./shared/services/feature-flags/feature-flags"
 import { syncWorker } from "./shared/services/worker/sync"
 import { getBlobStoreSettingsFromEnv } from "./shared/services/worker/worker"
-import { getLatestAnnouncementId } from "./utils/announcements"
+import { getLatestAnnouncementId, whatsNewToastMessage } from "./utils/announcements"
 import { arePathsEqual } from "./utils/path"
 /**
  * Performs intialization for Cline that is common to all platforms.
@@ -226,15 +226,15 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext): 
 				const summary = getCachedWorkspaceSummary()
 				const craRelevant =
 					summary !== "none" && (features.hasBle || features.hasWifi) && !features.hasComplianceArtifacts
-				const message = isNewInstall
-					? `Welcome to Adsum IoT Coder v${currentVersion} — preview a CRA readiness check on a real build, no project needed.`
-					: craRelevant
-						? `Adsum IoT Coder v${currentVersion} — preview your project's CRA readiness from your build.`
-						: `Adsum IoT Coder has been updated to v${currentVersion}.`
-				const cta = isNewInstall || craRelevant ? "Show me →" : "⚡ What's new — see it"
-				const targeted = isNewInstall || craRelevant
+				// CRA-relevant UPDATE → the personalized CRA line; fresh installs + generic updates → the shared
+				// 3-pillar "what's new" (CRA readiness · hardware-in-the-loop debug · expert know-how augmenting the AI).
+				const targetedCra = !isNewInstall && craRelevant
+				const message = targetedCra
+					? `Adsum IoT Coder v${currentVersion} — preview your project's CRA readiness from your build.`
+					: whatsNewToastMessage(currentVersion)
+				const cta = targetedCra ? "Show me →" : "See what's new →"
 				const relevant = craRelevant ? "cra" : "generic"
-				telemetryService.captureUpgradeToastShown({ targeted, relevant })
+				telemetryService.captureUpgradeToastShown({ targeted: targetedCra, relevant })
 				// Fire-and-forget: do NOT await the toast (it resolves only on user action; this function is awaited
 				// in activate(), so awaiting here would block activation + the version-tracker write below).
 				void HostProvider.window
@@ -247,7 +247,7 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext): 
 						if (selectedOption !== cta) {
 							return
 						}
-						telemetryService.captureUpgradeToastClicked({ targeted, relevant })
+						telemetryService.captureUpgradeToastClicked({ targeted: targetedCra, relevant })
 						// Route into the panel and let the dev choose — NEVER auto-stream text. The welcome shows the
 						// grounded CRA nudge (project-open + connectivity) or the CRA-focused What's-new card / sample
 						// picker. Fresh installs no longer auto-run the NUS demo (it didn't drive activation).
