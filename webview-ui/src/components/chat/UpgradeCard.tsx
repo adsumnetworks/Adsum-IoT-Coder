@@ -52,7 +52,7 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 					marginBottom: "4px",
 					paddingRight: "24px",
 				}}>
-				✦ What's new in v{version}
+				🛡️ What's new in v{version} — CRA SBOM &amp; Fix
 			</div>
 
 			<div
@@ -62,7 +62,8 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 					marginBottom: "12px",
 					lineHeight: 1.5,
 				}}>
-				Debug a real BLE bug — no board, no setup. Then point Adsum at your own firmware.
+				A connected product likely falls under the EU Cyber Resilience Act. Preview your secure-by-design posture — an
+				SBOM, a live CVE scan, and a readiness check — on a sample, no project needed.
 			</div>
 
 			<div style={{ display: "flex", alignItems: "center" }}>
@@ -89,10 +90,10 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 						fontWeight: 600,
 						cursor: "pointer",
 					}}
-					title="Runs on real nRF logs — no board or setup needed."
+					title="Runs the CRA workflow on a pre-built reference sample — no project needed."
 					type="button">
-					<i className="codicon codicon-rocket" style={{ fontSize: "13px" }} />
-					Try it on a real BLE bug ›
+					<i className="codicon codicon-shield" style={{ fontSize: "13px" }} />
+					Preview CRA on a sample ›
 				</button>
 			</div>
 		</div>

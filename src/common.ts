@@ -27,7 +27,7 @@ import { ErrorService } from "./services/error"
 import { featureFlagsService } from "./services/feature-flags"
 import { __setKbitTelemetry } from "./services/knowledge/KnowledgeResolver"
 import { getDistinctId, initializeDistinctId, setDistinctId } from "./services/logging/distinctId"
-import { getCachedWorkspaceSummary } from "./services/platform/WorkspaceClassifier"
+import { getCachedWorkspaceFeatures, getCachedWorkspaceSummary } from "./services/platform/WorkspaceClassifier"
 import { telemetryService } from "./services/telemetry"
 import { PostHogClientProvider } from "./services/telemetry/providers/posthog/PostHogClientProvider"
 import { ShowMessageType } from "./shared/proto/host/window"
@@ -219,15 +219,24 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext): 
 			if (lastShownAnnouncementId !== latestAnnouncementId) {
 				shown = true
 				const isNewInstall = !previousVersion
+				// Project-aware copy — graceful fallback to the generic message when classification isn't ready
+				// at activation (summary "none"). CRA-relevant = a connected project (BLE/Wi-Fi) with no compliance
+				// artifacts yet. Calm, honest CRA voice; each surface adapts (fresh install → "on a sample").
+				const features = getCachedWorkspaceFeatures()
+				const summary = getCachedWorkspaceSummary()
+				const craRelevant =
+					summary !== "none" && (features.hasBle || features.hasWifi) && !features.hasComplianceArtifacts
 				const message = isNewInstall
-					? `Welcome to Adsum IoT Coder v${currentVersion}`
-					: `Adsum IoT Coder has been updated to v${currentVersion}`
-				// ⚡ (gold lightning) on the CTA matches the free-tier "⚡ Free tier" branding. Notification
-				// buttons are plain text (no codicons/themed icons), so this is the colour emoji.
-				const cta = isNewInstall ? "⚡ See it debug a real bug (30s)" : "⚡ What's new — see it"
-				// Fire-and-forget: do NOT await the toast. showMessage resolves only when the user
-				// clicks or dismisses it, and this function is awaited in activate() — awaiting here
-				// would block activation (and the version-tracker write below) until the user reacts.
+					? `Welcome to Adsum IoT Coder v${currentVersion} — preview a CRA readiness check on a real build, no project needed.`
+					: craRelevant
+						? `Adsum IoT Coder v${currentVersion} — preview your project's CRA readiness from your build.`
+						: `Adsum IoT Coder has been updated to v${currentVersion}.`
+				const cta = isNewInstall || craRelevant ? "Show me →" : "⚡ What's new — see it"
+				const targeted = isNewInstall || craRelevant
+				const relevant = craRelevant ? "cra" : "generic"
+				telemetryService.captureUpgradeToastShown({ targeted, relevant })
+				// Fire-and-forget: do NOT await the toast (it resolves only on user action; this function is awaited
+				// in activate(), so awaiting here would block activation + the version-tracker write below).
 				void HostProvider.window
 					.showMessage({
 						type: ShowMessageType.INFORMATION,
@@ -238,19 +247,15 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext): 
 						if (selectedOption !== cta) {
 							return
 						}
-						// New install → auto-start the demo (push them straight to the wow). On an UPDATE,
-						// "What's new — see it" should just open the home (which shows the What's New card +
-						// the demo hero) and let the returning user choose — NOT force-run the demo, which
-						// the button label doesn't promise. setGlobalState alone doesn't broadcast, so we
-						// also push state; ChatView consumes demoAutoStart and runs the demo via handleStartDemo.
-						if (isNewInstall) {
-							StateManager.get().setGlobalState("demoAutoStart", "nus-uart")
-						}
+						telemetryService.captureUpgradeToastClicked({ targeted, relevant })
+						// Route into the panel and let the dev choose — NEVER auto-stream text. The welcome shows the
+						// grounded CRA nudge (project-open + connectivity) or the CRA-focused What's-new card / sample
+						// picker. Fresh installs no longer auto-run the NUS demo (it didn't drive activation).
 						await HostProvider.workspace.openClineSidebarPanel({})
 						try {
 							await WebviewProvider.getInstance().controller.postStateToWebview()
 						} catch {
-							// Webview not ready yet — it will pick up demoAutoStart on its next state sync.
+							// Webview not ready yet — it will pick up the welcome state on its next sync.
 						}
 					})
 					.catch(() => {})

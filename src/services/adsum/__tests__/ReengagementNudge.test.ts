@@ -77,29 +77,25 @@ describe("classifyReengagement", () => {
 })
 
 describe("buildReengagementMessage", () => {
-	it("demo_no_work with a project names it and offers to debug firmware", () => {
-		const c = buildReengagementMessage("demo_no_work", { hasProject: true, projectName: "central_uart" })
+	it("with a project → CRA readiness from the build, names the project", () => {
+		const c = buildReengagementMessage({ hasProject: true, projectName: "central_uart" })
 		expect(c.message).to.contain("central_uart")
-		expect(c.cta).to.equal("Debug my firmware")
+		expect(c.message).to.contain("Cyber Resilience Act")
+		expect(c.cta).to.equal("Show me")
 	})
 
-	it("demo_no_work without a project invites opening one", () => {
-		const c = buildReengagementMessage("demo_no_work", { hasProject: false })
-		expect(c.cta).to.equal("Open my project")
-	})
-
-	it("did_work with a project offers to resume it", () => {
-		const c = buildReengagementMessage("did_work", { hasProject: true, projectName: "my_app" })
-		expect(c.message).to.contain("my_app")
-		expect(c.cta).to.equal("Resume")
+	it("without a project → CRA readiness on a sample", () => {
+		const c = buildReengagementMessage({ hasProject: false })
+		expect(c.message).to.contain("on a sample")
+		expect(c.cta).to.equal("Show me")
 	})
 
 	it("appends a free-token hint only when a positive balance is known", () => {
-		const withHint = buildReengagementMessage("did_work", { hasProject: true, projectName: "p", freeTokens: 2_000_000 })
+		const withHint = buildReengagementMessage({ hasProject: true, projectName: "p", freeTokens: 2_000_000 })
 		expect(withHint.message).to.contain("2,000,000 free tokens")
-		const noHint = buildReengagementMessage("did_work", { hasProject: true, projectName: "p", freeTokens: 0 })
+		const noHint = buildReengagementMessage({ hasProject: true, projectName: "p", freeTokens: 0 })
 		expect(noHint.message).to.not.contain("free tokens")
-		const undefinedHint = buildReengagementMessage("did_work", { hasProject: true, projectName: "p" })
+		const undefinedHint = buildReengagementMessage({ hasProject: true, projectName: "p" })
 		expect(undefinedHint.message).to.not.contain("free tokens")
 	})
 })

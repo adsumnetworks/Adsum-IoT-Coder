@@ -93,6 +93,21 @@ test("accumulates hasBle across a 'both' tree (BLE in one app only)", () => {
 	assert.equal(r.features.hasBle, true)
 })
 
+// --- hasWifi: nRF CONFIG_WIFI opt-in + ESP esp_wifi source usage (no config-default false positives) ---
+const wifiOf = (roots: string[], files: Record<string, string>) => classifyWorkspace(roots, fixture(files)).features.hasWifi
+test("Wi-Fi from nRF prj.conf CONFIG_WIFI=y (nRF7002)", () =>
+	assert.equal(wifiOf(["/p"], { "/p/prj.conf": "CONFIG_WIFI=y\n" }), true))
+test("Wi-Fi from build/zephyr/.config (nRF resolved)", () =>
+	assert.equal(wifiOf(["/p"], { "/p/CMakeLists.txt": NRF, "/p/build/zephyr/.config": "CONFIG_WIFI=y\n" }), true))
+test("Wi-Fi from ESP esp_wifi.h include in main/", () =>
+	assert.equal(wifiOf(["/p"], { "/p/CMakeLists.txt": ESP, "/p/main/wifi.c": '#include "esp_wifi.h"\n' }), true))
+test("Wi-Fi from ESP esp_wifi_ call in a root source file", () =>
+	assert.equal(wifiOf(["/p"], { "/p/CMakeLists.txt": ESP, "/p/app.c": "esp_wifi_start();\n" }), true))
+test("CONFIG_WIFI=n → false", () => assert.equal(wifiOf(["/p"], { "/p/prj.conf": "CONFIG_WIFI=n\n" }), false))
+test("ESP project without esp_wifi usage → false (chip defaults are not usage)", () =>
+	assert.equal(wifiOf(["/p"], { "/p/CMakeLists.txt": ESP, "/p/main/main.c": "void app_main(void){}\n" }), false))
+test("no Wi-Fi config or usage → false", () => assert.equal(wifiOf(["/p"], { "/p/prj.conf": "CONFIG_BT=y\n" }), false))
+
 // --- compliance -------------------------------------------------------------
 test("compliance/ dir → hasComplianceArtifacts true", () =>
 	assert.equal(
@@ -140,7 +155,7 @@ test("refresh replaces (not merges) the cached result", () => {
 test("refresh to an empty workspace resets to defaults", () => {
 	refreshWorkspaceClassification(["/x"], fixture({}))
 	assert.equal(getCachedWorkspaceSummary(), "none")
-	assert.deepEqual(getCachedWorkspaceFeatures(), { hasBle: false, hasComplianceArtifacts: false })
+	assert.deepEqual(getCachedWorkspaceFeatures(), { hasBle: false, hasWifi: false, hasComplianceArtifacts: false })
 })
 
 // --- MOAT guard: the capability/conformity signal must never reach the model-prompt path ---------
