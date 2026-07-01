@@ -105,6 +105,15 @@ export async function activate(context: vscode.ExtensionContext) {
 		},
 	)
 
+	// Classify the workspace BEFORE initialize() so the activation toasts (CRA project-open nudge + targeted upgrade
+	// toast) see the real BLE/Wi-Fi/compliance signal, not the empty default. Detectors can't call vscode.* (grit
+	// forbids it outside extension.ts), so we collect the open roots here and inject them.
+	const collectWorkspaceRoots = () => (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath)
+	const roots = collectWorkspaceRoots()
+	setNrfWorkspaceRoots(roots)
+	setEspWorkspaceRoots(roots)
+	refreshWorkspaceClassification(roots)
+
 	const webview = (await initialize(context)) as VscodeWebviewProvider
 
 	// Status-bar ▲ Adsum button — always visible, reveals the view from any dock.
@@ -130,14 +139,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	} catch {
 		setNrfExtensionInfo({ present: false })
 	}
-
-	// Inject open workspace folder paths so the detector can resolve the project-bound SDK
-	// (it can't call vscode.* itself — grit forbids it outside extension.ts).
-	const collectWorkspaceRoots = () => (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath)
-	const roots = collectWorkspaceRoots()
-	setNrfWorkspaceRoots(roots)
-	setEspWorkspaceRoots(roots)
-	refreshWorkspaceClassification(roots)
 
 	// Probe Espressif ESP-IDF VS Code extension (allowed here — vscode.* banned in detectors).
 	try {
