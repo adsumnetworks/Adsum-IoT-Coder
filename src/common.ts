@@ -1,3 +1,4 @@
+import { basename } from "path"
 import * as vscode from "vscode"
 import {
 	cleanupMcpMarketplaceCatalogFromGlobalState,
@@ -173,7 +174,10 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	// Show the version/update toast first; if it fired, suppress the re-engagement nudge this launch
 	// so a version-bump launch never double-toasts.
 	const announcementShown = await showVersionUpdateAnnouncement(context)
-	await maybeShowReengagementNudge(announcementShown)
+	// One CRA toast when a connected project is opened (once per project); suppressed if the announcement fired,
+	// and it in turn suppresses the recurring nudge so we never stack two toasts in a launch.
+	const projectNudgeShown = await maybeShowProjectOpenCraNudge(context, announcementShown)
+	await maybeShowReengagementNudge(announcementShown || projectNudgeShown)
 
 	// Check if this workspace was opened from worktree quick launch
 	await checkWorktreeAutoOpen(context)
@@ -268,6 +272,62 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext): 
 		console.error(`Error during post-update actions: ${errorMessage}, Stack trace: ${error.stack}`)
 	}
 	return shown
+}
+
+/**
+ * When a connected project (BLE/Wi-Fi, no compliance) is opened, show ONE CRA toast — once per project — that
+ * routes into the CRA card. Suppressed if another Adsum toast already fired this launch (`suppress`). The in-panel
+ * CRA card covers the ambient case; this only adds reach when the panel is closed. Never streams; never repeats for
+ * the same project path. Returns true iff a toast was shown (so the caller can suppress the recurring nudge).
+ */
+async function maybeShowProjectOpenCraNudge(context: vscode.ExtensionContext, suppress: boolean): Promise<boolean> {
+	try {
+		if (suppress) {
+			return false
+		}
+		const features = getCachedWorkspaceFeatures()
+		const summary = getCachedWorkspaceSummary()
+		const craRelevant = summary !== "none" && (features.hasBle || features.hasWifi) && !features.hasComplianceArtifacts
+		if (!craRelevant) {
+			return false
+		}
+		const projectPath = (await HostProvider.workspace.getWorkspacePaths({})).paths[0]
+		if (!projectPath) {
+			return false
+		}
+		// Fire once per project — a dev opens the same folder many times a day; never re-toast the same path.
+		const nudged = context.globalState.get<string[]>("craNudgedProjects") ?? []
+		if (nudged.includes(projectPath)) {
+			return false
+		}
+		await context.globalState.update("craNudgedProjects", [...nudged, projectPath])
+
+		const projectName = basename(projectPath)
+		const cta = "Show me →"
+		telemetryService.captureUpgradeToastShown({ targeted: true, relevant: "cra", surface: "project_open" })
+		void HostProvider.window
+			.showMessage({
+				type: ShowMessageType.INFORMATION,
+				message: `A connected product likely falls under the EU Cyber Resilience Act — preview ${projectName}'s CRA readiness from your build.`,
+				options: { items: [cta] },
+			})
+			.then(async ({ selectedOption }) => {
+				if (selectedOption !== cta) {
+					return
+				}
+				telemetryService.captureUpgradeToastClicked({ targeted: true, relevant: "cra", surface: "project_open" })
+				await HostProvider.workspace.openClineSidebarPanel({})
+				try {
+					await WebviewProvider.getInstance().controller.postStateToWebview()
+				} catch {
+					// Webview not ready yet — it will pick up the welcome state on its next sync.
+				}
+			})
+			.catch(() => {})
+		return true
+	} catch {
+		return false
+	}
 }
 
 /**
