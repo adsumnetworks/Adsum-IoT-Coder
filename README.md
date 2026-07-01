@@ -58,7 +58,9 @@ One click runs a build-time readiness check for the **EU Cyber Resilience Act (C
 
 It tells you which CRA date applies to you and writes a `compliance/` folder (report + machine-readable JSON + SBOM). Run it on your firmware, or try it on a bundled sample with nothing open.
 
-<!-- TODO: add CRA report screenshot: <img src="assets/docs/cra-report.png" alt="Adsum IoT Coder CRA readiness report: SBOM (SPDX), secure-by-design posture, and CVE check for the EU Cyber Resilience Act" /> -->
+<p align="center">
+  <img src="assets/docs/cra-report.png" width="58%" alt="Adsum IoT Coder CRA readiness report (CRA_READINESS.md): the honest 'readiness aid, not a conformity assessment' header, an at-a-glance count of components, CVEs found, likely-not-reachable, and secure-by-design gaps, and the SBOM (SPDX) section, for the EU Cyber Resilience Act" />
+</p>
 
 ## Why it exists
 
@@ -80,7 +82,7 @@ And the reason it is good at the hard parts is the part general agents do not ha
 - **Check CRA readiness.** One click: an SBOM (SPDX) plus a secure-by-design posture snapshot from your real build, on nRF and ESP. See [CRA Readiness](#cra-readiness-sbom-cve-and-secure-by-design).
 
 <p align="center">
-  <img src="assets/docs/home-detect.png" width="260" alt="Adsum IoT Coder panel in VS Code: automatic detection of Nordic nRF (nRF Connect SDK) and Espressif ESP (ESP-IDF) toolchains and boards, with one-click workflow cards" />
+  <img src="assets/docs/home-cra.png" width="48%" alt="Adsum IoT Coder home in VS Code: the status strip detects Nordic nRF (NCS 3.2.1) and Espressif ESP (ESP-IDF) with versions and boards, a 'Get ahead of the CRA' prompt, and one-click workflow cards including Build/flash & debug, Add a feature, Test & validate, and CRA SBOM & Fix" />
 </p>
 <p align="center">
   <img src="assets/docs/esp-build.png" width="90%" alt="Adsum IoT Coder building ESP-IDF firmware for an ESP32-S3 in VS Code" />
