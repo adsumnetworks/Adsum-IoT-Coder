@@ -6,6 +6,7 @@ import { getModeSpecificFields, normalizeApiConfiguration } from "@/components/s
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { cn } from "@/lib/utils"
 import { getEnvironmentColor } from "@/utils/environmentColors"
+import { IS_DEV } from "@/utils/isDev"
 import CopyTaskButton from "./buttons/CopyTaskButton"
 import DeleteTaskButton from "./buttons/DeleteTaskButton"
 import NewTaskButton from "./buttons/NewTaskButton"
@@ -15,7 +16,6 @@ import ContextWindow from "./ContextWindow"
 import { FocusChain } from "./FocusChain"
 import { highlightText } from "./Highlights"
 
-const IS_DEV = process.env.IS_DEV === '"true"'
 interface TaskHeaderProps {
 	task: ClineMessage
 	tokensIn: number

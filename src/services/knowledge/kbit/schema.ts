@@ -81,6 +81,13 @@ export const kbitMetaSchema = z
 			.optional(),
 		safety: z.array(z.enum(KBIT_SAFETY)).optional(),
 		supersedes: bitId.optional(),
+		// Backward-compatibility gate (registry serving). The MINIMUM extension version this bit version
+		// needs — set it ONLY when the bit depends on a host capability older apps lack (a new tool, a bit
+		// that doesn't exist yet). ABSENT ⇒ universal: compatible with every release (the default — pure-prose
+		// bits never set it). The registry serves each client the latest version whose `min_ext` ≤ the client's
+		// app version, so a host-dependent bump never reaches an app that can't run it. See the kbit-handbook
+		// "safe publishing & backward-compat" section.
+		min_ext: semver.optional(),
 		content_hash: z.string().optional(),
 		// Credibility roles (R5.x). `author` above stays the primary author (back-compat).
 		co_authors: z.array(creditEntry).optional(),

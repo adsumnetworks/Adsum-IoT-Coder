@@ -44,6 +44,19 @@ describe("PostHogTelemetryProvider — identity + app_version (Inc 8 Slices A+B)
 		expect(captures[0].properties?.app_version).to.equal(ExtensionRegistryInfo.version)
 	})
 
+	it("log() stamps iot_platform on every event — the chip-platform dimension (nrf/esp), not the IDE name", () => {
+		const { client, captures } = fakeClient()
+		const provider = new PostHogTelemetryProvider(client)
+		setDistinctId("adsum-test-install-id")
+
+		provider.log("some.event")
+
+		// Regression guard: the global `platform` super-property logs the EDITOR name ("Visual Studio Code"); the
+		// CORRECT chip dimension must ride on `iot_platform` (from getCachedWorkspaceSummary → nrf/esp/both/none) so
+		// it survives the metadata merge and is present on EVERY event (was previously only on CRA events).
+		expect(captures[0].properties).to.have.property("iot_platform")
+	})
+
 	it("caller-supplied properties win over the app_version default if they collide", () => {
 		const { client, captures } = fakeClient()
 		const provider = new PostHogTelemetryProvider(client)

@@ -3,8 +3,9 @@ import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
+import AiLimitationsFooter from "../AiLimitationsFooter"
 import DemoCard from "../DemoCard"
-import { DEFAULT_DEMO_SCENARIO_ID, DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
+import { DEMO_SCENARIO_LIST, hasRunDemo, ranScenarioIds } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
 import CraNudge from "./CraNudge"
@@ -65,6 +66,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	})
 
 	const demoDone = hasRunDemo(taskHistory)
+	const ranIds = ranScenarioIds(taskHistory)
 	// ≥2 registered samples → the consolidated "Try it on a sample" picker; otherwise the single hero card.
 	const showPicker = DEMO_SCENARIO_LIST.length >= 2
 	// Exactly ONE cyan focal point per state:
@@ -76,7 +78,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 
 	// Grounded workspace signals (A3/A10), observed by the host probe.
 	const hasBle = !!workspaceFeatures?.hasBle
+	const hasWifi = !!workspaceFeatures?.hasWifi
 	const hasCompliance = !!workspaceFeatures?.hasComplianceArtifacts
+	// Grounded connectivity label for the CRA nudge (BLE / Wi-Fi / both) — what was detected, never a verdict.
+	const craEvidence = `${hasBle && hasWifi ? "BLE & Wi-Fi" : hasWifi ? "Wi-Fi" : "BLE"} detected · no compliance artifacts in this project yet`
 	// Dismissal persists per-workspace (localStorage, like DockCoachMark) so an explicitly-closed nudge stays
 	// closed across a window reload — not just the session. Keyed by project so dismissing in one doesn't mute all.
 	const craDismissKey = `adsum.craNudgeDismissed:${openFolderPaths[0] ?? ""}`
@@ -98,12 +103,13 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		setCraNudgeDismissed(true)
 	}
 	// A3 — the grounded CRA nudge: project-open, a connectivity stack present, no SBOM yet, not dismissed.
-	const craBanner = hasWorkspace && hasBle && !hasCompliance && !craNudgeDismissed
+	const craBanner = hasWorkspace && (hasBle || hasWifi) && !hasCompliance && !craNudgeDismissed
 	// Precedence (one grounded promotion per paint): the A10 deep-debug sub-line is suppressed while the nudge shows.
 	const showDebugSubline = hasBle && !craBanner
 
-	// Adaptive intent set: inject the A10 sub-line on Build/flash/debug; once compliance/ exists, demote the
-	// CRA card (drop its "New" pill + switch to re-run copy). No project → the no-project set, untouched.
+	// Adaptive intent set: inject the A10 sub-line on Build/flash/debug; once compliance/ exists, switch the CRA
+	// card to re-run copy. The "New" pill STAYS (CRA is a new product capability — keep it flagged on all CRA
+	// surfaces). No project → the no-project set, untouched.
 	const intents: IntentDef[] = hasWorkspace
 		? PROJECT_INTENTS.map((i) => {
 				if (i.id === "buildFlashDebug" && showDebugSubline) {
@@ -112,7 +118,6 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				if (i.id === "craCheck" && hasCompliance) {
 					return {
 						...i,
-						pill: undefined,
 						description: "Re-run on your build — refresh the SBOM & posture after changes.",
 					}
 				}
@@ -144,7 +149,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				{tenure === "dormant" && showUpgradeCard && !craBanner && (
 					<UpgradeCard
 						onDismiss={onUpgradeDismiss}
-						onStartDemo={() => onStartDemo(DEFAULT_DEMO_SCENARIO_ID)}
+						onStartDemo={() => onStartDemo("cra-sample")}
 						version={version ?? ""}
 					/>
 				)}
@@ -157,7 +162,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				    expected feedback; so we mount/unmount rather than reserve an always-empty placeholder slot. */}
 				{craBanner && (
 					<CraNudge
-						evidence="BLE detected · no compliance artifacts in this project yet"
+						evidence={craEvidence}
 						onDismiss={dismissCraNudge}
 						onPreview={() =>
 							runIntent("craCheck", {
@@ -193,19 +198,22 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 
 				{/* Adaptive intent cards */}
 				<IntentList
+					hasBle={hasBle}
 					intents={intents}
 					onSelectMode={onSelectMode}
+					onStartDemo={onStartDemo}
 					onStartTask={onStartTask}
 					platform={platform}
 					projectName={projectName ?? undefined}
 					testIdPrefix="intent-card"
 				/>
 
-				{/* Demoted sample — quiet "Try another sample" whenever it isn't the hero (project open, or already run) */}
+				{/* Demoted sample — compact whenever it isn't the hero (project open, or already run). The heading
+				    says "another" ONLY if a sample has actually run (demoDone), not just because a project is open. */}
 				{!heroPicker && (
 					<div className="w-full">
 						{showPicker ? (
-							<DemoPicker onStartDemo={onStartDemo} variant="rerun" />
+							<DemoPicker hasRunDemo={demoDone} onStartDemo={onStartDemo} ranIds={ranIds} variant="rerun" />
 						) : (
 							<DemoCard onStartDemo={onStartDemo} variant="rerun" />
 						)}
@@ -220,19 +228,9 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 					<HistoryPreview showHistoryView={navigateToHistory} />
 				</div>
 
-				{/* AI-limitations — persistent in every welcome state, before any flash/CRA/demo click.
-				    The "Full disclaimer →" link is deferred until /legal/limitations exists (no live 404). */}
-				<div
-					className="w-full"
-					style={{
-						fontSize: "10.5px",
-						color: "var(--vscode-descriptionForeground)",
-						opacity: 0.75,
-						marginTop: "6px",
-						lineHeight: 1.4,
-					}}>
-					Adsum is an AI-based coding agent and can make mistakes — review its changes before you flash or ship.
-				</div>
+				{/* AI-limitations (design/13 A6) — persistent here AND under the chat input during a task (see
+				    ChatView). Links to the live docs disclaimer page (docs.adsumnetworks.com/legal/limitations). */}
+				<AiLimitationsFooter style={{ marginTop: "6px" }} />
 			</div>
 		</div>
 	)

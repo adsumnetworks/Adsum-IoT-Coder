@@ -231,12 +231,21 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			// Couldn't resolve this knowledge bit. Give a clear, actionable reason instead of a bare
 			// "file not found": a downloaded bit when the registry is unreachable, vs. a wrong path.
 			const reachable = await isRegistryReachable()
+			// Anti-fabrication guard (domain-agnostic): a required Adsum bit that won't load must NOT be
+			// reconstructed from general knowledge, memory, or a prior report — that yields an ungrounded
+			// result (observed: a CRA run improvised a whole assessment when cra-readiness was unavailable).
+			// Allow ONE genuine path re-check (typo), but if the bit truly doesn't exist, stop honestly.
+			const antiImprovise =
+				` Do NOT reconstruct or improvise this Adsum workflow from general knowledge, memory, or a prior ` +
+				`report — tell the developer the workflow is currently unavailable and stop.`
 			return formatResponse.toolError(
 				reachable
-					? `Knowledge bit not found: "${displayPath}". It is not bundled and not in the registry — ` +
-							`double-check the path (combine the iot-knowledge directory with the bit's relative path).`
+					? `Knowledge bit not found: "${displayPath}". It is not bundled and not in the registry. ` +
+							`First re-check the path (combine the iot-knowledge directory with the bit's relative path). ` +
+							`If the bit genuinely does not exist,${antiImprovise} ` +
+							`(Dev: set ADSUM_KBIT_LOCAL to load downloaded bits from disk, or publish the bit.)`
 					: `Could not load knowledge bit "${displayPath}": the Adsum knowledge registry is unreachable ` +
-							`and this bit is not cached locally. Check your network connection and retry. ` +
+							`and this bit is not cached locally. Check your network connection and retry.${antiImprovise} ` +
 							`(Bundled knowledge is unaffected.)`,
 			)
 		}

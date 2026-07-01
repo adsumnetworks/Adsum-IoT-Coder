@@ -18,7 +18,9 @@
  * design/06 + design/07 + the red-team MF4.
  */
 
-/** The permanent-ban verdict vocabulary (never attributable to anyone): readiness-not-compliance. */
+/** A short illustrative sample of permanent-ban verdict vocabulary (readiness-not-compliance). NOTE (design/25 D3):
+ *  this is NOT the operative ban list — the real, comprehensive rules are `LEAK_PATTERNS` below. Do not consume
+ *  this as the complete set; it is kept only as a human-readable example. */
 export const VERDICT_TERMS = ["compliant", "certified", "passes", "affected", "fixed", "done", "resolved", "clear"] as const
 
 export interface VerdictLeak {
@@ -113,20 +115,30 @@ const LEAK_PATTERNS: LeakPattern[] = [
 	// A ✅/✔/❌/✗ glued to a verdict — the canonical "✅ FIXED" leak.
 	{
 		rule: "glyph-verdict",
-		re: /[✅✔❌✗]\s*\*{0,2}\s*(fixed|done|resolved|remediated|mitigated|pass(?:es|ed)?|fail(?:s|ed)?|compliant|certified|clear|verified|built|complete|met|ready|good|enabled)\b/gi,
+		re: /[✅✔✓❌✗]\s*\*{0,2}\s*(fixed|done|resolved|remediated|mitigated|pass(?:es|ed)?|fail(?:s|ed)?|compliant|certified|clear|verified|built|complete|met|ready|good|enabled)\b/gi,
 	},
 	// A verdict glyph used as a TABLE CELL value — evidence-mode tables have no status-glyph column.
-	{ rule: "glyph-cell", re: /\|\s*[✅✔❌✗⚠]/g },
+	{ rule: "glyph-cell", re: /\|\s*[✅✔✓❌✗⚠]/g },
 	// A status glyph used as a BULLET / list-item / line-start marker ("- ✅ MCUboot built", "✅ done",
 	// "⚠️ debug key") — evidence-mode output carries NO status glyphs. Anchored to clause/bullet start, so the
 	// disclaimer's mid-sentence "A ✅ means …" (preceded by "A ") never trips. `g` flag → the exec-loop ends.
-	{ rule: "glyph-bullet", re: /^\s*(?:[-*+]|\d+[.)])?\s*\*{0,2}\s*[✅✔❌✗⚠]/g },
+	{ rule: "glyph-bullet", re: /^\s*(?:[-*+]|\d+[.)])?\s*\*{0,2}\s*[✅✔✓❌✗⚠]/g },
+	// 2806c — TRAFFIC-LIGHT EMOJI used as a status mark ("| 🟢 Good |", "🔴 gap"). These have NO evidence-mode use,
+	// so match them ANYWHERE (unlike the ✅ rules, which are anchored to avoid the disclaimer's "A ✅ means…" prose;
+	// the coloured circles never appear in legitimate evidence text). `u` flag for the astral code points.
+	{ rule: "glyph-emoji", re: /[🔴🟡🟢🟠🔵⚪⚫]/gu },
+	// A status glyph inside a TABLE CELL ("| ✓ enabled |", "| ✗ gap |") — the glyph-bullet rule anchors to a line/
+	// bullet start, so a glyph after a `|` cell wall slipped it (2806b). Anchor to the `|` instead.
+	{ rule: "glyph-cell", re: /\|\s*\*{0,2}\s*[✅✔✓❌✗⚠]/g },
+	// GOOD / BAD as a verdict in a table cell ("| 🟢 Good |", "| Good |", "| BAD |"). Cell-anchored so prose
+	// ("a good practice to verify") never trips — only a cell whose content is the bare verdict word.
+	{ rule: "good-bad-cell", re: /\|\s*\*{0,2}\s*(?:GOOD|BAD|Good|Bad)\s*\*{0,2}\s*\|/g },
 	// A PASS/FAIL grade — standalone UPPERCASE token (case-sensitive): "Secure boot: PASS", "| FAIL |".
 	// Uppercase-only avoids prose "pass"/"fail" and substrings (BYPASS, FAILURE, PASSED).
 	{ rule: "passfail", re: /(?<![A-Za-z])(?:PASS|FAIL)(?![A-Za-z])/g },
 	// A verdict glyph opening a markdown HEADING ("### ⚠️ MCUMGR UART …") — evidence-mode headings carry no
 	// status glyph (a real run put "### ⚠️" on its top-gap heading). Anchored to the `#`-run start.
-	{ rule: "heading-glyph", re: /^#{1,6}\s+\*{0,2}\s*[✅✔❌✗⚠]/g },
+	{ rule: "heading-glyph", re: /^#{1,6}\s+\*{0,2}\s*[✅✔✓❌✗⚠]/g },
 	// A verdict word as a JSON value on a posture/readiness key — the machine-readable `cra-readiness.json`
 	// carried `"cra_readiness": "READY …"`, `"secure_boot": "ENABLED"`, `"sbom_completeness": "GOOD"`. Only
 	// fires when the value STARTS with a verdict word, so an evidence value ("CONFIG_…=y — verify") stays clean.
@@ -146,6 +158,20 @@ const LEAK_PATTERNS: LeakPattern[] = [
 	// Annex Part I/II + the one curated "Article 14" reference (which has NO sub-clause), so matching the `(N)`
 	// sub-clause shape catches the invention without touching the legitimate "Article 14 / Art. 14".
 	{ rule: "fabricated-article", re: /\bart(?:icle|\.)\s*\d+\s*\(\d+\)/gi },
+	// run 2706h2 — FABRICATED Annex sub-clause granularity ("Annex I Part I (2)(e)", "Annex I Part II (2)").
+	// The bit cites ONLY the bare "Annex I Part I" / "Annex I Part II" label — any parenthesized sub-clause after
+	// the Part numeral is invented (guessed clause letters are frequently wrong + reopen the liability failure).
+	// Matching the `Part <num> (N)` shape catches the invention while leaving the bare label untouched.
+	// 2806b/2806c — tolerate a comma between "Annex I" and "Part I" ("Annex I, Part I (1)(c)" evaded the no-comma
+	// form and shipped). The `,?` closes that hole.
+	{ rule: "fabricated-annex-clause", re: /\bAnnex\s+[IVX]+\s*,?\s*Part\s+[IVX]+\s*\(\d+\)/gi },
+	// 2806b/2806c — the BARE "Part I (2)(d)" / "Part II (2)" form (no leading "Annex"). The curated label is the
+	// bare "Part I" / "Part II" with NO paren, so a parenthesized sub-clause after the Part numeral is fabricated.
+	{ rule: "fabricated-part-clause", re: /\bPart\s+[IVX]+\s*\(\d+\)/gi },
+	// 2806c — the SHORT scorecard form "I(2)(a)" … "I(2)(i)" (roman numeral immediately followed by `(digit)(letter)`),
+	// a whole fabricated compliance grid. Case-sensitive roman + the `(N)(x)` shape; the lookbehind keeps it from
+	// firing mid-word. No legitimate curated citation has this shape.
+	{ rule: "fabricated-scorecard-clause", re: /(?<![A-Za-z])[IVX]{1,3}\s*\(\d+\)\s*\([a-z]\)/g },
 	// "now/fully compliant|certified|resolved|fixed|…"
 	{
 		rule: "now-verdict",
@@ -218,7 +244,7 @@ const LEAK_PATTERNS: LeakPattern[] = [
 	// emoji never matches, since ✅ is not a word char.)
 	{
 		rule: "status-verdict",
-		re: /\bstatus:?\s*\*{0,2}\s*(?:[✅✔]|(?:fixed|resolved|done|compliant|certified|clear(?:ed)?|pass(?:es|ed)?|verified|built|complete)\b)/gi,
+		re: /\bstatus:?\s*\*{0,2}\s*(?:[✅✔✓]|(?:fixed|resolved|done|compliant|certified|clear(?:ed)?|pass(?:es|ed)?|verified|built|complete)\b)/gi,
 	},
 	// "affected" as a verdict about the USER's build — NOT advisory metadata ("builds…are affected",
 	// "versions are affected", "affected versions"). Requires a 2nd-person / "your build" subject.
@@ -238,6 +264,27 @@ const LEAK_PATTERNS: LeakPattern[] = [
 		allowIfAntiCleanClause: true,
 		re: /\b(?:you(?:'re| are)|your (?:build|product|firmware|device) is|the (?:build|firmware|product|device) is|product is|build is)\s+(?:now\s+|fully\s+)?clean\b/gi,
 	},
+	// ── Shape-primitive guards (design/13: catch verdict SHAPES, not just enumerated phrasings) ──────────────
+	// A bare conformity/readiness verdict as a full TABLE-CELL value — "| Secure Boot | MET |". Case-sensitive
+	// UPPERCASE + cell walls → prose "met"/"good" and substrings never trip.
+	{
+		rule: "verdict-cell",
+		re: /\|\s*\*{0,2}\s*(?:MET|READY|COMPLIANT|CERTIFIED|ACHIEVED|SATISFIED|RESOLVED|DONE|GOOD)\s*\*{0,2}\s*\|/g,
+	},
+	// "Label: VERDICT" at a line / bullet start — "Overall: COMPLIANT", "Verdict: READY", "- Secure boot: DONE".
+	// UPPERCASE-only (case-sensitive) so "We met the team" is safe.
+	{
+		rule: "label-verdict",
+		re: /(?:^|\n)\s*(?:[-*+]\s+)?[\w ()./-]{2,40}:\s*\*{0,2}\s*(?:MET|READY|COMPLIANT|CERTIFIED|ACHIEVED|SATISFIED|RESOLVED|DONE|GOOD)\b/g,
+	},
+	// A letter GRADE — "Grade: A", "Grade: B+" (grading readiness IS a verdict). "upgrade"/"downgrade" safe (no \b before "grade").
+	{ rule: "letter-grade", re: /\bgrades?:?\s*\*{0,2}\s*[A-F][+-]?\b/gi },
+	// Device-state prose verdicts (subject-anchored like clean-verdict, so "secure boot is configured" never trips).
+	{
+		rule: "secure-verdict",
+		re: /\b(?:you(?:\u0027re| are)|your (?:build|product|firmware|device) is|the (?:build|firmware|product|device) is|product is|build is)\s+(?:now\s+|fully\s+)?secure\b/gi,
+	},
+	{ rule: "production-ready", re: /\bproduction[-\s]?ready\b/gi },
 ]
 
 export interface ScanOptions {

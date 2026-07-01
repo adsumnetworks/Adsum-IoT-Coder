@@ -1,6 +1,9 @@
 import { basename } from "path"
 import { HostProvider } from "@/hosts/host-provider"
+import { ExtensionRegistryInfo } from "@/registry"
+import { getCachedWorkspaceFeatures, getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { telemetryService } from "@/services/telemetry"
+import { whatsNewToastMessage } from "@/utils/announcements"
 import { readTaskHistoryFromState } from "../../core/storage/disk"
 import { StateManager } from "../../core/storage/StateManager"
 import { ShowMessageType } from "../../shared/proto/host/window"
@@ -18,12 +21,14 @@ const DEMO_TASK_PREFIX = "Debug a real BLE NUS bug"
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /** Idle for this long (since the last task) before we consider a user dormant. */
-export const REENGAGEMENT_DORMANT_MS = 7 * DAY_MS
+export const REENGAGEMENT_DORMANT_MS = 4 * DAY_MS
 /** Never nudge more often than this, so reopens don't spam. */
-export const REENGAGEMENT_MIN_INTERVAL_MS = 14 * DAY_MS
-/** Decay (retention rule): stop after this many *consecutive ignores* (dismissed without acting).
- *  Clicking the CTA resets the streak — engaged users are never capped, the disengaged are left alone. */
-export const REENGAGEMENT_MAX_IGNORES = 3
+export const REENGAGEMENT_MIN_INTERVAL_MS = 7 * DAY_MS
+/** Decay (retention rule): auto-silence after this many *consecutive ignores* (dismissed without acting). This is
+ *  now the ONLY silencer — the one-click "Don't show again" was removed so the CRA channel isn't killed in a single
+ *  tap — so it's set generously (5, spaced by the interval ≈ a month of chances). Clicking the CTA resets the
+ *  streak, so engaged users are never capped; only the persistently-uninterested are left alone. */
+export const REENGAGEMENT_MAX_IGNORES = 5
 
 export type ReengagementCohort = "demo_no_work" | "did_work"
 
@@ -86,32 +91,25 @@ export interface ReengagementCopy {
 	cta: string
 }
 
-/** Context-aware copy for a cohort. Names the project when one is open; hints free balance. */
-export function buildReengagementMessage(
-	cohort: ReengagementCohort,
-	ctx: { hasProject: boolean; projectName?: string; freeTokens?: number },
-): ReengagementCopy {
+/** CRA-focused re-engagement copy — connectivity-honest. Only claims per-project CRA relevance when BLE/Wi-Fi was
+ *  actually detected (same signal as the CRA card + upgrade toast); otherwise shows the same broad 3-pillar pitch
+ *  as a fresh install. Names the project when connected; hints the free balance. */
+export function buildReengagementMessage(ctx: {
+	craRelevant: boolean
+	projectName?: string
+	freeTokens?: number
+	version: string
+}): ReengagementCopy {
 	const quotaHint =
 		ctx.freeTokens && ctx.freeTokens > 0 ? ` You still have ${ctx.freeTokens.toLocaleString()} free tokens.` : ""
-
-	if (cohort === "demo_no_work") {
-		return ctx.hasProject
-			? {
-					message: `You've seen Adsum debug a BLE bug — point it at ${ctx.projectName} and try it on your own firmware.${quotaHint}`,
-					cta: "Debug my firmware",
-				}
-			: {
-					message: `Ready to try Adsum on your own nRF firmware? Open your project and I'll debug it live.${quotaHint}`,
-					cta: "Open my project",
-				}
+	if (ctx.craRelevant) {
+		return {
+			message: `A connected product likely falls under the EU Cyber Resilience Act — preview ${ctx.projectName ?? "your project"}'s CRA readiness from your build.${quotaHint}`,
+			cta: "Show me",
+		}
 	}
-	// did_work
-	return ctx.hasProject
-		? { message: `Pick up where you left off on ${ctx.projectName}?${quotaHint}`, cta: "Resume" }
-		: {
-				message: `Welcome back to Adsum IoT Coder — open your nRF project and let's keep going.${quotaHint}`,
-				cta: "Open my project",
-			}
+	// Not CRA-relevant (no project / not connected / already compliant) → the same 3-pillar pitch as a fresh install.
+	return { message: whatsNewToastMessage(ctx.version), cta: "See what's new" }
 }
 
 /**
@@ -148,18 +146,25 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 			return
 		}
 
-		// Context for the copy.
-		let hasProject = false
+		// Context for the copy. Only make the per-project CRA claim when connectivity is actually detected — the same
+		// signal the CRA card and the upgrade toast use; otherwise the nudge falls back to the broad 3-pillar pitch.
+		const features = getCachedWorkspaceFeatures()
+		const summary = getCachedWorkspaceSummary()
+		const craRelevant = summary !== "none" && (features.hasBle || features.hasWifi) && !features.hasComplianceArtifacts
 		let projectName: string | undefined
 		try {
 			const roots = (await HostProvider.workspace.getWorkspacePaths({})).paths
-			hasProject = roots.length > 0
-			projectName = hasProject ? basename(roots[0]) : undefined
+			projectName = roots.length > 0 ? basename(roots[0]) : undefined
 		} catch {
-			// No workspace info — fall back to the no-project copy.
+			// No workspace info — fall back to the 3-pillar copy.
 		}
 		const freeTokens = getFreeTierTokensForDisplay()
-		const { message, cta } = buildReengagementMessage(decision.cohort, { hasProject, projectName, freeTokens })
+		const { message, cta } = buildReengagementMessage({
+			craRelevant,
+			projectName,
+			freeTokens,
+			version: ExtensionRegistryInfo.version,
+		})
 
 		// Stamp the rate-limit clock before showing; the ignore-streak is updated by the OUTCOME below
 		// (reset on engage, incremented on dismiss) so engaged users are never capped.
@@ -168,8 +173,8 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 		const installId = getInstallId()
 		telemetryService.captureFreeTierReengagementShown(installId, decision.cohort, decision.daysDormant)
 
-		// "Don't show again" is the one-click silence-forever escape hatch (retention red-line rule).
-		const silence = "Don't show again"
+		// No one-click "Don't show again" - the CRA channel shouldn't die in a single tap; auto-silence via the
+		// ignore-decay (REENGAGEMENT_MAX_IGNORES) is the silencer, and previously-silenced users are still respected.
 		// FIRE-AND-FORGET: do NOT await the toast. showMessage resolves only when the user clicks or
 		// dismisses it, and this runs inside activate() — awaiting here blocks the extension host from
 		// starting (the "Extension host did not start in 10 seconds" stall). Handle the outcome in .then.
@@ -177,7 +182,7 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 			.showMessage({
 				type: ShowMessageType.INFORMATION,
 				message,
-				options: { items: [cta, silence] },
+				options: { items: [cta] },
 			})
 			.then(async ({ selectedOption }) => {
 				if (selectedOption === cta) {
@@ -185,9 +190,6 @@ export async function maybeShowReengagementNudge(announcementShown: boolean): Pr
 					stateManager.setGlobalState("reengagementNudgeIgnores", 0)
 					telemetryService.captureFreeTierReengagementClicked(installId, decision.cohort)
 					await HostProvider.workspace.openClineSidebarPanel({})
-				} else if (selectedOption === silence) {
-					stateManager.setGlobalState("reengagementNudgeSilenced", true)
-					telemetryService.captureFreeTierReengagementSilenced(installId, decision.cohort)
 				} else {
 					// Ignored (closed/auto-dismissed) — advance the decay counter; 3 in a row and we stop.
 					stateManager.setGlobalState("reengagementNudgeIgnores", ignoreCount + 1)

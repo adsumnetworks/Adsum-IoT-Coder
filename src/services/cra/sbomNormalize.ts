@@ -13,6 +13,14 @@
  * never fabricates a CVE.)
  */
 
+/**
+ * Why a component is not OSV-queryable (§5 per-component coverage record). Canonical across the scan loop —
+ * `osvMatch` reuses it. The first three are detectable from the SBOM alone; `fork-unresolved` / `subcomponent`
+ * are curated-map reasons reserved for when the component→PURL map lands (declared for forward-compat, NOT
+ * emitted yet — we never claim a reason we can't substantiate).
+ */
+export type DropReason = "no-version" | "no-id" | "cpe-only" | "fork-unresolved" | "subcomponent"
+
 export interface SbomComponent {
 	name: string
 	version: string
@@ -20,6 +28,18 @@ export interface SbomComponent {
 	purl?: string
 	/** CPE 2.2 / 2.3 id — the secondary key (used when PURL is absent, common on ESP). */
 	cpe?: string
+	/**
+	 * Populated by `normalizeSbom`: true iff we produced an OSV-usable identifier (a PURL). Optional on
+	 * hand-built literals; `classifyComponent` derives it identically when absent, so there is one source of
+	 * truth and no drift between the stored fact and what the OSV planner queries.
+	 */
+	queryable?: boolean
+	/** null iff queryable; otherwise the honest reason it was dropped from the OSV query. Same provenance. */
+	dropReason?: DropReason | null
+	/** Provenance of `purl`: "tool" = emitted by the SBOM tool; "curated" = filled by the curated map. */
+	purlSource?: "tool" | "curated"
+	/** Provenance of `cpe`: "tool" = emitted by the SBOM tool; "curated" = filled by the curated CPE map (cores). */
+	cpeSource?: "tool" | "curated"
 }
 
 export interface SbomCoverage {
@@ -28,11 +48,34 @@ export interface SbomCoverage {
 	withCpe: number
 	/** Components with NEITHER a PURL nor a CPE — not queryable; surfaced honestly ("Z had no identifier"). */
 	unidentified: number
+	/** Count with an OSV-usable identifier (= withPurl today; > withPurl once a CPE→PURL map lands). */
+	queryable: number
+	/** Reason breakdown for the non-queryable set — what the §8.1a caption renders + the §8.4 parity test reads. */
+	byDropReason: Partial<Record<DropReason, number>>
 }
 
 export interface NormalizedSbom {
 	components: SbomComponent[]
 	coverage: SbomCoverage
+}
+
+/**
+ * Single source of truth for OSV-queryability (§5). OSV keys on PURL, so a PURL ⇒ queryable; otherwise the
+ * honest reason: a CPE but no PURL → "cpe-only" (has an id, just not OSV-usable today — the ESP case); no id
+ * at all but a version → "no-id"; not even a version → "no-version". `normalizeSbom` calls this for every
+ * component AND `planOsvScan` calls it at query time, so the stored fact and the actual query can never diverge.
+ */
+export function classifyComponent(c: SbomComponent): { queryable: boolean; dropReason: DropReason | null } {
+	if (c.purl) {
+		return { queryable: true, dropReason: null }
+	}
+	if (c.cpe) {
+		return { queryable: false, dropReason: "cpe-only" }
+	}
+	if (!c.version) {
+		return { queryable: false, dropReason: "no-version" }
+	}
+	return { queryable: false, dropReason: "no-id" }
 }
 
 /** SPDX externalRef referenceType values we care about (case-insensitive). */
@@ -125,16 +168,31 @@ function parseSpdxTagValue(text: string): SbomComponent[] {
 /** Normalize raw SPDX text (either serialization) → components + coverage. */
 export function normalizeSbom(spdxText: string): NormalizedSbom {
 	const components = looksLikeJson(spdxText) ? parseSpdxJson(spdxText) : parseSpdxTagValue(spdxText)
+	const byDropReason: Partial<Record<DropReason, number>> = {}
+	let queryable = 0
+	for (const c of components) {
+		const verdict = classifyComponent(c)
+		// Store the per-component coverage fact on the component (§5) — the single object downstream reads.
+		c.queryable = verdict.queryable
+		c.dropReason = verdict.dropReason
+		if (verdict.queryable) {
+			queryable++
+		} else if (verdict.dropReason) {
+			byDropReason[verdict.dropReason] = (byDropReason[verdict.dropReason] ?? 0) + 1
+		}
+	}
 	const coverage: SbomCoverage = {
 		total: components.length,
 		withPurl: components.filter((c) => !!c.purl).length,
 		withCpe: components.filter((c) => !!c.cpe).length,
 		unidentified: components.filter((c) => !c.purl && !c.cpe).length,
+		queryable,
+		byDropReason,
 	}
 	return { components, coverage }
 }
 
-/** The OSV-queryable subset (has a PURL or CPE). The rest are reported as the honest coverage gap. */
+/** The OSV-queryable subset (has an OSV-usable identifier = a PURL). The rest are the honest coverage gap. */
 export function queryableComponents(sbom: NormalizedSbom): SbomComponent[] {
-	return sbom.components.filter((c) => !!c.purl || !!c.cpe)
+	return sbom.components.filter((c) => classifyComponent(c).queryable)
 }

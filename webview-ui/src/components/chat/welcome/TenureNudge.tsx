@@ -1,5 +1,5 @@
 import React from "react"
-import { BRAND_CYAN_600, brandAlpha, brandSubtle } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_600, brandAlpha, brandSubtle } from "../brandColors"
 
 interface TenureNudgeProps {
 	onStartDemo: () => void
@@ -13,14 +13,14 @@ const TenureNudge: React.FC<TenureNudgeProps> = ({ onStartDemo }) => {
 				width: "100%",
 				marginBottom: "16px",
 				borderRadius: "8px",
-				border: `1px solid ${brandAlpha(BRAND_CYAN_600, 0.4)}`,
-				background: brandSubtle(BRAND_CYAN_600, 4),
+				border: `1px solid ${brandAlpha(BRAND_CORAL, 0.4)}`,
+				background: brandSubtle(BRAND_CORAL, 6),
 				padding: "12px 14px",
 				display: "flex",
 				alignItems: "center",
 				gap: "10px",
 			}}>
-			<i className="codicon codicon-star-empty" style={{ fontSize: "16px", flexShrink: 0, color: BRAND_CYAN_600 }} />
+			<i className="codicon codicon-star-empty" style={{ fontSize: "16px", flexShrink: 0, color: BRAND_CORAL }} />
 			<div style={{ flex: 1 }}>
 				<div
 					style={{

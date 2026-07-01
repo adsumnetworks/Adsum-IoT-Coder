@@ -231,6 +231,9 @@ export class TelemetryService {
 		NRF: {
 			ENV_DETECTED: "nrf.env_detected",
 		},
+		ESP: {
+			ENV_DETECTED: "esp.env_detected",
+		},
 		DICTATION: {
 			// Tracks when voice recording is started
 			RECORDING_STARTED: "voice.recording_started",
@@ -356,9 +359,14 @@ export class TelemetryService {
 			KBIT_DOWNLOADED_RESOLVED: "kbit.downloaded_resolved",
 			KBIT_REGISTRY_UNREACHABLE: "kbit.registry_unreachable",
 			KBIT_CACHE_RECONCILED: "kbit.cache_reconciled",
+			// CRA: a CVE scan completed (findings volume + SBOM coverage; never CVE ids or component names)
+			CVE_SCAN_COMPLETED: "task.cve_scan_completed",
 			// Welcome-screen intent funnel (host-emitted; webview client stays disabled)
 			CARD_CLICKED: "task.card_clicked",
 			NEXT_STEP_SELECTED: "task.next_step_selected",
+			// Project-aware upgrade/update notification toast (CRA guidance) — shown + clicked.
+			UPGRADE_TOAST_SHOWN: "task.upgrade_toast_shown",
+			UPGRADE_TOAST_CLICKED: "task.upgrade_toast_clicked",
 		},
 		// UI interaction events for tracking user engagement
 		UI: {
@@ -2440,6 +2448,18 @@ export class TelemetryService {
 		this.capture({ event: TelemetryService.EVENTS.FREE_TIER.CRA_FIX_COMPLETED, properties: { ...props } })
 	}
 
+	/** CRA: a CVE scan completed. Counts only — findings volume + SBOM coverage, broken down by platform. Never
+	 *  sends CVE ids or component names (honesty + privacy: aggregate feature health, not the user's vuln list). */
+	public captureCveScanCompleted(props: {
+		iot_platform?: string
+		findings?: number
+		queried?: number
+		coverageTotal?: number
+		coverageQueryable?: number
+	}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.CVE_SCAN_COMPLETED, properties: { ...props } })
+	}
+
 	/** CRA: the bridge routed into a core feature (debug/addFeature). Fired host-side at the routed task's start. */
 	public captureCoreFeatureTriedAfterCra(props: { iot_platform?: string; intent?: string } = {}) {
 		this.capture({ event: TelemetryService.EVENTS.FREE_TIER.CORE_FEATURE_TRIED_AFTER_CRA, properties: { ...props } })
@@ -2470,6 +2490,25 @@ export class TelemetryService {
 	/** Welcome-screen: a post-task next-step was selected (host-emitted). */
 	public captureNextStepSelected(props: { step: string }) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.NEXT_STEP_SELECTED, properties: { ...props } })
+	}
+
+	/** Project-aware upgrade/update toast (the VS Code notification) was shown. targeted = CRA / new-install copy
+	 *  (vs the generic "what's new"); relevant = whether the open project is CRA-relevant. Counts/enums only. */
+	public captureUpgradeToastShown(props: {
+		targeted: boolean
+		relevant: "cra" | "generic"
+		surface?: "upgrade" | "project_open"
+	}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.UPGRADE_TOAST_SHOWN, properties: { ...props } })
+	}
+
+	/** The upgrade/update toast CTA was clicked (routes into the panel — never auto-streams). */
+	public captureUpgradeToastClicked(props: {
+		targeted: boolean
+		relevant: "cra" | "generic"
+		surface?: "upgrade" | "project_open"
+	}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.UPGRADE_TOAST_CLICKED, properties: { ...props } })
 	}
 
 	// Hooks telemetry methods
@@ -2609,6 +2648,18 @@ export class TelemetryService {
 				extensionPresent: args.extensionPresent,
 				nrfutilPresent: args.nrfutilPresent,
 				boardCount: args.boardCount,
+			},
+		})
+	}
+
+	/** ESP env detected — parity with nrf.env_detected (install-base platform mix + toolchain/device presence). */
+	public captureEspEnvDetected(args: { extensionPresent: boolean; idfPresent: boolean; deviceCount: number }) {
+		this.capture({
+			event: TelemetryService.EVENTS.ESP.ENV_DETECTED,
+			properties: {
+				extensionPresent: args.extensionPresent,
+				idfPresent: args.idfPresent,
+				deviceCount: args.deviceCount,
 			},
 		})
 	}

@@ -2,7 +2,7 @@
 id: adsum/esp/platform
 title: "ESP32 — Platform Index"
 type: knowledge
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -77,8 +77,8 @@ Other targets (`esp32c6`, `esp32c3`, …) are supported by the toolchain; board 
 | SDK | File | When to Load |
 |---|---|---|
 | ESP-IDF | `sdks/esp-idf/SDK.md` | First ESP-IDF task. idf.py/CMake/FreeRTOS/sdkconfig + device introspection. |
-| Wi-Fi | `sdks/esp-idf/protocols/WIFI.md` | Project uses Wi-Fi. |
-| BLE (NimBLE) | `sdks/esp-idf/protocols/BLE.md` | Project uses BLE (`CONFIG_BT_ENABLED=y`). |
+| Wi-Fi | `sdks/esp-idf/protocols/WIFI.md` | Project uses Wi-Fi — and **load before diagnosing any Wi-Fi problem** (Command Gate in `rules/skill-loading.md`). |
+| BLE (NimBLE) | `sdks/esp-idf/protocols/BLE.md` | Project uses BLE (`CONFIG_BT_ENABLED=y`) — and **load before diagnosing any BLE problem**. |
 
 ---
 

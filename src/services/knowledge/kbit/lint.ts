@@ -263,9 +263,12 @@ function isIndexBit(rel: string): boolean {
 }
 
 /**
- * Map/discovery warning: every non-index bit should be referenced (by path or filename) somewhere else
- * in the corpus — i.e. listed in a map/index so the agent learns it exists. An orphan is the "useful md
- * never loaded" bug. Warning, not error: the indexes are still being completed during migration.
+ * Map/discovery guard: every non-index bit MUST be referenced (by path or filename) somewhere else in the
+ * corpus — i.e. listed in a map/index so the agent learns it exists. An orphan is the "useful md never
+ * loaded" bug (we hit it this sprint: `cve-scan` was silently undiscoverable until `cra-readiness`
+ * referenced it). Hard error (Omar's K-bit dev workflow §6): the migration is complete, so an unmapped bit
+ * is a real defect, not migration-in-progress. (Downloaded bits live in their own repo and must likewise be
+ * mapped in an OPEN index — the discovery map is always open even when the bit it points to is closed.)
  */
 export function lintMapping(knowledgeRoot: string, files: string[]): Issue[] {
 	const bodies = files.map((f) => ({ f, text: readFileSync(join(knowledgeRoot, f), "utf8") }))
@@ -277,7 +280,7 @@ export function lintMapping(knowledgeRoot: string, files: string[]): Issue[] {
 		const name = f.split("/").pop() ?? f
 		const referenced = bodies.some((b) => b.f !== f && (b.text.includes(f) || b.text.includes(name)))
 		if (!referenced) {
-			issues.push({ level: "warn", file: f, msg: "not referenced in any map/index bit (agent may never discover it)" })
+			issues.push({ level: "error", file: f, msg: "not referenced in any map/index bit (agent may never discover it)" })
 		}
 	}
 	return issues

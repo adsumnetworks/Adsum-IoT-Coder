@@ -12,3 +12,13 @@ import { ExtensionRegistryInfo } from "@/registry"
 export function getLatestAnnouncementId(): string {
 	return ExtensionRegistryInfo.version
 }
+
+/**
+ * The 3-pillar "what's new" one-liner. Single source of truth shown on a fresh install, a generic (non-CRA)
+ * update toast, AND as the recurring nudge's fallback when the open project isn't CRA-relevant — so those
+ * surfaces never drift. It's a feature announcement (NOT a per-project CRA claim), so it's honest regardless
+ * of the open project.
+ */
+export function whatsNewToastMessage(version: string): string {
+	return `✦ What's new in Adsum IoT Coder v${version} — CRA readiness · hardware-in-the-loop debug · expert know-how that augments the AI.`
+}

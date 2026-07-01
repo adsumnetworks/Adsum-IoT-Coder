@@ -6,6 +6,9 @@
 
 import type { HciEntry, HciParseResult } from "./hciTypes"
 
+/** Cap on rendered lifecycle events in the mermaid footer — keeps it readable for long captures. */
+const MERMAID_MAX_EVENTS = 40
+
 /** Elapsed device uptime (ms from boot) → `HH:MM:SS.mmm`. */
 function elapsed(ms: number | undefined): string {
 	if (ms === undefined) {
@@ -70,5 +73,90 @@ export function formatHci(result: HciParseResult): string {
 	if (result.entries.length === 0) {
 		lines.push("# (no HCI frames decoded — capture may be empty or the monitor was not enabled)")
 	}
+
+	const mermaid = buildHciMermaid(result.entries)
+	if (mermaid) {
+		lines.push("#")
+		lines.push("# --- suggested chat sequence diagram (mermaid) ---")
+		lines.push("# Lift the lines below (strip the leading '# ') into a ```mermaid fence when presenting in chat.")
+		for (const l of mermaid.split("\n")) {
+			lines.push(`# ${l}`)
+		}
+	}
 	return `${lines.join("\n")}\n`
+}
+
+/**
+ * Deterministic mermaid `sequenceDiagram` skeleton built ONLY from decoded HCI frames — never invented.
+ * Two lifelines (Host/Controller): every CMD/EVT is the lifecycle signal (the whole point of HCI is
+ * host↔controller correlation, so none are filtered), ACL data runs collapse into one `Note over` so the
+ * diagram stays readable, and MON/SYS/INDEX bookkeeping is skipped (it isn't a host↔controller exchange).
+ * Bounded to MERMAID_MAX_EVENTS arrows. Mirrors `buildSnifferMermaid` so both BLE layers read the same way.
+ * The agent refines labels/notes on top of this skeleton (see analyze-hci.md) — it never invents frames
+ * that aren't here.
+ */
+export function buildHciMermaid(entries: HciEntry[]): string | undefined {
+	if (entries.length === 0) {
+		return undefined
+	}
+
+	const lines: string[] = ["sequenceDiagram"]
+	lines.push("    participant H as Host")
+	lines.push("    participant Ctrl as Controller")
+
+	let runLen = 0
+	let eventCount = 0
+	let truncated = false
+	let emitted = false // any arrow or Note actually rendered? (a MON/SYS/INDEX-only capture emits none)
+
+	const flushRun = () => {
+		if (runLen === 0) {
+			return
+		}
+		lines.push(
+			`    Note over H,Ctrl: ${runLen} ACL data packet${runLen > 1 ? "s" : ""} (GATT traffic — see .btmon in Wireshark for ATT/L2CAP detail)`,
+		)
+		runLen = 0
+		emitted = true
+	}
+
+	for (const e of entries) {
+		if (truncated) {
+			break
+		}
+		if (e.type === "ACL_TX" || e.type === "ACL_RX") {
+			runLen++
+			continue
+		}
+		if (e.type === "MON" || e.type === "SYS" || e.type === "INDEX" || e.type === "UNKNOWN") {
+			continue
+		}
+		flushRun()
+		if (eventCount >= MERMAID_MAX_EVENTS) {
+			truncated = true
+			break
+		}
+		if (e.type === "CMD") {
+			lines.push(`    H->>Ctrl: ${e.summary.replace(/^TX CMD /, "")}`)
+			eventCount++
+			emitted = true
+		} else if (e.type === "EVT") {
+			const arrowOp = e.summary.includes("Disconnection Complete") ? "--x" : "-->>"
+			lines.push(`    Ctrl${arrowOp}H: ${e.summary.replace(/^RX EVT /, "")}`)
+			eventCount++
+			emitted = true
+		}
+	}
+	flushRun()
+	if (truncated) {
+		lines.push(
+			"    Note over H,Ctrl: (additional lifecycle events truncated — see .btmon in Wireshark for the full sequence)",
+		)
+	}
+	// A capture of only MON/SYS/INDEX bookkeeping renders no arrows or notes — return nothing rather than
+	// a header-only `sequenceDiagram` skeleton (which shows up as an empty/broken diagram in chat).
+	if (!emitted) {
+		return undefined
+	}
+	return lines.join("\n")
 }

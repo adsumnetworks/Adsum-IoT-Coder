@@ -2,7 +2,7 @@
 id: adsum/nrf/sdks/ncs/protocols/ble
 title: "BLE Protocol Knowledge — NCS / Zephyr"
 type: knowledge
-version: 1.1.0
+version: 1.3.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -133,12 +133,33 @@ CONFIG_LOG_PROCESS_THREAD_SLEEP_MS=10
 ### nRF5340 Dual-Core BLE Logging
 See `boards/nrf5340.md` for network core logging setup.
 
-## BLE Sub-bits — Map (discovery)
+## BLE Sub-bits — Map (discovery + the 3-layer escalation)
 
-These deepen specific BLE topics. They are **fetched on demand** (downloaded) — load by id when the
-symptom matches. This index is how you learn they exist; don't skip them when relevant.
+**HARD RULE — do not diagnose a BLE failure from general knowledge when a curated bit exists.** BLE has
+three observability layers; debug them in order and STOP guessing at each boundary:
+1. **App / stack logs** (the tables above) — start here.
+2. **HCI** (host↔controller, *inside* the device) — if app/stack logs don't explain it, you MUST
+   `read_file` `workflows/hci-trace` and capture/decode HCI **before** offering a cause.
+3. **Over-the-air** (the radio, *between* devices) — if HCI shows a command went out but the outcome
+   never came, escalate to `workflows/ble-sniffer` to see what actually transmitted.
+
+**Debug-entry (proactive) — when the developer opens a BLE debug session** (e.g. "build, flash &
+debug" on a BLE project), don't silently default to app logs. Briefly offer the three observability
+layers and **recommend by what's connected**:
+- **App logs** — build + flash + stream RTT/UART (the inner loop).
+- **Over-the-air sniffer** — passive; needs only an nRF Sniffer dongle plugged in, **no rebuild**. Check the serial ports for a dongle; if one is present, this is ready now.
+- **HCI trace** — needs `CONFIG_BT_DEBUG_MONITOR_RTT`; if it's off, enabling it requires a rebuild + flash. Check whether it's already enabled before recommending.
+
+Recommend the path needing the least setup or best matching the symptom, then **load the matching
+workflow bit** (`hci-trace` / `ble-sniffer`) before running it. Same HARD RULE applies — never decode
+or diagnose from general knowledge when the curated bit exists.
+
+These bits are **fetched on demand** (downloaded). This map is how you learn they exist — load the one
+whose symptom matches; never skip it.
 
 | id | When to load | Delivery |
 |---|---|---|
 | `adsum/nrf/workflows/hci-trace` | A BLE bug app/stack logs can't explain and you need host↔controller evidence: pairing fails on one side, conn params won't update, PHY won't switch, GATT works on phone not peer, controller crash, timing-sensitive BLE bug. Drives: enable monitor → capture → decode → present. | downloaded — fetched on demand |
 | `adsum/nrf/sdks/ncs/protocols/ble/hci-monitor` | You already have a decoded HCI trace (`logs/hci/*.hci.log`) and need the expert layer — request→status→outcome chain reading, failure-signature table, cross-layer correlation. Loaded by the `hci-trace` workflow. | downloaded — fetched on demand |
+| `adsum/nrf/workflows/ble-sniffer` | Confirm what actually went over the air: HCI shows a command sent but no result, "is the device even advertising / being connected to?", suspected range/interference/collision. Drives: flash the sniffer dongle → capture → decode → present. | downloaded — fetched on demand |
+| `adsum/nrf/sdks/ncs/protocols/ble/ota-sniffer` | You have a decoded sniffer capture (`logs/sniffer/*.sniffer.log`) and need the expert layer — advertising vs connection, missing `CONNECT_IND`, channel/PHY/RSSI, cross-layer with HCI + app log. Loaded by the `ble-sniffer` workflow. | downloaded — fetched on demand |

@@ -51,12 +51,17 @@ export interface IntentDef {
  * layer (lands this sprint); the radio sniffer is the additive frontier (EOS). It names the ladder — it
  * is not a promise that every layer is live today, so it degrades truthfully if the sniffer slips.
  */
-export const DEEP_DEBUG_SUBLINE = "↳ deep debug — app logs → HCI → radio sniffer (soon)"
+export const DEEP_DEBUG_SUBLINE = "↳ deep debug — app logs → HCI → radio sniffer"
 
 export type WorkspacePlatform = "nrf" | "esp" | "both" | "none"
 
 /** Dev-as-hero prompt strings. projectName is interpolated where relevant. */
-export function buildIntentPrompt(id: IntentId, projectName?: string, platform: WorkspacePlatform = "both"): string {
+export function buildIntentPrompt(
+	id: IntentId,
+	projectName?: string,
+	platform: WorkspacePlatform = "both",
+	hasBle = false,
+): string {
 	const proj = projectName ?? "my project"
 	switch (id) {
 		case "prototype":
@@ -74,6 +79,17 @@ export function buildIntentPrompt(id: IntentId, projectName?: string, platform: 
 		case "buildFlash":
 			return `Build and flash ${proj} — run the loop: build it, flash it, and bring it up.`
 		case "buildFlashDebug":
+			if (hasBle) {
+				// BLE project → don't assume the app-log loop. Open by offering the three observability
+				// layers and recommend by what's actually connected, then run the chosen one.
+				return (
+					`Debug ${proj} (a BLE project). Before doing anything, offer me the three ways to observe it and recommend one based on what's connected:\n` +
+					`1. App logs — build, flash, and stream the RTT/UART logs (the full inner loop; add logging if it's missing).\n` +
+					`2. Over-the-air sniffer — passive radio capture; I just plug in an nRF Sniffer dongle, no rebuild of my board. Tell me which port is the dongle (or detect it).\n` +
+					`3. HCI host↔controller trace — needs CONFIG_BT_DEBUG_MONITOR_RTT; if it's off, enable it (rebuild + flash) first, then capture and decode.\n` +
+					`Check what's ready now (enumerate serial ports for a sniffer dongle; check whether the HCI monitor is already enabled) and recommend the path needing the least setup or best matching my symptom. When I pick one, LOAD the matching curated workflow first (ble-sniffer or hci-trace) — don't answer from memory — then run it and correlate the decode with my code.`
+				)
+			}
 			return `Build, flash and debug ${proj} — build and flash it to the board, stream the logs, and help me find any issue.`
 		case "testValidate":
 			if (platform === "esp")
@@ -167,17 +183,11 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 		description: "Tell me what you're building — I'll scaffold from the right verified sample.",
 	},
 	{
-		id: "craCheck",
-		icon: "shield",
-		title: "Preview CRA readiness",
-		description: "A real SBOM + secure-by-design posture on a bundled sample — not your build. Get ahead of the EU CRA.",
-		pill: "New",
-	},
-	{
 		id: "openProject",
 		icon: "folder-opened",
 		title: "Open my project",
-		description: "Point me at your firmware folder — I'll build it, debug live logs, and add features to your real code.",
+		description:
+			"Point me at your firmware folder — I'll help you build it, stream live logs while you debug, and add features to your real code.",
 	},
 ]
 

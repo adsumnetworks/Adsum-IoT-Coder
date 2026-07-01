@@ -4,13 +4,13 @@
 
 # Adsum IoT Coder
 
-### ESP &amp; nRF · AI Debug &amp; Dev
+### ESP &amp; nRF · IoT Firmware Debug, Dev &amp; CRA Readiness
 
 **An IoT coding agent for VS Code that works your whole firmware dev loop on Espressif ESP and Nordic nRF: scaffold, build, flash, test, observe, fix. It automates the routine firmware work you would rather not do, and cracks the runtime bugs general agents cannot, because it reads your board, not just your code.**
 
 **What makes it different is real human expertise, not just the AI model.** Adsum is augmented with curated firmware knowledge authored by engineers who have shipped, loaded on demand and validated by an [open benchmark](#benchmark) on real hardware. Human-curated, not AI-generated. It is the direction frontier research points to: equip a general model with curated, domain expertise that loads only when needed, rather than scale the model alone. The same approach appears in academic work on expert-skill-augmented models that shaped our benchmark ([arXiv:2603.19583](https://arxiv.org/abs/2603.19583)) and in industry practice ([context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents), [Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)).
 
-**Shipping today:** Espressif ESP32 (incl. S3, C6) on ESP-IDF · Nordic nRF52 / nRF53 / nRF54 on nRF Connect SDK (Zephyr) · BLE and Wi-Fi. Open source under Apache 2.0.
+**Shipping today:** Espressif ESP32 (incl. S3, C6) on ESP-IDF · Nordic nRF52 / nRF53 / nRF54 on nRF Connect SDK (Zephyr) · BLE (Bluetooth Low Energy) and Wi-Fi · **one-click EU Cyber Resilience Act (CRA) readiness: an SBOM plus a secure-by-design posture check.** Open source under Apache 2.0.
 
 <p>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/badge/VS%20Code%20Marketplace-install-00A9CE?logo=visualstudiocode&logoColor=white" alt="VS Marketplace"></a>
@@ -20,7 +20,7 @@
   <a href="https://www.youtube.com/@adsumnetworks"><img src="https://img.shields.io/badge/YouTube-watch-FF0000?logo=youtube&logoColor=white" alt="YouTube"></a>
 </p>
 
-**[Watch the demo →](https://www.youtube.com/watch?v=67tUybg1phk)** · **[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
+**[Watch the demo →](https://www.youtube.com/watch?v=67tUybg1phk)** · **[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[CRA readiness →](#cra-readiness-sbom-cve-and-secure-by-design)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
 
 <a href="https://www.youtube.com/watch?v=67tUybg1phk"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder debugging ESP32 and nRF firmware in VS Code: capture, analyze, fix" /></a>
 
@@ -32,19 +32,35 @@
 
 <p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
 
-## What's New <sup>`v0.1.6`</sup>
+## What's New <sup>`v0.1.7`</sup>
 
-<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**One extension, now for ESP32 too.** Build, flash, monitor, and test ESP-IDF firmware with the same guided workflows you use for nRF.
+<img src="assets/icons/whatsnew-cra.png" width="18" valign="middle" alt="" /> &nbsp;**CRA readiness, one click.** Run it on your build and get a machine-readable SBOM (SPDX) plus a full EU Cyber Resilience Act readiness report, written to a `compliance/` folder, on both nRF and ESP. A readiness aid to help you get ahead of the deadlines.
 
-<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Automatic platform detection.** The home reads whether your workspace is nRF, ESP, both, or a fresh start, and routes every workflow and the agent's expertise accordingly.
+<img src="assets/icons/whatsnew-posture.png" width="18" valign="middle" alt="" /> &nbsp;**Secure-by-design posture, from your real config.** It reads what your build actually sets, secure boot, signed updates, debug-port lock, secure storage and more, and lays out each requirement, where your build stands, and the fix, ranked so you tackle the biggest gap first.
 
-<img src="assets/icons/whatsnew-prototype.png" width="18" valign="middle" alt="" /> &nbsp;**Prototyping for both.** *Start a prototype* now scaffolds complete ESP-IDF projects too.
+<img src="assets/icons/whatsnew-cve.png" width="18" valign="middle" alt="" /> &nbsp;**Bring a CVE, and close it.** Hand it a CVE from a vendor advisory: it confirms the affected component is really in your build, links the advisory, then walks you through bumping the version, rebuilding, and regenerating the SBOM.
 
-<img src="assets/icons/whatsnew-knowledge.png" width="18" valign="middle" alt="" /> &nbsp;**Always-current knowledge, leaner install.** Platform expertise is delivered on demand and cached locally, so guidance stays fresh.
+<img src="assets/icons/whatsnew-fix.png" width="18" valign="middle" alt="" /> &nbsp;**Fix in the same loop.** It doesn't just flag gaps. It helps you wire the fix, a secure bootloader for example, rebuild, and re-verify, without leaving the agent.
 
-<img src="assets/icons/whatsnew-windows.png" width="18" valign="middle" alt="" /> &nbsp;**Stronger Windows support.** Board and toolchain detection across real install layouts, verified on real nRF and ESP hardware.
+<img src="assets/icons/whatsnew-home.png" width="18" valign="middle" alt="" /> &nbsp;**A cleaner home.** The refreshed status strip shows every detected SDK version and the exact build it resolved, so it never asserts a version it can't back.
 
 *Full history in the [changelog](./CHANGELOG.md).*
+
+## CRA Readiness: SBOM, CVE, and secure-by-design
+
+One click runs a build-time readiness check for the **EU Cyber Resilience Act (CRA)**, on both nRF and ESP. A readiness snapshot to help you prepare, **not a conformity assessment and not legal advice.**
+
+- **SBOM from your real build.** A machine-readable software bill of materials (SPDX), the CRA's named artifact, generated from your actual build with the vendor-native tools.
+- **Secure-by-design posture** against your build's actual configuration: secure boot, signed updates, debug-port lock, secure pairing, secure storage and more, each with the plain-English requirement and the fix, ranked so you tackle the biggest gap first.
+- **Bring a CVE, and close it.** Hand it a CVE from a vendor advisory: it confirms the affected component is really in your build (a literal SBOM lookup), links the advisory, then helps you bump the version, rebuild, and regenerate the SBOM.
+- **Fix in the loop, not just flag.** It helps you wire the top fix (a secure bootloader, for example), rebuild, and re-verify, without leaving the agent.
+- **Version advisories** for your detected SDK (links to review, never an automatic verdict).
+
+It tells you which CRA date applies to you and writes a `compliance/` folder (report + machine-readable JSON + SBOM). Run it on your firmware, or try it on a bundled sample with nothing open.
+
+<p align="center">
+  <img src="assets/docs/cra-report.png" width="58%" alt="Adsum IoT Coder CRA readiness report (CRA_READINESS.md): the honest 'readiness aid, not a conformity assessment' header, an at-a-glance count of components, CVEs found, likely-not-reachable, and secure-by-design gaps, and the SBOM (SPDX) section, for the EU Cyber Resilience Act" />
+</p>
 
 ## Why it exists
 
@@ -63,25 +79,14 @@ And the reason it is good at the hard parts is the part general agents do not ha
 - **Capture & analyze device logs.** Correlated with your source, across one board or two.
 - **Start a prototype, add a feature.** Scaffold a new nRF or ESP-IDF project; wire a BLE service, sensor, shell, or storage into your real project.
 - **Test & validate.** Host tests and on-hardware checks.
+- **Check CRA readiness.** One click: an SBOM (SPDX) plus a secure-by-design posture snapshot from your real build, on nRF and ESP. See [CRA Readiness](#cra-readiness-sbom-cve-and-secure-by-design).
 
 <p align="center">
-  <img src="assets/docs/home-detect.png" width="260" alt="Adsum IoT Coder panel in VS Code: automatic detection of Nordic nRF (nRF Connect SDK) and Espressif ESP (ESP-IDF) toolchains and boards, with one-click workflow cards" />
+  <img src="assets/docs/home-cra.png" width="48%" alt="Adsum IoT Coder home in VS Code: the status strip detects Nordic nRF (NCS 3.2.1) and Espressif ESP (ESP-IDF) with versions and boards, a 'Get ahead of the CRA' prompt, and one-click workflow cards including Build/flash & debug, Add a feature, Test & validate, and CRA SBOM & Fix" />
 </p>
 <p align="center">
-  <img src="assets/docs/esp-build.png" width="90%" alt="Adsum IoT Coder building ESP-IDF firmware for an ESP32-S3 in VS Code" />
+  <img src="assets/docs/esp-build.png" width="90%" alt="Adsum IoT Coder with an ESP-IDF Wi-Fi project (softAP) open in VS Code: the panel detects Espressif ESP-IDF and ESP32-S3 / ESP32-C6, shows a 'Get ahead of the CRA' Wi-Fi prompt, and the same workflow cards (build/flash & debug, add a feature, test & validate, CRA SBOM & Fix)" />
 </p>
-
-
-## CRA Readiness Check: get CRA-ready as you build
-
-One click runs a build-time readiness check for the **EU Cyber Resilience Act**, on both nRF and ESP. It's a readiness snapshot to help you prepare — **not a conformity assessment, and not legal advice.**
-
-- **SBOM** from your real build (SPDX, machine-readable — the CRA's named artifact).
-- **Secure-by-design posture** against your build's actual configuration: secure boot, signed updates, debug-port lock, secure pairing, secure storage, and more — each ✅/⚠️/❌ with the plain-English requirement and what to do, in dependency order.
-- **Advisories** for your detected SDK version (links to review — never an automatic verdict).
-- **Help you start** closing the top gap (e.g. add a secure bootloader).
-
-It tells you which CRA date applies to you, and writes a `compliance/` folder (report + machine-readable JSON + SBOM). Run it on your firmware, or try it on a bundled sample with nothing open.
 
 ## Supported platforms: ESP32 / ESP-IDF and nRF / nRF Connect SDK
 
@@ -90,6 +95,8 @@ It tells you which CRA date applies to you, and writes a `compliance/` folder (r
 | **Nordic** | nRF52, nRF53, nRF54 | nRF Connect SDK (Zephyr) | BLE |
 | **Espressif** | ESP32, ESP32-S3, ESP32-C6 | ESP-IDF | Wi-Fi, BLE |
 | **Roadmap** | nRF7x (Wi-Fi), nRF9x (cellular) | | Thread, Matter, LTE-M |
+
+CRA readiness (SBOM + secure-by-design posture) runs on both Nordic and Espressif builds.
 
 ## Benchmark
 
@@ -122,7 +129,8 @@ Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the 
 
 1. Run the built-in **30-second demo** (no board needed) to see the capture, analyze, fix loop on a real BLE bug.
 2. Open your **nRF or ESP project**; the home reads it, detects your boards and toolchain, and offers the right one-click workflows.
-3. Bring your own model whenever you want; the running task continues, no restart.
+3. Run the **one-click CRA readiness check** on a bundled sample (nothing open) or your own build, and see the SBOM and secure-by-design posture in under a minute.
+4. Bring your own model whenever you want; the running task continues, no restart.
 
 ## Free tier: put it to work in your first minute, on us
 
@@ -143,11 +151,11 @@ Recommended for bring-your-own-key: **Claude Haiku 4.5** (the benchmark model) a
 
 ## Roadmap
 
-Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi. Next: more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), deeper hardware-in-the-loop tooling (BLE sniffer, power profiling), and a growing community knowledge base. The **CRA SBOM & Fix** workflow (EU Cyber Resilience Act readiness) ships in this release; broader CRA tooling follows. The roadmap is shaped by what the community asks for and contributes.
+Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi, and one-click CRA readiness (SBOM + secure-by-design posture). **Next release: 3-layer decoding.** The agent reads and correlates across your **code, your board, and the radio** (application logs, on-device HCI, and the over-the-air capture) to pinpoint where a flow actually broke, not just BLE. Then more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), power profiling, and a growing community knowledge base. The roadmap is shaped by what the community asks for and contributes.
 
 ## Limitations
 
-We publish what is true today. **Adsum is an AI-based coding agent and can make mistakes.** The CRA workflow is a readiness aid, not a conformity assessment and not legal advice; only a notified body or your formal assessment establishes conformity. The benchmark is six BLE tasks on a single NCS version: a proof of concept, not statistical significance, and an ESP benchmark suite is on the roadmap (v0.2). nRF, nRF Connect SDK, and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA; ESP32 and ESP-IDF are trademarks of Espressif Systems; Zephyr is a trademark of the Linux Foundation; Visual Studio Code is a trademark of Microsoft. This is an independent project, not affiliated with or endorsed by any of them.
+We publish what is true today. **Adsum is an AI-based coding agent and can make mistakes.** The CRA workflow is a readiness aid, not a conformity assessment and not legal advice; only a notified body or your formal assessment establishes conformity. The CVE flow confirms a component you name is present in your build and helps you patch it; **it is not a vulnerability scanner and does not search for unknown CVEs.** The benchmark is six BLE tasks on a single NCS version: a proof of concept, not statistical significance, and an ESP benchmark suite is on the roadmap (v0.2). nRF, nRF Connect SDK, and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA; ESP32 and ESP-IDF are trademarks of Espressif Systems; Zephyr is a trademark of the Linux Foundation; Visual Studio Code is a trademark of Microsoft. This is an independent project, not affiliated with or endorsed by any of them.
 
 ## Privacy & Security
 
@@ -163,6 +171,6 @@ The runtime runs entirely on your machine. Only the log snippets and code contex
 
 **[adsumnetworks.com](https://adsumnetworks.com)** · **[GitHub](https://github.com/adsumnetworks/Adsum-IoT-Coder)** · **[Discussions](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions)** · **[YouTube](https://www.youtube.com/@adsumnetworks)**
 
-**Open-core** — extension code Apache-2.0 © 2026 Adsum Networks (a derivative of [Cline](https://github.com/cline/cline); see [NOTICE](NOTICE)) · bundled knowledge content CC-BY-SA-4.0 (see [iot-knowledge/LICENSE](iot-knowledge/LICENSE)) · downloaded registry bits are proprietary.
+**Open-core:** extension code Apache-2.0 © 2026 Adsum Networks (a derivative of [Cline](https://github.com/cline/cline); see [NOTICE](NOTICE)) · bundled knowledge content CC-BY-SA-4.0 (see [iot-knowledge/LICENSE](iot-knowledge/LICENSE)) · downloaded registry bits are proprietary.
 
 </div>

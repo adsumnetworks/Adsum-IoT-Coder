@@ -93,24 +93,51 @@ export const TASK_COMPLETE_MARKER = "<!--TASK_COMPLETE-->"
 /**
  * The structural subset of a chat message this helper reads, so it stays dependency-light + unit-testable.
  */
-type CompletionProbe = { type?: string; say?: string; ask?: string; text?: string; partial?: boolean }
+type CompletionProbe = { type?: string; say?: string; ask?: string; text?: string; partial?: boolean; ts?: number }
 
 /**
  * True when the last chat message means the Nordic task is over and the next-step menu should render. TWO
  * triggers, identical in effect by design:
- *   1. a plain `text` message carrying the workflow's TASK_COMPLETE_MARKER (the bit's loop-exit signal); and
+ *   1. a plain `text` message ENDING with the workflow's TASK_COMPLETE_MARKER (the bit's loop-exit signal); and
  *   2. an attempt_completion result (`completion_result`, whether the `say` or the follow-up `ask`) — the
  *      harness's OWN completion signal. We honor it even without the marker, so the menu still renders when the
  *      model completes via the tool — including a *premature* attempt_completion. This is the R4 safety-net:
  *      the developer always gets a next-step offer at completion, even if the model exited the loop early.
  * Partial/streaming messages are ignored, so it settles on the final message rather than firing mid-stream.
+ *
+ * The marker must be at the END of the message (after trimming trailing whitespace), NOT merely contained: the
+ * workflow specifies "emit it exactly, nothing after it". A model that *quotes the instruction* mid-run
+ * ("...end with `<!--TASK_COMPLETE-->` exactly") has text after the marker → not a completion. This stops a
+ * premature menu when the agent echoes the workflow file it just read. (The caller additionally only acts on
+ * this when the agent is idle, not mid-stream — see ChatView.)
  */
 export function isNordicTaskComplete(last?: CompletionProbe | null): boolean {
 	if (!last || last.partial === true) {
 		return false
 	}
-	if (last.type === "say" && last.say === "text" && last.text?.includes(TASK_COMPLETE_MARKER)) {
+	if (last.type === "say" && last.say === "text" && last.text?.trimEnd().endsWith(TASK_COMPLETE_MARKER)) {
 		return true
 	}
 	return last.say === "completion_result" || last.ask === "completion_result"
+}
+
+/**
+ * True when `last` is a completion that has NOT already flipped the phase to task_complete — i.e. a *fresh*
+ * completion the next-step menu should latch onto. `lastLatchedTs` is the ts of the completion that last
+ * latched (undefined if none yet).
+ *
+ * This is the F3 guard. When a developer clicks a next-step card, the phase goes back to "active" but the last
+ * chat message is still the PREVIOUS completion until the new turn streams. Without this check the latch would
+ * immediately re-fire on that stale completion — re-pinning the chooser as a list footer that the new answer
+ * then shoves down, and hiding the input bar. Comparing message-ts to message-ts (same host clock domain) means
+ * we only latch a genuinely new completion. A completion with a ts equal to the already-consumed one is ignored.
+ */
+export function isFreshNordicCompletion(last: CompletionProbe | null | undefined, lastLatchedTs: number | undefined): boolean {
+	if (!last || typeof last.ts !== "number") {
+		return false
+	}
+	if (last.ts === lastLatchedTs) {
+		return false
+	}
+	return isNordicTaskComplete(last)
 }

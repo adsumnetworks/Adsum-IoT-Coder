@@ -287,6 +287,36 @@ describe("WorkspaceClassifier", () => {
 		})
 	})
 
+	describe("features.hasWifi", () => {
+		it("detects Wi-Fi from nRF prj.conf CONFIG_WIFI=y (nRF7002)", () => {
+			const fs = fixture({ "/proj/CMakeLists.txt": NRF_CMAKE, "/proj/prj.conf": "CONFIG_WIFI=y\n" })
+			classifyWorkspace(["/proj"], fs).features.hasWifi.should.equal(true)
+		})
+
+		it("detects Wi-Fi from ESP source that uses the esp_wifi API (main/)", () => {
+			const fs = fixture({
+				"/proj/CMakeLists.txt": ESP_CMAKE,
+				"/proj/main/wifi.c": '#include "esp_wifi.h"\nvoid f(void){ esp_wifi_init(NULL); }\n',
+			})
+			classifyWorkspace(["/proj"], fs).features.hasWifi.should.equal(true)
+		})
+
+		it("does NOT flag Wi-Fi for CONFIG_WIFI=n", () => {
+			const fs = fixture({ "/proj/CMakeLists.txt": NRF_CMAKE, "/proj/prj.conf": "CONFIG_WIFI=n\n" })
+			classifyWorkspace(["/proj"], fs).features.hasWifi.should.equal(false)
+		})
+
+		it("does NOT false-positive on an ESP project that never calls esp_wifi (defaults are on-chip, not usage)", () => {
+			const fs = fixture({ "/proj/CMakeLists.txt": ESP_CMAKE, "/proj/main/main.c": "void app_main(void){}\n" })
+			classifyWorkspace(["/proj"], fs).features.hasWifi.should.equal(false)
+		})
+
+		it("hasWifi false with no Wi-Fi config or usage", () => {
+			const fs = fixture({ "/proj/CMakeLists.txt": NRF_CMAKE, "/proj/prj.conf": "CONFIG_BT=y\n" })
+			classifyWorkspace(["/proj"], fs).features.hasWifi.should.equal(false)
+		})
+	})
+
 	describe("features.hasComplianceArtifacts", () => {
 		it("detects a top-level compliance/ directory", () => {
 			const fs = fixture({ "/proj/CMakeLists.txt": NRF_CMAKE, "/proj/compliance/sbom/app.spdx.json": "{}" })

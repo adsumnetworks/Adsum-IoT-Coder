@@ -1,4 +1,4 @@
-import type { EspDevice, EspEnvironment } from "@shared/esp"
+import { type EspDevice, type EspEnvironment, espUnresolvedDeviceLabel } from "@shared/esp"
 import type { NrfBoard, NrfEnvironment } from "@shared/nrf"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import React, { useState } from "react"
@@ -318,10 +318,12 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 		devices = "no boards connected"
 		devicesMuted = true
 	} else {
-		// Show the exact chip once esptool resolved it; otherwise "ESP32-family".
+		// Show the exact chip once esptool resolved it; otherwise an HONEST unresolved label — "ESP (model
+		// unknown)" only for Espressif's own VID, "unidentified serial device" for a generic bridge we never
+		// confirmed (never claim "ESP32-family" off an unconfirmed CH34x/CP210x/FTDI device).
 		devices = env.espDevices
 			.map((d: EspDevice) => {
-				const name = d.chip ?? "ESP32-family"
+				const name = d.chip ?? espUnresolvedDeviceLabel(d.vid)
 				return d.chip && d.chipRevision ? `${name} (${d.chipRevision})` : name
 			})
 			.join(", ")
@@ -421,7 +423,7 @@ const EnvStrip: React.FC = () => {
 
 	return (
 		<div style={containerStyle}>
-			<div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
+			<div id="envstrip-detail" style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
 				{expanded ? (
 					<>
 						<PlatformRow
@@ -438,6 +440,9 @@ const EnvStrip: React.FC = () => {
 							{...esp}
 						/>
 						<button
+							aria-controls="envstrip-detail"
+							aria-expanded={expanded}
+							aria-label="Hide environment detail"
 							data-testid="envstrip-collapse"
 							onClick={() => setExpanded(false)}
 							style={collapseLinkStyle}
@@ -447,6 +452,9 @@ const EnvStrip: React.FC = () => {
 					</>
 				) : (
 					<button
+						aria-controls="envstrip-detail"
+						aria-expanded={expanded}
+						aria-label="Show environment detail"
 						data-testid="envstrip-summary"
 						onClick={() => setExpanded(true)}
 						style={{

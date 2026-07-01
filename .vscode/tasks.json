@@ -257,9 +257,27 @@
 			"type": "shell"
 		},
 		{
+			// One-shot extension bundle (same as watch:esbuild without --watch). Used to guarantee a fresh
+			// dist/extension.js before launch so an already-running "watch" can't boot a stale build.
+			"label": "esbuild-once",
+			"type": "shell",
+			"command": "node esbuild.mjs",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always"
+			}
+		},
+		{
 			"label": "clean-tmp-user",
 			"type": "shell",
+			// Build a fresh bundle FIRST (esbuild-once, blocking), THEN start the watcher + dev server.
+			// Fixes the stale-dist F5 trap: a reused background "watch" alone could boot a pre-change build.
+			"dependsOrder": "sequence",
 			"dependsOn": [
+				"esbuild-once",
 				"watch"
 			],
 			"command": "rm -rf ${workspaceFolder}/dist/tmp/user && mkdir -p ${workspaceFolder}/dist/tmp/user"

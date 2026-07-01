@@ -9,6 +9,7 @@ import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
+import { foldEspBuildResult } from "./espBuildFold"
 
 /**
  * Handler for ESP-IDF hardware actions. The ESP counterpart of
@@ -138,7 +139,9 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 		} else {
 			telemetryService.captureEspActionExecuted(config.ulid, action, { command: sayPath, status: "success" })
 		}
-		return result
+		// Fold the verbose build log before it enters context (build only — flash/monitor/execute are returned
+		// verbatim so serial logs and ad-hoc command output are never trimmed).
+		return action === "build" && !userRejected ? foldEspBuildResult(result) : result
 	}
 
 	/**

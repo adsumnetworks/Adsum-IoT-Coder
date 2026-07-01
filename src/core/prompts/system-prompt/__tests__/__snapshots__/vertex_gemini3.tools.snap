@@ -375,6 +375,15 @@
         },
         "monitor": {
           "type": "STRING"
+        },
+        "follow_name": {
+          "type": "STRING"
+        },
+        "follow_addr": {
+          "type": "STRING"
+        },
+        "capture_path": {
+          "type": "STRING"
         }
       },
       "required": [
@@ -415,6 +424,24 @@
       },
       "required": [
         "action"
+      ]
+    }
+  },
+  {
+    "name": "triggerCveScan",
+    "description": "Scan a generated SBOM for known CVEs (host-run, evidence-mode).\n\nEvidence-mode only. Every advisory is attributed to its source (OSV), dated (\"as of\"), and hedged (\"verify\") —\nthis is a triage aid, never a clean bill of health. Run the CRA SBOM step FIRST (this needs a generated SBOM).\nPass \"build\" (the verified build dir) so applicability can use the merged .config + ELF symbols to rule things\nOUT (config-disabled / symbol-stripped ⇒ \"likely not applicable; verify\") — it never asserts \"not affected\".\nComponents without a PURL (CPE-only / unidentified) are reported as an honest coverage gap, not silently dropped.\n",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "sbom": {
+          "type": "STRING"
+        },
+        "build": {
+          "type": "STRING"
+        }
+      },
+      "required": [
+        "sbom"
       ]
     }
   },

@@ -7,6 +7,8 @@ import { useRemark } from "react-remark"
 import rehypeHighlight, { Options } from "rehype-highlight"
 import type { Node } from "unist"
 import { visit } from "unist-util-visit"
+import { resolveAgentImage } from "@/assets/agentImages"
+import { CraStepMarker, parseStepHeading } from "@/components/chat/cra/CraStepMarker"
 import MermaidBlock from "@/components/common/MermaidBlock"
 import { Button } from "@/components/ui/button"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -394,6 +396,30 @@ const InlineCodeWithFileCheck: React.FC<ComponentProps<"code"> & { [key: string]
 	return <code {...props} />
 }
 
+/** Flatten a heading's React children to plain text (for CRA step-banner detection). */
+function headingChildrenToText(children: React.ReactNode): string {
+	return React.Children.toArray(children)
+		.map((c) => {
+			if (typeof c === "string") {
+				return c
+			}
+			if (typeof c === "object" && c !== null && "props" in c) {
+				return headingChildrenToText((c as React.ReactElement<{ children?: React.ReactNode }>).props?.children)
+			}
+			return ""
+		})
+		.join("")
+}
+
+/** Render a `### Step N/5 · Title` heading as the styled CRA step marker; any other heading stays a normal heading. */
+const stepAwareHeading = (Tag: "h2" | "h3" | "h4") => (props: ComponentProps<"h2">) => {
+	const parsed = parseStepHeading(headingChildrenToText(props.children))
+	if (parsed) {
+		return <CraStepMarker step={parsed.step} title={parsed.title} />
+	}
+	return React.createElement(Tag, props)
+}
+
 const MarkdownBlock = memo(({ markdown, compact, showCursor }: MarkdownBlockProps) => {
 	const [reactContent, setMarkdown] = useRemark({
 		remarkPlugins: [
@@ -465,6 +491,33 @@ const MarkdownBlock = memo(({ markdown, compact, showCursor }: MarkdownBlockProp
 
 					return <strong {...props} />
 				},
+				img: ({ src, alt }: ComponentProps<"img">) => {
+					// SECURITY: only render bundled, whitelisted agent assets (adsum-asset:<key>). An
+					// arbitrary remote/file image from agent text is never rendered — fall back to alt text.
+					const asset = resolveAgentImage(typeof src === "string" ? src : undefined)
+					if (!asset) {
+						return alt ? <span>{alt}</span> : null
+					}
+					return (
+						<img
+							alt={asset.alt}
+							src={asset.src}
+							style={{
+								display: "block",
+								margin: "8px 0",
+								width: "100%",
+								maxWidth: asset.maxWidth,
+								height: "auto",
+								borderRadius: 6,
+							}}
+						/>
+					)
+				},
+				// CRA guided UX: a "### Step N/5 · …" banner renders as the styled in-flow step marker
+				// (big title + mini progress strip); every other heading is unchanged.
+				h2: stepAwareHeading("h2"),
+				h3: stepAwareHeading("h3"),
+				h4: stepAwareHeading("h4"),
 			},
 		},
 	})

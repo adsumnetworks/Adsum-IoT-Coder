@@ -65,6 +65,25 @@ describe("verdictScan — leaks that MUST be caught", () => {
 		["aggregate readiness score", "Aggregate CRA Readiness 5.7/10 — two fixes raise it."],
 		["'out of 10' grade", "Secure boot scores 7 out of 10."],
 		["fabricated CRA article sub-clause", "Vulnerabilities cannot be patched under CRA Article 3(8)."],
+		// run 2706h2 — fabricated Annex sub-clause granularity (the bit allows only the bare "Part I"/"Part II" label)
+		["fabricated Annex sub-clause (2)(e)", "**Annex I Part I (2)(e):** Minimise data processing — RTT logging is verbose."],
+		["fabricated Annex sub-clause Part II (2)", "Annex I Part II (2): SBOM generated — verify the inventory."],
+		// 2806b — the COMMA between "Annex I" and "Part I" evaded the no-comma form and shipped in the final report.
+		["fabricated Annex clause with comma", "Cited under Annex I, Part I (1)(c) for multi-user environments."],
+		// 2806b/2806c — the bare "Part II (2)(d)" form (no leading "Annex").
+		["fabricated bare Part clause", "Part II (2)(d) — confidentiality and integrity by state-of-the-art techniques."],
+		// 2806c — the short scorecard form "I(2)(a)" … "I(2)(i)" (a whole fabricated compliance grid).
+		["fabricated short scorecard clause", "| **I(2)(a)** — Security-by-design & default | … |"],
+		["fabricated short scorecard clause (f)", "automated vulnerability monitoring required by Annex I(2)(f)."],
+		// 2806c — TRAFFIC-LIGHT EMOJI status marks + a GOOD verdict cell (the guard never fired on this run; these
+		// glyphs slipped because only ✅/⚠️/❌ were matched, and "Good" was in a cell).
+		["emoji 🟢 + Good verdict cell", "| **I(2)(c)** — Secure updates | 🟢 Good |"],
+		["emoji 🔴 gap marker", "| LE Privacy (RPA) | 🔴 gap | CONFIG_BT_PRIVACY not set |"],
+		["emoji 🟡 partial marker", "| Watchdog | 🟡 partial | CONFIG_WATCHDOG not set |"],
+		["bare GOOD verdict cell", "| SBOM Completeness | GOOD |"],
+		// 2806b — a ✓/✗ status glyph inside a TABLE CELL (glyph-bullet only anchored to line/bullet start).
+		["✓ enabled table cell", "| Secure Connections Only | ✓ enabled | CONFIG_BT_SMP_SC_ONLY=y |"],
+		["✗ gap table cell", "| LE Privacy (RPA) | ✗ gap | CONFIG_BT_PRIVACY not set |"],
 	]
 	for (const [name, sample] of leaks) {
 		test(name, () => {
@@ -122,6 +141,11 @@ describe("verdictScan — disclaimers / evidence-mode that MUST NOT trip", () =>
 		["version numbers stay clean", "SBOM is SPDX 2.3; the SDK is NCS 3.2.1."],
 		["evidence count (3/3) stays clean", "3/3 images present in the build."],
 		["meta 'never call it non-compliant' stays clean", "I will never call your build non-compliant."],
+		// 2806b/2806c carve-outs — the new rules must NOT fire on prose "good", a non-cell mention, or the bare
+		// "Part I"/"Part of" without a parenthesized sub-clause:
+		["prose 'good practice' stays clean", "It's good practice to verify the bootloader child image actually built."],
+		["bare 'Part of' stays clean", "MCUboot is part of the sysbuild image set; Part I of the build is the app."],
+		["bare 'Part I' label (no paren) stays clean", "Boot only verified firmware — Annex I Part I; CONFIG present."],
 	]
 	for (const [name, sample] of clean) {
 		test(name, () => {
@@ -280,4 +304,41 @@ describe("verdictScan — API", () => {
 		].join("\n")
 		assert.deepEqual(scanForVerdictLeaks(report), [])
 	})
+})
+
+describe("verdictScan — shape-primitive guards (catch verdict SHAPES, not just enumerated phrasings)", () => {
+	const leaks: Array<[string, string]> = [
+		["verdict cell 'MET'", "| Secure Boot | MET |"],
+		["verdict cell 'READY'", "| Update path | READY |"],
+		["verdict cell 'GOOD'", "| SBOM | GOOD |"],
+		["label verdict 'Overall: COMPLIANT'", "Overall: COMPLIANT"],
+		["label verdict 'Verdict: READY'", "Verdict: READY"],
+		["label verdict 'Conformity: ACHIEVED'", "Conformity: ACHIEVED"],
+		["bullet label '- Secure boot: DONE'", "- Secure boot: DONE"],
+		["✓ checkmark cell", "| TF-M | ✓ |"],
+		["✓ bullet status", "- ✓ MCUboot built"],
+		["letter grade 'Grade: A'", "Grade: A"],
+		["letter grade with sign", "Readiness Grade: B+"],
+		["device-state 'is secure'", "Good news — your device is secure."],
+		["'production-ready'", "Your firmware is production-ready."],
+	]
+	for (const [name, sample] of leaks) {
+		test(`catches: ${name}`, () => {
+			assert.equal(isVerdictClean(sample), false, sample)
+		})
+	}
+
+	const clean: Array<[string, string]> = [
+		["'We met the team' (met as a verb)", "We met the team and reviewed the build."],
+		["'MET office' (proper noun, uppercase)", "The MET office issued a forecast."],
+		["'secure boot is configured' (feature, not a verdict)", "Secure boot is configured — verify on your build."],
+		["'upgrade path' (grade substring is safe)", "Upgrade path: bump NCS, then verify."],
+		["attributed-dated severity (not a verdict)", "OSV reports CVE-2024-1 (CVSS:3.1/AV:N) as of 2026-06-25 — verify."],
+		["coverage caption hedged with 'confirm'", "Coverage: 3 queryable. Partial coverage; confirm each."],
+	]
+	for (const [name, sample] of clean) {
+		test(`stays clean: ${name}`, () => {
+			assert.equal(isVerdictClean(sample), true, sample)
+		})
+	}
 })

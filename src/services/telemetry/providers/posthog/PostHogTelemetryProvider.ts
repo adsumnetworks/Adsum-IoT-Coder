@@ -107,7 +107,7 @@ export class PostHogTelemetryProvider implements ITelemetryProvider {
 		this.client.capture({
 			distinctId: getDistinctId(),
 			event,
-			properties: { app_version: ExtensionRegistryInfo.version, platform: getCachedWorkspaceSummary(), ...properties },
+			properties: { app_version: ExtensionRegistryInfo.version, iot_platform: getCachedWorkspaceSummary(), ...properties },
 		})
 	}
 
@@ -117,7 +117,7 @@ export class PostHogTelemetryProvider implements ITelemetryProvider {
 			event,
 			properties: {
 				app_version: ExtensionRegistryInfo.version,
-				platform: getCachedWorkspaceSummary(),
+				iot_platform: getCachedWorkspaceSummary(),
 				...properties,
 				_required: true,
 			},

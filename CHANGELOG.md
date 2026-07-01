@@ -22,7 +22,9 @@ When a BLE project is open (`CONFIG_BT=y` detected), the welcome screen now surf
 
 > **app logs · HCI · radio sniffer** *(soon)*
 
-The HCI layer is new: the extension can now parse Host Controller Interface (HCI) event streams and decode them to human-readable BLE protocol events — helping you see exactly what's happening at the controller level, not just the application log. The radio sniffer integration is coming next.
+The HCI layer is new: the extension can now parse Host Controller Interface (HCI) event streams and decode them to human-readable BLE protocol events — helping you see exactly what's happening at the controller level, not just the application log.
+
+A guided **HCI + Sniffer sample run** — a three-layer walkthrough (app log → HCI bus → over-the-air) that lands on the one-line fix and bridges to the CRA readiness check — is coming in a follow-up release.
 
 ### nRF terminal — self-contained, version-aware
 
@@ -38,6 +40,10 @@ The nRF terminal now detects which NCS version your build uses and executes comm
 - **"Try it on a sample" picker.** A new inline picker lists available demos (BLE bug, CRA readiness check, and more). Appears when no project is open; becomes a re-run link once you've tried one.
 - **CRA nudge for BLE projects.** When a BLE project is open but has no `compliance/` folder yet, a dismissible note surfaces: "A connected product likely falls under the EU CRA — preview your secure-by-design posture." Evidence-grounded, never a verdict.
 - **Compact platform status.** The nRF/ESP detection panel collapses to a one-line summary per detected platform (e.g. `nRF · NCS 3.2.1 · nRF5340 DK`). Click to expand for full detail.
+
+### Diagrams that match your theme
+
+Mermaid diagrams in chat now follow your VS Code light/dark theme and the Adsum palette — previously they used a fixed dark theme that was hard to read in light mode.
 
 ### Honesty hardening
 

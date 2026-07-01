@@ -241,12 +241,14 @@ You normally do NOT set this — the tool auto-resolves the version from the pro
 or uses the only installed version. Set it ONLY when the tool reports that multiple NCS versions are
 installed and the project has no build yet: ask the user which to use, then pass it here. The choice is
 remembered for this project, so you won't be asked again.
-- operation: (optional) Required if action="log_device". Options: "list", "test", "capture", "monitor", "device_info".
+- operation: (optional) Required if action="log_device". Options: "list", "test", "capture", "monitor", "sniff", "device_info", "open_capture".
 - "list": List connected nRF devices
 - "test": Quick connection test to a device
 - "capture": Capture logs for a specified duration and save to file
 - "monitor": Continuous live log monitoring (no file save)
+- "sniff": Capture over-the-air BLE traffic with a SEPARATE sniffer dongle (nrfutil ble-sniffer), then auto-decode to a readable logs/sniffer/*.sniffer.log. The "port" here is the SNIFFER dongle, not the device under test. Load the ble-sniffer workflow first (it covers flashing the dongle).
 - "device_info": Get detailed device information
+- "open_capture": Open a raw .pcap (sniffer) or .btmon (HCI) capture in Wireshark. ONLY use this when a prior decode note told you Wireshark was detected — never offer or call it otherwise. Requires "capture_path".
 - transport: (optional) Required if action="log_device". Detect from prj.conf:
 - "uart": Serial port communication (COM3, /dev/ttyACM0). DEFAULT if not specified.
 - "rtt": J-Link RTT (9-digit serial like 683335182). Only if prj.conf shows CONFIG_USE_SEGGER_RTT=y
@@ -283,6 +285,9 @@ Use role-specific labels (central, peripheral) ONLY when the role has been confi
 - auto_detect: (optional) Optional. Auto-detect all connected nRF devices. Set to true for BLE/multi-device scenarios where you want to capture everything without specifying ports.
 - list_nrf: (optional) Optional. When true with operation="list", shows only nRF devices.
 - monitor: (optional) Optional, RTT only. When true, also captures the HCI Monitor stream (host↔controller commands/events) on RTT channel 1 and auto-decodes it to a readable logs/hci/*.hci.log the user and you can read. Pass monitor="true" for BLE debugging — pairing/connection/PHY/GATT/controller issues — where controller-level evidence helps. Auto-enabled when prj.conf has CONFIG_BT_DEBUG_MONITOR_RTT=y (you need not pass it then). Requires that Kconfig in the firmware; if missing, enable it first (see the BLE knowledge / log-generator workflow).
+- follow_name: (optional) Optional, operation="sniff" only. Advertised name of the device under test, to lock the sniffer onto it (nrfutil ble-sniffer --follow-by-name). Without a follow target (this or follow_addr) the sniffer stays in advertising-scan mode and captures ONLY advertising — CONNECT_IND and all post-connection data traffic are invisible. follow_addr (a BLE address) is more reliable when several devices advertise or the name is ambiguous; prefer it if you know the address. Use the DUT's CONFIG_BT_DEVICE_NAME here.
+- follow_addr: (optional) Optional, operation="sniff" only. BLE address of the device under test to lock the sniffer onto (nrfutil ble-sniffer --follow). More reliable than follow_name when several devices are advertising or the name is ambiguous — resolve the address from a short unfollowed pre-scan, then follow by address. Takes precedence over follow_name when both are given.
+- capture_path: (optional) Required if operation="open_capture". Path to the raw capture file to open in Wireshark — the .pcap from a "sniff" capture, or the .btmon from a "capture"/"monitor" run with monitor="true". Use the exact path a prior decode note pointed you to.
 Usage:
 <triggerNordicAction>
 <action>execute</action>
@@ -299,6 +304,9 @@ Usage:
 <auto_detect>true</auto_detect>
 <list_nrf>true</list_nrf>
 <monitor>true</monitor>
+<follow_name>MyDevice</follow_name>
+<follow_addr>c3:c3:c8:32:c0:d5</follow_addr>
+<capture_path>logs/sniffer/sniffer_2026-06-26_10-00-00.pcap</capture_path>
 </triggerNordicAction>
 
 ## triggerEspAction
@@ -369,6 +377,24 @@ Usage:
 <reset>true</reset>
 <idf_version>5.5.2</idf_version>
 </triggerEspAction>
+
+## triggerCveScan
+Description: Scan a generated SBOM for known CVEs (host-run, evidence-mode).
+
+Evidence-mode only. Every advisory is attributed to its source (OSV), dated ("as of"), and hedged ("verify") —
+this is a triage aid, never a clean bill of health. Run the CRA SBOM step FIRST (this needs a generated SBOM).
+Pass "build" (the verified build dir) so applicability can use the merged .config + ELF symbols to rule things
+OUT (config-disabled / symbol-stripped ⇒ "likely not applicable; verify") — it never asserts "not affected".
+Components without a PURL (CPE-only / unidentified) are reported as an honest coverage gap, not silently dropped.
+
+Parameters:
+- sbom: (required) Path to the SBOM to scan (SPDX tag-value or JSON), e.g. compliance/sbom/app.spdx — generate it first via the CRA SBOM step.
+- build: (optional) The verified build directory (e.g. build or build/<image>). Supplies the merged .config + ELF symbols for applicability. Omit if there is no build.
+Usage:
+<triggerCveScan>
+<sbom>compliance/sbom/app.spdx</sbom>
+<build>build</build>
+</triggerCveScan>
 
 # Tool Use Examples
 

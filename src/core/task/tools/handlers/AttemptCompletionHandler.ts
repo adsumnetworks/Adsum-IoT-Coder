@@ -1,10 +1,14 @@
+import { existsSync, readdirSync } from "node:fs"
+import path from "node:path"
 import type Anthropic from "@anthropic-ai/sdk"
 import { AdsumFreeHandler } from "@core/api/providers/adsum-free"
 import type { ToolUse } from "@core/assistant-message"
+import { detectDemoScenarioId } from "@core/demos/DemoManager"
 import { formatResponse } from "@core/prompts/responses"
 import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { showSystemNotification } from "@integrations/notifications"
 import { getInstallId } from "@services/adsum/InstallIdentity"
+import { looksLikeCraReportContent, looksLikeInlineCraReport } from "@services/cra/reportIntegrity"
 import { telemetryService } from "@services/telemetry"
 import { findLastIndex } from "@shared/array"
 import { COMPLETION_RESULT_CHANGES_FLAG } from "@shared/ExtensionMessage"
@@ -16,11 +20,45 @@ import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 
-const DEMO_TASK_PREFIX = "Debug a real BLE NUS bug"
-
-function isCompletingDemoTask(config: TaskConfig): boolean {
+/** The demo scenario id this task is completing (matched from the launch bubble text), or undefined if it's not
+ *  a demo task. Drives `demo_run_completed` attribution across ALL scenarios — previously only NUS was detected. */
+function completingDemoScenarioId(config: TaskConfig): string | undefined {
 	const msgs = config.messageState.getClineMessages()
-	return msgs.some((m) => m.type === "say" && m.say === "text" && m.text?.startsWith(DEMO_TASK_PREFIX))
+	for (const m of msgs) {
+		if (m.type === "say" && m.say === "text" && m.text) {
+			const id = detectDemoScenarioId(m.text)
+			if (id) {
+				return id
+			}
+		}
+	}
+	return undefined
+}
+
+/** True if a CRA readiness report already exists on disk under `<cwd>/compliance` (directly or in a `cra-*`
+ *  run folder). The write-seam honesty guard (WriteToFileToolHandler) already validated any such file at write
+ *  time, so on-disk evidence is enough to satisfy the completion guard's "was it actually written?" check.
+ *  This prevents a false "presented but never wrote it" block when the in-memory `craReadinessReportWritten`
+ *  flag was reset — e.g. the report was written in a prior turn, or a mid-session workspace-folder switch
+ *  started a fresh task (a real ESP run was blocked 6× though CRA_READINESS.md existed on disk). */
+function readinessReportOnDisk(cwd: string): boolean {
+	try {
+		const complianceDir = path.join(cwd, "compliance")
+		if (!existsSync(complianceDir)) {
+			return false
+		}
+		if (existsSync(path.join(complianceDir, "CRA_READINESS.md"))) {
+			return true
+		}
+		for (const entry of readdirSync(complianceDir, { withFileTypes: true })) {
+			if (entry.isDirectory() && existsSync(path.join(complianceDir, entry.name, "CRA_READINESS.md"))) {
+				return true
+			}
+		}
+	} catch {
+		// Unreadable compliance dir → treat as "no report on disk" (the guard then behaves as before).
+	}
+	return false
 }
 
 export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHandler {
@@ -58,6 +96,66 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 		if (!result) {
 			config.taskState.consecutiveMistakeCount++
 			return await config.callbacks.sayAndCreateMissingParamError(this.name, "result")
+		}
+
+		// CRA write-seam seatbelt (2806e): the full readiness report must be WRITTEN via write_to_file (where the
+		// honesty guard runs), never pasted inline into the completion. Block an inline report → force the guarded
+		// write + a thin completion. Scoped to CRA-report-shaped text, so normal completions are unaffected.
+		if (looksLikeInlineCraReport(result)) {
+			config.taskState.consecutiveMistakeCount++
+			return formatResponse.toolError(
+				"This completion contains the full CRA readiness report inline. The report MUST be written to " +
+					"`compliance/CRA_READINESS.md` with the `write_to_file` tool (the honesty guard runs ONLY there) " +
+					"plus `compliance/cra-readiness.json` — never inline and never via a shell redirect. The completion/chat " +
+					"is a THIN pointer: the at-a-glance counts, the one-line evidence legend, 'full report written to " +
+					"<absolute path>', and one decline-able next step. Write the report via write_to_file, then call " +
+					"attempt_completion again with only that thin summary.",
+			)
+		}
+
+		// CRA completion seatbelt (design/31, from 2906c): a readiness run must leave a WRITTEN report, never a
+		// chat-only dump. 2906c ran out of context, dumped the full posture preview into a `say` (so the inline
+		// check above — which only sees the completion `result` — missed it), then completed thin: no
+		// CRA_READINESS.md on disk, the honesty guard never ran. If the report cleared the guarded write seam this
+		// task (`craReadinessReportWritten`), we're fine. Otherwise, if the completion result OR any run text looks
+		// like report-shaped CRA content, refuse — the report is presented but unwritten. Fails open: if no CRA
+		// content is anywhere, a normal completion is untouched.
+		if (!config.taskState.craReadinessReportWritten) {
+			const sayTexts = config.messageState
+				.getClineMessages()
+				.filter((m) => m.type === "say" && (m.say === "text" || m.say === "completion_result"))
+				.map((m) => m.text ?? "")
+			const presentedButUnwritten = looksLikeCraReportContent(result) || sayTexts.some(looksLikeCraReportContent)
+			// On-disk evidence overrides the reset in-memory flag (prior turn / workspace switch) — don't false-block.
+			if (presentedButUnwritten && !readinessReportOnDisk(config.cwd)) {
+				config.taskState.consecutiveMistakeCount++
+				return formatResponse.toolError(
+					"This CRA readiness run presented the report (posture preview / readiness report content) but never " +
+						"WROTE it to a file via write_to_file — so there is no record on disk and the honesty guard never ran. " +
+						"Before completing: write the full report to `compliance/cra-<date>/CRA_READINESS.md` with the " +
+						"write_to_file tool (the guard runs ONLY there), never inline and never via a shell redirect. If you are " +
+						"low on context, writing the report file is the PRIORITY — the chat summary is optional. Then call " +
+						"attempt_completion again with only a THIN pointer (at-a-glance counts, one-line evidence legend, " +
+						"'full report written to <absolute path>', one decline-able next step).",
+				)
+			}
+		}
+
+		// CRA twin seatbelt (parity, 2906i): the skeleton mandates BOTH the readiness `.md` AND its machine-readable
+		// twin `cra-readiness.json` in the same run folder — a real ESP run shipped only the `.md`, so the nRF/ESP
+		// outputs diverged. Once a report cleared the write seam, refuse completion until the json twin is on disk next
+		// to it. Fails open: only fires when we recorded a report dir AND the twin is genuinely absent.
+		if (config.taskState.craReadinessReportWritten && config.taskState.craReadinessReportDir) {
+			const twin = path.join(config.taskState.craReadinessReportDir, "cra-readiness.json")
+			if (!existsSync(twin)) {
+				config.taskState.consecutiveMistakeCount++
+				return formatResponse.toolError(
+					`This CRA readiness run wrote the report but not its machine-readable twin. Write ${twin} with ` +
+						`write_to_file (the same folder as CRA_READINESS.md) — the JSON twin carries the structured ` +
+						`components / CVE findings / posture so the report is auditable, and it is mandatory on every ` +
+						`platform. Then call attempt_completion again.`,
+				)
+			}
 		}
 
 		config.taskState.consecutiveMistakeCount = 0
@@ -133,8 +231,9 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 				if (config.api instanceof AdsumFreeHandler) {
 					telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
 				}
-				if (isCompletingDemoTask(config)) {
-					telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), "nus-uart")
+				const demoScenarioId = completingDemoScenarioId(config)
+				if (demoScenarioId) {
+					telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), demoScenarioId)
 				}
 			} else {
 				// we already sent a command message, meaning the complete completion message has also been sent
@@ -169,8 +268,9 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			if (config.api instanceof AdsumFreeHandler) {
 				telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
 			}
-			if (isCompletingDemoTask(config)) {
-				telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), "nus-uart")
+			const demoScenarioId = completingDemoScenarioId(config)
+			if (demoScenarioId) {
+				telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), demoScenarioId)
 			}
 		}
 

@@ -15,6 +15,7 @@ import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { applyModelContentFixes } from "../utils/ModelContentProcessor"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
+import { commandWritesCraReport } from "./craArtifact"
 import { emitCraMilestoneForCommand } from "./craFunnel"
 
 // Default timeout for commands in yolo mode and background exec mode
@@ -130,6 +131,18 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 		if (ignoredFileAttemptedToAccess) {
 			await config.callbacks.say("clineignore_error", ignoredFileAttemptedToAccess)
 			return formatResponse.toolError(formatResponse.clineIgnoreError(ignoredFileAttemptedToAccess))
+		}
+
+		// CRA write-seam backstop: a shell write of the readiness report (echo>/tee/cp into CRA_READINESS.md)
+		// bypasses the host honesty/integrity guard, which runs ONLY on write_to_file. Refuse it so the report
+		// can never ship unchecked (the bits forbid this; this is the deterministic backstop).
+		if (commandWritesCraReport(actualCommand)) {
+			return formatResponse.toolError(
+				"Refusing to write the CRA readiness report via the shell — a shell redirect/copy bypasses the host " +
+					"honesty & integrity guard, which only runs on write_to_file. Write the report to " +
+					"compliance/CRA_READINESS.md with the write_to_file tool so it is checked; if a previous write was " +
+					"rejected, fix the flagged content and write again — do not route around the guard.",
+			)
 		}
 
 		let didAutoApprove = false

@@ -16,7 +16,8 @@
  * Extension info (present/version) is injected from extension.ts (vscode.extensions is banned here).
  */
 
-import type { EspDevice, EspEnvironment } from "@shared/esp"
+import { telemetryService } from "@services/telemetry"
+import { dedupeEspDevicesByMac, type EspDevice, type EspEnvironment, isMacShaped } from "@shared/esp"
 import { exec } from "child_process"
 import { existsSync, readdirSync, readFileSync } from "fs"
 import { join } from "path"
@@ -330,7 +331,7 @@ async function resolveEspChips(devices: EspDevice[]): Promise<void> {
 		// show the passive "ESP32-family" label, and the board is never reset. Make the cause visible.
 		console.info(
 			`[esp-detect] chip unresolved — no IDF python found (looked under idf.toolsPath / $IDF_TOOLS_PATH / ~/.espressif/python_env). ` +
-				`Board shows as "ESP32-family"; install ESP-IDF tools or set idf.toolsPath.`,
+				`The device shows its unresolved label — install ESP-IDF tools or set idf.toolsPath to resolve the exact chip.`,
 		)
 		return
 	}
@@ -342,6 +343,7 @@ async function resolveEspChips(devices: EspDevice[]): Promise<void> {
 			if (cached) {
 				d.chip = cached.chip
 				d.chipRevision = cached.chipRevision
+				d.mac = cached.mac
 				return
 			}
 			const result = await probeChip(idfPython, d.port)
@@ -349,9 +351,10 @@ async function resolveEspChips(devices: EspDevice[]): Promise<void> {
 				_chipCache.set(key, result)
 				d.chip = result.chip
 				d.chipRevision = result.chipRevision
+				d.mac = result.mac
 			} else {
 				console.info(
-					`[esp-detect] esptool found no chip on ${d.port} — staying "ESP32-family" (port busy? board not in download mode?)`,
+					`[esp-detect] esptool found no chip on ${d.port} — staying unresolved (port busy? board not in download mode?)`,
 				)
 			}
 		}),
@@ -404,9 +407,20 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 	// (mirrors the always-visible nRF strip — honest "not detected" beats showing nothing).
 	const projectDetected = classifyWorkspace(_workspaceRoots).apps.some((a) => a.platform === "esp")
 
-	const espDevices = await probeEspDevices().catch(() => [])
+	const rawDevices = await probeEspDevices().catch(() => [])
 	// Resolve the exact chip (S3/C6/…) via esptool — resets the board, cached per serial.
-	await resolveEspChips(espDevices).catch(() => {})
+	await resolveEspChips(rawDevices).catch(() => {})
+	// A native-USB port (VID 0x303a) reports the chip's base MAC as its USB serial — capture it passively so the
+	// dedupe below can fold a board's two USB interfaces (UART bridge + native USB-JTAG) into one entry.
+	for (const d of rawDevices) {
+		if (!d.mac && isMacShaped(d.serialNumber)) {
+			d.mac = d.serialNumber
+		}
+	}
+	// One physical board can expose two USB serial devices (bridge + native) that share the chip's base MAC.
+	// Collapse them so a board never shows twice (e.g. "ESP32-C6" + a phantom "ESP (model unknown)"). No-op for
+	// single-interface boards (the common case), so it can't regress the Windows/Linux behaviour.
+	const espDevices = dedupeEspDevicesByMac(rawDevices)
 
 	_cache = {
 		status: "ready",
@@ -422,6 +436,12 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 		espDevices,
 		lastDetectedAt: Date.now(),
 	}
+
+	telemetryService.captureEspEnvDetected({
+		extensionPresent: _cache.extensionPresent,
+		idfPresent: _cache.idfPresent,
+		deviceCount: _cache.espDevices.length,
+	})
 
 	return _cache
 }

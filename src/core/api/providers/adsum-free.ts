@@ -1,4 +1,4 @@
-import type { ModelInfo } from "@shared/api"
+import { adsumFreeDefaultModelId, adsumFreeModels, type ModelInfo } from "@shared/api"
 import OpenAI from "openai"
 import type { ChatCompletionTool } from "openai/resources/chat/completions"
 import { ClineEnv } from "@/config"
@@ -13,20 +13,11 @@ import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
 
-export const ADSUM_FREE_MODEL_ID = "free-default"
-
-export const ADSUM_FREE_MODEL_INFO: ModelInfo = {
-	name: "Adsum Free Tier",
-	maxTokens: 8192,
-	contextWindow: 128_000,
-	supportsImages: false,
-	supportsPromptCache: true,
-	cacheReadsPrice: 0,
-	cacheWritesPrice: 0,
-	inputPrice: 0,
-	outputPrice: 0,
-	description: "Free tier — inference is provided by Adsum Networks. No API key required.",
-}
+// Single source of truth lives in @shared/api (`adsumFreeModels`) so the host budget and the webview's context
+// chip can never drift (they did once: the chip read 128K while the real budget was 200K). The host's REAL context
+// budget flows from this `contextWindow` → getContextWindowInfo → ContextManager truncation/auto-compact.
+export const ADSUM_FREE_MODEL_ID = adsumFreeDefaultModelId
+export const ADSUM_FREE_MODEL_INFO: ModelInfo = adsumFreeModels[ADSUM_FREE_MODEL_ID]
 
 /**
  * Thrown when the backend returns HTTP 402 (quota exhausted).

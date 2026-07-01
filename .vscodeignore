@@ -164,3 +164,7 @@ test-results/
 *storybook.log
 storybook-static
 **/StorybookDecorator.tsx
+
+# CRA pre-built reference bundles — MUST ship: the CRA Sample run scans these (SPDX + .config + symbols.nm
+# + version.h) with NO local build. Explicit keep-rule so a future broad ignore can't silently drop them.
+!demo-scenarios/cra-prebuilt/**

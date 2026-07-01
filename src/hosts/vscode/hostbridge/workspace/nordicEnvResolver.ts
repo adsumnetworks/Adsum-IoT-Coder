@@ -49,6 +49,26 @@ export function toNcsVersionFlag(version: string): string {
 	return n ? `v${n}` : version
 }
 
+/**
+ * Compare two normalized NCS versions ("X.Y.Z") for DESCENDING order (newest first). Used to present the
+ * ambiguous list newest-first so "use the latest SDK" is the obvious top choice — WITHOUT auto-picking (silently
+ * choosing newest could build against an SDK the project doesn't target; the user/persisted/pin still decides).
+ * Unparseable parts compare as 0 (stable), never throw.
+ */
+export function compareNcsVersionsDesc(a: string, b: string): number {
+	const parse = (v: string) => v.split(".").map((n) => Number.parseInt(n, 10))
+	const pa = parse(a)
+	const pb = parse(b)
+	for (let i = 0; i < 3; i++) {
+		const da = Number.isFinite(pa[i]) ? pa[i] : 0
+		const db = Number.isFinite(pb[i]) ? pb[i] : 0
+		if (da !== db) {
+			return db - da
+		}
+	}
+	return 0
+}
+
 export type NcsSelection = { kind: "resolved"; version: string } | { kind: "ambiguous"; versions: string[] } | { kind: "none" }
 
 /**
@@ -94,7 +114,8 @@ export function selectNcsInstall(
 
 	// 5/6. Several installed and nothing decided → ask; none installed → none.
 	if (installedNorm.length === 0) return { kind: "none" }
-	return { kind: "ambiguous", versions: installedNorm }
+	// Present newest-first so "use the latest SDK" is the obvious top choice (we still ASK — no silent auto-pick).
+	return { kind: "ambiguous", versions: [...installedNorm].sort(compareNcsVersionsDesc) }
 }
 
 /**
@@ -163,6 +184,28 @@ export function buildNordicLoggerCommand(opts: {
 	// PowerShell will not execute a string that starts with a quote without `&`.
 	if (shell === "powershell") return `& ${wrapperInvocation}`
 	return wrapperInvocation
+}
+
+/**
+ * Rewrite a bare `nrfutil device <sub>` command to the resolved device-binary invocation.
+ *
+ * CONFIRMED ON REAL WINDOWS HARDWARE: a stock Windows install has NO `nrfutil` launcher on
+ * PATH — the only nrfutil present is the nRF Connect VS Code extension's SPLIT binary
+ * `nrfutil-device.exe` (invoked as `nrfutil-device list`, NOT `nrfutil device list`). So the
+ * bare `nrfutil device list` / `nrfutil device device-info …` that the device-tool handler (and
+ * the agent, per the system-prompt examples) produce fail with
+ * "nrfutil is not recognized" — which then makes the agent improvise broken discovery commands
+ * (`nrfjprog --com`, `where nrfutil 2>nul || echo …`). On a launcher-style install (the common
+ * dev case on Linux/macOS) the bare form works, which is why this never surfaced in dev.
+ *
+ * `devicePrefix` (from {@link resolveNrfutilCommands}) already encodes the correct invocation for
+ * BOTH layouts — `"…/nrfutil" device` (launcher) or `"…/nrfutil-device.exe"` (split) — so
+ * appending the subcommand after the `nrfutil device ` prefix yields a working command on each.
+ * Returns the command unchanged when it isn't a `nrfutil device …` invocation. Pure.
+ */
+export function resolveDeviceCommand(body: string, devicePrefix: string): string {
+	const m = body.match(/^\s*nrfutil\s+device\s+(.+)$/is)
+	return m ? `${devicePrefix} ${m[1].trim()}` : body
 }
 
 // ---------------------------------------------------------------------------

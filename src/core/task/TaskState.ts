@@ -46,6 +46,18 @@ export class TaskState {
 	craSbomEmitted: boolean = false
 	craFixEmitted: boolean = false
 
+	// CRA completion seatbelt (design/31, from 2906c): set true once the readiness report passes the guarded
+	// write_to_file seam. attempt_completion refuses to finish a CRA readiness run (posture preview presented
+	// in chat) while this is false — the report must be a WRITTEN record, never a chat-only dump. A run that
+	// blows context and inline-dumps the report instead of writing it (2906c) is the failure this prevents.
+	craReadinessReportWritten: boolean = false
+
+	// CRA twin seatbelt (parity, 2906i): directory of the readiness `.md` that cleared the write seam. The skeleton
+	// mandates BOTH `CRA_READINESS.md` AND its machine-readable twin `cra-readiness.json` in the same folder — a real
+	// ESP run wrote only the `.md`. attempt_completion checks this dir for the json twin and refuses to finish without
+	// it. (The twin can't be enforced at `.md` write time — write order isn't fixed — so it's gated at completion.)
+	craReadinessReportDir?: string
+
 	// IoT-knowledge no-double-load guard: absolute paths of iot-knowledge skill
 	// files already served via read_file this task. Re-reads return a short stub
 	// instead of the full text (these files don't change during a task), saving

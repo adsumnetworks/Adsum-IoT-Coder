@@ -13,6 +13,7 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useShowNavbar } from "@/context/PlatformContext"
 import { FileServiceClient, UiServiceClient } from "@/services/grpc-client"
 import { Navbar } from "../menu/Navbar"
+import AiLimitationsFooter from "./AiLimitationsFooter"
 import AutoApproveBar from "./auto-approve-menu/AutoApproveBar"
 // Import utilities and hooks from the new structure
 import {
@@ -32,7 +33,7 @@ import {
 } from "./chat-view"
 import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
-import { isNordicTaskComplete, NORDIC_MODES, type NordicModeId } from "./nordicModes"
+import { isFreshNordicCompletion, NORDIC_MODES, type NordicModeId } from "./nordicModes"
 import NextStepChooser from "./welcome/NextStepChooser"
 import WelcomeView from "./welcome/WelcomeView"
 
@@ -412,18 +413,31 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		return text
 	}, [task, nordicPhase])
 
-	// Detect task completion in messages
+	// Detect task completion in messages.
+	// GATED ON `!sendingDisabled` (the agent is idle, not mid-stream): otherwise a marker emitted while the
+	// agent is still working — e.g. a free-tier model quoting the workflow file it just read, which literally
+	// contains `<!--TASK_COMPLETE-->` as an instruction — latches the phase to complete and the NextStepChooser
+	// renders OVER the still-running conversation, hiding it (observed on a live cra-sample run). Only flipping
+	// when the agent has actually stopped means the chooser appears at the real end of the turn.
+	// The ts of the completion that last flipped us to task_complete. Without this, the instant a next-step card
+	// starts a new task (phase → active) the latch re-reads the SAME prior completion (still the last message
+	// until the new turn streams) and immediately re-latches — pinning the chooser as a footer that gets shoved
+	// down by the new answer and hiding the input bar (F3). Comparing message-ts to message-ts (same clock
+	// domain — both host-stamped) means we only ever latch a genuinely NEW completion, not the consumed one.
+	const lastLatchedCompletionTsRef = useRef<number | undefined>(undefined)
 	useEffect(() => {
-		if (nordicPhase === "active" && modifiedMessages.length > 0) {
+		if (nordicPhase === "active" && !sendingDisabled && modifiedMessages.length > 0) {
 			const last = modifiedMessages[modifiedMessages.length - 1]
 			// Complete on the workflow's marker OR on attempt_completion (completion_result) — see
 			// isNordicTaskComplete. The latter is the R4 safety-net: the next-step menu renders even when the
-			// model ends the task via the completion tool, including a premature exit.
-			if (isNordicTaskComplete(last)) {
+			// model ends the task via the completion tool, including a premature exit. The ts guard stops the
+			// card-click race from re-latching the already-consumed completion.
+			if (isFreshNordicCompletion(last, lastLatchedCompletionTsRef.current)) {
+				lastLatchedCompletionTsRef.current = last.ts
 				setNordicPhase("task_complete")
 			}
 		}
-	}, [modifiedMessages, setNordicPhase, nordicPhase])
+	}, [modifiedMessages, sendingDisabled, setNordicPhase, nordicPhase])
 
 	// Reset post-task phase when returning to the welcome screen so stale state
 	// doesn't bleed onto the next task or the home view.
@@ -463,22 +477,29 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				{task && (
 					<MessagesArea
 						chatState={chatState}
+						// The post-task next-step chooser renders INSIDE the scroll (as the list footer) so it scrolls
+						// with the conversation instead of covering it on a short viewport. A6 "all states": the
+						// AI-limitations disclaimer rides along here — the completion screen is exactly where the dev
+						// reviews the result before flashing/shipping.
+						footer={
+							nordicPhase === "task_complete" ? (
+								<>
+									<NextStepChooser
+										isDemoRun={isDemoRun}
+										onSelectMode={handleModeSelect}
+										onStartDemo={handleStartDemo}
+										onStartTask={handleStartTask}
+									/>
+									<AiLimitationsFooter style={{ padding: "10px 14px 4px" }} />
+								</>
+							) : undefined
+						}
 						groupedMessages={groupedMessages}
 						messageHandlers={messageHandlers}
 						modifiedMessages={modifiedMessages}
 						scrollBehavior={scrollBehavior}
 						task={task}
 					/>
-				)}
-				{task && nordicPhase === "task_complete" && (
-					<div className="flex-shrink-0">
-						<NextStepChooser
-							isDemoRun={isDemoRun}
-							onSelectMode={handleModeSelect}
-							onStartDemo={handleStartDemo}
-							onStartTask={handleStartTask}
-						/>
-					</div>
 				)}
 			</div>
 			{task && (nordicPhase !== "task_complete" || isDemoRun) && (
@@ -505,6 +526,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						selectFilesAndImages={selectFilesAndImages}
 						shouldDisableFilesAndImages={shouldDisableFilesAndImages}
 					/>
+					{/* Persistent AI-limitations disclaimer — visible while the dev acts on the agent's output. */}
+					<AiLimitationsFooter style={{ padding: "2px 14px 6px" }} />
 				</footer>
 			)}
 		</ChatLayout>

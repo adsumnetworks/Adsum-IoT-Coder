@@ -3,112 +3,150 @@ import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import mermaid from "mermaid"
 import { useEffect, useRef, useState } from "react"
 import styled from "styled-components"
+import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import { FileServiceClient } from "@/services/grpc-client"
 import { useDebounceEffect } from "@/utils/useDebounceEffect"
 
-const MERMAID_THEME = {
-	background: "#1e1e1e", // VS Code dark theme background
-	textColor: "#ffffff", // Main text color
-	mainBkg: "#2d2d2d", // Background for nodes
-	nodeBorder: "#888888", // Border color for nodes
-	lineColor: "#cccccc", // Lines connecting nodes
-	primaryColor: "#3c3c3c", // Primary color for highlights
-	primaryTextColor: "#ffffff", // Text in primary colored elements
+// Two complete theme-variable sets so diagrams are legible AND on-brand in BOTH VS Code light and dark themes.
+// (Previously hardcoded to dark → black boxes on white, near-invisible in light mode.) Brand palette:
+// cyan #1FA7B3 (action), coral #E07D5F (the bug / problem), grey #8a8a8a (neutral lines).
+const MERMAID_THEME_DARK = {
+	background: "#1e1e1e",
+	textColor: "#ffffff",
+	mainBkg: "#2d2d2d",
+	nodeBorder: "#888888",
+	lineColor: "#cccccc",
+	primaryColor: "#3c3c3c",
+	primaryTextColor: "#ffffff",
 	primaryBorderColor: "#888888",
-	secondaryColor: "#2d2d2d", // Secondary color for alternate elements
-	tertiaryColor: "#454545", // Third color for special elements
-
-	// Class diagram specific
+	secondaryColor: "#2d2d2d",
+	tertiaryColor: "#454545",
 	classText: "#ffffff",
-
-	// State diagram specific
 	labelColor: "#ffffff",
-
-	// Sequence diagram specific
 	actorLineColor: "#cccccc",
 	actorBkg: "#2d2d2d",
 	actorBorder: "#888888",
 	actorTextColor: "#ffffff",
-
-	// Flow diagram specific
 	fillType0: "#2d2d2d",
 	fillType1: "#3c3c3c",
 	fillType2: "#454545",
+	noteTextColor: "#ffffff",
+	noteBkgColor: "#454545",
+	noteBorderColor: "#888888",
+	critBorderColor: "#ff9580",
+	critBkgColor: "#803d36",
+	taskTextColor: "#ffffff",
+	taskTextOutsideColor: "#ffffff",
+	taskTextLightColor: "#ffffff",
+	sectionBkgColor: "#2d2d2d",
+	sectionBkgColor2: "#3c3c3c",
+	altBackground: "#2d2d2d",
+	linkColor: "#6cb6ff",
+	compositeBackground: "#2d2d2d",
+	compositeBorder: "#888888",
+	titleColor: "#ffffff",
 }
 
-mermaid.initialize({
-	startOnLoad: false,
-	securityLevel: "loose",
-	theme: "dark",
-	themeVariables: {
-		...MERMAID_THEME,
-		fontSize: "16px",
-		fontFamily: "var(--vscode-font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif)",
+const MERMAID_THEME_LIGHT = {
+	background: "#ffffff",
+	textColor: "#1f2328",
+	mainBkg: "#e8f7f9",
+	nodeBorder: "#1FA7B3",
+	lineColor: "#8a8a8a",
+	primaryColor: "#e8f7f9",
+	primaryTextColor: "#0f3f45",
+	primaryBorderColor: "#1FA7B3",
+	secondaryColor: "#fdeee8",
+	tertiaryColor: "#f4f4f5",
+	classText: "#1f2328",
+	labelColor: "#1f2328",
+	actorLineColor: "#8a8a8a",
+	actorBkg: "#e8f7f9",
+	actorBorder: "#1FA7B3",
+	actorTextColor: "#0f3f45",
+	fillType0: "#e8f7f9",
+	fillType1: "#fdeee8",
+	fillType2: "#f4f4f5",
+	noteTextColor: "#7a2e15",
+	noteBkgColor: "#fdeee8",
+	noteBorderColor: "#E07D5F",
+	critBorderColor: "#E07D5F",
+	critBkgColor: "#fdeee8",
+	taskTextColor: "#1f2328",
+	taskTextOutsideColor: "#1f2328",
+	taskTextLightColor: "#1f2328",
+	sectionBkgColor: "#e8f7f9",
+	sectionBkgColor2: "#f4f4f5",
+	altBackground: "#f4f4f5",
+	linkColor: "#1FA7B3",
+	compositeBackground: "#ffffff",
+	compositeBorder: "#8a8a8a",
+	titleColor: "#1f2328",
+}
 
-		// Additional styling
-		noteTextColor: "#ffffff",
-		noteBkgColor: "#454545",
-		noteBorderColor: "#888888",
-
-		// Improve contrast for special elements
-		critBorderColor: "#ff9580",
-		critBkgColor: "#803d36",
-
-		// Task diagram specific
-		taskTextColor: "#ffffff",
-		taskTextOutsideColor: "#ffffff",
-		taskTextLightColor: "#ffffff",
-
-		// Numbers/sections
-		sectionBkgColor: "#2d2d2d",
-		sectionBkgColor2: "#3c3c3c",
-
-		// Alt sections in sequence diagrams
-		altBackground: "#2d2d2d",
-
-		// Links
-		linkColor: "#6cb6ff",
-
-		// Borders and lines
-		compositeBackground: "#2d2d2d",
-		compositeBorder: "#888888",
-		titleColor: "#ffffff",
-	},
-})
+/** Full mermaid.initialize config for the active VS Code theme (re-applied before each render). */
+function mermaidThemeFor(isDark: boolean) {
+	return {
+		startOnLoad: false,
+		securityLevel: "loose" as const,
+		theme: (isDark ? "dark" : "base") as "dark" | "base",
+		themeVariables: {
+			...(isDark ? MERMAID_THEME_DARK : MERMAID_THEME_LIGHT),
+			fontSize: "16px",
+			fontFamily: "var(--vscode-font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif)",
+		},
+	}
+}
 
 interface MermaidBlockProps {
 	code: string
 }
 
 /**
- * Some models emit the whole diagram on a single line with literal "\n" (backslash-n)
- * escapes instead of real newlines; mermaid then fails to parse and we fall back to
- * showing the raw "\n" text. When the source has NO real newlines but DOES contain
- * literal "\n"/"\t" sequences, treat them as the intended line breaks. Multi-line
- * sources are left untouched (a real "\n" inside a node label stays intact).
+ * Some models emit the whole diagram on a single line — mermaid needs statement breaks, so it fails to parse and
+ * we fall back to showing the raw text. Two single-line shapes are recovered (multi-line sources are left
+ * untouched — a real "\n" inside a node label stays intact):
+ *  (a) literal "\n"/"\t" escapes instead of real newlines → treat them as the intended line breaks;
+ *  (b) a flat real-space line like `flowchart LR a-->b classDef done ...; classDef active ...` → re-introduce
+ *      the breaks mermaid needs: a newline after the graph direction, and each classDef/class/subgraph/style/
+ *      linkStyle/`;`-separated statement on its own line (the node chain `a-->b-->c` legitimately stays one line).
  */
 export function normalizeMermaidSource(src: string): string {
 	if (src.includes("\n")) {
 		return src
 	}
-	return src.replace(/\\n/g, "\n").replace(/\\t/g, "\t")
+	if (/\\n/.test(src)) {
+		return src.replace(/\\n/g, "\n").replace(/\\t/g, "\t")
+	}
+	const m = /^\s*(flowchart|graph)\s+(TB|TD|BT|RL|LR)\b\s*(.*)$/is.exec(src)
+	if (m) {
+		const body = m[3]
+			.replace(/\s+(classDef|class|subgraph|linkStyle|style|end)\b/g, "\n$1")
+			.replace(/;\s*/g, "\n")
+			.trim()
+		return `${m[1]} ${m[2]}\n${body}`
+	}
+	return src
 }
 
 export default function MermaidBlock({ code }: MermaidBlockProps) {
 	const containerRef = useRef<HTMLDivElement>(null)
 	const [isLoading, setIsLoading] = useState(false)
+	const { isDark } = useVSCodeTheme()
 
-	// 1) Whenever `code` changes, mark that we need to re-render a new chart
+	// 1) Whenever `code` or the VS Code theme changes, mark that we need to re-render
 	useEffect(() => {
 		setIsLoading(true)
-	}, [code])
+	}, [code, isDark])
 
-	// 2) Debounce the actual parse/render
+	// 2) Debounce the actual parse/render — re-initialize mermaid for the active theme each render so diagrams
+	//    track VS Code light/dark (and our brand palette) instead of a fixed dark theme.
 	useDebounceEffect(
 		() => {
 			if (containerRef.current) {
 				containerRef.current.innerHTML = ""
 			}
+			mermaid.initialize(mermaidThemeFor(isDark))
 			// Normalize literal "\n" escapes some models emit instead of real newlines.
 			const source = normalizeMermaidSource(code)
 			mermaid
@@ -134,7 +172,7 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 				})
 		},
 		500, // Delay 500ms
-		[code], // Dependencies for scheduling
+		[code, isDark], // Dependencies for scheduling
 	)
 
 	/**
@@ -151,7 +189,7 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 		}
 
 		try {
-			const pngDataUrl = await svgToPng(svgEl)
+			const pngDataUrl = await svgToPng(svgEl, (isDark ? MERMAID_THEME_DARK : MERMAID_THEME_LIGHT).background)
 			FileServiceClient.openImage(StringRequest.create({ value: pngDataUrl })).catch((err) =>
 				console.error("Failed to open image:", err),
 			)
@@ -181,7 +219,7 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 	)
 }
 
-async function svgToPng(svgEl: SVGElement): Promise<string> {
+async function svgToPng(svgEl: SVGElement, bgColor: string): Promise<string> {
 	console.log("svgToPng function called")
 	// Clone the SVG to avoid modifying the original
 	const svgClone = svgEl.cloneNode(true) as SVGElement
@@ -223,8 +261,8 @@ async function svgToPng(svgEl: SVGElement): Promise<string> {
 				return reject("Canvas context not available")
 			}
 
-			// Fill background with Mermaid's dark theme background color
-			ctx.fillStyle = MERMAID_THEME.background
+			// Fill background with the active theme's background color
+			ctx.fillStyle = bgColor
 			ctx.fillRect(0, 0, canvas.width, canvas.height)
 
 			ctx.imageSmoothingEnabled = true

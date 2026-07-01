@@ -1,10 +1,12 @@
 import { getHostDemoScenario, parseDemoTrigger } from "@core/demos/DemoManager"
+import { openFile } from "@integrations/misc/open-file"
 import { getInstallId } from "@services/adsum/InstallIdentity"
 import { telemetryService } from "@services/telemetry"
 import { String } from "@shared/proto/cline/common"
 import { PlanActMode, OpenaiReasoningEffort as ProtoOpenaiReasoningEffort } from "@shared/proto/cline/state"
 import { NewTaskRequest } from "@shared/proto/cline/task"
 import { Settings } from "@shared/storage/state-keys"
+import * as fs from "fs"
 import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { convertProtoToApiProvider } from "@/shared/proto-conversions/models/api-configuration-conversion"
 import { DEFAULT_BROWSER_SETTINGS } from "../../../shared/BrowserSettings"
@@ -118,6 +120,20 @@ export async function newTask(controller: Controller, request: NewTaskRequest): 
 			const built = await scenario.buildTask(env)
 			taskText = built.taskText
 			displayText = built.displayText
+			// Open pre-captured demo logs in editor tabs so the user SEES the evidence — the bundle lives in
+			// globalStorage (no workspace), so clickable relative links won't resolve; the host opens them.
+			// Existence-guarded + non-fatal: a missing capture never blocks the demo.
+			if (built.openInEditor?.length) {
+				for (const f of built.openInEditor) {
+					try {
+						if (fs.existsSync(f)) {
+							await openFile(f, /* preserveFocus */ true, /* preview */ false)
+						}
+					} catch {
+						// non-fatal — the demo still runs without the tab
+					}
+				}
+			}
 			telemetryService.captureFreeTierDemoRunStarted(getInstallId(), scenario.id)
 			// Consume the one-shot auto-start flag (set by the announcement toast CTA) so the demo
 			// doesn't re-trigger on the next launch.
