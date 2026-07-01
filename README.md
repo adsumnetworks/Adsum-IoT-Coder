@@ -85,7 +85,7 @@ And the reason it is good at the hard parts is the part general agents do not ha
   <img src="assets/docs/home-cra.png" width="48%" alt="Adsum IoT Coder home in VS Code: the status strip detects Nordic nRF (NCS 3.2.1) and Espressif ESP (ESP-IDF) with versions and boards, a 'Get ahead of the CRA' prompt, and one-click workflow cards including Build/flash & debug, Add a feature, Test & validate, and CRA SBOM & Fix" />
 </p>
 <p align="center">
-  <img src="assets/docs/esp-build.png" width="90%" alt="Adsum IoT Coder building ESP-IDF firmware for an ESP32-S3 in VS Code" />
+  <img src="assets/docs/esp-build.png" width="90%" alt="Adsum IoT Coder with an ESP-IDF Wi-Fi project (softAP) open in VS Code: the panel detects Espressif ESP-IDF and ESP32-S3 / ESP32-C6, shows a 'Get ahead of the CRA' Wi-Fi prompt, and the same workflow cards (build/flash & debug, add a feature, test & validate, CRA SBOM & Fix)" />
 </p>
 
 ## Supported platforms: ESP32 / ESP-IDF and nRF / nRF Connect SDK
