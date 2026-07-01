@@ -10,6 +10,8 @@
 export interface WorkspaceFeatures {
 	/** A BLE/Bluetooth stack is enabled in config (nRF `CONFIG_BT=y` or ESP `CONFIG_BT_ENABLED=y`). */
 	hasBle: boolean
+	/** Wi-Fi is in use (nRF `CONFIG_WIFI=y` / nRF7002, or ESP `esp_wifi` API usage in source). */
+	hasWifi: boolean
 	/** A `compliance/` directory exists in a scanned folder (SBOM / CRA artifacts already generated). */
 	hasComplianceArtifacts: boolean
 }

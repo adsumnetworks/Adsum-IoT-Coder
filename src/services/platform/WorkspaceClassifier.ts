@@ -118,6 +118,25 @@ function fileEnablesBle(path: string, fs: FsAdapter): boolean {
 	return NRF_BLE_RE.test(content) || ESP_BLE_RE.test(content)
 }
 
+// Wi-Fi signal. nRF Wi-Fi (nRF7002) is a deliberate `CONFIG_WIFI=y` opt-in → reliable from config. ESP Wi-Fi has
+// no clean config flag (CONFIG_ESP_WIFI_* defaults on for Wi-Fi chips), so we detect ACTUAL usage from source —
+// an esp_wifi.h include or an esp_wifi_* call — to stay honest (no false "Wi-Fi detected" on every ESP project).
+/** nRF Wi-Fi master switch: `CONFIG_WIFI=y` in a Kconfig fragment. */
+export const NRF_WIFI_RE = /^\s*CONFIG_WIFI\s*=\s*y\s*(#.*)?$/im
+/** ESP Wi-Fi API usage in source: `#include "esp_wifi.h"` or any `esp_wifi_*(` call. */
+const ESP_WIFI_SRC_RE = /\besp_wifi(\.h|_[a-z])/i
+/** Source files worth scanning for esp_wifi usage. */
+const WIFI_SRC_EXT_RE = /\.(c|cc|cpp|h|hpp)$/i
+
+/** True when a config fragment enables nRF Wi-Fi (`CONFIG_WIFI=y`). */
+function fileEnablesNrfWifi(path: string, fs: FsAdapter): boolean {
+	return NRF_WIFI_RE.test(fs.readFile(path))
+}
+/** True when a source file calls the ESP Wi-Fi API. */
+function fileUsesEspWifi(path: string, fs: FsAdapter): boolean {
+	return ESP_WIFI_SRC_RE.test(fs.readFile(path))
+}
+
 /** Folders to never descend into. */
 const SKIP_DIRS = new Set([
 	"managed_components",
@@ -146,6 +165,7 @@ interface FolderSignals {
 	espSupporting: number
 	/** Capability/file-presence signals (A3/A10) — OR-accumulated across folders. */
 	ble: boolean
+	wifi: boolean
 	compliance: boolean
 }
 
@@ -156,6 +176,7 @@ function checkFolder(folderPath: string, fs: FsAdapter): FolderSignals {
 		nrfSupporting: 0,
 		espSupporting: 0,
 		ble: false,
+		wifi: false,
 		compliance: false,
 	}
 
@@ -194,6 +215,33 @@ function checkFolder(folderPath: string, fs: FsAdapter): FolderSignals {
 		}
 	}
 
+	// Wi-Fi capability — nRF `CONFIG_WIFI=y` (config) or ESP `esp_wifi` API usage (source, this folder + main/).
+	for (const entry of entries) {
+		if (isBleConfigFile(entry) && fileEnablesNrfWifi(join(folderPath, entry), fs)) {
+			s.wifi = true
+			break
+		}
+	}
+	if (!s.wifi) {
+		for (const entry of entries) {
+			if (WIFI_SRC_EXT_RE.test(entry) && fileUsesEspWifi(join(folderPath, entry), fs)) {
+				s.wifi = true
+				break
+			}
+		}
+	}
+	if (!s.wifi) {
+		const mainDir = join(folderPath, "main")
+		if (fs.isDir(mainDir)) {
+			for (const entry of fs.listDir(mainDir)) {
+				if (WIFI_SRC_EXT_RE.test(entry) && fileUsesEspWifi(join(mainDir, entry), fs)) {
+					s.wifi = true
+					break
+				}
+			}
+		}
+	}
+
 	// File-presence signal — CRA/compliance artifacts already generated (A3 nudge demotes once present).
 	if (fs.isDir(join(folderPath, CRA_ARTIFACT_DIR))) s.compliance = true
 
@@ -219,6 +267,14 @@ function checkFolder(folderPath: string, fs: FsAdapter): FolderSignals {
 					s.ble = true
 					break
 				}
+			}
+		}
+
+		// Wi-Fi from the build-resolved nRF config (CONFIG_WIFI may be merged in only at build time).
+		if (!s.wifi) {
+			const zc = join(buildPath, "zephyr", ".config")
+			if (fs.exists(zc) && fileEnablesNrfWifi(zc, fs)) {
+				s.wifi = true
 			}
 		}
 	}
@@ -251,7 +307,7 @@ function findArtifact(dir: string, names: string[], fs: FsAdapter, depth: number
 export function classifyWorkspace(roots: string[], fsAdapter: FsAdapter = realFsAdapter): ClassifierResult {
 	const apps: AppInfo[] = []
 	const seen = new Set<string>()
-	const features: WorkspaceFeatures = { hasBle: false, hasComplianceArtifacts: false }
+	const features: WorkspaceFeatures = { hasBle: false, hasWifi: false, hasComplianceArtifacts: false }
 
 	const visitFolder = (folderPath: string) => {
 		if (seen.has(folderPath)) return
@@ -261,6 +317,7 @@ export function classifyWorkspace(roots: string[], fsAdapter: FsAdapter = realFs
 		// Capability/file-presence signals are OR-accumulated across every visited folder, independent of
 		// whether the folder classifies as an app (a top-level compliance/ dir still counts).
 		if (sig.ble) features.hasBle = true
+		if (sig.wifi) features.hasWifi = true
 		if (sig.compliance) features.hasComplianceArtifacts = true
 
 		const isNrf = sig.nrfDefinitive || sig.nrfSupporting >= 2
@@ -308,7 +365,7 @@ export function classifyWorkspace(roots: string[], fsAdapter: FsAdapter = realFs
 let _cachedResult: ClassifierResult = {
 	apps: [],
 	summary: "none",
-	features: { hasBle: false, hasComplianceArtifacts: false },
+	features: { hasBle: false, hasWifi: false, hasComplianceArtifacts: false },
 }
 
 /** Re-run classification for the given roots and cache it. Returns the fresh result. */

@@ -364,6 +364,9 @@ export class TelemetryService {
 			// Welcome-screen intent funnel (host-emitted; webview client stays disabled)
 			CARD_CLICKED: "task.card_clicked",
 			NEXT_STEP_SELECTED: "task.next_step_selected",
+			// Project-aware upgrade/update notification toast (CRA guidance) — shown + clicked.
+			UPGRADE_TOAST_SHOWN: "task.upgrade_toast_shown",
+			UPGRADE_TOAST_CLICKED: "task.upgrade_toast_clicked",
 		},
 		// UI interaction events for tracking user engagement
 		UI: {
@@ -2487,6 +2490,17 @@ export class TelemetryService {
 	/** Welcome-screen: a post-task next-step was selected (host-emitted). */
 	public captureNextStepSelected(props: { step: string }) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.NEXT_STEP_SELECTED, properties: { ...props } })
+	}
+
+	/** Project-aware upgrade/update toast (the VS Code notification) was shown. targeted = CRA / new-install copy
+	 *  (vs the generic "what's new"); relevant = whether the open project is CRA-relevant. Counts/enums only. */
+	public captureUpgradeToastShown(props: { targeted: boolean; relevant: "cra" | "generic" }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.UPGRADE_TOAST_SHOWN, properties: { ...props } })
+	}
+
+	/** The upgrade/update toast CTA was clicked (routes into the panel — never auto-streams). */
+	public captureUpgradeToastClicked(props: { targeted: boolean; relevant: "cra" | "generic" }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.UPGRADE_TOAST_CLICKED, properties: { ...props } })
 	}
 
 	// Hooks telemetry methods

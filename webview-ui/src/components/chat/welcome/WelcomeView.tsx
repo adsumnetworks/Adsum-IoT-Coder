@@ -5,7 +5,7 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import AiLimitationsFooter from "../AiLimitationsFooter"
 import DemoCard from "../DemoCard"
-import { DEFAULT_DEMO_SCENARIO_ID, DEMO_SCENARIO_LIST, hasRunDemo, ranScenarioIds } from "../demoScenarios"
+import { DEMO_SCENARIO_LIST, hasRunDemo, ranScenarioIds } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
 import CraNudge from "./CraNudge"
@@ -78,7 +78,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 
 	// Grounded workspace signals (A3/A10), observed by the host probe.
 	const hasBle = !!workspaceFeatures?.hasBle
+	const hasWifi = !!workspaceFeatures?.hasWifi
 	const hasCompliance = !!workspaceFeatures?.hasComplianceArtifacts
+	// Grounded connectivity label for the CRA nudge (BLE / Wi-Fi / both) — what was detected, never a verdict.
+	const craEvidence = `${hasBle && hasWifi ? "BLE & Wi-Fi" : hasWifi ? "Wi-Fi" : "BLE"} detected · no compliance artifacts in this project yet`
 	// Dismissal persists per-workspace (localStorage, like DockCoachMark) so an explicitly-closed nudge stays
 	// closed across a window reload — not just the session. Keyed by project so dismissing in one doesn't mute all.
 	const craDismissKey = `adsum.craNudgeDismissed:${openFolderPaths[0] ?? ""}`
@@ -100,7 +103,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		setCraNudgeDismissed(true)
 	}
 	// A3 — the grounded CRA nudge: project-open, a connectivity stack present, no SBOM yet, not dismissed.
-	const craBanner = hasWorkspace && hasBle && !hasCompliance && !craNudgeDismissed
+	const craBanner = hasWorkspace && (hasBle || hasWifi) && !hasCompliance && !craNudgeDismissed
 	// Precedence (one grounded promotion per paint): the A10 deep-debug sub-line is suppressed while the nudge shows.
 	const showDebugSubline = hasBle && !craBanner
 
@@ -146,7 +149,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				{tenure === "dormant" && showUpgradeCard && !craBanner && (
 					<UpgradeCard
 						onDismiss={onUpgradeDismiss}
-						onStartDemo={() => onStartDemo(DEFAULT_DEMO_SCENARIO_ID)}
+						onStartDemo={() => onStartDemo("cra-sample")}
 						version={version ?? ""}
 					/>
 				)}
@@ -159,7 +162,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				    expected feedback; so we mount/unmount rather than reserve an always-empty placeholder slot. */}
 				{craBanner && (
 					<CraNudge
-						evidence="BLE detected · no compliance artifacts in this project yet"
+						evidence={craEvidence}
 						onDismiss={dismissCraNudge}
 						onPreview={() =>
 							runIntent("craCheck", {
