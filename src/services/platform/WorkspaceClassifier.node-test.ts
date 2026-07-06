@@ -31,12 +31,15 @@ function fixture(files: Record<string, string>): FsAdapter {
 			p = parent
 		}
 	}
-	const exists = (p: string) => p in files || dirs.has(p)
-	const readFile = (p: string) => files[p] ?? ""
-	const isDir = (p: string) => dirs.has(p)
+	// The classifier joins with the host separator (backslash on Windows); real fs accepts both,
+	// so the in-memory adapter must too — normalize at the boundary like Windows fs does.
+	const norm = (p: string) => p.replace(/\\/g, "/")
+	const exists = (p: string) => norm(p) in files || dirs.has(norm(p))
+	const readFile = (p: string) => files[norm(p)] ?? ""
+	const isDir = (p: string) => dirs.has(norm(p))
 	const listDir = (dir: string) => {
 		const entries = new Set<string>()
-		const prefix = dir + "/"
+		const prefix = norm(dir) + "/"
 		for (const p of [...Object.keys(files), ...Array.from(dirs)]) {
 			if (p.startsWith(prefix)) {
 				const seg = p.slice(prefix.length).split("/")[0]
