@@ -231,6 +231,15 @@ export class TelemetryService {
 		NRF: {
 			ENV_DETECTED: "nrf.env_detected",
 		},
+		// Windows shell-integration doctor (ShellIntegrationDoctor.ts) — fresh-Windows installs
+		// where PowerShell policy / terminal settings silently break command-output capture.
+		TERMINAL_DOCTOR: {
+			DETECTED: "terminal_doctor.detected",
+			FIXED: "terminal_doctor.fixed",
+			FIX_FAILED: "terminal_doctor.fix_failed",
+			DECLINED: "terminal_doctor.declined",
+			GPO_BLOCKED: "terminal_doctor.gpo_blocked",
+		},
 		ESP: {
 			ENV_DETECTED: "esp.env_detected",
 		},
@@ -2650,6 +2659,31 @@ export class TelemetryService {
 				boardCount: args.boardCount,
 			},
 		})
+	}
+
+	/**
+	 * Windows shell-integration doctor outcome (detected → fixed/declined/fix_failed, or
+	 * gpo_blocked when Group Policy forbids the fix). Measures how often fresh-Windows setups
+	 * break command-output capture and whether the one-click fix lands.
+	 */
+	public captureTerminalDoctor(
+		outcome: "detected" | "fixed" | "fix_failed" | "declined" | "gpo_blocked",
+		properties: {
+			trigger: string
+			policyBlocked?: boolean
+			policyGpoManaged?: boolean
+			profileMisconfigured?: boolean
+			shellIntegrationDisabled?: boolean
+		},
+	) {
+		const event = {
+			detected: TelemetryService.EVENTS.TERMINAL_DOCTOR.DETECTED,
+			fixed: TelemetryService.EVENTS.TERMINAL_DOCTOR.FIXED,
+			fix_failed: TelemetryService.EVENTS.TERMINAL_DOCTOR.FIX_FAILED,
+			declined: TelemetryService.EVENTS.TERMINAL_DOCTOR.DECLINED,
+			gpo_blocked: TelemetryService.EVENTS.TERMINAL_DOCTOR.GPO_BLOCKED,
+		}[outcome]
+		this.capture({ event, properties })
 	}
 
 	/** ESP env detected — parity with nrf.env_detected (install-base platform mix + toolchain/device presence). */
