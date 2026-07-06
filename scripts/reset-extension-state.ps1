@@ -20,10 +20,13 @@
 #   * %APPDATA%\Code\User\globalStorage\adsumnetwork.nrf-ai-debugger   (tasks, settings, install id)
 #   * %APPDATA%\Code\User\workspaceStorage\*\adsumnetwork.nrf-ai-debugger
 #   * adsum-iot-coder.* keys in user settings.json
+#   * state.vscdb rows: saved API keys (DeepSeek etc.), globalState (install id / model config /
+#     welcome flags), and the moved-sidebar position -- via scripts\clean-vscdb.js
 #
-# Note: key-value globalState/secrets in VS Code's shared state.vscdb are purged by VS Code
-# itself on the first start after the uninstall -- start VS Code once before reinstalling if
-# you need an absolutely pristine first run.
+# IMPORTANT: the state.vscdb clean only runs when VS Code is CLOSED. VS Code holds those DBs
+# open and rewrites them from memory on exit, so a wipe while it runs would be silently undone
+# (this is exactly why saved credentials + sidebar position survived earlier resets). Close VS
+# Code, then run this script from a standalone terminal.
 
 param(
 	[switch]$BreakShellIntegration,
@@ -88,6 +91,19 @@ if (Test-Path $settingsPath) {
 		}
 	} catch {
 		Write-Warning "  settings.json could not be parsed (comments?) -- remove $settingsPrefix* keys manually."
+	}
+}
+
+Write-Host "== Cleaning state.vscdb (saved API keys, globalState, sidebar position) =="
+if (Get-Process -Name "Code" -ErrorAction SilentlyContinue) {
+	Write-Warning "  SKIPPED -- VS Code is running. Close it and re-run, or the saved credentials, install id, and sidebar position will survive (VS Code rewrites state.vscdb from memory on exit)."
+} else {
+	$cleaner = Join-Path $PSScriptRoot "clean-vscdb.js"
+	$node = (Get-Command node -ErrorAction SilentlyContinue).Source
+	if (-not $node) {
+		Write-Warning "  SKIPPED -- 'node' not found on PATH. Install Node.js and re-run, or run: node scripts\clean-vscdb.js"
+	} else {
+		& $node $cleaner
 	}
 }
 
