@@ -1,5 +1,5 @@
 import { expect } from "chai"
-import { applyModelContentFixes } from "../ModelContentProcessor"
+import { applyModelContentFixes, stripFullFileCodeFenceWrapper } from "../ModelContentProcessor"
 
 describe("ModelContentProcessor", () => {
 	// Test data constants
@@ -140,6 +140,42 @@ describe("ModelContentProcessor", () => {
 				const input = `${ESCAPED_CHARS.LT}threshold value="${ESCAPED_CHARS.GT} 100"/${ESCAPED_CHARS.GT}`
 				expect(applyModelContentFixes(input, MODELS.GEMINI, FILES.XML_SETTINGS)).to.equal(input)
 			})
+		})
+	})
+
+	// H2 (0607 runs): the fence-aware wrapper strip — never eat a legitimate fence of a markdown document.
+	describe("stripFullFileCodeFenceWrapper", () => {
+		it("strips a classic whole-file wrapper (```\\n…\\n```)", () => {
+			expect(stripFullFileCodeFenceWrapper("```\nconst x = 1\n```")).to.equal("const x = 1")
+		})
+
+		it("strips a language-tagged wrapper (```python)", () => {
+			expect(stripFullFileCodeFenceWrapper("```python\nprint(1)\n```\n")).to.equal("print(1)")
+		})
+
+		it("strips a wrapper around content with BALANCED interior fences", () => {
+			const inner = "# doc\n```js\ncode\n```\ntail"
+			expect(stripFullFileCodeFenceWrapper("```\n" + inner + "\n```")).to.equal(inner)
+		})
+
+		it("NEVER eats the closing fence of a report ending in a mermaid block (the CRA regression)", () => {
+			const report = "# CRA SBOM & Fix — softAP\nbody\n```mermaid\nflowchart LR\n  a --> b\n```"
+			expect(stripFullFileCodeFenceWrapper(report)).to.equal(report)
+		})
+
+		it("leaves a report whose last line is ``` followed by a blank line untouched", () => {
+			const report = "# CRA\n```mermaid\nflowchart LR\n```\n"
+			expect(stripFullFileCodeFenceWrapper(report)).to.equal(report)
+		})
+
+		it("leaves a file that merely STARTS with a fence untouched (not a wrapper)", () => {
+			const doc = "```mermaid\nflowchart LR\n```\n# notes below the diagram"
+			expect(stripFullFileCodeFenceWrapper(doc)).to.equal(doc)
+		})
+
+		it("declines to strip when interior fences are unbalanced (would corrupt)", () => {
+			const odd = "```\n# doc\n```js\ncode\n```"
+			expect(stripFullFileCodeFenceWrapper(odd)).to.equal(odd)
 		})
 	})
 })

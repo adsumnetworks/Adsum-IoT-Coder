@@ -58,6 +58,8 @@ export interface CveScanHostDeps {
 	fixCommitChecker?: (fixSha: string) => Promise<boolean | undefined>
 	/** P2 auto-discovery (design/30): CVE → upstream fix-commit SHA from OSV's GIT range (when not curated). */
 	fixCommitResolver?: (cveId: string) => Promise<string | undefined>
+	/** Liveness seam (H1 v2): per-source phase labels surfaced while the scan blocks the turn. */
+	onProgress?: (phase: string) => void
 }
 
 export interface CveScanHostInput {
@@ -108,5 +110,6 @@ export async function runCveScanHost(input: CveScanHostInput, deps: CveScanHostD
 		euvdProductLabel: deps.euvdProductLabel,
 		fixCommitChecker: deps.fixCommitChecker,
 		fixCommitResolver: deps.fixCommitResolver,
+		onProgress: deps.onProgress,
 	})
 }

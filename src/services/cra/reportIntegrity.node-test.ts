@@ -5,9 +5,12 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import {
+	checkReadinessJsonTwin,
 	checkReadinessReportIntegrity,
 	detectSbomTool,
 	extractClaimedPackageCount,
+	gatherAndCheckReadinessIntegrity,
+	isCraCompanionArtifact,
 	looksLikeCraReportContent,
 	looksLikeInlineCraReport,
 	looksLikeReadinessReport,
@@ -246,4 +249,78 @@ test("T2b: a report that lists every matched finding is NOT flagged; EUVD candid
 		matchedCveIds: ["CVE-2024-45491", "CVE-2025-10456"],
 	})
 	assert.ok(!issues.some((i) => i.kind === "cve-underreported"), "matched findings all listed → no under-report")
+})
+
+// ── H6 (0607a/R2): companion artifacts are never "the report", but stay evidence-mode ────────────────────────
+test("H6: cra-remediation-*.md never classifies as the readiness report (even with report-ish content)", () => {
+	const content =
+		"# CRA SBOM & Fix — softAP — Fix Plan\nReadiness aid — NOT a conformity assessment.\nSBOM: 62 components. CONFIG_SECURE_BOOT not set. Annex I."
+	const p = "/proj/compliance/cra-2026-07-06/cra-remediation-2026-07-06.md"
+	assert.equal(isCraCompanionArtifact(p), true)
+	assert.equal(looksLikeReadinessReport(p, content), false)
+})
+
+test("H6: a copied cve-scan-*.md never classifies as the report; a clean copy passes untouched", () => {
+	const p = "/Users/x/Desktop/adsum-cra-sample/compliance/cra-2026-07-06/cve-scan-2026-07-06.md"
+	assert.equal(isCraCompanionArtifact(p), true)
+	assert.equal(looksLikeReadinessReport(p, "SBOM scan output — CONFIG_BT_SMP hint; verify."), false)
+	assert.deepEqual(gatherAndCheckReadinessIntegrity(p, "OSV reports CVE-2026-1 for zephyr@4.2.99 — verify."), [])
+})
+
+test("H6: a remediation log with a verdict leak is still rejected (evidence-mode holds for companions)", () => {
+	const p = "/proj/compliance/cra-2026-07-06/cra-remediation-2026-07-06.md"
+	const issues = gatherAndCheckReadinessIntegrity(p, "Secure boot: ✅ FIXED — MCUboot added and verified.")
+	assert.ok(
+		issues.some((i) => i.kind === "verdict-leak"),
+		"companion verdict leak must be flagged",
+	)
+})
+
+// ── H4 (0607 runs): canonical JSON-twin schema validation ────────────────────────────────────────────────────
+test("H4: a canonical twin passes", () => {
+	const good = JSON.stringify({
+		title: "CRA SBOM & Fix — softAP",
+		disclaimer: "Readiness aid — NOT a conformity assessment",
+		productType: "assumed",
+		marketStatus: "assumed",
+		bindingDate: "11 Dec 2027",
+		sdk: "ESP-IDF 6.0.1",
+		generated: "2026-07-06 by Adsum IoT Coder (CRA SBOM & Fix)",
+		method: "esp-idf-sbom create",
+		atAGlance: { components: 62, cvesFound: 10, likelyNotReachable: 0, postureGaps: 6, euvdAdvisoriesToVerify: 6 },
+		sbom: { tool: "esp-idf-sbom", file: "sbom/app.spdx", queryable: 10, noIdentifier: 52, noVersion: 0 },
+		posture: { secure_boot: "CONFIG_SECURE_BOOT not set — verify" },
+		advisories: { bundled: "none" },
+		cveScan: {
+			file: "cve-scan-2026-07-06.json",
+			asOf: "2026-07-06",
+			versionMatched: 4,
+			notReachable: 0,
+			review: 4,
+			euvdAdditional: 6,
+		},
+	})
+	assert.deepEqual(checkReadinessJsonTwin("/p/compliance/cra-2026-07-06/cra-readiness.json", good), [])
+})
+
+test("H4: string counts ('~180'), missing keys, and the euvaAdditional typo are each flagged", () => {
+	const bad = JSON.stringify({ title: "t", atAGlance: { components: "~180", cvesFound: 19 }, cveScan: { euvaAdditional: 75 } })
+	const issues = checkReadinessJsonTwin("/p/compliance/cra-2026-07-06/cra-readiness.json", bad)
+	assert.ok(
+		issues.some((i) => i.detail.includes("NUMBERS")),
+		"string count flagged",
+	)
+	assert.ok(
+		issues.some((i) => i.detail.includes("missing canonical key")),
+		"missing keys flagged",
+	)
+	assert.ok(
+		issues.some((i) => i.detail.includes("euvdAdditional")),
+		"typo flagged",
+	)
+})
+
+test("H4: non-JSON twin is flagged; non-twin paths are ignored", () => {
+	assert.ok(checkReadinessJsonTwin("/p/compliance/cra-readiness.json", "{not json").length === 1)
+	assert.deepEqual(checkReadinessJsonTwin("/p/compliance/other.json", "{not json"), [])
 })

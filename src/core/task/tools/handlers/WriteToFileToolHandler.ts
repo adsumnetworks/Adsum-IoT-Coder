@@ -9,7 +9,12 @@ import { ClineSayTool } from "@shared/ExtensionMessage"
 import { fileExistsAtPath } from "@utils/fs"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
-import { formatIntegrityError, gatherAndCheckReadinessIntegrity, looksLikeReadinessReport } from "@/services/cra/reportIntegrity"
+import {
+	checkReadinessJsonTwin,
+	formatIntegrityError,
+	gatherAndCheckReadinessIntegrity,
+	looksLikeReadinessReport,
+} from "@/services/cra/reportIntegrity"
 import { telemetryService } from "@/services/telemetry"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
@@ -18,7 +23,7 @@ import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { ToolValidator } from "../ToolValidator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
-import { applyModelContentFixes } from "../utils/ModelContentProcessor"
+import { applyModelContentFixes, stripFullFileCodeFenceWrapper } from "../utils/ModelContentProcessor"
 import { ToolDisplayUtils } from "../utils/ToolDisplayUtils"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 import { emitCraMilestoneForWrite } from "./craFunnel"
@@ -354,6 +359,15 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 				return formatResponse.toolError(formatIntegrityError(craIntegrityIssues))
 			}
 
+			// H4 (0607 runs): the machine-readable twin drifted to a different ad-hoc schema every run — validate
+			// `cra-readiness.json` against the canonical schema (keys + numeric counts) at the same write seam.
+			const jsonTwinIssues = checkReadinessJsonTwin(absolutePath, newContent)
+			if (jsonTwinIssues.length > 0) {
+				await config.services.diffViewProvider.revertChanges()
+				await config.services.diffViewProvider.reset()
+				return formatResponse.toolError(formatIntegrityError(jsonTwinIssues))
+			}
+
 			// CRA completion seatbelt (design/31): record that the readiness report cleared the guarded write seam,
 			// so attempt_completion can refuse a CRA run that only inline-dumped the report (2906c). Set AFTER the
 			// integrity check so only a real, guard-passing report counts.
@@ -549,14 +563,12 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 			// Handle write_to_file with direct content
 			newContent = content
 
-			// pre-processing newContent for cases where weaker models might add artifacts like markdown codeblock markers (deepseek/llama) or extra escape characters (gemini)
-			if (newContent.startsWith("```")) {
-				// this handles cases where it includes language specifiers like ```python ```js
-				newContent = newContent.split("\n").slice(1).join("\n").trim()
-			}
-			if (newContent.endsWith("```")) {
-				newContent = newContent.split("\n").slice(0, -1).join("\n").trim()
-			}
+			// pre-processing newContent for cases where weaker models might add artifacts like markdown codeblock
+			// markers (deepseek/llama) or extra escape characters (gemini). H2 (0607 runs): wrapper-strip is now
+			// fence-aware — the old single-ended startsWith/endsWith strip ATE the legitimate closing ``` of any
+			// markdown file ending in a fenced block (the CRA report's posture map — three runs shipped/repaired
+			// broken mermaid diagrams because of this seam).
+			newContent = stripFullFileCodeFenceWrapper(newContent)
 
 			// Apply model-specific fixes (llama, gemini, and other models may add escape characters)
 			newContent = applyModelContentFixes(newContent, config.api.getModel().id, resolvedPath)

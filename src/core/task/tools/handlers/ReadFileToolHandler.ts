@@ -226,7 +226,15 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 					config.taskState.loadedKnowledgeFiles.add(absolutePath)
 				}
 				await config.services.fileContextTracker.trackFileContext(relPath!, "read_tool")
-				return bitBody
+				// H9 (R3, 0607b): the UI labels this read with the requested bundled-tree path, which made a
+				// registry-served bit look BUNDLED in transcripts (it misled a delivery-path review into
+				// suspecting proprietary bits were shipped in the VSIX). State the true provenance in the
+				// returned body so every transcript carries it.
+				return (
+					`[Adsum knowledge bit — served ON DEMAND from the knowledge registry (or its local cache/dev folder); ` +
+					`NOT read from the bundled extension tree. Requested as: ${displayPath}]\n\n` +
+					bitBody
+				)
 			}
 			// Couldn't resolve this knowledge bit. Give a clear, actionable reason instead of a bare
 			// "file not found": a downloaded bit when the registry is unreachable, vs. a wrong path.

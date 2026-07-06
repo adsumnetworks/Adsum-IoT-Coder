@@ -69,8 +69,23 @@ function hasCveCoverageCaveat(text: string): boolean {
  * by content so it works regardless of the (run-varied) filename. Anything we classify here already contains
  * the disclaimer, so structureScan's disclaimer primitive is implicitly satisfied.
  */
+/**
+ * H6 (R2, 0607a): CRA COMPANION artifacts are NOT the readiness report — the canonical remediation log
+ * (`cra-remediation-<date>.md`) and the host's own cve-scan artifact (`cve-scan-<date>.md`, including a
+ * model-made copy on the Desktop save). They stay evidence-mode (verdict/glyph scanned), but must never be
+ * forced into the report skeleton: a real run's fix plan was classified as "the report", rejected for the
+ * missing canonical H1, then rewritten to masquerade as one — leaving two report-titled docs in one folder.
+ */
+export function isCraCompanionArtifact(absolutePath: string): boolean {
+	return /(?:^|[\\/])(?:cra-remediation-[^\\/]*\.md|cve-scan-[^\\/]*\.md)$/i.test(absolutePath)
+}
+
 export function looksLikeReadinessReport(absolutePath: string, content: string): boolean {
 	if (!/\.md$/i.test(absolutePath)) {
+		return false
+	}
+	// Companion docs (remediation log, scan-artifact copies) are never "the report" — see isCraCompanionArtifact.
+	if (isCraCompanionArtifact(absolutePath)) {
 		return false
 	}
 	// (1) Canonical signal: the disclaimer phrase + an SBOM mention.
@@ -284,11 +299,76 @@ function findSiblingCve(reportDir: string): { queryable: number | null; cveIds: 
 }
 
 /**
+ * H4 (R1/R2/R4, 0607): the machine-readable twin `cra-readiness.json` was improvised differently by every run
+ * (three ad-hoc schemas in four runs, one `euvaAdditional` typo, `"~180"` strings for numbers). The kbit now
+ * defines the canonical schema; this validates a written twin against it. Checks are structural only (keys +
+ * number-ness) — content truth stays with the report checks. Fails OPEN on parse of OUR logic, but a file that
+ * doesn't parse as JSON at all is an issue (a broken twin is worse than none).
+ */
+export function checkReadinessJsonTwin(absolutePath: string, content: string): IntegrityIssue[] {
+	if (!/(?:^|[\\/])cra-readiness\.json$/i.test(absolutePath)) {
+		return []
+	}
+	let parsed: Record<string, unknown>
+	try {
+		parsed = JSON.parse(content)
+	} catch (e) {
+		return [
+			{
+				kind: "json-twin",
+				detail: `cra-readiness.json is not valid JSON (${e instanceof Error ? e.message : String(e)}). Emit the canonical schema from cra-report.md.`,
+			},
+		]
+	}
+	const issues: IntegrityIssue[] = []
+	const requiredTop = ["title", "disclaimer", "generated", "method", "atAGlance", "posture"]
+	const missing = requiredTop.filter((k) => !(k in parsed))
+	if (missing.length > 0) {
+		issues.push({
+			kind: "json-twin",
+			detail: `cra-readiness.json is missing canonical key(s): ${missing.join(", ")}. Use the exact schema from cra-report.md (title · disclaimer · productType · marketStatus · bindingDate · sdk · generated · method · atAGlance · sbom · posture · advisories · cveScan).`,
+		})
+	}
+	const glance = parsed["atAGlance"]
+	if (glance && typeof glance === "object") {
+		const g = glance as Record<string, unknown>
+		const numeric = ["components", "cvesFound", "likelyNotReachable", "postureGaps"]
+		const bad = numeric.filter((k) => k in g && typeof g[k] !== "number")
+		if (bad.length > 0) {
+			issues.push({
+				kind: "json-twin",
+				detail: `atAGlance.${bad.join(", atAGlance.")} must be NUMBERS (a real run wrote "~180" as a string). Take the exact values from the scan JSON — no strings, no "~".`,
+			})
+		}
+	}
+	// The one spelling that keeps drifting (R1 wrote `euvaAdditional`).
+	if (JSON.stringify(parsed).includes("euvaAdditional")) {
+		issues.push({ kind: "json-twin", detail: `Key "euvaAdditional" is a typo — the canonical key is "euvdAdditional".` })
+	}
+	return issues
+}
+
+/**
  * Host entry point: if `content` is a readiness report, read its sibling artifacts off disk and run the pure
  * check. Fails OPEN (returns []) on any error so a guard fault can never block a legitimate write.
  */
 export function gatherAndCheckReadinessIntegrity(absolutePath: string, content: string): IntegrityIssue[] {
 	try {
+		// H6: companion artifacts skip the skeleton/cross-checks but STAY evidence-mode — the remediation log's
+		// own rule is "changed — build, flash, verify", never "fixed"/"✅", so verdict leaks are still rejected.
+		if (isCraCompanionArtifact(absolutePath)) {
+			const leaks = scanForVerdictLeaks(content)
+			if (leaks.length > 0) {
+				const samples = [...new Set(leaks.map((l) => l.match))].slice(0, 5).join(", ")
+				return [
+					{
+						kind: "verdict-leak",
+						detail: `This CRA companion document uses verdict-style status (${samples}${leaks.length > 5 ? ", …" : ""}). Companion docs are evidence-mode too: no ✅/⚠️/❌/✓, no fixed/ENABLED/Strong — state the literal change + "build, flash, verify".`,
+					},
+				]
+			}
+			return []
+		}
 		if (!looksLikeReadinessReport(absolutePath, content)) {
 			return []
 		}
