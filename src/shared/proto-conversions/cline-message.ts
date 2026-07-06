@@ -106,6 +106,9 @@ function convertClineSayToProtoEnum(say: AppClineSay | undefined): ClineSay | un
 		hook_status: ClineSay.HOOK_STATUS,
 		hook_output_stream: ClineSay.HOOK_OUTPUT_STREAM,
 		generate_explanation: ClineSay.GENERATE_EXPLANATION,
+		// Liveness row for the blocking CVE scan — informational status; maps to INFO on the proto
+		// (standalone/external) path, same reuse pattern as shell_integration_warning_with_suggestion.
+		cve_scan_progress: ClineSay.INFO,
 	}
 
 	const result = mapping[say]

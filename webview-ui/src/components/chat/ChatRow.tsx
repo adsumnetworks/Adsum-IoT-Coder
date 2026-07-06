@@ -92,6 +92,16 @@ export interface QuoteButtonState {
 interface ChatRowContentProps extends Omit<ChatRowProps, "onHeightChange"> {}
 
 export const ProgressIndicator = () => <LoaderCircleIcon className="size-2 mr-2 animate-spin" />
+
+/** Live seconds-elapsed counter (self-ticking) — used by long-running host operations like the CVE scan. */
+const ElapsedSeconds = ({ since }: { since: number }) => {
+	const [now, setNow] = useState(Date.now())
+	useEffect(() => {
+		const id = setInterval(() => setNow(Date.now()), 1000)
+		return () => clearInterval(id)
+	}, [])
+	return <span className="tabular-nums">{Math.max(0, Math.floor((now - since) / 1000))}s</span>
+}
 const InvisibleSpacer = () => <div aria-hidden className="h-px" />
 
 const ChatRow = memo(
@@ -937,6 +947,32 @@ export const ChatRowContent = memo(
 								Loading MCP documentation
 							</div>
 						)
+					case "cve_scan_progress": {
+						// Animated liveness row for the blocking CVE scan (spinner + live elapsed timer while it
+						// is the last message; a compact static line once the run has moved past it).
+						let scanProgress: { sources?: string[]; estimate?: string } = {}
+						try {
+							scanProgress = JSON.parse(message.text || "{}")
+						} catch {}
+						const scanSources = scanProgress.sources?.join(" · ") ?? "EUVD · NVD · OSV"
+						if (isLast) {
+							return (
+								<div className="text-foreground flex items-center opacity-80 text-[12px] py-1 px-0">
+									<ProgressIndicator />
+									<span>
+										CVE scan in progress — querying {scanSources} · <ElapsedSeconds since={message.ts} />{" "}
+										elapsed · live database lookups typically take {scanProgress.estimate ?? "30–90 s"}
+									</span>
+								</div>
+							)
+						}
+						return (
+							<div className="text-foreground flex items-center opacity-70 text-[12px] py-1 px-0">
+								<i className="codicon codicon-shield mr-1.5" />
+								CVE scan — queried {scanSources}
+							</div>
+						)
+					}
 					case "generate_explanation": {
 						let explanationInfo: ClineSayGenerateExplanation = {
 							title: "code changes",
