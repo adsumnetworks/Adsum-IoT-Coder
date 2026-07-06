@@ -956,12 +956,18 @@ export const ChatRowContent = memo(
 						} catch {}
 						const scanSources = scanProgress.sources?.join(" · ") ?? "EUVD · NVD · OSV"
 						if (isLast) {
+							// Brand palette (UI golden rules: cyan = the action/process color — see brandColors.ts
+							// BRAND_CYAN_600 #00A9CE). Tailwind arbitrary values must be static strings, so the hex
+							// is inlined; keep in sync with brandColors.ts.
 							return (
-								<div className="flex items-center gap-3 rounded-md border border-[color-mix(in_srgb,var(--vscode-focusBorder)_35%,transparent)] bg-[color-mix(in_srgb,var(--vscode-focusBorder)_8%,transparent)] px-3 py-2.5 my-1">
-									<LoaderCircleIcon className="size-5 shrink-0 animate-spin text-[var(--vscode-progressBar-background,var(--vscode-focusBorder))]" />
+								<div className="flex items-center gap-3 rounded-md border border-[color-mix(in_srgb,#00A9CE_40%,transparent)] bg-[color-mix(in_srgb,#00A9CE_9%,transparent)] px-3 py-2.5 my-1">
+									<LoaderCircleIcon className="size-5 shrink-0 animate-spin text-[#00A9CE]" />
 									<div className="flex flex-col text-[12.5px] leading-snug">
 										<span className="font-semibold text-foreground">
-											{scanProgress.phase ?? "CVE scan in progress"} · <ElapsedSeconds since={message.ts} />{" "}
+											{scanProgress.phase ?? "CVE scan in progress"} ·{" "}
+											<span className="text-[#00A9CE]">
+												<ElapsedSeconds since={message.ts} />
+											</span>{" "}
 											elapsed
 										</span>
 										<span className="opacity-80">

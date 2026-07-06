@@ -1,5 +1,5 @@
 import { Int64Request } from "@shared/proto/cline/common"
-import { CheckIcon } from "lucide-react"
+import { ArrowRightIcon, CheckIcon } from "lucide-react"
 import { memo } from "react"
 import { cn } from "@/lib/utils"
 import { TaskServiceClient } from "@/services/grpc-client"
@@ -35,21 +35,41 @@ export const CompletionOutputRow = memo(
 		messageTs,
 		handleQuoteClick,
 	}: CompletionOutputRowProps) => {
+		// "No more Task Complete" (operator direction, CRA workflows first): a completion whose result opens
+		// with the invisible <!--NEXT_STEPS--> marker is a HANDOFF, not an ending — render it as a cyan
+		// "Suggested next steps" card (brand cyan #00A9CE = the action color, see brandColors.ts) instead of
+		// the green terminal banner. The marker is stripped from the rendered markdown.
+		const isNextSteps = text.trimStart().startsWith("<!--NEXT_STEPS-->")
+		const body = isNextSteps ? text.replace(/^\s*<!--NEXT_STEPS-->\s*/, "") : text
 		return (
 			<div>
-				<div className="rounded-sm border border-success/20 overflow-visible bg-success/10 p-2 pt-3">
+				<div
+					className={cn(
+						"rounded-sm border overflow-visible p-2 pt-3",
+						isNextSteps
+							? "border-[color-mix(in_srgb,#00A9CE_35%,transparent)] bg-[color-mix(in_srgb,#00A9CE_8%,transparent)]"
+							: "border-success/20 bg-success/10",
+					)}>
 					{/* Title */}
 					<div className={cn(headClassNames, "justify-between px-1")}>
 						<div className="flex gap-2 items-center">
-							<CheckIcon className="size-3 text-success" />
-							<span className="text-success font-bold">Task Completed</span>
+							{isNextSteps ? (
+								<ArrowRightIcon className="size-3 text-[#00A9CE]" />
+							) : (
+								<CheckIcon className="size-3 text-success" />
+							)}
+							{isNextSteps ? (
+								<span className="text-[#00A9CE] font-bold">Suggested next steps</span>
+							) : (
+								<span className="text-success font-bold">Task Completed</span>
+							)}
 						</div>
-						<CopyButton className="text-success" textToCopy={text} />
+						<CopyButton className={isNextSteps ? "text-[#00A9CE]" : "text-success"} textToCopy={body} />
 					</div>
 					{/* Content */}
 					<div className="w-full relative border-t-1 border-description/20 rounded-b-sm">
 						<div className="completion-output-content p-2 pt-3 w-full [&_hr]:opacity-20 [&_p:last-child]:mb-0 rounded-sm">
-							<MarkdownRow markdown={text} />
+							<MarkdownRow markdown={body} />
 							{quoteButtonState.visible && (
 								<QuoteButton left={quoteButtonState.left} onClick={handleQuoteClick} top={quoteButtonState.top} />
 							)}
