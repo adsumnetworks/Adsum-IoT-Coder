@@ -7,6 +7,7 @@ import {
 	ITerminalManager,
 	TerminalProcessResultPromise as ITerminalProcessResultPromise,
 } from "@/integrations/terminal/types"
+import { runShellIntegrationDoctor } from "./ShellIntegrationDoctor"
 import { mergePromise, VscodeTerminalProcess } from "./VscodeTerminalProcess"
 import { TerminalInfo, TerminalRegistry } from "./VscodeTerminalRegistry"
 
@@ -185,6 +186,8 @@ export class VscodeTerminalManager implements ITerminalManager {
 			TerminalRegistry.removeTerminal(vscodeTerminalInfo.id)
 			this.terminalIds.delete(vscodeTerminalInfo.id)
 			this.processes.delete(vscodeTerminalInfo.id)
+			// Integration demonstrably failed here — diagnose the known Windows causes and offer the fix.
+			void runShellIntegrationDoctor("shell_integration_warning").catch(() => {})
 		})
 
 		const promise = new Promise<void>((resolve, reject) => {
