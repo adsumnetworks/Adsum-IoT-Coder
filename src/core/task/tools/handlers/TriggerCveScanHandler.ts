@@ -412,6 +412,18 @@ export class TriggerCveScanHandler implements IFullyManagedTool {
 
 		await config.callbacks.say("tool", JSON.stringify({ tool: "triggerCveScan", path: sbom }))
 
+		// Liveness row: the scan blocks this turn for 30–90+ s (three DBs + NVD rate windows) and the model can
+		// emit nothing while it runs — without a visible in-progress indicator users read the silence as a stall
+		// (two operator reports). The webview renders this say as a spinner + live elapsed timer while it is the
+		// last message, and as a compact static line once the scan has moved on.
+		await config.callbacks.say(
+			"cve_scan_progress",
+			JSON.stringify({
+				sources: ["EU Vulnerability Database (ENISA)", "NVD by CPE", "OSV by PURL"],
+				estimate: "30–90 s",
+			}),
+		)
+
 		const asOf = this.deps.now()
 		let result: ScanLoopResult
 		try {

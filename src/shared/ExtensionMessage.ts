@@ -207,6 +207,7 @@ export type ClineSay =
 	| "task_progress"
 	| "hook_status"
 	| "hook_output_stream"
+	| "cve_scan_progress" // liveness row while the blocking host CVE scan queries EUVD/NVD/OSV (spinner + elapsed in the webview)
 
 export interface ClineSayTool {
 	tool:
