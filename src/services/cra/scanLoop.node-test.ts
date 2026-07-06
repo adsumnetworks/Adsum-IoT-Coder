@@ -496,6 +496,65 @@ test("design/30 API-resilience: resolver returns undefined (OSV down/404) → NO
 	assert.notEqual(r.findings.find((f) => f.match.vulnIds[0] === "CVE-2099-6543")?.applicability.signal, "fix-present")
 })
 
+// ── H8 (0607a/R2): fix commits auto-extracted from EUVD REFERENCES (the check a real ESP run did by hand) ──────
+const euvdSearchWithCommits = (cveId: string, refs: string[]) =>
+	JSON.stringify({ items: [{ id: "EUVD-2099-1", aliases: cveId, references: refs.join("\n"), baseScore: 7.5 }] })
+
+test("H8: EUVD-referenced fix commits ALL present in the tree → the finding upgrades to fix-present", async () => {
+	const oneVuln: OsvFetcher = async () => JSON.stringify({ results: [{ vulns: [{ id: "CVE-2099-4444" }] }] })
+	const shas = ["2bf4dd12002dbae60a4b21abff010ecb2b8ee82b", "8b4b5d5301815198d177974ffc24848f47748248"]
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-07-06",
+		fetcher: oneVuln,
+		euvdFetcher: async (id) =>
+			euvdSearchWithCommits(
+				id,
+				shas.map((s) => `https://github.com/espressif/esp-idf/commit/${s}`),
+			),
+		fixCommitChecker: async (sha) => shas.includes(sha), // both present → full fix backported
+	})
+	assert.equal(r.findings.find((f) => f.match.vulnIds[0] === "CVE-2099-4444")?.applicability.signal, "fix-present")
+	assert.equal(isVerdictClean(r.report), true)
+})
+
+test("H8 honesty: a PARTIAL backport (one referenced commit absent) NEVER reads as fix-present", async () => {
+	const oneVuln: OsvFetcher = async () => JSON.stringify({ results: [{ vulns: [{ id: "CVE-2099-5555" }] }] })
+	const present = "2bf4dd12002dbae60a4b21abff010ecb2b8ee82b"
+	const absent = "9f713dbc94982d917f2d12964b233cd9efa4aeba"
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-07-06",
+		fetcher: oneVuln,
+		euvdFetcher: async (id) =>
+			euvdSearchWithCommits(id, [
+				`https://github.com/espressif/esp-idf/commit/${present}`,
+				`https://github.com/espressif/esp-idf/commit/${absent}`,
+			]),
+		fixCommitChecker: async (sha) => sha === present, // R2's real shape: fixes NOT all in v6.0.1
+	})
+	assert.notEqual(r.findings.find((f) => f.match.vulnIds[0] === "CVE-2099-5555")?.applicability.signal, "fix-present")
+})
+
+test("H8 precedence: a P2 curated SHA answers the id — EUVD refs are NOT consulted to overturn it", async () => {
+	const oneVuln: OsvFetcher = async () => JSON.stringify({ results: [{ vulns: [{ id: "CVE-2099-6666" }] }] })
+	const resolveHint: HintResolver = (id) => (id === "CVE-2099-6666" ? { fixCommitSha: "feedface00112233" } : undefined)
+	const r = await runCveScan({
+		spdxText: SPDX,
+		evidence: {},
+		asOf: "2026-07-06",
+		fetcher: oneVuln,
+		resolveHint,
+		euvdFetcher: async (id) =>
+			euvdSearchWithCommits(id, ["https://github.com/x/y/commit/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]),
+		// curated SHA is NOT in the tree; the EUVD-referenced one would be — precedence must keep the hedge:
+		fixCommitChecker: async (sha) => sha === "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	})
+	assert.notEqual(r.findings.find((f) => f.match.vulnIds[0] === "CVE-2099-6666")?.applicability.signal, "fix-present")
+})
+
 // P2b (2906c): `west spdx` emits the Zephyr core as BOTH `zephyr` and `zephyr-sources`, and `all.spdx`
 // concatenates docs carrying each. Both share one CPE → the same CVE was double-listed (16 inflated from 11).
 const DUP_CORE_SPDX = `SPDXVersion: SPDX-2.3

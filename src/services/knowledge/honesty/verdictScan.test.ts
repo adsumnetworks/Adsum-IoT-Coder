@@ -55,6 +55,15 @@ describe("verdictScan — leaks that MUST be caught", () => {
 		["✅ GOOD posture cell", "| SBOM Completeness | ✅ GOOD | SPDX 2.3 for all 3 images |"],
 		["⚠ glyph opening a heading", "### ⚠️ MCUMGR UART SMP Transport — No Encryption"],
 		["JSON readiness verdict value", '"cra_readiness": "READY — all Annex I mandatory requirements met"'],
+		// 0607 runs (R1/R4) — prose QUALITY ADJECTIVES that walked through every guard layer:
+		["'Strong pairing posture' (R1's exact leak)", "Strong pairing posture for this build."],
+		[
+			"'is a strong baseline' (R4's exact leak)",
+			"LE Secure Connections + bonding with MITM enforcement is a strong baseline; confirm no Just-Works path.",
+		],
+		["'memory protection is solid'", "The memory protection is solid on this build."],
+		["'well-configured' pairing", "BLE pairing is well-configured (LE SC + MITM + bonding)."],
+		["'fully enabled' memory protection", "Memory protection (MPU + HW stack + stack guard) is fully enabled."],
 		["JSON secure_boot verdict value", '"secure_boot": "ENABLED"'],
 		// run-#8 (2406c) — the worst deliverable: a numeric compliance scorecard + "non-compliant" + a FABRICATED
 		// CRA article sub-clause. None of these were caught before; all three are now regression-pinned.
@@ -146,6 +155,20 @@ describe("verdictScan — disclaimers / evidence-mode that MUST NOT trip", () =>
 		["prose 'good practice' stays clean", "It's good practice to verify the bootloader child image actually built."],
 		["bare 'Part of' stays clean", "MCUboot is part of the sysbuild image set; Part I of the build is the app."],
 		["bare 'Part I' label (no paren) stays clean", "Boot only verified firmware — Annex I Part I; CONFIG present."],
+		// 0607 quality-adjective carve-outs — evidence/engine wording that must NOT trip the new rule:
+		["'strongest exclusion' engine term stays clean", "fix-present is the strongest exclusion signal; verify."],
+		[
+			"adjective-free evidence line stays clean",
+			"CONFIG_BT_SMP=y present · CONFIG_BT_SMP_ENFORCE_MITM=y present — verify no Just-Works path in production.",
+		],
+		[
+			"cross-sentence adjective stays clean",
+			"The advisory calls the attack strong. Your build's pairing evidence: CONFIG_BT_SMP=y present — verify.",
+		],
+		[
+			"'hardware security module' noun phrase stays clean",
+			"Keys should live in the hardware security module — verify your design's key path.",
+		],
 	]
 	for (const [name, sample] of clean) {
 		test(name, () => {

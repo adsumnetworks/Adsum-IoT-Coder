@@ -96,6 +96,12 @@ export interface ScanLoopInput {
 	 * GIT range). Bounded to the matched findings. API-resilient: returns undefined on any failure (→ hedge).
 	 */
 	fixCommitResolver?: (cveId: string) => Promise<string | undefined>
+	/**
+	 * Liveness seam (H1 v2): called at each network-stage boundary with a short human phase label so the host
+	 * can surface per-source progress while the scan blocks the turn. Optional; never awaited; a throwing
+	 * consumer is swallowed — liveness can never slow or break the scan.
+	 */
+	onProgress?: (phase: string) => void
 }
 
 export interface ScanLoopResult {
@@ -131,9 +137,20 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	if (input.resolveCoreVersion) {
 		normalized = applyCuratedCpes(normalized, input.resolveCoreVersion)
 	}
+	const progress = (phase: string) => {
+		try {
+			input.onProgress?.(phase)
+		} catch {
+			// liveness only — a broken progress consumer must never break the scan
+		}
+	}
 	// Pass ALL components (not queryableComponents) so planOsvScan keeps the cpe-only / no-identifier skip records.
+	progress("querying OSV by package (PURL)")
 	const osvScan = await scanWithOsv(normalized.components, input.fetcher)
 	// CPE→NVD (F11, opt-in): query the components OSV can't reach — embedded C libs keyed by CPE, not PURL.
+	if (input.nvdFetcher) {
+		progress("querying NVD by CPE — the rate-limited lane, usually the slow part")
+	}
 	const nvdScan = input.nvdFetcher
 		? await scanWithNvd(normalized.components, input.nvdFetcher)
 		: { matches: [], skipped: [], queriedCount: 0, status: "ok" as const }
@@ -170,6 +187,9 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 	// EUVD discover-by-product (opt-in) — fetched HERE so its candidate ids join the fix-commit pre-compute. Surface
 	// only the ones not already version-matched by OSV/NVD (deduped), as hedged "version-not-confirmed" candidates.
 	const matchedIds = new Set(matchPairs.map((p) => p.id.toUpperCase()))
+	if (input.euvdProductFetcher) {
+		progress("querying the EU Vulnerability Database (ENISA) — product advisories")
+	}
 	const euvdProduct = input.euvdProductFetcher ? await input.euvdProductFetcher() : []
 	// EUVD candidates are product-level (no SBOM component); resolveAdvisoryHint keys on the CVE id, so a
 	// label-derived stub component suffices for the hint lookup.
@@ -252,6 +272,50 @@ export async function runCveScan(input: ScanLoopInput): Promise<ScanLoopResult> 
 				input.euvdFetcher,
 			)
 		: new Map<string, EuvdRecord>()
+
+	// H8 (design/30 extension, proven by a real ESP run): a matched finding's EUVD record often carries the
+	// upstream FIX-COMMIT urls in its references — a real 0607 run extracted 7 commit refs by hand and ran the
+	// merge-base check itself. Automate exactly that: for findings the P2 sources (curated SHA / OSV GIT range)
+	// left unresolved, extract commit SHAs from the EUVD references and ask git. HONEST BY CONSTRUCTION: only
+	// when EVERY referenced fix commit is present in the tree do we upgrade to `fix-present` (the full fix is
+	// backported); any absent/unknown commit → the existing hedge stands (never "vulnerable", never a partial
+	// backport read as patched). Local git only — no extra network; bounded to ≤8 SHAs per finding.
+	if (input.fixCommitChecker && euvd.size > 0) {
+		const COMMIT_REF_RE = /\/commit\/([0-9a-f]{7,40})\b/gi
+		progress("checking upstream fix commits (from EU Vulnerability Database references) against your source tree")
+		for (let i = 0; i < findings.length; i++) {
+			const f = findings[i]
+			const id = f.match.vulnIds[0]
+			const sig = f.applicability.signal
+			if (sig === "fix-present" || sig === "version-fixed" || sig === "config-gated-out" || sig === "not-linked") {
+				continue // already excluded by stronger evidence
+			}
+			if (fixShaByCve.has(id.toUpperCase())) {
+				continue // P2's curated/OSV SHA already answered this id (either way)
+			}
+			const refs = euvd.get(id)?.references ?? []
+			const shas = [...new Set([...refs.join("\n").matchAll(COMMIT_REF_RE)].map((m) => m[1]))].slice(0, 8)
+			if (shas.length === 0) {
+				continue
+			}
+			let allPresent = true
+			for (const sha of shas) {
+				if ((await input.fixCommitChecker(sha)) !== true) {
+					allPresent = false
+					break
+				}
+			}
+			if (allPresent) {
+				// Graft the EUVD-referenced SHA onto the hint (the fix-present branch keys on hint.fixCommitSha) —
+				// the note then names a real commit from the advisory's own references.
+				const hint = { ...resolve(id, f.match.component), fixCommitSha: shas[0] }
+				findings[i] = {
+					match: f.match,
+					applicability: assessApplicability(hint, input.evidence, true, componentVersionOf(f.match.component)),
+				}
+			}
+		}
+	}
 
 	// EUVD discover-by-product candidates (fetched + deduped above) — assess each against build evidence via its
 	// curated hint (design/28: a reachable lead like CVE-2025-10456 is promoted out of the buried list) PLUS the P2

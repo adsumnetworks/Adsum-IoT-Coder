@@ -272,14 +272,20 @@ async function gitFixPresent(treeDir: string, fixSha: string): Promise<boolean |
 
 /** Injectable seams (network/fs/clock) so execute() is unit-testable; production uses the real defaults. */
 export interface CveScanHandlerDeps {
-	scan: (args: { sbomPath: string; buildDir?: string; projectDir?: string; asOf: string }) => Promise<ScanLoopResult>
+	scan: (args: {
+		sbomPath: string
+		buildDir?: string
+		projectDir?: string
+		asOf: string
+		onProgress?: (phase: string) => void
+	}) => Promise<ScanLoopResult>
 	mkdir: (dir: string) => void
 	writeFile: (filePath: string, content: string) => void
 	now: () => string
 }
 
 const defaultDeps: CveScanHandlerDeps = {
-	scan: async ({ sbomPath, buildDir, projectDir, asOf }) => {
+	scan: async ({ sbomPath, buildDir, projectDir, asOf, onProgress }) => {
 		// Resolve the core SEMVERs once (zephyr/VERSION or esp-idf project_description.json, not the SHA): enables
 		// curated-CPE NVD detection of the core AND signals which platform to query for EUVD discover-by-product.
 		const coreResolver = await resolveCoreVersions(projectDir, buildDir)
@@ -329,6 +335,8 @@ const defaultDeps: CveScanHandlerDeps = {
 				// esp-idf core CVEs on ESP). Hedged, version-not-confirmed candidates. Wired for both platforms.
 				euvdProductFetcher: euvdProduct?.fetch,
 				euvdProductLabel: euvdProduct?.label,
+				// H1 v2 liveness: per-source phase labels bubble up to the chat progress card.
+				onProgress,
 				// `source` is derived by the scan loop from the fetchers actually wired (D1) — not hard-coded here.
 			},
 		)
@@ -412,23 +420,38 @@ export class TriggerCveScanHandler implements IFullyManagedTool {
 
 		await config.callbacks.say("tool", JSON.stringify({ tool: "triggerCveScan", path: sbom }))
 
-		// Liveness row: the scan blocks this turn for 30–90+ s (three DBs + NVD rate windows) and the model can
-		// emit nothing while it runs — without a visible in-progress indicator users read the silence as a stall
-		// (two operator reports). The webview renders this say as a spinner + live elapsed timer while it is the
-		// last message, and as a compact static line once the scan has moved on.
-		await config.callbacks.say(
-			"cve_scan_progress",
-			JSON.stringify({
-				sources: ["EU Vulnerability Database (ENISA)", "NVD by CPE", "OSV by PURL"],
-				estimate: "30–90 s",
-			}),
-		)
+		// Liveness row (H1): the scan blocks this turn for 30–90+ s (three DBs + NVD rate windows) and the model
+		// can emit nothing while it runs — without a visible in-progress indicator users read the silence as a
+		// stall (two operator reports). The webview renders this say as a prominent spinner card with a live
+		// elapsed timer while it is the last message; per-source phases (H1 v2) update the same card via partial
+		// says as each database lane starts. Finalized (partial=false) on success AND on error so the spinner
+		// never lingers.
+		const scanSources = ["EU Vulnerability Database (ENISA)", "NVD by CPE", "OSV by PURL"]
+		const sayProgress = async (phase: string | undefined, done: boolean) => {
+			await config.callbacks.say(
+				"cve_scan_progress",
+				JSON.stringify({ sources: scanSources, estimate: "30–90 s", ...(phase ? { phase } : {}) }),
+				undefined,
+				undefined,
+				!done,
+			)
+		}
+		await sayProgress(undefined, false)
 
 		const asOf = this.deps.now()
 		let result: ScanLoopResult
 		try {
-			result = await this.deps.scan({ sbomPath, buildDir, projectDir: cwd, asOf })
+			result = await this.deps.scan({
+				sbomPath,
+				buildDir,
+				projectDir: cwd,
+				asOf,
+				// fire-and-forget: liveness must never slow or break the scan
+				onProgress: (phase) => void sayProgress(`CVE scan — ${phase}`, false).catch(() => {}),
+			})
+			await sayProgress(undefined, true)
 		} catch (err) {
+			await sayProgress(undefined, true).catch(() => {})
 			const msg = `CVE scan could not run: ${err instanceof Error ? err.message : String(err)}`
 			await config.callbacks.say("error", msg)
 			return formatResponse.toolError(msg)

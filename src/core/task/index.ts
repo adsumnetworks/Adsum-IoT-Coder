@@ -2136,6 +2136,16 @@ export class Task {
 					content = content.replace(/<function_calls>\s?/g, "")
 					content = content.replace(/\s?<\/function_calls>/g, "")
 
+					// H10 (0607 run R5): a malformed tool call can spill ORPHAN CLOSING TAGS into the text channel —
+					// a real run rendered `…"] </task_progress> </ask_followup_question>` as chat prose. Tool/param
+					// closing tags never belong in legitimate prose; strip a TRAILING run of the known ones (plus a
+					// dangling JSON-ish `"]` tail). Known-name allowlist + end-anchored, so real prose (e.g. an HTML
+					// example ending in </div>) is never touched.
+					content = content.replace(
+						/(?:\s*"\s*\]?)?\s*(?:<\/(?:task_progress|ask_followup_question|attempt_completion|write_to_file|replace_in_file|execute_command|read_file|question|options|result|content|command|path|diff|response)>\s*)+$/i,
+						"",
+					)
+
 					// Remove partial XML tag at the very end of the content (for tool use and thinking tags)
 					// (prevents scrollview from jumping when tags are automatically removed)
 					const lastOpenBracketIndex = content.lastIndexOf("<")

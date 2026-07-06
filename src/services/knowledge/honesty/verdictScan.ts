@@ -136,6 +136,15 @@ const LEAK_PATTERNS: LeakPattern[] = [
 	// A PASS/FAIL grade — standalone UPPERCASE token (case-sensitive): "Secure boot: PASS", "| FAIL |".
 	// Uppercase-only avoids prose "pass"/"fail" and substrings (BYPASS, FAILURE, PASSED).
 	{ rule: "passfail", re: /(?<![A-Za-z])(?:PASS|FAIL)(?![A-Za-z])/g },
+	// 0607 runs — a QUALITY ADJECTIVE appended to evidence ("Strong pairing posture for this build",
+	// "is a strong baseline", "memory protection is solid", "fully enabled"). A positive verdict in prose walked
+	// through every guard layer because only glyph/cell/grade shapes were matched. Three shapes: adjective→noun
+	// within a clause, noun→is/are→adjective, and the standalone "fully enabled". Clause-bounded ([^.\n|]{0,40})
+	// so cross-sentence prose never trips; "strongest exclusion" is safe (\b keeps the superlative out).
+	{
+		rule: "quality-adjective",
+		re: /\b(?:strong|weak|solid|robust|hardened|well[- ]configured)\b[^.\n|]{0,40}\b(?:posture|baseline|configuration|config|pairing|protection|security|crypto|mitigation)\b|\b(?:posture|baseline|configuration|config|pairing|protection|security|crypto|mitigation)\b[^.\n|]{0,40}\b(?:is|are|looks?|remains?)\s+(?:strong|weak|solid|robust|hardened|well[- ]configured)\b|\bfully\s+enabled\b/gi,
+	},
 	// A verdict glyph opening a markdown HEADING ("### ⚠️ MCUMGR UART …") — evidence-mode headings carry no
 	// status glyph (a real run put "### ⚠️" on its top-gap heading). Anchored to the `#`-run start.
 	{ rule: "heading-glyph", re: /^#{1,6}\s+\*{0,2}\s*[✅✔✓❌✗⚠]/g },
