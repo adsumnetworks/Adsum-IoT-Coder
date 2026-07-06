@@ -422,36 +422,28 @@ export class TriggerCveScanHandler implements IFullyManagedTool {
 
 		// Liveness row (H1): the scan blocks this turn for 30–90+ s (three DBs + NVD rate windows) and the model
 		// can emit nothing while it runs — without a visible in-progress indicator users read the silence as a
-		// stall (two operator reports). The webview renders this say as a prominent spinner card with a live
-		// elapsed timer while it is the last message; per-source phases (H1 v2) update the same card via partial
-		// says as each database lane starts. Finalized (partial=false) on success AND on error so the spinner
-		// never lingers.
+		// stall (two operator reports). Emit ONE COMPLETE say BEFORE the scan; the webview renders it as the
+		// spinner card with a live (client-side) elapsed timer for as long as it is the last message — i.e. the
+		// entire blocking scan — then a compact line once the run moves on.
+		// RELIABILITY (regression fix): this is deliberately a SINGLE non-partial say. An earlier variant streamed
+		// per-source phases via fire-and-forget `partial` says; a partial row can finalize or lose the race before
+		// the webview paints it, so the wheel sometimes never appeared. The client-side timer conveys liveness on
+		// its own; the engine's onProgress seam stays wired (tested) but is not needed to keep the row visible.
 		const scanSources = ["EU Vulnerability Database (ENISA)", "NVD by CPE", "OSV by PURL"]
-		const sayProgress = async (phase: string | undefined, done: boolean) => {
-			await config.callbacks.say(
-				"cve_scan_progress",
-				JSON.stringify({ sources: scanSources, estimate: "30–90 s", ...(phase ? { phase } : {}) }),
-				undefined,
-				undefined,
-				!done,
-			)
-		}
-		await sayProgress(undefined, false)
+		await config.callbacks.say(
+			"cve_scan_progress",
+			JSON.stringify({
+				sources: scanSources,
+				estimate: "30–90 s",
+				phase: "CVE scan in progress — NVD by CPE is the rate-limited lane (usually the slow part)",
+			}),
+		)
 
 		const asOf = this.deps.now()
 		let result: ScanLoopResult
 		try {
-			result = await this.deps.scan({
-				sbomPath,
-				buildDir,
-				projectDir: cwd,
-				asOf,
-				// fire-and-forget: liveness must never slow or break the scan
-				onProgress: (phase) => void sayProgress(`CVE scan — ${phase}`, false).catch(() => {}),
-			})
-			await sayProgress(undefined, true)
+			result = await this.deps.scan({ sbomPath, buildDir, projectDir: cwd, asOf })
 		} catch (err) {
-			await sayProgress(undefined, true).catch(() => {})
 			const msg = `CVE scan could not run: ${err instanceof Error ? err.message : String(err)}`
 			await config.callbacks.say("error", msg)
 			return formatResponse.toolError(msg)
