@@ -2145,6 +2145,12 @@ export class Task {
 						/(?:\s*"\s*\]?)?\s*(?:<\/(?:task_progress|ask_followup_question|attempt_completion|write_to_file|replace_in_file|execute_command|read_file|question|options|result|content|command|path|diff|response)>\s*)+$/i,
 						"",
 					)
+					// H10b (operator report, 0607): a stray <task_progress> BLOCK rendered as raw prose — the
+					// checklist is a tool PARAMETER the UI renders as its own progress widget; a model sometimes
+					// emits it inline in text instead. Remove the whole block (closed anywhere, or unterminated at
+					// the end of a streaming message). The real task_progress still arrives via the tool call.
+					content = content.replace(/<task_progress>[\s\S]*?<\/task_progress>/gi, "")
+					content = content.replace(/<task_progress>[\s\S]*$/i, "")
 
 					// Remove partial XML tag at the very end of the content (for tool use and thinking tags)
 					// (prevents scrollview from jumping when tags are automatically removed)

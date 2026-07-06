@@ -230,10 +230,28 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 				// registry-served bit look BUNDLED in transcripts (it misled a delivery-path review into
 				// suspecting proprietary bits were shipped in the VSIX). State the true provenance in the
 				// returned body so every transcript carries it.
+				// H5-A (Track 2): the readiness workflow's no-project "bundled sample" option needs a REAL,
+				// WRITABLE sample location — a registry-served bit has no extension folder to derive one from.
+				// Serve the path WITH the bit: prepare the pre-built CRA bundle and append its location as host
+				// context. Fail-open (bundle absent / not initialized → no line; the bit's card routing holds).
+				let hostContext = ""
+				if (/cra[\\/]workflows[\\/]cra-readiness\.md$/i.test(absolutePath)) {
+					try {
+						const { prepareCraBundle } = await import("@core/demos/DemoManager")
+						const bundle = await prepareCraBundle("nrf")
+						hostContext =
+							`\n\n[Host context: pre-built nRF reference sample (writable copy) at: ${bundle} — ` +
+							`scan-ready layout (sbom/all.spdx · zephyr/.config · zephyr/symbols.nm). For a no-project ` +
+							`"bundled sample" run, use it via the Sample-run mode (live scan, no build needed).]`
+					} catch {
+						// DemoManager not initialized or bundle absent — fall back to the bit's card routing.
+					}
+				}
 				return (
 					`[Adsum knowledge bit — served ON DEMAND from the knowledge registry (or its local cache/dev folder); ` +
 					`NOT read from the bundled extension tree. Requested as: ${displayPath}]\n\n` +
-					bitBody
+					bitBody +
+					hostContext
 				)
 			}
 			// Couldn't resolve this knowledge bit. Give a clear, actionable reason instead of a bare
