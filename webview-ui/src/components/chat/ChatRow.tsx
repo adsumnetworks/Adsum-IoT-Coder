@@ -948,21 +948,27 @@ export const ChatRowContent = memo(
 							</div>
 						)
 					case "cve_scan_progress": {
-						// Animated liveness row for the blocking CVE scan (spinner + live elapsed timer while it
-						// is the last message; a compact static line once the run has moved past it).
-						let scanProgress: { sources?: string[]; estimate?: string } = {}
+						// Animated liveness row for the blocking CVE scan (prominent spinner + live elapsed timer
+						// while it is the last message; a compact static line once the run has moved past it).
+						let scanProgress: { sources?: string[]; estimate?: string; phase?: string } = {}
 						try {
 							scanProgress = JSON.parse(message.text || "{}")
 						} catch {}
 						const scanSources = scanProgress.sources?.join(" · ") ?? "EUVD · NVD · OSV"
 						if (isLast) {
 							return (
-								<div className="text-foreground flex items-center opacity-80 text-[12px] py-1 px-0">
-									<ProgressIndicator />
-									<span>
-										CVE scan in progress — querying {scanSources} · <ElapsedSeconds since={message.ts} />{" "}
-										elapsed · live database lookups typically take {scanProgress.estimate ?? "30–90 s"}
-									</span>
+								<div className="flex items-center gap-3 rounded-md border border-[color-mix(in_srgb,var(--vscode-focusBorder)_35%,transparent)] bg-[color-mix(in_srgb,var(--vscode-focusBorder)_8%,transparent)] px-3 py-2.5 my-1">
+									<LoaderCircleIcon className="size-5 shrink-0 animate-spin text-[var(--vscode-progressBar-background,var(--vscode-focusBorder))]" />
+									<div className="flex flex-col text-[12.5px] leading-snug">
+										<span className="font-semibold text-foreground">
+											{scanProgress.phase ?? "CVE scan in progress"} · <ElapsedSeconds since={message.ts} />{" "}
+											elapsed
+										</span>
+										<span className="opacity-80">
+											Querying {scanSources} — live database lookups typically take{" "}
+											{scanProgress.estimate ?? "30–90 s"}. Hold tight.
+										</span>
+									</div>
 								</div>
 							)
 						}
