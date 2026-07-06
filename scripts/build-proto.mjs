@@ -12,7 +12,34 @@ import { main as generateHostBridgeClient } from "./generate-host-bridge-client.
 import { main as generateProtoBusSetup } from "./generate-protobus-setup.mjs"
 
 const require = createRequire(import.meta.url)
-const PROTOC = path.join(require.resolve("grpc-tools"), "../bin/protoc")
+
+// grpc-tools 1.13.x ships Windows protoc.exe binaries linked against the *debug* CRT
+// (MSVCP140D.dll / ucrtbased.dll), which only exists on machines with Visual Studio —
+// everywhere else the binary dies with STATUS_DLL_NOT_FOUND (exit 0xC0000135) before
+// printing anything. Resolve a protoc that actually runs: grpc-tools first (the default
+// everywhere it works), then $PROTOC_PATH, then protoc on PATH.
+function resolveProtoc() {
+	const candidates = [path.join(require.resolve("grpc-tools"), "../bin/protoc"), process.env.PROTOC_PATH, "protoc"].filter(
+		Boolean,
+	)
+	for (const candidate of candidates) {
+		try {
+			execSync(`"${candidate}" --version`, { stdio: "pipe" })
+			return candidate
+		} catch {
+			// broken or absent — try the next one
+		}
+	}
+	console.error(
+		chalk.red(
+			`No working protoc found. Tried: ${candidates.join(" | ")}\n` +
+				"On Windows, grpc-tools' bundled protoc.exe needs the Visual Studio debug runtime. " +
+				"Install a real protoc (`winget install Google.Protobuf`) or set PROTOC_PATH to one.",
+		),
+	)
+	process.exit(1)
+}
+const PROTOC = resolveProtoc()
 
 const PROTO_DIR = path.resolve("proto")
 const TS_OUT_DIR = path.resolve("src/shared/proto")
