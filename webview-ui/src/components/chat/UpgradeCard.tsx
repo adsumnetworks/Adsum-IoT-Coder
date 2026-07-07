@@ -51,8 +51,14 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 					color: "var(--vscode-foreground)",
 					marginBottom: "4px",
 					paddingRight: "24px",
+					display: "flex",
+					alignItems: "center",
+					gap: "7px",
 				}}>
-				🛡️ What's new in v{version} — CRA SBOM &amp; Fix
+				{/* Themed shield (coral = identity/framing on this coral nudge) — replaces the off-theme 🛡️ emoji,
+				    which the OS rendered in its own multicolor style ignoring our palette. Cyan stays on the CTA. */}
+				<i className="codicon codicon-shield" style={{ fontSize: "14px", color: BRAND_CORAL, flexShrink: 0 }} />
+				What's new in v{version} — CRA SBOM &amp; Fix
 			</div>
 
 			<div
