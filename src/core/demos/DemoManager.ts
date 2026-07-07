@@ -382,6 +382,9 @@ read_file ${workflowBit} — the HCI + Sniffer screenplay. If that read FAILS, S
     - "Walk me through the capture"        ← ALWAYS include
     - "Capture it live on my board"        ← include if you scanned ≥1 DK
     - "Capture live + sniff over the air"  ← include ONLY if you scanned a DK AND a sniffer dongle
+    - "Re-scan my bench"                   ← include when the scan found 0 DKs OR the probe itself failed (a failed probe is NOT "no hardware" — say "couldn't probe the bench", per the bit)
+  (Dongle but no DK? Acknowledge what it unlocks — the bit's dongle-only line — then walkthrough.)
+  (capability=build → after Beat 4, also offer the bit's "Prove the fix compiles on my NCS" build rung.)
 
 === STEP 2 — the walkthrough (follow the bit's staged beats EXACTLY) ===
 Read the ONE real capture named at each beat (paths above), one layer at a time, ending EVERY beat with an ask_followup_question button (always include a "Skip to the fix" / "Seen enough" escape):
