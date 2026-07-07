@@ -107,6 +107,13 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 	const isStreaming = task.partial === true
 	const canInteract = enableButtons && !isProcessing
 
+	// At rest (no action buttons, already at the bottom) render NOTHING — the previous permanent
+	// scroll-to-top strip was a full-width row of standing clutter in the input stack (operator flag);
+	// the scrollbar/wheel covers scrolling up.
+	if (!showScrollToBottom && !hasButtons) {
+		return null
+	}
+
 	// Early return for scroll button to avoid unnecessary computation
 	if (showScrollToBottom || !hasButtons) {
 		const handleScrollToBottom = () => {

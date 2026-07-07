@@ -490,7 +490,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 										onStartDemo={handleStartDemo}
 										onStartTask={handleStartTask}
 									/>
-									<AiLimitationsFooter style={{ padding: "10px 14px 4px" }} />
+									<AiLimitationsFooter style={{ padding: "6px 14px 2px" }} />
 								</>
 							) : undefined
 						}
@@ -526,8 +526,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						selectFilesAndImages={selectFilesAndImages}
 						shouldDisableFilesAndImages={shouldDisableFilesAndImages}
 					/>
-					{/* Persistent AI-limitations disclaimer — visible while the dev acts on the agent's output. */}
-					<AiLimitationsFooter style={{ padding: "2px 14px 6px" }} />
+					{/* Persistent AI-limitations disclaimer — visible while the dev acts on the agent's output.
+					    Kept per spec (design/13 A6); footprint minimized per operator direction 0707. */}
+					<AiLimitationsFooter style={{ padding: "1px 14px 3px" }} />
 				</footer>
 			)}
 		</ChatLayout>

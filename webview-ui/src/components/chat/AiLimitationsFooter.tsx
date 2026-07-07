@@ -16,11 +16,15 @@ const AiLimitationsFooter: React.FC<{ style?: React.CSSProperties }> = ({ style 
 		className="w-full"
 		data-testid="ai-limitations-footer"
 		style={{
-			fontSize: "10.5px",
+			// Kept persistent by spec (design/13 A6) — operator direction 0707: keep it, minimize its footprint.
+			fontSize: "9.5px",
 			color: "var(--vscode-descriptionForeground)",
-			opacity: 0.75,
-			lineHeight: 1.4,
+			opacity: 0.65,
+			lineHeight: 1.25,
 			textAlign: "center",
+			whiteSpace: "nowrap",
+			overflow: "hidden",
+			textOverflow: "ellipsis",
 			...style,
 		}}>
 		{AI_LIMITATIONS_TEXT}{" "}

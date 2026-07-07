@@ -228,7 +228,17 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		const isAbsKbPath = absolutePath.includes("iot-knowledge")
 		const isBarePath = !isAbsKbPath && isBareBitPath(relPath)
 		if ((isAbsKbPath || isBarePath) && !(await fileAccessible(absolutePath))) {
-			const bitBody = isAbsKbPath ? await loadBitByKbPath(absolutePath) : await loadBitByRel(relPath!)
+			let bitBody = isAbsKbPath ? await loadBitByKbPath(absolutePath) : await loadBitByRel(relPath!)
+			if (!bitBody) {
+				// Outer retry (field report: a CRA run on Windows hit a transient load failure at the FIRST
+				// skill read and honestly stopped; a manual re-run worked). The RegistryClient already retries
+				// 3× per HTTP call (~16s worst case) — this second full pass after a pause stretches tolerance
+				// to cover brief server restarts/network blips without ever weakening the honest-stop fallback.
+				// A failed manifest memo is dropped internally (manifestRevalidated=false), so this re-attempts
+				// the whole chain: manifest → cache → blob.
+				await new Promise((resolve) => setTimeout(resolve, 3000))
+				bitBody = isAbsKbPath ? await loadBitByKbPath(absolutePath) : await loadBitByRel(relPath!)
+			}
 			if (bitBody) {
 				if (isKnowledgeFile) {
 					config.taskState.loadedKnowledgeFiles.add(absolutePath)
