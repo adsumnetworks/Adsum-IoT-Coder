@@ -308,6 +308,25 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			// retried the SAME wrong path twice, and dead-ended. The model can't list the catalog — the host can.
 			// Same-basename matches only, so a genuine typo gets its correction in one round.
 			const nearMisses = reachable ? await suggestNearMissBits(isAbsKbPath ? absolutePath : (relPath ?? "")) : []
+			// UNAMBIGUOUS near-miss → don't bounce it back at all (operator 0707: "shouldn't it be done
+			// automatically?"). Exactly one bit in the whole catalog has this filename, and the request is
+			// already inside the knowledge namespace — serve that bit directly, labelled with both paths so
+			// the transcript stays honest. Two+ matches stay an error (auto-picking would guess).
+			if (nearMisses.length === 1) {
+				const correctedRel = nearMisses[0]
+				const correctedBody = await loadBitByRel(correctedRel)
+				if (correctedBody) {
+					const correctedAbs = path.join(HostProvider.get().extensionFsPath, "iot-knowledge", correctedRel)
+					config.taskState.loadedKnowledgeFiles.add(correctedAbs)
+					await config.services.fileContextTracker.trackFileContext(correctedRel, "read_tool")
+					return (
+						`[Adsum knowledge bit — path auto-corrected. You asked for "${displayPath}", which does not ` +
+						`exist; the only catalog bit with that filename is "${correctedRel}", served below. Use ` +
+						`"${correctedRel}" (exact) for any future read of this bit.]\n\n` +
+						correctedBody
+					)
+				}
+			}
 			const pathHint =
 				nearMisses.length > 0
 					? `A bit with this FILENAME exists at a different path — you likely mis-derived the directory. ` +
