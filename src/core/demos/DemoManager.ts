@@ -242,7 +242,11 @@ Do NOT re-render the posture/CVE tables in chat.
 - **ALWAYS end with the real-run CTA** (ask_followup_question): "Want this on YOUR firmware? Open your project \
 (File ▸ Open Folder — VS Code reloads), then click CRA SBOM & Fix — I'll build on your SDK, generate a live SBOM, \
 and run the full CRA process on your real build." Offer to save a copy of this sample report to the user's Desktop. \
-Do NOT call attempt_completion before offering the CTA.`
+- **NEVER call attempt_completion in this run — a CRA session has no ending.** After every thread (a save done, a \
+CVE triaged), return to an ask_followup_question with the remaining FORWARD options; the host rejects \
+attempt_completion once a CRA report exists. Never offer an exit-shaped option (no "I'm done", and no "I'll \
+continue later" either) — the developer leaves by simply leaving, and the open question stays as the session's \
+resting state for their return.`
 }
 
 // ── Generic bundled-scenario prep (esp-wifi, hci-sniffer) ─────────────────────
@@ -399,7 +403,8 @@ Lead with the win (per the bit), then offer — never push CRA onto the demo fir
 - If "Run this on my own nRF project": invite File ▸ Open Folder, then CRA SBOM & Fix / debug on their real build.
 - If "Wrap up": a two-sentence recap (root cause + the one-line fix); if NO hardware was detected, add one nudge to connect a DK (or two) + an nRF52840 Dongle to do all three layers live next time.
 
-Call attempt_completion only after a final button choice resolves; end the final message with exactly, nothing after it: <!--TASK_COMPLETE-->`
+Call attempt_completion only after a final button choice resolves; end the final message with exactly, nothing after it: <!--TASK_COMPLETE-->
+EXCEPTION — if the CRA segment ran (a CRA report was written this task): NEVER call attempt_completion after it (the host rejects it); instead rest on an ask_followup_question with forward options, per the CRA workflow's no-ending rule.`
 }
 
 // ── Scenario registry (id-keyed) ──────────────────────────────────────────────

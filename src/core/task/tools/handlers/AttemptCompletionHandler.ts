@@ -36,13 +36,31 @@ function completingDemoScenarioId(config: TaskConfig): string | undefined {
 	return undefined
 }
 
+/** Explicit-end escape hatch for the CRA no-completion rule: true ONLY when the developer's latest typed
+ *  feedback plainly asks to end the session ("I'm done", "wrap it up", "that's all"). The CRA kbits never
+ *  offer an exit-shaped button, so the only legitimate end signal is the developer typing one — anything
+ *  else keeps the run parked on its open ask_followup_question. Scans the last user_feedback say only
+ *  (not tool text), so agent-authored content can't open the hatch. */
+const EXPLICIT_END_RE =
+	/\b(i'?m (all )?done|we'?re done|that'?s (all|it|enough)|wrap (it |this )?up|end (the |this )?(task|session|run|chat)|finish (the |this )?(task|run|session)|stop here|nothing else|no more for (now|today))\b/i
+function lastUserFeedbackRequestsEnd(config: TaskConfig): boolean {
+	const msgs = config.messageState.getClineMessages()
+	for (let i = msgs.length - 1; i >= 0; i--) {
+		const m = msgs[i]
+		if (m.type === "say" && m.say === "user_feedback") {
+			return typeof m.text === "string" && EXPLICIT_END_RE.test(m.text)
+		}
+	}
+	return false
+}
+
 /** True if a CRA readiness report already exists on disk under `<cwd>/compliance` (directly or in a `cra-*`
  *  run folder). The write-seam honesty guard (WriteToFileToolHandler) already validated any such file at write
  *  time, so on-disk evidence is enough to satisfy the completion guard's "was it actually written?" check.
  *  This prevents a false "presented but never wrote it" block when the in-memory `craReadinessReportWritten`
  *  flag was reset — e.g. the report was written in a prior turn, or a mid-session workspace-folder switch
  *  started a fresh task (a real ESP run was blocked 6× though CRA_READINESS.md existed on disk). */
-function readinessReportOnDisk(cwd: string): boolean {
+export function readinessReportOnDisk(cwd: string): boolean {
 	try {
 		const complianceDir = path.join(cwd, "compliance")
 		if (!existsSync(complianceDir)) {
@@ -159,17 +177,31 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			}
 		}
 
-		// No-"Task Complete" handoff (operator direction, CRA-scoped): a CRA conversation never "ends" — the
-		// developer's readiness work continues, so a CRA completion is a HANDOFF, not a terminal. Once a readiness
-		// report cleared the write seam this task, the completion result MUST open with the invisible
-		// `<!--NEXT_STEPS-->` marker (the app then renders a "Suggested next steps" card instead of the green "Task
-		// Completed" banner). Enforced here because the kbit rule alone drifted — a real open-project run shipped
-		// "the assessment is complete" with no marker + green banner. Scoped to CRA runs (craReadinessReportWritten);
-		// every other completion is untouched. Fails closed only for CRA: rewrite as a handoff, don't end the loop.
-		// Evidence-mode in the completion too (CRA-scoped): the written report is verdict-scanned at the write seam,
-		// but the completion/chat is NOT — so a real run leaked a "| Build | ✅ Clean |" summary table into the
-		// completion result. Run the same scanner on the CRA completion text; reject glyphs/verdicts so the chat
-		// stays evidence-mode. Fails open for non-CRA runs.
+		// No-ending rule (operator direction, CRA-scoped): a CRA run has NO completion at all — the session's
+		// resting state is an open ask_followup_question with FORWARD options, so the developer stays in the
+		// workbench and simply returns whenever they want. The earlier handoff-card design (`<!--NEXT_STEPS-->`
+		// completion) still ENDED the task and surfaced the post-task chooser cards; a real 0707 sample run showed
+		// exactly that, plus an "I'll continue later" option that closed the loop. So: once a readiness report
+		// cleared the write seam, attempt_completion is REJECTED outright and redirected to ask_followup_question.
+		// Escape hatch: if the developer EXPLICITLY asked to end (typed "I'm done" / "wrap up" / "that's all"),
+		// completion is allowed and the guards below (verdict-scan + NEXT_STEPS marker) shape it as a handoff.
+		if (config.taskState.craReadinessReportWritten && !lastUserFeedbackRequestsEnd(config)) {
+			config.taskState.consecutiveMistakeCount++
+			return formatResponse.toolError(
+				"A CRA run has no ending — do not call attempt_completion. End your turn with ask_followup_question " +
+					"instead: the question text = the thin at-a-glance counts + 'full report written to <absolute path>' + " +
+					"one neutral sentence; the options = 2–4 FORWARD moves only (triage the next CVE · enable the next " +
+					"posture gap · open your project & run it live · re-scan after a change · save a copy). NEVER an " +
+					"exit-shaped option — no 'I'm done', no 'that's all', and no pause options either ('I'll continue " +
+					"later' / 'Save & come back' are equally banned): the developer leaves by simply leaving, and this " +
+					"open question remains the session's resting state for their return.",
+			)
+		}
+
+		// Explicit-end path only (see above): the completion is still a HANDOFF, never a terminal. The result MUST
+		// open with the invisible `<!--NEXT_STEPS-->` marker (rendered as a "Suggested next steps" card, not the
+		// green "Task Completed" banner), and it is verdict-scanned — a real run leaked a "| Build | ✅ Clean |"
+		// scorecard table into the completion text. Fails open for non-CRA runs.
 		if (config.taskState.craReadinessReportWritten) {
 			const leaks = scanForVerdictLeaks(result)
 			if (leaks.length > 0) {
