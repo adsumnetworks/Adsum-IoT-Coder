@@ -32,13 +32,17 @@
 
 <p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
 
-## What's New <sup>`v0.1.7`</sup>
+## What's New <sup>`v0.1.8`</sup>
+
+**v0.1.8 — hardening.** Smoother and safer CRA runs: the flow always leaves you a clear next step, recovers on its own from transient hiccups, and never compromises your build to get a result — plus a slimmer input area. *[Full changelog](./CHANGELOG.md).*
+
+**The flagship, shipped in `v0.1.7`:**
 
 <img src="assets/icons/whatsnew-cra.png" width="18" valign="middle" alt="" /> &nbsp;**CRA readiness, one click.** Run it on your build and get a machine-readable SBOM (SPDX) plus a full EU Cyber Resilience Act readiness report, written to a `compliance/` folder, on both nRF and ESP. A readiness aid to help you get ahead of the deadlines.
 
 <img src="assets/icons/whatsnew-posture.png" width="18" valign="middle" alt="" /> &nbsp;**Secure-by-design posture, from your real config.** It reads what your build actually sets, secure boot, signed updates, debug-port lock, secure storage and more, and lays out each requirement, where your build stands, and the fix, ranked so you tackle the biggest gap first.
 
-<img src="assets/icons/whatsnew-cve.png" width="18" valign="middle" alt="" /> &nbsp;**Bring a CVE, and close it.** Hand it a CVE from a vendor advisory: it confirms the affected component is really in your build, links the advisory, then walks you through bumping the version, rebuilding, and regenerating the SBOM.
+<img src="assets/icons/whatsnew-cve.png" width="18" valign="middle" alt="" /> &nbsp;**Scan your SBOM for known CVEs — and close them.** The check matches your build's identifiable components against public advisory databases and lists what's found. Hand it a specific CVE and it confirms the affected component is really in your build, links the advisory, then walks you through bumping the version, rebuilding, and regenerating the SBOM.
 
 <img src="assets/icons/whatsnew-fix.png" width="18" valign="middle" alt="" /> &nbsp;**Fix in the same loop.** It doesn't just flag gaps. It helps you wire the fix, a secure bootloader for example, rebuild, and re-verify, without leaving the agent.
 
@@ -51,6 +55,7 @@
 One click runs a build-time readiness check for the **EU Cyber Resilience Act (CRA)**, on both nRF and ESP. A readiness snapshot to help you prepare, **not a conformity assessment and not legal advice.**
 
 - **SBOM from your real build.** A machine-readable software bill of materials (SPDX), the CRA's named artifact, generated from your actual build with the vendor-native tools.
+- **Known-CVE scan across your SBOM.** Matches your build's identifiable components (CPE/PURL) against public advisory databases — the EU's EUVD, NVD, and OSV — and lists what's found, with coverage stated honestly. Never a pass/fail verdict.
 - **Secure-by-design posture** against your build's actual configuration: secure boot, signed updates, debug-port lock, secure pairing, secure storage and more, each with the plain-English requirement and the fix, ranked so you tackle the biggest gap first.
 - **Bring a CVE, and close it.** Hand it a CVE from a vendor advisory: it confirms the affected component is really in your build (a literal SBOM lookup), links the advisory, then helps you bump the version, rebuild, and regenerate the SBOM.
 - **Fix in the loop, not just flag.** It helps you wire the top fix (a secure bootloader, for example), rebuild, and re-verify, without leaving the agent.
@@ -155,7 +160,7 @@ Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi, and one-clic
 
 ## Limitations
 
-We publish what is true today. **Adsum is an AI-based coding agent and can make mistakes.** The CRA workflow is a readiness aid, not a conformity assessment and not legal advice; only a notified body or your formal assessment establishes conformity. The CVE flow confirms a component you name is present in your build and helps you patch it; **it is not a vulnerability scanner and does not search for unknown CVEs.** The benchmark is six BLE tasks on a single NCS version: a proof of concept, not statistical significance, and an ESP benchmark suite is on the roadmap (v0.2). nRF, nRF Connect SDK, and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA; ESP32 and ESP-IDF are trademarks of Espressif Systems; Zephyr is a trademark of the Linux Foundation; Visual Studio Code is a trademark of Microsoft. This is an independent project, not affiliated with or endorsed by any of them.
+We publish what is true today. **Adsum is an AI-based coding agent and can make mistakes.** The CRA workflow is a readiness aid, not a conformity assessment and not legal advice; only a notified body or your formal assessment establishes conformity. The CRA check scans your SBOM's identifiable components against public advisory databases and reports known CVEs with coverage stated; **coverage is limited to components carrying identifiers (CPE/PURL), and it does not find undisclosed or zero-day vulnerabilities.** You can also hand it a specific CVE to confirm against your build and patch. The benchmark is six BLE tasks on a single NCS version: a proof of concept, not statistical significance, and an ESP benchmark suite is on the roadmap (v0.2). nRF, nRF Connect SDK, and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA; ESP32 and ESP-IDF are trademarks of Espressif Systems; Zephyr is a trademark of the Linux Foundation; Visual Studio Code is a trademark of Microsoft. This is an independent project, not affiliated with or endorsed by any of them.
 
 ## Privacy & Security
 
