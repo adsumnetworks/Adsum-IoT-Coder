@@ -15,7 +15,7 @@ import DynamicTextArea from "react-textarea-autosize"
 import { useWindowSize } from "react-use"
 import styled from "styled-components"
 import AutoApproveChip from "@/components/chat/auto-approve-menu/AutoApproveChip"
-import { BRAND_CYAN_600 } from "@/components/chat/brandColors"
+import { BRAND_CYAN_600, brandAlpha } from "@/components/chat/brandColors"
 import ContextMenu from "@/components/chat/ContextMenu"
 import { CHAT_CONSTANTS } from "@/components/chat/chat-view/constants"
 import ModelPickerModal from "@/components/chat/ModelPickerModal"
@@ -1623,13 +1623,19 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							cursor: "text",
 							flex: 1,
 							zIndex: 1,
+							// Focus ring in brand CYAN (UI golden rules: cyan = the interactive/affordance layer;
+							// coral = identity, never the focal interactive treatment) + a soft glow, so the
+							// focused input reads as one action surface with the cyan send icon (operator 0707,
+							// Claude Code-style focus highlight).
 							outline:
 								isDraggingOver && !showUnsupportedFileError // Only show drag outline if not showing error
-									? "2px dashed var(--vscode-focusBorder)"
+									? `2px dashed ${BRAND_CYAN_600}`
 									: isTextAreaFocused
-										? `1px solid ${mode === "plan" ? PLAN_MODE_COLOR : "var(--vscode-focusBorder)"}`
+										? `1px solid ${mode === "plan" ? PLAN_MODE_COLOR : BRAND_CYAN_600}`
 										: "none",
 							outlineOffset: isDraggingOver && !showUnsupportedFileError ? "1px" : "0px", // Add offset for drag-over outline
+							boxShadow:
+								isTextAreaFocused && !isDraggingOver ? `0 0 6px ${brandAlpha(BRAND_CYAN_600, 0.35)}` : undefined,
 						}}
 						value={inputValue}
 					/>
