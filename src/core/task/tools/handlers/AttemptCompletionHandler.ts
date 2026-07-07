@@ -158,6 +158,26 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			}
 		}
 
+		// No-"Task Complete" handoff (operator direction, CRA-scoped): a CRA conversation never "ends" — the
+		// developer's readiness work continues, so a CRA completion is a HANDOFF, not a terminal. Once a readiness
+		// report cleared the write seam this task, the completion result MUST open with the invisible
+		// `<!--NEXT_STEPS-->` marker (the app then renders a "Suggested next steps" card instead of the green "Task
+		// Completed" banner). Enforced here because the kbit rule alone drifted — a real open-project run shipped
+		// "the assessment is complete" with no marker + green banner. Scoped to CRA runs (craReadinessReportWritten);
+		// every other completion is untouched. Fails closed only for CRA: rewrite as a handoff, don't end the loop.
+		if (config.taskState.craReadinessReportWritten && !result.trimStart().startsWith("<!--NEXT_STEPS-->")) {
+			config.taskState.consecutiveMistakeCount++
+			return formatResponse.toolError(
+				"A CRA run is a HANDOFF, not an ending — never tell the developer the work is complete/done/finished. " +
+					"Re-send attempt_completion with a result that: (1) STARTS with the exact line `<!--NEXT_STEPS-->` " +
+					"(the app renders it as a 'Suggested next steps' card); (2) gives the thin at-a-glance counts + the " +
+					"one-line evidence legend + 'full report written to <absolute path>'; (3) offers 2–4 FORWARD next steps " +
+					"framed as 'whenever you're ready' (open your project & run it live · triage the next CVE · enable the " +
+					"next posture gap · re-scan after a change · save a copy). Do NOT include an 'I'm done / that's all' " +
+					"option and do NOT describe the run as complete — the developer stays in the loop and can return anytime.",
+			)
+		}
+
 		config.taskState.consecutiveMistakeCount = 0
 
 		// Run PreToolUse hook before execution
