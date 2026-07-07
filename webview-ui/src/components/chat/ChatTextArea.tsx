@@ -1788,17 +1788,25 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									currentMode={mode}
 									isOpen={showModelSelector}
 									onOpenChange={setShowModelSelector}>
-									<ModelButtonWrapper ref={buttonRef}>
-										<ModelDisplayButton
-											disabled={false}
-											isActive={showModelSelector}
-											onClick={handleModelButtonClick}
-											role="button"
-											tabIndex={0}
-											title="Select Model / API Provider">
-											<ModelButtonContent className="text-xs">{modelDisplayName}</ModelButtonContent>
-										</ModelDisplayButton>
-									</ModelButtonWrapper>
+									{/* App Tooltip (instant), not the native title= (browser-delayed/flaky) —
+									    matches the @ button so all three controls feel identical. */}
+									<Tooltip>
+										<TooltipContent>Select model / API provider</TooltipContent>
+										<TooltipTrigger>
+											<ModelButtonWrapper ref={buttonRef}>
+												<ModelDisplayButton
+													disabled={false}
+													isActive={showModelSelector}
+													onClick={handleModelButtonClick}
+													role="button"
+													tabIndex={0}>
+													<ModelButtonContent className="text-xs">
+														{modelDisplayName}
+													</ModelButtonContent>
+												</ModelDisplayButton>
+											</ModelButtonWrapper>
+										</TooltipTrigger>
+									</Tooltip>
 								</ModelPickerModal>
 							</ModelContainer>
 						</ButtonGroup>
