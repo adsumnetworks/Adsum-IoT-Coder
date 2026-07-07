@@ -59,7 +59,7 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		historyMatch: "Run CRA SBOM & Fix on a pre-built reference sample",
 		platform: "nrf",
 		icon: "shield",
-		// isNew handed over to hci-sniffer (one NEW/cyan-contour row per picker; CRA shipped in 0.1.7).
+		isNew: true, // operator 0707: CRA keeps the New flag AND stays on top (defined before hci-sniffer; the stable sort preserves this order among New rows).
 	},
 	// HCI + Sniffer (v5): ACTIVE ON THIS BRANCH ONLY for Omar's full hardware-matrix test (all option/DK/dongle
 	// combos) — do NOT merge to a release until that gate passes (registry-mode F5 + `kbit:check-drift` first).
