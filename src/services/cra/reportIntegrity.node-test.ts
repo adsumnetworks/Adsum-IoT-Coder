@@ -62,6 +62,17 @@ test("extractClaimedPackageCount: pulls the SBOM-summary package count", () => {
 	assert.equal(extractClaimedPackageCount("no count stated"), null)
 })
 
+test("extractClaimedPackageCount: leading-number form + queryable suffix (F5 0707 false-positive)", () => {
+	// A real run's honest phrasing — 62 is the claim, 10 is the queryable count; the old trailing-only
+	// regex read 10 and the guard rejected the correct report 3×.
+	assert.equal(extractClaimedPackageCount("62 total packages: 10 queryable (carry CPE/PURL), 52 with no identifier"), 62)
+	assert.equal(extractClaimedPackageCount("SBOM has 181 total packages."), 181)
+	// Trailing form followed by "queryable" is NOT a total-count claim.
+	assert.equal(extractClaimedPackageCount("Total packages: 10 queryable"), null)
+	// Plain trailing form still works.
+	assert.equal(extractClaimedPackageCount("Total packages: 62 — 10 queryable"), 62)
+})
+
 test("looksLikeReadinessReport: markdown + disclaimer + SBOM mention", () => {
 	assert.equal(looksLikeReadinessReport("/p/compliance/CRA_READINESS.md", `${DISCLAIMER}\n## SBOM`), true)
 	assert.equal(looksLikeReadinessReport("/p/compliance/sbom/app.spdx", `${DISCLAIMER}\n## SBOM`), false) // not .md

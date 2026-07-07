@@ -38,12 +38,23 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 	private hotTimer: NodeJS.Timeout | null = null
 
 	async run(terminal: vscode.Terminal, command: string) {
-		// When command does not produce any output, we can assume the shell integration API failed and as a fallback return the current terminal contents
-		const returnCurrentTerminalContents = async (): Promise<string | undefined> => {
+		// When command does not produce any output, return the current terminal contents as a fallback.
+		// Two very different situations share this helper — the message must not conflate them (a real CRA run
+		// read the old blanket "technical issue" text on a silent `mkdir -p` and treated success as a capture
+		// failure; the kbits even carry a rule for it):
+		//  - "silent": shell integration RAN the command and the stream completed with no output — for most
+		//    such commands (mkdir, cp, Set-Content, …) that IS success, not a capture problem.
+		//  - "no-integration": we sent the command blind (no shell integration) — output genuinely
+		//    could not be captured and success is unknown.
+		const returnCurrentTerminalContents = async (reason: "silent" | "no-integration"): Promise<string | undefined> => {
 			try {
 				const terminalSnapshot = await getLatestTerminalOutput()
 				if (terminalSnapshot && terminalSnapshot.trim()) {
-					return `The command's output could not be captured due to some technical issue, however it has been executed successfully. Here's the current terminal's content to help you get the command's output:\n\n${terminalSnapshot}`
+					const framing =
+						reason === "silent"
+							? "The command ran to completion and produced no output stream — many commands (mkdir, cp, Set-Content, …) are silent on success. Do NOT treat this as a failure or as evidence about state; if the result matters, verify it directly (list/read the target). Current terminal content for reference:"
+							: "The command's output could not be captured (this terminal has no shell-integration capture), so its result is unverified from the output alone. Here's the current terminal's content to help you get the command's output:"
+					return `${framing}\n\n${terminalSnapshot}`
 				}
 			} catch (error) {
 				console.error("Error capturing terminal output:", error)
@@ -197,7 +208,7 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 			if (!this.fullOutput.trim()) {
 				// No output captured via shell integration, trying fallback
 				telemetryService.captureTerminalOutputFailure(TerminalOutputFailureReason.TIMEOUT, "vscode")
-				const postCompletionOutput = await returnCurrentTerminalContents()
+				const postCompletionOutput = await returnCurrentTerminalContents("silent")
 				// Check if fallback worked
 				if (postCompletionOutput) {
 					telemetryService.captureTerminalExecution(true, "vscode", "clipboard")
@@ -243,7 +254,7 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 			await new Promise((resolve) => setTimeout(resolve, waitMs))
 
 			// For terminals without shell integration, also try to capture terminal content
-			const postCompletionOutput = await returnCurrentTerminalContents()
+			const postCompletionOutput = await returnCurrentTerminalContents("no-integration")
 			// Check if clipboard fallback worked
 			if (postCompletionOutput) {
 				telemetryService.captureTerminalExecution(true, "vscode", "clipboard")

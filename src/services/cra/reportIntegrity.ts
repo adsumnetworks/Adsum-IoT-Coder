@@ -50,10 +50,19 @@ export function detectSbomTool(text: string): string | null {
 	return null
 }
 
-/** A package count explicitly claimed in the report's SBOM summary ("Total packages: 91" / "| Total packages | 91 |"). */
+/**
+ * A package count explicitly claimed in the report's SBOM summary ("Total packages: 91" / "| Total packages | 91 |"
+ * / "62 total packages"). The number may sit BEFORE the phrase — a real run's honest "62 total packages: 10
+ * queryable (carry CPE/PURL)" was misread by a trailing-only match as claiming 10, and the guard rejected the
+ * correct report 3×. Prefer the leading form, and never take a trailing number that is itself the queryable count.
+ */
 export function extractClaimedPackageCount(text: string): number | null {
-	const m = text.match(/total\s+packages\b[^\d]{0,16}(\d{1,6})/i)
-	return m ? Number(m[1]) : null
+	const leading = text.match(/(\d{1,6})\s+total\s+packages\b/i)
+	if (leading) {
+		return Number(leading[1])
+	}
+	const trailing = text.match(/total\s+packages\b[^\d\n]{0,16}(\d{1,6})(?!\d)(?!\s*queryable\b)/i)
+	return trailing ? Number(trailing[1]) : null
 }
 
 function assertsCleanCve(text: string): boolean {
@@ -191,9 +200,15 @@ export function checkReadinessReportIntegrity(input: {
 	if (input.sbom) {
 		const claimed = extractClaimedPackageCount(text)
 		if (claimed != null && claimed !== input.sbom.coverage.total) {
+			// Quote the exact matched sentence — a real run spent 3 rejected rewrites hunting for WHERE the
+			// guard read the wrong number because the error only restated the parsed value.
+			const at = text.match(/[^\n]{0,60}total\s+packages[^\n]{0,60}/i)?.[0]?.trim()
 			issues.push({
 				kind: "package-count",
-				detail: `Report states "Total packages: ${claimed}", but the SBOM on disk has ${input.sbom.coverage.total}. Use the real package count from the SPDX.`,
+				detail:
+					`Report claims ${claimed} total packages, but the SBOM on disk has ${input.sbom.coverage.total}. ` +
+					`Use the real package count from the SPDX.` +
+					(at ? ` The claim was read from this line: "${at}"` : ""),
 			})
 		}
 	}
