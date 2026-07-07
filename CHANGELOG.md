@@ -2,6 +2,27 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
+## [0.1.8] - 2026-07-07
+
+A hardening release for the CRA Readiness Check, driven by real field runs on Windows and macOS.
+
+### CRA runs don't dead-end anymore
+
+- **A CRA run now rests on an open question, never a "task complete" box.** No more dead-end endings or "I'll continue later" traps — the run always offers concrete forward actions (triage this CVE, start closing this gap), and you leave simply by moving on. The old completion scorecards (with pass/fail glyphs) are blocked at the source.
+- **Knowledge-loading is self-healing.** A transient network blip on a knowledge fetch now retries silently; a mistyped knowledge path auto-corrects when the catalog has exactly one match (a real run dead-ended on `cra/rules/core.md` vs `cra/core.md` — that class of failure is gone). Error messages now say precisely what failed: transient fetch vs not-in-catalog vs registry unreachable.
+- **The readiness-report integrity guard is fairer and clearer.** It no longer misreads honest phrasing like "62 total packages: 10 queryable" as a wrong count (a correct report was rejected 3× for this), and every rejection now quotes the exact line it objected to, so a rewrite lands in one attempt.
+
+### Honesty & safety hardening (from real run reviews)
+
+- **Never weakens your project to make a scan work.** New hard rules: the agent must never disable your security features (secure boot, flash encryption, signed OTA) to force a build, must never edit your SDK/toolchain installation (a run had patched a script inside `C:\ncs\` — now banned), and if an earlier scan run left your config modified, the posture check detects it and offers a restore instead of counting those as *your* gaps.
+- **ESP SBOM generation fixed for IDF 5.x.** The documented `--output-file` flag is used, and `idf.py sbom-create --spdx-file` (absent on IDF 5.5.4) is version-checked before use instead of failing.
+- **Silent commands aren't "failures" anymore.** Commands that legitimately produce no output (`mkdir`, `cp`, …) no longer report a scary "technical issue" — the agent is told plainly: silent success, verify state directly if it matters.
+
+### Compact input area
+
+- The input stack is dramatically slimmer: one-line input that grows as you type, auto-approve as a compact ⚡ chip next to **@**, and the wide Cancel/Resume buttons replaced by a Claude-style **send ↔ stop** morphing icon (brand cyan, instant tooltips). The chat input glows cyan on focus.
+- The "What's new" card icon is now theme-consistent (no more OS-style emoji).
+
 ## [0.1.7] - 2026-06-24
 
 ### CRA Readiness Check — get CRA-ready as you build
