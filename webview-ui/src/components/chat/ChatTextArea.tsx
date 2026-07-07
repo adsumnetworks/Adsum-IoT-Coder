@@ -1625,11 +1625,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						}}
 						value={inputValue}
 					/>
-					{!inputValue && selectedImages.length === 0 && selectedFiles.length === 0 && (
-						<div className="text-xs absolute bottom-5 left-6.5 right-16 text-(--vscode-input-placeholderForeground)/50 whitespace-nowrap overflow-hidden text-ellipsis pointer-events-none z-1">
-							Type @ for context.
-						</div>
-					)}
+					{/* The "Type @ for context." secondary hint line was removed (operator: input area too tall,
+					    especially zoomed) — the @ affordance is already carried by the Add-Context button + typing @. */}
 					{(selectedImages.length > 0 || selectedFiles.length > 0) && (
 						<Thumbnails
 							files={selectedFiles}
@@ -1707,7 +1704,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						</div>
 					</div>
 				</div>
-				<div className="flex justify-between items-center -mt-[2px] px-3 pb-2">
+				<div className="flex justify-between items-center -mt-[4px] px-3 pb-1">
 					{/* Always render both components, but control visibility with CSS */}
 					<div className="relative flex-1 min-w-0 h-5">
 						{/* ButtonGroup - always in DOM but visibility controlled */}
@@ -1722,8 +1719,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										data-testid="context-button"
 										onClick={handleContextButtonClick}>
 										<ButtonContainer>
+											{/* Icon-only (tooltip carries the label) — the text label doubled the
+											    visual weight of a row the operator flagged as clutter. */}
 											<AtSignIcon size={12} />
-											<span style={{ fontSize: "10px", marginLeft: "4px" }}>Add Context</span>
 										</ButtonContainer>
 									</VSCodeButton>
 								</TooltipTrigger>
@@ -1777,7 +1775,6 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				</div>
 			</div>
 		)
-
 	},
 )
 
