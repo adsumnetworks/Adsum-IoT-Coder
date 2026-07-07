@@ -371,6 +371,32 @@ export async function loadBitByKbPath(absPath: string): Promise<string | null> {
 	return body || null
 }
 
+/** The bit id for an absolute `iot-knowledge/…` path (same parsing as loadBitByKbPath), or null. */
+export function bitIdForKbPath(absPath: string): string | null {
+	const marker = `/${KNOWLEDGE_DIR}/`
+	const norm = absPath.replace(/\\/g, "/")
+	const i = norm.lastIndexOf(marker)
+	if (i === -1) {
+		return null
+	}
+	const rel = norm.slice(i + marker.length)
+	if (!rel || rel.startsWith("..")) {
+		return null
+	}
+	return deriveIdFromRel(rel)
+}
+
+/**
+ * True if the id is listed in the downloaded catalog (manifest). Used for precise read-error attribution:
+ * "listed but the blob fetch failed" (transient — retry) is a different failure from "not in the registry
+ * at all" (wrong path / unpublished) — a real Windows field report got the misleading "not found" wording
+ * for what was likely a transient blob failure, because the error branch only re-checked manifest
+ * reachability.
+ */
+export async function downloadedBitKnown(id: string): Promise<boolean> {
+	return (await downloadedManifest()).has(id)
+}
+
 /**
  * Top-level dirs under `iot-knowledge/` whose files are bits. Used to recognise a bundled-tree
  * RELATIVE path (no `iot-knowledge/` prefix) so ordinary missing project files fall through.

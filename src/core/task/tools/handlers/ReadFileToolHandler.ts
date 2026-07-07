@@ -6,7 +6,15 @@ import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
-import { isBareBitPath, isRegistryReachable, loadBitByKbPath, loadBitByRel } from "@/services/knowledge/KnowledgeResolver"
+import {
+	bitIdForKbPath,
+	deriveIdFromRel,
+	downloadedBitKnown,
+	isBareBitPath,
+	isRegistryReachable,
+	loadBitByKbPath,
+	loadBitByRel,
+} from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import { ClineSayTool } from "@/shared/ExtensionMessage"
 import { ClineDefaultTool } from "@/shared/tools"
@@ -255,8 +263,12 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 				)
 			}
 			// Couldn't resolve this knowledge bit. Give a clear, actionable reason instead of a bare
-			// "file not found": a downloaded bit when the registry is unreachable, vs. a wrong path.
+			// "file not found", attributing the ACTUAL failure stage: (a) registry unreachable, (b) listed in
+			// the catalog but the content fetch failed just now (transient — a real Windows field report got
+			// the misleading "not found" wording for this case), or (c) genuinely not in the registry.
 			const reachable = await isRegistryReachable()
+			const bitId = isAbsKbPath ? bitIdForKbPath(absolutePath) : deriveIdFromRel(relPath!.replace(/\\/g, "/"))
+			const listedButFetchFailed = reachable && bitId !== null && (await downloadedBitKnown(bitId))
 			// Anti-fabrication guard (domain-agnostic): a required Adsum bit that won't load must NOT be
 			// reconstructed from general knowledge, memory, or a prior report — that yields an ungrounded
 			// result (observed: a CRA run improvised a whole assessment when cra-readiness was unavailable).
@@ -264,6 +276,14 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			const antiImprovise =
 				` Do NOT reconstruct or improvise this Adsum workflow from general knowledge, memory, or a prior ` +
 				`report — tell the developer the workflow is currently unavailable and stop.`
+			if (listedButFetchFailed) {
+				return formatResponse.toolError(
+					`Knowledge bit "${displayPath}" IS in the registry catalog, but fetching its content just failed ` +
+						`(a transient network/server blip — this is NOT a wrong path and NOT a missing bit). Retry the ` +
+						`same read_file once; if it still fails, tell the developer the bit is temporarily unavailable ` +
+						`and to retry in a minute.${antiImprovise}`,
+				)
+			}
 			return formatResponse.toolError(
 				reachable
 					? `Knowledge bit not found: "${displayPath}". It is not bundled and not in the registry. ` +
