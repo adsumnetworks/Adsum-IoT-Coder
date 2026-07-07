@@ -18,6 +18,10 @@ A hardening release for the CRA Readiness Check, driven by real field runs on Wi
 - **ESP SBOM generation fixed for IDF 5.x.** The documented `--output-file` flag is used, and `idf.py sbom-create --spdx-file` (absent on IDF 5.5.4) is version-checked before use instead of failing.
 - **Silent commands aren't "failures" anymore.** Commands that legitimately produce no output (`mkdir`, `cp`, …) no longer report a scary "technical issue" — the agent is told plainly: silent success, verify state directly if it matters.
 
+### Windows reliability
+
+- **The terminal just works on a fresh Windows install.** New Windows machines ship PowerShell locked down (Restricted execution policy), which silently blocks VS Code's shell integration so the agent can't read command output. The extension now detects and repairs this in the background at startup — sets the execution policy to RemoteSigned (current-user scope), selects a working default terminal profile, and restarts stale terminals, with a dismissible note of what changed. Group Policy-managed machines are left untouched.
+
 ### Compact input area
 
 - The input stack is dramatically slimmer: one-line input that grows as you type, auto-approve as a compact ⚡ chip next to **@**, and the wide Cancel/Resume buttons replaced by a Claude-style **send ↔ stop** morphing icon (brand cyan, instant tooltips). The chat input glows cyan on focus.
