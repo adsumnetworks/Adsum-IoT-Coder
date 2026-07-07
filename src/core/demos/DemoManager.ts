@@ -404,7 +404,7 @@ Lead with the win (per the bit), then offer — never push CRA onto the demo fir
     - "Check this build against the EU CRA (SBOM · known CVEs · posture)"
     - "Wrap up"
 - If the CRA option: open with the bit's ONE bridge sentence ("Ship-ready here means the EU CRA lens…"), then run the CRA SBOM & Fix Sample INLINE on the SAME central_uart reference. read_file ${craWorkflow} (its Sample-run mode; if that read FAILS, STOP and say CRA is unavailable — never reconstruct it). Then triggerCveScan with sbom=${craSbom} and build=${craBuild}. Follow cra-readiness's Sample-run mode (the 5 plain-English phases; the "# CRA SBOM & Fix — central_uart (reference sample)" title + the "readiness aid — NOT a conformity assessment" disclaimer; write the report, then present a THIN headline), and END with its real-run CTA ("Want this on YOUR firmware? Open your project…").
-- If "Run this on my own nRF project": invite File ▸ Open Folder, then CRA SBOM & Fix / debug on their real build.
+- If "Run this on my own nRF project": follow the bit's honest reload handoff — opening a folder RELOADS VS Code and ENDS this chat; say so plainly, point them at the welcome cards after the reload, and NEVER offer "I've opened it — go"/"re-scan" or any option implying this chat survives the reload (a real run looped 3× on that). Then rest on the ask with only the options that stay live in THIS window.
 - If "Wrap up": a two-sentence recap (root cause + the one-line fix), delivered in a message that still ENDS on the resting ask below; if NO hardware was detected, one of its options is connecting a DK (or two) + an nRF52840 Dongle to do all three layers live.
 
 === NO ENDING (same rule as the CRA workflow) ===
