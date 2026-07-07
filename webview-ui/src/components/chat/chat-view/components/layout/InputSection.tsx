@@ -10,6 +10,8 @@ interface InputSectionProps {
 	placeholderText: string
 	shouldDisableFilesAndImages: boolean
 	selectFilesAndImages: () => Promise<void>
+	/** Send-icon morph (stop while streaming / resume on a paused task) — computed in ChatView. */
+	morph?: { kind: "stop" | "resume"; run: () => void }
 }
 
 /**
@@ -22,6 +24,7 @@ export const InputSection: React.FC<InputSectionProps> = ({
 	placeholderText,
 	shouldDisableFilesAndImages,
 	selectFilesAndImages,
+	morph,
 }) => {
 	const {
 		activeQuote,
@@ -61,6 +64,7 @@ export const InputSection: React.FC<InputSectionProps> = ({
 				<ChatTextArea
 					activeQuote={activeQuote}
 					inputValue={inputValue}
+					morph={morph}
 					onFocusChange={handleFocusChange}
 					onHeightChange={() => {
 						if (isAtBottom) {
