@@ -28,6 +28,10 @@ describe("verdictScan — leaks that MUST be caught", () => {
 		["bare ✅ as a table cell value", "| Secure boot | ✅ | MCUboot present |"],
 		["PASS grade", "Secure boot: PASS"],
 		["FAIL grade in a cell", "| APPROTECT | FAIL |"],
+		// 0706-softAP: the completion leaked a `| Dimension | Result |` scorecard with ✅ cells — exactly what the
+		// host's CRA-completion verdict-scan (AttemptCompletionHandler) now rejects. Anchor both cell shapes here.
+		["softAP completion ✅ Clean cell", "| **Build** | ✅ Clean build for `esp32c6`, IDF 6.0.1 |"],
+		["softAP completion ✅ Generated cell", "| **SBOM** | ✅ Generated — 62 components |"],
 		["'gap remediated' done-word", "Good — that gap remediated in the rebuild."],
 		["passive 'has been mitigated'", "The CVE has been mitigated."],
 		["paraphrased 'satisfies the requirement'", "Your build satisfies the requirement for secure boot."],

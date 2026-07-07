@@ -9,6 +9,7 @@ import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { showSystemNotification } from "@integrations/notifications"
 import { getInstallId } from "@services/adsum/InstallIdentity"
 import { looksLikeCraReportContent, looksLikeInlineCraReport } from "@services/cra/reportIntegrity"
+import { scanForVerdictLeaks } from "@services/knowledge/honesty/verdictScan"
 import { telemetryService } from "@services/telemetry"
 import { findLastIndex } from "@shared/array"
 import { COMPLETION_RESULT_CHANGES_FLAG } from "@shared/ExtensionMessage"
@@ -165,6 +166,24 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 		// Completed" banner). Enforced here because the kbit rule alone drifted — a real open-project run shipped
 		// "the assessment is complete" with no marker + green banner. Scoped to CRA runs (craReadinessReportWritten);
 		// every other completion is untouched. Fails closed only for CRA: rewrite as a handoff, don't end the loop.
+		// Evidence-mode in the completion too (CRA-scoped): the written report is verdict-scanned at the write seam,
+		// but the completion/chat is NOT — so a real run leaked a "| Build | ✅ Clean |" summary table into the
+		// completion result. Run the same scanner on the CRA completion text; reject glyphs/verdicts so the chat
+		// stays evidence-mode. Fails open for non-CRA runs.
+		if (config.taskState.craReadinessReportWritten) {
+			const leaks = scanForVerdictLeaks(result)
+			if (leaks.length > 0) {
+				const samples = [...new Set(leaks.map((l) => l.match))].slice(0, 5).join(", ")
+				config.taskState.consecutiveMistakeCount++
+				return formatResponse.toolError(
+					`This CRA completion uses verdict-style status (${samples}${leaks.length > 5 ? ", …" : ""}). The ` +
+						"completion/chat is evidence-mode too — no ✅/⚠️/❌/✓, no PASS/Clean/Strong/fixed, no status table. " +
+						"Re-send a THIN handoff: the at-a-glance counts, the report path, and forward next steps — state the " +
+						"literal evidence, never a verdict.",
+				)
+			}
+		}
+
 		if (config.taskState.craReadinessReportWritten && !result.trimStart().startsWith("<!--NEXT_STEPS-->")) {
 			config.taskState.consecutiveMistakeCount++
 			return formatResponse.toolError(
