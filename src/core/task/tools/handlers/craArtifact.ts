@@ -57,6 +57,9 @@ export function commandGeneratesCraSbom(command: string): boolean {
 const CRA_REPORT_FILE_RE = /(?:CRA_READINESS|cra[_-]?readiness|cra[_-]?sbom)[^\s'"]*\.md\b/i
 // A shell write MECHANISM (so `cat …/CRA_READINESS.md` is NOT flagged — only writes).
 const SHELL_WRITE_OP_RE = /(?:>>?|\btee\b|\bdd\b[^|]*\bof=|\bcp\b|\bmv\b|\binstall\b)/i
+// Null-sink / fd-duplication redirects carry no payload — `2>nul`, `2>/dev/null`, `>$null`, `2>&1`. A real run's
+// read-only `dir /s /b "…cra-readiness.md" 2>nul` lookup was refused because the bare `>` matched as a write op.
+const NULL_SINK_REDIRECT_RE = /\d*>>?\s*(?:&\d|nul\b|\/dev\/null\b|\$null\b)/gi
 
 /**
  * True if a shell command would WRITE the CRA readiness report (vs the model using `write_to_file`). The guarded
@@ -68,5 +71,8 @@ const SHELL_WRITE_OP_RE = /(?:>>?|\btee\b|\bdd\b[^|]*\bof=|\bcp\b|\bmv\b|\binsta
  * the write_to_file path.
  */
 export function commandWritesCraReport(command: string): boolean {
-	return CRA_REPORT_FILE_RE.test(command) && SHELL_WRITE_OP_RE.test(command)
+	// Strip payload-less redirects first so `dir … 2>nul` / `… 2>/dev/null` / `… 2>&1` read-only lookups
+	// don't trip the write-op test (observed false-positive on a real Windows run).
+	const withoutNullSinks = command.replace(NULL_SINK_REDIRECT_RE, " ")
+	return CRA_REPORT_FILE_RE.test(withoutNullSinks) && SHELL_WRITE_OP_RE.test(withoutNullSinks)
 }

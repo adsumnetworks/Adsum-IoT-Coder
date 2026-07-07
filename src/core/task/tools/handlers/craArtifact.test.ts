@@ -78,4 +78,17 @@ describe("commandWritesCraReport (design/25 T2a — shell-redirect backstop)", (
 		assert.equal(commandWritesCraReport("echo hi > notes.txt"), false)
 		assert.equal(commandWritesCraReport("ls compliance/"), false)
 	})
+	test("null-sink/fd-dup redirects on read-only lookups → false (a real Windows run's `dir … 2>nul` was refused)", () => {
+		assert.equal(
+			commandWritesCraReport(
+				'cmd /c "dir /s /b \\"c:\\\\ext\\\\iot-knowledge\\\\cra\\\\workflows\\\\cra-readiness.md\\" 2>nul"',
+			),
+			false,
+		)
+		assert.equal(commandWritesCraReport("find / -name CRA_READINESS.md 2>/dev/null"), false)
+		assert.equal(commandWritesCraReport("Get-Item compliance\\CRA_READINESS.md 2>$null"), false)
+		assert.equal(commandWritesCraReport("cat compliance/CRA_READINESS.md 2>&1"), false)
+		// …but a real write with a null-sink alongside is STILL caught
+		assert.equal(commandWritesCraReport("echo x > compliance/CRA_READINESS.md 2>/dev/null"), true)
+	})
 })

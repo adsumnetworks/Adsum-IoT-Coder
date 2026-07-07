@@ -201,8 +201,17 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		// referenced-but-not-yet-bundled file (like debug-loop.md) still resolves correctly instead
 		// of surfacing a confusing raw workspace "File not found". Only engages when the primary
 		// resolution already failed, so it can't affect any normal (already-working) read.
+		// …but NEVER re-root an ABSOLUTE path: a real Windows run read a missing user file
+		// (c:/…/compliance/cra-<date>/CRA_READINESS.md), got re-rooted to "iot-knowledge/c:/…", and was told
+		// "Knowledge bit not found" instead of a plain file-not-found. Only bare RELATIVE paths are skill refs.
+		const looksAbsolute = (p: string) => path.isAbsolute(p) || /^[a-zA-Z]:[\\/]/.test(p)
 		const knowledgeRoot = path.join(HostProvider.get().extensionFsPath, "iot-knowledge")
-		if (relPath && !absolutePath.startsWith(knowledgeRoot + path.sep) && !(await fileAccessible(absolutePath))) {
+		if (
+			relPath &&
+			!looksAbsolute(relPath) &&
+			!absolutePath.startsWith(knowledgeRoot + path.sep) &&
+			!(await fileAccessible(absolutePath))
+		) {
 			absolutePath = path.join(knowledgeRoot, relPath)
 			displayPath = path.join("iot-knowledge", relPath)
 		}
