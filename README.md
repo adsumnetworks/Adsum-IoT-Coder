@@ -34,7 +34,7 @@
 
 ## What's New <sup>`v0.1.8`</sup>
 
-**v0.1.8 — hardening.** Smoother and safer CRA runs: the flow always leaves you a clear next step, recovers on its own from transient hiccups, and never compromises your build to get a result — plus a slimmer input area. *[Full changelog](./CHANGELOG.md).*
+**v0.1.8 — hardening & fixes.** Smoother, safer CRA runs, more reliable Windows terminals, and a slimmer input area. *[Full changelog](./CHANGELOG.md).*
 
 **The flagship, shipped in `v0.1.7`:**
 
