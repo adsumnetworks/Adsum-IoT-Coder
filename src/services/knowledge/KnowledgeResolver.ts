@@ -397,6 +397,60 @@ export async function downloadedBitKnown(id: string): Promise<boolean> {
 	return (await downloadedManifest()).has(id)
 }
 
+/** Display rel path for a bit id — inverse of deriveIdFromRel (platform ids regain the `platforms/` prefix). */
+export function relPathForId(id: string): string {
+	const rest = id.replace(/^adsum\//, "")
+	return `${/^(nrf|esp)\//.test(rest) ? "platforms/" : ""}${rest}.md`
+}
+
+/**
+ * Pure near-miss ranking for a mistyped bit path. The observed failure class is "right filename, wrong
+ * directory" — a real run guessed `cra/rules/core.md` for `cra/core.md` (pattern-matched from the rule-bit
+ * siblings), got an honest "not found" twice, and dead-ended the whole CRA run. Only ids whose LAST segment
+ * matches the requested basename are suggested (near-zero false positives); ties rank by how many directory
+ * segments they share with the wrong guess.
+ */
+export function rankNearMissIds(requestedRel: string, ids: string[], max = 3): string[] {
+	const rel = requestedRel.replace(/\\/g, "/").replace(/^\.\//, "").toLowerCase()
+	const base = rel.split("/").pop()?.replace(/\.md$/, "")
+	if (!base) {
+		return []
+	}
+	const reqSegs = new Set(rel.replace(/\.md$/, "").split("/"))
+	return ids
+		.filter((id) => id.split("/").pop() === base)
+		.map((id) => ({
+			id,
+			overlap: id
+				.replace(/^adsum\//, "")
+				.split("/")
+				.filter((s) => reqSegs.has(s)).length,
+		}))
+		.sort((a, b) => b.overlap - a.overlap)
+		.slice(0, max)
+		.map((x) => relPathForId(x.id))
+}
+
+/** Near-miss bit paths for a wrong `read_file` guess, from the union of the bundled + downloaded catalogs. */
+export async function suggestNearMissBits(requestedRelOrAbs: string): Promise<string[]> {
+	try {
+		const norm = requestedRelOrAbs.replace(/\\/g, "/")
+		const marker = `/${KNOWLEDGE_DIR}/`
+		const i = norm.lastIndexOf(marker)
+		const rel = i === -1 ? norm : norm.slice(i + marker.length)
+		const ids = new Set<string>()
+		for (const k of (await manifest()).keys()) {
+			ids.add(k)
+		}
+		for (const k of (await downloadedManifest()).keys()) {
+			ids.add(k)
+		}
+		return rankNearMissIds(rel, [...ids])
+	} catch {
+		return [] // suggestions are best-effort — never turn a not-found into a crash
+	}
+}
+
 /**
  * Top-level dirs under `iot-knowledge/` whose files are bits. Used to recognise a bundled-tree
  * RELATIVE path (no `iot-knowledge/` prefix) so ordinary missing project files fall through.

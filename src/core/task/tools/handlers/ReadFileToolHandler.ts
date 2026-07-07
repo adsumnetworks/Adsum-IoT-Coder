@@ -14,6 +14,7 @@ import {
 	isRegistryReachable,
 	loadBitByKbPath,
 	loadBitByRel,
+	suggestNearMissBits,
 } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import { ClineSayTool } from "@/shared/ExtensionMessage"
@@ -303,10 +304,19 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 						`and to retry in a minute.${antiImprovise}`,
 				)
 			}
+			// Near-miss rescue (F5 1907 field failure): a run guessed `cra/rules/core.md` for `cra/core.md`,
+			// retried the SAME wrong path twice, and dead-ended. The model can't list the catalog — the host can.
+			// Same-basename matches only, so a genuine typo gets its correction in one round.
+			const nearMisses = reachable ? await suggestNearMissBits(isAbsKbPath ? absolutePath : (relPath ?? "")) : []
+			const pathHint =
+				nearMisses.length > 0
+					? `A bit with this FILENAME exists at a different path — you likely mis-derived the directory. ` +
+						`Retry with the exact path: ${nearMisses.join("  or  ")}. `
+					: `First re-check the path (combine the iot-knowledge directory with the bit's relative path). `
 			return formatResponse.toolError(
 				reachable
 					? `Knowledge bit not found: "${displayPath}". It is not bundled and not in the registry. ` +
-							`First re-check the path (combine the iot-knowledge directory with the bit's relative path). ` +
+							pathHint +
 							`If the bit genuinely does not exist,${antiImprovise} ` +
 							`(Dev: set ADSUM_KBIT_LOCAL to load downloaded bits from disk, or publish the bit.)`
 					: `Could not load knowledge bit "${displayPath}": the Adsum knowledge registry is unreachable ` +
