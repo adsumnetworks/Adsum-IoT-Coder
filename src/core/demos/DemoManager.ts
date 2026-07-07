@@ -334,7 +334,7 @@ export function hciSnifferOpenInEditor(_bundleRoot: string): string[] {
  * honesty + no-spoiler rules) lives in the DOWNLOADED bit nrf/workflows/demo-debug-hci.md (referenced by bare relpath,
  * like cra-sample references cra-readiness). This host prompt only sets up the bench, the real capture/source paths,
  * the capability-gated buttons, and the seamless CRA closing. `craBundleRoot` is the writable cra-prebuilt/nrf bundle
- * (prepared by the registry) used by the "ship-ready" branch.
+ * (prepared by the registry) used by the closing's CRA-check branch.
  */
 export function buildHciSnifferPrompt(
 	bundleRoot: string,
@@ -373,9 +373,9 @@ read_file ${workflowBit} — the HCI + Sniffer screenplay. If that read FAILS, S
 
 === STEP 1 — needs-led open + scan the bench (first message, keep it tight) ===
 - Open with the bit's credible hook (the bug hides below your code; it's readable across three layers — the app log, the HCI bus, and the air) and render the bit's 3-layer stack mermaid. No hype.
-- Lead with WHAT LIVE NEEDS, then offer the choice (do not just report what's missing):
+- Lead with WHAT LIVE NEEDS: render the bit's "Hardware unlocks" block VERBATIM (never paraphrase it into arrow shorthand — a real run mangled it into broken bullets), then offer the choice:
   • Captured walkthrough — replay the real capture, layer by layer (no setup).
-  • Live on your bench — 1 nRF DK → live HCI; 2 DKs → both sides + build/flash the fix; + an nRF52840 Dongle → the over-the-air sniffer.
+  • Live on your bench — what each piece of hardware unlocks is in that block.
 - THEN scan, so they see you read the bench: triggerNordicAction action="log_device", operation="list". A DK = PCA10056/PCA10095/PCA10040 (J-Link); a sniffer dongle = "nRF Sniffer for Bluetooth LE" (flashed) or "Open DFU Bootloader"/PCA10059 (unflashed) — NEVER reported as a DK. In ONE line report what's connected (or none). (Host hint: capability=${capability}, DKs detected=${dkCount}.)
 - Ask with buttons — include ONLY what the hardware supports; the captured walkthrough is ALWAYS offered:
   ask_followup_question — "How do you want to see it?"
@@ -388,6 +388,7 @@ Read the ONE real capture named at each beat (paths above), one layer at a time,
   Beat 1 App — read ${appLog}            → button "Tap the HCI bus →"
   Beat 2 HCI buggy — read ${hciBuggy}    → button "Show me the missing code →"
   Beat 3 reveal + source — read ${centralSrc}, then Beat 4 the fix → button "Prove it on the HCI bus →"
+  (From Beat 3 on, every ask ALSO carries the bit's standing exit ramp: "Point Adsum at my own project".)
   Beat 5 HCI proof — read ${hciFixed}    → button "Sniff the air →"
   Beat 6 sniffer — read ${snifferFixed}  → THE CLOSING
 Honor the bit's no-spoiler rule (do NOT name bt_nus_subscribe_receive() before Beat 3) and its honesty rules — the buggy air capture is advertising-only, so NEVER show a fabricated buggy↔fixed air delta; the real air diff is the live OTA tier.
@@ -395,11 +396,11 @@ If they picked a LIVE option, follow the bit's Live tiers section instead (load 
 
 === THE CLOSING — unrushed, then the seamless CRA bridge (every path ends here) ===
 Lead with the win (per the bit), then offer — never push CRA onto the demo firmware:
-  ask_followup_question — "Where to next?"
-    - "See if a build like this is ship-ready"
+  ask_followup_question — "Where to next?" (options in THIS order — conversion first)
     - "Run this on my own nRF project"
+    - "Check this build against the EU CRA (SBOM · known CVEs · posture)"
     - "Wrap up"
-- If "ship-ready": run the CRA SBOM & Fix Sample INLINE on the SAME central_uart reference. read_file ${craWorkflow} (its Sample-run mode; if that read FAILS, STOP and say CRA is unavailable — never reconstruct it). Then triggerCveScan with sbom=${craSbom} and build=${craBuild}. Follow cra-readiness's Sample-run mode (the 5 plain-English phases; the "# CRA SBOM & Fix — central_uart (reference sample)" title + the "readiness aid — NOT a conformity assessment" disclaimer; write the report, then present a THIN headline), and END with its real-run CTA ("Want this on YOUR firmware? Open your project…").
+- If the CRA option: open with the bit's ONE bridge sentence ("Ship-ready here means the EU CRA lens…"), then run the CRA SBOM & Fix Sample INLINE on the SAME central_uart reference. read_file ${craWorkflow} (its Sample-run mode; if that read FAILS, STOP and say CRA is unavailable — never reconstruct it). Then triggerCveScan with sbom=${craSbom} and build=${craBuild}. Follow cra-readiness's Sample-run mode (the 5 plain-English phases; the "# CRA SBOM & Fix — central_uart (reference sample)" title + the "readiness aid — NOT a conformity assessment" disclaimer; write the report, then present a THIN headline), and END with its real-run CTA ("Want this on YOUR firmware? Open your project…").
 - If "Run this on my own nRF project": invite File ▸ Open Folder, then CRA SBOM & Fix / debug on their real build.
 - If "Wrap up": a two-sentence recap (root cause + the one-line fix), delivered in a message that still ENDS on the resting ask below; if NO hardware was detected, one of its options is connecting a DK (or two) + an nRF52840 Dongle to do all three layers live.
 
@@ -455,7 +456,7 @@ const HOST_DEMO_SCENARIOS: Record<string, HostDemoScenario> = {
 		triggerToken: "[ADSUM_DEMO:hci-sniffer]",
 		async buildTask(env) {
 			const bundleRoot = await prepareScenarioBundle("hci-sniffer")
-			// Stage the CRA reference (same central_uart firmware) so the "ship-ready" close can run the CRA
+			// Stage the CRA reference (same central_uart firmware) so the closing's CRA-check option can run the CRA
 			// SBOM & Fix Sample inline, in this same task — no toolchain/hardware needed (pre-built SBOM + .config).
 			const craBundleRoot = await prepareCraBundle("nrf")
 			const capability = classifyDemoCapability(env)

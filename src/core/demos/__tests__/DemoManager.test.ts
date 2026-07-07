@@ -252,7 +252,7 @@ describe("hci-sniffer demo (v5 — thin orchestrator over the demo-debug-hci bit
 		const p = norm(
 			buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned", undefined, "/storage/demo/cra-prebuilt-nrf-1"),
 		)
-		expect(p).to.contain("ship-ready")
+		expect(p).to.contain("Check this build against the EU CRA")
 		expect(p).to.contain("cra/workflows/cra-readiness.md") // the CRA workflow bit (bare relpath)
 		expect(p).to.contain("triggerCveScan")
 		expect(p).to.contain("/storage/demo/cra-prebuilt-nrf-1/sbom/all.spdx") // wired to the staged CRA bundle
