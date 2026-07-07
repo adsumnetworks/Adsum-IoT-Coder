@@ -1698,20 +1698,17 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							{!isVoiceRecording && morph?.kind === "stop" && (
 								<div
 									aria-label="Stop"
-									className={cn("input-icon-button", "codicon codicon-stop-circle text-lg")}
+									className={cn("input-icon-button", "codicon codicon-stop-circle")}
 									data-testid="stop-button"
 									onClick={() => morph.run()}
-									style={{ color: BRAND_CYAN_600 }}
+									/* Inline fontSize — the codicon stylesheet pins 16px, so a Tailwind text-* class loses. */
+									style={{ color: BRAND_CYAN_600, fontSize: 20 }}
 									title="Stop"
 								/>
 							)}
 							{!isVoiceRecording && morph?.kind !== "stop" && (
 								<div
-									className={cn(
-										"input-icon-button",
-										{ disabled: sendingDisabled },
-										"codicon codicon-send text-lg",
-									)}
+									className={cn("input-icon-button", { disabled: sendingDisabled }, "codicon codicon-send")}
 									data-testid="send-button"
 									onClick={() => {
 										if (morph?.kind === "resume") {
@@ -1724,7 +1721,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 											onSend()
 										}
 									}}
-									style={sendingDisabled ? undefined : { color: BRAND_CYAN_600 }}
+									/* Inline fontSize — the codicon stylesheet pins 16px, so a Tailwind text-* class loses. */
+									style={sendingDisabled ? { fontSize: 20 } : { color: BRAND_CYAN_600, fontSize: 20 }}
 									title={morph?.kind === "resume" ? "Resume task" : "Send"}
 								/>
 							)}
