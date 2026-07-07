@@ -47,7 +47,7 @@ const AutoApproveChip = () => {
 	}
 
 	return (
-		<div className="relative flex items-center ml-1.5 min-w-0">
+		<div className="relative flex items-center min-w-0">
 			<div
 				aria-label="Auto-approve settings"
 				className="flex items-center gap-0.5 cursor-pointer text-xs text-muted-foreground hover:text-foreground whitespace-nowrap"
