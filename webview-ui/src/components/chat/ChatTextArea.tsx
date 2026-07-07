@@ -14,6 +14,7 @@ import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, u
 import DynamicTextArea from "react-textarea-autosize"
 import { useWindowSize } from "react-use"
 import styled from "styled-components"
+import AutoApproveChip from "@/components/chat/auto-approve-menu/AutoApproveChip"
 import ContextMenu from "@/components/chat/ContextMenu"
 import { CHAT_CONSTANTS } from "@/components/chat/chat-view/constants"
 import ModelPickerModal from "@/components/chat/ModelPickerModal"
@@ -1728,6 +1729,10 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									</VSCodeButton>
 								</TooltipTrigger>
 							</Tooltip>
+
+							{/* Auto-approve chip — moved here from the full-width bar above the input
+							    (operator 0707: Claude Code-style, next to @). */}
+							<AutoApproveChip />
 
 							{/* <Tooltip>
 								<TooltipContent>Add Files & Images</TooltipContent>

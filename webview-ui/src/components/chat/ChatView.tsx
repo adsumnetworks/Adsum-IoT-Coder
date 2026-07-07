@@ -14,7 +14,6 @@ import { useShowNavbar } from "@/context/PlatformContext"
 import { FileServiceClient, UiServiceClient } from "@/services/grpc-client"
 import { Navbar } from "../menu/Navbar"
 import AiLimitationsFooter from "./AiLimitationsFooter"
-import AutoApproveBar from "./auto-approve-menu/AutoApproveBar"
 // Import utilities and hooks from the new structure
 import {
 	ActionButtons,
@@ -504,7 +503,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			</div>
 			{task && (nordicPhase !== "task_complete" || isDemoRun) && (
 				<footer className="bg-(--vscode-sidebar-background)" style={{ gridRow: "2" }}>
-					<AutoApproveBar />
+					{/* Auto-approve moved into the input's bottom controls row (AutoApproveChip in ChatTextArea)
+					    — the full-width bar row here was standing clutter (operator 0707). */}
 					<ActionButtons
 						chatState={chatState}
 						messageHandlers={messageHandlers}
