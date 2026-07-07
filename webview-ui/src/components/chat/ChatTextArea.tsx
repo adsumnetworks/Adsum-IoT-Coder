@@ -15,6 +15,7 @@ import DynamicTextArea from "react-textarea-autosize"
 import { useWindowSize } from "react-use"
 import styled from "styled-components"
 import AutoApproveChip from "@/components/chat/auto-approve-menu/AutoApproveChip"
+import { BRAND_CYAN_600 } from "@/components/chat/brandColors"
 import ContextMenu from "@/components/chat/ContextMenu"
 import { CHAT_CONSTANTS } from "@/components/chat/chat-view/constants"
 import ModelPickerModal from "@/components/chat/ModelPickerModal"
@@ -90,6 +91,9 @@ interface ChatTextAreaProps {
 	shouldDisableFilesAndImages: boolean
 	onHeightChange?: (height: number) => void
 	onFocusChange?: (isFocused: boolean) => void
+	/** Claude Code-style morph of the send icon (operator 0707): "stop" while streaming (fires cancel),
+	 *  "resume" when a paused task waits (send arrow resumes, with any typed text as feedback). */
+	morph?: { kind: "stop" | "resume"; run: () => void }
 }
 
 interface GitCommit {
@@ -257,6 +261,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			shouldDisableFilesAndImages,
 			onHeightChange,
 			onFocusChange,
+			morph,
 		},
 		ref,
 	) => {
@@ -1688,7 +1693,19 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									}}
 								/>
 							)}
-							{!isVoiceRecording && (
+							{/* Send ↔ Stop morph (operator 0707, Claude Code-style). Brand palette: cyan = action
+							    (UI golden rules) — both icons are actions, never semantic red. */}
+							{!isVoiceRecording && morph?.kind === "stop" && (
+								<div
+									aria-label="Stop"
+									className={cn("input-icon-button", "codicon codicon-stop-circle text-sm")}
+									data-testid="stop-button"
+									onClick={() => morph.run()}
+									style={{ color: BRAND_CYAN_600 }}
+									title="Stop"
+								/>
+							)}
+							{!isVoiceRecording && morph?.kind !== "stop" && (
 								<div
 									className={cn(
 										"input-icon-button",
@@ -1697,11 +1714,18 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									)}
 									data-testid="send-button"
 									onClick={() => {
+										if (morph?.kind === "resume") {
+											setIsTextAreaFocused(false)
+											morph.run()
+											return
+										}
 										if (!sendingDisabled) {
 											setIsTextAreaFocused(false)
 											onSend()
 										}
 									}}
+									style={sendingDisabled ? undefined : { color: BRAND_CYAN_600 }}
+									title={morph?.kind === "resume" ? "Resume task" : "Send"}
 								/>
 							)}
 						</div>

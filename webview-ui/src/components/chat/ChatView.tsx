@@ -30,6 +30,7 @@ import {
 	useMessageHandlers,
 	useScrollBehavior,
 } from "./chat-view"
+import { getButtonConfig } from "./chat-view/shared/buttonConfig"
 import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
 import { isFreshNordicCompletion, NORDIC_MODES, type NordicModeId } from "./nordicModes"
@@ -206,6 +207,28 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 
 	// Use message handlers hook
 	const messageHandlers = useMessageHandlers(messages, chatState)
+
+	// Send-icon morph (operator 0707, Claude Code-style): while streaming the lone wide "Cancel" row is
+	// replaced by a stop icon on the input; a paused task's wide "Resume Task" row is replaced by the send
+	// arrow (any typed text rides along as feedback). ActionButtons hides those two rows; every other
+	// button state (Approve/Reject, Start New Task, …) is untouched.
+	const lastMessageForMorph = messages.length > 0 ? messages[messages.length - 1] : undefined
+	const morphConfig = lastMessageForMorph ? getButtonConfig(lastMessageForMorph, mode) : undefined
+	const inputMorph: { kind: "stop" | "resume"; run: () => void } | undefined =
+		morphConfig && !morphConfig.primaryText && morphConfig.secondaryAction === "cancel"
+			? { kind: "stop", run: () => messageHandlers.executeButtonAction("cancel") }
+			: morphConfig?.primaryText === "Resume Task" && !morphConfig.secondaryText && morphConfig.primaryAction
+				? {
+						kind: "resume",
+						run: () =>
+							messageHandlers.executeButtonAction(
+								"proceed",
+								chatState.inputValue,
+								chatState.selectedImages,
+								chatState.selectedFiles,
+							),
+					}
+				: undefined
 
 	// Handle Nordic mode selection (must be after messageHandlers)
 	const handleModeSelect = useCallback(
@@ -521,6 +544,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					<InputSection
 						chatState={chatState}
 						messageHandlers={messageHandlers}
+						morph={inputMorph}
 						placeholderText={placeholderText}
 						scrollBehavior={scrollBehavior}
 						selectFilesAndImages={selectFilesAndImages}
