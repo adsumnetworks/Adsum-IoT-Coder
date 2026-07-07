@@ -12,6 +12,8 @@ import {
 	loadBit,
 	loadBitByKbPath,
 	loadBitByRel,
+	rankNearMissIds,
+	relPathForId,
 } from "../KnowledgeResolver"
 import { BitCache, sha256 } from "./BitCache"
 import { RegistryClient } from "./RegistryClient"
@@ -531,5 +533,34 @@ describe("K-bit telemetry hooks (__setKbitTelemetry)", () => {
 		assert.equal(purged, 1)
 		__resetManifestCache()
 		__setKbitTelemetry({})
+	})
+})
+
+describe("rankNearMissIds (wrong-guess rescue — F5 1907: cra/rules/core.md guessed for cra/core.md)", () => {
+	const IDS = [
+		"adsum/cra/core",
+		"adsum/cra/rules/cra-report",
+		"adsum/cra/rules/cra-guardrail",
+		"adsum/cra/workflows/cra-readiness",
+		"adsum/nrf/sdks/ncs/cra-advisories",
+		"adsum/esp/sdks/esp-idf/cra-advisories",
+		"adsum/rules/next-step",
+	]
+	test("the observed failure: rules/-prefixed guess → suggests the real cra/core.md", () => {
+		assert.deepEqual(rankNearMissIds("cra/rules/core.md", IDS), ["cra/core.md"])
+	})
+	test("absolute-style rel + backslashes normalise", () => {
+		assert.deepEqual(rankNearMissIds("cra\\rules\\core.md", IDS), ["cra/core.md"])
+	})
+	test("advisories sibling-guess (S3 class) → both real advisory paths, platform match ranked first", () => {
+		const got = rankNearMissIds("platforms/esp/rules/cra-advisories.md", IDS)
+		assert.deepEqual(got, ["platforms/esp/sdks/esp-idf/cra-advisories.md", "platforms/nrf/sdks/ncs/cra-advisories.md"])
+	})
+	test("no same-basename match → no suggestions (never a wild guess)", () => {
+		assert.deepEqual(rankNearMissIds("cra/rules/banana.md", IDS), [])
+	})
+	test("relPathForId restores the platforms/ prefix for platform bits only", () => {
+		assert.equal(relPathForId("adsum/nrf/sdks/ncs/cra-advisories"), "platforms/nrf/sdks/ncs/cra-advisories.md")
+		assert.equal(relPathForId("adsum/cra/core"), "cra/core.md")
 	})
 })
