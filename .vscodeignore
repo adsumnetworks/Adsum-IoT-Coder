@@ -57,6 +57,9 @@ webview-ui/node_modules/**
 docs/**
 old_docs/**
 
+# Drop social/marketing assets — not referenced by the shipped README (P2.1 VSIX size).
+assets/social/**
+
 # ...but ship the single benchmark figure the README embeds, so the token-efficiency
 # chart renders in the in-editor Extensions README preview too — not only on the
 # Marketplace web page (which rewrites relative image paths to the GitHub repo). Only
@@ -142,8 +145,13 @@ go.work.sum
 !node_modules/@vscode/codicons/dist/codicon.css
 !node_modules/@vscode/codicons/dist/codicon.ttf
 
-# Include better-sqlite3 native module and its dependencies
-!node_modules/better-sqlite3/**
+# Include better-sqlite3 — but ONLY the RUNTIME files, not the 9.5M build-from-source tree (deps/ sqlite3.c +
+# src/ C++). vsce force-includes any `!` negation regardless of a later re-ignore, so we must negate the runtime
+# files SPECIFICALLY. Runtime = lib/ (main), package.json, and the prebuilt native addon that `bindings` loads
+# from build/Release/. (P2.1 VSIX size — drops ~9.5M.)
+!node_modules/better-sqlite3/package.json
+!node_modules/better-sqlite3/lib/**
+!node_modules/better-sqlite3/build/Release/better_sqlite3.node
 !node_modules/bindings/**
 !node_modules/file-uri-to-path/**
 !node_modules/node-gyp-build/**
