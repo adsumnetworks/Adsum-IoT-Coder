@@ -1555,7 +1555,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						autoFocus={true}
 						data-testid="chat-input"
 						maxRows={10}
-						minRows={3}
+						/* Rest at ONE line (was 3 — the biggest block of standing empty space in the input
+						   stack, operator flag); autosize grows it as the message grows. */
+						minRows={1}
 						onBlur={handleBlur}
 						onChange={(e) => {
 							handleInputChange(e)
