@@ -393,8 +393,15 @@ export class TriggerCveScanHandler implements IFullyManagedTool {
 		config.taskState.consecutiveMistakeCount = 0
 
 		const cwd = config.cwd || process.cwd()
-		const sbomPath = path.isAbsolute(sbom) ? sbom : path.join(cwd, sbom)
-		const buildDir = params.build ? (path.isAbsolute(params.build) ? params.build : path.join(cwd, params.build)) : undefined
+		// path.normalize converts any forward slashes to the platform separator — needed because an
+		// already-absolute path (e.g. a POSIX-style path from cross-platform tooling or model output)
+		// bypasses path.join and would otherwise reach the sbomDirMarker/compliance-marker lookups
+		// below still using "/", which never matches the path.sep-based markers on Windows and silently
+		// misfiles the CVE artifacts into a bogus nested "sbom/compliance/" folder.
+		const sbomPath = path.normalize(path.isAbsolute(sbom) ? sbom : path.join(cwd, sbom))
+		const buildDir = params.build
+			? path.normalize(path.isAbsolute(params.build) ? params.build : path.join(cwd, params.build))
+			: undefined
 
 		// Write the CVE artifacts into the SBOM's OWN compliance folder, beside its `sbom/` dir — never the cwd (a
 		// bare cwd like the Desktop gets littered + breaks checkpoints). The workflow puts the SBOM under
