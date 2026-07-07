@@ -54,7 +54,7 @@ const GENERIC: ClineToolSpec = {
 	id: ClineDefaultTool.CVE_SCAN,
 	name: "triggerCveScan",
 	contextRequirements: isCveScanActive,
-	description: `Scan a generated SBOM for known CVEs (host-run, evidence-mode).
+	description: `Scan a generated SBOM for known CVEs (host-run, evidence-mode). BUILT-IN tool of this agent — call it directly like read_file; NEVER route it through use_mcp_tool (it is not an MCP tool and no MCP server hosts it).
 ${TECHNICAL_REFERENCE}`,
 	parameters: PARAMETERS,
 }

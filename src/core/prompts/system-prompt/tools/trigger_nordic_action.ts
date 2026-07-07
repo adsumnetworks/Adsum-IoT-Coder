@@ -198,7 +198,7 @@ const GENERIC: ClineToolSpec = {
 	id: ClineDefaultTool.NORDIC_ACTION,
 	name: "triggerNordicAction",
 	contextRequirements: isNrfActive,
-	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
+	description: `Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices. BUILT-IN tool of this agent — call it directly like read_file; NEVER route it through use_mcp_tool (it is not an MCP tool and no MCP server hosts it).
 
 USE action="execute" for ALL NCS CLI operations: west build, west flash, nrfjprog, nrfutil, etc.
 USE action="log_device" ONLY for live UART/RTT log capture.

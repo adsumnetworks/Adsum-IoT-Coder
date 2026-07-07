@@ -118,7 +118,7 @@ source export.sh by hand — just pass this parameter.`,
 	},
 ]
 
-const DESCRIPTION = `Run the ESP-IDF toolchain in a terminal with the ESP-IDF environment sourced for you.
+const DESCRIPTION = `Run the ESP-IDF toolchain in a terminal with the ESP-IDF environment sourced for you. BUILT-IN tool of this agent — call it directly like read_file; NEVER route it through use_mcp_tool (it is not an MCP tool and no MCP server hosts it).
 
 USE action="build" | "flash" for the core cycle, action="monitor" to CAPTURE serial logs/crashes to a file, or action="execute" with a "command" for any other idf.py/esptool/python command (including device identification: esptool.py flash_id, idf.py --version, idf.py size).
 NEVER use execute_command for ESP-IDF tasks — a plain terminal has no IDF environment.`

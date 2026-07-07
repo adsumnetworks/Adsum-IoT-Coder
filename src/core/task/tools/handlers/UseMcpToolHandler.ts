@@ -10,6 +10,39 @@ import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 
+/**
+ * Native host tools a model sometimes mis-channels through use_mcp_tool (F5 2247: the free-tier model wrapped
+ * `triggerCveScan` in an MCP envelope with an invented server name — the extension's own id — then retried with
+ * the tool name AS the server, then dead-ended the CRA sample asking the user to "restart the extension").
+ * The camelCase names read as MCP-ish next to the snake_case natives; the deterministic fix is to intercept
+ * BEFORE any approval card renders and teach the exact native syntax, so the model self-corrects in one round.
+ */
+const NATIVE_TOOLS_MISCALLED_AS_MCP = new Set<string>([
+	ClineDefaultTool.NORDIC_ACTION,
+	ClineDefaultTool.ESP_ACTION,
+	ClineDefaultTool.CVE_SCAN,
+])
+
+/** The corrective error: names the mistake and hands back the model's own arguments in the correct syntax. */
+export function nativeToolCorrection(toolName: string, mcpArguments: string | undefined): string {
+	let paramXml = "<param>value</param>"
+	try {
+		const args = mcpArguments ? (JSON.parse(mcpArguments) as Record<string, unknown>) : {}
+		const entries = Object.entries(args)
+		if (entries.length > 0) {
+			paramXml = entries.map(([k, v]) => `<${k}>${String(v)}</${k}>`).join("")
+		}
+	} catch {
+		// keep the placeholder — the syntax lesson is what matters
+	}
+	return (
+		`"${toolName}" is a BUILT-IN tool of this agent, not an MCP tool — there is no MCP server for it and ` +
+		`use_mcp_tool can never reach it. Call it directly as a regular tool, exactly like read_file:\n` +
+		`<${toolName}>${paramXml}</${toolName}>\n` +
+		`Retry now with that exact call.`
+	)
+}
+
 export class UseMcpToolHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.MCP_USE
 
@@ -61,6 +94,16 @@ export class UseMcpToolHandler implements IFullyManagedTool {
 		if (!tool_name) {
 			config.taskState.consecutiveMistakeCount++
 			return await config.callbacks.sayAndCreateMissingParamError(block.name, "tool_name")
+		}
+
+		// Native tool mis-channeled through the MCP envelope → teach the exact direct call BEFORE any approval
+		// card renders (no user click, no phantom "MCP server" card; the model self-corrects next round).
+		// Matches the tool_name, or the server_name for the flail case where the model used the tool AS a server.
+		if (NATIVE_TOOLS_MISCALLED_AS_MCP.has(tool_name) || NATIVE_TOOLS_MISCALLED_AS_MCP.has(server_name)) {
+			const nativeName = NATIVE_TOOLS_MISCALLED_AS_MCP.has(tool_name) ? tool_name : server_name
+			await config.callbacks.removeLastPartialMessageIfExistsWithType("ask", "use_mcp_server")
+			await config.callbacks.removeLastPartialMessageIfExistsWithType("say", "use_mcp_server")
+			return formatResponse.toolError(nativeToolCorrection(nativeName, mcp_arguments))
 		}
 
 		// Parse and validate arguments if provided
