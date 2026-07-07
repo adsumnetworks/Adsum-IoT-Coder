@@ -110,24 +110,23 @@ const copyWasmFiles = {
 			// Copy tree-sitter.wasm
 			fs.copyFileSync(path.join(sourceDir, "tree-sitter.wasm"), path.join(targetDir, "tree-sitter.wasm"))
 
-			// Copy language-specific WASM files
+			// PRUNE stale language wasms first — copyFileSync only ADDS, so a previously-built dist keeps the
+			// languages we've since dropped (P2.1). Delete every tree-sitter-<lang>.wasm, then copy only the
+			// kept set below, so the build is deterministic regardless of prior dist state.
+			for (const f of fs.readdirSync(targetDir)) {
+				if (/^tree-sitter-.+\.wasm$/.test(f)) {
+					fs.rmSync(path.join(targetDir, f))
+				}
+			}
+
+			// Copy language-specific WASM files.
+			// P2.1 (VSIX size): ship ONLY the languages an IoT-firmware workflow actually parses — C/C++/Python/
+			// Rust + JS/TS(x) — dropping c#/ruby/java/php/swift/kotlin/go (~15-19M of .wasm). INVARIANT: this set
+			// MUST stay in sync with the extension allow-list in src/services/tree-sitter/index.ts `separateFiles`
+			// — a file whose ext is routed to a parser whose .wasm is NOT copied here throws at load (no try/catch
+			// on the call site). Re-adding a language = add it BOTH here and in separateFiles.
 			const languageWasmDir = path.join(__dirname, "node_modules", "tree-sitter-wasms", "out")
-			const languages = [
-				"typescript",
-				"tsx",
-				"python",
-				"rust",
-				"javascript",
-				"go",
-				"cpp",
-				"c",
-				"c_sharp",
-				"ruby",
-				"java",
-				"php",
-				"swift",
-				"kotlin",
-			]
+			const languages = ["typescript", "tsx", "python", "rust", "javascript", "cpp", "c"]
 
 			languages.forEach((lang) => {
 				const filename = `tree-sitter-${lang}.wasm`

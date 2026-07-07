@@ -62,6 +62,10 @@ function separateFiles(allFiles: string[]): {
 	filesToParse: string[]
 	remainingFiles: string[]
 } {
+	// P2.1 (VSIX size): only the extensions whose tree-sitter .wasm we actually ship (see the `languages` copy
+	// list in esbuild.mjs). loadRequiredLanguageParsers() has NO try/catch, so routing a file whose .wasm was
+	// dropped would THROW and fail the whole list_code_definition_names call — hence this list is the guard.
+	// Dropped with their wasm (was: go, cs, rb, java, php, swift, kt); re-add here AND in esbuild.mjs together.
 	const extensions = [
 		"js",
 		"jsx",
@@ -70,22 +74,12 @@ function separateFiles(allFiles: string[]): {
 		"py",
 		// Rust
 		"rs",
-		"go",
 		// C
 		"c",
 		"h",
 		// C++
 		"cpp",
 		"hpp",
-		// C#
-		"cs",
-		// Ruby
-		"rb",
-		"java",
-		"php",
-		"swift",
-		// Kotlin
-		"kt",
 	].map((e) => `.${e}`)
 	const filesToParse = allFiles.filter((file) => extensions.includes(path.extname(file))).slice(0, 50) // 50 files max
 	const remainingFiles = allFiles.filter((file) => !filesToParse.includes(file))
