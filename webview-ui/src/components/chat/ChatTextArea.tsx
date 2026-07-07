@@ -1698,7 +1698,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							{!isVoiceRecording && morph?.kind === "stop" && (
 								<div
 									aria-label="Stop"
-									className={cn("input-icon-button", "codicon codicon-stop-circle text-sm")}
+									className={cn("input-icon-button", "codicon codicon-stop-circle text-lg")}
 									data-testid="stop-button"
 									onClick={() => morph.run()}
 									style={{ color: BRAND_CYAN_600 }}
@@ -1710,7 +1710,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									className={cn(
 										"input-icon-button",
 										{ disabled: sendingDisabled },
-										"codicon codicon-send text-sm",
+										"codicon codicon-send text-lg",
 									)}
 									data-testid="send-button"
 									onClick={() => {
@@ -1735,7 +1735,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					{/* Always render both components, but control visibility with CSS */}
 					<div className="relative flex-1 min-w-0 h-5">
 						{/* ButtonGroup - always in DOM but visibility controlled */}
-						<ButtonGroup className="absolute top-0 left-0 right-0 ease-in-out w-full h-5 z-10 flex items-center">
+						<ButtonGroup className="absolute top-0 left-0 right-0 ease-in-out w-full h-5 z-10 flex items-center gap-2">
 							<Tooltip>
 								<TooltipContent>Add Context</TooltipContent>
 								<TooltipTrigger>
