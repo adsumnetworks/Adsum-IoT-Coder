@@ -315,8 +315,8 @@ If they pick "I've seen enough — wrap up": give a two-sentence recap (root cau
 export function buildHciSnifferDisplayText(): string {
 	// Leading text MUST stay in sync with demoScenarios.ts historyMatch for "hci-sniffer".
 	return (
-		"HCI + sniffer-in-the-loop BLE debug — a real one-directional BLE bug seen across all three layers " +
-		"(app log, HCI host↔controller trace, over-the-air sniffer), captured from nRF hardware."
+		"Debug a BLE bug across all 3 layers — a real bug (data flows one way only) traced through the app log, " +
+		"the HCI host↔controller trace, and the over-the-air sniffer capture, from real nRF hardware."
 	)
 }
 
@@ -401,10 +401,10 @@ Lead with the win (per the bit), then offer — never push CRA onto the demo fir
     - "Wrap up"
 - If "ship-ready": run the CRA SBOM & Fix Sample INLINE on the SAME central_uart reference. read_file ${craWorkflow} (its Sample-run mode; if that read FAILS, STOP and say CRA is unavailable — never reconstruct it). Then triggerCveScan with sbom=${craSbom} and build=${craBuild}. Follow cra-readiness's Sample-run mode (the 5 plain-English phases; the "# CRA SBOM & Fix — central_uart (reference sample)" title + the "readiness aid — NOT a conformity assessment" disclaimer; write the report, then present a THIN headline), and END with its real-run CTA ("Want this on YOUR firmware? Open your project…").
 - If "Run this on my own nRF project": invite File ▸ Open Folder, then CRA SBOM & Fix / debug on their real build.
-- If "Wrap up": a two-sentence recap (root cause + the one-line fix); if NO hardware was detected, add one nudge to connect a DK (or two) + an nRF52840 Dongle to do all three layers live next time.
+- If "Wrap up": a two-sentence recap (root cause + the one-line fix), delivered in a message that still ENDS on the resting ask below; if NO hardware was detected, one of its options is connecting a DK (or two) + an nRF52840 Dongle to do all three layers live.
 
-Call attempt_completion only after a final button choice resolves; end the final message with exactly, nothing after it: <!--TASK_COMPLETE-->
-EXCEPTION — if the CRA segment ran (a CRA report was written this task): NEVER call attempt_completion after it (the host rejects it); instead rest on an ask_followup_question with forward options, per the CRA workflow's no-ending rule.`
+=== NO ENDING (same rule as the CRA workflow) ===
+NEVER call attempt_completion on this run and never emit a completion marker — the resting state is an open ask_followup_question with forward-only, verb-first options (no exit/pause options, no "I'll…" handbacks, no "the demo is complete"). The developer leaves by simply moving on; the workbench stays open.`
 }
 
 // ── Scenario registry (id-keyed) ──────────────────────────────────────────────
