@@ -1,3 +1,4 @@
+import path from "node:path"
 import type { ToolUse } from "@core/assistant-message"
 import { expect } from "chai"
 import { afterEach, beforeEach, describe, it } from "mocha"
@@ -88,13 +89,17 @@ describe("TriggerCveScanHandler", () => {
 		// scan called with cwd-resolved absolute paths
 		expect(scan.calledOnce).to.equal(true)
 		expect(scan.firstCall.args[0]).to.deep.equal({
-			sbomPath: "/proj/compliance/sbom/app.spdx",
-			buildDir: "/proj/build",
+			sbomPath: path.join("/proj", "compliance/sbom/app.spdx"),
+			buildDir: path.join("/proj", "build"),
+			projectDir: "/proj",
 			asOf: "2026-06-25",
 		})
-		expect(mkdir.calledOnceWith("/proj/compliance")).to.equal(true)
+		expect(mkdir.calledOnceWith(path.join("/proj", "compliance"))).to.equal(true)
 		const written = writeFile.getCalls().map((c) => c.args[0])
-		expect(written).to.deep.equal(["/proj/compliance/cve-scan-2026-06-25.md", "/proj/compliance/cve-scan-2026-06-25.json"])
+		expect(written).to.deep.equal([
+			path.join("/proj", "compliance", "cve-scan-2026-06-25.md"),
+			path.join("/proj", "compliance", "cve-scan-2026-06-25.json"),
+		])
 		expect(writeFile.firstCall.args[1]).to.equal(fakeResult.report)
 		expect(writeFile.secondCall.args[1]).to.equal(fakeResult.json)
 		expect(String(res)).to.contain("CVE scan — OSV")
@@ -107,14 +112,14 @@ describe("TriggerCveScanHandler", () => {
 		// compliance/ into the Desktop. Output must derive from the SBOM path, not cwd.
 		const { handler, mkdir, writeFile } = mkHandler()
 		await handler.execute(mkConfig("/Users/me/Desktop"), mkBlock({ sbom: "/Users/me/proj/compliance/sbom/app.spdx" }))
-		expect(mkdir.calledOnceWith("/Users/me/proj/compliance")).to.equal(true)
+		expect(mkdir.calledOnceWith(path.join("/Users/me/proj/compliance"))).to.equal(true)
 		const written = writeFile.getCalls().map((c) => c.args[0])
 		expect(written).to.deep.equal([
-			"/Users/me/proj/compliance/cve-scan-2026-06-25.md",
-			"/Users/me/proj/compliance/cve-scan-2026-06-25.json",
+			path.join("/Users/me/proj/compliance/cve-scan-2026-06-25.md"),
+			path.join("/Users/me/proj/compliance/cve-scan-2026-06-25.json"),
 		])
 		// never the cwd
-		expect(written.some((w) => w.includes("/Desktop/"))).to.equal(false)
+		expect(written.some((w) => w.includes(`${path.sep}Desktop${path.sep}`))).to.equal(false)
 	})
 
 	it("no build param → scan called with buildDir undefined", async () => {
@@ -153,10 +158,10 @@ describe("TriggerCveScanHandler", () => {
 		expect(String(res)).to.match(/demo-scenarios/i)
 	})
 
-	it("absolute sbom/build paths are passed through unchanged", async () => {
+	it("absolute sbom/build paths are kept absolute (separators normalized to the host platform)", async () => {
 		const { handler, scan } = mkHandler()
 		await handler.execute(mkConfig("/proj"), mkBlock({ sbom: "/abs/app.spdx", build: "/abs/build" }))
-		expect(scan.firstCall.args[0].sbomPath).to.equal("/abs/app.spdx")
-		expect(scan.firstCall.args[0].buildDir).to.equal("/abs/build")
+		expect(scan.firstCall.args[0].sbomPath).to.equal(path.normalize("/abs/app.spdx"))
+		expect(scan.firstCall.args[0].buildDir).to.equal(path.normalize("/abs/build"))
 	})
 })
