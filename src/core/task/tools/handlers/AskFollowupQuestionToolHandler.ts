@@ -14,12 +14,7 @@ import type { IPartialBlockHandler, IToolHandler } from "../ToolExecutorCoordina
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { readinessReportOnDisk } from "./AttemptCompletionHandler"
-
-/** Exit-shaped option shapes banned in a CRA run's asks — both TERMINAL ("I'm done", "that's all") and
- *  PAUSE ("I'll continue later", "Save & come back", "review offline"). Kept tight to true session-exit
- *  phrasings so legitimate per-thread declines ("skip this CVE — show me the posture gaps") never trip. */
-const CRA_EXIT_OPTION_RE =
-	/\b(i'?ll (continue|come back( to (this|it))?) later|come back later|i'?m (all )?done|that'?s (all|it)( for (now|today))?|wrap (it |this )?up|review (it |this )?offline|done for (now|today|the day)|end (the |this )?(run|session|task|chat)|close (the |this )?(run|session|task)|nothing else (for now|right now|today)|maybe later|not right now)\b/i
+import { findCraOptionViolations } from "./craAskGuards"
 
 export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlockHandler {
 	readonly name = ClineDefaultTool.ASK
@@ -81,18 +76,21 @@ export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlo
 					}
 				}
 			}
-			// 1) No exit-shaped options — terminal OR pause. A real run offered "I'll continue later"; clicking
-			//    it ended the session. The developer leaves by simply leaving; the ask stays open for their return.
-			const exitShaped = options.filter((o) => CRA_EXIT_OPTION_RE.test(o))
-			if (exitShaped.length > 0) {
+			// 1) No exit- or handback-shaped options. A real run offered "I'll continue later" (pause — clicking
+			//    it ended the session); another offered "I'll review the report myself" / "I'll continue from the
+			//    report" (dev-as-actor handbacks that paraphrased past a literal ban list — hence the structural
+			//    check). The developer leaves by simply leaving; the ask stays open for their return.
+			const violations = findCraOptionViolations(options)
+			if (violations.length > 0) {
 				config.taskState.consecutiveMistakeCount++
 				return formatResponse.toolError(
-					`These options are exit-shaped and banned in a CRA run: ${exitShaped.map((o) => `"${o}"`).join(", ")}. ` +
-						"Never offer leaving — no 'I'm done' / 'that's all' (terminal) and no 'I'll continue later' / " +
-						"'Save & come back' (pause) either. Re-send the question with FORWARD moves only (triage the " +
-						"next CVE · enable the next posture gap · open your project & run it live · re-scan · save a " +
-						"copy). The developer who wants to stop simply stops; this question stays on screen as the " +
-						"session's resting state.",
+					`These options are banned in a CRA run: ${violations.map((v) => `"${v.option}" (${v.kind})`).join(", ")}. ` +
+						"Options are actions YOU take next, phrased verb-first ('Triage CVE-… ', 'Start secure boot', " +
+						"'Re-scan after a change', 'Draft a VEX', 'Save a copy') — never an exit ('I'm done' / 'I'll " +
+						"continue later') and never a developer-side handback ('I'll review the report myself'): the " +
+						"developer can always read the report or step away WITHOUT a button, so spending an option on " +
+						"it only invites leaving. Re-send the question with FORWARD, agent-led moves only; it stays on " +
+						"screen as the session's resting state.",
 				)
 			}
 			// 2) Evidence-mode at the resting seam: the closing ask now carries the counts/summary the completion
