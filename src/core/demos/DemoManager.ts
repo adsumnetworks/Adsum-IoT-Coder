@@ -388,7 +388,7 @@ read_file ${workflowBit} — the HCI + Sniffer screenplay. If that read FAILS, S
 
 === STEP 2 — the walkthrough (follow the bit's staged beats EXACTLY) ===
 Read the ONE real capture named at each beat (paths above), one layer at a time, ending EVERY beat with an ask_followup_question button (always include a "Skip to the fix" / "Seen enough" escape):
-  Beat 1 App — read ${appLog}            → button "Tap the HCI bus →"
+  Beat 1 App (the setup + the silence) — read ${appLog}. Open NUS-style: 2 sentences of setup (two Nordic boards on a bidirectional BLE NUS link) BEFORE the quote, then the healthy-bring-up-then-silence tail. ANCHOR: the app layer is BLIND — no error, nothing to grep; this is the central log only, so NEVER invent a peripheral "Failed to send" line (that's the other, app-visible demo). → button "Tap the HCI bus →"
   Beat 2 HCI buggy — read ${hciBuggy}    → button "Show me the missing code →"
   Beat 3 reveal + source — read ${centralSrc}, then Beat 4 the fix → button "Prove it on the HCI bus →"
   (From Beat 3 on, every ask ALSO carries the bit's standing exit ramp: "Point Adsum at my own project".)
