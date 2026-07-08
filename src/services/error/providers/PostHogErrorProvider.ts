@@ -1,6 +1,7 @@
 import { PostHog } from "posthog-node"
 import { HostProvider } from "@/hosts/host-provider"
 import { getDistinctId } from "@/services/logging/distinctId"
+import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { PostHogClientProvider } from "@/services/telemetry/providers/posthog/PostHogClientProvider"
 import { Setting } from "@/shared/proto/index.host"
 import * as pkg from "../../../../package.json"
@@ -85,6 +86,7 @@ export class PostHogErrorProvider implements IErrorProvider {
 			event: "extension.error",
 			properties: {
 				error_type: "exception",
+				iot_platform: getCachedWorkspaceSummary(), // chip dimension — the error path bypassed the telemetry wrapper
 				...errorDetails,
 				timestamp: new Date().toISOString(),
 			},
@@ -114,6 +116,7 @@ export class PostHogErrorProvider implements IErrorProvider {
 				message: message.substring(0, 500), // Truncate long messages
 				level,
 				extension_version: pkg.version,
+				iot_platform: getCachedWorkspaceSummary(), // chip dimension — the error path bypassed the telemetry wrapper
 				is_dev: isDev,
 				timestamp: new Date().toISOString(),
 				...properties,

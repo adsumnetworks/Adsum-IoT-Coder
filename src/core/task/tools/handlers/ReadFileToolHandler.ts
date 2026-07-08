@@ -297,6 +297,8 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 				` Do NOT reconstruct or improvise this Adsum workflow from general knowledge, memory, or a prior ` +
 				`report — tell the developer the workflow is currently unavailable and stop.`
 			if (listedButFetchFailed) {
+				// Field-health signal (the Omar/CRA dead-end): reason enum + catalog bit id only, never paths.
+				telemetryService.captureKbitLoadFailed({ reason: "transient_fetch", bitId: bitId ?? undefined, afterRetry: true })
 				return formatResponse.toolError(
 					`Knowledge bit "${displayPath}" IS in the registry catalog, but fetching its content just failed ` +
 						`(a transient network/server blip — this is NOT a wrong path and NOT a missing bit). Retry the ` +
@@ -319,6 +321,9 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 					const correctedAbs = path.join(HostProvider.get().extensionFsPath, "iot-knowledge", correctedRel)
 					config.taskState.loadedKnowledgeFiles.add(correctedAbs)
 					await config.services.fileContextTracker.trackFileContext(correctedRel, "read_tool")
+					// Robustness signal: how often models mis-derive a bit directory. Send only the corrected
+					// catalog relpath (a known bit id, safe) — never the requested string (could carry a machine path).
+					telemetryService.captureKbitPathAutocorrected({ corrected: correctedRel })
 					return (
 						`[Adsum knowledge bit — path auto-corrected. You asked for "${displayPath}", which does not ` +
 						`exist; the only catalog bit with that filename is "${correctedRel}", served below. Use ` +
@@ -332,6 +337,11 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 					? `A bit with this FILENAME exists at a different path — you likely mis-derived the directory. ` +
 						`Retry with the exact path: ${nearMisses.join("  or  ")}. `
 					: `First re-check the path (combine the iot-knowledge directory with the bit's relative path). `
+			telemetryService.captureKbitLoadFailed({
+				reason: reachable ? "not_in_registry" : "registry_unreachable",
+				bitId: bitId ?? undefined,
+				afterRetry: true,
+			})
 			return formatResponse.toolError(
 				reachable
 					? `Knowledge bit not found: "${displayPath}". It is not bundled and not in the registry. ` +

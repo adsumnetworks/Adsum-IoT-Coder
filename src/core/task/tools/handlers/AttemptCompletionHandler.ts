@@ -23,7 +23,7 @@ import { ToolResultUtils } from "../utils/ToolResultUtils"
 
 /** The demo scenario id this task is completing (matched from the launch bubble text), or undefined if it's not
  *  a demo task. Drives `demo_run_completed` attribution across ALL scenarios — previously only NUS was detected. */
-function completingDemoScenarioId(config: TaskConfig): string | undefined {
+export function completingDemoScenarioId(config: TaskConfig): string | undefined {
 	const msgs = config.messageState.getClineMessages()
 	for (const m of msgs) {
 		if (m.type === "say" && m.say === "text" && m.text) {
