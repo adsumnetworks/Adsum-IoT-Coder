@@ -2,6 +2,7 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { showSystemNotification } from "@integrations/notifications"
+import { getInstallId } from "@services/adsum/InstallIdentity"
 import { scanForVerdictLeaks } from "@services/knowledge/honesty/verdictScan"
 import { findLast, parsePartialArrayString } from "@shared/array"
 import { ClineAsk, ClineAskQuestion } from "@shared/ExtensionMessage"
@@ -13,7 +14,7 @@ import { ToolResponse } from "../.."
 import type { IPartialBlockHandler, IToolHandler } from "../ToolExecutorCoordinator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
-import { readinessReportOnDisk } from "./AttemptCompletionHandler"
+import { completingDemoScenarioId, readinessReportOnDisk } from "./AttemptCompletionHandler"
 import { findCraOptionViolations } from "./craAskGuards"
 
 export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlockHandler {
@@ -42,6 +43,24 @@ export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlo
 		if (!question) {
 			config.taskState.consecutiveMistakeCount++
 			return await config.callbacks.sayAndCreateMissingParamError(this.name, "question")
+		}
+
+		// Demo funnel (telemetry): the no-ending demos (cra-sample, hci-sniffer) never call attempt_completion, so
+		// their `demo_run_completed` can't fire there — fire it once when the demo reaches its CLOSING resting ask,
+		// detected by a conversion/own-project option (mid-run beat asks don't carry one). Restores the funnel the
+		// no-ending redesign silently broke (hci-sniffer was 24 started / 0 completed).
+		if (!config.taskState.demoCompletionFired) {
+			const scenarioId = completingDemoScenarioId(config)
+			if (scenarioId === "cra-sample" || scenarioId === "hci-sniffer") {
+				const opts = parsePartialArrayString(optionsRaw || "[]")
+				const isClosing = opts.some((o) =>
+					/\bmy own\b|own (nrf )?project|open your project|ship-ready|against the eu cra/i.test(o),
+				)
+				if (isClosing) {
+					config.taskState.demoCompletionFired = true
+					telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), scenarioId)
+				}
+			}
 		}
 
 		// CRA resting-ask guards (operator direction: a CRA run never ends — the open ask IS the session's

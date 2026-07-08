@@ -356,6 +356,12 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 			if (craIntegrityIssues.length > 0) {
 				await config.services.diffViewProvider.revertChanges()
 				await config.services.diffViewProvider.reset()
+				// Honesty-moat health: how often the model produces a report that fails the cross-check + which
+				// checks fired. Issue-KIND enums only (never report content); iot_platform auto-added by the provider.
+				telemetryService.captureCraReportRejected({
+					issueCount: craIntegrityIssues.length,
+					kinds: [...new Set(craIntegrityIssues.map((i) => i.kind))],
+				})
 				return formatResponse.toolError(formatIntegrityError(craIntegrityIssues))
 			}
 

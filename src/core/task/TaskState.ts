@@ -52,6 +52,11 @@ export class TaskState {
 	// blows context and inline-dumps the report instead of writing it (2906c) is the failure this prevents.
 	craReadinessReportWritten: boolean = false
 
+	// Demo funnel (telemetry): no-ending demos (cra-sample, hci-sniffer) never call attempt_completion, so their
+	// `free_tier.demo_run_completed` can't fire there — it fires once from the closing resting-ask instead. Guard
+	// so a re-offered closing ask doesn't double-count.
+	demoCompletionFired: boolean = false
+
 	// CRA twin seatbelt (parity, 2906i): directory of the readiness `.md` that cleared the write seam. The skeleton
 	// mandates BOTH `CRA_READINESS.md` AND its machine-readable twin `cra-readiness.json` in the same folder — a real
 	// ESP run wrote only the `.md`. attempt_completion checks this dir for the json twin and refuses to finish without
