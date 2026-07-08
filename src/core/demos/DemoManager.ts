@@ -392,8 +392,8 @@ Read the ONE real capture named at each beat (paths above), one layer at a time,
   Beat 2 HCI buggy — read ${hciBuggy}    → button "Show me the missing code →"
   Beat 3 reveal + source — read ${centralSrc}, then Beat 4 the fix → button "Prove it on the HCI bus →"
   (From Beat 3 on, every ask ALSO carries the bit's standing exit ramp: "Point Adsum at my own project".)
-  Beat 5 HCI proof — read ${hciFixed}    → button "Sniff the air →"
-  Beat 6 sniffer — read ${snifferFixed}  → THE CLOSING
+  Beat 5 HCI proof — read ${hciFixed}. Render the REQUIRED healed-handshake sequence (mirror of Beat 3, now with the #79 CCCD write + #81 notifications; "✓ delivered" = observed bus event, never a verdict) + the 2→21 count. → button "Sniff the air →"
+  Beat 6 sniffer — read ${snifferFixed}. Render the REQUIRED channel-band mermaid (advertising 37/38/39 = where the buggy capture sat = NOT bug evidence; data ch2–35 = the fixed run's 20 PDUs). FIXED-ONLY — never a buggy "0→20" air delta. → THE CLOSING
 Honor the bit's no-spoiler rule (do NOT name bt_nus_subscribe_receive() before Beat 3) and its honesty rules — the buggy air capture is advertising-only, so NEVER show a fabricated buggy↔fixed air delta; the real air diff is the live OTA tier.
 If they picked a LIVE option, follow the bit's Live tiers section instead (load nrf/actions/flash, nrf/actions/capture-logs, nrf/workflows/hci-trace, and — for OTA — nrf/workflows/ble-sniffer), with the bit's graceful-degradation rule.
 
