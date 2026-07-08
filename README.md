@@ -22,7 +22,7 @@
 
 **[Watch the demo →](https://www.youtube.com/watch?v=67tUybg1phk)** · **[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[CRA readiness →](#cra-readiness-sbom-cve-and-secure-by-design)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
 
-<a href="https://www.youtube.com/watch?v=67tUybg1phk"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder debugging ESP32 and nRF firmware in VS Code: capture, analyze, fix" /></a>
+<a href="https://www.youtube.com/watch?v=67tUybg1phk"><img src="assets/docs/hero.gif" width="70%" alt="Adsum IoT Coder debugging ESP32 and nRF firmware in VS Code: capture, analyze, fix" /></a>
 
 </div>
 
