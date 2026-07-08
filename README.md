@@ -34,10 +34,10 @@
 
 ## What's New <sup>`v0.1.8`</sup>
 
-<img src="assets/icons/whatsnew-layers.png" width="18" valign="middle" alt="" /> &nbsp;**See a BLE bug at every layer.** Adsum now debugs across all three layers of a BLE connection: the application log, the HCI host↔controller bus, and the over-the-air radio, correlated so you see exactly where a flow broke, not just where the app noticed. A guided sample run makes it easy to try in one click, with no hardware, and the same debugging works on your own nRF boards.
+<img src="assets/icons/whatsnew-layers.png" width="18" valign="middle" alt="" /> &nbsp;**See a bug at every layer.** Adsum now debugs across all three layers of a BLE connection: the application log, the HCI host↔controller bus, and the over-the-air radio, correlated so you see exactly where a flow broke, not just where the app noticed. A guided sample run makes it easy to try in one click, with no hardware, and the same debugging works on your own nRF boards.
 
 <p align="center">
-  <img src="assets/docs/ble-sniffer.png" width="46%" alt="Adsum IoT Coder guided 3-layer BLE debug in VS Code: the sniffer-dongle setup step (5/7) of the walkthrough, reading curated nRF knowledge files and rendering a generated nRF52840 dongle DFU-mode diagram" />
+  <img src="assets/docs/ble-sniffer.png" width="46%" alt="Adsum IoT Coder guided 3-layer debug in VS Code: the sniffer-dongle setup step (5/7) of the walkthrough, reading curated nRF knowledge files and rendering a generated nRF52840 dongle DFU-mode diagram" />
 </p>
 
 Plus a **hardening pass**: smoother, safer CRA runs, more reliable Windows terminals, and a slimmer input area. *[Full changelog](./CHANGELOG.md).*
@@ -88,7 +88,7 @@ And the reason it is good at the hard parts is the part general agents do not ha
 - **Automatic platform detection.** nRF, ESP, both, or a fresh start, with the right tools for each.
 - **Build, flash & debug.** The full loop on real hardware: build, flash, capture live logs (RTT/UART on nRF, serial monitor on ESP), analyze, fix, repeat.
 - **Capture & analyze device logs.** Correlated with your source, across one board or two.
-- **Debug BLE across all three layers.** The agent correlates the app log, the HCI bus, and the over-the-air radio, so you see where a BLE flow actually breaks, not just what the app logged. A guided sample run makes it easy to try, no hardware required.
+- **Debug across all three layers.** The agent correlates the app log, the HCI bus, and the over-the-air radio, so you see where a BLE flow actually breaks, not just what the app logged. A guided sample run makes it easy to try, no hardware required.
 - **Start a prototype, add a feature.** Scaffold a new nRF or ESP-IDF project; wire a BLE service, sensor, shell, or storage into your real project.
 - **Test & validate.** Host tests and on-hardware checks.
 - **Check CRA readiness.** One click: an SBOM (SPDX) plus a secure-by-design posture snapshot from your real build, on nRF and ESP. See [CRA Readiness](#cra-readiness-sbom-cve-and-secure-by-design).
@@ -163,7 +163,7 @@ Recommended for bring-your-own-key: **Claude Haiku 4.5** (the benchmark model) a
 
 ## Roadmap
 
-Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi, one-click CRA readiness (SBOM + secure-by-design posture), and a **guided 3-layer BLE debug** that correlates the app log, on-device HCI, and the over-the-air radio to pinpoint where a flow actually broke, not just the app log. **Next:** more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), 3-layer decoding beyond BLE, power profiling, and a growing community knowledge base. The roadmap is shaped by what the community asks for and contributes.
+Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi, one-click CRA readiness (SBOM + secure-by-design posture), and a **guided 3-layer debug** that correlates the app log, on-device HCI, and the over-the-air radio to pinpoint where a flow actually broke, not just the app log. **Next:** more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), 3-layer decoding beyond BLE, power profiling, and a growing community knowledge base. The roadmap is shaped by what the community asks for and contributes.
 
 ## Limitations
 
