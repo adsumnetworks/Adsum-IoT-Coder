@@ -20,4 +20,6 @@ Zephyr is a trademark of the Linux Foundation; Visual Studio Code is a trademark
 of Microsoft. This is an independent project, not affiliated with or endorsed by
 any of them.
 
-[VERIFY other bundled third-party components and their NOTICE requirements.]
+Bundled runtime dependencies are distributed under their respective permissive
+licenses (MIT / ISC / BSD), and the VS Code icon font (@vscode/codicons) under
+CC-BY-4.0. Each package's full license text is included with it in node_modules.
