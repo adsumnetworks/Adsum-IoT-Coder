@@ -368,8 +368,22 @@ export class TelemetryService {
 			KBIT_DOWNLOADED_RESOLVED: "kbit.downloaded_resolved",
 			KBIT_REGISTRY_UNREACHABLE: "kbit.registry_unreachable",
 			KBIT_CACHE_RECONCILED: "kbit.cache_reconciled",
+			// K-bit: the read tool auto-corrected a wrong bit-path guess to the one same-filename catalog match
+			// (honesty/robustness — how often models mis-derive a bit directory; counts + kinds only, no paths).
+			KBIT_PATH_AUTOCORRECTED: "kbit.path_autocorrected",
+			// K-bit: a required bit FAILED to load (the exact failure that dead-ended Omar's + our CRA runs). The
+			// `reason` enum attributes the stage: "transient_fetch" (listed but blob fetch failed — retryable),
+			// "not_in_registry" (unknown id / wrong path), "registry_unreachable". `afterRetry` = the outer 3s
+			// retry already ran. Reason enum + bit id only — never file/user paths.
+			KBIT_LOAD_FAILED: "kbit.load_failed",
 			// CRA: a CVE scan completed (findings volume + SBOM coverage; never CVE ids or component names)
 			CVE_SCAN_COMPLETED: "task.cve_scan_completed",
+			// CRA: the readiness-report integrity guard rejected a write (honesty-moat health — how often the model
+			// produces a report that fails the cross-check; issue KINDS + count only, never report content).
+			CRA_REPORT_REJECTED: "task.cra_report_rejected",
+			// A built-in tool (triggerCveScan/Nordic/Esp) was mis-called through use_mcp_tool and intercepted
+			// (free-tier model confusion signal; the intercept teaches the direct call — counts + tool name only).
+			NATIVE_TOOL_VIA_MCP: "task.native_tool_via_mcp",
 			// Welcome-screen intent funnel (host-emitted; webview client stays disabled)
 			CARD_CLICKED: "task.card_clicked",
 			NEXT_STEP_SELECTED: "task.next_step_selected",
@@ -2467,6 +2481,32 @@ export class TelemetryService {
 		coverageQueryable?: number
 	}) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.CVE_SCAN_COMPLETED, properties: { ...props } })
+	}
+
+	/** CRA: the readiness-report integrity guard rejected a write. `kinds` = the issue-kind enums (e.g.
+	 *  "verdict-leak","package-count","missing-readiness-disclaimer"); NEVER report content. Honesty-moat health. */
+	public captureCraReportRejected(props: { iot_platform?: string; issueCount?: number; kinds?: string[] } = {}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.CRA_REPORT_REJECTED, properties: { ...props } })
+	}
+
+	/** A built-in tool was mis-called via use_mcp_tool and the host intercepted it (free-tier confusion signal). */
+	public captureNativeToolViaMcp(props: { tool?: string } = {}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.NATIVE_TOOL_VIA_MCP, properties: { ...props } })
+	}
+
+	/** K-bit: a wrong bit-path guess was auto-corrected to the single same-filename catalog match. */
+	public captureKbitPathAutocorrected(props: { requested?: string; corrected?: string } = {}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.KBIT_PATH_AUTOCORRECTED, properties: { ...props } })
+	}
+
+	/** K-bit: a required bit failed to load (the Omar/CRA dead-end). `reason` attributes the stage; `bitId` is the
+	 *  catalog id (safe), NOT a user/file path. Field health for the registry + the retry/attribution work. */
+	public captureKbitLoadFailed(props: {
+		reason: "transient_fetch" | "not_in_registry" | "registry_unreachable"
+		bitId?: string
+		afterRetry?: boolean
+	}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.KBIT_LOAD_FAILED, properties: { ...props } })
 	}
 
 	/** CRA: the bridge routed into a core feature (debug/addFeature). Fired host-side at the routed task's start. */
