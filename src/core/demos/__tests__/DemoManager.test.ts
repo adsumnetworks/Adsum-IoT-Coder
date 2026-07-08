@@ -188,7 +188,7 @@ describe("hci-sniffer demo (v5 — thin orchestrator over the demo-debug-hci bit
 	const norm = (p: string) => p.replace(/\\/g, "/")
 
 	it("display text is synced with the demoScenarios.ts historyMatch prefix", () => {
-		expect(buildHciSnifferDisplayText().startsWith("HCI + sniffer-in-the-loop BLE debug")).to.equal(true)
+		expect(buildHciSnifferDisplayText().startsWith("Debug a BLE bug across all 3 layers")).to.equal(true)
 	})
 
 	it("opens NOTHING at launch (clean entry like NUS — no auto-opened/spoiler file)", () => {
@@ -252,11 +252,17 @@ describe("hci-sniffer demo (v5 — thin orchestrator over the demo-debug-hci bit
 		const p = norm(
 			buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned", undefined, "/storage/demo/cra-prebuilt-nrf-1"),
 		)
-		expect(p).to.contain("ship-ready")
+		expect(p).to.contain("Check this build against the EU CRA")
 		expect(p).to.contain("cra/workflows/cra-readiness.md") // the CRA workflow bit (bare relpath)
 		expect(p).to.contain("triggerCveScan")
 		expect(p).to.contain("/storage/demo/cra-prebuilt-nrf-1/sbom/all.spdx") // wired to the staged CRA bundle
 		expect(p).to.contain("conformity assessment") // framed as a readiness aid, NOT a verdict
-		expect(p.trimEnd().endsWith("<!--TASK_COMPLETE-->")).to.equal(true)
+	})
+
+	it("has NO ending: never attempt_completion, no completion marker — the resting ask holds (kbit 0.1.1)", () => {
+		const p = norm(buildHciSnifferPrompt("/storage/demo/hci-sniffer-1", "canned"))
+		expect(p).to.contain("NEVER call attempt_completion")
+		expect(p).to.contain("forward-only")
+		expect(p).to.not.contain("<!--TASK_COMPLETE-->")
 	})
 })
