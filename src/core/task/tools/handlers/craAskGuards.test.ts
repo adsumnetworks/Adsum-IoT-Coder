@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { findCraOptionViolations } from "./craAskGuards"
+import { findCraOptionViolations, isDemoClosingAsk } from "./craAskGuards"
 
 /**
  * CRA resting-ask option guards — the exit/handback shapes a CRA ask must never offer.
@@ -53,4 +53,29 @@ describe("findCraOptionViolations — forward options that MUST pass", () => {
 			assert.deepEqual(findCraOptionViolations([option]), [], option)
 		})
 	}
+})
+
+describe("isDemoClosingAsk (demo_run_completed telemetry — no-ending demos)", () => {
+	test("HCI closing menu → true", () => {
+		assert.equal(
+			isDemoClosingAsk([
+				"Run this on my own nRF project",
+				"Check this build against the EU CRA (SBOM · known CVEs · posture)",
+				"Wrap up",
+			]),
+			true,
+		)
+	})
+	test("cra-sample closing (own-project CTA) → true", () => {
+		assert.equal(isDemoClosingAsk(["Check my own project", "Triage CVE-2026-8023", "Save a copy to Desktop"]), true)
+		assert.equal(isDemoClosingAsk(["open your project and click CRA SBOM & Fix"]), true)
+	})
+	test("HCI mid-run beat + exit-ramp → FALSE (must not fire completion at the reveal)", () => {
+		assert.equal(isDemoClosingAsk(["Prove it on the HCI bus →", "Point Adsum at my own project"]), false)
+		assert.equal(isDemoClosingAsk(["Show me the missing code →", "Point Adsum at my own project"]), false)
+	})
+	test("pure mid-run beat buttons → false", () => {
+		assert.equal(isDemoClosingAsk(["Tap the HCI bus →", "Skip to the fix"]), false)
+		assert.equal(isDemoClosingAsk(["Sniff the air →"]), false)
+	})
 })
