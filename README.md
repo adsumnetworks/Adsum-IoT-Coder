@@ -34,7 +34,7 @@
 
 ## What's New <sup>`v0.1.8`</sup>
 
-<img src="assets/icons/whatsnew-layers.png" width="18" valign="middle" alt="" /> &nbsp;**See a bug at every layer.** Adsum now debugs across all three layers of a BLE connection: the application log, the HCI host↔controller bus, and the over-the-air radio, correlated so you see exactly where a flow broke, not just where the app noticed. A guided sample run makes it easy to try in one click, with no hardware, and the same debugging works on your own nRF boards.
+<img src="assets/icons/whatsnew-wave.png" width="18" valign="middle" alt="" /> &nbsp;**See a bug at every layer.** Adsum now debugs across all three layers of a BLE connection: the application log, the HCI host↔controller bus, and the over-the-air radio, correlated so you see exactly where a flow broke, not just where the app noticed. A guided sample run makes it easy to try in one click, with no hardware, and the same debugging works on your own nRF boards.
 
 <p align="center">
   <img src="assets/docs/ble-sniffer.png" width="46%" alt="Adsum IoT Coder guided 3-layer debug in VS Code: the sniffer-dongle setup step (5/7) of the walkthrough, reading curated nRF knowledge files and rendering a generated nRF52840 dongle DFU-mode diagram" />
