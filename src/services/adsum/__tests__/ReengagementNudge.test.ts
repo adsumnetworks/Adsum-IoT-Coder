@@ -86,7 +86,7 @@ describe("buildReengagementMessage", () => {
 
 	it("not CRA-relevant → the shared 3-pillar what's-new pitch (never a false per-project CRA claim)", () => {
 		const c = buildReengagementMessage({ craRelevant: false, version: "0.1.7" })
-		expect(c.message).to.contain("What's new in v0.1.7")
+		expect(c.message).to.contain("What's new in Adsum IoT Coder v0.1.7")
 		expect(c.message).to.contain("hardware-in-the-loop")
 		expect(c.cta).to.equal("See what's new")
 	})
