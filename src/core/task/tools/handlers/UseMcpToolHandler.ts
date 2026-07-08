@@ -103,6 +103,7 @@ export class UseMcpToolHandler implements IFullyManagedTool {
 			const nativeName = NATIVE_TOOLS_MISCALLED_AS_MCP.has(tool_name) ? tool_name : server_name
 			await config.callbacks.removeLastPartialMessageIfExistsWithType("ask", "use_mcp_server")
 			await config.callbacks.removeLastPartialMessageIfExistsWithType("say", "use_mcp_server")
+			telemetryService.captureNativeToolViaMcp({ tool: nativeName }) // free-tier model-confusion signal
 			return formatResponse.toolError(nativeToolCorrection(nativeName, mcp_arguments))
 		}
 
