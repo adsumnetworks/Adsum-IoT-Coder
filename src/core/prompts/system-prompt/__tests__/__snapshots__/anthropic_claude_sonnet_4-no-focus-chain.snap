@@ -219,7 +219,7 @@ Usage:
 </generate_explanation>
 
 ## triggerNordicAction
-Description: Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices.
+Description: Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices. BUILT-IN tool of this agent — call it directly like read_file; NEVER route it through use_mcp_tool (it is not an MCP tool and no MCP server hosts it).
 
 USE action="execute" for ALL NCS CLI operations: west build, west flash, nrfjprog, nrfutil, etc.
 USE action="log_device" ONLY for live UART/RTT log capture.
@@ -323,7 +323,7 @@ Usage:
 </triggerNordicAction>
 
 ## triggerEspAction
-Description: Run the ESP-IDF toolchain in a terminal with the ESP-IDF environment sourced for you.
+Description: Run the ESP-IDF toolchain in a terminal with the ESP-IDF environment sourced for you. BUILT-IN tool of this agent — call it directly like read_file; NEVER route it through use_mcp_tool (it is not an MCP tool and no MCP server hosts it).
 
 USE action="build" | "flash" for the core cycle, action="monitor" to CAPTURE serial logs/crashes to a file, or action="execute" with a "command" for any other idf.py/esptool/python command (including device identification: esptool.py flash_id, idf.py --version, idf.py size).
 NEVER use execute_command for ESP-IDF tasks — a plain terminal has no IDF environment.
@@ -392,7 +392,7 @@ Usage:
 </triggerEspAction>
 
 ## triggerCveScan
-Description: Scan a generated SBOM for known CVEs (host-run, evidence-mode).
+Description: Scan a generated SBOM for known CVEs (host-run, evidence-mode). BUILT-IN tool of this agent — call it directly like read_file; NEVER route it through use_mcp_tool (it is not an MCP tool and no MCP server hosts it).
 
 Evidence-mode only. Every advisory is attributed to its source (OSV), dated ("as of"), and hedged ("verify") —
 this is a triage aid, never a clean bill of health. Run the CRA SBOM step FIRST (this needs a generated SBOM).
