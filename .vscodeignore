@@ -167,6 +167,10 @@ e2e-build.mjs
 e2e.vsix
 test-results/
 
+# Never ship any built VSIX artifact (stray local builds, e2e output, etc.) — vsce has no
+# built-in catch-all for this, so previous/in-progress .vsix files can otherwise get bundled.
+**/*.vsix
+
 # Ignore Storybook files
 **/*.stories.tsx
 *storybook.log

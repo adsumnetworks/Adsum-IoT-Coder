@@ -1,0 +1,8 @@
+# Coalesces contributor identities so GitHub's contributor/blame views show one entry per
+# person instead of duplicates from different commit-time name/email configurations.
+# See: https://git-scm.com/docs/gitmailmap
+Omar Morceli <morceli@adsumnetworks.com>
+Omar Morceli <morceli@adsumnetworks.com> <omar.morceli7@gmail.com>
+Omar Morceli <morceli@adsumnetworks.com> <91250357+OmarMorceli@users.noreply.github.com>
+Ismail Hamdad <ismail@adsumnetworks.com>
+Ismail Hamdad <ismail@adsumnetworks.com> <91249198+sssadsum@users.noreply.github.com>

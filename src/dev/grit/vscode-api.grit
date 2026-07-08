@@ -69,7 +69,9 @@ or {
 	`vscode.commands.executeCommand($command, $...$args)` where {
 		not or {
 			// Allowed existing command strings
-			$command <: `"workbench.action.terminal.focus"`
+			$command <: `"workbench.action.terminal.focus"`,
+			// ShellIntegrationDoctor: broken-policy terminals must be replaced after the fix
+			$command <: `"workbench.action.terminal.killAll"`
 		},
 		register_diagnostic(span=$command, message="New usage of vscode.commands.executeCommand is not allowed. Replace this with methods from the host bridge provider.")
 	},
@@ -77,7 +79,9 @@ or {
 	`vscode.commands.executeCommand($command)` where {
 		not or {
 			// Allowed existing command strings (single argument version)
-			$command <: `"workbench.action.terminal.focus"`
+			$command <: `"workbench.action.terminal.focus"`,
+			// ShellIntegrationDoctor: broken-policy terminals must be replaced after the fix
+			$command <: `"workbench.action.terminal.killAll"`
 		},
 		register_diagnostic(span=$command, message="New usage of vscode.commands.executeCommand is not allowed. Replace this with methods from the host bridge provider.")
 	},

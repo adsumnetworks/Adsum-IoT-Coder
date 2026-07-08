@@ -36,6 +36,7 @@ import {
 	disposeVscodeCommentReviewController,
 	getVscodeCommentReviewController,
 } from "./hosts/vscode/review/VscodeCommentReviewController"
+import { runShellIntegrationDoctor } from "./hosts/vscode/terminal/ShellIntegrationDoctor"
 import { VscodeTerminalManager } from "./hosts/vscode/terminal/VscodeTerminalManager"
 import { VscodeDiffViewProvider } from "./hosts/vscode/VscodeDiffViewProvider"
 import { VscodeWebviewProvider } from "./hosts/vscode/VscodeWebviewProvider"
@@ -181,6 +182,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	void detectEspEnvironment()
 		.then(() => webview.controller.postStateToWebview())
 		.catch(() => {})
+
+	// Windows only: probe for the fresh-install PowerShell execution policy (and terminal profile)
+	// that silently break shell integration, and auto-fix in the background before the first
+	// command runs — so the user just finds a working terminal.
+	void runShellIntegrationDoctor("activation").catch(() => {})
 
 	// Re-detect both environments when workspace folders change.
 	context.subscriptions.push(
