@@ -59,21 +59,21 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		historyMatch: "Run CRA SBOM & Fix on a pre-built reference sample",
 		platform: "nrf",
 		icon: "shield",
-		isNew: true,
+		isNew: true, // operator 0707: CRA keeps the New flag AND stays on top (defined before hci-sniffer; the stable sort preserves this order among New rows).
 	},
-	// HCI + Sniffer (v5) is BUILT — the host handler + the demo-debug-hci kbit (published to the registry) + the
-	// bundled captures are all ready. Held as a "coming soon" roadmap row for THIS release; ship it next release by
-	// flipping comingSoon off (then run the registry-mode F5 pre-release gate + `kbit:check-drift` first).
+	// HCI + Sniffer (v5): ACTIVE ON THIS BRANCH ONLY for Omar's full hardware-matrix test (all option/DK/dongle
+	// combos) — do NOT merge to a release until that gate passes (registry-mode F5 + `kbit:check-drift` first).
+	// The kbit (demo-debug-hci 0.1.1, no-ending close) is published; bundle + host handler shipped since 0.1.7.
 	"hci-sniffer": {
 		id: "hci-sniffer",
-		title: "HCI + sniffer-in-the-loop BLE debug",
+		title: "Debug a BLE bug across all 3 layers",
 		honestLabel:
-			"A real one-directional BLE bug across all 3 layers — app log, HCI trace, over-the-air — from nRF hardware. Runs with or without your own boards.",
+			"A real bug — data flows one way only — traced through the app log, the HCI bus, and the over-the-air capture, from real nRF hardware. Runs with or without your own boards.",
 		taskPrompt: "Demo: HCI + sniffer-in-the-loop BLE debug\n\n[ADSUM_DEMO:hci-sniffer]",
-		historyMatch: "HCI + sniffer-in-the-loop BLE debug",
+		historyMatch: "Debug a BLE bug across all 3 layers",
 		platform: "nrf",
 		icon: "radio-tower",
-		comingSoon: true,
+		isNew: true,
 		teaser: "BLE, debugged at every layer — app, bus, radio.",
 	},
 	// A8 — ESP sample placeholder: a Wi-Fi debug session (ESP's connectivity story, parallel to the nRF/BLE HCI
