@@ -34,7 +34,13 @@
 
 ## What's New <sup>`v0.1.8`</sup>
 
-**v0.1.8 — hardening & fixes.** Smoother, safer CRA runs, more reliable Windows terminals, and a slimmer input area. *[Full changelog](./CHANGELOG.md).*
+<img src="assets/icons/whatsnew-layers.png" width="18" valign="middle" alt="" /> &nbsp;**See a BLE bug at every layer.** Adsum now debugs across all three layers of a BLE connection: the application log, the HCI host↔controller bus, and the over-the-air radio, correlated so you see exactly where a flow broke, not just where the app noticed. A guided sample run makes it easy to try in one click, with no hardware, and the same debugging works on your own nRF boards.
+
+<p align="center">
+  <img src="assets/docs/ble-sniffer.png" width="46%" alt="Adsum IoT Coder guided 3-layer BLE debug in VS Code: the sniffer-dongle setup step (5/7) of the walkthrough, reading curated nRF knowledge files and rendering a generated nRF52840 dongle DFU-mode diagram" />
+</p>
+
+Plus a **hardening pass**: smoother, safer CRA runs, more reliable Windows terminals, and a slimmer input area. *[Full changelog](./CHANGELOG.md).*
 
 **The flagship, shipped in `v0.1.7`:**
 
@@ -42,7 +48,7 @@
 
 <img src="assets/icons/whatsnew-posture.png" width="18" valign="middle" alt="" /> &nbsp;**Secure-by-design posture, from your real config.** It reads what your build actually sets, secure boot, signed updates, debug-port lock, secure storage and more, and lays out each requirement, where your build stands, and the fix, ranked so you tackle the biggest gap first.
 
-<img src="assets/icons/whatsnew-cve.png" width="18" valign="middle" alt="" /> &nbsp;**Scan your SBOM for known CVEs — and close them.** The check matches your build's identifiable components against public advisory databases and lists what's found. Hand it a specific CVE and it confirms the affected component is really in your build, links the advisory, then walks you through bumping the version, rebuilding, and regenerating the SBOM.
+<img src="assets/icons/whatsnew-cve.png" width="18" valign="middle" alt="" /> &nbsp;**Scan your SBOM for known CVEs, and close them.** The check matches your build's identifiable components against public advisory databases and lists what's found. Hand it a specific CVE and it confirms the affected component is really in your build, links the advisory, then walks you through bumping the version, rebuilding, and regenerating the SBOM.
 
 <img src="assets/icons/whatsnew-fix.png" width="18" valign="middle" alt="" /> &nbsp;**Fix in the same loop.** It doesn't just flag gaps. It helps you wire the fix, a secure bootloader for example, rebuild, and re-verify, without leaving the agent.
 
@@ -55,7 +61,7 @@
 One click runs a build-time readiness check for the **EU Cyber Resilience Act (CRA)**, on both nRF and ESP. A readiness snapshot to help you prepare, **not a conformity assessment and not legal advice.**
 
 - **SBOM from your real build.** A machine-readable software bill of materials (SPDX), the CRA's named artifact, generated from your actual build with the vendor-native tools.
-- **Known-CVE scan across your SBOM.** Matches your build's identifiable components (CPE/PURL) against public advisory databases — the EU's EUVD, NVD, and OSV — and lists what's found, with coverage stated honestly. Never a pass/fail verdict.
+- **Known-CVE scan across your SBOM.** Matches your build's identifiable components (CPE/PURL) against public advisory databases (the EU's EUVD, NVD, and OSV) and lists what's found, with coverage stated honestly. Never a pass/fail verdict.
 - **Secure-by-design posture** against your build's actual configuration: secure boot, signed updates, debug-port lock, secure pairing, secure storage and more, each with the plain-English requirement and the fix, ranked so you tackle the biggest gap first.
 - **Bring a CVE, and close it.** Hand it a CVE from a vendor advisory: it confirms the affected component is really in your build (a literal SBOM lookup), links the advisory, then helps you bump the version, rebuild, and regenerate the SBOM.
 - **Fix in the loop, not just flag.** It helps you wire the top fix (a secure bootloader, for example), rebuild, and re-verify, without leaving the agent.
@@ -82,6 +88,7 @@ And the reason it is good at the hard parts is the part general agents do not ha
 - **Automatic platform detection.** nRF, ESP, both, or a fresh start, with the right tools for each.
 - **Build, flash & debug.** The full loop on real hardware: build, flash, capture live logs (RTT/UART on nRF, serial monitor on ESP), analyze, fix, repeat.
 - **Capture & analyze device logs.** Correlated with your source, across one board or two.
+- **Debug BLE across all three layers.** The agent correlates the app log, the HCI bus, and the over-the-air radio, so you see where a BLE flow actually breaks, not just what the app logged. A guided sample run makes it easy to try, no hardware required.
 - **Start a prototype, add a feature.** Scaffold a new nRF or ESP-IDF project; wire a BLE service, sensor, shell, or storage into your real project.
 - **Test & validate.** Host tests and on-hardware checks.
 - **Check CRA readiness.** One click: an SBOM (SPDX) plus a secure-by-design posture snapshot from your real build, on nRF and ESP. See [CRA Readiness](#cra-readiness-sbom-cve-and-secure-by-design).
@@ -156,7 +163,7 @@ Recommended for bring-your-own-key: **Claude Haiku 4.5** (the benchmark model) a
 
 ## Roadmap
 
-Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi, and one-click CRA readiness (SBOM + secure-by-design posture). **Next release: 3-layer decoding.** The agent reads and correlates across your **code, your board, and the radio** (application logs, on-device HCI, and the over-the-air capture) to pinpoint where a flow actually broke, not just BLE. Then more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), power profiling, and a growing community knowledge base. The roadmap is shaped by what the community asks for and contributes.
+Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi, one-click CRA readiness (SBOM + secure-by-design posture), and a **guided 3-layer BLE debug** that correlates the app log, on-device HCI, and the over-the-air radio to pinpoint where a flow actually broke, not just the app log. **Next:** more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), 3-layer decoding beyond BLE, power profiling, and a growing community knowledge base. The roadmap is shaped by what the community asks for and contributes.
 
 ## Limitations
 
