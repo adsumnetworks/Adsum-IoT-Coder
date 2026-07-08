@@ -4,9 +4,9 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 
 ## [0.1.8] - 2026-07-07
 
-3-layer BLE debug lands (app, HCI, and radio), alongside a hardening pass for the CRA Readiness Check driven by real field runs on Windows and macOS.
+3-layer debug lands (app, HCI, and radio), alongside a hardening pass for the CRA Readiness Check driven by real field runs on Windows and macOS.
 
-### 3-layer BLE debug
+### 3-layer debug
 
 Adsum now debugs across all three layers of a BLE connection: the application log, the HCI host↔controller bus, and the over-the-air radio, correlated to show where a flow actually broke. It builds on the HCI decoding shipped in 0.1.7 (parsing Host Controller Interface event streams into human-readable BLE protocol events). The guided **HCI + Sniffer sample run** promised in 0.1.7 is now the on-ramp: a walkthrough of a real one-directional BLE bug that lands on the one-line fix and bridges into the CRA readiness check. It runs on a bundled sample with no hardware needed, and the same debugging works on your own nRF boards.
 
