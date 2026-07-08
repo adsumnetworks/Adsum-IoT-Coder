@@ -17,6 +17,9 @@
 		"url": "https://github.com/adsumnetworks/Adsum-IoT-Coder"
 	},
 	"homepage": "https://github.com/adsumnetworks/Adsum-IoT-Coder",
+	"bugs": {
+		"url": "https://github.com/adsumnetworks/Adsum-IoT-Coder/issues"
+	},
 	"categories": [
 		"AI",
 		"Debuggers",
