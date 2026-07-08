@@ -38,3 +38,20 @@ export function findCraOptionViolations(options: string[]): CraOptionViolation[]
 	}
 	return violations
 }
+
+/**
+ * Demo-completion detector (telemetry): the no-ending demos (cra-sample, hci-sniffer) never call
+ * attempt_completion, so `free_tier.demo_run_completed` fires when the demo reaches its CLOSING resting ask.
+ * The closing offers "run this on my own project" / "check my own project" / the CRA-check / "open your
+ * project". CAREFUL: the HCI beat exit-ramp "Point Adsum at my own project" (offered from Beat 3 on) also
+ * mentions "my own project" — it must NOT count as the closing, or completion fires at the reveal. So we
+ * match the closing-specific phrasings and deliberately EXCLUDE the bare "point … at my own project" ramp.
+ */
+const DEMO_CLOSING_RE =
+	/\b(run this on my own|check my own project|check this build against the eu cra|ship[- ]ready|open your (own )?project|want this on your)\b/i
+const DEMO_EXIT_RAMP_RE = /point\s+adsum\s+at\s+my\s+own/i
+
+/** True iff this ask's options are a no-ending demo's CLOSING menu (not a mid-run beat + its exit ramp). */
+export function isDemoClosingAsk(options: string[]): boolean {
+	return options.some((o) => DEMO_CLOSING_RE.test(o) && !DEMO_EXIT_RAMP_RE.test(o))
+}

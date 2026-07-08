@@ -15,7 +15,7 @@ import type { IPartialBlockHandler, IToolHandler } from "../ToolExecutorCoordina
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { completingDemoScenarioId, readinessReportOnDisk } from "./AttemptCompletionHandler"
-import { findCraOptionViolations } from "./craAskGuards"
+import { findCraOptionViolations, isDemoClosingAsk } from "./craAskGuards"
 
 export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlockHandler {
 	readonly name = ClineDefaultTool.ASK
@@ -52,11 +52,9 @@ export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlo
 		if (!config.taskState.demoCompletionFired) {
 			const scenarioId = completingDemoScenarioId(config)
 			if (scenarioId === "cra-sample" || scenarioId === "hci-sniffer") {
-				const opts = parsePartialArrayString(optionsRaw || "[]")
-				const isClosing = opts.some((o) =>
-					/\bmy own\b|own (nrf )?project|open your project|ship-ready|against the eu cra/i.test(o),
-				)
-				if (isClosing) {
+				// isDemoClosingAsk excludes the mid-run "Point Adsum at my own project" exit-ramp so completion
+				// fires at the true closing, not the reveal (see craAskGuards). Pure + unit-tested.
+				if (isDemoClosingAsk(parsePartialArrayString(optionsRaw || "[]"))) {
 					config.taskState.demoCompletionFired = true
 					telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), scenarioId)
 				}
