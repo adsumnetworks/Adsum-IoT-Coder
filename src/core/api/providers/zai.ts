@@ -25,6 +25,7 @@ interface ZAiHandlerOptions extends CommonApiHandlerOptions {
 	zaiApiLine?: string
 	zaiApiKey?: string
 	apiModelId?: string
+	thinkingBudgetTokens?: number
 }
 
 export class ZAiHandler implements ApiHandler {
@@ -106,6 +107,9 @@ export class ZAiHandler implements ApiHandler {
 			{ role: "system", content: systemPrompt },
 			...convertToOpenAiMessages(messages),
 		]
+		// GLM native thinking (thinking.type): send enabled/disabled only when the user set an explicit on/off toggle;
+		// omit entirely otherwise so the model applies its own default. (z.ai devpack docs.)
+		const thinkingBudget = this.options.thinkingBudgetTokens
 		const stream = await client.chat.completions.create({
 			model: model.id,
 			max_completion_tokens: model.info.maxTokens,
@@ -113,7 +117,8 @@ export class ZAiHandler implements ApiHandler {
 			stream: true,
 			stream_options: { include_usage: true },
 			...getOpenAIToolParams(tools),
-		})
+			...(thinkingBudget !== undefined ? { thinking: { type: thinkingBudget > 0 ? "enabled" : "disabled" } } : {}),
+		} as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming)
 
 		const toolCallProcessor = new ToolCallProcessor()
 
