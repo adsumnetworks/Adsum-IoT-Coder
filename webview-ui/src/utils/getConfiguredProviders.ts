@@ -185,6 +185,15 @@ export function getConfiguredProviders(apiConfiguration: ApiConfiguration | unde
 		configured.push("openai")
 	}
 
+	// Anthropic Compatible - requires base URL and API key, OR has model configured
+	if (
+		(apiConfiguration.anthropicCompatibleBaseUrl && apiConfiguration.anthropicCompatibleApiKey) ||
+		apiConfiguration.planModeAnthropicCompatibleModelId ||
+		apiConfiguration.actModeAnthropicCompatibleModelId
+	) {
+		configured.push("anthropic-compatible")
+	}
+
 	// Ollama - local provider, check base URL OR model configured
 	if (apiConfiguration.ollamaBaseUrl || apiConfiguration.planModeOllamaModelId || apiConfiguration.actModeOllamaModelId) {
 		configured.push("ollama")

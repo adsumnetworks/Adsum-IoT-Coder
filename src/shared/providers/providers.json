@@ -25,6 +25,10 @@
 			"label": "Anthropic (Claude)"
 		},
 		{
+			"value": "anthropic-compatible",
+			"label": "Anthropic Compatible"
+		},
+		{
 			"value": "bedrock",
 			"label": "Amazon Bedrock"
 		},

@@ -14,6 +14,7 @@ import { ModelsServiceClient } from "@/services/grpc-client"
 import { OPENROUTER_MODEL_PICKER_Z_INDEX } from "./OpenRouterModelPicker"
 import { AdsumFreeProvider } from "./providers/AdsumFreeProvider"
 import { AIhubmixProvider } from "./providers/AihubmixProvider"
+import { AnthropicCompatibleProvider } from "./providers/AnthropicCompatibleProvider"
 import { AnthropicProvider } from "./providers/AnthropicProvider"
 import { AskSageProvider } from "./providers/AskSageProvider"
 import { BasetenProvider } from "./providers/BasetenProvider"
@@ -136,7 +137,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 		// Provider ladder (design/03): curated, priority-ordered. Free → GLM Coding Plan → Anthropic → OpenRouter
 		// → OpenAI-compatible. General metered "Z AI" is intentionally omitted (OpenRouter covers metered GLM; the
 		// GLM Coding Plan is the branded path). The order of this array IS the display order.
-		const allowedProviders = ["adsum-free", "zai-coding-plan", "anthropic", "openrouter", "openai"]
+		const allowedProviders = ["adsum-free", "zai-coding-plan", "anthropic", "openrouter", "openai", "anthropic-compatible"]
 		let providers = allowedProviders.flatMap((value) => {
 			const entry = PROVIDERS.list.find((p) => p.value === value)
 			return entry ? [entry] : []
@@ -415,6 +416,10 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 
 			{apiConfiguration && selectedProvider === "openai" && (
 				<OpenAICompatibleProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />
+			)}
+
+			{apiConfiguration && selectedProvider === "anthropic-compatible" && (
+				<AnthropicCompatibleProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />
 			)}
 
 			{apiConfiguration && selectedProvider === "vercel-ai-gateway" && (

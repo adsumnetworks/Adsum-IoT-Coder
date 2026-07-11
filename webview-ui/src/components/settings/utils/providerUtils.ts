@@ -3,6 +3,7 @@ import {
 	ApiProvider,
 	adsumFreeDefaultModelId,
 	adsumFreeModels,
+	anthropicCompatibleModelInfoSaneDefaults,
 	anthropicDefaultModelId,
 	anthropicModels,
 	askSageDefaultModelId,
@@ -147,6 +148,7 @@ export function getModelsForProvider(
 		case "openrouter":
 		case "cline":
 		case "openai":
+		case "anthropic-compatible":
 		case "ollama":
 		case "lmstudio":
 		case "vscode-lm":
@@ -296,6 +298,21 @@ export function normalizeApiConfiguration(
 				selectedModelId: openAiModelId || "",
 				selectedModelInfo: openAiModelInfo || openAiModelInfoSaneDefaults,
 			}
+		case "anthropic-compatible": {
+			const anthropicCompatibleModelId =
+				currentMode === "plan"
+					? apiConfiguration?.planModeAnthropicCompatibleModelId
+					: apiConfiguration?.actModeAnthropicCompatibleModelId
+			const anthropicCompatibleModelInfo =
+				currentMode === "plan"
+					? apiConfiguration?.planModeAnthropicCompatibleModelInfo
+					: apiConfiguration?.actModeAnthropicCompatibleModelInfo
+			return {
+				selectedProvider: provider,
+				selectedModelId: anthropicCompatibleModelId || "",
+				selectedModelInfo: anthropicCompatibleModelInfo || anthropicCompatibleModelInfoSaneDefaults,
+			}
+		}
 		case "hicap":
 			const hicapModelId =
 				currentMode === "plan" ? apiConfiguration?.planModeHicapModelId : apiConfiguration?.actModeHicapModelId
@@ -524,6 +541,7 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 			liteLlmModelId: undefined,
 			requestyModelId: undefined,
 			openAiModelId: undefined,
+			anthropicCompatibleModelId: undefined,
 			openRouterModelId: undefined,
 			groqModelId: undefined,
 			basetenModelId: undefined,
@@ -536,6 +554,7 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 
 			// Model info objects
 			openAiModelInfo: undefined,
+			anthropicCompatibleModelInfo: undefined,
 			liteLlmModelInfo: undefined,
 			openRouterModelInfo: undefined,
 			requestyModelInfo: undefined,
@@ -571,6 +590,10 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 		liteLlmModelId: mode === "plan" ? apiConfiguration.planModeLiteLlmModelId : apiConfiguration.actModeLiteLlmModelId,
 		requestyModelId: mode === "plan" ? apiConfiguration.planModeRequestyModelId : apiConfiguration.actModeRequestyModelId,
 		openAiModelId: mode === "plan" ? apiConfiguration.planModeOpenAiModelId : apiConfiguration.actModeOpenAiModelId,
+		anthropicCompatibleModelId:
+			mode === "plan"
+				? apiConfiguration.planModeAnthropicCompatibleModelId
+				: apiConfiguration.actModeAnthropicCompatibleModelId,
 		openRouterModelId:
 			mode === "plan" ? apiConfiguration.planModeOpenRouterModelId : apiConfiguration.actModeOpenRouterModelId,
 		groqModelId: mode === "plan" ? apiConfiguration.planModeGroqModelId : apiConfiguration.actModeGroqModelId,
@@ -589,6 +612,10 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 
 		// Model info objects
 		openAiModelInfo: mode === "plan" ? apiConfiguration.planModeOpenAiModelInfo : apiConfiguration.actModeOpenAiModelInfo,
+		anthropicCompatibleModelInfo:
+			mode === "plan"
+				? apiConfiguration.planModeAnthropicCompatibleModelInfo
+				: apiConfiguration.actModeAnthropicCompatibleModelInfo,
 		liteLlmModelInfo: mode === "plan" ? apiConfiguration.planModeLiteLlmModelInfo : apiConfiguration.actModeLiteLlmModelInfo,
 		openRouterModelInfo:
 			mode === "plan" ? apiConfiguration.planModeOpenRouterModelInfo : apiConfiguration.actModeOpenRouterModelInfo,
@@ -686,6 +713,12 @@ export async function syncModeConfigurations(
 			updates.actModeOpenAiModelId = sourceFields.openAiModelId
 			updates.planModeOpenAiModelInfo = sourceFields.openAiModelInfo
 			updates.actModeOpenAiModelInfo = sourceFields.openAiModelInfo
+			break
+		case "anthropic-compatible":
+			updates.planModeAnthropicCompatibleModelId = sourceFields.anthropicCompatibleModelId
+			updates.actModeAnthropicCompatibleModelId = sourceFields.anthropicCompatibleModelId
+			updates.planModeAnthropicCompatibleModelInfo = sourceFields.anthropicCompatibleModelInfo
+			updates.actModeAnthropicCompatibleModelInfo = sourceFields.anthropicCompatibleModelInfo
 			break
 
 		case "ollama":
@@ -888,6 +921,15 @@ export const getProviderInfo = (
 					effectiveMode === "plan" ? apiConfiguration.planModeOpenAiModelId : apiConfiguration.actModeOpenAiModelId,
 				baseUrl: apiConfiguration.openAiBaseUrl,
 				helpText: "Add your OpenAI API key and endpoint",
+			}
+		case "anthropic-compatible":
+			return {
+				modelId:
+					effectiveMode === "plan"
+						? apiConfiguration.planModeAnthropicCompatibleModelId
+						: apiConfiguration.actModeAnthropicCompatibleModelId,
+				baseUrl: apiConfiguration.anthropicCompatibleBaseUrl,
+				helpText: "Add your Anthropic-compatible endpoint URL and API key",
 			}
 		case "vscode-lm":
 			return {

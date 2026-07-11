@@ -7,6 +7,7 @@ export function validateApiConfiguration(currentMode: Mode, apiConfiguration?: A
 		const {
 			apiProvider,
 			openAiModelId,
+			anthropicCompatibleModelId,
 			requestyModelId,
 			togetherModelId,
 			ollamaModelId,
@@ -81,6 +82,15 @@ export function validateApiConfiguration(currentMode: Mode, apiConfiguration?: A
 					!apiConfiguration.openAiBaseUrl ||
 					(!apiConfiguration.openAiApiKey && !apiConfiguration.azureIdentity) ||
 					!openAiModelId
+				) {
+					return "You must provide a valid base URL, API key, and model ID."
+				}
+				break
+			case "anthropic-compatible":
+				if (
+					!apiConfiguration.anthropicCompatibleBaseUrl ||
+					!apiConfiguration.anthropicCompatibleApiKey ||
+					!anthropicCompatibleModelId
 				) {
 					return "You must provide a valid base URL, API key, and model ID."
 				}

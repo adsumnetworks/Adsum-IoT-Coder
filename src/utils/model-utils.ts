@@ -8,6 +8,7 @@ export function isNextGenModelProvider(providerInfo: ApiProviderInfo): boolean {
 	return [
 		"cline",
 		"anthropic",
+		"anthropic-compatible",
 		"gemini",
 		"vertex",
 		"openrouter",
