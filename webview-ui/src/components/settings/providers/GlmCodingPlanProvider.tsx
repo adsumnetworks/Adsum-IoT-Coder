@@ -35,8 +35,7 @@ export const GlmCodingPlanProvider = ({ showModelOptions, isPopup, currentMode }
 					color: "var(--vscode-descriptionForeground)",
 				}}>
 				Your flat GLM Coding Plan subscription (z.ai). Paste the coding-plan API key below — the coding endpoint
-				(api.z.ai/api/coding/paas/v4) and model list are set automatically. Hosted by Zhipu AI (China); for regulated or
-				sensitive firmware, prefer Claude or a local model instead.
+				(api.z.ai/api/coding/paas/v4) and model list are set automatically.
 			</p>
 			<ApiKeyField
 				initialValue={apiConfiguration?.zaiApiKey || ""}
