@@ -169,70 +169,13 @@ export const hicapModelInfoSaneDefaults: HicapCompatibleModelInfo = {
 // Anthropic
 // https://docs.anthropic.com/en/docs/about-claude/models // prices updated 2025-01-02
 export type AnthropicModelId = keyof typeof anthropicModels
-export const anthropicDefaultModelId: AnthropicModelId = "claude-sonnet-4-5-20250929"
+export const anthropicDefaultModelId: AnthropicModelId = "claude-sonnet-5"
 export const ANTHROPIC_MIN_THINKING_BUDGET = 1_024
 export const ANTHROPIC_MAX_THINKING_BUDGET = 6_000
 export const anthropicModels = {
-	"claude-sonnet-4-5-20250929": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoning: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 3.75,
-		cacheReadsPrice: 0.3,
-	},
-	"claude-sonnet-4-5-20250929:1m": {
+	"claude-opus-4-8": {
 		maxTokens: 8192,
 		contextWindow: 1_000_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoning: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 3.75,
-		cacheReadsPrice: 0.3,
-		tiers: CLAUDE_SONNET_1M_TIERS,
-	},
-	"claude-haiku-4-5-20251001": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoning: true,
-		inputPrice: 1,
-		outputPrice: 5.0,
-		cacheWritesPrice: 1.25,
-		cacheReadsPrice: 0.1,
-	},
-	"claude-sonnet-4-20250514": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoning: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 3.75,
-		cacheReadsPrice: 0.3,
-	},
-	"claude-sonnet-4-20250514:1m": {
-		maxTokens: 8192,
-		contextWindow: 1_000_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoning: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 3.75,
-		cacheReadsPrice: 0.3,
-		tiers: CLAUDE_SONNET_1M_TIERS,
-	},
-	"claude-opus-4-5-20251101": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
 		supportsImages: true,
 		supportsPromptCache: true,
 		supportsReasoning: true,
@@ -241,33 +184,21 @@ export const anthropicModels = {
 		cacheWritesPrice: 6.25,
 		cacheReadsPrice: 0.5,
 	},
-	"claude-opus-4-1-20250805": {
+	"claude-opus-4-7": {
 		maxTokens: 8192,
-		contextWindow: 200_000,
+		contextWindow: 1_000_000,
 		supportsImages: true,
 		supportsPromptCache: true,
 		supportsReasoning: true,
-		inputPrice: 15.0,
-		outputPrice: 75.0,
-		cacheWritesPrice: 18.75,
-		cacheReadsPrice: 1.5,
+		inputPrice: 5.0,
+		outputPrice: 25.0,
+		cacheWritesPrice: 6.25,
+		cacheReadsPrice: 0.5,
 	},
-	"claude-opus-4-20250514": {
+	"claude-sonnet-5": {
 		maxTokens: 8192,
-		contextWindow: 200_000,
+		contextWindow: 1_000_000,
 		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoning: true,
-		inputPrice: 15.0,
-		outputPrice: 75.0,
-		cacheWritesPrice: 18.75,
-		cacheReadsPrice: 1.5,
-	},
-	"claude-3-7-sonnet-20250219": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-
 		supportsPromptCache: true,
 		supportsReasoning: true,
 		inputPrice: 3.0,
@@ -275,101 +206,36 @@ export const anthropicModels = {
 		cacheWritesPrice: 3.75,
 		cacheReadsPrice: 0.3,
 	},
-	"claude-3-5-sonnet-20241022": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-
-		supportsPromptCache: true,
-		inputPrice: 3.0, // $3 per million input tokens
-		outputPrice: 15.0, // $15 per million output tokens
-		cacheWritesPrice: 3.75, // $3.75 per million tokens
-		cacheReadsPrice: 0.3, // $0.30 per million tokens
-	},
-	"claude-3-5-haiku-20241022": {
+	"claude-haiku-4-5": {
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
 		supportsPromptCache: true,
-		inputPrice: 0.8,
-		outputPrice: 4.0,
-		cacheWritesPrice: 1.0,
-		cacheReadsPrice: 0.08,
+		supportsReasoning: true,
+		inputPrice: 1.0,
+		outputPrice: 5.0,
+		cacheWritesPrice: 1.25,
+		cacheReadsPrice: 0.1,
 	},
-	"claude-3-opus-20240229": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 15.0,
-		outputPrice: 75.0,
-		cacheWritesPrice: 18.75,
-		cacheReadsPrice: 1.5,
-	},
-	"claude-3-haiku-20240307": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 0.25,
-		outputPrice: 1.25,
-		cacheWritesPrice: 0.3,
-		cacheReadsPrice: 0.03,
-	},
-} as const satisfies Record<string, ModelInfo> // as const assertion makes the object deeply readonly
+} as const satisfies Record<string, ModelInfo> // current generation (2026-07); retired/older models removed
 
 // Claude Code
 export type ClaudeCodeModelId = keyof typeof claudeCodeModels
-export const claudeCodeDefaultModelId: ClaudeCodeModelId = "claude-sonnet-4-5-20250929"
+export const claudeCodeDefaultModelId: ClaudeCodeModelId = "claude-sonnet-5"
 export const claudeCodeModels = {
-	sonnet: {
-		...anthropicModels["claude-sonnet-4-5-20250929"],
+	"claude-sonnet-5": {
+		...anthropicModels["claude-sonnet-5"],
 		supportsImages: false,
 		supportsPromptCache: false,
 	},
-	opus: {
-		...anthropicModels["claude-opus-4-1-20250805"],
+	"claude-opus-4-8": {
+		...anthropicModels["claude-opus-4-8"],
 		supportsImages: false,
 		supportsPromptCache: false,
 	},
-	"claude-haiku-4-5-20251001": {
-		...anthropicModels["claude-haiku-4-5-20251001"],
+	"claude-haiku-4-5": {
+		...anthropicModels["claude-haiku-4-5"],
 		supportsImages: false,
-		supportsPromptCache: false,
-	},
-	"claude-sonnet-4-5-20250929": {
-		...anthropicModels["claude-sonnet-4-5-20250929"],
-		supportsImages: false,
-		supportsPromptCache: false,
-	},
-	"claude-sonnet-4-20250514": {
-		...anthropicModels["claude-sonnet-4-20250514"],
-		supportsImages: false,
-		supportsPromptCache: false,
-	},
-	"claude-opus-4-5-20251101": {
-		...anthropicModels["claude-opus-4-5-20251101"],
-		supportsImages: false,
-		supportsPromptCache: false,
-	},
-	"claude-opus-4-1-20250805": {
-		...anthropicModels["claude-opus-4-1-20250805"],
-		supportsImages: false,
-		supportsPromptCache: false,
-	},
-	"claude-opus-4-20250514": {
-		...anthropicModels["claude-opus-4-20250514"],
-		supportsImages: false,
-		supportsPromptCache: false,
-	},
-	"claude-3-7-sonnet-20250219": {
-		...anthropicModels["claude-3-7-sonnet-20250219"],
-		supportsImages: false,
-		supportsPromptCache: false,
-	},
-	"claude-3-5-haiku-20241022": {
-		...anthropicModels["claude-3-5-haiku-20241022"],
-		supportsImages: true,
 		supportsPromptCache: false,
 	},
 } as const satisfies Record<string, ModelInfo>
