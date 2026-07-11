@@ -1,9 +1,8 @@
-import { anthropicModels, CLAUDE_SONNET_1M_SUFFIX } from "@shared/api"
+import { anthropicModels } from "@shared/api"
 import { Mode } from "@shared/storage/types"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { ApiKeyField } from "../common/ApiKeyField"
 import { BaseUrlField } from "../common/BaseUrlField"
-import { ContextWindowSwitcher } from "../common/ContextWindowSwitcher"
 import { ModelInfoView } from "../common/ModelInfoView"
 import { ModelSelector } from "../common/ModelSelector"
 import ThinkingBudgetSlider from "../ThinkingBudgetSlider"
@@ -11,17 +10,7 @@ import { normalizeApiConfiguration } from "../utils/providerUtils"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
 
 // Anthropic models that support thinking/reasoning mode
-export const SUPPORTED_ANTHROPIC_THINKING_MODELS = [
-	"claude-3-7-sonnet-20250219",
-	"claude-sonnet-4-20250514",
-	`claude-sonnet-4-20250514${CLAUDE_SONNET_1M_SUFFIX}`,
-	"claude-opus-4-5-20251101",
-	"claude-opus-4-20250514",
-	"claude-opus-4-1-20250805",
-	"claude-sonnet-4-5-20250929",
-	`claude-sonnet-4-5-20250929${CLAUDE_SONNET_1M_SUFFIX}`,
-	"claude-haiku-4-5-20251001",
-]
+export const SUPPORTED_ANTHROPIC_THINKING_MODELS = ["claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-5", "claude-haiku-4-5"]
 
 /**
  * Props for the AnthropicProvider component
@@ -41,11 +30,6 @@ export const AnthropicProvider = ({ showModelOptions, isPopup, currentMode }: An
 
 	// Get the normalized configuration
 	const { selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, currentMode)
-
-	// Helper function for model switching
-	const handleModelChange = (modelId: string) => {
-		handleModeFieldChange({ plan: "planModeApiModelId", act: "actModeApiModelId" }, modelId, currentMode)
-	}
 
 	return (
 		<div>
@@ -75,22 +59,6 @@ export const AnthropicProvider = ({ showModelOptions, isPopup, currentMode }: An
 								currentMode,
 							)
 						}
-						selectedModelId={selectedModelId}
-					/>
-
-					{/* Context window switcher for Claude Sonnet 4.5 */}
-					<ContextWindowSwitcher
-						base1mModelId={`claude-sonnet-4-5-20250929${CLAUDE_SONNET_1M_SUFFIX}`}
-						base200kModelId="claude-sonnet-4-5-20250929"
-						onModelChange={handleModelChange}
-						selectedModelId={selectedModelId}
-					/>
-
-					{/* Context window switcher for Claude Sonnet 4 */}
-					<ContextWindowSwitcher
-						base1mModelId={`claude-sonnet-4-20250514${CLAUDE_SONNET_1M_SUFFIX}`}
-						base200kModelId="claude-sonnet-4-20250514"
-						onModelChange={handleModelChange}
 						selectedModelId={selectedModelId}
 					/>
 

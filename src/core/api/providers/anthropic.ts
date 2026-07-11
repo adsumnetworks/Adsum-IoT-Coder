@@ -16,6 +16,10 @@ interface AnthropicHandlerOptions extends CommonApiHandlerOptions {
 	thinkingBudgetTokens?: number
 }
 
+// Current-gen Claude models use the ADAPTIVE thinking API and reject sampling params (temperature/top_p/top_k)
+// AND budget_tokens — both return HTTP 400. Older models (e.g. Haiku 4.5) keep enabled+budget_tokens and accept temperature.
+const CLAUDE_ADAPTIVE_API_MODELS: ReadonlySet<string> = new Set(["claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-5"])
+
 export class AnthropicHandler implements ApiHandler {
 	private options: AnthropicHandlerOptions
 	private client: Anthropic | undefined
@@ -58,17 +62,26 @@ export class AnthropicHandler implements ApiHandler {
 		const nativeToolsOn = tools?.length && tools?.length > 0
 		const reasoningOn = (model.info.supportsReasoning ?? false) && budget_tokens !== 0
 
+		// Current-gen models use adaptive thinking + reject sampling params; older models use enabled+budget_tokens.
+		const isAdaptiveApi = CLAUDE_ADAPTIVE_API_MODELS.has(modelId)
+		const thinkingParam: any = reasoningOn
+			? isAdaptiveApi
+				? { type: "adaptive" }
+				: { type: "enabled", budget_tokens }
+			: undefined
+		// Adaptive-API models return 400 on ANY temperature; older models take 0 unless reasoning is on.
+		const temperature = isAdaptiveApi ? undefined : reasoningOn ? undefined : 0
+
 		if (model.info.supportsPromptCache) {
 			const anthropicMessages = sanitizeAnthropicMessages(messages, true)
 
 			stream = await client.messages.create(
 				{
 					model: modelId,
-					thinking: reasoningOn ? { type: "enabled", budget_tokens: budget_tokens } : undefined,
+					thinking: thinkingParam,
 					max_tokens: model.info.maxTokens || 8192,
-					// "Thinking isn’t compatible with temperature, top_p, or top_k modifications as well as forced tool use."
-					// (https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking)
-					temperature: reasoningOn ? undefined : 0,
+					// Current-gen models (Opus 4.7+/Sonnet 5) reject temperature; older models use 0 unless reasoning is on.
+					temperature,
 					system: [
 						{
 							text: systemPrompt,
@@ -104,7 +117,7 @@ export class AnthropicHandler implements ApiHandler {
 			stream = await client.messages.create({
 				model: modelId,
 				max_tokens: model.info.maxTokens || 8192,
-				temperature: 0,
+				temperature,
 				system: [{ text: systemPrompt, type: "text" }],
 				messages: sanitizeAnthropicMessages(messages, false),
 				tools: nativeToolsOn ? tools : undefined,
