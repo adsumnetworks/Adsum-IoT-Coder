@@ -39,6 +39,7 @@ export type ApiProvider =
 	| "baseten"
 	| "vercel-ai-gateway"
 	| "zai"
+	| "zai-coding-plan"
 	| "oca"
 	| "aihubmix"
 	| "minimax"

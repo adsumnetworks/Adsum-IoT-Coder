@@ -123,6 +123,7 @@ export function getConfiguredProviders(apiConfiguration: ApiConfiguration | unde
 	// Z AI - requires API key
 	if (apiConfiguration.zaiApiKey) {
 		configured.push("zai")
+		configured.push("zai-coding-plan")
 	}
 
 	// Groq - requires API key

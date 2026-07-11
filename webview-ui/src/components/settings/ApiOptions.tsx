@@ -26,6 +26,7 @@ import { DifyProvider } from "./providers/DifyProvider"
 import { DoubaoProvider } from "./providers/DoubaoProvider"
 import { FireworksProvider } from "./providers/FireworksProvider"
 import { GeminiProvider } from "./providers/GeminiProvider"
+import { GlmCodingPlanProvider } from "./providers/GlmCodingPlanProvider"
 import { GroqProvider } from "./providers/GroqProvider"
 import { HicapProvider } from "./providers/HicapProvider"
 import { HuaweiCloudMaasProvider } from "./providers/HuaweiCloudMaasProvider"
@@ -134,7 +135,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 	const providerOptions = useMemo(() => {
 		// GLM / provider ladder (design/03): un-gate Anthropic (→ Claude + GLM Coding Plan via the
 		// api.z.ai/api/anthropic endpoint) and Z.AI (metered GLM). Minimal for now; branded presets come later.
-		const allowedProviders = ["adsum-free", "openai", "openrouter", "anthropic", "zai"]
+		const allowedProviders = ["adsum-free", "openai", "openrouter", "anthropic", "zai", "zai-coding-plan"]
 		let providers = PROVIDERS.list.filter((p) => allowedProviders.includes(p.value))
 
 		// Filter by platform
@@ -494,6 +495,10 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 
 			{apiConfiguration && selectedProvider === "zai" && (
 				<ZAiProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />
+			)}
+
+			{apiConfiguration && selectedProvider === "zai-coding-plan" && (
+				<GlmCodingPlanProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />
 			)}
 
 			{apiConfiguration && selectedProvider === "minimax" && (
