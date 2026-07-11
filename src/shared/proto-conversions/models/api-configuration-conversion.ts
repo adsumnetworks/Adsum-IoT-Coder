@@ -311,6 +311,8 @@ function convertApiProviderToProto(provider: string | undefined): ProtoApiProvid
 			return ProtoApiProvider.ZAI
 		case "zai-coding-plan":
 			return ProtoApiProvider.ZAI_CODING_PLAN
+		case "anthropic-compatible":
+			return ProtoApiProvider.ANTHROPIC_COMPATIBLE
 		case "dify":
 			return ProtoApiProvider.DIFY
 		case "oca":
@@ -405,6 +407,8 @@ export function convertProtoToApiProvider(provider: ProtoApiProvider): ApiProvid
 			return "zai"
 		case ProtoApiProvider.ZAI_CODING_PLAN:
 			return "zai-coding-plan"
+		case ProtoApiProvider.ANTHROPIC_COMPATIBLE:
+			return "anthropic-compatible"
 		case ProtoApiProvider.HICAP:
 			return "hicap"
 		case ProtoApiProvider.DIFY:
@@ -457,6 +461,8 @@ export function convertApiConfigurationToProto(config: ApiConfiguration): ProtoA
 		vertexRegion: config.vertexRegion,
 		openAiBaseUrl: config.openAiBaseUrl,
 		openAiApiKey: config.openAiApiKey,
+		anthropicCompatibleBaseUrl: config.anthropicCompatibleBaseUrl,
+		anthropicCompatibleApiKey: config.anthropicCompatibleApiKey,
 		ollamaBaseUrl: config.ollamaBaseUrl,
 		ollamaApiKey: config.ollamaApiKey,
 		ollamaApiOptionsCtxNum: config.ollamaApiOptionsCtxNum,
@@ -527,6 +533,8 @@ export function convertApiConfigurationToProto(config: ApiConfiguration): ProtoA
 		planModeOpenRouterModelInfo: convertModelInfoToProtoOpenRouter(config.planModeOpenRouterModelInfo),
 		planModeOpenAiModelId: config.planModeOpenAiModelId,
 		planModeOpenAiModelInfo: convertOpenAiCompatibleModelInfoToProto(config.planModeOpenAiModelInfo),
+		planModeAnthropicCompatibleModelId: config.planModeAnthropicCompatibleModelId,
+		planModeAnthropicCompatibleModelInfo: convertModelInfoToProtoOpenRouter(config.planModeAnthropicCompatibleModelInfo),
 		planModeOllamaModelId: config.planModeOllamaModelId,
 		planModeLmStudioModelId: config.planModeLmStudioModelId,
 		planModeLiteLlmModelId: config.planModeLiteLlmModelId,
@@ -569,6 +577,8 @@ export function convertApiConfigurationToProto(config: ApiConfiguration): ProtoA
 		actModeOpenRouterModelInfo: convertModelInfoToProtoOpenRouter(config.actModeOpenRouterModelInfo),
 		actModeOpenAiModelId: config.actModeOpenAiModelId,
 		actModeOpenAiModelInfo: convertOpenAiCompatibleModelInfoToProto(config.actModeOpenAiModelInfo),
+		actModeAnthropicCompatibleModelId: config.actModeAnthropicCompatibleModelId,
+		actModeAnthropicCompatibleModelInfo: convertModelInfoToProtoOpenRouter(config.actModeAnthropicCompatibleModelInfo),
 		actModeOllamaModelId: config.actModeOllamaModelId,
 		actModeLmStudioModelId: config.actModeLmStudioModelId,
 		actModeLiteLlmModelId: config.actModeLiteLlmModelId,
@@ -631,6 +641,8 @@ export function convertProtoToApiConfiguration(protoConfig: ProtoApiConfiguratio
 		vertexRegion: protoConfig.vertexRegion,
 		openAiBaseUrl: protoConfig.openAiBaseUrl,
 		openAiApiKey: protoConfig.openAiApiKey,
+		anthropicCompatibleBaseUrl: protoConfig.anthropicCompatibleBaseUrl,
+		anthropicCompatibleApiKey: protoConfig.anthropicCompatibleApiKey,
 		ollamaBaseUrl: protoConfig.ollamaBaseUrl,
 		ollamaApiKey: protoConfig.ollamaApiKey,
 		ollamaApiOptionsCtxNum: protoConfig.ollamaApiOptionsCtxNum,
@@ -704,6 +716,8 @@ export function convertProtoToApiConfiguration(protoConfig: ProtoApiConfiguratio
 		planModeOpenRouterModelInfo: convertProtoToModelInfo(protoConfig.planModeOpenRouterModelInfo),
 		planModeOpenAiModelId: protoConfig.planModeOpenAiModelId,
 		planModeOpenAiModelInfo: convertProtoToOpenAiCompatibleModelInfo(protoConfig.planModeOpenAiModelInfo),
+		planModeAnthropicCompatibleModelId: protoConfig.planModeAnthropicCompatibleModelId,
+		planModeAnthropicCompatibleModelInfo: convertProtoToModelInfo(protoConfig.planModeAnthropicCompatibleModelInfo),
 		planModeOllamaModelId: protoConfig.planModeOllamaModelId,
 		planModeLmStudioModelId: protoConfig.planModeLmStudioModelId,
 		planModeLiteLlmModelId: protoConfig.planModeLiteLlmModelId,
@@ -747,6 +761,8 @@ export function convertProtoToApiConfiguration(protoConfig: ProtoApiConfiguratio
 		actModeOpenRouterModelInfo: convertProtoToModelInfo(protoConfig.actModeOpenRouterModelInfo),
 		actModeOpenAiModelId: protoConfig.actModeOpenAiModelId,
 		actModeOpenAiModelInfo: convertProtoToOpenAiCompatibleModelInfo(protoConfig.actModeOpenAiModelInfo),
+		actModeAnthropicCompatibleModelId: protoConfig.actModeAnthropicCompatibleModelId,
+		actModeAnthropicCompatibleModelInfo: convertProtoToModelInfo(protoConfig.actModeAnthropicCompatibleModelInfo),
 		actModeOllamaModelId: protoConfig.actModeOllamaModelId,
 		actModeLmStudioModelId: protoConfig.actModeLmStudioModelId,
 		actModeLiteLlmModelId: protoConfig.actModeLiteLlmModelId,

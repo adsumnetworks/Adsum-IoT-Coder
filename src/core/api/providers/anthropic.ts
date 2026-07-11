@@ -14,6 +14,8 @@ interface AnthropicHandlerOptions extends CommonApiHandlerOptions {
 	anthropicBaseUrl?: string
 	apiModelId?: string
 	thinkingBudgetTokens?: number
+	// Anthropic-Compatible provider: when set, the model id is arbitrary (non-Claude) and this is the user-supplied info.
+	anthropicCompatibleModelInfo?: ModelInfo
 }
 
 // Current-gen Claude models use the ADAPTIVE thinking API and reject sampling params (temperature/top_p/top_k)
@@ -250,7 +252,11 @@ export class AnthropicHandler implements ApiHandler {
 		}
 	}
 
-	getModel(): { id: AnthropicModelId; info: ModelInfo } {
+	getModel(): { id: string; info: ModelInfo } {
+		// Anthropic-Compatible mode: arbitrary (non-Claude) model id + user-supplied model info.
+		if (this.options.anthropicCompatibleModelInfo) {
+			return { id: this.options.apiModelId || "", info: this.options.anthropicCompatibleModelInfo }
+		}
 		const modelId = this.options.apiModelId
 		if (modelId && modelId in anthropicModels) {
 			const id = modelId as AnthropicModelId

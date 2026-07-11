@@ -442,6 +442,7 @@ enum ApiProvider {
   OPENAI_CODEX = 40;
   ADSUM_FREE = 41;
   ZAI_CODING_PLAN = 42;
+  ANTHROPIC_COMPATIBLE = 43;
 }
 
 enum ApiFormat {
@@ -662,4 +663,11 @@ message ModelsApiConfiguration {
   optional OpenAiCompatibleModelInfo act_mode_aihubmix_model_info = 237;
   optional string act_mode_nous_research_model_id = 238;
   optional string gemini_act_mode_thinking_level = 239;
+  // Anthropic Compatible provider (generic non-Claude models over the Anthropic wire format)
+  optional string anthropic_compatible_base_url = 87;
+  optional string anthropic_compatible_api_key = 88;
+  optional string plan_mode_anthropic_compatible_model_id = 140;
+  optional OpenRouterModelInfo plan_mode_anthropic_compatible_model_info = 141;
+  optional string act_mode_anthropic_compatible_model_id = 240;
+  optional OpenRouterModelInfo act_mode_anthropic_compatible_model_info = 241;
 }

@@ -45,6 +45,7 @@ export type ApiProvider =
 	| "minimax"
 	| "hicap"
 	| "nousResearch"
+	| "anthropic-compatible"
 
 export const DEFAULT_API_PROVIDER = "openrouter" as ApiProvider
 
@@ -1023,6 +1024,15 @@ export const openAiModelInfoSaneDefaults: OpenAiCompatibleModelInfo = {
 	inputPrice: 0,
 	outputPrice: 0,
 	temperature: 0,
+}
+
+// Generic Anthropic-compatible endpoint (non-Claude models over the Anthropic wire format). Plain ModelInfo — the
+// user supplies the real context window / max output; these are conservative fallbacks.
+export const anthropicCompatibleModelInfoSaneDefaults: ModelInfo = {
+	maxTokens: 8192,
+	contextWindow: 200_000,
+	supportsImages: true,
+	supportsPromptCache: false,
 }
 
 // Gemini
