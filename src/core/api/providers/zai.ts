@@ -6,6 +6,9 @@ import {
 	mainlandZAiDefaultModelId,
 	mainlandZAiModelId,
 	mainlandZAiModels,
+	zaiCodingPlanDefaultModelId,
+	zaiCodingPlanModelId,
+	zaiCodingPlanModels,
 } from "@shared/api"
 import OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
@@ -31,8 +34,22 @@ export class ZAiHandler implements ApiHandler {
 		this.options = options
 	}
 
+	// GLM Coding Plan = the flat z.ai subscription. It authenticates ONLY through the OpenAI-compatible *coding*
+	// endpoint; a coding-plan key on the general /paas/v4 returns z.ai error 1113. (China coding URL is
+	// community-sourced — verify before relying on it.)
+	private isCodingPlan(): boolean {
+		return this.options.zaiApiLine === "coding" || this.options.zaiApiLine === "coding-china"
+	}
+
 	private useChinaApi(): boolean {
-		return this.options.zaiApiLine === "china"
+		return this.options.zaiApiLine === "china" || this.options.zaiApiLine === "coding-china"
+	}
+
+	private baseUrl(): string {
+		if (this.isCodingPlan()) {
+			return this.useChinaApi() ? "https://open.bigmodel.cn/api/coding/paas/v4" : "https://api.z.ai/api/coding/paas/v4"
+		}
+		return this.useChinaApi() ? "https://open.bigmodel.cn/api/paas/v4" : "https://api.z.ai/api/paas/v4"
 	}
 
 	private ensureClient(): OpenAI {
@@ -42,7 +59,7 @@ export class ZAiHandler implements ApiHandler {
 			}
 			try {
 				this.client = new OpenAI({
-					baseURL: this.useChinaApi() ? "https://open.bigmodel.cn/api/paas/v4" : "https://api.z.ai/api/paas/v4",
+					baseURL: this.baseUrl(),
 					apiKey: this.options.zaiApiKey,
 					defaultHeaders: {
 						"HTTP-Referer": "https://cline.bot",
@@ -58,8 +75,14 @@ export class ZAiHandler implements ApiHandler {
 		return this.client
 	}
 
-	getModel(): { id: mainlandZAiModelId | internationalZAiModelId; info: ModelInfo } {
+	getModel(): { id: mainlandZAiModelId | internationalZAiModelId | zaiCodingPlanModelId; info: ModelInfo } {
 		const modelId = this.options.apiModelId
+		if (this.isCodingPlan()) {
+			return {
+				id: (modelId as zaiCodingPlanModelId) ?? zaiCodingPlanDefaultModelId,
+				info: zaiCodingPlanModels[modelId as zaiCodingPlanModelId] ?? zaiCodingPlanModels[zaiCodingPlanDefaultModelId],
+			}
+		}
 		if (this.useChinaApi()) {
 			return {
 				id: (modelId as mainlandZAiModelId) ?? mainlandZAiDefaultModelId,

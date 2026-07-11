@@ -69,6 +69,8 @@ import {
 	vertexModels,
 	xaiDefaultModelId,
 	xaiModels,
+	zaiCodingPlanDefaultModelId,
+	zaiCodingPlanModels,
 } from "@shared/api"
 import { Mode } from "@shared/storage/types"
 
@@ -128,6 +130,9 @@ export function getModelsForProvider(
 		case "huawei-cloud-maas":
 			return huaweiCloudMaasModels
 		case "zai":
+			if (apiConfiguration?.zaiApiLine === "coding" || apiConfiguration?.zaiApiLine === "coding-china") {
+				return zaiCodingPlanModels
+			}
 			return apiConfiguration?.zaiApiLine === "china" ? mainlandZAiModels : internationalZAiModels
 		case "fireworks":
 			return fireworksModels
@@ -441,11 +446,20 @@ export function normalizeApiConfiguration(
 				selectedModelId: vercelModelId || "",
 				selectedModelInfo: vercelModelInfo || openRouterDefaultModelInfo,
 			}
-		case "zai":
-			const zaiModels = apiConfiguration?.zaiApiLine === "china" ? mainlandZAiModels : internationalZAiModels
-			const zaiDefaultId =
-				apiConfiguration?.zaiApiLine === "china" ? mainlandZAiDefaultModelId : internationalZAiDefaultModelId
+		case "zai": {
+			const isZaiCodingPlan = apiConfiguration?.zaiApiLine === "coding" || apiConfiguration?.zaiApiLine === "coding-china"
+			const zaiModels = isZaiCodingPlan
+				? zaiCodingPlanModels
+				: apiConfiguration?.zaiApiLine === "china"
+					? mainlandZAiModels
+					: internationalZAiModels
+			const zaiDefaultId = isZaiCodingPlan
+				? zaiCodingPlanDefaultModelId
+				: apiConfiguration?.zaiApiLine === "china"
+					? mainlandZAiDefaultModelId
+					: internationalZAiDefaultModelId
 			return getProviderData(zaiModels, zaiDefaultId)
+		}
 		case "fireworks":
 			const fireworksModelId =
 				currentMode === "plan" ? apiConfiguration?.planModeFireworksModelId : apiConfiguration?.actModeFireworksModelId

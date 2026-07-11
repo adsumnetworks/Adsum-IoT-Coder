@@ -4062,6 +4062,41 @@ export const internationalZAiModels = {
 	},
 } as const satisfies Record<string, ModelInfo>
 
+// GLM Coding Plan (flat subscription) — OpenAI-compatible *coding* endpoint (api.z.ai/api/coding/paas/v4).
+// Per z.ai, only glm-5.2 / glm-5-turbo / glm-4.7 are coding-plan-billable; flat-rate ⇒ price 0. A coding-plan key
+// is NOT valid on the general /paas/v4 endpoint (z.ai error 1113). Source: z.ai devpack docs + z.ai's Cline page.
+export type zaiCodingPlanModelId = keyof typeof zaiCodingPlanModels
+export const zaiCodingPlanDefaultModelId: zaiCodingPlanModelId = "glm-5.2"
+export const zaiCodingPlanModels = {
+	"glm-5.2": {
+		maxTokens: 131_072,
+		contextWindow: 1_000_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		description: "GLM-5.2 — flagship, 1M context. Included in your GLM Coding Plan (flat rate).",
+	},
+	"glm-5-turbo": {
+		maxTokens: 131_072,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		description: "GLM-5-Turbo — tool-calling / agentic optimized. Included in your GLM Coding Plan.",
+	},
+	"glm-4.7": {
+		maxTokens: 131_072,
+		contextWindow: 204_800,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		description: "GLM-4.7 — strong coding + multi-step reasoning. Included in your GLM Coding Plan.",
+	},
+} as const satisfies Record<string, ModelInfo>
+
 export type mainlandZAiModelId = keyof typeof mainlandZAiModels
 export const mainlandZAiDefaultModelId: mainlandZAiModelId = "glm-4.7"
 export const mainlandZAiModels = {
