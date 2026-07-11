@@ -18,12 +18,12 @@ import { freeModels, recommendedModels } from "@/components/settings/OpenRouterM
 import { SUPPORTED_ANTHROPIC_THINKING_MODELS } from "@/components/settings/providers/AnthropicProvider"
 import { SUPPORTED_BEDROCK_THINKING_MODELS } from "@/components/settings/providers/BedrockProvider"
 import {
-    filterOpenRouterModelIds,
-    getModelsForProvider,
-    getModeSpecificFields,
-    getProviderInfo,
-    normalizeApiConfiguration,
-    syncModeConfigurations,
+	filterOpenRouterModelIds,
+	getModelsForProvider,
+	getModeSpecificFields,
+	getProviderInfo,
+	normalizeApiConfiguration,
+	syncModeConfigurations,
 } from "@/components/settings/utils/providerUtils"
 import { useApiConfigurationHandlers } from "@/components/settings/utils/useApiConfigurationHandlers"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -151,9 +151,9 @@ const ModelPickerModal: React.FC<ModelPickerModalProps> = ({ isOpen, onOpenChang
 		const allProviders = remoteConfigSettings?.remoteConfiguredProviders?.length
 			? remoteConfigSettings.remoteConfiguredProviders
 			: getConfiguredProviders(apiConfiguration)
-		
-		// STRICTLY FILTER TO ONLY OPENAI AND OPENROUTER
-		return allProviders.filter(p => p === "openai" || p === "openrouter")
+
+		// GLM / provider ladder (design/03): also allow anthropic (Claude / GLM Coding Plan) + zai (metered GLM).
+		return allProviders.filter((p) => p === "openai" || p === "openrouter" || p === "anthropic" || p === "zai")
 	}, [apiConfiguration, remoteConfigSettings?.remoteConfiguredProviders])
 
 	// Get models for current provider
@@ -702,8 +702,6 @@ const ModelPickerModal: React.FC<ModelPickerModalProps> = ({ isOpen, onOpenChang
 									<span className="text-[11px] text-description">Select a model below</span>
 								</EmptyModelRow>
 							) : null}
-
-
 
 							{/* All other models (for non-Cline always, for Cline only when searching) */}
 							{filteredModels.map((model, index) => {

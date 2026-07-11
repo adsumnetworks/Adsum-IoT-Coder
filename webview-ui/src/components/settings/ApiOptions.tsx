@@ -132,7 +132,9 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 	const dropdownListRef = useRef<HTMLDivElement>(null)
 
 	const providerOptions = useMemo(() => {
-		const allowedProviders = ["adsum-free", "openai", "openrouter"]
+		// GLM / provider ladder (design/03): un-gate Anthropic (→ Claude + GLM Coding Plan via the
+		// api.z.ai/api/anthropic endpoint) and Z.AI (metered GLM). Minimal for now; branded presets come later.
+		const allowedProviders = ["adsum-free", "openai", "openrouter", "anthropic", "zai"]
 		let providers = PROVIDERS.list.filter((p) => allowedProviders.includes(p.value))
 
 		// Filter by platform
