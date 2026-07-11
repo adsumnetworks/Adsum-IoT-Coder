@@ -309,6 +309,8 @@ function convertApiProviderToProto(provider: string | undefined): ProtoApiProvid
 			return ProtoApiProvider.VERCEL_AI_GATEWAY
 		case "zai":
 			return ProtoApiProvider.ZAI
+		case "zai-coding-plan":
+			return ProtoApiProvider.ZAI_CODING_PLAN
 		case "dify":
 			return ProtoApiProvider.DIFY
 		case "oca":
@@ -401,6 +403,8 @@ export function convertProtoToApiProvider(provider: ProtoApiProvider): ApiProvid
 			return "vercel-ai-gateway"
 		case ProtoApiProvider.ZAI:
 			return "zai"
+		case ProtoApiProvider.ZAI_CODING_PLAN:
+			return "zai-coding-plan"
 		case ProtoApiProvider.HICAP:
 			return "hicap"
 		case ProtoApiProvider.DIFY:

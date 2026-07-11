@@ -441,6 +441,7 @@ enum ApiProvider {
   NOUSRESEARCH = 39;
   OPENAI_CODEX = 40;
   ADSUM_FREE = 41;
+  ZAI_CODING_PLAN = 42;
 }
 
 enum ApiFormat {
