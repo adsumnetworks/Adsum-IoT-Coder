@@ -133,10 +133,14 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 	const dropdownListRef = useRef<HTMLDivElement>(null)
 
 	const providerOptions = useMemo(() => {
-		// GLM / provider ladder (design/03): un-gate Anthropic (→ Claude + GLM Coding Plan via the
-		// api.z.ai/api/anthropic endpoint) and Z.AI (metered GLM). Minimal for now; branded presets come later.
-		const allowedProviders = ["adsum-free", "openai", "openrouter", "anthropic", "zai", "zai-coding-plan"]
-		let providers = PROVIDERS.list.filter((p) => allowedProviders.includes(p.value))
+		// Provider ladder (design/03): curated, priority-ordered. Free → GLM Coding Plan → Anthropic → OpenRouter
+		// → OpenAI-compatible. General metered "Z AI" is intentionally omitted (OpenRouter covers metered GLM; the
+		// GLM Coding Plan is the branded path). The order of this array IS the display order.
+		const allowedProviders = ["adsum-free", "zai-coding-plan", "anthropic", "openrouter", "openai"]
+		let providers = allowedProviders.flatMap((value) => {
+			const entry = PROVIDERS.list.find((p) => p.value === value)
+			return entry ? [entry] : []
+		})
 
 		// Filter by platform
 		if (PLATFORM_CONFIG.type !== PlatformType.VSCODE) {

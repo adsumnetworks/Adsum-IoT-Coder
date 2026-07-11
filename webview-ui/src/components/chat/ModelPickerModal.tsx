@@ -153,9 +153,7 @@ const ModelPickerModal: React.FC<ModelPickerModalProps> = ({ isOpen, onOpenChang
 			: getConfiguredProviders(apiConfiguration)
 
 		// GLM / provider ladder (design/03): also allow anthropic (Claude / GLM Coding Plan) + zai (metered GLM).
-		return allProviders.filter(
-			(p) => p === "openai" || p === "openrouter" || p === "anthropic" || p === "zai" || p === "zai-coding-plan",
-		)
+		return allProviders.filter((p) => p === "openai" || p === "openrouter" || p === "anthropic" || p === "zai-coding-plan")
 	}, [apiConfiguration, remoteConfigSettings?.remoteConfiguredProviders])
 
 	// Get models for current provider
