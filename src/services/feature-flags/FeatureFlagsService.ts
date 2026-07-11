@@ -89,7 +89,11 @@ export class FeatureFlagsService {
 	 * and whenever the user logs in.
 	 */
 	public getBooleanFlagEnabled(flagName: FeatureFlag): boolean {
-		return this.cache.get(flagName) === true
+		// Fall back to the compiled-in default when the cache isn't populated yet (before the first poll, or in
+		// builds without a live remote-flags provider) so default-on features work on first run. A remote value,
+		// once polled, is cached and takes precedence.
+		const cached = this.cache.has(flagName) ? this.cache.get(flagName) : FeatureFlagDefaultValue[flagName]
+		return cached === true
 	}
 
 	public getWebtoolsEnabled(): boolean {

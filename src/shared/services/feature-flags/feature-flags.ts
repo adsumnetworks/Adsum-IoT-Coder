@@ -13,7 +13,9 @@ export const FeatureFlagDefaultValue: Partial<Record<FeatureFlag, FeatureFlagPay
 	[FeatureFlag.WEBTOOLS]: false,
 	[FeatureFlag.WORKTREES]: false,
 	[FeatureFlag.ONBOARDING_MODELS]: process.env.E2E_TEST === "true" ? { models: {} } : undefined,
-	[FeatureFlag.FREE_TIER_STAGE0]: false,
+	// Stage 0 free tier is deployed → default ON so a fresh install lands on the free tier with no config needed
+	// (until quota is exhausted). Remote config can still set this to false as a kill-switch.
+	[FeatureFlag.FREE_TIER_STAGE0]: true,
 }
 
 export const FEATURE_FLAGS = Object.values(FeatureFlag)
