@@ -22,7 +22,7 @@
 		},
 		{
 			"value": "anthropic",
-			"label": "Anthropic"
+			"label": "Anthropic (Claude)"
 		},
 		{
 			"value": "bedrock",
