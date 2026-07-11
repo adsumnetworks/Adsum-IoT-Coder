@@ -407,6 +407,14 @@ function createHandlerForProvider(
 				zaiApiKey: options.zaiApiKey,
 				apiModelId: mode === "plan" ? options.planModeApiModelId : options.actModeApiModelId,
 			})
+		case "zai-coding-plan":
+			// GLM Coding Plan (flat subscription) — force the OpenAI-compatible coding endpoint (international).
+			return new ZAiHandler({
+				onRetryAttempt: options.onRetryAttempt,
+				zaiApiLine: "coding",
+				zaiApiKey: options.zaiApiKey,
+				apiModelId: mode === "plan" ? options.planModeApiModelId : options.actModeApiModelId,
+			})
 		case "oca":
 			return new OcaHandler({
 				ocaMode: options.ocaMode || "internal",

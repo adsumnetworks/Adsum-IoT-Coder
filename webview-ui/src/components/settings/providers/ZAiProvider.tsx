@@ -1,4 +1,4 @@
-import { internationalZAiModels, mainlandZAiModels, zaiCodingPlanModels } from "@shared/api"
+import { internationalZAiModels, mainlandZAiModels } from "@shared/api"
 import { Mode } from "@shared/storage/types"
 import { VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
 import { useMemo } from "react"
@@ -29,13 +29,10 @@ export const ZAiProvider = ({ showModelOptions, isPopup, currentMode }: ZAiProvi
 	const { selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, currentMode)
 
 	// Determine which models to use based on API line selection
-	const zaiModels = useMemo(() => {
-		const line = apiConfiguration?.zaiApiLine
-		if (line === "coding" || line === "coding-china") {
-			return zaiCodingPlanModels
-		}
-		return line === "china" ? mainlandZAiModels : internationalZAiModels
-	}, [apiConfiguration?.zaiApiLine])
+	const zaiModels = useMemo(
+		() => (apiConfiguration?.zaiApiLine === "china" ? mainlandZAiModels : internationalZAiModels),
+		[apiConfiguration?.zaiApiLine],
+	)
 
 	return (
 		<div>
@@ -51,10 +48,8 @@ export const ZAiProvider = ({ showModelOptions, isPopup, currentMode }: ZAiProvi
 						position: "relative",
 					}}
 					value={apiConfiguration?.zaiApiLine || "international"}>
-					<VSCodeOption value="international">api.z.ai (pay-as-you-go)</VSCodeOption>
-					<VSCodeOption value="china">open.bigmodel.cn (pay-as-you-go)</VSCodeOption>
-					<VSCodeOption value="coding">GLM Coding Plan · api.z.ai</VSCodeOption>
-					<VSCodeOption value="coding-china">GLM Coding Plan · China</VSCodeOption>
+					<VSCodeOption value="international">api.z.ai</VSCodeOption>
+					<VSCodeOption value="china">open.bigmodel.cn</VSCodeOption>
 				</VSCodeDropdown>
 			</DropdownContainer>
 			<p
@@ -71,11 +66,9 @@ export const ZAiProvider = ({ showModelOptions, isPopup, currentMode }: ZAiProvi
 				onChange={(value) => handleFieldChange("zaiApiKey", value)}
 				providerName="Z AI"
 				signupUrl={
-					apiConfiguration?.zaiApiLine === "coding" || apiConfiguration?.zaiApiLine === "coding-china"
-						? "https://z.ai/subscribe"
-						: apiConfiguration?.zaiApiLine === "china"
-							? "https://open.bigmodel.cn/console/overview"
-							: "https://z.ai/manage-apikey/apikey-list"
+					apiConfiguration?.zaiApiLine === "china"
+						? "https://open.bigmodel.cn/console/overview"
+						: "https://z.ai/manage-apikey/apikey-list"
 				}
 			/>
 

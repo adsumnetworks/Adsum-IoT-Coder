@@ -73,6 +73,10 @@
 			"label": "Z AI"
 		},
 		{
+			"value": "zai-coding-plan",
+			"label": "GLM Coding Plan"
+		},
+		{
 			"value": "groq",
 			"label": "Groq"
 		},
