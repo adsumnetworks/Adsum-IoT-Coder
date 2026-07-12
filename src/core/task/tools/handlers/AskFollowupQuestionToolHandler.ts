@@ -15,7 +15,7 @@ import type { IPartialBlockHandler, IToolHandler } from "../ToolExecutorCoordina
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { completingDemoScenarioId, readinessReportOnDisk } from "./AttemptCompletionHandler"
-import { findCraOptionViolations, isDemoClosingAsk } from "./craAskGuards"
+import { findRestingOptionViolations, isDemoClosingAsk } from "./restingAskGuards"
 
 export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlockHandler {
 	readonly name = ClineDefaultTool.ASK
@@ -53,7 +53,7 @@ export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlo
 			const scenarioId = completingDemoScenarioId(config)
 			if (scenarioId === "cra-sample" || scenarioId === "hci-sniffer") {
 				// isDemoClosingAsk excludes the mid-run "Point Adsum at my own project" exit-ramp so completion
-				// fires at the true closing, not the reveal (see craAskGuards). Pure + unit-tested.
+				// fires at the true closing, not the reveal (see restingAskGuards). Pure + unit-tested.
 				if (isDemoClosingAsk(parsePartialArrayString(optionsRaw || "[]"))) {
 					config.taskState.demoCompletionFired = true
 					telemetryService.captureFreeTierDemoRunCompleted(getInstallId(), scenarioId)
@@ -61,10 +61,10 @@ export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlo
 			}
 		}
 
-		// CRA resting-ask guards (operator direction: a CRA run never ends — the open ask IS the session's
-		// resting state, so it inherits the duties the completion guards used to hold). Scoped to CRA runs
-		// (SBOM emitted or report written); every other ask is untouched.
-		if (config.taskState.craReadinessReportWritten || config.taskState.craSbomEmitted) {
+		// Resting-ask guards (operator direction, generalized from CRA-only: a resting workflow never ends — the
+		// open ask IS the session's resting state, so it inherits the duties the completion guards used to hold).
+		// Scoped to resting workflows (today: CRA, via `restingWorkflowActive`); every other ask is untouched.
+		if (config.taskState.restingWorkflowActive) {
 			const options = parsePartialArrayString(optionsRaw || "[]")
 			// 0) Write-before-present + twin nets, moved here from the completion seam (which a CRA run no longer
 			//    reaches): a CLOSING ask — one that presents the report/counts — requires the report on disk and
@@ -97,11 +97,11 @@ export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlo
 			//    it ended the session); another offered "I'll review the report myself" / "I'll continue from the
 			//    report" (dev-as-actor handbacks that paraphrased past a literal ban list — hence the structural
 			//    check). The developer leaves by simply leaving; the ask stays open for their return.
-			const violations = findCraOptionViolations(options)
+			const violations = findRestingOptionViolations(options)
 			if (violations.length > 0) {
 				config.taskState.consecutiveMistakeCount++
 				return formatResponse.toolError(
-					`These options are banned in a CRA run: ${violations.map((v) => `"${v.option}" (${v.kind})`).join(", ")}. ` +
+					`These options are banned in a resting workflow: ${violations.map((v) => `"${v.option}" (${v.kind})`).join(", ")}. ` +
 						"Options are actions YOU take next, phrased verb-first ('Triage CVE-… ', 'Start secure boot', " +
 						"'Re-scan after a change', 'Draft a VEX', 'Save a copy') — never an exit ('I'm done' / 'I'll " +
 						"continue later') and never a developer-side handback ('I'll review the report myself'): the " +
