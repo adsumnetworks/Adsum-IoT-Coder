@@ -177,21 +177,22 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			}
 		}
 
-		// No-ending rule (operator direction, CRA-scoped): a CRA run has NO completion at all — the session's
-		// resting state is an open ask_followup_question with FORWARD options, so the developer stays in the
-		// workbench and simply returns whenever they want. The earlier handoff-card design (`<!--NEXT_STEPS-->`
-		// completion) still ENDED the task and surfaced the post-task chooser cards; a real 0707 sample run showed
-		// exactly that, plus an "I'll continue later" option that closed the loop. So: once a readiness report
-		// cleared the write seam, attempt_completion is REJECTED outright and redirected to ask_followup_question.
+		// No-ending rule (operator direction, generalized from CRA-only): a resting workflow has NO completion at
+		// all — the session's resting state is an open ask_followup_question with FORWARD options, so the
+		// developer stays in the workbench and simply returns whenever they want. The earlier handoff-card design
+		// (`<!--NEXT_STEPS-->` completion) still ENDED the task and surfaced the post-task chooser cards; a real
+		// 0707 sample run showed exactly that, plus an "I'll continue later" option that closed the loop. So: once
+		// ANY workflow's terminal artifact clears its own write seam (today, only CRA sets `restingWorkflowActive`
+		// — see TaskState), attempt_completion is REJECTED outright and redirected to ask_followup_question.
 		// Escape hatch: if the developer EXPLICITLY asked to end (typed "I'm done" / "wrap up" / "that's all"),
 		// completion is allowed and the guards below (verdict-scan + NEXT_STEPS marker) shape it as a handoff.
-		if (config.taskState.craReadinessReportWritten && !lastUserFeedbackRequestsEnd(config)) {
+		if (config.taskState.restingWorkflowActive && !lastUserFeedbackRequestsEnd(config)) {
 			config.taskState.consecutiveMistakeCount++
 			return formatResponse.toolError(
-				"A CRA run has no ending — do not call attempt_completion. End your turn with ask_followup_question " +
-					"instead: the question text = the thin at-a-glance counts + 'full report written to <absolute path>' + " +
-					"one neutral sentence; the options = 2–4 FORWARD moves only (triage the next CVE · enable the next " +
-					"posture gap · open your project & run it live · re-scan after a change · save a copy). NEVER an " +
+				"This run has no ending — do not call attempt_completion. End your turn with ask_followup_question " +
+					"instead: the question text = the thin at-a-glance summary + 'full report written to <absolute path>' + " +
+					"one neutral sentence; the options = 2–4 FORWARD moves only (triage the next finding · enable the next " +
+					"gap · open your project & run it live · re-scan after a change · save a copy). NEVER an " +
 					"exit-shaped option — no 'I'm done', no 'that's all', and no pause options either ('I'll continue " +
 					"later' / 'Save & come back' are equally banned): the developer leaves by simply leaving, and this " +
 					"open question remains the session's resting state for their return.",
@@ -201,30 +202,30 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 		// Explicit-end path only (see above): the completion is still a HANDOFF, never a terminal. The result MUST
 		// open with the invisible `<!--NEXT_STEPS-->` marker (rendered as a "Suggested next steps" card, not the
 		// green "Task Completed" banner), and it is verdict-scanned — a real run leaked a "| Build | ✅ Clean |"
-		// scorecard table into the completion text. Fails open for non-CRA runs.
-		if (config.taskState.craReadinessReportWritten) {
+		// scorecard table into the completion text. Fails open for non-resting runs.
+		if (config.taskState.restingWorkflowActive) {
 			const leaks = scanForVerdictLeaks(result)
 			if (leaks.length > 0) {
 				const samples = [...new Set(leaks.map((l) => l.match))].slice(0, 5).join(", ")
 				config.taskState.consecutiveMistakeCount++
 				return formatResponse.toolError(
-					`This CRA completion uses verdict-style status (${samples}${leaks.length > 5 ? ", …" : ""}). The ` +
+					`This completion uses verdict-style status (${samples}${leaks.length > 5 ? ", …" : ""}). The ` +
 						"completion/chat is evidence-mode too — no ✅/⚠️/❌/✓, no PASS/Clean/Strong/fixed, no status table. " +
-						"Re-send a THIN handoff: the at-a-glance counts, the report path, and forward next steps — state the " +
+						"Re-send a THIN handoff: the at-a-glance summary, the report path, and forward next steps — state the " +
 						"literal evidence, never a verdict.",
 				)
 			}
 		}
 
-		if (config.taskState.craReadinessReportWritten && !result.trimStart().startsWith("<!--NEXT_STEPS-->")) {
+		if (config.taskState.restingWorkflowActive && !result.trimStart().startsWith("<!--NEXT_STEPS-->")) {
 			config.taskState.consecutiveMistakeCount++
 			return formatResponse.toolError(
-				"A CRA run is a HANDOFF, not an ending — never tell the developer the work is complete/done/finished. " +
+				"This run is a HANDOFF, not an ending — never tell the developer the work is complete/done/finished. " +
 					"Re-send attempt_completion with a result that: (1) STARTS with the exact line `<!--NEXT_STEPS-->` " +
-					"(the app renders it as a 'Suggested next steps' card); (2) gives the thin at-a-glance counts + the " +
+					"(the app renders it as a 'Suggested next steps' card); (2) gives the thin at-a-glance summary + the " +
 					"one-line evidence legend + 'full report written to <absolute path>'; (3) offers 2–4 FORWARD next steps " +
-					"framed as 'whenever you're ready' (open your project & run it live · triage the next CVE · enable the " +
-					"next posture gap · re-scan after a change · save a copy). Do NOT include an 'I'm done / that's all' " +
+					"framed as 'whenever you're ready' (open your project & run it live · triage the next finding · enable the " +
+					"next gap · re-scan after a change · save a copy). Do NOT include an 'I'm done / that's all' " +
 					"option and do NOT describe the run as complete — the developer stays in the loop and can return anytime.",
 			)
 		}
@@ -243,12 +244,13 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			throw error
 		}
 
-		// Show notification if enabled
+		// Show notification if enabled. No-ending sessions: the completion is a handoff, not an ending —
+		// the OS notification must not announce "Task Completed" (the session stays open for the developer).
 		if (config.autoApprovalSettings.enableNotifications) {
 			const maxLen = 200
 			const notifyMsg = result.length > maxLen ? result.substring(0, maxLen) + "..." : result
 			showSystemNotification({
-				subtitle: "Task Completed",
+				subtitle: "Ready for you",
 				message: notifyMsg.replace(/\n/g, " "),
 			})
 		}
@@ -360,7 +362,11 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 		await this.runTaskCompleteHook(config, block)
 
 		const { response, text, images, files: completionFiles } = await config.callbacks.ask("completion_result", "", false)
-		const prefix = "[attempt_completion] Result: Done"
+		// No-ending sessions: tell the MODEL the session stays open, so post-handoff messages are treated as a
+		// continuation of this same conversation (all knowledge/tools stay available), never as "task is over".
+		const prefix =
+			"[attempt_completion] Result: Handoff presented. The session remains open — the developer may continue " +
+			"in this same conversation at any time; treat any further messages as continuation, not a new task."
 		if (response === "yesButtonClicked") {
 			return prefix // signals to recursive loop to stop (for now this never happens since yesButtonClicked will trigger a new task)
 		}

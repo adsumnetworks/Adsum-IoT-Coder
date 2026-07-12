@@ -119,12 +119,16 @@ export const BUTTON_CONFIGS: Record<string, ButtonConfig> = {
 	},
 
 	// Task lifecycle states
+	// No-ending sessions (operator direction, 1307): a completion is a handoff, not an ending — no
+	// "Start New Task" button. The input stays live and the developer continues in the same session;
+	// the "+" new-session control is the only door out. Same when re-opening a session that ended on a
+	// completion: it resumes by typing, it doesn't push the dev toward a fresh task.
 	completion_result: {
 		sendingDisabled: false,
-		enableButtons: true,
-		primaryText: "Start New Task",
+		enableButtons: false,
+		primaryText: undefined,
 		secondaryText: undefined,
-		primaryAction: "new_task",
+		primaryAction: undefined,
 		secondaryAction: undefined,
 	},
 	resume_task: {
@@ -137,10 +141,10 @@ export const BUTTON_CONFIGS: Record<string, ButtonConfig> = {
 	},
 	resume_completed_task: {
 		sendingDisabled: false,
-		enableButtons: true,
-		primaryText: "Start New Task",
+		enableButtons: false,
+		primaryText: undefined,
 		secondaryText: undefined,
-		primaryAction: "new_task",
+		primaryAction: undefined,
 		secondaryAction: undefined,
 	},
 	new_task: {

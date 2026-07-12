@@ -52,6 +52,14 @@ export class TaskState {
 	// blows context and inline-dumps the report instead of writing it (2906c) is the failure this prevents.
 	craReadinessReportWritten: boolean = false
 
+	// Resting-workflow guard (generalized from the CRA-only "no ending" rule): true once ANY workflow's
+	// terminal artifact has cleared its own write seam. attempt_completion and ask_followup_question key
+	// their no-ending / banned-option / verdict-scan guards off THIS flag, not off a CRA-specific one — so a
+	// future no-ending workflow opts in by flipping this flag at its own artifact's write seam (see
+	// WriteToFileToolHandler's CRA seam for the pattern) instead of forking the guard logic. CRA remains the
+	// first and, today, only workflow that sets it.
+	restingWorkflowActive: boolean = false
+
 	// Demo funnel (telemetry): no-ending demos (cra-sample, hci-sniffer) never call attempt_completion, so their
 	// `free_tier.demo_run_completed` can't fire there — it fires once from the closing resting-ask instead. Guard
 	// so a re-offered closing ask doesn't double-count.
