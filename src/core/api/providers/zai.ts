@@ -1,4 +1,5 @@
 import {
+	GLM_EFFORT_MODELS,
 	internationalZAiDefaultModelId,
 	internationalZAiModelId,
 	internationalZAiModels,
@@ -26,6 +27,8 @@ interface ZAiHandlerOptions extends CommonApiHandlerOptions {
 	zaiApiKey?: string
 	apiModelId?: string
 	thinkingBudgetTokens?: number
+	// GLM-5.2 reasoning_effort (High|Max). Only sent when thinking is on AND the model supports it (glm-5.2).
+	reasoningEffort?: string
 }
 
 export class ZAiHandler implements ApiHandler {
@@ -115,6 +118,14 @@ export class ZAiHandler implements ApiHandler {
 			stream_options: { include_usage: true },
 			...getOpenAIToolParams(tools),
 			...(thinkingBudget !== undefined ? { thinking: { type: thinkingBudget > 0 ? "enabled" : "disabled" } } : {}),
+			// reasoning_effort tunes depth but only takes effect with thinking on (z.ai docs). Gated on the model's
+			// supportsReasoningEffort so it's never sent to glm-5-turbo/4.7, which don't support it.
+			...(thinkingBudget !== undefined &&
+			thinkingBudget > 0 &&
+			GLM_EFFORT_MODELS.has(model.id) &&
+			this.options.reasoningEffort
+				? { reasoning_effort: this.options.reasoningEffort }
+				: {}),
 		} as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming)
 
 		const toolCallProcessor = new ToolCallProcessor()
