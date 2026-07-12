@@ -94,6 +94,7 @@ function createHandlerForProvider(
 				apiModelId: mode === "plan" ? options.planModeApiModelId : options.actModeApiModelId,
 				thinkingBudgetTokens:
 					mode === "plan" ? options.planModeThinkingBudgetTokens : options.actModeThinkingBudgetTokens,
+				reasoningEffort: mode === "plan" ? options.planModeReasoningEffort : options.actModeReasoningEffort,
 			})
 		case "anthropic-compatible":
 			// Generic non-Claude endpoint over the Anthropic wire format — arbitrary base URL + model id + model info.
@@ -107,6 +108,7 @@ function createHandlerForProvider(
 					mode === "plan" ? options.planModeAnthropicCompatibleModelInfo : options.actModeAnthropicCompatibleModelInfo,
 				thinkingBudgetTokens:
 					mode === "plan" ? options.planModeThinkingBudgetTokens : options.actModeThinkingBudgetTokens,
+				reasoningEffort: mode === "plan" ? options.planModeReasoningEffort : options.actModeReasoningEffort,
 			})
 		case "openrouter":
 			return new OpenRouterHandler({

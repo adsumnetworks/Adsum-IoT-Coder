@@ -233,10 +233,10 @@ export const ModelInfoView = ({
 				)}
 			</InfoRow>
 
-			{/* Collapsible Advanced Section */}
+			{/* Collapsible Model-info section (read-only capabilities + pricing) */}
 			<CollapsibleHeader onClick={() => setAdvancedExpanded(!advancedExpanded)}>
 				<CollapsibleArrow $isExpanded={advancedExpanded}>▶</CollapsibleArrow>
-				Advanced
+				Model info
 			</CollapsibleHeader>
 			<CollapsibleContent $isExpanded={advancedExpanded}>
 				<AdvancedSection>
