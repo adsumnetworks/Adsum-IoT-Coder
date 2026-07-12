@@ -219,6 +219,8 @@ function createHandlerForProvider(
 				onRetryAttempt: options.onRetryAttempt,
 				deepSeekApiKey: options.deepSeekApiKey,
 				apiModelId: mode === "plan" ? options.planModeApiModelId : options.actModeApiModelId,
+				thinkingBudgetTokens:
+					mode === "plan" ? options.planModeThinkingBudgetTokens : options.actModeThinkingBudgetTokens,
 			})
 		case "requesty":
 			return new RequestyHandler({

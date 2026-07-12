@@ -14,6 +14,8 @@ import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-p
 interface DeepSeekHandlerOptions extends CommonApiHandlerOptions {
 	deepSeekApiKey?: string
 	apiModelId?: string
+	// DeepSeek V4 toggles thinking via thinking.type; we reuse thinkingBudgetTokens as the on/off signal (>0 = on).
+	thinkingBudgetTokens?: number
 }
 
 export class DeepSeekHandler implements ApiHandler {
@@ -80,6 +82,14 @@ export class DeepSeekHandler implements ApiHandler {
 		const model = this.getModel()
 
 		const isDeepseekReasoner = model.id.includes("deepseek-reasoner")
+		// DeepSeek V4 (deepseek-v4-flash/pro) toggles thinking via thinking.type (enabled/disabled), like GLM — not a
+		// separate model id. Send it only when the user set an explicit on/off (thinkingBudgetTokens); the OpenAI SDK
+		// forwards the unknown body field to DeepSeek. The old deepseek-reasoner keeps its R1 message format.
+		const isV4 = model.id.startsWith("deepseek-v4")
+		const budget = this.options.thinkingBudgetTokens
+		const v4Thinking: Record<string, unknown> =
+			isV4 && budget !== undefined ? { thinking: { type: budget > 0 ? "enabled" : "disabled" } } : {}
+		const v4ThinkingOn = isV4 && (budget ?? 0) > 0
 
 		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
 			{ role: "system", content: systemPrompt },
@@ -96,8 +106,9 @@ export class DeepSeekHandler implements ApiHandler {
 			messages: openAiMessages,
 			stream: true,
 			stream_options: { include_usage: true },
-			// Only set temperature for non-reasoner models
-			...(model.id === "deepseek-reasoner" ? {} : { temperature: 0 }),
+			// Reasoner (R1) and V4-with-thinking reject a custom temperature; everything else uses 0.
+			...(model.id === "deepseek-reasoner" || v4ThinkingOn ? {} : { temperature: 0 }),
+			...v4Thinking,
 			...getOpenAIToolParams(tools),
 		})
 
