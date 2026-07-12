@@ -78,25 +78,22 @@ export class ZAiHandler implements ApiHandler {
 
 	getModel(): { id: mainlandZAiModelId | internationalZAiModelId | zaiCodingPlanModelId; info: ModelInfo } {
 		const modelId = this.options.apiModelId
+		// Only use modelId when it's actually in the active catalog — otherwise fall back to the default. Guards against
+		// an empty string or a stale id left over from a previously-selected provider (e.g. a Claude model id) reaching
+		// z.ai, which rejects those with 400 "model code cannot be empty" (1214) / "Unknown Model" (1211).
 		if (this.isCodingPlan()) {
-			return {
-				id: (modelId as zaiCodingPlanModelId) ?? zaiCodingPlanDefaultModelId,
-				info: zaiCodingPlanModels[modelId as zaiCodingPlanModelId] ?? zaiCodingPlanModels[zaiCodingPlanDefaultModelId],
-			}
+			const id: zaiCodingPlanModelId =
+				modelId && modelId in zaiCodingPlanModels ? (modelId as zaiCodingPlanModelId) : zaiCodingPlanDefaultModelId
+			return { id, info: zaiCodingPlanModels[id] }
 		}
 		if (this.useChinaApi()) {
-			return {
-				id: (modelId as mainlandZAiModelId) ?? mainlandZAiDefaultModelId,
-				info: mainlandZAiModels[modelId as mainlandZAiModelId] ?? mainlandZAiModels[mainlandZAiDefaultModelId],
-			}
-		} else {
-			return {
-				id: (modelId as internationalZAiModelId) ?? internationalZAiDefaultModelId,
-				info:
-					internationalZAiModels[modelId as internationalZAiModelId] ??
-					internationalZAiModels[internationalZAiDefaultModelId],
-			}
+			const id: mainlandZAiModelId =
+				modelId && modelId in mainlandZAiModels ? (modelId as mainlandZAiModelId) : mainlandZAiDefaultModelId
+			return { id, info: mainlandZAiModels[id] }
 		}
+		const id: internationalZAiModelId =
+			modelId && modelId in internationalZAiModels ? (modelId as internationalZAiModelId) : internationalZAiDefaultModelId
+		return { id, info: internationalZAiModels[id] }
 	}
 
 	@withRetry()
