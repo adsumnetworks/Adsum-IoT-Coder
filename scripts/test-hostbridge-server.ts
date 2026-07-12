@@ -122,8 +122,11 @@ function createMockService<T extends grpc.UntypedServiceImplementation>(serviceN
 						return
 
 					case "getDiagnostics":
+						// ts-proto (grpc-js) generated types are camelCase; snake_case `file_diagnostics` left the field
+						// undefined → cline-core's `for (const d of message.fileDiagnostics)` threw "not iterable" the moment
+						// any command ran (file-read-only flows never hit it). Empty list = no diagnostics in headless.
 						callback(null, {
-							file_diagnostics: [],
+							fileDiagnostics: [],
 						})
 						return
 
