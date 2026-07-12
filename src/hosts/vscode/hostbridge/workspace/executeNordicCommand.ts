@@ -622,12 +622,31 @@ async function prepareNordicExecutionStandalone(opts: {
 	if (!(selection.kind === "resolved" && sdkManagerAvailable)) {
 		return { kind: "error", message: selection.kind === "none" ? ncsNotInstalledMessage() : toolchainUnavailableMessage() }
 	}
-	const command = buildToolchainCommand("ncs", {
-		sdkManagerPrefix: nrfutil.sdkManagerPrefix,
-		version: selection.version,
-		body: opts.body,
-	})
-	console.info(`[adsum][nrf] standalone — 'toolchain launch' wrap for NCS v${selection.version}`)
+	const version = selection.version
+
+	// Tier 1 (preferred), inlined for the standalone host: source the FULL toolchain env with `sdk-manager
+	// toolchain env` (this is what puts the toolchain's own `ninja`/`cmake` on PATH — the lighter `toolchain
+	// launch` wrap does NOT, which makes CMake fail with "unable to find Ninja"), merge in nrfutil + ZEPHYR_BASE
+	// (west needs ZEPHYR_BASE as an ENV VAR to locate a freestanding workspace — a -z flag doesn't work), then
+	// prepend it all as an `env K=V …` prefix since there's no vscode terminal to inject into. Byte-for-byte the
+	// same env the vscode host injects in buildNordicTerminalEnv.
+	const platform = hostPlatform()
+	const toolchainEnv = await extractToolchainEnv(nrfutil.sdkManagerPrefix, version)
+	if (toolchainEnv) {
+		const zephyrBase = deriveZephyrBase(platform, version, getCachedNrfEnvironment().installedSdkPaths)
+		const merged = buildNordicTerminalEnv(platform, nrfutil, toolchainEnv, zephyrBase) ?? {}
+		const shq = (v: string) => `'${v.replace(/'/g, `'\\''`)}'`
+		const prefix = Object.entries(merged)
+			.map(([k, v]) => `${k}=${shq(v)}`)
+			.join(" ")
+		console.info(`[adsum][nrf] standalone — Tier 1 inline toolchain env for NCS v${version} (ninja+ZEPHYR_BASE on PATH)`)
+		return { kind: "ready", plan: { terminalName: TERMINAL, command: `env ${prefix} ${opts.body}`, tier: 1 } }
+	}
+
+	// Fallback: the lighter launch wrap (sources NCS but may miss ninja on PATH — the agent can still pass
+	// -DCMAKE_MAKE_PROGRAM). Only reached if `toolchain env` extraction fails.
+	const command = buildToolchainCommand("ncs", { sdkManagerPrefix: nrfutil.sdkManagerPrefix, version, body: opts.body })
+	console.info(`[adsum][nrf] standalone — 'toolchain launch' wrap fallback for NCS v${version}`)
 	return { kind: "ready", plan: { terminalName: TERMINAL, command, tier: 2 } }
 }
 
