@@ -11,6 +11,7 @@ import { AuthHandler } from "@/hosts/external/AuthHandler"
 import { HostProvider } from "@/hosts/host-provider"
 import { DiffViewProvider } from "@/integrations/editor/DiffViewProvider"
 import { StandaloneTerminalManager } from "@/integrations/terminal"
+import { detectNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { HOSTBRIDGE_PORT, waitForHostBridgeReady } from "./hostbridge-client"
 import { setLockManager } from "./lock-manager"
 import { PROTOBUS_PORT, startProtobusService } from "./protobus-service"
@@ -34,6 +35,11 @@ async function main() {
 
 	// Resource loading assumes cwd is the installation directory
 	process.chdir(__dirname)
+
+	// Mark this process as the standalone (non-vscode) host — platform command execution (e.g. the nRF toolchain
+	// path in prepareNordicExecution) branches on this to shape commands that carry their own env instead of
+	// relying on a vscode terminal. See executeNordicCommand.ts.
+	process.env.ADSUM_STANDALONE = "true"
 
 	// Initialize context with optional custom directory from CLI
 	const { extensionContext, DATA_DIR, EXTENSION_DIR } = initializeContext(args.config)
@@ -76,6 +82,11 @@ async function main() {
 
 		// Make lock manager available to other modules
 		setLockManager(globalLockManager)
+
+		// Detect the platform toolchains (NCS SDKs, nrfutil, boards) like the vscode host does on activation, so
+		// capability-dependent flows (demo escalation tiers, nordic actions) see the real environment headless.
+		// Async + cached + offline-safe; failures degrade to the canned floor. (RPC refreshNrfEnvironment re-runs it.)
+		void detectNrfEnvironment()
 
 		await globalLockManager.registerInstance({
 			hostAddress,
