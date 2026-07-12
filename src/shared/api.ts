@@ -3952,6 +3952,14 @@ export const internationalZAiModels = {
 // is NOT valid on the general /paas/v4 endpoint (z.ai error 1113). Source: z.ai devpack docs + z.ai's Cline page.
 export type zaiCodingPlanModelId = keyof typeof zaiCodingPlanModels
 export const zaiCodingPlanDefaultModelId: zaiCodingPlanModelId = "glm-5.2"
+// GLM-5.2 reasoning_effort (verified vs z.ai docs 2026-07): the full set none|minimal|low|medium|high|xhigh|max aliases
+// down to two real depths (low/medium→high, xhigh→max, none/minimal→skip thinking). On/Off already covers "skip", so the
+// UI exposes just the two real levels. Default max — z.ai recommends max for coding. glm-5.2 ONLY (turbo/4.7 don't support it).
+export const GLM_EFFORT_LEVELS = ["high", "max"] as const
+export const GLM_DEFAULT_EFFORT = "max"
+// Models that accept reasoning_effort (glm-5.2 only per z.ai docs). Mirrors the CLAUDE_ADAPTIVE_API_MODELS id-set pattern
+// so we don't touch the base ModelInfo/proto shape. Used by both the zai handler and the GLM settings panel.
+export const GLM_EFFORT_MODELS: ReadonlySet<string> = new Set(["glm-5.2"])
 export const zaiCodingPlanModels = {
 	"glm-5.2": {
 		maxTokens: 131_072,
