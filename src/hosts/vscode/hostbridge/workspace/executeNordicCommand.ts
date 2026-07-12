@@ -10,6 +10,7 @@ import {
 	buildToolchainCommand,
 	type NcsSelection,
 	ncsAmbiguousMessage,
+	ncsNotInstalledMessage,
 	parseToolchainEnv,
 	pathListSep,
 	resolveDeviceCommand,
@@ -513,6 +514,13 @@ export async function prepareNordicExecution(opts: {
 	explicitVersion?: string
 	persistedVersion?: string
 }): Promise<NordicExecutionResult> {
+	// Standalone/headless host (cline-core sets ADSUM_STANDALONE): no vscode terminal exists to carry an injected
+	// env, so shape commands to be self-sufficient and let them run through the ordinary executeCommandTool →
+	// StandaloneTerminal (a real process). Zephyr build tools use the `sdk-manager toolchain launch` wrapper, which
+	// sources the full NCS env itself; everything else runs bare with the resolved absolute nrfutil.
+	if (process.env.ADSUM_STANDALONE === "true") {
+		return prepareNordicExecutionStandalone(opts)
+	}
 	const platform = hostPlatform()
 	const shell: SupportedShell = detectShell(vscode.env.shell || "", platform)
 	const { selection, nrfutil, sdkManagerAvailable } = selectHostNcs({
@@ -582,6 +590,64 @@ export async function prepareNordicExecution(opts: {
 	const command = buildToolchainCommand("ncs", { sdkManagerPrefix: nrfutil.sdkManagerPrefix, version, body: opts.body })
 	console.info(`[adsum][nrf] tier 2 — 'toolchain launch' wrap for NCS v${version} in "${terminal.name}"`)
 	return { kind: "ready", plan: { terminalName: terminal.name, command, tier: 2 } }
+}
+
+/**
+ * Standalone-host variant of prepareNordicExecution (cline-core / CLI — no vscode terminals). Same resolution
+ * logic via the pure helpers; env always travels IN the command (toolchain-launch wrap), never in a terminal.
+ * ADSUM_NCS_VERSION (dev/eval) acts as an explicit version pin with the same precedence as an agent-passed
+ * ncs_version, so unattended runs on multi-SDK machines don't stop at the ambiguity ask unless that's the test.
+ */
+async function prepareNordicExecutionStandalone(opts: {
+	body: string
+	needsToolchain: boolean
+	isLoggerWrapper?: boolean
+	explicitVersion?: string
+	persistedVersion?: string
+}): Promise<NordicExecutionResult> {
+	const TERMINAL = "Adsum nRF (headless)"
+	const { selection, nrfutil, sdkManagerAvailable } = selectHostNcs({
+		explicit: opts.explicitVersion ?? process.env.ADSUM_NCS_VERSION,
+		persisted: opts.persistedVersion,
+	})
+
+	if (!opts.needsToolchain) {
+		// Loggers + `nrfutil device …` — rewrite bare nrfutil to the resolved absolute binary; no env needed.
+		const command = opts.isLoggerWrapper ? opts.body : resolveDeviceCommand(opts.body, nrfutil.devicePrefix)
+		return { kind: "ready", plan: { terminalName: TERMINAL, command, tier: 2 } }
+	}
+	if (selection.kind === "ambiguous" && sdkManagerAvailable) {
+		return { kind: "needsChoice", message: ncsAmbiguousMessage(selection.versions), versions: selection.versions }
+	}
+	if (!(selection.kind === "resolved" && sdkManagerAvailable)) {
+		return { kind: "error", message: selection.kind === "none" ? ncsNotInstalledMessage() : toolchainUnavailableMessage() }
+	}
+	const version = selection.version
+
+	// Tier 1 (preferred), inlined for the standalone host: source the FULL toolchain env with `sdk-manager
+	// toolchain env` (this is what puts the toolchain's own `ninja`/`cmake` on PATH — the lighter `toolchain
+	// launch` wrap does NOT, which makes CMake fail with "unable to find Ninja"), merge in nrfutil + ZEPHYR_BASE
+	// (west needs ZEPHYR_BASE as an ENV VAR to locate a freestanding workspace — a -z flag doesn't work), then
+	// prepend it all as an `env K=V …` prefix since there's no vscode terminal to inject into. Byte-for-byte the
+	// same env the vscode host injects in buildNordicTerminalEnv.
+	const platform = hostPlatform()
+	const toolchainEnv = await extractToolchainEnv(nrfutil.sdkManagerPrefix, version)
+	if (toolchainEnv) {
+		const zephyrBase = deriveZephyrBase(platform, version, getCachedNrfEnvironment().installedSdkPaths)
+		const merged = buildNordicTerminalEnv(platform, nrfutil, toolchainEnv, zephyrBase) ?? {}
+		const shq = (v: string) => `'${v.replace(/'/g, `'\\''`)}'`
+		const prefix = Object.entries(merged)
+			.map(([k, v]) => `${k}=${shq(v)}`)
+			.join(" ")
+		console.info(`[adsum][nrf] standalone — Tier 1 inline toolchain env for NCS v${version} (ninja+ZEPHYR_BASE on PATH)`)
+		return { kind: "ready", plan: { terminalName: TERMINAL, command: `env ${prefix} ${opts.body}`, tier: 1 } }
+	}
+
+	// Fallback: the lighter launch wrap (sources NCS but may miss ninja on PATH — the agent can still pass
+	// -DCMAKE_MAKE_PROGRAM). Only reached if `toolchain env` extraction fails.
+	const command = buildToolchainCommand("ncs", { sdkManagerPrefix: nrfutil.sdkManagerPrefix, version, body: opts.body })
+	console.info(`[adsum][nrf] standalone — 'toolchain launch' wrap fallback for NCS v${version}`)
+	return { kind: "ready", plan: { terminalName: TERMINAL, command, tier: 2 } }
 }
 
 // ============================================================

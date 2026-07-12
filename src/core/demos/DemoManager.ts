@@ -35,6 +35,13 @@ export type DemoCapability = "canned" | "build" | "hardware"
  * bulletproof floor never degrades. Consumes the Increment 3 env cache directly.
  */
 export function classifyDemoCapability(env: NrfEnvironment | undefined): DemoCapability {
+	// Eval-harness override (dev-only, gated on an env var; no-op in production installs) so the private headless
+	// benchmark can exercise each environment scenario deterministically. The actual build/flash commands still run
+	// for real against the injected NCS toolchain env — only the classifier's outcome is forced. See adsum-studio.
+	const forced = process.env.ADSUM_DEMO_CAPABILITY
+	if (forced === "canned" || forced === "build" || forced === "hardware") {
+		return forced
+	}
 	if (!env || env.status !== "ready") {
 		return "canned"
 	}
