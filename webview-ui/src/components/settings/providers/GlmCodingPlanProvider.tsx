@@ -6,6 +6,7 @@ import { ApiKeyField } from "../common/ApiKeyField"
 import { ModelInfoView } from "../common/ModelInfoView"
 import { ModelSelector } from "../common/ModelSelector"
 import { getModeSpecificFields, normalizeApiConfiguration } from "../utils/providerUtils"
+import { getThinkingControl } from "../utils/thinkingControl"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
 
 /**
@@ -30,6 +31,8 @@ export const GlmCodingPlanProvider = ({ showModelOptions, isPopup, currentMode }
 	// GLM controls thinking via thinking.type (on/off), not a token budget — so we reuse thinkingBudgetTokens purely as
 	// the on/off signal: >0 (or unset → the model's own default) = on, 0 = off. The zai handler maps this to thinking.type.
 	const thinkingEnabled = (thinkingBudgetTokens ?? ANTHROPIC_MIN_THINKING_BUDGET) > 0
+	// Capability-driven, same helper as the other panels — GLM coding models reason via thinking.type → "onoff".
+	const thinkingControl = getThinkingControl("zai-coding-plan", selectedModelId, selectedModelInfo)
 
 	return (
 		<div>
@@ -64,23 +67,25 @@ export const GlmCodingPlanProvider = ({ showModelOptions, isPopup, currentMode }
 						selectedModelId={selectedModelId}
 					/>
 
-					<div style={{ marginTop: 6 }}>
-						<VSCodeCheckbox
-							checked={thinkingEnabled}
-							onChange={(e: any) =>
-								handleModeFieldChange(
-									{ plan: "planModeThinkingBudgetTokens", act: "actModeThinkingBudgetTokens" },
-									e.target.checked === true ? ANTHROPIC_MIN_THINKING_BUDGET : 0,
-									currentMode,
-								)
-							}>
-							Enable extended thinking
-						</VSCodeCheckbox>
-						<p style={{ fontSize: "12px", marginTop: 3, color: "var(--vscode-descriptionForeground)" }}>
-							GLM decides how deeply to reason. Turn this off for faster, cheaper replies — thinking runs ~15–20
-							model calls per prompt, so disabling it also stretches your plan's prompt quota.
-						</p>
-					</div>
+					{thinkingControl === "onoff" && (
+						<div style={{ marginTop: 6 }}>
+							<VSCodeCheckbox
+								checked={thinkingEnabled}
+								onChange={(e: any) =>
+									handleModeFieldChange(
+										{ plan: "planModeThinkingBudgetTokens", act: "actModeThinkingBudgetTokens" },
+										e.target.checked === true ? ANTHROPIC_MIN_THINKING_BUDGET : 0,
+										currentMode,
+									)
+								}>
+								Enable extended thinking
+							</VSCodeCheckbox>
+							<p style={{ fontSize: "12px", marginTop: 3, color: "var(--vscode-descriptionForeground)" }}>
+								GLM decides how deeply to reason. Turn this off for faster, cheaper replies — thinking runs ~15–20
+								model calls per prompt, so disabling it also stretches your plan's prompt quota.
+							</p>
+						</div>
+					)}
 
 					<ModelInfoView isPopup={isPopup} modelInfo={selectedModelInfo} selectedModelId={selectedModelId} />
 				</>
