@@ -352,9 +352,11 @@ export const ChatRowContent = memo(
 						</span>,
 					]
 				case "completion_result":
+					// No-ending sessions: a completion is a handoff, never "Task Completed" (the main render
+					// path is CompletionOutputRow; this header tuple is kept consistent for any legacy path).
 					return [
-						<span className="codicon codicon-check text-success mb-[-1.5px]" />,
-						<span className="text-success font-bold">Task Completed</span>,
+						<span className="codicon codicon-arrow-right text-[#00A9CE] mb-[-1.5px]" />,
+						<span className="text-[#00A9CE] font-bold">Summary</span>,
 					]
 				case "api_req_started":
 					// API request rows no longer render the request payload/cost accordion.
