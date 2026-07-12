@@ -173,6 +173,14 @@ export type AnthropicModelId = keyof typeof anthropicModels
 export const anthropicDefaultModelId: AnthropicModelId = "claude-sonnet-5"
 export const ANTHROPIC_MIN_THINKING_BUDGET = 1_024
 export const ANTHROPIC_MAX_THINKING_BUDGET = 6_000
+// Current-gen Claude models use the ADAPTIVE thinking API: they reject budget_tokens AND sampling params (both 400),
+// and tune thinking depth via output_config.effort instead. Older models (e.g. Haiku 4.5) keep enabled+budget_tokens.
+// Single source of truth — imported by both the Anthropic handler and the settings UI so the two never drift.
+export const CLAUDE_ADAPTIVE_API_MODELS: ReadonlySet<string> = new Set(["claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-5"])
+// Valid effort levels for adaptive-API Claude models (output_config.effort). "xhigh" is Sonnet-5-only, so we omit it
+// from the shared set to avoid a 400 on Opus 4.8/4.7; "medium" is the recommended default.
+export const CLAUDE_EFFORT_LEVELS = ["low", "medium", "high", "max"] as const
+export const CLAUDE_DEFAULT_EFFORT = "medium"
 export const anthropicModels = {
 	"claude-opus-4-8": {
 		maxTokens: 8192,

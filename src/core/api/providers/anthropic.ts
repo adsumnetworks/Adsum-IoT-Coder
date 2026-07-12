@@ -1,7 +1,14 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { Tool as AnthropicTool } from "@anthropic-ai/sdk/resources/index"
 import { Stream as AnthropicStream } from "@anthropic-ai/sdk/streaming"
-import { AnthropicModelId, anthropicDefaultModelId, anthropicModels, CLAUDE_SONNET_1M_SUFFIX, ModelInfo } from "@shared/api"
+import {
+	AnthropicModelId,
+	anthropicDefaultModelId,
+	anthropicModels,
+	CLAUDE_ADAPTIVE_API_MODELS,
+	CLAUDE_SONNET_1M_SUFFIX,
+	ModelInfo,
+} from "@shared/api"
 import { ClineStorageMessage } from "@/shared/messages/content"
 import { fetch } from "@/shared/net"
 import { ApiHandler, CommonApiHandlerOptions } from "../index"
@@ -16,11 +23,9 @@ interface AnthropicHandlerOptions extends CommonApiHandlerOptions {
 	thinkingBudgetTokens?: number
 	// Anthropic-Compatible provider: when set, the model id is arbitrary (non-Claude) and this is the user-supplied info.
 	anthropicCompatibleModelInfo?: ModelInfo
+	// Adaptive-API Claude models (Opus 4.8/4.7, Sonnet 5) tune thinking depth via output_config.effort (low|medium|high|max).
+	reasoningEffort?: string
 }
-
-// Current-gen Claude models use the ADAPTIVE thinking API and reject sampling params (temperature/top_p/top_k)
-// AND budget_tokens — both return HTTP 400. Older models (e.g. Haiku 4.5) keep enabled+budget_tokens and accept temperature.
-const CLAUDE_ADAPTIVE_API_MODELS: ReadonlySet<string> = new Set(["claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-5"])
 
 export class AnthropicHandler implements ApiHandler {
 	private options: AnthropicHandlerOptions
@@ -74,6 +79,12 @@ export class AnthropicHandler implements ApiHandler {
 		// Adaptive-API models return 400 on ANY temperature; older models take 0 unless reasoning is on.
 		const temperature = isAdaptiveApi ? undefined : reasoningOn ? undefined : 0
 
+		// Adaptive-API models tune thinking depth via output_config.effort (low|medium|high|max) rather than a token
+		// budget — only meaningful when adaptive thinking is on. output_config isn't in the pinned SDK types (0.37.0),
+		// so it rides along as an extra body field via spread; the SDK forwards unknown params to the REST API.
+		const effort = isAdaptiveApi && reasoningOn ? this.options.reasoningEffort || "medium" : undefined
+		const outputConfigParam: Record<string, unknown> = effort ? { output_config: { effort } } : {}
+
 		if (model.info.supportsPromptCache) {
 			const anthropicMessages = sanitizeAnthropicMessages(messages, true)
 
@@ -81,6 +92,7 @@ export class AnthropicHandler implements ApiHandler {
 				{
 					model: modelId,
 					thinking: thinkingParam,
+					...outputConfigParam,
 					max_tokens: model.info.maxTokens || 8192,
 					// Current-gen models (Opus 4.7+/Sonnet 5) reject temperature; older models use 0 unless reasoning is on.
 					temperature,
@@ -118,6 +130,8 @@ export class AnthropicHandler implements ApiHandler {
 		} else {
 			stream = await client.messages.create({
 				model: modelId,
+				thinking: thinkingParam,
+				...outputConfigParam,
 				max_tokens: model.info.maxTokens || 8192,
 				temperature,
 				system: [{ text: systemPrompt, type: "text" }],
