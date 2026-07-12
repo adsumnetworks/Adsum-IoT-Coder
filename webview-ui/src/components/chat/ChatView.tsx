@@ -33,8 +33,7 @@ import {
 import { getButtonConfig } from "./chat-view/shared/buttonConfig"
 import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
-import { isFreshNordicCompletion, NORDIC_MODES, type NordicModeId } from "./nordicModes"
-import NextStepChooser from "./welcome/NextStepChooser"
+import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
 import WelcomeView from "./welcome/WelcomeView"
 
 interface ChatViewProps {
@@ -435,40 +434,20 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		return text
 	}, [task, nordicPhase])
 
-	// Detect task completion in messages.
-	// GATED ON `!sendingDisabled` (the agent is idle, not mid-stream): otherwise a marker emitted while the
-	// agent is still working — e.g. a free-tier model quoting the workflow file it just read, which literally
-	// contains `<!--TASK_COMPLETE-->` as an instruction — latches the phase to complete and the NextStepChooser
-	// renders OVER the still-running conversation, hiding it (observed on a live cra-sample run). Only flipping
-	// when the agent has actually stopped means the chooser appears at the real end of the turn.
-	// The ts of the completion that last flipped us to task_complete. Without this, the instant a next-step card
-	// starts a new task (phase → active) the latch re-reads the SAME prior completion (still the last message
-	// until the new turn streams) and immediately re-latches — pinning the chooser as a footer that gets shoved
-	// down by the new answer and hiding the input bar (F3). Comparing message-ts to message-ts (same clock
-	// domain — both host-stamped) means we only ever latch a genuinely NEW completion, not the consumed one.
-	const lastLatchedCompletionTsRef = useRef<number | undefined>(undefined)
-	useEffect(() => {
-		if (nordicPhase === "active" && !sendingDisabled && modifiedMessages.length > 0) {
-			const last = modifiedMessages[modifiedMessages.length - 1]
-			// Complete on the workflow's marker OR on attempt_completion (completion_result) — see
-			// isNordicTaskComplete. The latter is the R4 safety-net: the next-step menu renders even when the
-			// model ends the task via the completion tool, including a premature exit. The ts guard stops the
-			// card-click race from re-latching the already-consumed completion.
-			if (isFreshNordicCompletion(last, lastLatchedCompletionTsRef.current)) {
-				lastLatchedCompletionTsRef.current = last.ts
-				setNordicPhase("task_complete")
-			}
-		}
-	}, [modifiedMessages, sendingDisabled, setNordicPhase, nordicPhase])
+	// No-ending sessions (operator direction, 1307): the phase NEVER flips to "task_complete" anymore. A
+	// completion — whether the workflow's `<!--TASK_COMPLETE-->` marker or an attempt_completion — is a
+	// HANDOFF rendered in-stream (see CompletionOutputRow); the input stays live and the developer keeps
+	// moving inside the same session with every K-bit/T-bit reachable. The home cards are doors INTO the
+	// house; the only door OUT is the "+" new-session button. The latch that used to live here swapped the
+	// input bar for the post-task NextStepChooser cards — that "session over" theatre is what this removes.
+	// ("task_complete" stays in the NordicChatPhase type for stability; nothing sets it.)
 
-	// Reset post-task phase when returning to the welcome screen so stale state
-	// doesn't bleed onto the next task or the home view.
+	// Reset the demo flag when returning to the welcome screen so stale state doesn't bleed onto the next session.
 	useEffect(() => {
-		if (!task && nordicPhase === "task_complete") {
-			setNordicPhase("awaiting_mode")
+		if (!task && isDemoRun) {
 			setIsDemoRun(false)
 		}
-	}, [task, nordicPhase, setNordicPhase])
+	}, [task, isDemoRun])
 
 	return (
 		<ChatLayout isHidden={isHidden}>
@@ -499,23 +478,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				{task && (
 					<MessagesArea
 						chatState={chatState}
-						// The post-task next-step chooser renders INSIDE the scroll (as the list footer) so it scrolls
-						// with the conversation instead of covering it on a short viewport. A6 "all states": the
-						// AI-limitations disclaimer rides along here — the completion screen is exactly where the dev
-						// reviews the result before flashing/shipping.
-						footer={
-							nordicPhase === "task_complete" ? (
-								<>
-									<NextStepChooser
-										isDemoRun={isDemoRun}
-										onSelectMode={handleModeSelect}
-										onStartDemo={handleStartDemo}
-										onStartTask={handleStartTask}
-									/>
-									<AiLimitationsFooter style={{ padding: "6px 14px 2px" }} />
-								</>
-							) : undefined
-						}
+						// No-ending sessions: the post-task NextStepChooser footer is gone — a completion renders
+						// in-stream as a handoff card and the conversation simply continues. (The persistent
+						// AI-limitations disclaimer lives under the always-present input footer below.)
 						groupedMessages={groupedMessages}
 						messageHandlers={messageHandlers}
 						modifiedMessages={modifiedMessages}
@@ -524,7 +489,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					/>
 				)}
 			</div>
-			{task && (nordicPhase !== "task_complete" || isDemoRun) && (
+			{task && (
 				<footer className="bg-(--vscode-sidebar-background)" style={{ gridRow: "2" }}>
 					{/* Auto-approve moved into the input's bottom controls row (AutoApproveChip in ChatTextArea)
 					    — the full-width bar row here was standing clutter (operator 0707). */}
