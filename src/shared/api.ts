@@ -1640,6 +1640,31 @@ export const deepSeekModels = {
 		cacheWritesPrice: 0.55,
 		cacheReadsPrice: 0.14,
 	},
+	// DeepSeek V4 (2026): thinking toggled via thinking.type (enabled/disabled), like GLM. flash defaults thinking on;
+	// pro supports both modes, 1M context. The old deepseek-chat/deepseek-reasoner ids deprecate 2026-07-24.
+	// Prices are DeepSeek list pricing (approx); input billed via cache hit/miss, so inputPrice stays 0.
+	"deepseek-v4-flash": {
+		maxTokens: 8_000,
+		contextWindow: 1_000_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		supportsReasoning: true,
+		inputPrice: 0,
+		outputPrice: 0.28,
+		cacheWritesPrice: 0.14,
+		cacheReadsPrice: 0.028,
+	},
+	"deepseek-v4-pro": {
+		maxTokens: 8_000,
+		contextWindow: 1_000_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		supportsReasoning: true,
+		inputPrice: 0,
+		outputPrice: 0.87,
+		cacheWritesPrice: 0.43,
+		cacheReadsPrice: 0.086,
+	},
 } as const satisfies Record<string, ModelInfo>
 
 // Hugging Face Inference Providers
