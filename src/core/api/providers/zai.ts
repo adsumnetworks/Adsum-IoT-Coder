@@ -118,8 +118,8 @@ export class ZAiHandler implements ApiHandler {
 			stream_options: { include_usage: true },
 			...getOpenAIToolParams(tools),
 			...(thinkingBudget !== undefined ? { thinking: { type: thinkingBudget > 0 ? "enabled" : "disabled" } } : {}),
-			// reasoning_effort tunes depth but only takes effect with thinking on (z.ai docs). Gated on the model's
-			// supportsReasoningEffort so it's never sent to glm-5-turbo/4.7, which don't support it.
+			// reasoning_effort tunes depth but only takes effect with thinking on (z.ai docs). Gated on GLM_EFFORT_MODELS
+			// (glm-5.2 only) so it's never sent to glm-5-turbo/4.7, which don't support it.
 			...(thinkingBudget !== undefined &&
 			thinkingBudget > 0 &&
 			GLM_EFFORT_MODELS.has(model.id) &&
