@@ -18,6 +18,9 @@ function emitSbomOnce(config: TaskConfig): void {
 		return
 	}
 	config.taskState.craSbomEmitted = true
+	// Generic no-ending guard (see TaskState.restingWorkflowActive): the SBOM-only branch is a resting
+	// workflow too, even without a full readiness report.
+	config.taskState.restingWorkflowActive = true
 	telemetryService.captureCraSbomGenerated({ iot_platform: getCachedWorkspaceSummary() })
 }
 

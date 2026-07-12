@@ -382,6 +382,8 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 				// Remember the run folder so attempt_completion can verify the `cra-readiness.json` twin landed here too
 				// (parity, 2906i: a real ESP run shipped the `.md` without its machine-readable twin).
 				config.taskState.craReadinessReportDir = path.dirname(absolutePath)
+				// Generic no-ending guard (see TaskState.restingWorkflowActive): CRA is the first workflow to opt in.
+				config.taskState.restingWorkflowActive = true
 			}
 
 			// Mark the file as edited by Cline
