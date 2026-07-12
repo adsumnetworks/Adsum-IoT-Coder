@@ -1704,17 +1704,20 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							{!isVoiceRecording && morph?.kind === "stop" && (
 								<div
 									aria-label="Stop"
-									className={cn("input-icon-button", "codicon codicon-stop-circle")}
+									className={cn("input-icon-button")}
 									data-testid="stop-button"
 									onClick={() => morph.run()}
-									/* Inline fontSize — the codicon stylesheet pins 16px, so a Tailwind text-* class loses. */
-									style={{ color: BRAND_CYAN_600, fontSize: 20 }}
-									title="Stop"
-								/>
+									style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+									title="Stop">
+									{/* T1 "Block" — solid cyan squircle (UI golden rules: cyan = action, never semantic red). */}
+									<svg fill="none" height="20" viewBox="0 0 24 24" width="20">
+										<rect fill={BRAND_CYAN_600} height="12" rx="3.2" width="12" x="6" y="6" />
+									</svg>
+								</div>
 							)}
 							{!isVoiceRecording && morph?.kind !== "stop" && (
 								<div
-									className={cn("input-icon-button", { disabled: sendingDisabled }, "codicon codicon-send")}
+									className={cn("input-icon-button", { disabled: sendingDisabled })}
 									data-testid="send-button"
 									onClick={() => {
 										if (morph?.kind === "resume") {
@@ -1727,10 +1730,22 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 											onSend()
 										}
 									}}
-									/* Inline fontSize — the codicon stylesheet pins 16px, so a Tailwind text-* class loses. */
-									style={sendingDisabled ? { fontSize: 20 } : { color: BRAND_CYAN_600, fontSize: 20 }}
-									title={morph?.kind === "resume" ? "Resume task" : "Send"}
-								/>
+									style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+									title={morph?.kind === "resume" ? "Resume task" : "Send"}>
+									{/* S1 "Lift" — clean up-arrow (cyan = action; muted via currentColor when disabled). */}
+									<svg
+										fill="none"
+										height="20"
+										stroke={sendingDisabled ? "currentColor" : BRAND_CYAN_600}
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth="2.1"
+										viewBox="0 0 24 24"
+										width="20">
+										<path d="M12 19.5V6.5" />
+										<path d="M6.3 12.2 L12 6.3 L17.7 12.2" />
+									</svg>
+								</div>
 							)}
 						</div>
 					</div>
