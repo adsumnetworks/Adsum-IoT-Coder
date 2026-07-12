@@ -1,12 +1,14 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { findCraOptionViolations, isDemoClosingAsk } from "./craAskGuards"
+import { findRestingOptionViolations, isDemoClosingAsk } from "./restingAskGuards"
 
 /**
- * CRA resting-ask option guards — the exit/handback shapes a CRA ask must never offer.
- * Run: npx ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/craAskGuards.test.ts
+ * Resting-ask option guards — the exit/handback shapes a resting workflow's ask must never offer. Generalized
+ * from the CRA-only `craAskGuards.test.ts` — same coverage under the new names, plus cases proving the guard
+ * has no CRA-specific string matching baked in (it only reads option phrasing).
+ * Run: npx ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/restingAskGuards.test.ts
  */
-describe("findCraOptionViolations — options that MUST be rejected", () => {
+describe("findRestingOptionViolations — options that MUST be rejected", () => {
 	const banned: Array<[string, string]> = [
 		// The 0707 sample run's pause option (clicking it ended the session):
 		["pause: continue later", "I'll continue later"],
@@ -24,17 +26,21 @@ describe("findCraOptionViolations — options that MUST be rejected", () => {
 		["handback: I've got it", "I've got it from here"],
 		["handback: leave it with me", "Leave it with me"],
 		["handback: let me review", "Let me review the findings first"],
+		// Non-CRA phrasings — same shapes, no CRA vocabulary at all, proving the guard is domain-agnostic:
+		["non-CRA pause: nRF debug loop", "I'll come back to this later"],
+		["non-CRA handback: ESP build loop", "I'll take the build logs from here"],
+		["non-CRA terminal: generic chat", "Nothing else for now"],
 	]
 	for (const [name, option] of banned) {
 		test(`rejects: ${name}`, () => {
-			assert.equal(findCraOptionViolations([option]).length, 1, option)
+			assert.equal(findRestingOptionViolations([option]).length, 1, option)
 		})
 	}
 })
 
-describe("findCraOptionViolations — forward options that MUST pass", () => {
+describe("findRestingOptionViolations — forward options that MUST pass", () => {
 	const clean: string[] = [
-		// The real run's good options:
+		// The real CRA run's good options:
 		"Triage CVE-2023-52160 — wpa_supplicant / Wi-Fi stack",
 		"Start Secure Boot v2 — the root-of-trust gap",
 		"Triage the highest-EPSS EUVD lead (CVE-2025-52471 — 74% EPSS)",
@@ -47,10 +53,14 @@ describe("findCraOptionViolations — forward options that MUST pass", () => {
 		"Re-scan after you change the config",
 		// Per-thread decline (not a session exit):
 		"Skip this CVE — show me the posture gaps",
+		// Non-CRA forward moves — proving the "pass" side is domain-agnostic too:
+		"Rebuild with the next Kconfig change",
+		"Flash the updated image and re-check the log",
+		"Draft the next test case for the sniffer loop",
 	]
 	for (const option of clean) {
 		test(`passes: ${option}`, () => {
-			assert.deepEqual(findCraOptionViolations([option]), [], option)
+			assert.deepEqual(findRestingOptionViolations([option]), [], option)
 		})
 	}
 })
