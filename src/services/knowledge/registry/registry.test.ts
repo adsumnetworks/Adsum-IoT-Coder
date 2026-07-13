@@ -114,6 +114,25 @@ describe("RegistryClient", () => {
 		const bad = new RegistryClient("http://r", async () => new Response("not json", { status: 200 }))
 		assert.equal(await bad.fetchManifest(), null)
 	})
+
+	test("draft channel: an author token is sent as Authorization: Bearer; absent = no header", async () => {
+		const seen: (string | undefined)[] = []
+		const capture = async (_url: string, init?: RequestInit): Promise<Response> => {
+			seen.push((init?.headers as Record<string, string> | undefined)?.Authorization)
+			return new Response(JSON.stringify({ manifestVersion: 1, bits: [] }), { status: 200 })
+		}
+		// token present (explicitly injected — never reads the real file in tests)
+		const withTok = new RegistryClient("http://r", capture, 5000, 3, 250, "adk_test123")
+		await withTok.fetchManifest()
+		await withTok.fetchBlob("abc")
+		assert.equal(seen[0], "Bearer adk_test123", "manifest carries the bearer")
+		assert.equal(seen[1], "Bearer adk_test123", "blob carries it too (harmless, content-addressed)")
+		// no token → no Authorization header (ordinary clients unaffected)
+		seen.length = 0
+		const noTok = new RegistryClient("http://r", capture, 5000, 3, 250, null)
+		await noTok.fetchManifest()
+		assert.equal(seen[0], undefined, "no token ⇒ no Authorization header")
+	})
 })
 
 // ---------------------------------------------------------------- resolver downloaded tier
