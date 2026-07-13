@@ -1,5 +1,34 @@
+import { existsSync, readFileSync } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
 import { ClineEnv } from "@/config"
 import { ExtensionRegistryInfo } from "@/registry"
+
+/**
+ * Author bearer token for the draft channel (optional). Resolution, first hit wins:
+ *   1. ADSUM_AUTHOR_TOKEN env (dev / F5)
+ *   2. ~/.config/adsum/author.token file (chmod 600 — the canonical, Studio-shared location)
+ * When present it is sent as `Authorization: Bearer <token>` so the registry serves THIS author's
+ * DRAFT versions in their manifest (everyone else gets published-only). It is NOT a security bypass —
+ * the server validates it and only ever returns the token-holder's own drafts — so, unlike the
+ * ADSUM_KBIT_LOCAL dev override, it is deliberately NOT IS_DEV-gated: an installed author needs it.
+ */
+export function resolveAuthorToken(): string | null {
+	const env = process.env.ADSUM_AUTHOR_TOKEN
+	if (env && env.trim()) {
+		return env.trim()
+	}
+	try {
+		const file = join(homedir(), ".config", "adsum", "author.token")
+		if (existsSync(file)) {
+			const t = readFileSync(file, "utf8").trim()
+			return t || null
+		}
+	} catch {
+		// unreadable file → simply not an author on this machine
+	}
+	return null
+}
 
 /**
  * RegistryClient — read-only access to the K-bit registry (P2). Fetches the **downloadable**
@@ -42,6 +71,9 @@ export class RegistryClient {
 		 *  that: 3 attempts with linear backoff. 4xx (bit genuinely absent) is NOT retried — it fails fast. */
 		private readonly maxAttempts = 3,
 		private readonly retryBackoffMs = 250,
+		/** Optional draft-channel author token. Default resolves env → ~/.config/adsum/author.token.
+		 *  Injectable (and defaultable to null) so unit tests never pick up a real token. */
+		private readonly authorToken: string | null = resolveAuthorToken(),
 	) {}
 
 	/** The downloadable catalog, or null if unreachable/malformed. */
@@ -73,9 +105,16 @@ export class RegistryClient {
 			const controller = new AbortController()
 			const timer = setTimeout(() => controller.abort(), this.timeoutMs)
 			try {
+				const headers: Record<string, string> = { Accept: "application/json" }
+				// Draft channel: identify the author so the registry serves their own draft versions.
+				// Harmless on blob GETs (content-addressed, public); the server only ever returns the
+				// token-holder's own drafts, never anyone else's.
+				if (this.authorToken) {
+					headers.Authorization = `Bearer ${this.authorToken}`
+				}
 				const res = await this.fetchImpl(url, {
 					method: "GET",
-					headers: { Accept: "application/json" },
+					headers,
 					signal: controller.signal,
 				})
 				if (res.ok) {
