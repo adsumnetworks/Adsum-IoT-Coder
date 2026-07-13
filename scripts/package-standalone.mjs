@@ -49,9 +49,26 @@ async function installNodeDependencies() {
 	console.log("Running npm install in distribution directory...")
 	execSync("npm install", { stdio: "inherit", cwd: BUILD_DIR })
 
-	// Move the vscode directory into node_modules.
-	// It can't be installed using npm because it will create a symlink which cannot be unzipped correctly on windows.
-	fs.renameSync(`${BUILD_DIR}/vscode`, `${BUILD_DIR}/node_modules/vscode`)
+	// Move the vscode stub into node_modules (external:"vscode" in the bundle resolves it from there at
+	// runtime). It can't be installed via npm because that creates a symlink which unzips incorrectly on
+	// Windows. Made IDEMPOTENT + guarded: a re-run over an existing node_modules/vscode used to throw on
+	// rename and leave the stub misplaced in dist-standalone/vscode → the standalone core then dies at
+	// import with "Cannot find module 'vscode'". Ensure the parent exists, clear any prior copy, then move.
+	const vscodeSrc = `${BUILD_DIR}/vscode`
+	const vscodeDest = `${BUILD_DIR}/node_modules/vscode`
+	fs.mkdirSync(`${BUILD_DIR}/node_modules`, { recursive: true })
+	await rmrf(vscodeDest)
+	if (fs.existsSync(vscodeSrc)) {
+		fs.renameSync(vscodeSrc, vscodeDest)
+	}
+	// Hard verification: a standalone build that can't resolve its vscode stub is broken — fail the build
+	// LOUDLY here rather than shipping an artifact that boots to "Cannot find module 'vscode'".
+	if (!fs.existsSync(path.join(vscodeDest, "package.json"))) {
+		throw new Error(
+			`vscode stub not placed at ${vscodeDest} — the standalone core would fail to boot. ` +
+				`Check that ${RUNTIME_DEPS_DIR}/vscode exists and the copy above succeeded.`,
+		)
+	}
 }
 
 /**
