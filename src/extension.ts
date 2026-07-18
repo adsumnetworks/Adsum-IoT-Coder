@@ -32,6 +32,7 @@ import { HookProcessRegistry } from "./core/hooks/HookProcessRegistry"
 import { workspaceResolver } from "./core/workspace"
 import { findMatchingNotebookCell, getContextForCommand, showWebview } from "./hosts/vscode/commandUtils"
 import { abortCommitGeneration, generateCommitMsg } from "./hosts/vscode/commit-message-generator"
+import { VscodeHandoverService } from "./hosts/vscode/handover/VscodeHandoverService"
 import {
 	disposeVscodeCommentReviewController,
 	getVscodeCommentReviewController,
@@ -505,6 +506,25 @@ export async function activate(context: vscode.ExtensionContext) {
 				],
 			},
 		),
+	)
+
+	// ── Agent handover (H1): hand this session to the developer's own coding agent, keep tracking it,
+	// and bring it back. Adsum stays the knowledge/tool layer; their subscription runs the model.
+	const handover = new VscodeHandoverService(context)
+	context.subscriptions.push(
+		handover,
+		vscode.commands.registerCommand("adsum-iot-coder.handoverToAgent", () => handover.handOver()),
+		vscode.commands.registerCommand("adsum-iot-coder.watchHandover", () => handover.watch()),
+		vscode.commands.registerCommand("adsum-iot-coder.continueHandoverHere", async () => {
+			const resume = handover.buildResumePrompt()
+			if (!resume) {
+				vscode.window.showInformationMessage("Adsum: no handed-over session to continue.")
+				return
+			}
+			await vscode.commands.executeCommand("adsum-iot-coder.focusChatInput")
+			await WebviewProvider.getInstance().controller.initTask(resume.prompt)
+			handover.markReturned(resume.id)
+		}),
 	)
 
 	// Register the command handlers

@@ -40,7 +40,7 @@ export function extractBriefParts(ui: any[], meta: any): BriefParts {
 	const progress = [...ui].reverse().find((m) => say(m, "task_progress"))?.text ?? ""
 	const items = progress
 		.split(/\r?\n/)
-		.map((l) => l.match(/^\s*-\s*\[( |x|X)\]\s*(.+?)\s*$/))
+		.map((l: string) => l.match(/^\s*-\s*\[( |x|X)\]\s*(.+?)\s*$/))
 		.filter(Boolean) as RegExpMatchArray[]
 	const worklog = items.filter((m) => m[1].toLowerCase() === "x").map((m) => m[2])
 	const nextStep = items.find((m) => m[1] === " ")?.[2] ?? ""
@@ -51,9 +51,13 @@ export function extractBriefParts(ui: any[], meta: any): BriefParts {
 	for (const f of meta?.files_in_context ?? []) {
 		const p = String(f?.path ?? "").replace(/\\/g, "/")
 		const i = p.lastIndexOf(marker)
-		if (i === -1) continue
+		if (i === -1) {
+			continue
+		}
 		const rel = p.slice(i + marker.length)
-		if (rel.endsWith(".md") && !kbitRelPaths.includes(rel)) kbitRelPaths.push(rel)
+		if (rel.endsWith(".md") && !kbitRelPaths.includes(rel)) {
+			kbitRelPaths.push(rel)
+		}
 	}
 	return { mission, worklog, nextStep, lastSummary, kbitRelPaths }
 }
@@ -119,11 +123,17 @@ export function upsertMcpJson(mcpJsonPath: string, serverPath: string, nodeBin =
 		cfg = JSON.parse(fs.readFileSync(mcpJsonPath, "utf8"))
 		existed = true
 	} catch {}
-	if (!cfg || typeof cfg !== "object") cfg = {}
-	if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") cfg.mcpServers = {}
+	if (!cfg || typeof cfg !== "object") {
+		cfg = {}
+	}
+	if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") {
+		cfg.mcpServers = {}
+	}
 	const desired = { command: nodeBin, args: [serverPath] }
 	const cur = cfg.mcpServers.adsum
-	if (cur && cur.command === desired.command && Array.isArray(cur.args) && cur.args[0] === serverPath) return "unchanged"
+	if (cur && cur.command === desired.command && Array.isArray(cur.args) && cur.args[0] === serverPath) {
+		return "unchanged"
+	}
 	cfg.mcpServers.adsum = desired
 	fs.mkdirSync(path.dirname(mcpJsonPath), { recursive: true })
 	fs.writeFileSync(mcpJsonPath, JSON.stringify(cfg, null, 2) + "\n")
