@@ -1,6 +1,7 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
 
 import type { EspEnvironment } from "@shared/esp"
+import type { HandoverUiState } from "@shared/handover"
 import { WorkspaceRoot } from "@shared/multi-root/types"
 import type { NrfEnvironment } from "@shared/nrf"
 import { RemoteConfigFields } from "@shared/storage/state-keys"
@@ -132,6 +133,9 @@ export interface ExtensionState {
 	workspaceClassification?: "nrf" | "esp" | "both" | "none"
 	/** Grounded capability/file-presence signals for the open workspace — drives the A3 CRA nudge + A10 sub-line. */
 	workspaceFeatures?: WorkspaceFeatures
+	/** Live view of a session handed to the developer's own coding agent (the agent strip), plus whether
+	 *  Adsum is conducting (no inference of its own) — drives run-path ordering on the session cards. */
+	handoverUi?: HandoverUiState
 }
 
 export interface ClineMessage {

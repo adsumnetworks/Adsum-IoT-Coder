@@ -21,6 +21,7 @@ import {
 	parseWorkflowSteps,
 	upsertManagedBlock,
 } from "./HandoverBrief"
+import { buildHandoverUiState, handoverUiFingerprint } from "./HandoverUiState"
 
 const REPO = path.resolve(__dirname, "..", "..", "..")
 const SERVER = path.join(REPO, "mcp", "adsum-mcp.mjs")
@@ -626,6 +627,285 @@ describe("t-bit slice — exec/build carry the environment; installs are refused
 			c.kill()
 			fs.rmSync(root, { recursive: true, force: true })
 		}
+	})
+})
+
+// ── the webview's view of a handover (WP-1: the pure builder) ──────────────
+function uiFixture(opts: { status?: string; ledger?: any[]; observations?: any[]; brief?: any; createdAt?: string }): {
+	root: string
+	id: string
+} {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), "adsum-ui-"))
+	const id = "ui01"
+	fs.mkdirSync(path.join(root, id), { recursive: true })
+	const createdAt = opts.createdAt ?? new Date().toISOString()
+	fs.writeFileSync(
+		path.join(root, id, "brief.json"),
+		JSON.stringify({
+			mission: "Test and validate softAP",
+			workspace: "/tmp/softAP",
+			governing: "adsum/esp/workflows/test-validate",
+			baseline: { ref: "0123456789abcdef", managed: true },
+			bits: [
+				{
+					id: "adsum/esp/workflows/test-validate",
+					title: "Test & Validate Workflow",
+					version: "1.2.0",
+					author: "Omar Morceli",
+					attributed: true,
+					steward: "Adsum Networks",
+				},
+				{ id: "adsum/esp/actions/run-tests", title: "Action: Run Tests", author: "Omar Morceli", attributed: true },
+			],
+			...opts.brief,
+		}),
+	)
+	fs.writeFileSync(path.join(root, id, "state.json"), JSON.stringify({ status: opts.status ?? "pending", createdAt }))
+	if (opts.ledger) {
+		fs.writeFileSync(path.join(root, id, "ledger.jsonl"), opts.ledger.map((e) => JSON.stringify(e)).join("\n") + "\n")
+	}
+	if (opts.observations) {
+		fs.writeFileSync(
+			path.join(root, id, "observations.jsonl"),
+			opts.observations.map((e) => JSON.stringify(e)).join("\n") + "\n",
+		)
+	}
+	return { root, id }
+}
+const CONDUCTOR = { active: true, reason: "no inference provider configured" }
+const T = (n: number) => new Date(Date.UTC(2026, 6, 18, 19, n)).toISOString()
+
+describe("HandoverUiState — the strip's contract (pure builder)", () => {
+	test("phase mapping: posted → pickedUp → working → closed; returned/stale render nothing", () => {
+		const posted = uiFixture({ status: "pending" })
+		assert.equal(buildHandoverUiState(posted.root, CONDUCTOR).strip?.phase, "posted")
+		fs.rmSync(posted.root, { recursive: true, force: true })
+
+		// resumed but no work yet — the agent has the brief and is reading
+		const picked = uiFixture({ status: "active", ledger: [{ t: T(0), event: "resume", bits: 14 }] })
+		assert.equal(buildHandoverUiState(picked.root, CONDUCTOR).strip?.phase, "pickedUp")
+		fs.rmSync(picked.root, { recursive: true, force: true })
+
+		const working = uiFixture({
+			status: "active",
+			ledger: [
+				{ t: T(0), event: "resume" },
+				{ t: T(1), event: "checkpoint", worklog: "survey done", step: "Step 2: Survey" },
+			],
+		})
+		assert.equal(buildHandoverUiState(working.root, CONDUCTOR).strip?.phase, "working")
+		fs.rmSync(working.root, { recursive: true, force: true })
+
+		const closed = uiFixture({
+			status: "closed-by-agent",
+			ledger: [{ t: T(5), event: "checkpoint", worklog: "suite green", final: true }],
+		})
+		assert.equal(buildHandoverUiState(closed.root, CONDUCTOR).strip?.phase, "closed")
+		fs.rmSync(closed.root, { recursive: true, force: true })
+
+		// the developer pulled it back — nothing to show
+		const returned = uiFixture({ status: "returned" })
+		assert.equal(buildHandoverUiState(returned.root, CONDUCTOR).strip, null, "returned → no strip")
+		fs.rmSync(returned.root, { recursive: true, force: true })
+
+		// a handover from last week must not haunt the panel
+		const stale = uiFixture({ status: "active", createdAt: new Date(Date.now() - 72 * 3600_000).toISOString() })
+		assert.equal(buildHandoverUiState(stale.root, CONDUCTOR).strip, null, "stale → no strip")
+		fs.rmSync(stale.root, { recursive: true, force: true })
+	})
+
+	test("milestones: all six row kinds, time-ordered, two witnesses kept distinct", () => {
+		const { root } = uiFixture({
+			status: "active",
+			ledger: [
+				{ t: T(0), event: "resume" },
+				{
+					t: T(1),
+					event: "kbit_load",
+					id: "adsum/esp/workflows/test-validate",
+					title: "Test & Validate Workflow",
+					version: "1.2.0",
+					author: "Omar Morceli",
+				},
+				{ t: T(2), event: "checkpoint", worklog: "survey done", step: "Step 2: Survey", tools_used: ["editor_tools"] },
+				{ t: T(3), event: "tool_exec", command: "idf.py --version", exit: 0 },
+			],
+			observations: [
+				{ t: T(4), event: "tree_change", files: ["main/sta_table.h"] },
+				{ t: T(5), event: "snapshot" },
+			],
+		})
+		const rows = buildHandoverUiState(root, CONDUCTOR).strip!.milestones
+		assert.deepEqual(
+			rows.map((r) => r.kind),
+			["bit", "step", "tool", "host", "snap"],
+			"agent-reported and host-observed rows interleave by time but keep their own kinds",
+		)
+		const bit = rows[0] as any
+		assert.equal(bit.author, "Omar Morceli", "the author's credit travels into the strip")
+		assert.equal((rows[1] as any).step, "Step 2: Survey")
+		assert.deepEqual((rows[3] as any).files, ["main/sta_table.h"])
+		fs.rmSync(root, { recursive: true, force: true })
+	})
+
+	test("nudges are DERIVED: own-terminal use, and source edited without a build", () => {
+		const { root } = uiFixture({
+			status: "active",
+			ledger: [
+				{ t: T(1), event: "checkpoint", worklog: "probed the env", step: "Step 1", tools_used: ["own_terminal"] },
+				{
+					t: T(2),
+					event: "checkpoint",
+					worklog: "extracted sta_table.h",
+					tools_used: ["editor_tools"],
+					files_touched: ["main/sta_table.h"],
+				},
+				{ t: T(4), event: "checkpoint", worklog: "next thing", tools_used: ["editor_tools"] },
+			],
+		})
+		const nudges = buildHandoverUiState(root, CONDUCTOR).strip!.milestones.filter((r) => r.kind === "nudge") as any[]
+		assert.equal(nudges.length, 2)
+		assert.match(nudges[0].text, /its own terminal/)
+		assert.match(nudges[1].text, /without building/)
+		fs.rmSync(root, { recursive: true, force: true })
+	})
+
+	test("the closing checkpoint is never nudged — its file list is cumulative, and it is too late to act", () => {
+		const { root } = uiFixture({
+			status: "closed-by-agent",
+			ledger: [
+				{ t: T(2), event: "checkpoint", worklog: "edited", tools_used: ["editor_tools"], files_touched: ["main/x.c"] },
+				{ t: T(3), event: "tool_build", command: "idf.py build", exit: 0 },
+				{
+					t: T(4),
+					event: "checkpoint",
+					worklog: "done",
+					final: true,
+					tools_used: ["adsum.build"],
+					files_touched: ["main/x.c", "test/t.c"],
+				},
+			],
+		})
+		const nudges = buildHandoverUiState(root, CONDUCTOR).strip!.milestones.filter((r) => r.kind === "nudge")
+		assert.equal(nudges.length, 0, "it built mid-session, and the closing summary must not re-fire the gate")
+		fs.rmSync(root, { recursive: true, force: true })
+	})
+
+	test("a build between checkpoints clears the edit-without-build nudge", () => {
+		const { root } = uiFixture({
+			status: "active",
+			ledger: [
+				{ t: T(2), event: "checkpoint", worklog: "edited", tools_used: ["adsum.build"], files_touched: ["main/x.c"] },
+				{ t: T(3), event: "tool_build", command: "idf.py build", exit: 0 },
+				{ t: T(4), event: "checkpoint", worklog: "next", tools_used: ["editor_tools"] },
+			],
+		})
+		const nudges = buildHandoverUiState(root, CONDUCTOR).strip!.milestones.filter((r) => r.kind === "nudge")
+		assert.equal(nudges.length, 0, "it did build — no nudge")
+		fs.rmSync(root, { recursive: true, force: true })
+	})
+
+	test("closing receipt: what it says vs what Adsum measured, never conflated", () => {
+		const { root } = uiFixture({
+			status: "closed-by-agent",
+			ledger: [
+				{
+					t: T(1),
+					event: "kbit_load",
+					id: "adsum/esp/workflows/test-validate",
+					title: "Test & Validate",
+					author: "Omar Morceli",
+				},
+				{ t: T(2), event: "tool_build", command: "idf.py build", exit: 0 },
+				{
+					t: T(3),
+					event: "checkpoint",
+					worklog: "Suite scaffolded and green — 6 cases",
+					final: true,
+					files_touched: ["test/main/test_sta.c"],
+					next_step: "run on hardware when a board is connected",
+				},
+			],
+			observations: [
+				{ t: T(2), event: "snapshot" },
+				{ t: T(4), event: "diffstat", text: "3 files changed, 214 insertions(+), 9 deletions(-)" },
+			],
+		})
+		const c = buildHandoverUiState(root, CONDUCTOR).strip!.closing!
+		assert.match(c.headline, /Suite scaffolded and green/)
+		assert.deepEqual(c.itSays.files, ["test/main/test_sta.c"], "what the AGENT reported")
+		assert.match(c.itSays.nextStep!, /on hardware/)
+		assert.match(c.adsumSaw.diffstat!, /3 files changed/, "what ADSUM measured — host-written only")
+		assert.equal(c.adsumSaw.snapshots, 1)
+		assert.equal(c.adsumSaw.buildsGreen, true)
+		assert.deepEqual(c.standingOn.authors, ["Omar Morceli"])
+		assert.equal(c.standingOn.steward, "Adsum Networks")
+		fs.rmSync(root, { recursive: true, force: true })
+	})
+
+	test("a claimed-but-unobserved change never becomes 'Adsum saw'", () => {
+		const { root } = uiFixture({
+			status: "closed-by-agent",
+			ledger: [{ t: T(3), event: "checkpoint", worklog: "did loads", final: true, files_touched: ["a.c", "b.c"] }],
+			// no observations at all — the host saw nothing
+		})
+		const c = buildHandoverUiState(root, CONDUCTOR).strip!.closing!
+		assert.deepEqual(c.itSays.files, ["a.c", "b.c"])
+		assert.equal(c.adsumSaw.diffstat, undefined, "no diffstat observed → the receipt must not invent one")
+		assert.equal(c.adsumSaw.snapshots, 0)
+		assert.equal(c.adsumSaw.buildsGreen, false, "no build ran → not green")
+		fs.rmSync(root, { recursive: true, force: true })
+	})
+
+	test("live pulse only while genuinely recent; truncation flags the overflow", () => {
+		const now = Date.parse(T(10))
+		const fresh = uiFixture({
+			status: "active",
+			ledger: [{ t: T(10), event: "tool_build", command: "idf.py build", exit: 0 }],
+		})
+		const live = buildHandoverUiState(fresh.root, CONDUCTOR, now).strip!.live
+		assert.equal(live?.verb, "building…", "the verb names what is actually happening")
+		fs.rmSync(fresh.root, { recursive: true, force: true })
+
+		const quiet = uiFixture({ status: "active", ledger: [{ t: T(0), event: "checkpoint", worklog: "x" }] })
+		assert.equal(buildHandoverUiState(quiet.root, CONDUCTOR, now).strip!.live, undefined, "10 min quiet → no false 'live'")
+		fs.rmSync(quiet.root, { recursive: true, force: true })
+
+		const many = uiFixture({
+			status: "active",
+			ledger: Array.from({ length: 40 }, (_, i) => ({ t: T(i), event: "checkpoint", worklog: `step ${i}` })),
+		})
+		const s = buildHandoverUiState(many.root, CONDUCTOR, now).strip!
+		assert.equal(s.milestones.length, 30, "capped")
+		assert.equal(s.truncated, true, "and says so, so the full worklog stays reachable")
+		assert.match((s.milestones[29] as any).text, /step 39/, "the newest rows are the ones kept")
+		fs.rmSync(many.root, { recursive: true, force: true })
+	})
+
+	test("packed knowledge + baseline surface for the posted state; fingerprint ignores the ticking clock", () => {
+		const { root } = uiFixture({ status: "pending", observations: [{ t: T(0), event: "snapshot" }] })
+		const s = buildHandoverUiState(root, CONDUCTOR).strip!
+		assert.equal(s.packed.bits, 2)
+		assert.equal(s.packed.governing?.title, "Test & Validate Workflow")
+		assert.equal(s.packed.governing?.author, "Omar Morceli")
+		assert.equal(s.baseline.created, true)
+		assert.equal(s.baseline.snapshots, 1)
+		assert.match(s.pickupPrompt, /Check the Adsum inbox/)
+
+		// the push gate must not fire just because `sinceSec` advanced
+		const a = buildHandoverUiState(root, CONDUCTOR, Date.parse(T(9)))
+		const b = buildHandoverUiState(root, CONDUCTOR, Date.parse(T(9)) + 4000)
+		assert.equal(handoverUiFingerprint(a), handoverUiFingerprint(b), "a quiet tick costs nothing")
+		fs.rmSync(root, { recursive: true, force: true })
+	})
+
+	test("empty/absent handover root → no strip, conductor still reported", () => {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), "adsum-empty-ui-"))
+		const s = buildHandoverUiState(root, CONDUCTOR)
+		assert.equal(s.strip, null)
+		assert.deepEqual(s.conductor, CONDUCTOR)
+		assert.equal(buildHandoverUiState(path.join(root, "nope"), CONDUCTOR).strip, null, "missing dir never throws")
+		fs.rmSync(root, { recursive: true, force: true })
 	})
 })
 

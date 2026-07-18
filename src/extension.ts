@@ -53,6 +53,7 @@ import {
 	setEspWorkspaceRoots,
 } from "./services/esp/EspEnvironmentDetector"
 import { setIdfToolsPathHint } from "./services/esp/espChipProbe"
+import { registerHandoverActions } from "./services/handover/HandoverActions"
 import {
 	clearNrfEnvironmentCache,
 	detectNrfEnvironment,
@@ -512,23 +513,40 @@ export async function activate(context: vscode.ExtensionContext) {
 	// and bring it back. Adsum stays the knowledge/tool layer; their subscription runs the model.
 	const handover = new VscodeHandoverService(context)
 	// Conductor mode: with no inference configured (or by explicit setting), handing to the developer's
-	// own agent IS the default execution path — announce it once so the front door is discoverable.
+	// own agent IS the default execution path — announce it once so the front door is discoverable, and
+	// keep the cached verdict fresh (it drives run-path ordering on the session cards).
+	void handover.refreshConductorCache()
 	void handover.announceConductorMode()
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((e) => {
+			if (e.affectsConfiguration("adsum-iot-coder.conductorMode")) {
+				void handover.refreshConductorCache()
+			}
+		}),
+	)
+	// ONE implementation per action, shared by the command palette and the webview's buttons (the
+	// webview reaches these through the HandoverActions registry — it cannot execute VS Code commands).
+	const continueHandoverHere = async () => {
+		const resume = handover.buildResumePrompt()
+		if (!resume) {
+			vscode.window.showInformationMessage("Adsum: no handed-over session to continue.")
+			return
+		}
+		await vscode.commands.executeCommand("adsum-iot-coder.focusChatInput")
+		await WebviewProvider.getInstance().controller.initTask(resume.prompt)
+		handover.markReturned(resume.id)
+	}
+	registerHandoverActions({
+		handOver: () => handover.handOver(),
+		continueHere: continueHandoverHere,
+		showWorklog: () => handover.showWorklog(),
+	})
 	context.subscriptions.push(
 		handover,
 		vscode.commands.registerCommand("adsum-iot-coder.handoverToAgent", () => handover.handOver()),
 		vscode.commands.registerCommand("adsum-iot-coder.watchHandover", () => handover.watch()),
 		vscode.commands.registerCommand("adsum-iot-coder.showHandoverWorklog", () => handover.showWorklog()),
-		vscode.commands.registerCommand("adsum-iot-coder.continueHandoverHere", async () => {
-			const resume = handover.buildResumePrompt()
-			if (!resume) {
-				vscode.window.showInformationMessage("Adsum: no handed-over session to continue.")
-				return
-			}
-			await vscode.commands.executeCommand("adsum-iot-coder.focusChatInput")
-			await WebviewProvider.getInstance().controller.initTask(resume.prompt)
-			handover.markReturned(resume.id)
-		}),
+		vscode.commands.registerCommand("adsum-iot-coder.continueHandoverHere", continueHandoverHere),
 	)
 
 	// Register the command handlers

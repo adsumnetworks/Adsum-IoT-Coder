@@ -1,5 +1,7 @@
 import React from "react"
+import { useExtensionState } from "@/context/ExtensionStateContext"
 import type { NordicModeId } from "../nordicModes"
+import AgentRunRow from "./AgentRunRow"
 import IntentCard from "./IntentCard"
 import { runIntent } from "./runIntent"
 import { type IntentDef, intentDescription, type WorkspacePlatform } from "./welcomeIntents"
@@ -34,23 +36,38 @@ const IntentList: React.FC<IntentListProps> = ({
 	hasBle = false,
 	testIdPrefix,
 }) => {
+	const { handoverUi } = useExtensionState()
 	const live = intents.filter((i) => !i.comingSoon)
 	const roadmap = intents.filter((i) => i.comingSoon)
 
-	const card = (intent: IntentDef) => (
-		<IntentCard
-			comingSoon={intent.comingSoon}
-			description={intentDescription(intent, projectName, platform)}
-			icon={intent.icon}
-			key={intent.id}
-			onClick={() => runIntent(intent.id, { onSelectMode, onStartTask, onStartDemo, projectName, platform, hasBle })}
-			pill={intent.pill}
-			primary={intent.primary}
-			subline={intent.subline}
-			testId={`${testIdPrefix}-${intent.id}`}
-			title={intent.title}
-		/>
-	)
+	// A workflow-backed card has two doors: run it here, or hand it to the developer's own coding agent.
+	// Which one leads is decided by conductor mode (no model configured → the agent path is the action).
+	const conducting = !!handoverUi?.conductor.active
+
+	const card = (intent: IntentDef) => {
+		const cardEl = (
+			<IntentCard
+				comingSoon={intent.comingSoon}
+				description={intentDescription(intent, projectName, platform)}
+				icon={intent.icon}
+				onClick={() => runIntent(intent.id, { onSelectMode, onStartTask, onStartDemo, projectName, platform, hasBle })}
+				pill={intent.pill}
+				primary={intent.primary && !conducting}
+				subline={intent.subline}
+				testId={`${testIdPrefix}-${intent.id}`}
+				title={intent.title}
+			/>
+		)
+		if (!intent.agentRunnable) {
+			return <div key={intent.id}>{cardEl}</div>
+		}
+		return (
+			<div className="flex flex-col gap-2" key={intent.id}>
+				{cardEl}
+				<AgentRunRow conducting={conducting} />
+			</div>
+		)
+	}
 
 	return (
 		<div className="flex flex-col gap-3 w-full">

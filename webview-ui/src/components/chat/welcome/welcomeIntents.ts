@@ -43,6 +43,9 @@ export interface IntentDef {
 	subline?: string
 	/** Roadmap card — rendered disabled under an "on the roadmap" divider, never routes. */
 	comingSoon?: boolean
+	/** This card maps to a curated workflow, so it can also be run by the developer's own coding agent
+	 *  (Adsum conducts: knowledge, toolchain, tracking, snapshots). Adds the second run-path door. */
+	agentRunnable?: boolean
 }
 
 /**
@@ -200,6 +203,7 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 export const PROJECT_INTENTS: IntentDef[] = [
 	{
 		id: "buildFlashDebug",
+		agentRunnable: true,
 		icon: "zap",
 		title: "Build, flash & debug",
 		description: "Build, flash & stream live logs.",
@@ -208,18 +212,21 @@ export const PROJECT_INTENTS: IntentDef[] = [
 	},
 	{
 		id: "addFeature",
+		agentRunnable: true,
 		icon: "extensions",
 		title: "Add a feature",
 		description: "Add a Zephyr shell, a BLE service, NVS storage… to your real project, not a sample.",
 	},
 	{
 		id: "testValidate",
+		agentRunnable: true,
 		icon: "beaker",
 		title: "Test & validate",
 		description: "Prove it works — host tests (native_sim) now, on-hardware checks when a board's connected.",
 	},
 	{
 		id: "craCheck",
+		agentRunnable: true,
 		icon: "shield",
 		title: "CRA SBOM & Fix",
 		description:
