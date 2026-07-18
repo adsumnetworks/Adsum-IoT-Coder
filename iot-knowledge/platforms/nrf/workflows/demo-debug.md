@@ -4,7 +4,7 @@ title: "Demo Debug Workflow"
 type: workflow
 version: 1.0.0
 owner: adsum-core
-author: adsum
+author: Ismail Hamdad
 license: CC-BY-SA-4.0
 tier: certified
 delivery: bundled

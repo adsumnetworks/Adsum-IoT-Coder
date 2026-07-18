@@ -144,18 +144,20 @@ describe("extractFrontmatter", () => {
 })
 
 describe("KnowledgeResolver.indexManifest", () => {
-	test("builds an id→path map from manifest json", () => {
+	test("builds an id→entry map from manifest json (keeps attribution fields)", () => {
+		// Widened from id→path so the credit UI can name a bit's author; the manifest already carried it.
 		const m = indexManifest(
 			JSON.stringify({
 				bits: [
-					{ id: "adsum/x", path: "a/x.md" },
+					{ id: "adsum/x", path: "a/x.md", author: "Omar Morceli", title: "X" },
 					{ id: "adsum/y", path: "b/y.md" },
 				],
 			}),
 		)
 		assert.equal(m.size, 2)
-		assert.equal(m.get("adsum/x"), "a/x.md")
-		assert.equal(m.get("adsum/y"), "b/y.md")
+		assert.equal(m.get("adsum/x")?.path, "a/x.md")
+		assert.equal(m.get("adsum/x")?.author, "Omar Morceli")
+		assert.equal(m.get("adsum/y")?.path, "b/y.md")
 	})
 	test("handles a manifest with no bits array", () => {
 		assert.equal(indexManifest("{}").size, 0)

@@ -34,6 +34,7 @@ import {
 } from "lucide-react"
 import { MouseEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSize } from "react-use"
+import { KbitCredit, parseKbitPayload } from "@/components/chat/KbitCredit"
 import { OptionsButtons } from "@/components/chat/OptionsButtons"
 import { CheckmarkControl } from "@/components/common/CheckmarkControl"
 import { WithCopyButton } from "@/components/common/CopyButton"
@@ -949,6 +950,13 @@ export const ChatRowContent = memo(
 								Loading MCP documentation
 							</div>
 						)
+					case "kbit_loaded": {
+						// Attribution credit row — replaces the anonymous k-bit file-read row. A turn that pulls
+						// SEVERAL bits is merged into one group upstream (isKbitGroup in messageUtils) and rendered
+						// by KbitGroupRenderer, so this single-message path only ever renders one bit.
+						const bit = parseKbitPayload(message.text)
+						return bit ? <KbitCredit bits={[bit]} /> : null
+					}
 					case "cve_scan_progress": {
 						// Animated liveness row for the blocking CVE scan (prominent spinner + live elapsed timer
 						// while it is the last message; a compact static line once the run has moved past it).

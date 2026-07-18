@@ -4,7 +4,7 @@ title: "ESP Platform Rule: Skill Loading"
 type: knowledge
 version: 1.1.0
 owner: adsum-core
-author: adsum
+author: Omar Morceli
 license: CC-BY-SA-4.0
 tier: certified
 delivery: bundled

@@ -2,7 +2,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs"
 import fs from "node:fs/promises"
 import path from "node:path"
 import { HostProvider } from "@/hosts/host-provider"
-import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
+import { creditFieldsFromYaml, creditFromMeta, type KbitCredit, type KbitMetaLike } from "@/services/knowledge/kbit/credit"
+import { extractFrontmatter, stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 import { BitCache, sha256 } from "@/services/knowledge/registry/BitCache"
 import {
 	type DownloadedManifest,
@@ -35,24 +36,34 @@ function knowledgeRoot(): string {
 	return path.join(HostProvider.get().extensionFsPath, KNOWLEDGE_DIR)
 }
 
-/** Pure: build an id → relative-path map from manifest.json text. */
-export function indexManifest(jsonText: string): Map<string, string> {
-	const map = new Map<string, string>()
-	const data = JSON.parse(jsonText) as { bits?: Array<{ id: string; path: string }> }
+/**
+ * Pure: build an id → manifest-entry map from manifest.json text.
+ *
+ * Keeps the WHOLE entry, not just the path: the manifest already carries every attribution fact the
+ * credit UI needs (title/type/author/version/license/platform) and dropping them here was the only reason
+ * the product could not credit its own authors.
+ */
+export function indexManifest(jsonText: string): Map<string, ManifestEntry> {
+	const map = new Map<string, ManifestEntry>()
+	const data = JSON.parse(jsonText) as { bits?: ManifestEntry[] }
 	for (const bit of data.bits ?? []) {
-		map.set(bit.id, bit.path)
+		if (bit?.id && bit.path) {
+			map.set(bit.id, bit)
+		}
 	}
 	return map
 }
 
-let asyncCache: Map<string, string> | null = null
-let syncCache: Map<string, string> | null = null
+export type ManifestEntry = KbitMetaLike & { id: string; path: string }
 
-async function manifest(): Promise<Map<string, string>> {
+let asyncCache: Map<string, ManifestEntry> | null = null
+let syncCache: Map<string, ManifestEntry> | null = null
+
+async function manifest(): Promise<Map<string, ManifestEntry>> {
 	if (asyncCache) {
 		return asyncCache
 	}
-	let map = new Map<string, string>()
+	let map = new Map<string, ManifestEntry>()
 	try {
 		const manifestPath = path.join(knowledgeRoot(), "manifest.json")
 		if (await fileExistsAtPath(manifestPath)) {
@@ -65,11 +76,11 @@ async function manifest(): Promise<Map<string, string>> {
 	return map
 }
 
-function manifestSyncMap(): Map<string, string> {
+function manifestSyncMap(): Map<string, ManifestEntry> {
 	if (syncCache) {
 		return syncCache
 	}
-	let map = new Map<string, string>()
+	let map = new Map<string, ManifestEntry>()
 	try {
 		const manifestPath = path.join(knowledgeRoot(), "manifest.json")
 		if (existsSync(manifestPath)) {
@@ -84,14 +95,57 @@ function manifestSyncMap(): Map<string, string> {
 
 /** Absolute path for a bit id, or null if the id is unknown. */
 export async function resolveBitPath(id: string): Promise<string | null> {
-	const rel = (await manifest()).get(id)
+	const rel = (await manifest()).get(id)?.path
 	return rel ? path.join(knowledgeRoot(), rel) : null
 }
 
 /** Synchronous absolute path for a bit id, or null if unknown (for sync callers, e.g. the demo builder). */
 export function resolveBitPathSync(id: string): string | null {
-	const rel = manifestSyncMap().get(id)
+	const rel = manifestSyncMap().get(id)?.path
 	return rel ? path.join(knowledgeRoot(), rel) : null
+}
+
+// ── Attribution (design/01) ─────────────────────────────────────────────────────
+// Loads are recorded here as they resolve so the tool handler can credit the bit AFTER it knows the load
+// succeeded. A side registry rather than a widened return type: every loader returns the bit body as a
+// plain string and threading a tuple through all of them would touch far more code than it earns.
+// Bounded by the corpus size (one entry per distinct bit ever loaded this session).
+const creditById = new Map<string, KbitCredit>()
+
+function recordCredit(id: string, meta: KbitMetaLike): void {
+	if (id) {
+		creditById.set(id, creditFromMeta(meta, id))
+	}
+}
+
+/** Record credit from a bit's own frontmatter (downloaded/local bits, where the manifest is metadata-thin). */
+function recordCreditFromText(id: string, text: string): void {
+	const fm = extractFrontmatter(text)
+	recordCredit(id, fm.found && fm.closed ? creditFieldsFromYaml(fm.yaml) : {})
+}
+
+/** Attribution facts for a bit that resolved this session, or null if it never loaded. */
+export function creditFor(id: string): KbitCredit | null {
+	return creditById.get(id) ?? null
+}
+
+/** Attribution facts for a bundled-tree absolute path (the shape the read tool works in). */
+export async function creditForKbPath(absPath: string): Promise<KbitCredit | null> {
+	const id = bitIdForKbPath(absPath)
+	if (!id) {
+		return null
+	}
+	const known = creditById.get(id)
+	if (known) {
+		return known
+	}
+	// A bundled bit read straight off disk never goes through loadBit(), so derive from the manifest here.
+	const entry = (await manifest()).get(id)
+	if (entry) {
+		recordCredit(id, entry)
+		return creditById.get(id) ?? null
+	}
+	return null
 }
 
 // ── Downloaded tier (P2): registry + on-machine cache ───────────────────────────
@@ -265,7 +319,9 @@ async function loadDownloadedBit(id: string): Promise<string> {
 	if (localPath) {
 		try {
 			console.info(`[kbit] ${id} ← local override`)
-			return stripFrontmatter(readFileSync(localPath, "utf-8"))
+			const text = readFileSync(localPath, "utf-8")
+			recordCreditFromText(id, text)
+			return stripFrontmatter(text)
 		} catch (e) {
 			console.error(`KnowledgeResolver: failed to read local-override bit "${id}"`, e)
 		}
@@ -286,6 +342,7 @@ async function loadDownloadedBit(id: string): Promise<string> {
 	if (cached !== null) {
 		kbitTelemetry.downloadedResolved?.({ id, source: "cache" })
 		console.info(`[kbit] ${id} ← registry (cache)`)
+		recordCreditFromText(id, cached)
 		return stripFrontmatter(cached)
 	}
 	const fetched = await registry().fetchBlob(hash)
@@ -303,6 +360,7 @@ async function loadDownloadedBit(id: string): Promise<string> {
 		}
 		kbitTelemetry.downloadedResolved?.({ id, source: "registry" })
 		console.info(`[kbit] ${id} ← registry (fetched${open ? ", cached" : ", proprietary — not cached"})`)
+		recordCreditFromText(id, fetched)
 		return stripFrontmatter(fetched)
 	}
 	console.error(`KnowledgeResolver: downloaded bit "${id}" failed hash verification`)
@@ -324,6 +382,10 @@ export async function loadBit(id: string): Promise<string> {
 		try {
 			if (await fileExistsAtPath(full)) {
 				console.info(`[kbit] ${id} ← bundled`)
+				const entry = (await manifest()).get(id)
+				if (entry) {
+					recordCredit(id, entry)
+				}
 				return stripFrontmatter(await fs.readFile(full, "utf-8"))
 			}
 		} catch (e) {

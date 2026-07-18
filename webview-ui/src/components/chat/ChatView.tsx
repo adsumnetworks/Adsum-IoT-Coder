@@ -8,6 +8,7 @@ import { getApiMetrics } from "@shared/getApiMetrics"
 import { BooleanRequest, StringRequest } from "@shared/proto/cline/common"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useMount } from "react-use"
+import { collectSessionKbits } from "@/components/chat/task-header/KbitPill"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useShowNavbar } from "@/context/PlatformContext"
@@ -21,6 +22,7 @@ import {
 	ChatLayout,
 	convertHtmlToMarkdown,
 	filterVisibleMessages,
+	groupKbitCredits,
 	groupLowStakesTools,
 	groupMessages,
 	InputSection,
@@ -420,8 +422,12 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	}, [modifiedMessages, currentFocusChainChecklist])
 
 	const groupedMessages = useMemo(() => {
-		return groupLowStakesTools(groupMessages(visibleMessages))
+		// kbit credits group LAST so a turn's several bits collapse into one credit line
+		return groupKbitCredits(groupLowStakesTools(groupMessages(visibleMessages)))
 	}, [visibleMessages])
+
+	// Bits credited this session — drives the header attribution pill + roster (design/01).
+	const sessionKbits = useMemo(() => collectSessionKbits(modifiedMessages), [modifiedMessages])
 
 	// Use scroll behavior hook
 	const scrollBehavior = useScrollBehavior(messages, visibleMessages, groupedMessages, expandedRows, setExpandedRows)
@@ -464,6 +470,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 							supportsPromptCache: selectedModelInfo.supportsPromptCache,
 							supportsImages: selectedModelInfo.supportsImages || false,
 						}}
+						sessionKbits={sessionKbits}
 						task={task}
 					/>
 				) : (
