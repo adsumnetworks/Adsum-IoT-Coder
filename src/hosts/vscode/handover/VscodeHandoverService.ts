@@ -21,7 +21,8 @@ import * as os from "node:os"
 import * as path from "node:path"
 import * as vscode from "vscode"
 import { extractBriefParts, managedBlockBody, upsertManagedBlock, upsertMcpJson } from "@/services/handover/HandoverBrief"
-import { deriveIdFromRel, loadBitByRel } from "@/services/knowledge/KnowledgeResolver"
+import { creditFor, deriveIdFromRel, loadBitByRel } from "@/services/knowledge/KnowledgeResolver"
+import { ATTRIBUTION_FALLBACK, type KbitKind } from "@/services/knowledge/kbit/credit"
 import { extractFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 
 const HANDOVER_ROOT = path.join(os.homedir(), ".adsum", "handovers")
@@ -31,14 +32,14 @@ interface BriefBit {
 	id: string
 	title?: string
 	version?: string
+	/** Display credit — a real curator, or the honest house fallback. Never a placeholder handle. */
 	author?: string
+	/** True when `author` is a person the bit actually names (the foreign agent shows it either way). */
+	attributed?: boolean
+	kind?: KbitKind
+	steward?: string
 	triggers?: string[]
 	body: string
-}
-
-/** One line of frontmatter (the bundled manifest is richer, but a bit's own head is always truthful). */
-function fmField(yaml: string, key: string): string | undefined {
-	return yaml.match(new RegExp(`^${key}:\\s*"?([^"\\n]+)"?`, "m"))?.[1]?.trim()
 }
 
 export class VscodeHandoverService {
@@ -66,44 +67,57 @@ export class VscodeHandoverService {
 		}
 	}
 
-	/** Load the bits the session used, with metadata, so the brief is self-contained. */
+	/** Load the bits the session used, with their CREDIT, so the brief is self-contained.
+	 *
+	 *  Attribution reuses the product's own machinery (design/01) rather than re-deriving it: loading a bit
+	 *  records its credit facts — from the manifest for bundled bits, from the CATALOG for downloaded ones
+	 *  (whose bodies carry no frontmatter at all, since the publisher strips it before hashing). `creditFor`
+	 *  then applies the honest-fallback rule, so a bit whose `author` is the schema placeholder is credited
+	 *  to the Adsum authoring team instead of to a handle nobody claimed. The credit a developer sees inside
+	 *  their own agent must be the same credit our UI shows. */
 	private async collectBits(relPaths: string[]): Promise<BriefBit[]> {
 		const bundledDir = path.join(this.context.extensionPath, KNOWLEDGE_DIR)
 		const out: BriefBit[] = []
 		for (const rel of relPaths.slice(0, 15)) {
 			const id = deriveIdFromRel(rel)
-			// Body via the resolver's own path (bundled → cache → registry, entitlement-aware).
+			// Body via the resolver's own path (bundled → cache → registry, entitlement-aware). This same
+			// call is what records the bit's credit facts for `creditFor` below.
 			let body = ""
 			try {
 				body = (await loadBitByRel(rel)) ?? ""
 			} catch {}
-			// Metadata from the bit's frontmatter — loadBit* strips it, so read the bundled file head when present.
-			let title: string | undefined
-			let version: string | undefined
-			let author: string | undefined
+			const credit = creditFor(id)
+			// Triggers are not attribution, so they are not in the credit facts — read them off the bundled
+			// file when there is one (which also gives a body fallback if the resolver could not serve it).
 			let triggers: string[] | undefined
 			try {
-				const raw = fs.readFileSync(path.join(bundledDir, rel), "utf8")
-				const fm = extractFrontmatter(raw)
+				const fm = extractFrontmatter(fs.readFileSync(path.join(bundledDir, rel), "utf8"))
 				if (fm.found && fm.closed) {
-					title = fmField(fm.yaml, "title")
-					version = fmField(fm.yaml, "version")
-					author = fmField(fm.yaml, "author")
 					const t = fm.yaml.match(/^triggers:\s*\[([^\]]*)\]/m)?.[1]
 					if (t) {
-						triggers = t.split(",").map((s) => s.trim().replace(/^["']|["']$/g, ""))
+						triggers = t.split(",").map((x) => x.trim().replace(/^["']|["']$/g, ""))
 					}
 				}
 				if (!body) {
 					body = fm.body
 				}
 			} catch {
-				// downloaded-only bit: no local file. Body came from the resolver; metadata falls back below.
+				// downloaded-only bit: no local file — the catalog-derived credit above already covered it.
 			}
 			if (!body) {
 				continue // nothing to serve — skip rather than hand over an empty skill
 			}
-			out.push({ id, title: title ?? id.split("/").pop(), version, author: author ?? "Adsum", triggers, body })
+			out.push({
+				id,
+				title: credit?.title ?? id.split("/").pop(),
+				version: credit?.version,
+				author: credit?.author ?? ATTRIBUTION_FALLBACK,
+				attributed: credit?.attributed ?? false,
+				kind: credit?.kind ?? "knowledge",
+				steward: credit?.steward,
+				triggers,
+				body,
+			})
 		}
 		return out
 	}

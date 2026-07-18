@@ -78,11 +78,21 @@ function newestHandover() {
 }
 
 // ── attribution ───────────────────────────────────────────────────────────────
-/** The credit line. Attribution has to survive leaving our UI, so it is IN-BAND: the first line of
- *  every skill we serve. Whatever the host agent renders, the credit is in the tool result. */
-const credit = (b) =>
-	`📚 ${b.title || b.id} v${b.version || "?"} — curated by ${b.author || "Adsum"}` +
-	(b.witnessed ? ` · witnessed on ${b.witnessed}` : "")
+/**
+ * The credit line. Attribution has to survive leaving our UI, so it is IN-BAND: the first line of every
+ * skill we serve. Whatever the host agent chooses to render, the credit is in the tool result.
+ *
+ * The FACTS are decided extension-side (services/knowledge/kbit/credit.ts) and written into the brief —
+ * including the honest fallback, so a bit nobody personally claimed is credited to the authoring team
+ * rather than to a placeholder handle. This server only formats what it was given; it must never invent
+ * an author or restate a bit's kind as a verdict.
+ */
+const credit = (b) => {
+	const glyph = b.kind === "tool" ? "⚙" : "◆"
+	const ver = b.version ? ` v${b.version}` : ""
+	const steward = b.steward && b.attributed ? ` · steward ${b.steward}` : ""
+	return `${glyph} ${b.title || b.id}${ver} — curated by ${b.author || "the Adsum authoring team"}${steward}`
+}
 
 // ── tools ─────────────────────────────────────────────────────────────────────
 const TOOLS = [
