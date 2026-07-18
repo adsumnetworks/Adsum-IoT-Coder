@@ -1,11 +1,39 @@
 import React from "react"
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import { BRAND_CORAL, brandAlpha } from "../brandColors"
 import EnvStrip from "./EnvStrip"
 
 interface StatusHeaderProps {
 	projectName: string | null
 }
 
+/**
+ * Conductor pill — shown only when Adsum has no model of its own, so the developer's coding agent is
+ * how work actually runs here. Coral outline: this is IDENTITY (what Adsum is being right now), not a
+ * status or a warning. It states a mode, it never asks for anything.
+ */
+const ConductorPill: React.FC<{ reason: string }> = ({ reason }) => (
+	<span
+		style={{
+			display: "inline-flex",
+			alignItems: "center",
+			gap: "5px",
+			alignSelf: "flex-start",
+			fontSize: "10.5px",
+			color: "var(--vscode-descriptionForeground)",
+			background: "var(--vscode-badge-background)",
+			border: `1px solid ${brandAlpha(BRAND_CORAL, 0.45)}`,
+			padding: "2px 9px",
+			borderRadius: "20px",
+			whiteSpace: "nowrap",
+		}}
+		title={`${reason}. Your own coding agent runs the work; Adsum guides it with curated knowledge, gives it the toolchain, tracks every step and keeps snapshots. No Adsum tokens are used.`}>
+		conducting for <strong style={{ color: BRAND_CORAL, fontWeight: 700 }}>your agent</strong>
+	</span>
+)
+
 const StatusHeader: React.FC<StatusHeaderProps> = ({ projectName }) => {
+	const { handoverUi } = useExtensionState()
 	return (
 		<div
 			style={{
@@ -37,6 +65,7 @@ const StatusHeader: React.FC<StatusHeaderProps> = ({ projectName }) => {
 					</span>
 				</div>
 			)}
+			{handoverUi?.conductor.active && <ConductorPill reason={handoverUi.conductor.reason} />}
 			<EnvStrip />
 		</div>
 	)

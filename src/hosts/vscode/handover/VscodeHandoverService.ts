@@ -31,6 +31,7 @@ import {
 	upsertManagedBlock,
 	upsertMcpJson,
 } from "@/services/handover/HandoverBrief"
+import { getHandoverUiState, handoverUiFingerprint, setConductorMode } from "@/services/handover/HandoverUiState"
 import { creditFor, deriveIdFromRel, listAllBits, loadBit, resolveBitPath } from "@/services/knowledge/KnowledgeResolver"
 import { ATTRIBUTION_FALLBACK, type KbitKind } from "@/services/knowledge/kbit/credit"
 import { extractFrontmatter } from "@/services/knowledge/kbit/frontmatter"
@@ -65,6 +66,8 @@ export class VscodeHandoverService {
 	private activeId?: string
 	private status?: vscode.StatusBarItem
 	private out?: vscode.OutputChannel
+	/** Last pushed handover-view fingerprint — the gate that keeps quiet ticks free. */
+	private lastUiFingerprint = ""
 
 	constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -443,6 +446,7 @@ export class VscodeHandoverService {
 		const pickup = `Check the Adsum inbox and pick up handover ${id} (adsum MCP tools: inbox → resume_handover).`
 		await vscode.env.clipboard.writeText(pickup)
 		this.startTracking(id)
+		this.pushUiState(true) // the strip appears immediately, in "posted" state
 		const note = blockResult === "skipped-user-edited" ? " (CLAUDE.md block left as you edited it)" : ""
 		const pick = await vscode.window.showInformationMessage(
 			`Handover ${id} posted to your agent's Adsum inbox${note}. In your Claude Code session, paste the prompt (already copied) — or just say "check the Adsum inbox". New session? It needs a restart to load the adsum MCP server.`,
@@ -504,6 +508,17 @@ export class VscodeHandoverService {
 		)
 	}
 
+	/** Append a fact WE observed. The UI builder is pure and never shells out, so anything learned by
+	 *  running something (a snapshot commit, a diffstat) is recorded here and only read there. */
+	private observe(id: string, event: Record<string, unknown>): void {
+		try {
+			fs.appendFileSync(
+				path.join(HANDOVER_ROOT, id, "observations.jsonl"),
+				JSON.stringify({ t: new Date().toISOString(), ...event }) + "\n",
+			)
+		} catch {}
+	}
+
 	private snapshotAtCheckpoint(id: string, ws: string, worklog: string): void {
 		let managed = false
 		try {
@@ -518,7 +533,29 @@ export class VscodeHandoverService {
 				`git -c user.name=Adsum -c user.email=adsum@local commit -m ${JSON.stringify(`adsum snapshot: ${worklog.slice(0, 72)}`)} --allow-empty`,
 				{ cwd: ws, timeout: 30000 },
 			)
+			this.observe(id, { event: "snapshot" })
 			this.out?.appendLine(`⎘ snapshot committed at checkpoint`)
+		} catch {}
+	}
+
+	/** Measure what actually changed, once, when the agent closes out. This is the "Adsum saw" column
+	 *  of the receipt — present even if the agent reported nothing at all. */
+	private recordDiffstat(id: string): void {
+		try {
+			const brief = JSON.parse(fs.readFileSync(path.join(HANDOVER_ROOT, id, "brief.json"), "utf8"))
+			if (!brief.workspace) {
+				return
+			}
+			const range = brief.baseline?.ref ? `${brief.baseline.ref}..HEAD` : ""
+			const text = execSync(`git diff --shortstat ${range} 2>/dev/null || git diff --shortstat`, {
+				cwd: brief.workspace,
+				timeout: 15000,
+			})
+				.toString()
+				.trim()
+			if (text) {
+				this.observe(id, { event: "diffstat", text })
+			}
 		} catch {}
 	}
 
@@ -558,6 +595,7 @@ export class VscodeHandoverService {
 					if (Date.now() - lastEventAt > 600_000 && this.status) {
 						this.status.text = `$(circle-outline) Adsum ⇄ agent · idle`
 					}
+					this.pushUiState() // cheap: no-ops unless the fingerprint moved (e.g. the tree watcher fired)
 					return
 				}
 				const fd = fs.openSync(f, "r")
@@ -591,10 +629,15 @@ export class VscodeHandoverService {
 					if (ws) {
 						this.snapshotAtCheckpoint(id, ws, e.worklog ?? "")
 					}
+					// The agent closed out: measure what actually changed, once, for the receipt.
+					if (e.final) {
+						this.recordDiffstat(id)
+					}
 				} else if (e.event === "tool_exec" || e.event === "tool_build") {
 					this.out?.appendLine(`⚙ ${e.event === "tool_build" ? "build" : "exec"}: ${e.command ?? ""} → exit ${e.exit}`)
 				}
 			}
+			this.pushUiState()
 			if (this.status) {
 				this.status.text = `$(broadcast) Adsum ⇄ agent · ${calls} call${calls === 1 ? "" : "s"}`
 				this.status.tooltip = "Your coding agent is working on a handed-over Adsum session. Click to watch."
@@ -715,6 +758,33 @@ export class VscodeHandoverService {
 		return { conductor: true, reason: "no inference provider configured" }
 	}
 
+	/** Refresh the cached conductor verdict (it needs secrets, which the pure UI builder cannot touch). */
+	async refreshConductorCache(): Promise<void> {
+		try {
+			const { conductor, reason } = await this.detectConductorMode()
+			setConductorMode({ active: conductor, reason })
+			this.pushUiState(true)
+		} catch {}
+	}
+
+	/**
+	 * Push the handover view to the webview — but only when it actually changed. The tracker ticks every
+	 * 3 s and ExtensionState is fat; a quiet tick must cost nothing.
+	 */
+	private pushUiState(force = false): void {
+		try {
+			const next = getHandoverUiState(HANDOVER_ROOT)
+			const fp = handoverUiFingerprint(next)
+			if (!force && fp === this.lastUiFingerprint) {
+				return
+			}
+			this.lastUiFingerprint = fp
+			// Lazy import keeps this host service out of the controller's construction order.
+			const { WebviewProvider } = require("@/core/webview") as typeof import("@/core/webview")
+			void WebviewProvider.getInstance()?.controller?.postStateToWebview()
+		} catch {}
+	}
+
 	/** One-time hint at activation: in conductor mode the handover is the front door, not a fallback. */
 	async announceConductorMode(): Promise<void> {
 		const { conductor, reason } = await this.detectConductorMode()
@@ -801,6 +871,7 @@ export class VscodeHandoverService {
 		} catch {}
 		this.stopTracking()
 		this.status?.hide()
+		this.pushUiState(true) // status is now 'returned' → the strip unmounts on this push
 	}
 
 	dispose(): void {

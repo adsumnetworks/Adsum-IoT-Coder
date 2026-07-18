@@ -35,6 +35,7 @@ import {
 import { getButtonConfig } from "./chat-view/shared/buttonConfig"
 import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
+import AgentStrip from "./handover/AgentStrip"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
 import WelcomeView from "./welcome/WelcomeView"
 
@@ -460,6 +461,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			<div className="flex flex-col flex-1 overflow-hidden">
 				{showNavbar && <Navbar />}
 				<FreeTierStrip />
+				<AgentStrip />
 				{task ? (
 					<TaskSection
 						apiMetrics={apiMetrics}

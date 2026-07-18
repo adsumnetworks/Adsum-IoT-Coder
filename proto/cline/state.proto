@@ -34,6 +34,12 @@ service StateService {
   rpc checkCliInstallation(EmptyRequest) returns (Boolean);
   rpc getProcessInfo(EmptyRequest) returns (ProcessInfo);
   rpc flushPendingState(EmptyRequest) returns (Empty);
+  // Hand the current session to the developer's own coding agent (posts it, wires the project).
+  rpc handoverToAgent(EmptyRequest) returns (Empty);
+  // Bring a handed-over session back into Adsum, carrying what the agent did.
+  rpc continueHandoverHere(EmptyRequest) returns (Empty);
+  // Open the full worklog of a handed-over session.
+  rpc showHandoverWorklog(EmptyRequest) returns (Empty);
 }
 
 message AutoApprovalActions {
