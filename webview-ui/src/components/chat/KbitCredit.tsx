@@ -39,6 +39,8 @@ export function parseKbitPayload(text: string | undefined): KbitLoadedPayload | 
 	}
 }
 
+const KBIT_DOCS_URL = "https://docs.adsumnetworks.com/knowledge-bits"
+
 const KIND_LABEL: Record<KbitLoadedPayload["kind"], string> = { knowledge: "knowledge bit", tool: "tool bit" }
 const KIND_GLYPH: Record<KbitLoadedPayload["kind"], string> = { knowledge: "◆", tool: "⚙" }
 
@@ -160,16 +162,21 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 		{bit.lead && <div className="mt-[8px] leading-[1.55] opacity-90">{bit.lead}</div>}
 		<div className="mt-[9px] flex flex-col gap-[6px]">
 			<ProvRow label="Curated by" muted={bit.attributed === false} value={bit.author} />
-			{/* Delegated org signing: an author's recorded approval authorises Adsum to sign. Until signatures
-			    actually ship this states the honest interim fact rather than claiming a signature. */}
-			<ProvRow label="Reviewed & signed" muted value="review recorded · signature pending" />
+			{/* No signing row until signatures are real. Delegated org signing (an author's recorded approval
+			    authorising Adsum to sign) is designed but not shipped, and a permanent "pending" placeholder is
+			    noise on every bit forever — it reads as a defect rather than a roadmap. Restore this row when
+			    signatures actually exist, showing the two facts separately (approved by X / signed: Adsum). */}
 			<ProvRow label="Maintained by" value={bit.steward || "Adsum Networks"} />
 		</div>
+		{/* The provenance boundary (attribution is credit, never a statement about YOUR device) is stated in
+		    the docs rather than as small print on every popover: nobody reads a credit card expecting a
+		    verdict, and the UI is lint-checked at build time so it cannot render verdict language anyway. */}
 		<div
-			className="mt-[9px] pt-[8px] text-[10px] leading-[1.5] opacity-60"
+			className="mt-[9px] pt-[8px] text-[10px] leading-[1.5]"
 			style={{ borderTop: "1px solid var(--vscode-panel-border)" }}>
-			<b>Attribution, not a verdict.</b> Adsum shows you who built this expertise and how it was proven — then describes
-			evidence and tells you what to verify. It never certifies your device.
+			<a href={KBIT_DOCS_URL} rel="noreferrer" style={{ color: "var(--vscode-textLink-foreground)" }} target="_blank">
+				Learn more about Knowledge bits →
+			</a>
 		</div>
 	</div>
 )

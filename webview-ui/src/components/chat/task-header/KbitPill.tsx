@@ -90,7 +90,7 @@ export const KbitRoster = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 								{b.version && <span className="opacity-50 font-mono text-[10px]"> v{b.version}</span>}
 							</div>
 							<div className="opacity-65 text-[10.5px]">
-								{b.kind === "tool" ? "Tool bit · " : ""}by {b.author} · review recorded · signature pending
+								{b.kind === "tool" ? "Tool bit · " : ""}by {b.author}
 							</div>
 						</div>
 					</div>
