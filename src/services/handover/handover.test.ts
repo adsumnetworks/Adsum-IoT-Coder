@@ -67,6 +67,9 @@ function fixture(): { root: string; id: string } {
 					title: "BLE debug loop",
 					version: "1.2.0",
 					author: "Ismail Hamdad",
+					attributed: true,
+					kind: "knowledge",
+					steward: "Adsum Networks",
 					triggers: ["debug", "ble"],
 					body: "# Debug loop\nstep 1 build",
 				},
@@ -75,6 +78,9 @@ function fixture(): { root: string; id: string } {
 					title: "Flash firmware",
 					version: "1.1.0",
 					author: "Ismail Hamdad",
+					attributed: true,
+					kind: "knowledge",
+					steward: "Adsum Networks",
 					triggers: ["flash"],
 					body: "# Flash\nwest flash",
 				},
@@ -116,14 +122,18 @@ describe("MCP server (as a foreign agent sees it)", () => {
 			assert.equal(r.result.isError, false)
 			assert.match(rtext, /Debug the BLE disconnect/, "mission present")
 			assert.match(rtext, /captured 30s RTT/, "worklog present")
-			assert.match(rtext, /📚 BLE debug loop v1\.2\.0 — curated by Ismail Hamdad/, "CREDIT LINE present in the brief")
+			assert.match(
+				rtext,
+				/◆ BLE debug loop v1\.2\.0 — curated by Ismail Hamdad · steward Adsum Networks/,
+				"CREDIT LINE present in the brief",
+			)
 			assert.equal(JSON.parse(fs.readFileSync(path.join(root, id, "state.json"), "utf8")).status, "active")
 
 			// 4. load_skill — exact id, keyword, and an honest miss
 			const exact = await c.call("tools/call", { name: "load_skill", arguments: { query: "adsum/nrf/actions/flash" } })
 			assert.match(
 				exact.result.content[0].text,
-				/^📚 Flash firmware v1\.1\.0 — curated by Ismail Hamdad/,
+				/^◆ Flash firmware v1\.1\.0 — curated by Ismail Hamdad/,
 				"credit line leads the body",
 			)
 			assert.match(exact.result.content[0].text, /west flash/, "body served")
