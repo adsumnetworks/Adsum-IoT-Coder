@@ -26,7 +26,8 @@ export interface KbitLoadedPayload {
 	platform?: string
 	steward?: string
 	source?: "bundled" | "registry"
-	lead?: string
+	/** Hardware evidence, when a witness record exists — rendered as a row, never as prose. */
+	witness?: string
 }
 
 export function parseKbitPayload(text: string | undefined): KbitLoadedPayload | null {
@@ -42,6 +43,17 @@ export function parseKbitPayload(text: string | undefined): KbitLoadedPayload | 
 }
 
 const KBIT_DOCS_URL = "https://docs.adsumnetworks.com/knowledge-bits"
+
+/** SPDX ids are for machines. "LicenseRef-Adsum-P…" truncating mid-word tells a reader nothing. */
+function licenseLabel(license?: string): string | null {
+	if (!license) {
+		return null
+	}
+	if (/proprietary/i.test(license)) {
+		return "proprietary"
+	}
+	return license.replace(/-4\.0$/, "") // CC-BY-SA-4.0 → CC-BY-SA
+}
 
 const KIND_LABEL: Record<KbitLoadedPayload["kind"], string> = { knowledge: "knowledge bit", tool: "tool bit" }
 
@@ -136,7 +148,8 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 				<div className="opacity-60 text-[10px] font-mono truncate">
 					{bit.id}
 					{bit.version ? ` · v${bit.version}` : ""}
-					{bit.license ? ` · ${bit.license}` : ""}
+					{bit.platform ? ` · ${bit.platform}` : ""}
+					{licenseLabel(bit.license) ? ` · ${licenseLabel(bit.license)}` : ""}
 				</div>
 			</div>
 			<button
@@ -147,14 +160,18 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 				✕
 			</button>
 		</div>
-		{bit.lead && <div className="mt-[8px] leading-[1.55] opacity-90">{bit.lead}</div>}
-		<div className="mt-[9px] flex flex-col gap-[6px]">
+		{/* No prose lead. It restated CURATED BY + MAINTAINED BY directly beneath it — three renders of the
+		    author in one five-line card — and read near-identically for every bit by the same author on the
+		    same platform. Platform moved into the metadata line; everything factual is a labelled row. */}
+		<div className="mt-[10px] flex flex-col gap-[6px]">
 			<ProvRow label="Curated by" muted={bit.attributed === false} value={bit.author} />
 			{/* No signing row until signatures are real. Delegated org signing (an author's recorded approval
 			    authorising Adsum to sign) is designed but not shipped, and a permanent "pending" placeholder is
 			    noise on every bit forever — it reads as a defect rather than a roadmap. Restore this row when
 			    signatures actually exist, showing the two facts separately (approved by X / signed: Adsum). */}
 			<ProvRow label="Maintained by" value={bit.steward || "Adsum Networks"} />
+			{/* Hardware evidence is a FACT, so it gets a row like the others — and only when one exists. */}
+			{bit.witness && <ProvRow label="Run on" value={bit.witness} />}
 		</div>
 		{/* The provenance boundary (attribution is credit, never a statement about YOUR device) is stated in
 		    the docs rather than as small print on every popover: nobody reads a credit card expecting a

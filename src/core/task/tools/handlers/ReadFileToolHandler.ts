@@ -19,7 +19,6 @@ import {
 	suggestNearMissBits,
 } from "@/services/knowledge/KnowledgeResolver"
 import type { KbitCredit } from "@/services/knowledge/kbit/credit"
-import { leadSentence } from "@/services/knowledge/kbit/credit"
 import { telemetryService } from "@/services/telemetry"
 import { ClineSayTool } from "@/shared/ExtensionMessage"
 import { ClineDefaultTool } from "@/shared/tools"
@@ -55,7 +54,11 @@ async function sayKbitCredit(config: any, credit: KbitCredit | null, source: "bu
 				platform: credit.platform,
 				steward: credit.steward,
 				source,
-				lead: leadSentence(credit),
+				// A witness is hardware evidence; the UI renders it as a labelled row, not prose. Absent
+				// until a real run witnesses the bit — which is the honest state for nearly every bit today.
+				witness: credit.witness
+					? [credit.witness.board, credit.witness.toolchain, credit.witness.on].filter(Boolean).join(" · ")
+					: undefined,
 			}),
 		)
 	} catch {

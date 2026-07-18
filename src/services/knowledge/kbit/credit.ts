@@ -115,30 +115,7 @@ export function creditFieldsFromYaml(yaml: string): KbitMetaLike {
 	}
 }
 
-const PLATFORM_LABEL: Record<string, string> = { nrf: "Nordic nRF", esp: "Espressif ESP", universal: "" }
-
-/**
- * The provenance popover's lead sentence, assembled from facts. Every clause is gated on its fact existing:
- * an unattributed bit does not claim a curator, and the hardware clause is absent until a witness record
- * exists (today: essentially always absent — which is the honest state, not a gap to paper over).
- */
-export function leadSentence(c: KbitCredit): string {
-	const platform = c.platform ? (PLATFORM_LABEL[c.platform] ?? c.platform) : ""
-	const scope = platform ? `${platform} ` : ""
-	let lead: string
-	if (!c.attributed) {
-		lead =
-			c.kind === "tool"
-				? `A purpose-built Tool bit — it drives the real ${platform || "device"} toolchain. Maintained by ${c.steward}.`
-				: `Curated ${scope}knowledge, maintained by ${c.steward}.`
-	} else if (c.kind === "tool") {
-		lead = `A purpose-built Tool bit from ${c.author} — it drives the real ${platform || "device"} toolchain. Maintained by ${c.steward}.`
-	} else {
-		lead = `Curated ${scope}knowledge from ${c.author}, maintained by ${c.steward}.`
-	}
-	if (c.witness?.board) {
-		const detail = [c.witness.toolchain, c.witness.on].filter(Boolean).join(" · ")
-		lead += ` Run on ${c.witness.board}${detail ? ` (${detail})` : ""}.`
-	}
-	return lead
-}
+// The derived lead SENTENCE was removed with the popover prose it fed: it restated the labelled rows
+// beneath it (author appeared three times in one card) and read identically across every bit by the same
+// author on the same platform. Provenance is now facts in rows; the witness clause it existed to carry
+// became its own row. Kept in git history if prose is ever wanted again.
