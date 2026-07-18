@@ -118,7 +118,9 @@ function recordCredit(id: string, meta: KbitMetaLike): void {
 	}
 }
 
-/** Record credit from a bit's own frontmatter (downloaded/local bits, where the manifest is metadata-thin). */
+/** Record credit from a bit's own frontmatter — LOCAL/dev overrides only.
+ *  Registry-served bits must use recordCredit(entry) instead: the publisher strips frontmatter before
+ *  hashing the body, so a downloaded blob has none to read. */
 function recordCreditFromText(id: string, text: string): void {
 	const fm = extractFrontmatter(text)
 	recordCredit(id, fm.found && fm.closed ? creditFieldsFromYaml(fm.yaml) : {})
@@ -342,7 +344,7 @@ async function loadDownloadedBit(id: string): Promise<string> {
 	if (cached !== null) {
 		kbitTelemetry.downloadedResolved?.({ id, source: "cache" })
 		console.info(`[kbit] ${id} ← registry (cache)`)
-		recordCreditFromText(id, cached)
+		recordCredit(id, entry)
 		return stripFrontmatter(cached)
 	}
 	const fetched = await registry().fetchBlob(hash)
@@ -360,7 +362,7 @@ async function loadDownloadedBit(id: string): Promise<string> {
 		}
 		kbitTelemetry.downloadedResolved?.({ id, source: "registry" })
 		console.info(`[kbit] ${id} ← registry (fetched${open ? ", cached" : ", proprietary — not cached"})`)
-		recordCreditFromText(id, fetched)
+		recordCredit(id, entry)
 		return stripFrontmatter(fetched)
 	}
 	console.error(`KnowledgeResolver: downloaded bit "${id}" failed hash verification`)
