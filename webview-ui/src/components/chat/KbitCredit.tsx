@@ -1,4 +1,6 @@
 import { useState } from "react"
+import { BRAND_CORAL, BRAND_CYAN_600, brandAlpha } from "./brandColors"
+import { KbitMark, TbitMark } from "./KbitMark"
 
 /**
  * K-bit attribution — the credit line that replaces the anonymous "read this file" row when Adsum loads a
@@ -42,17 +44,6 @@ export function parseKbitPayload(text: string | undefined): KbitLoadedPayload | 
 const KBIT_DOCS_URL = "https://docs.adsumnetworks.com/knowledge-bits"
 
 const KIND_LABEL: Record<KbitLoadedPayload["kind"], string> = { knowledge: "knowledge bit", tool: "tool bit" }
-const KIND_GLYPH: Record<KbitLoadedPayload["kind"], string> = { knowledge: "◆", tool: "⚙" }
-
-/** Kind colours match the corpus graph in Studio: knowledge = violet, tool = cyan. */
-function kindStyle(kind: KbitLoadedPayload["kind"]): React.CSSProperties {
-	return kind === "tool"
-		? { background: "color-mix(in srgb, var(--vscode-charts-blue) 16%, transparent)", color: "var(--vscode-charts-blue)" }
-		: {
-				background: "color-mix(in srgb, var(--vscode-charts-purple) 16%, transparent)",
-				color: "var(--vscode-charts-purple)",
-			}
-}
 
 /** One credit line. `bits.length > 1` groups them per the credit law (expands in place, no extra line). */
 export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
@@ -89,7 +80,7 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 						<button
 							className="bg-transparent border-0 p-0 cursor-pointer"
 							onClick={() => setExpanded(!expanded)}
-							style={{ color: "var(--vscode-textLink-foreground)" }}>
+							style={{ color: BRAND_CYAN_600 }}>
 							{bits.length} bits · by {authors.join(" + ")} {expanded ? "▴" : "▾"}
 						</button>
 					</div>
@@ -112,20 +103,16 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 	)
 }
 
-const KindChip = ({ kind }: { kind: KbitLoadedPayload["kind"] }) => (
-	<span
-		className="inline-grid place-items-center rounded-[4px] text-[9.5px] shrink-0"
-		style={{ width: 17, height: 17, ...kindStyle(kind) }}>
-		{KIND_GLYPH[kind]}
-	</span>
-)
+/** The Adsum diamond, cyan. Kind is carried by the mark's SHAPE, never by colour. */
+const KindChip = ({ kind, size = 17 }: { kind: KbitLoadedPayload["kind"]; size?: number }) =>
+	kind === "tool" ? <TbitMark size={size} /> : <KbitMark size={size} />
 
 /** Only a real, attributed person is a name; an unattributed bit says so plainly rather than inventing one. */
 const AuthorName = ({ bit }: { bit: KbitLoadedPayload }) =>
 	bit.attributed === false ? (
 		<span className="opacity-80">{bit.author}</span>
 	) : (
-		<span style={{ color: "var(--vscode-charts-orange)" }}>{bit.author}</span>
+		<span style={{ color: BRAND_CORAL }}>{bit.author}</span>
 	)
 
 /**
@@ -136,11 +123,12 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 	<div
 		className="mt-[6px] rounded-[10px] p-[11px_13px] text-[11.5px]"
 		style={{
-			border: "1px solid var(--vscode-panel-border)",
+			border: `1px solid ${brandAlpha(BRAND_CYAN_600, 0.35)}`,
 			background: "var(--vscode-editor-background)",
 		}}>
 		<div className="flex items-start gap-[9px]">
-			<KindChip kind={bit.kind} />
+			{/* 26px: above KNOT_MIN_PX, so the popover shows the real interlaced mark, not a plain diamond */}
+			<KindChip kind={bit.kind} size={26} />
 			<div className="flex-1 min-w-0">
 				<div className="font-semibold text-[12.5px]" style={{ color: "var(--vscode-foreground)" }}>
 					{bit.title}
@@ -174,7 +162,7 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 		<div
 			className="mt-[9px] pt-[8px] text-[10px] leading-[1.5]"
 			style={{ borderTop: "1px solid var(--vscode-panel-border)" }}>
-			<a href={KBIT_DOCS_URL} rel="noreferrer" style={{ color: "var(--vscode-textLink-foreground)" }} target="_blank">
+			<a href={KBIT_DOCS_URL} rel="noreferrer" style={{ color: BRAND_CYAN_600 }} target="_blank">
 				Learn more about Knowledge bits →
 			</a>
 		</div>
