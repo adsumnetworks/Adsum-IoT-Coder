@@ -101,10 +101,10 @@ describe("MCP server (as a foreign agent sees it)", () => {
 			assert.equal(init.result.serverInfo.name, "adsum")
 			c.notify("notifications/initialized")
 
-			// 2. tools/list — the three H1 tools with schemas
+			// 2. tools/list — the four H1 tools with schemas
 			const list = await c.call("tools/list")
 			const names = list.result.tools.map((t: any) => t.name).sort()
-			assert.deepEqual(names, ["checkpoint", "load_skill", "resume_handover"])
+			assert.deepEqual(names, ["checkpoint", "inbox", "load_skill", "resume_handover"])
 			assert.ok(
 				list.result.tools.every((t: any) => t.inputSchema?.type === "object"),
 				"every tool has an object schema",
@@ -159,6 +159,37 @@ describe("MCP server (as a foreign agent sees it)", () => {
 			assert.ok(stillAlive.result, "server survives malformed input")
 			const unknown = await c.call("no/such/method")
 			assert.equal(unknown.error.code, -32601)
+		} finally {
+			c.kill()
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+
+	test("inbox: lists pending handovers with pickup instructions; empty inbox says so", async () => {
+		const { root, id } = fixture()
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", { protocolVersion: "2025-06-18" })
+			// the four tools now include inbox
+			const list = await c.call("tools/list")
+			assert.deepEqual(list.result.tools.map((t: any) => t.name).sort(), [
+				"checkpoint",
+				"inbox",
+				"load_skill",
+				"resume_handover",
+			])
+			// pending handover shows up as actionable work
+			const inbox = await c.call("tools/call", { name: "inbox", arguments: {} })
+			const text = inbox.result.content[0].text
+			assert.match(text, /1 pending handover/)
+			assert.match(text, new RegExp(id), "lists the handover id")
+			assert.match(text, /Debug the BLE disconnect/, "shows the mission")
+			assert.match(text, /resume_handover/, "tells the agent how to pick it up")
+			// after resuming, the inbox is empty (status flipped to active) but still shows recent state
+			await c.call("tools/call", { name: "resume_handover", arguments: {} })
+			const after = await c.call("tools/call", { name: "inbox", arguments: {} })
+			assert.match(after.result.content[0].text, /empty — no pending handovers/)
+			assert.match(after.result.content[0].text, /active/, "recent sessions still visible")
 		} finally {
 			c.kill()
 			fs.rmSync(root, { recursive: true, force: true })

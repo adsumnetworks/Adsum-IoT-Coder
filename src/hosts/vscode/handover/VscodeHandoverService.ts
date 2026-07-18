@@ -204,28 +204,38 @@ export class VscodeHandoverService {
 		upsertMcpJson(path.join(ws, ".mcp.json"), serverPath)
 		const blockResult = upsertManagedBlock(path.join(ws, "CLAUDE.md"), managedBlockBody(id))
 
+		// INBOX-FIRST (the Studio pattern): the handover is now POSTED — the brief on disk IS the inbox
+		// entry, and any agent session connected to the adsum MCP server pulls it with the `inbox` tool.
+		// We deliberately do NOT spawn a terminal by default: launching a binary we don't own (PATH,
+		// versions, login shells) is the fragile path, and most developers already have their agent open.
+		// The pickup prompt goes to the clipboard so the developer just pastes it into their agent.
+		const pickup = `Check the Adsum inbox and pick up handover ${id} (adsum MCP tools: inbox → resume_handover).`
+		await vscode.env.clipboard.writeText(pickup)
 		this.startTracking(id)
-		// Launch the agent WITH its opening turn. A bare `claude` opens an interactive prompt and waits —
-		// and CLAUDE.md only takes effect once the agent actually processes a turn, so a bare launch sits
-		// idle forever and the handover looks like it did nothing. Giving it the first instruction is what
-		// makes the handover self-starting.
-		const kickoff = `Resume Adsum handover ${id}: call the adsum MCP tool resume_handover first, then continue the mission it returns.`
-		const cli = this.resolveAgentCli()
-		const term = vscode.window.createTerminal({ name: "Claude Code — Adsum handover", cwd: ws })
-		term.sendText(`${JSON.stringify(cli.cmd)} ${JSON.stringify(kickoff)}`)
-		term.show()
 		const note = blockResult === "skipped-user-edited" ? " (CLAUDE.md block left as you edited it)" : ""
 		const pick = await vscode.window.showInformationMessage(
-			cli.bundled
-				? `Session handed over (${id})${note}. Approve the "adsum" MCP server in the terminal when Claude Code asks — then it resumes on its own.`
-				: `Session handed over (${id})${note}. Couldn't find the Claude Code binary, so the terminal runs "claude" from your PATH — if it reports "command not found", install Claude Code and re-run.`,
-			"Show terminal",
+			`Handover ${id} posted to your agent's Adsum inbox${note}. In your Claude Code session, paste the prompt (already copied) — or just say "check the Adsum inbox". New session? It needs a restart to load the adsum MCP server.`,
 			"Watch progress",
+			"Copy prompt again",
+			"Launch a new Claude Code",
 		)
 		if (pick === "Watch progress") {
 			this.out?.show(true)
-		} else if (pick === "Show terminal") {
+		} else if (pick === "Copy prompt again") {
+			await vscode.env.clipboard.writeText(pickup)
+		} else if (pick === "Launch a new Claude Code") {
+			// Fallback for the cold start (no agent session running): resolve the REAL binary — `claude`
+			// is usually not on PATH (it ships inside the Claude Code extension) — and hand it the opening
+			// turn, because a bare interactive launch would sit waiting forever.
+			const cli = this.resolveAgentCli()
+			const term = vscode.window.createTerminal({ name: "Claude Code — Adsum handover", cwd: ws })
+			term.sendText(`${JSON.stringify(cli.cmd)} ${JSON.stringify(pickup)}`)
 			term.show()
+			if (!cli.bundled) {
+				vscode.window.showWarningMessage(
+					'Adsum: Claude Code\'s bundled binary was not found — the terminal runs "claude" from your PATH. If it says "command not found", install Claude Code.',
+				)
+			}
 		}
 	}
 
