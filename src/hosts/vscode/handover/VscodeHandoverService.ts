@@ -121,6 +121,40 @@ export class VscodeHandoverService {
 		return bits.join(" · ")
 	}
 
+	/**
+	 * Where is the agent's CLI? Most developers run Claude Code from the VS Code extension and never put
+	 * `claude` on their shell PATH — a bare `claude` then dies with "command not found" in the terminal,
+	 * which looks exactly like the handover doing nothing. So prefer the extension's own bundled binary
+	 * (absolute path, always launchable) and fall back to the PATH name only if the extension is absent.
+	 */
+	private resolveAgentCli(): { cmd: string; bundled: boolean } {
+		try {
+			const ext = vscode.extensions.getExtension("anthropic.claude-code")
+			if (ext) {
+				const p = path.join(ext.extensionPath, "resources", "native-binary", "claude")
+				if (fs.existsSync(p)) {
+					return { cmd: p, bundled: true }
+				}
+			}
+		} catch {}
+		// Extension not installed (or a layout we don't know): try the newest side-by-side install, then PATH.
+		try {
+			const root = path.join(os.homedir(), ".vscode", "extensions")
+			const dirs = fs
+				.readdirSync(root)
+				.filter((d) => d.startsWith("anthropic.claude-code-"))
+				.sort()
+				.reverse()
+			for (const d of dirs) {
+				const p = path.join(root, d, "resources", "native-binary", "claude")
+				if (fs.existsSync(p)) {
+					return { cmd: p, bundled: true }
+				}
+			}
+		} catch {}
+		return { cmd: "claude", bundled: false }
+	}
+
 	// ── the command: hand over ───────────────────────────────────────────────
 	async handOver(): Promise<void> {
 		const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
@@ -171,16 +205,27 @@ export class VscodeHandoverService {
 		const blockResult = upsertManagedBlock(path.join(ws, "CLAUDE.md"), managedBlockBody(id))
 
 		this.startTracking(id)
+		// Launch the agent WITH its opening turn. A bare `claude` opens an interactive prompt and waits —
+		// and CLAUDE.md only takes effect once the agent actually processes a turn, so a bare launch sits
+		// idle forever and the handover looks like it did nothing. Giving it the first instruction is what
+		// makes the handover self-starting.
+		const kickoff = `Resume Adsum handover ${id}: call the adsum MCP tool resume_handover first, then continue the mission it returns.`
+		const cli = this.resolveAgentCli()
 		const term = vscode.window.createTerminal({ name: "Claude Code — Adsum handover", cwd: ws })
+		term.sendText(`${JSON.stringify(cli.cmd)} ${JSON.stringify(kickoff)}`)
 		term.show()
-		term.sendText("claude")
 		const note = blockResult === "skipped-user-edited" ? " (CLAUDE.md block left as you edited it)" : ""
 		const pick = await vscode.window.showInformationMessage(
-			`Session handed over (${id})${note}. Claude Code will pick up the brief — approve the "adsum" MCP server when asked.`,
+			cli.bundled
+				? `Session handed over (${id})${note}. Approve the "adsum" MCP server in the terminal when Claude Code asks — then it resumes on its own.`
+				: `Session handed over (${id})${note}. Couldn't find the Claude Code binary, so the terminal runs "claude" from your PATH — if it reports "command not found", install Claude Code and re-run.`,
+			"Show terminal",
 			"Watch progress",
 		)
 		if (pick === "Watch progress") {
 			this.out?.show(true)
+		} else if (pick === "Show terminal") {
+			term.show()
 		}
 	}
 
@@ -193,8 +238,15 @@ export class VscodeHandoverService {
 		this.status ??= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99)
 		this.out.show(true)
 		this.out.appendLine(`— handover ${id} — watching what your agent does with it —`)
+		this.out.appendLine(`  (nothing appears here until the agent calls an adsum tool — approve the MCP server if prompted)`)
 		let calls = 0
 		let lastEventAt = Date.now()
+		// Show the indicator immediately: "we are watching, the agent hasn't called yet" is real state and
+		// far more useful than an empty status bar that looks like the command did nothing.
+		this.status.text = `$(broadcast) Adsum ⇄ agent · waiting`
+		this.status.tooltip = "Handed-over session: waiting for your coding agent to call an Adsum tool. Click to watch."
+		this.status.command = "adsum-iot-coder.watchHandover"
+		this.status.show()
 		this.tracker = setInterval(() => {
 			const f = path.join(HANDOVER_ROOT, id, "ledger.jsonl")
 			let text = ""
