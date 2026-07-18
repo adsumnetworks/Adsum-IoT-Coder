@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, test } from "node:test"
-import { ATTRIBUTION_FALLBACK, creditFieldsFromYaml, creditFromMeta, leadSentence } from "./credit"
+import { ATTRIBUTION_FALLBACK, creditFieldsFromYaml, creditFromMeta } from "./credit"
 
 const ROOT = join(__dirname, "..", "..", "..", "..")
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf-8")
@@ -61,31 +61,19 @@ describe("attribution — credit facts", () => {
 	})
 })
 
-describe("attribution — derived lead sentence", () => {
-	test("names the curator when there is one, and never invents one when there is not", () => {
-		const withAuthor = leadSentence(creditFromMeta({ id: "a", author: "Omar Morceli", platform: "nrf" }))
-		assert.match(withAuthor, /Omar Morceli/)
-		const without = leadSentence(creditFromMeta({ id: "a", author: "adsum", platform: "nrf" }))
-		assert.doesNotMatch(without, /adsum(?!\s+Networks)/i)
-		assert.match(without, /Adsum Networks/) // steward is still stated
+describe("attribution — the popover states facts, not prose", () => {
+	test("no derived prose sentence is sent to the UI", () => {
+		// The lead sentence restated the labelled rows beneath it (three renders of the author in one card).
+		// Provenance is rows now; a witness is its own row and only exists when a real witness record does.
+		const handler = read("src/core/task/tools/handlers/ReadFileToolHandler.ts")
+		assert.doesNotMatch(handler, /leadSentence/, "the credit payload must not carry derived prose")
+		assert.match(handler, /witness:/, "hardware evidence rides as a fact, not a sentence")
 	})
 
-	test("the hardware clause renders ONLY when a witness record exists", () => {
-		const c = creditFromMeta({ id: "a", author: "Omar Morceli", platform: "nrf" })
-		assert.doesNotMatch(leadSentence(c), /Run on/)
-		const witnessed = { ...c, witness: { board: "nRF5340-DK", toolchain: "NCS 3.2.1", on: "2026-07-01" } }
-		assert.match(leadSentence(witnessed), /Run on nRF5340-DK \(NCS 3\.2\.1 · 2026-07-01\)/)
-	})
-
-	test("lead sentences carry no verdict words", () => {
-		const samples = [
-			creditFromMeta({ id: "a", author: "Omar Morceli", platform: "nrf", type: "knowledge" }),
-			creditFromMeta({ id: "b", author: "Ismail Hamdad", platform: "esp", type: "tool" }),
-			creditFromMeta({ id: "c", platform: "universal" }),
-		].map(leadSentence)
-		for (const s of samples) {
-			assert.doesNotMatch(s, /\b(certified|verified|approved|guaranteed|compliant|passes)\b/i, s)
-		}
+	test("the popover renders no duplicated author", () => {
+		const ui = read("webview-ui/src/components/chat/KbitCredit.tsx")
+		assert.doesNotMatch(ui, /bit\.lead/, "prose lead removed")
+		assert.match(ui, /Curated by/, "the labelled row is the single place the curator is named in the card")
 	})
 })
 
@@ -139,7 +127,10 @@ describe("attribution — copy law (build-time lint)", () => {
 		// UI-GOLDEN-RULES: coral = identity, cyan = action. An earlier pass shipped violet (carried in from a
 		// prototype mockup), which is in no palette at all. Colours must come from brandColors, and kind must
 		// be carried by the mark's SHAPE rather than by hue.
-		for (const rel of ["webview-ui/src/components/chat/KbitCredit.tsx", "webview-ui/src/components/chat/task-header/KbitPill.tsx"]) {
+		for (const rel of [
+			"webview-ui/src/components/chat/KbitCredit.tsx",
+			"webview-ui/src/components/chat/task-header/KbitPill.tsx",
+		]) {
 			const src = code(rel)
 			for (const offPalette of ["charts-purple", "charts-orange", "violet", "purple"]) {
 				assert.doesNotMatch(src, new RegExp(offPalette, "i"), `${rel}: "${offPalette}" is not in the Adsum palette`)
