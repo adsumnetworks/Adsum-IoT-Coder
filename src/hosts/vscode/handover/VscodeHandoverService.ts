@@ -20,13 +20,19 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import * as vscode from "vscode"
-import { extractBriefParts, managedBlockBody, upsertManagedBlock, upsertMcpJson } from "@/services/handover/HandoverBrief"
-import { creditFor, deriveIdFromRel, loadBitByRel } from "@/services/knowledge/KnowledgeResolver"
+import {
+	bridgeLoadVerbs,
+	extractBitRefs,
+	extractBriefParts,
+	managedBlockBody,
+	upsertManagedBlock,
+	upsertMcpJson,
+} from "@/services/handover/HandoverBrief"
+import { creditFor, deriveIdFromRel, loadBit, resolveBitPath } from "@/services/knowledge/KnowledgeResolver"
 import { ATTRIBUTION_FALLBACK, type KbitKind } from "@/services/knowledge/kbit/credit"
 import { extractFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 
 const HANDOVER_ROOT = path.join(os.homedir(), ".adsum", "handovers")
-const KNOWLEDGE_DIR = "iot-knowledge"
 
 interface BriefBit {
 	id: string
@@ -40,6 +46,8 @@ interface BriefBit {
 	steward?: string
 	triggers?: string[]
 	body: string
+	/** internal: the pre-bridge body, used for closure discovery; stripped before the brief is written. */
+	_raw?: string
 }
 
 export class VscodeHandoverService {
@@ -67,59 +75,117 @@ export class VscodeHandoverService {
 		}
 	}
 
-	/** Load the bits the session used, with their CREDIT, so the brief is self-contained.
-	 *
-	 *  Attribution reuses the product's own machinery (design/01) rather than re-deriving it: loading a bit
-	 *  records its credit facts — from the manifest for bundled bits, from the CATALOG for downloaded ones
-	 *  (whose bodies carry no frontmatter at all, since the publisher strips it before hashing). `creditFor`
-	 *  then applies the honest-fallback rule, so a bit whose `author` is the schema placeholder is credited
-	 *  to the Adsum authoring team instead of to a handle nobody claimed. The credit a developer sees inside
-	 *  their own agent must be the same credit our UI shows. */
-	private async collectBits(relPaths: string[]): Promise<BriefBit[]> {
-		const bundledDir = path.join(this.context.extensionPath, KNOWLEDGE_DIR)
-		const out: BriefBit[] = []
-		for (const rel of relPaths.slice(0, 15)) {
-			const id = deriveIdFromRel(rel)
-			// Body via the resolver's own path (bundled → cache → registry, entitlement-aware). This same
-			// call is what records the bit's credit facts for `creditFor` below.
-			let body = ""
-			try {
-				body = (await loadBitByRel(rel)) ?? ""
-			} catch {}
-			const credit = creditFor(id)
-			// Triggers are not attribution, so they are not in the credit facts — read them off the bundled
-			// file when there is one (which also gives a body fallback if the resolver could not serve it).
-			let triggers: string[] | undefined
-			try {
-				const fm = extractFrontmatter(fs.readFileSync(path.join(bundledDir, rel), "utf8"))
-				if (fm.found && fm.closed) {
-					const t = fm.yaml.match(/^triggers:\s*\[([^\]]*)\]/m)?.[1]
-					if (t) {
-						triggers = t.split(",").map((x) => x.trim().replace(/^["']|["']$/g, ""))
-					}
+	/** Resolve ONE bit id to its brief entry (body + credit + triggers), or null if nothing serves. Loading
+	 *  a bit is also what records its credit facts (manifest for bundled, CATALOG for downloaded — a
+	 *  downloaded body carries no frontmatter, since the publisher strips it before hashing). `creditFor`
+	 *  applies the honest-fallback rule so a placeholder `author` becomes the authoring team, never a fake
+	 *  person. The body is verb-bridged so its "read_file → platforms/X" directives instruct the tool the
+	 *  foreign agent actually has (load_skill) — see HandoverBrief.bridgeLoadVerbs. */
+	private async loadOneBit(id: string): Promise<BriefBit | null> {
+		let body = ""
+		try {
+			body = (await loadBit(id)) ?? ""
+		} catch {}
+		let triggers: string[] | undefined
+		try {
+			const p = await resolveBitPath(id) // bundled absolute path, or null for a downloaded-only bit
+			if (p) {
+				const fm = extractFrontmatter(fs.readFileSync(p, "utf8"))
+				const t = fm.found && fm.closed ? fm.yaml.match(/^triggers:\s*\[([^\]]*)\]/m)?.[1] : undefined
+				if (t) {
+					triggers = t.split(",").map((x) => x.trim().replace(/^["']|["']$/g, ""))
 				}
 				if (!body) {
 					body = fm.body
 				}
-			} catch {
-				// downloaded-only bit: no local file — the catalog-derived credit above already covered it.
 			}
-			if (!body) {
-				continue // nothing to serve — skip rather than hand over an empty skill
-			}
-			out.push({
-				id,
-				title: credit?.title ?? id.split("/").pop(),
-				version: credit?.version,
-				author: credit?.author ?? ATTRIBUTION_FALLBACK,
-				attributed: credit?.attributed ?? false,
-				kind: credit?.kind ?? "knowledge",
-				steward: credit?.steward,
-				triggers,
-				body,
-			})
+		} catch {}
+		if (!body) {
+			return null // nothing to serve — skip rather than hand over an empty skill
 		}
-		return out
+		const credit = creditFor(id)
+		return {
+			id,
+			title: credit?.title ?? id.split("/").pop(),
+			version: credit?.version,
+			author: credit?.author ?? ATTRIBUTION_FALLBACK,
+			attributed: credit?.attributed ?? false,
+			kind: credit?.kind ?? "knowledge",
+			steward: credit?.steward,
+			triggers,
+			body: bridgeLoadVerbs(id, body),
+			// keep the RAW body for closure discovery (references are in the original prose, and bridging
+			// rewrote read_file→path away — so extract refs from raw, serve the bridged version)
+			_raw: body,
+		}
+	}
+
+	/**
+	 * Collect the closure the handover must carry, so the brief is SELF-SUFFICIENT.
+	 *
+	 * A workflow is a hub that routes the agent to spokes (find-sample, configure, debug-loop). H1 pinned
+	 * only the bits the session had loaded, so the spokes were missing and the agent improvised on raw
+	 * sources — the exact gap the softAP live test exposed. So: BFS from the loaded bits over the bits they
+	 * REFERENCE (the corpus's prose `platforms/X.md` idiom, extracted by HandoverBrief.extractBitRefs),
+	 * ≤2 hops, capped, deduped. Every hop resolves through the same loader → bodies + credit come for free.
+	 */
+	private async collectBits(relPaths: string[]): Promise<BriefBit[]> {
+		const HOP_MAX = 2
+		const CAP = 20
+		const seen = new Set<string>()
+		const out: BriefBit[] = []
+		const dedup = (id: string) => {
+			if (seen.has(id)) {
+				return false
+			}
+			seen.add(id)
+			return true
+		}
+		let frontier = relPaths.map(deriveIdFromRel).filter(dedup)
+		for (let hop = 0; hop <= HOP_MAX && frontier.length && out.length < CAP; hop++) {
+			const next: string[] = []
+			for (const id of frontier) {
+				if (out.length >= CAP) {
+					break
+				}
+				const bit = await this.loadOneBit(id)
+				if (!bit) {
+					continue
+				}
+				out.push(bit)
+				if (hop < HOP_MAX) {
+					for (const ref of extractBitRefs(id, bit._raw ?? bit.body)) {
+						if (!seen.has(ref)) {
+							seen.add(ref)
+							next.push(ref)
+						}
+					}
+				}
+			}
+			frontier = next
+		}
+		return out.map(({ _raw, ...b }) => b)
+	}
+
+	/** Close out older pending handovers so a fresh one is the only thing in the inbox. */
+	private supersedeStalePending(): void {
+		try {
+			for (const e of fs.readdirSync(HANDOVER_ROOT, { withFileTypes: true })) {
+				if (!e.isDirectory()) {
+					continue
+				}
+				const sp = path.join(HANDOVER_ROOT, e.name, "state.json")
+				try {
+					const st = JSON.parse(fs.readFileSync(sp, "utf8"))
+					if (st.status === "pending") {
+						fs.writeFileSync(
+							sp,
+							JSON.stringify({ ...st, status: "superseded", supersededAt: new Date().toISOString() }, null, 1),
+						)
+					}
+				} catch {}
+			}
+		} catch {}
 	}
 
 	private environmentLine(): string {
@@ -187,6 +253,11 @@ export class VscodeHandoverService {
 		}
 		// A handover with no prior session is legitimate (hand over a fresh card) — the brief is just thinner.
 		const bits = await this.collectBits(parts.kbitRelPaths)
+		// Supersede any older still-pending handovers: a stale 'pending' from an attempt that never got
+		// picked up would otherwise clutter `inbox` and make "which one?" ambiguous (it bit us twice in
+		// testing). Only 'pending' is closed — an 'active' session the agent is really working stays.
+		this.supersedeStalePending()
+
 		const id = Math.random().toString(36).slice(2, 6)
 		const dir = path.join(HANDOVER_ROOT, id)
 		fs.mkdirSync(dir, { recursive: true })

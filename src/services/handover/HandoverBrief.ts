@@ -10,6 +10,62 @@ import { createHash } from "node:crypto"
 import * as fs from "node:fs"
 import * as path from "node:path"
 
+// ── dependency closure + verb bridge (H2.0) ─────────────────────────────────────
+//
+// A workflow bit is a hub: it routes the agent to spokes (find-sample, configure, debug-loop). The
+// corpus expresses that routing in PROSE, not `requires:` frontmatter — as the extension's own idiom:
+//   **MANDATORY SKILL LOAD:** `read_file` → `platforms/esp/actions/find-sample.md`
+// In the extension a `read_file` on a kbit path is intercepted and resolved to the bit; in a foreign
+// agent it is not, so (a) the referenced bits must travel in the brief, and (b) the "read_file → path"
+// instruction must be rewritten to the verb that actually works there: `load_skill`.
+
+/** The kinds a bit path names — lets a platform-relative ref (`actions/x.md`) resolve to a full id. */
+const BIT_KINDS = "actions|workflows|rules|references|knowledges|sdks|boards|protocols"
+const platformOf = (id: string) => id.replace(/^adsum\//, "").split("/")[0]
+
+/** id from an iot-knowledge-relative path. Inlined copy of KnowledgeResolver.deriveIdFromRel — kept here
+ *  so this pure module stays free of the resolver's transitive (vscode/HostProvider) import graph. */
+const idFromRel = (rel: string): string =>
+	`adsum/${rel
+		.replace(/\\/g, "/")
+		.replace(/^platforms\//, "")
+		.replace(/\.md$/i, "")
+		.toLowerCase()}`
+
+/**
+ * The bit ids a body references. Two forms, both real in the corpus:
+ *   full     `platforms/esp/actions/find-sample.md`      → adsum/esp/actions/find-sample
+ *   relative `actions/configure.md` (same platform)      → adsum/<sourcePlatform>/actions/configure
+ * Bare `x.md` filenames are deliberately ignored — ambiguous, and always back-references to a form above.
+ */
+export function extractBitRefs(sourceId: string, body: string): string[] {
+	const ids = new Set<string>()
+	const plat = platformOf(sourceId)
+	for (const m of body.matchAll(/platforms\/([\w/-]+\.md)/gi)) {
+		ids.add(idFromRel(`platforms/${m[1]}`))
+	}
+	const rel = new RegExp(`(?:^|[^\\w/.])((?:${BIT_KINDS})/[\\w/-]+\\.md)`, "gi")
+	for (const m of body.matchAll(rel)) {
+		ids.add(idFromRel(`platforms/${plat}/${m[1]}`))
+	}
+	ids.delete(sourceId) // a bit naming itself (its own header) is not a dependency
+	return [...ids]
+}
+
+/**
+ * Rewrite the extension's kbit-path read idiom into the foreign agent's verb, so a bit body handed to
+ * Claude Code instructs the tool that actually works there. Surgical: only the exact
+ * `` `read_file` → `…/x.md` `` directive is touched; every other line of curated prose is left alone.
+ */
+export function bridgeLoadVerbs(sourceId: string, body: string): string {
+	const plat = platformOf(sourceId)
+	const idFor = (p: string) => (p.startsWith("platforms/") ? idFromRel(p) : idFromRel(`platforms/${plat}/${p}`))
+	return body.replace(
+		new RegExp(`\`?read_file\`?\\s*(?:→|->)\\s*\`?((?:platforms/|(?:${BIT_KINDS})/)[\\w/-]+\\.md)\`?`, "gi"),
+		(_full, p: string) => `call \`load_skill("${idFor(p)}")\``,
+	)
+}
+
 // The begin marker carries a fingerprint of the text WE wrote. That makes the file self-describing:
 // on the next write we can tell "unchanged since we wrote it" from "the developer edited our block"
 // without keeping any state on our side — and a developer's words are never overwritten.

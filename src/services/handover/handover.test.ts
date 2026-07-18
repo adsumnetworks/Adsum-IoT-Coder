@@ -11,7 +11,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import { describe, test } from "node:test"
-import { extractBriefParts, upsertManagedBlock } from "./HandoverBrief"
+import { bridgeLoadVerbs, extractBitRefs, extractBriefParts, upsertManagedBlock } from "./HandoverBrief"
 
 const REPO = path.resolve(__dirname, "..", "..", "..")
 const SERVER = path.join(REPO, "mcp", "adsum-mcp.mjs")
@@ -276,5 +276,46 @@ describe("brief extraction from a recorded session", () => {
 		assert.equal(b.nextStep, "capture logs", "the first unchecked item is the next step")
 		assert.equal(b.lastSummary, "Build passed; firmware is flashed.")
 		assert.deepEqual(b.kbitRelPaths, ["platforms/nrf/workflows/debug-loop.md", "platforms/nrf/actions/flash.md"])
+	})
+})
+
+describe("dependency closure + verb bridge (H2.0 — the live-test gap)", () => {
+	// The real add-feature idiom: prose "MANDATORY SKILL LOAD: read_file → platforms/...", plus a
+	// platform-relative "actions/x.md" shorthand — NO requires: frontmatter.
+	const addFeatureBody = [
+		"# Add Feature Workflow (workflows/add-feature.md)",
+		"See prototype.md for the scaffolding pattern.",
+		"**MANDATORY SKILL LOAD:** `read_file` → `platforms/esp/actions/find-sample.md` and follow it.",
+		"4. **Kconfig** → only if the feature needs it (`actions/configure.md` for the sdkconfig).",
+		"read loop via `find-sample.md` — never invent register sequences.",
+		"- **MANDATORY SKILL LOAD:** if it needs debugging, `read_file` → `platforms/esp/workflows/debug-loop.md`.",
+	].join("\n")
+
+	test("extractBitRefs: pulls full-path AND platform-relative spokes, drops self + bare filenames", () => {
+		const refs = extractBitRefs("adsum/esp/workflows/add-feature", addFeatureBody)
+		assert.ok(refs.includes("adsum/esp/actions/find-sample"), "full path platforms/esp/actions/find-sample.md")
+		assert.ok(refs.includes("adsum/esp/workflows/debug-loop"), "full path platforms/esp/workflows/debug-loop.md")
+		assert.ok(refs.includes("adsum/esp/actions/configure"), "relative actions/configure.md → same platform")
+		assert.ok(!refs.includes("adsum/esp/workflows/add-feature"), "a bit does not depend on itself")
+		// bare 'prototype.md' / 'find-sample.md' are ambiguous back-references → not resolved as new deps
+		assert.ok(!refs.some((r) => r.endsWith("/prototype")), "bare filename not guessed")
+	})
+
+	test("bridgeLoadVerbs: rewrites the read_file→path idiom to load_skill, leaves other prose alone", () => {
+		const out = bridgeLoadVerbs("adsum/esp/workflows/add-feature", addFeatureBody)
+		assert.ok(out.includes('call `load_skill("adsum/esp/actions/find-sample")`'), "full path bridged")
+		assert.ok(out.includes('call `load_skill("adsum/esp/workflows/debug-loop")`'), "second directive bridged")
+		assert.ok(!out.includes("read_file` → `platforms"), "no read_file→path directive survives")
+		assert.ok(out.includes("never invent register sequences"), "ordinary prose untouched")
+		assert.ok(out.includes("See prototype.md"), "non-directive filename mention untouched")
+	})
+
+	test("extractBitRefs: nRF platform relative refs resolve to nRF, not the source's platform by accident", () => {
+		const refs = extractBitRefs(
+			"adsum/nrf/workflows/demo-debug",
+			"load `actions/flash.md` then `platforms/nrf/actions/capture-logs.md`",
+		)
+		assert.ok(refs.includes("adsum/nrf/actions/flash"))
+		assert.ok(refs.includes("adsum/nrf/actions/capture-logs"))
 	})
 })
