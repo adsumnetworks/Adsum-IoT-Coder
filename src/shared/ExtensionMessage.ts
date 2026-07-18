@@ -208,6 +208,7 @@ export type ClineSay =
 	| "hook_status"
 	| "hook_output_stream"
 	| "cve_scan_progress" // liveness row while the blocking host CVE scan queries EUVD/NVD/OSV (spinner + elapsed in the webview)
+	| "kbit_loaded" // a Knowledge/Tool bit resolved — the webview renders it as a credit line (design/01 attribution)
 
 export interface ClineSayTool {
 	tool:

@@ -1,6 +1,7 @@
 import { ClineMessage } from "@shared/ExtensionMessage"
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
 import React, { useCallback, useLayoutEffect, useMemo, useState } from "react"
+import type { KbitLoadedPayload } from "@/components/chat/KbitCredit"
 import Thumbnails from "@/components/common/Thumbnails"
 import { getModeSpecificFields, normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -15,6 +16,7 @@ import { CheckpointError } from "./CheckpointError"
 import ContextWindow from "./ContextWindow"
 import { FocusChain } from "./FocusChain"
 import { highlightText } from "./Highlights"
+import { KbitPill, KbitRoster } from "./KbitPill"
 
 interface TaskHeaderProps {
 	task: ClineMessage
@@ -28,11 +30,14 @@ interface TaskHeaderProps {
 	lastProgressMessageText?: string
 	onClose: () => void
 	onSendMessage?: (command: string, files: string[], images: string[]) => void
+	/** Bits credited this session — the attribution pill rides this header row (design/01). */
+	sessionKbits?: KbitLoadedPayload[]
 }
 
 const BUTTON_CLASS = "max-h-3 border-0 font-bold bg-transparent hover:opacity-100 text-foreground"
 
 const TaskHeader: React.FC<TaskHeaderProps> = ({
+	sessionKbits,
 	task,
 	tokensIn,
 	tokensOut,
@@ -163,6 +168,10 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 						)}
 					</div>
 					<div className="inline-flex items-center justify-end select-none shrink-0">
+						{/* Attribution pill — session-rollup metadata, so it sits with the cost badge rather than
+						    claiming a row of its own. Compact (count-only) while collapsed so the task title keeps
+						    the space; the full roster is in the expanded detail below. */}
+						<KbitPill bits={sessionKbits ?? []} compact={!isTaskExpanded} />
 						{isCostAvailable && (
 							<div
 								className="mx-1 px-1 py-0.25 rounded-full inline-flex shrink-0 text-badge-background bg-badge-foreground/80 items-center"
@@ -213,6 +222,8 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 							tokensOut={tokensOut}
 							useAutoCondense={false} // Disable auto-condense configuration in UI for now
 						/>
+
+						<KbitRoster bits={sessionKbits ?? []} />
 					</div>
 				)}
 			</div>

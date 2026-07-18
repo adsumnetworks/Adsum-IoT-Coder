@@ -2,10 +2,11 @@ import { ClineMessage } from "@shared/ExtensionMessage"
 import React, { useMemo } from "react"
 import BrowserSessionRow from "@/components/chat/BrowserSessionRow"
 import ChatRow from "@/components/chat/ChatRow"
+import { KbitCredit, type KbitLoadedPayload, parseKbitPayload } from "@/components/chat/KbitCredit"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { cn } from "@/lib/utils"
 import { MessageHandlers } from "../../types/chatTypes"
-import { findReasoningForApiReq, isTextMessagePendingToolCall, isToolGroup } from "../../utils/messageUtils"
+import { findReasoningForApiReq, isKbitGroup, isTextMessagePendingToolCall, isToolGroup } from "../../utils/messageUtils"
 import { ToolGroupRenderer } from "./ToolGroupRenderer"
 
 interface MessageRendererProps {
@@ -62,6 +63,12 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
 	// Tool group (low-stakes tools grouped together)
 	// Always render - the loading state in ChatRow shows current activities,
 	// while ToolGroupRenderer shows what's in context. Overlap is fine.
+	// Several bits loaded in one turn → ONE grouped credit line, never a stack (design/01 credit law).
+	if (isKbitGroup(messageOrGroup)) {
+		const bits = messageOrGroup.map((m) => parseKbitPayload(m.text)).filter((p): p is KbitLoadedPayload => p !== null)
+		return bits.length > 0 ? <KbitCredit bits={bits} /> : null
+	}
+
 	if (isToolGroup(messageOrGroup)) {
 		return <ToolGroupRenderer allMessages={modifiedMessages} messages={messageOrGroup} />
 	}

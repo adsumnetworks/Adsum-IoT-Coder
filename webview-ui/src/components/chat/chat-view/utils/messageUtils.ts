@@ -19,6 +19,26 @@ const LOW_STAKES_TOOLS = new Set([
 ])
 
 /**
+ * A readFile row whose target is a Knowledge/Tool bit. Those get a CREDIT line instead of a path row
+ * (design/01): showing both would double-count the read and leak the knowledge tree's layout, which is
+ * itself IP. Matched on the bundled-tree marker so bare relative skill refs are caught too.
+ */
+export function isKbitFileRow(message: ClineMessage): boolean {
+	if (message.say !== "tool" && message.ask !== "tool") {
+		return false
+	}
+	try {
+		const tool = JSON.parse(message.text || "{}") as { tool?: string; path?: string }
+		if (tool.tool !== "readFile" || !tool.path) {
+			return false
+		}
+		return /(^|[\\/])iot-knowledge[\\/]/.test(tool.path)
+	} catch {
+		return false
+	}
+}
+
+/**
  * Check if a tool message is a low-stakes tool
  */
 export function isLowStakesTool(message: ClineMessage): boolean {
@@ -38,6 +58,40 @@ export function isLowStakesTool(message: ClineMessage): boolean {
  */
 export function isToolGroup(item: ClineMessage | ClineMessage[]): item is ClineMessage[] & { _isToolGroup: true } {
 	return Array.isArray(item) && (item as any)._isToolGroup === true
+}
+
+/** A run of consecutive kbit_loaded says — rendered as ONE grouped credit line (design/01 credit law). */
+export function isKbitGroup(item: ClineMessage | ClineMessage[]): item is ClineMessage[] & { _isKbitGroup: true } {
+	return Array.isArray(item) && (item as any)._isKbitGroup === true
+}
+
+/**
+ * Merge consecutive `kbit_loaded` says into one group so a turn that pulls several bits still renders a
+ * single credit line ("2 bits · by A + B"), never a stack of them. Runs after the tool grouping.
+ */
+export function groupKbitCredits(items: (ClineMessage | ClineMessage[])[]): (ClineMessage | ClineMessage[])[] {
+	const out: (ClineMessage | ClineMessage[])[] = []
+	let run: ClineMessage[] = []
+	const flush = () => {
+		if (run.length === 1) {
+			out.push(run[0])
+		} else if (run.length > 1) {
+			const g = run as ClineMessage[] & { _isKbitGroup: boolean }
+			g._isKbitGroup = true
+			out.push(g)
+		}
+		run = []
+	}
+	for (const item of items) {
+		if (!Array.isArray(item) && item.type === "say" && item.say === "kbit_loaded") {
+			run.push(item)
+			continue
+		}
+		flush()
+		out.push(item)
+	}
+	flush()
+	return out
 }
 
 /**
@@ -752,6 +806,12 @@ export function groupLowStakesTools(groupedMessages: (ClineMessage | ClineMessag
 		const message = item
 		const messageType = message.say
 		const isLast = i === groupedMessages.length - 1
+
+		// A k-bit read is credited by its own line — drop the raw path row entirely so the transcript shows
+		// the author, not the internal tree location, and the "read N files" count stays truthful.
+		if (isKbitFileRow(message)) {
+			continue
+		}
 
 		// Low-stakes tool - absorb pending and add to group
 		if (isLowStakesTool(message)) {

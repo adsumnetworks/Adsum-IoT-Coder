@@ -1,5 +1,6 @@
 import { ClineMessage } from "@shared/ExtensionMessage"
 import React from "react"
+import type { KbitLoadedPayload } from "@/components/chat/KbitCredit"
 import TaskHeader from "@/components/chat/task-header/TaskHeader"
 import { MessageHandlers } from "../../types/chatTypes"
 
@@ -19,6 +20,8 @@ interface TaskSectionProps {
 	}
 	messageHandlers: MessageHandlers
 	lastProgressMessageText?: string
+	/** Knowledge/Tool bits credited this session — drives the header attribution pill (design/01). */
+	sessionKbits?: KbitLoadedPayload[]
 }
 
 /**
@@ -32,6 +35,7 @@ export const TaskSection: React.FC<TaskSectionProps> = ({
 	selectedModelInfo,
 	messageHandlers,
 	lastProgressMessageText,
+	sessionKbits,
 }) => {
 	return (
 		<TaskHeader
@@ -42,6 +46,7 @@ export const TaskSection: React.FC<TaskSectionProps> = ({
 			lastProgressMessageText={lastProgressMessageText}
 			onClose={messageHandlers.handleTaskCloseButtonClick}
 			onSendMessage={messageHandlers.handleSendMessage}
+			sessionKbits={sessionKbits}
 			task={task}
 			tokensIn={apiMetrics.totalTokensIn}
 			tokensOut={apiMetrics.totalTokensOut}

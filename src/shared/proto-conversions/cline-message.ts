@@ -109,6 +109,9 @@ function convertClineSayToProtoEnum(say: AppClineSay | undefined): ClineSay | un
 		// Liveness row for the blocking CVE scan — informational status; maps to INFO on the proto
 		// (standalone/external) path, same reuse pattern as shell_integration_warning_with_suggestion.
 		cve_scan_progress: ClineSay.INFO,
+		// Attribution credit row — rides the INFO proto slot like cve_scan_progress; the webview
+		// discriminates on the `say` string, so no proto enum change is needed.
+		kbit_loaded: ClineSay.INFO,
 	}
 
 	const result = mapping[say]

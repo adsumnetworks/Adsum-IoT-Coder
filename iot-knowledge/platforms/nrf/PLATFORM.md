@@ -4,7 +4,7 @@ title: "Nordic nRF — Platform Index"
 type: knowledge
 version: 1.3.0
 owner: adsum-core
-author: adsum
+author: Omar Morceli
 license: CC-BY-SA-4.0
 tier: certified
 delivery: bundled

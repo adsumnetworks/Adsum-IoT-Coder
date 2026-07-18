@@ -4,7 +4,7 @@ title: "BLE Protocol Knowledge — NCS / Zephyr"
 type: knowledge
 version: 1.3.0
 owner: adsum-core
-author: adsum
+author: Ismail Hamdad
 license: CC-BY-SA-4.0
 tier: certified
 delivery: bundled

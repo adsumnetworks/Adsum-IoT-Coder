@@ -8,6 +8,8 @@ import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/pat
 import { HostProvider } from "@/hosts/host-provider"
 import {
 	bitIdForKbPath,
+	creditFor,
+	creditForKbPath,
 	deriveIdFromRel,
 	downloadedBitKnown,
 	isBareBitPath,
@@ -16,6 +18,8 @@ import {
 	loadBitByRel,
 	suggestNearMissBits,
 } from "@/services/knowledge/KnowledgeResolver"
+import type { KbitCredit } from "@/services/knowledge/kbit/credit"
+import { leadSentence } from "@/services/knowledge/kbit/credit"
 import { telemetryService } from "@/services/telemetry"
 import { ClineSayTool } from "@/shared/ExtensionMessage"
 import { ClineDefaultTool } from "@/shared/tools"
@@ -26,6 +30,38 @@ import type { ToolValidator } from "../ToolValidator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
+
+/**
+ * Emit the one-per-bit-per-task credit row the webview renders instead of an anonymous file path.
+ * Deduped by the SAME set that already guards double-loads, so a re-read never re-credits (design/01:
+ * "first use only" — repeat loads pulse the header pill and add zero transcript DOM).
+ * Fail-open: attribution must never break a file read.
+ */
+async function sayKbitCredit(config: any, credit: KbitCredit | null, source: "bundled" | "registry"): Promise<void> {
+	if (!credit) {
+		return
+	}
+	try {
+		await config.callbacks.say(
+			"kbit_loaded",
+			JSON.stringify({
+				id: credit.id,
+				title: credit.title,
+				kind: credit.kind,
+				author: credit.author,
+				attributed: credit.attributed,
+				version: credit.version,
+				license: credit.license,
+				platform: credit.platform,
+				steward: credit.steward,
+				source,
+				lead: leadSentence(credit),
+			}),
+		)
+	} catch {
+		// attribution is additive — never surface as a tool failure
+	}
+}
 
 export class ReadFileToolHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.FILE_READ
@@ -253,6 +289,8 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 				if (isKnowledgeFile) {
 					config.taskState.loadedKnowledgeFiles.add(absolutePath)
 				}
+				const dlId = isAbsKbPath ? bitIdForKbPath(absolutePath) : deriveIdFromRel(relPath!.replace(/\\/g, "/"))
+				await sayKbitCredit(config, dlId ? creditFor(dlId) : null, "registry")
 				await config.services.fileContextTracker.trackFileContext(relPath!, "read_tool")
 				// H9 (R3, 0607b): the UI labels this read with the requested bundled-tree path, which made a
 				// registry-served bit look BUNDLED in transcripts (it misled a delivery-path review into
@@ -357,6 +395,7 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		// Bundled/on-disk knowledge file: mark it loaded before the read so a re-read this task stubs out.
 		if (isKnowledgeFile) {
 			config.taskState.loadedKnowledgeFiles.add(absolutePath)
+			await sayKbitCredit(config, await creditForKbPath(absolutePath), "bundled")
 		}
 
 		// Execute the actual file read operation
