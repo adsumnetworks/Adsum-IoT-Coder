@@ -143,8 +143,8 @@ function toolResumeHandover(args) {
 		`# Adsum handover ${id}`,
 		"",
 		`**Mission:** ${brief.mission || "(not stated)"}`,
-		brief.workspace ? `**Workspace:** ${brief.workspace}` : "",
-		brief.env ? `**Environment:** ${brief.env}` : "",
+		brief.workspace ? `**Workspace:** ${brief.workspace}` : null,
+		brief.env ? `**Environment:** ${brief.env}` : null,
 		"",
 		"## Done so far (by the Adsum agent)",
 		brief.worklog?.length ? brief.worklog.map((w) => `- ${w}`).join("\n") : "- (fresh start — nothing done yet)",
@@ -161,7 +161,7 @@ function toolResumeHandover(args) {
 	]
 	patchState(id, { status: "active", resumedAt: new Date().toISOString() })
 	ledger(id, { event: "resume", bits: bits.length })
-	return { text: lines.filter((l) => l !== "").join("\n") }
+	return { text: lines.filter((l) => l !== null).join("\n") }
 }
 
 function toolLoadSkill(args, ctx) {
