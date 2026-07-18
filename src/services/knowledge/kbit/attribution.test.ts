@@ -120,6 +120,21 @@ describe("attribution — copy law (build-time lint)", () => {
 		assert.doesNotMatch(ui, /open bit file/i, "bit content must not be linked from the chat")
 	})
 
+	test("the provenance boundary is documented, and the popover links to it", () => {
+		// The "attribution is not a verdict" boundary moved out of per-popover small print and into the docs.
+		// That is only safe while BOTH hold: the popover points at the explanation, and the docs still carry it.
+		const ui = read("webview-ui/src/components/chat/KbitCredit.tsx")
+		assert.match(ui, /docs\.adsumnetworks\.com\/knowledge-bits/, "popover must link to the Knowledge bits docs")
+		assert.match(ui, /Learn more about Knowledge bits/, "the link must be discoverable copy, not a bare URL")
+	})
+
+	test("no permanently-pending placeholder rows", () => {
+		// A row that says "pending" on every bit forever reads as a defect, not a roadmap. Restore the signing
+		// row when signatures are real — the copy law for it (two facts, never "Signed by <person>") stands.
+		const ui = read("webview-ui/src/components/chat/KbitCredit.tsx")
+		assert.doesNotMatch(ui, /signature pending/i, "hidden until signatures exist")
+	})
+
 	test("`tier` is never rendered", () => {
 		for (const rel of ATTRIBUTION_UI) {
 			assert.doesNotMatch(code(rel), /\btier\b/i, `${rel}: tier is a schema field, never user-facing copy`)
