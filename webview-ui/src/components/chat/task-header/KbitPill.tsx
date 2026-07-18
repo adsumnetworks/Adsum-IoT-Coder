@@ -1,5 +1,7 @@
 import type { ClineMessage } from "@shared/ExtensionMessage"
+import { BRAND_CORAL } from "@/components/chat/brandColors"
 import { type KbitLoadedPayload, parseKbitPayload } from "@/components/chat/KbitCredit"
+import { KbitMark, TbitMark } from "@/components/chat/KbitMark"
 
 /**
  * Session attribution roster — who this session is standing on.
@@ -40,12 +42,12 @@ export const KbitPill = ({ bits, compact }: { bits: KbitLoadedPayload[]; compact
 			className="mx-1 px-2 py-0.25 rounded-full inline-flex shrink-0 items-center gap-1 text-xs border"
 			style={{ borderColor: "var(--vscode-panel-border)", color: "var(--vscode-descriptionForeground)" }}
 			title={`${bits.length} Knowledge/Tool bit${bits.length > 1 ? "s" : ""} used this session — expand the header for the list`}>
-			<span style={{ color: "var(--vscode-charts-purple)" }}>◆</span>
+			<KbitMark size={13} />
 			{compact || !lead ? (
 				<span>×{bits.length}</span>
 			) : (
 				<span className="whitespace-nowrap">
-					<span style={{ color: "var(--vscode-charts-orange)" }}>
+					<span style={{ color: BRAND_CORAL }}>
 						{lead}
 						{extra}
 					</span>
@@ -71,19 +73,7 @@ export const KbitRoster = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 						className="flex items-center gap-2 py-1"
 						key={b.id}
 						style={{ borderTop: "1px solid var(--vscode-panel-border)" }}>
-						<span
-							className="inline-grid place-items-center rounded-[4px] text-[9px] shrink-0"
-							style={{
-								width: 16,
-								height: 16,
-								background:
-									b.kind === "tool"
-										? "color-mix(in srgb, var(--vscode-charts-blue) 16%, transparent)"
-										: "color-mix(in srgb, var(--vscode-charts-purple) 16%, transparent)",
-								color: b.kind === "tool" ? "var(--vscode-charts-blue)" : "var(--vscode-charts-purple)",
-							}}>
-							{b.kind === "tool" ? "⚙" : "◆"}
-						</span>
+						{b.kind === "tool" ? <TbitMark size={16} /> : <KbitMark size={16} />}
 						<div className="min-w-0 flex-1">
 							<div className="truncate" style={{ color: "var(--vscode-foreground)" }}>
 								{b.title}

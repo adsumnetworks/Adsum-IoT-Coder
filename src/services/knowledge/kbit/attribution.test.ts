@@ -135,6 +135,18 @@ describe("attribution — copy law (build-time lint)", () => {
 		assert.doesNotMatch(ui, /signature pending/i, "hidden until signatures exist")
 	})
 
+	test("attribution UI uses the brand palette only — no off-palette hues", () => {
+		// UI-GOLDEN-RULES: coral = identity, cyan = action. An earlier pass shipped violet (carried in from a
+		// prototype mockup), which is in no palette at all. Colours must come from brandColors, and kind must
+		// be carried by the mark's SHAPE rather than by hue.
+		for (const rel of ["webview-ui/src/components/chat/KbitCredit.tsx", "webview-ui/src/components/chat/task-header/KbitPill.tsx"]) {
+			const src = code(rel)
+			for (const offPalette of ["charts-purple", "charts-orange", "violet", "purple"]) {
+				assert.doesNotMatch(src, new RegExp(offPalette, "i"), `${rel}: "${offPalette}" is not in the Adsum palette`)
+			}
+		}
+	})
+
 	test("`tier` is never rendered", () => {
 		for (const rel of ATTRIBUTION_UI) {
 			assert.doesNotMatch(code(rel), /\btier\b/i, `${rel}: tier is a schema field, never user-facing copy`)
