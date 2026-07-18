@@ -28,7 +28,9 @@ function mcpClient(handoverDir: string) {
 		while ((nl = buf.indexOf("\n")) >= 0) {
 			const line = buf.slice(0, nl).trim()
 			buf = buf.slice(nl + 1)
-			if (!line) continue
+			if (!line) {
+				continue
+			}
 			const msg = JSON.parse(line)
 			waiters.get(msg.id)?.(msg)
 			waiters.delete(msg.id)

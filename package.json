@@ -198,6 +198,21 @@
 				"title": "Abort Commit Message Generation",
 				"category": "Adsum IoT Coder",
 				"icon": "$(close)"
+			},
+			{
+				"command": "adsum-iot-coder.handoverToAgent",
+				"title": "Adsum: Hand session to my coding agent",
+				"icon": "$(link-external)"
+			},
+			{
+				"command": "adsum-iot-coder.continueHandoverHere",
+				"title": "Adsum: Continue handed-over session here",
+				"icon": "$(reply)"
+			},
+			{
+				"command": "adsum-iot-coder.watchHandover",
+				"title": "Adsum: Watch handed-over session",
+				"icon": "$(broadcast)"
 			}
 		],
 		"keybindings": [

@@ -124,17 +124,19 @@ const TOOLS = [
 
 function toolResumeHandover(args) {
 	const id = args?.handover_id || newestHandover()
-	if (!id)
+	if (!id) {
 		return {
 			isError: true,
 			text: `No Adsum handover found under ${HANDOVER_ROOT}. Ask the developer to run "Adsum: Hand session to my coding agent" in VS Code.`,
 		}
+	}
 	const brief = readJson(path.join(dirOf(id), "brief.json"))
-	if (!brief)
+	if (!brief) {
 		return {
 			isError: true,
 			text: `Handover "${id}" has no brief.json — it may be from an older version. Re-run the handover from the Adsum extension.`,
 		}
+	}
 
 	const bits = brief.bits ?? []
 	const lines = [
@@ -164,13 +166,17 @@ function toolResumeHandover(args) {
 
 function toolLoadSkill(args, ctx) {
 	const id = ctx.activeId || newestHandover()
-	if (!id) return { isError: true, text: "No active Adsum handover — call resume_handover first." }
+	if (!id) {
+		return { isError: true, text: "No active Adsum handover — call resume_handover first." }
+	}
 	const brief = readJson(path.join(dirOf(id), "brief.json"), {}) ?? {}
 	const bits = brief.bits ?? []
 	const q = String(args?.query ?? "")
 		.trim()
 		.toLowerCase()
-	if (!q) return { isError: true, text: "load_skill needs a query (a bit id or a keyword)." }
+	if (!q) {
+		return { isError: true, text: "load_skill needs a query (a bit id or a keyword)." }
+	}
 
 	// exact id → id substring → keyword in title/triggers. Deterministic, cheapest-first.
 	const hit =
@@ -194,9 +200,13 @@ function toolLoadSkill(args, ctx) {
 
 function toolCheckpoint(args, ctx) {
 	const id = ctx.activeId || newestHandover()
-	if (!id) return { isError: true, text: "No active Adsum handover — call resume_handover first." }
+	if (!id) {
+		return { isError: true, text: "No active Adsum handover — call resume_handover first." }
+	}
 	const worklog = String(args?.worklog ?? "").trim()
-	if (!worklog) return { isError: true, text: "checkpoint needs a worklog line." }
+	if (!worklog) {
+		return { isError: true, text: "checkpoint needs a worklog line." }
+	}
 	ledger(id, { event: "checkpoint", worklog })
 	patchState(id, { lastCheckpoint: worklog, lastCheckpointAt: new Date().toISOString() })
 	return { text: `✓ checkpoint synced to Adsum session ${id}` }
@@ -219,9 +229,15 @@ function handle(msg) {
 			serverInfo: { name: "adsum", version: SERVER_VERSION },
 		})
 	}
-	if (method === "notifications/initialized" || method === "notifications/cancelled") return // notifications get no reply
-	if (method === "ping") return reply(id, {})
-	if (method === "tools/list") return reply(id, { tools: TOOLS })
+	if (method === "notifications/initialized" || method === "notifications/cancelled") {
+		return // notifications get no reply
+	}
+	if (method === "ping") {
+		return reply(id, {})
+	}
+	if (method === "tools/list") {
+		return reply(id, { tools: TOOLS })
+	}
 	if (method === "tools/call") {
 		const name = params?.name
 		const args = params?.arguments ?? {}
@@ -229,17 +245,25 @@ function handle(msg) {
 		try {
 			if (name === "resume_handover") {
 				out = toolResumeHandover(args)
-				if (!out.isError) ctx.activeId = args?.handover_id || newestHandover()
-			} else if (name === "load_skill") out = toolLoadSkill(args, ctx)
-			else if (name === "checkpoint") out = toolCheckpoint(args, ctx)
-			else out = { isError: true, text: `Unknown tool "${name}".` }
+				if (!out.isError) {
+					ctx.activeId = args?.handover_id || newestHandover()
+				}
+			} else if (name === "load_skill") {
+				out = toolLoadSkill(args, ctx)
+			} else if (name === "checkpoint") {
+				out = toolCheckpoint(args, ctx)
+			} else {
+				out = { isError: true, text: `Unknown tool "${name}".` }
+			}
 		} catch (e) {
 			// A tool failure is a RESULT (isError), not a protocol error — the agent should see it and adapt.
 			out = { isError: true, text: `adsum ${name} failed: ${e?.message || e}` }
 		}
 		return reply(id, { content: [{ type: "text", text: out.text }], isError: !!out.isError })
 	}
-	if (id !== undefined) fail(id, -32601, `Method not found: ${method}`)
+	if (id !== undefined) {
+		fail(id, -32601, `Method not found: ${method}`)
+	}
 }
 
 let buf = ""
@@ -250,7 +274,9 @@ process.stdin.on("data", (chunk) => {
 	while ((nl = buf.indexOf("\n")) >= 0) {
 		const line = buf.slice(0, nl).trim()
 		buf = buf.slice(nl + 1)
-		if (!line) continue
+		if (!line) {
+			continue
+		}
 		let msg
 		try {
 			msg = JSON.parse(line)
@@ -260,7 +286,9 @@ process.stdin.on("data", (chunk) => {
 		try {
 			handle(msg)
 		} catch (e) {
-			if (msg?.id !== undefined) fail(msg.id, -32603, `Internal error: ${e?.message || e}`)
+			if (msg?.id !== undefined) {
+				fail(msg.id, -32603, `Internal error: ${e?.message || e}`)
+			}
 		}
 	}
 })
