@@ -87,6 +87,12 @@ const credit = (b) =>
 // ── tools ─────────────────────────────────────────────────────────────────────
 const TOOLS = [
 	{
+		name: "inbox",
+		description:
+			"Check the Adsum inbox: work the developer posted for you from the Adsum IoT Coder extension (handed-over sessions waiting to be picked up). Call this when the developer says to check the Adsum inbox, at the start of a session in this project, or after finishing a task. If a handover is pending, resume it with resume_handover.",
+		inputSchema: { type: "object", properties: {} },
+	},
+	{
 		name: "resume_handover",
 		description:
 			"Resume an Adsum IoT Coder session that was handed over to you. Returns the mission brief (what the task is, what has been done, what is next) and the curated knowledge bits available for it. CALL THIS FIRST, before any other work on this project.",
@@ -121,6 +127,46 @@ const TOOLS = [
 		},
 	},
 ]
+
+function toolInbox() {
+	let dirs = []
+	try {
+		dirs = fs
+			.readdirSync(HANDOVER_ROOT, { withFileTypes: true })
+			.filter((e) => e.isDirectory())
+			.map((e) => e.name)
+	} catch {}
+	const items = []
+	for (const id of dirs) {
+		const st = readJson(path.join(dirOf(id), "state.json"), {}) ?? {}
+		const brief = readJson(path.join(dirOf(id), "brief.json"), {}) ?? {}
+		items.push({
+			id,
+			status: st.status ?? "unknown",
+			mission: brief.mission ?? "(no mission)",
+			createdAt: st.createdAt,
+			lastCheckpoint: st.lastCheckpoint,
+		})
+	}
+	items.sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))
+	const pending = items.filter((i) => i.status === "pending")
+	if (!pending.length) {
+		const recent = items
+			.slice(0, 3)
+			.map((i) => `- ${i.id} · ${i.status} · ${i.mission}${i.lastCheckpoint ? ` · last: ${i.lastCheckpoint}` : ""}`)
+		return {
+			text: `Adsum inbox: empty — no pending handovers.${recent.length ? `\nRecent sessions:\n${recent.join("\n")}` : ""}`,
+		}
+	}
+	return {
+		text: [
+			`Adsum inbox: ${pending.length} pending handover${pending.length === 1 ? "" : "s"} from the developer.`,
+			...pending.map((i) => `- **${i.id}** — ${i.mission} (posted ${i.createdAt ?? "?"})`),
+			"",
+			`Pick it up now: call resume_handover${pending.length === 1 ? ` with handover_id "${pending[0].id}" (or no args)` : " with the id you want"} and continue the mission it returns.`,
+		].join("\n"),
+	}
+}
 
 function toolResumeHandover(args) {
 	const id = args?.handover_id || newestHandover()
@@ -243,7 +289,8 @@ function handle(msg) {
 		const args = params?.arguments ?? {}
 		let out
 		try {
-			if (name === "resume_handover") {
+			if (name === "inbox") out = toolInbox()
+			else if (name === "resume_handover") {
 				out = toolResumeHandover(args)
 				if (!out.isError) {
 					ctx.activeId = args?.handover_id || newestHandover()
