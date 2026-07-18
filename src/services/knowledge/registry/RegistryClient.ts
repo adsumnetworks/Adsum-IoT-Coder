@@ -51,6 +51,14 @@ export interface DownloadedManifestEntry {
 	/** SPDX-ish license id. Drives the on-disk cache policy: open licenses may be cached as
 	 *  plaintext; anything else (proprietary) is served from the fetch but not persisted (see P5). */
 	license?: string
+	// Attribution, served by /v1/kbits/manifest. These MUST come from the catalog, not the blob: the
+	// publisher strips frontmatter before hashing (content_hash = sha256(body)), so a downloaded bit's
+	// body carries no author at all.
+	title?: string
+	type?: string
+	author?: string
+	platform?: string
+	owner?: string
 	[k: string]: unknown
 }
 
