@@ -213,6 +213,11 @@
 				"command": "adsum-iot-coder.watchHandover",
 				"title": "Adsum: Watch handed-over session",
 				"icon": "$(broadcast)"
+			},
+			{
+				"command": "adsum-iot-coder.showHandoverWorklog",
+				"title": "Adsum: Show handed-over session worklog",
+				"icon": "$(checklist)"
 			}
 		],
 		"keybindings": [
@@ -345,6 +350,16 @@
 					"type": "string",
 					"default": "",
 					"markdownDescription": "Path to the Wireshark executable, used to open captured `.pcap`/`.btmon` files. Leave empty to auto-detect (checks the standard install location for your OS, then `PATH`)."
+				},
+				"adsum-iot-coder.conductorMode": {
+					"type": "string",
+					"enum": [
+						"auto",
+						"always",
+						"off"
+					],
+					"default": "auto",
+					"markdownDescription": "How Adsum behaves when no inference model is configured. `auto`: if no provider/key is set, card execution defaults to handing over to your own coding agent (Adsum conducts: knowledge, toolchain commands, tracking, snapshots — zero Adsum tokens). `always`: conductor mode even when a provider is configured. `off`: never suggest conductor mode."
 				}
 			}
 		}

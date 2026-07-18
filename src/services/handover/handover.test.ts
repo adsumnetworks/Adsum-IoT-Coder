@@ -11,7 +11,16 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import { describe, test } from "node:test"
-import { bridgeLoadVerbs, extractBitRefs, extractBriefParts, upsertManagedBlock } from "./HandoverBrief"
+import {
+	bridgeLoadVerbs,
+	coreFallbackId,
+	extractBitRefs,
+	extractBriefParts,
+	extractRequires,
+	managedBlockBody,
+	parseWorkflowSteps,
+	upsertManagedBlock,
+} from "./HandoverBrief"
 
 const REPO = path.resolve(__dirname, "..", "..", "..")
 const SERVER = path.join(REPO, "mcp", "adsum-mcp.mjs")
@@ -107,10 +116,10 @@ describe("MCP server (as a foreign agent sees it)", () => {
 			assert.equal(init.result.serverInfo.name, "adsum")
 			c.notify("notifications/initialized")
 
-			// 2. tools/list — the four H1 tools with schemas
+			// 2. tools/list — H1 tools + the H2 t-bit slice, with schemas
 			const list = await c.call("tools/list")
 			const names = list.result.tools.map((t: any) => t.name).sort()
-			assert.deepEqual(names, ["checkpoint", "inbox", "load_skill", "resume_handover"])
+			assert.deepEqual(names, ["build", "checkpoint", "exec", "inbox", "load_skill", "resume_handover"])
 			assert.ok(
 				list.result.tools.every((t: any) => t.inputSchema?.type === "object"),
 				"every tool has an object schema",
@@ -143,9 +152,12 @@ describe("MCP server (as a foreign agent sees it)", () => {
 			assert.equal(miss.result.isError, true)
 			assert.match(miss.result.content[0].text, /adsum\/nrf\/workflows\/debug-loop/, "miss lists what IS available")
 
-			// 5. checkpoint — state + ledger
-			const ck = await c.call("tools/call", { name: "checkpoint", arguments: { worklog: "repro'd 0x08 at 87s" } })
-			assert.match(ck.result.content[0].text, /✓ checkpoint synced/)
+			// 5. checkpoint — state + ledger (schema-light call still works; the enum is advisory server-side)
+			const ck = await c.call("tools/call", {
+				name: "checkpoint",
+				arguments: { worklog: "repro'd 0x08 at 87s", step: "off-plan", tools_used: ["editor_tools"] },
+			})
+			assert.match(ck.result.content[0].text, /✓ Recorded to Adsum session/)
 			assert.equal(
 				JSON.parse(fs.readFileSync(path.join(root, id, "state.json"), "utf8")).lastCheckpoint,
 				"repro'd 0x08 at 87s",
@@ -180,10 +192,11 @@ describe("MCP server (as a foreign agent sees it)", () => {
 		const c = mcpClient(root)
 		try {
 			await c.call("initialize", { protocolVersion: "2025-06-18" })
-			// the four tools now include inbox
 			const list = await c.call("tools/list")
 			assert.deepEqual(list.result.tools.map((t: any) => t.name).sort(), [
+				"build",
 				"checkpoint",
+				"exec",
 				"inbox",
 				"load_skill",
 				"resume_handover",
@@ -317,5 +330,313 @@ describe("dependency closure + verb bridge (H2.0 — the live-test gap)", () => 
 		)
 		assert.ok(refs.includes("adsum/nrf/actions/flash"))
 		assert.ok(refs.includes("adsum/nrf/actions/capture-logs"))
+	})
+})
+
+describe("H2.0.1 — requires: frontmatter, workflow steps, core fallback (the softAP defects)", () => {
+	test("extractRequires: YAML list form (the real test-validate declaration) and inline form", () => {
+		const yaml = [
+			"id: adsum/esp/workflows/test-validate",
+			"version: 1.2.0",
+			"requires:",
+			"  - adsum/esp/actions/run-tests",
+			"  - adsum/esp/actions/setup-ci",
+			"  - adsum/esp/workflows/debug-loop",
+			"platform: esp",
+		].join("\n")
+		assert.deepEqual(extractRequires(yaml), [
+			"adsum/esp/actions/run-tests",
+			"adsum/esp/actions/setup-ci",
+			"adsum/esp/workflows/debug-loop",
+		])
+		assert.deepEqual(extractRequires('requires: ["adsum/a/b", adsum/c/d]'), ["adsum/a/b", "adsum/c/d"])
+		assert.deepEqual(extractRequires("id: x\nplatform: esp"), [], "no requires → empty, never a crash")
+	})
+
+	test("parseWorkflowSteps: ordered labels from real heading forms (Step N: … and STEP 0 — …)", () => {
+		const body = [
+			"# Test & Validate Workflow",
+			"## Step 1: Confirm scope gate",
+			"prose",
+			"## Step 2: Survey what's actually runnable (BEFORE offering anything)",
+			"## STEP 0 — Environment, then tier (do this FIRST, before any command)",
+			"### not a step heading",
+			"## Step 7: Offer the durable setup — CI on GitHub",
+		].join("\n")
+		const steps = parseWorkflowSteps(body)
+		assert.equal(steps[0], "Step 1: Confirm scope gate")
+		assert.match(steps[1], /^Step 2: Survey what's actually runnable/)
+		assert.match(steps[2], /^Step 0: Environment, then tier/)
+		assert.match(steps[3], /^Step 7: Offer the durable setup — CI on GitHub/)
+		assert.equal(steps.length, 4)
+	})
+
+	test("coreFallbackId: platform-scoped rules fall back to the core corpus; actions do not", () => {
+		assert.equal(coreFallbackId("adsum/esp/rules/next-step"), "adsum/rules/next-step")
+		assert.equal(coreFallbackId("adsum/nrf/references/x"), "adsum/references/x")
+		assert.equal(coreFallbackId("adsum/esp/actions/build"), null, "actions are platform-owned — no fallback")
+	})
+
+	test("managed block: instructs the glyph the server actually emits, mutation checkpoints, closing checkpoint", () => {
+		const body = managedBlockBody("ab12")
+		assert.match(body, /◆ <bit> — curated by <author>/, "glyph matches the server (the 📚 drift defect)")
+		assert.ok(!body.includes("📚"), "the never-emitted glyph is gone")
+		assert.match(body, /after any file mutation/i, "mutation-checkpoint rule present")
+		assert.match(body, /final: true/, "closing checkpoint rule present")
+		assert.match(body, /adsum\.exec/, "steers embedded commands to the env-carrying tool")
+	})
+})
+
+// ── H2.1 v1 + t-bits: the interrogation dialogue and the environment tools ──
+function richFixture(): { root: string; id: string; ws: string } {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), "adsum-h2-"))
+	const ws = path.join(root, "ws")
+	fs.mkdirSync(ws, { recursive: true })
+	// a fake activation script the exec tool sources — proves env-carrying without a real IDF
+	const activate = path.join(root, "activate_idf_v9.9.9.sh")
+	fs.writeFileSync(activate, "export ADSUM_TEST_ENV=sourced\n")
+	// an index-only bit on disk (bundled-tree stand-in) with frontmatter + the read_file idiom
+	const extraBit = path.join(root, "esp-terminal.md")
+	fs.writeFileSync(
+		extraBit,
+		"---\nid: adsum/esp/rules/esp-terminal\nauthor: Omar Morceli\n---\n# Rule\nsee `read_file` → `platforms/esp/actions/build.md` for builds\n",
+	)
+	const id = "h2t1"
+	fs.mkdirSync(path.join(root, id), { recursive: true })
+	fs.writeFileSync(
+		path.join(root, id, "brief.json"),
+		JSON.stringify({
+			mission: "Test and validate softAP",
+			workspace: ws,
+			governing: "adsum/esp/workflows/test-validate",
+			steps: ["Step 1: Confirm scope gate", "Step 2: Survey what's actually runnable", "Step 4: Run the Unity suite"],
+			baseline: { ref: "0123456789abcdef", managed: true },
+			idf: { activate },
+			bits: [
+				{
+					id: "adsum/esp/workflows/test-validate",
+					title: "Test & Validate Workflow",
+					version: "1.2.0",
+					author: "Omar Morceli",
+					attributed: true,
+					kind: "knowledge",
+					steward: "Adsum Networks",
+					hop: 0,
+					body: "# TV\nsteps here",
+				},
+				{
+					id: "adsum/esp/actions/run-tests",
+					title: "Action: Run Tests",
+					version: "1.2.0",
+					author: "Omar Morceli",
+					attributed: true,
+					kind: "knowledge",
+					steward: "Adsum Networks",
+					hop: 1,
+					via: "adsum/esp/workflows/test-validate",
+					body: "# RT",
+				},
+			],
+			unresolved: [{ id: "adsum/esp/rules/next-step", via: "adsum/esp/workflows/debug-loop" }],
+			index: [
+				{
+					id: "adsum/esp/rules/esp-terminal",
+					title: "ESP Terminal Rule",
+					author: "Omar Morceli",
+					kind: "knowledge",
+					path: extraBit,
+				},
+			],
+		}),
+	)
+	fs.writeFileSync(path.join(root, id, "state.json"), JSON.stringify({ status: "pending" }))
+	return { root, id, ws }
+}
+
+describe("H2.1 v1 — the milestone dialogue (interrogating responses, zero inference)", () => {
+	test("resume: ★ governing with step checklist, ◆ closure with via, ⚠ unresolved, ≡ index", async () => {
+		const { root } = richFixture()
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", { protocolVersion: "2025-06-18" })
+			// the checkpoint schema's step enum comes from the brief — the agent classifies, we state-machine
+			const list = await c.call("tools/list")
+			const ck = list.result.tools.find((t: any) => t.name === "checkpoint")
+			assert.deepEqual(ck.inputSchema.properties.step.enum, [
+				"Step 1: Confirm scope gate",
+				"Step 2: Survey what's actually runnable",
+				"Step 4: Run the Unity suite",
+				"off-plan",
+			])
+			assert.deepEqual(ck.inputSchema.required, ["worklog", "step", "tools_used"])
+			const r = await c.call("tools/call", { name: "resume_handover", arguments: {} })
+			const text = r.result.content[0].text
+			assert.match(text, /★ Governing workflow/, "governing marked, not buried")
+			assert.match(text, /- \[ \] Step 1: Confirm scope gate/, "steps rendered as a checklist")
+			assert.match(text, /◆ Its knowledge closure/, "closure grouped under the governing bit")
+			assert.match(text, /\(via test-validate\)/, "hop provenance visible")
+			assert.match(text, /⚠ Referenced but not bundled/, "unresolved deps listed honestly")
+			assert.match(text, /adsum\/esp\/rules\/next-step/, "the dangling ref is named")
+			assert.match(text, /≡ Also available/, "manifest index = full field of view")
+			assert.match(text, /Git baseline/, "baseline surfaced")
+		} finally {
+			c.kill()
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+
+	test("checkpoint dialogue: step position + next step, own-terminal nudge, mutation→build nudge, closing", async () => {
+		const { root, id } = richFixture()
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", { protocolVersion: "2025-06-18" })
+			await c.call("tools/call", { name: "resume_handover", arguments: {} })
+			// in-plan step → response names THE NEXT step (the interrogation, from parsed steps alone)
+			const a = await c.call("tools/call", {
+				name: "checkpoint",
+				arguments: { worklog: "scope gate confirmed", step: "Step 1: Confirm scope gate", tools_used: ["editor_tools"] },
+			})
+			assert.match(a.result.content[0].text, /completed \*\*Step 1: Confirm scope gate\*\*/)
+			assert.match(a.result.content[0].text, /Next is \*\*Step 2: Survey what's actually runnable\*\*/)
+			assert.match(a.result.content[0].text, /Report back at the next milestone/)
+			// own_terminal → drift question; files_touched → build nudge
+			const b = await c.call("tools/call", {
+				name: "checkpoint",
+				arguments: {
+					worklog: "extracted sta_table.h",
+					step: "Step 2: Survey what's actually runnable",
+					tools_used: ["own_terminal"],
+					files_touched: ["main/sta_table.h", "main/softap_example_main.c"],
+				},
+			})
+			const bt = b.result.content[0].text
+			assert.match(bt, /own terminal/, "own-terminal use is questioned")
+			assert.match(bt, /`exec`\/`build`/, "steered to the env-carrying tools")
+			assert.match(bt, /Run `build` before claiming this step done/, "mutation → build gate nudge")
+			// closing checkpoint flips the state and stops interrogating
+			const fin = await c.call("tools/call", {
+				name: "checkpoint",
+				arguments: {
+					worklog: "suite scaffolded and green",
+					step: "Step 4: Run the Unity suite",
+					tools_used: ["adsum.build"],
+					files_touched: ["test/main/test_sta.c"],
+					final: true,
+					next_step: "run on hardware when a board is connected",
+				},
+			})
+			assert.match(fin.result.content[0].text, /Closing checkpoint accepted/)
+			assert.equal(JSON.parse(fs.readFileSync(path.join(root, id, "state.json"), "utf8")).status, "closed-by-agent")
+			// the ledger carries the structured answers — the H2.2 instrument reads these
+			const events = fs
+				.readFileSync(path.join(root, id, "ledger.jsonl"), "utf8")
+				.trim()
+				.split("\n")
+				.map((l) => JSON.parse(l))
+			const cps = events.filter((e) => e.event === "checkpoint")
+			assert.deepEqual(cps[1].tools_used, ["own_terminal"])
+			assert.deepEqual(cps[2].files_touched, ["test/main/test_sta.c"])
+			assert.equal(cps[2].final, true)
+		} finally {
+			c.kill()
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+
+	test("load_skill: serves an index (non-closure) bit from disk, bridged, with credit + reminder footer", async () => {
+		const { root } = richFixture()
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", { protocolVersion: "2025-06-18" })
+			await c.call("tools/call", { name: "resume_handover", arguments: {} })
+			const r = await c.call("tools/call", { name: "load_skill", arguments: { query: "adsum/esp/rules/esp-terminal" } })
+			const text = r.result.content[0].text
+			assert.equal(r.result.isError, false)
+			assert.match(text, /^◆ ESP Terminal Rule — curated by Omar Morceli/, "credit from index metadata")
+			assert.ok(!text.includes("id: adsum/esp"), "frontmatter stripped")
+			assert.match(text, /load_skill\("adsum\/esp\/actions\/build"\)/, "read_file idiom bridged on demand")
+			assert.match(text, /Report back with `checkpoint`/, "reminder footer rides every serve")
+		} finally {
+			c.kill()
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+})
+
+describe("t-bit slice — exec/build carry the environment; installs are refused", () => {
+	test("exec: sources the activation script, runs in the workspace, logs to the ledger", async () => {
+		const { root, id, ws } = richFixture()
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", { protocolVersion: "2025-06-18" })
+			await c.call("tools/call", { name: "resume_handover", arguments: {} })
+			const r = await c.call("tools/call", { name: "exec", arguments: { command: "echo env=$ADSUM_TEST_ENV in $(pwd)" } })
+			const text = r.result.content[0].text
+			assert.equal(r.result.isError, false)
+			assert.match(text, /env=sourced/, "the activation script WAS sourced — the whole point of the tool")
+			assert.ok(text.includes(path.basename(ws)), "runs in the handover workspace by default")
+			assert.match(text, /exit 0/)
+			const events = fs
+				.readFileSync(path.join(root, id, "ledger.jsonl"), "utf8")
+				.trim()
+				.split("\n")
+				.map((l) => JSON.parse(l))
+			assert.ok(
+				events.some((e) => e.event === "tool_exec" && e.exit === 0),
+				"exec lands in the ledger",
+			)
+		} finally {
+			c.kill()
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+
+	test("exec: refuses toolchain installs (the softAP install.sh improvisation, made impossible)", async () => {
+		const { root } = richFixture()
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", { protocolVersion: "2025-06-18" })
+			await c.call("tools/call", { name: "resume_handover", arguments: {} })
+			const r = await c.call("tools/call", { name: "exec", arguments: { command: "./install.sh linux" } })
+			assert.equal(r.result.isError, true)
+			assert.match(r.result.content[0].text, /installs or mutates a toolchain/)
+			assert.match(r.result.content[0].text, /ask them/, "the refusal is actionable: report + ask the developer")
+		} finally {
+			c.kill()
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+
+	test("exec with no locatable environment: honest refusal, never improvised sourcing", async () => {
+		const { root, id } = richFixture()
+		// break the activation script path
+		const briefPath = path.join(root, id, "brief.json")
+		const brief = JSON.parse(fs.readFileSync(briefPath, "utf8"))
+		brief.idf = { activate: path.join(root, "does-not-exist.sh") }
+		fs.writeFileSync(briefPath, JSON.stringify(brief))
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", { protocolVersion: "2025-06-18" })
+			await c.call("tools/call", { name: "resume_handover", arguments: {} })
+			const r = await c.call("tools/call", { name: "exec", arguments: { command: "idf.py --version" } })
+			assert.equal(r.result.isError, true)
+			assert.match(r.result.content[0].text, /could not be located/)
+			assert.match(r.result.content[0].text, /ask the developer/)
+		} finally {
+			c.kill()
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+})
+
+describe("conductor-mode invariant — the handover plane never calls inference", () => {
+	test("no inference API surface in the server or the pure brief module", () => {
+		for (const f of [SERVER, path.join(__dirname, "HandoverBrief.ts")]) {
+			const src = fs.readFileSync(f, "utf8")
+			assert.ok(
+				!/fetch\s*\(|axios|node:https|api\.anthropic|openai|x-api-key/i.test(src),
+				`${path.basename(f)} stays inference-free`,
+			)
+		}
 	})
 })

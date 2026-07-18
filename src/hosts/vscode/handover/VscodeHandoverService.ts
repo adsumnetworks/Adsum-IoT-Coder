@@ -22,13 +22,16 @@ import * as path from "node:path"
 import * as vscode from "vscode"
 import {
 	bridgeLoadVerbs,
+	coreFallbackId,
 	extractBitRefs,
 	extractBriefParts,
+	extractRequires,
 	managedBlockBody,
+	parseWorkflowSteps,
 	upsertManagedBlock,
 	upsertMcpJson,
 } from "@/services/handover/HandoverBrief"
-import { creditFor, deriveIdFromRel, loadBit, resolveBitPath } from "@/services/knowledge/KnowledgeResolver"
+import { creditFor, deriveIdFromRel, listAllBits, loadBit, resolveBitPath } from "@/services/knowledge/KnowledgeResolver"
 import { ATTRIBUTION_FALLBACK, type KbitKind } from "@/services/knowledge/kbit/credit"
 import { extractFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 
@@ -46,8 +49,14 @@ interface BriefBit {
 	steward?: string
 	triggers?: string[]
 	body: string
+	/** BFS depth this bit entered the closure at (0 = a bit the session itself used). */
+	hop?: number
+	/** The bit whose reference pulled this one in — the "why is this here" provenance. */
+	via?: string
 	/** internal: the pre-bridge body, used for closure discovery; stripped before the brief is written. */
 	_raw?: string
+	/** internal: `requires:` ids from frontmatter (bare ids extractBitRefs cannot see). */
+	_requires?: string[]
 }
 
 export class VscodeHandoverService {
@@ -87,6 +96,7 @@ export class VscodeHandoverService {
 			body = (await loadBit(id)) ?? ""
 		} catch {}
 		let triggers: string[] | undefined
+		let requires: string[] | undefined
 		try {
 			const p = await resolveBitPath(id) // bundled absolute path, or null for a downloaded-only bit
 			if (p) {
@@ -94,6 +104,11 @@ export class VscodeHandoverService {
 				const t = fm.found && fm.closed ? fm.yaml.match(/^triggers:\s*\[([^\]]*)\]/m)?.[1] : undefined
 				if (t) {
 					triggers = t.split(",").map((x) => x.trim().replace(/^["']|["']$/g, ""))
+				}
+				if (fm.found && fm.closed) {
+					// `requires:` declares deps as bare ids — the form the prose extractor cannot see. The
+					// softAP closure came out right only because prose happened to duplicate it; honor it.
+					requires = extractRequires(fm.yaml)
 				}
 				if (!body) {
 					body = fm.body
@@ -117,6 +132,7 @@ export class VscodeHandoverService {
 			// keep the RAW body for closure discovery (references are in the original prose, and bridging
 			// rewrote read_file→path away — so extract refs from raw, serve the bridged version)
 			_raw: body,
+			_requires: requires,
 		}
 	}
 
@@ -129,11 +145,14 @@ export class VscodeHandoverService {
 	 * REFERENCE (the corpus's prose `platforms/X.md` idiom, extracted by HandoverBrief.extractBitRefs),
 	 * ≤2 hops, capped, deduped. Every hop resolves through the same loader → bodies + credit come for free.
 	 */
-	private async collectBits(relPaths: string[]): Promise<BriefBit[]> {
+	private async collectBits(relPaths: string[]): Promise<{ bits: BriefBit[]; unresolved: { id: string; via: string }[] }> {
 		const HOP_MAX = 2
 		const CAP = 20
 		const seen = new Set<string>()
 		const out: BriefBit[] = []
+		// A referenced bit that doesn't serve is LISTED, never silently dropped — "missing" must stay
+		// distinguishable from "never referenced" (it also surfaces real corpus dangling links).
+		const unresolved: { id: string; via: string }[] = []
 		const dedup = (id: string) => {
 			if (seen.has(id)) {
 				return false
@@ -141,30 +160,132 @@ export class VscodeHandoverService {
 			seen.add(id)
 			return true
 		}
-		let frontier = relPaths.map(deriveIdFromRel).filter(dedup)
+		let frontier: { id: string; via: string }[] = relPaths
+			.map(deriveIdFromRel)
+			.filter(dedup)
+			.map((id) => ({ id, via: "session" }))
 		for (let hop = 0; hop <= HOP_MAX && frontier.length && out.length < CAP; hop++) {
-			const next: string[] = []
-			for (const id of frontier) {
+			const next: { id: string; via: string }[] = []
+			for (const { id, via } of frontier) {
 				if (out.length >= CAP) {
 					break
 				}
-				const bit = await this.loadOneBit(id)
+				// Platform-scoped miss → try the core corpus (`adsum/esp/rules/next-step` → `adsum/rules/
+				// next-step`): cross-platform rules live at the root, and a platform-relative prose ref
+				// resolves wrongly scoped first.
+				let bit = await this.loadOneBit(id)
 				if (!bit) {
+					const core = coreFallbackId(id)
+					if (core && !seen.has(core)) {
+						bit = await this.loadOneBit(core)
+						if (bit) {
+							seen.add(core)
+						}
+					}
+				}
+				if (!bit) {
+					unresolved.push({ id, via })
 					continue
 				}
+				bit.hop = hop
+				bit.via = hop === 0 ? undefined : via
 				out.push(bit)
 				if (hop < HOP_MAX) {
-					for (const ref of extractBitRefs(id, bit._raw ?? bit.body)) {
+					// prose refs ∪ `requires:` frontmatter — two dependency vocabularies, one closure
+					const refs = new Set([...extractBitRefs(bit.id, bit._raw ?? bit.body), ...(bit._requires ?? [])])
+					for (const ref of refs) {
 						if (!seen.has(ref)) {
 							seen.add(ref)
-							next.push(ref)
+							next.push({ id: ref, via: bit.id })
 						}
 					}
 				}
 			}
 			frontier = next
 		}
-		return out.map(({ _raw, ...b }) => b)
+		return { bits: out.map(({ _raw, _requires, ...b }) => b), unresolved }
+	}
+
+	/** The bit that GOVERNS the mission: the first hop-0 workflow, else the first hop-0 bit. */
+	private governingOf(bits: BriefBit[]): BriefBit | undefined {
+		return bits.find((b) => b.hop === 0 && /\/workflows\//.test(b.id)) ?? bits.find((b) => b.hop === 0)
+	}
+
+	/**
+	 * The IDF activation script `adsum.exec`/`adsum.build` will source — resolved AT HANDOVER on the
+	 * developer's machine (the Espressif installer's per-version script, the ESP-IDF extension's
+	 * configured checkout, or $IDF_PATH). Never installs anything; absence is honestly reported so the
+	 * server can tell the agent to ask the developer instead of improvising.
+	 */
+	private detectIdfActivation(ws: string): string | undefined {
+		try {
+			const tools = path.join(os.homedir(), ".espressif", "tools")
+			const scripts = fs
+				.readdirSync(tools)
+				.filter((f) => /^activate_idf_.*\.sh$/.test(f))
+				.sort()
+				.reverse()
+			if (scripts[0]) {
+				return path.join(tools, scripts[0])
+			}
+		} catch {}
+		try {
+			const settings = JSON.parse(fs.readFileSync(path.join(ws, ".vscode", "settings.json"), "utf8"))
+			const idfPath = settings["idf.currentSetup"] ?? settings["idf.espIdfPath"]
+			if (idfPath && fs.existsSync(path.join(idfPath, "export.sh"))) {
+				return path.join(idfPath, "export.sh")
+			}
+		} catch {}
+		const envIdf = process.env.IDF_PATH
+		if (envIdf && fs.existsSync(path.join(envIdf, "export.sh"))) {
+			return path.join(envIdf, "export.sh")
+		}
+		return undefined
+	}
+
+	/**
+	 * Git baseline for the handover — the safety net the softAP run lacked (a foreign agent left a
+	 * ZERO-commit repo uncompilable, and nothing could diff or revert it). If the workspace has no
+	 * commits, offer — modal, host-side, per the confirm-first rule — to create `snapshot-0`. Returns
+	 * what the brief records; `managed: true` means WE own snapshots and may auto-commit at checkpoints.
+	 */
+	private async ensureGitBaseline(ws: string): Promise<{ ref?: string; managed: boolean }> {
+		const git = (cmd: string) => execSync(`git ${cmd}`, { cwd: ws, timeout: 15000 }).toString().trim()
+		let hasRepo = false
+		let hasCommits = false
+		try {
+			git("rev-parse --git-dir")
+			hasRepo = true
+			hasCommits = !!git("rev-parse --verify HEAD 2>/dev/null || true")
+		} catch {}
+		if (hasCommits) {
+			return { ref: git("rev-parse HEAD"), managed: false } // the developer's own history is the baseline
+		}
+		const pick = await vscode.window.showWarningMessage(
+			hasRepo
+				? "Adsum: this project has a git repo but no commits — your coding agent's edits would have no baseline to diff or revert against. Create a baseline commit (snapshot-0) before handing over?"
+				: "Adsum: this project has no git history — your coding agent's edits would be untracked and unrevertable. Initialize git and create a baseline commit (snapshot-0) before handing over?",
+			{ modal: true },
+			"Create baseline",
+			"Hand over without it",
+		)
+		if (pick !== "Create baseline") {
+			return { managed: false }
+		}
+		try {
+			if (!hasRepo) {
+				git("init")
+			}
+			git("add -A")
+			execSync(`git -c user.name=Adsum -c user.email=adsum@local commit -m "adsum snapshot-0 (handover baseline)"`, {
+				cwd: ws,
+				timeout: 30000,
+			})
+			return { ref: git("rev-parse HEAD"), managed: true }
+		} catch (e) {
+			vscode.window.showWarningMessage(`Adsum: baseline commit failed (${e}); handing over without one.`)
+			return { managed: false }
+		}
 	}
 
 	/** Close out older pending handovers so a fresh one is the only thing in the inbox. */
@@ -252,7 +373,26 @@ export class VscodeHandoverService {
 			} catch {}
 		}
 		// A handover with no prior session is legitimate (hand over a fresh card) — the brief is just thinner.
-		const bits = await this.collectBits(parts.kbitRelPaths)
+		const { bits, unresolved } = await this.collectBits(parts.kbitRelPaths)
+		// The three-layer payload: ★ governing (marked, steps parsed) · ◆ closure (bodies, hop/via) ·
+		// ≡ manifest index (metadata-only field of view; bodies on demand via load_skill).
+		const governing = this.governingOf(bits)
+		const steps = governing ? parseWorkflowSteps(governing.body) : []
+		const inClosure = new Set(bits.map((b) => b.id))
+		const index = (await listAllBits())
+			.filter((e) => !inClosure.has(e.id))
+			.map(({ id, title, author, version, kind, platform, path: p }) => ({
+				id,
+				title,
+				author,
+				version,
+				kind,
+				platform,
+				path: p,
+			}))
+		// Safety net + environment facts the server's t-bits need (resolved here; the server stays dumb).
+		const baseline = await this.ensureGitBaseline(ws)
+		const idfActivate = this.detectIdfActivation(ws)
 		// Supersede any older still-pending handovers: a stale 'pending' from an attempt that never got
 		// picked up would otherwise clutter `inbox` and make "which one?" ambiguous (it bit us twice in
 		// testing). Only 'pending' is closed — an 'active' session the agent is really working stays.
@@ -272,7 +412,13 @@ export class VscodeHandoverService {
 					worklog: parts.worklog,
 					nextStep: parts.nextStep || parts.lastSummary,
 					lastSummary: parts.lastSummary,
+					governing: governing?.id,
+					steps,
 					bits,
+					unresolved,
+					index,
+					baseline,
+					idf: idfActivate ? { activate: idfActivate } : undefined,
 					extVersion: this.context.extension.packageJSON.version,
 				},
 				null,
@@ -324,6 +470,58 @@ export class VscodeHandoverService {
 		}
 	}
 
+	// ── host-side working-tree watcher: truth the agent never has to volunteer ──
+	/**
+	 * The ledger only records what the agent reports over MCP — the softAP run proved work continues
+	 * invisibly after the last call (state froze at 19:06 while an install + three file mutations
+	 * followed). The extension sits on the SAME workspace, so it watches the tree itself: dirty-file
+	 * deltas go to observations.jsonl, and when WE own the baseline (snapshot-0), each checkpoint gets a
+	 * snapshot commit — the reverse handoff is then a diff, not a memory.
+	 */
+	private observeTree(id: string, ws: string, lastDirty: { v: string }): void {
+		let dirty = ""
+		try {
+			dirty = execSync("git status --porcelain", { cwd: ws, timeout: 10000 }).toString().trim()
+		} catch {
+			return // no repo / git unavailable — nothing to observe
+		}
+		if (dirty === lastDirty.v) {
+			return
+		}
+		lastDirty.v = dirty
+		const files = dirty
+			.split("\n")
+			.filter(Boolean)
+			.map((l) => l.slice(3))
+		try {
+			fs.appendFileSync(
+				path.join(HANDOVER_ROOT, id, "observations.jsonl"),
+				JSON.stringify({ t: new Date().toISOString(), event: "tree_change", files }) + "\n",
+			)
+		} catch {}
+		this.out?.appendLine(
+			`⇢ working tree: ${files.length} file${files.length === 1 ? "" : "s"} modified (${files.slice(0, 5).join(", ")}${files.length > 5 ? ", …" : ""})`,
+		)
+	}
+
+	private snapshotAtCheckpoint(id: string, ws: string, worklog: string): void {
+		let managed = false
+		try {
+			managed = !!JSON.parse(fs.readFileSync(path.join(HANDOVER_ROOT, id, "brief.json"), "utf8")).baseline?.managed
+		} catch {}
+		if (!managed) {
+			return // the developer's own git history — never commit into it uninvited
+		}
+		try {
+			execSync("git add -A", { cwd: ws, timeout: 15000 })
+			execSync(
+				`git -c user.name=Adsum -c user.email=adsum@local commit -m ${JSON.stringify(`adsum snapshot: ${worklog.slice(0, 72)}`)} --allow-empty`,
+				{ cwd: ws, timeout: 30000 },
+			)
+			this.out?.appendLine(`⎘ snapshot committed at checkpoint`)
+		} catch {}
+	}
+
 	// ── tracking: the ledger is the only honest record ───────────────────────
 	private startTracking(id: string): void {
 		this.stopTracking()
@@ -336,6 +534,9 @@ export class VscodeHandoverService {
 		this.out.appendLine(`  (nothing appears here until the agent calls an adsum tool — approve the MCP server if prompted)`)
 		let calls = 0
 		let lastEventAt = Date.now()
+		let ticks = 0
+		const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+		const lastDirty = { v: "" }
 		// Show the indicator immediately: "we are watching, the agent hasn't called yet" is real state and
 		// far more useful than an empty status bar that looks like the command did nothing.
 		this.status.text = `$(broadcast) Adsum ⇄ agent · waiting`
@@ -343,6 +544,11 @@ export class VscodeHandoverService {
 		this.status.command = "adsum-iot-coder.watchHandover"
 		this.status.show()
 		this.tracker = setInterval(() => {
+			// Every 5th tick (~15 s), look at the tree itself — the agent's edits show here whether or
+			// not it ever reports them.
+			if (ws && ++ticks % 5 === 0) {
+				this.observeTree(id, ws, lastDirty)
+			}
 			const f = path.join(HANDOVER_ROOT, id, "ledger.jsonl")
 			let text = ""
 			try {
@@ -375,10 +581,18 @@ export class VscodeHandoverService {
 				if (e.event === "resume") {
 					this.out?.appendLine(`▶ agent resumed the session (${e.bits} knowledge bits offered)`)
 				} else if (e.event === "kbit_load") {
-					this.out?.appendLine(`⚒ loaded ${e.id}   📚 ${e.title ?? ""} — curated by ${e.author ?? "Adsum"}`)
+					this.out?.appendLine(
+						`⚒ loaded ${e.id}   ◆ ${e.title ?? ""} — curated by ${e.author ?? "the Adsum authoring team"}`,
+					)
 				} else if (e.event === "checkpoint") {
-					this.out?.appendLine(`✓ checkpoint: ${e.worklog}`)
+					const step = e.step && e.step !== "off-plan" ? ` [${e.step}]` : ""
+					this.out?.appendLine(`✓ checkpoint${step}: ${e.worklog}${e.final ? "  (closing)" : ""}`)
 					vscode.window.setStatusBarMessage(`Adsum ⇄ agent: ${e.worklog}`, 6000)
+					if (ws) {
+						this.snapshotAtCheckpoint(id, ws, e.worklog ?? "")
+					}
+				} else if (e.event === "tool_exec" || e.event === "tool_build") {
+					this.out?.appendLine(`⚙ ${e.event === "tool_build" ? "build" : "exec"}: ${e.command ?? ""} → exit ${e.exit}`)
 				}
 			}
 			if (this.status) {
@@ -423,6 +637,24 @@ export class VscodeHandoverService {
 		} catch {}
 		const checkpoints = events.filter((e) => e.event === "checkpoint").map((e) => e.worklog)
 		const loaded = [...new Set(events.filter((e) => e.event === "kbit_load").map((e) => e.id))]
+		const closing = events.filter((e) => e.event === "checkpoint" && e.final).pop()
+		// Host-observed facts — present even when the agent reported nothing (the softAP lesson).
+		let observed = ""
+		try {
+			if (brief.baseline?.ref && brief.workspace) {
+				const stat = execSync(`git diff --stat ${brief.baseline.ref}..HEAD 2>/dev/null || git diff --stat`, {
+					cwd: brief.workspace,
+					timeout: 15000,
+				})
+					.toString()
+					.trim()
+					.split("\n")
+					.pop()
+				if (stat) {
+					observed = `Code changed since the baseline (host-measured): ${stat}`
+				}
+			}
+		} catch {}
 		const prompt = [
 			`Continue this task — it was handed to my coding agent and I'm bringing it back.`,
 			"",
@@ -431,6 +663,9 @@ export class VscodeHandoverService {
 			checkpoints.length
 				? `Done in the external agent:\n${checkpoints.map((c) => `- ${c}`).join("\n")}`
 				: "- (the external agent recorded no checkpoints)",
+			closing?.files_touched?.length ? `Files it says it touched: ${closing.files_touched.join(", ")}` : "",
+			closing?.next_step ? `Its stated next step: ${closing.next_step}` : "",
+			observed,
 			loaded.length ? `Knowledge it used: ${loaded.join(", ")}` : "",
 			"",
 			"Pick up from there.",
@@ -450,6 +685,108 @@ export class VscodeHandoverService {
 		} catch {
 			return undefined
 		}
+	}
+
+	// ── conductor mode: no inference on our side? handover IS the execution path ──
+	/**
+	 * "Conductor" = Adsum has no model to run cards with (no provider configured, or the developer set
+	 * the mode explicitly) — so the DEFAULT way to execute is: hand to the developer's own agent, keep
+	 * conducting (knowledge, environment tools, interrogation, snapshots). The handover plane never
+	 * calls an inference API — a hard invariant, enforced by test — so this mode needs zero tokens.
+	 */
+	async detectConductorMode(): Promise<{ conductor: boolean; reason: string }> {
+		const override = vscode.workspace.getConfiguration("adsum-iot-coder").get<string>("conductorMode", "auto")
+		if (override === "always") {
+			return { conductor: true, reason: "set by you (conductorMode: always)" }
+		}
+		if (override === "off") {
+			return { conductor: false, reason: "disabled in settings" }
+		}
+		// auto: is any inference configured? Provider choice lives in globalState; keys in secrets.
+		const provider = this.context.globalState.get<string>("apiProvider")
+		const secretKeys = ["apiKey", "openRouterApiKey", "openAiApiKey", "anthropicApiKey", "geminiApiKey", "adsumFreeTierToken"]
+		for (const k of secretKeys) {
+			try {
+				if (await this.context.secrets.get(k)) {
+					return { conductor: false, reason: `inference available (${provider ?? "provider configured"})` }
+				}
+			} catch {}
+		}
+		return { conductor: true, reason: "no inference provider configured" }
+	}
+
+	/** One-time hint at activation: in conductor mode the handover is the front door, not a fallback. */
+	async announceConductorMode(): Promise<void> {
+		const { conductor, reason } = await this.detectConductorMode()
+		if (!conductor || this.context.globalState.get("adsum.conductorAnnounced")) {
+			return
+		}
+		await this.context.globalState.update("adsum.conductorAnnounced", true)
+		const pick = await vscode.window.showInformationMessage(
+			`Adsum is in conductor mode (${reason}): cards run on your own coding agent — Adsum hands over the mission, curated knowledge and toolchain commands, tracks every step, and keeps snapshots. No Adsum tokens are used.`,
+			"Hand a session over now",
+			"OK",
+		)
+		if (pick === "Hand a session over now") {
+			await this.handOver()
+		}
+	}
+
+	// ── the worklog view: the card-menu rendering of the handed-away session ─
+	async showWorklog(id?: string): Promise<void> {
+		const hid = id ?? this.activeId ?? this.newestHandoverId()
+		if (!hid) {
+			vscode.window.showInformationMessage("Adsum: no handover to show.")
+			return
+		}
+		const dir = path.join(HANDOVER_ROOT, hid)
+		const brief = (() => {
+			try {
+				return JSON.parse(fs.readFileSync(path.join(dir, "brief.json"), "utf8"))
+			} catch {
+				return {}
+			}
+		})()
+		const read = (f: string) => {
+			try {
+				return fs
+					.readFileSync(path.join(dir, f), "utf8")
+					.split("\n")
+					.filter(Boolean)
+					.map((l) => JSON.parse(l))
+			} catch {
+				return []
+			}
+		}
+		const events = read("ledger.jsonl")
+		const obs = read("observations.jsonl")
+		const lines = [
+			`# Handover ${hid} — worklog`,
+			"",
+			`**Mission:** ${brief.mission ?? "?"}`,
+			brief.governing ? `**Governing workflow:** ${brief.governing}` : "",
+			"",
+			"## Milestones (agent-reported)",
+			...events
+				.filter((e) => e.event === "checkpoint")
+				.map(
+					(e) =>
+						`- ${e.t} — ${e.step && e.step !== "off-plan" ? `**[${e.step}]** ` : ""}${e.worklog}${e.final ? " *(closing)*" : ""}`,
+				),
+			"",
+			"## Knowledge used",
+			...events.filter((e) => e.event === "kbit_load").map((e) => `- ${e.id} — ${e.title ?? ""} (by ${e.author ?? "?"})`),
+			"",
+			"## Toolchain commands (through Adsum)",
+			...events
+				.filter((e) => e.event === "tool_exec" || e.event === "tool_build")
+				.map((e) => `- \`${e.command}\` → exit ${e.exit}`),
+			"",
+			"## Working-tree changes (host-observed — agent cooperation not required)",
+			...obs.slice(-20).map((o) => `- ${o.t} — ${o.files?.length ?? 0} file(s): ${(o.files ?? []).slice(0, 6).join(", ")}`),
+		].filter((l) => l !== "")
+		const doc = await vscode.workspace.openTextDocument({ language: "markdown", content: lines.join("\n") })
+		await vscode.window.showTextDocument(doc, { preview: true })
 	}
 
 	markReturned(id: string): void {
