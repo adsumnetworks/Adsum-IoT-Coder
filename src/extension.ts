@@ -511,10 +511,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	// ── Agent handover (H1): hand this session to the developer's own coding agent, keep tracking it,
 	// and bring it back. Adsum stays the knowledge/tool layer; their subscription runs the model.
 	const handover = new VscodeHandoverService(context)
+	// Conductor mode: with no inference configured (or by explicit setting), handing to the developer's
+	// own agent IS the default execution path — announce it once so the front door is discoverable.
+	void handover.announceConductorMode()
 	context.subscriptions.push(
 		handover,
 		vscode.commands.registerCommand("adsum-iot-coder.handoverToAgent", () => handover.handOver()),
 		vscode.commands.registerCommand("adsum-iot-coder.watchHandover", () => handover.watch()),
+		vscode.commands.registerCommand("adsum-iot-coder.showHandoverWorklog", () => handover.showWorklog()),
 		vscode.commands.registerCommand("adsum-iot-coder.continueHandoverHere", async () => {
 			const resume = handover.buildResumePrompt()
 			if (!resume) {

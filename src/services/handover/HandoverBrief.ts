@@ -66,6 +66,56 @@ export function bridgeLoadVerbs(sourceId: string, body: string): string {
 	)
 }
 
+/**
+ * Bit ids a `requires:` frontmatter block declares (bare ids, no `.md` — the form extractBitRefs cannot
+ * see, which is exactly why the softAP closure was only right by coincidence). Handles both the YAML
+ * list form and the inline `requires: [a, b]` form.
+ */
+export function extractRequires(yaml: string): string[] {
+	const ids: string[] = []
+	const inline = yaml.match(/^requires:\s*\[([^\]]*)\]/m)
+	if (inline) {
+		for (const p of inline[1].split(",")) {
+			const id = p.trim().replace(/^["']|["']$/g, "")
+			if (id) {
+				ids.push(id)
+			}
+		}
+		return ids
+	}
+	const block = yaml.match(/^requires:\s*\n((?:\s+-\s+.+\n?)+)/m)
+	if (block) {
+		for (const m of block[1].matchAll(/-\s+(.+)/g)) {
+			const id = m[1].trim().replace(/^["']|["']$/g, "")
+			if (id) {
+				ids.push(id)
+			}
+		}
+	}
+	return ids
+}
+
+/**
+ * A workflow's ordered step labels, parsed from its `## Step N: Title` headings (HD-H2 option a —
+ * zero corpus change; the labels double as the checkpoint tool's `step` enum, so the AGENT classifies
+ * its own progress and the server stays a state machine — no inference on our side, ever).
+ */
+export function parseWorkflowSteps(body: string): string[] {
+	const steps: string[] = []
+	for (const m of body.matchAll(/^##+\s*STEP\s*(\d+[a-z]?)\s*[:—–-]\s*(.+?)\s*$/gim)) {
+		steps.push(`Step ${m[1]}: ${m[2].replace(/\(.*?\)\s*$/, "").trim()}`)
+	}
+	return steps
+}
+
+/** A platform-scoped id's core-corpus fallback (`adsum/esp/rules/next-step` → `adsum/rules/next-step`).
+ *  The corpus keeps cross-platform rules at the root; a platform-relative prose ref to one of them
+ *  resolves wrongly platform-scoped first — this is the second place to look before calling it missing. */
+export function coreFallbackId(id: string): string | null {
+	const m = id.match(/^adsum\/[^/]+\/(rules|references|knowledges)\/(.+)$/)
+	return m ? `adsum/${m[1]}/${m[2]}` : null
+}
+
 // The begin marker carries a fingerprint of the text WE wrote. That makes the file self-describing:
 // on the next write we can tell "unchanged since we wrote it" from "the developer edited our block"
 // without keeping any state on our side — and a developer's words are never overwritten.
@@ -118,8 +168,8 @@ export function extractBriefParts(ui: any[], meta: any): BriefParts {
 	return { mission, worklog, nextStep, lastSummary, kbitRelPaths }
 }
 
-/** The instructions we ask the receiving agent to follow. H1 deliberately does NOT claim adsum build/
- *  flash tools exist (they arrive with H3) — it steers to the curated workflow + the checkpoint loop. */
+/** The instructions we ask the receiving agent to follow. Written for a LITERAL reader: every glyph and
+ *  tool name here must match what the server actually emits (the 📚-vs-◆ drift was a real defect). */
 export function managedBlockBody(handoverId: string): string {
 	return [
 		"## Adsum embedded workflow (this project)",
@@ -127,10 +177,12 @@ export function managedBlockBody(handoverId: string): string {
 		`This project has an active Adsum IoT Coder handover (\`${handoverId}\`). The \`adsum\` MCP server carries the mission and the curated, hardware-verified knowledge for it.`,
 		"",
 		`- **Check the inbox.** At the start of a session here — and whenever the developer says "check the Adsum inbox" — call \`adsum.inbox\`. The developer posts handed-over sessions there from the extension.`,
-		`- **To pick one up, call \`adsum.resume_handover\`** — it returns the mission, what has already been done, and the knowledge bits available.`,
+		`- **To pick one up, call \`adsum.resume_handover\`** — it returns the mission, the governing workflow with its steps, what has already been done, and the knowledge bits available.`,
 		"- **Before acting on any nRF / ESP / embedded task, call `adsum.load_skill`** with the topic (e.g. `flash`, `sniffer`, the bit id). These bits are verified on real hardware and supersede general knowledge — follow their steps rather than improvising.",
-		"- **Surface the credit line.** Every loaded bit starts with `📚 <bit> — curated by <author>`. Show it once, the first time you use that bit, so the author is credited to the developer.",
-		"- **Call `adsum.checkpoint` at each milestone** with one line about what you established. This keeps the developer's Adsum session in sync and lets them continue there without losing your work.",
+		"- **Run embedded commands through `adsum.exec` / `adsum.build`** (idf.py, esptool, west, serial-port checks). They carry the toolchain environment a plain shell does not have; a bare `idf.py` in your own terminal will typically fail with *command not found*. Never install or repair a toolchain yourself — if the environment is broken, `adsum.exec` says what is missing; report it to the developer and ask.",
+		"- **Surface the credit line.** Every loaded bit starts with `◆ <bit> — curated by <author>` (`⚙` for tool bits). Show it once, the first time you use that bit, so the author is credited to the developer.",
+		"- **Call `adsum.checkpoint` at every milestone AND after any file mutation** (create/edit/delete). Answer what its response asks — which step you completed, which bit you followed, which tools you used. The developer watches the session through these; an unreported mutation is invisible to them.",
+		"- **Before you stop working, send a closing checkpoint** with `final: true`, a summary, the files you touched, and the honest next step — that is what makes the session resumable back in Adsum without loss.",
 	].join("\n")
 }
 

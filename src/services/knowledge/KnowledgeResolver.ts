@@ -403,6 +403,52 @@ export async function hasBit(id: string): Promise<boolean> {
 	return (await manifest()).has(id)
 }
 
+/** One index row per bit this install can name: metadata only, never bodies. */
+export interface BitIndexEntry {
+	id: string
+	title?: string
+	author?: string
+	version?: string
+	kind?: string
+	platform?: string
+	/** Absolute on-disk path a zero-dep reader can serve the body from (bundled tree only — a
+	 *  downloaded bit's body lives behind the entitlement-aware loader, not at a stable path). */
+	path?: string
+}
+
+/**
+ * Every bit this install knows of — bundled manifest ∪ downloaded catalog (offline-safe: the catalog
+ * falls back to its last cached copy). This is the handover brief's "manifest index" layer: the foreign
+ * agent's full field of view, one line per bit, with bodies served on demand rather than shipped.
+ */
+export async function listAllBits(): Promise<BitIndexEntry[]> {
+	const out = new Map<string, BitIndexEntry>()
+	for (const [id, e] of await manifest()) {
+		out.set(id, {
+			id,
+			title: e.title,
+			author: e.author,
+			version: e.version,
+			kind: e.type,
+			platform: e.platform,
+			path: path.join(knowledgeRoot(), e.path),
+		})
+	}
+	for (const [id, e] of await downloadedManifest()) {
+		if (!out.has(id)) {
+			out.set(id, {
+				id,
+				title: e.title,
+				author: e.author,
+				version: e.version,
+				kind: e.type,
+				platform: e.platform,
+			})
+		}
+	}
+	return [...out.values()]
+}
+
 // Mirror of deriveId() in kbit/lint.ts (kept dep-light here so the runtime doesn't bundle the linter).
 export function deriveIdFromRel(rel: string): string {
 	const p = rel
