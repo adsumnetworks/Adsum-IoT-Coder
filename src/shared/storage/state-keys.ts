@@ -116,6 +116,12 @@ const API_HANDLER_SETTINGS_FIELDS = {
 	awsProfile: { default: undefined as string | undefined },
 	awsBedrockEndpoint: { default: undefined as string | undefined },
 	claudeCodePath: { default: undefined as string | undefined },
+	// "Your own coding agent" provider (external-agent): Adsum hands work over instead of calling a
+	// model, so these are setup preferences, NOT inference config. See adsum-planning mcp-sdk/13.
+	externalAgentKind: { default: undefined as "claude-code" | "other" | undefined },
+	externalAgentAutoMcp: { default: undefined as boolean | undefined },
+	externalAgentManageClaudeMd: { default: undefined as boolean | undefined },
+	externalAgentWriteAgentsMd: { default: undefined as boolean | undefined },
 	vertexProjectId: { default: undefined as string | undefined },
 	vertexRegion: { default: undefined as string | undefined },
 	openAiBaseUrl: { default: undefined as string | undefined },

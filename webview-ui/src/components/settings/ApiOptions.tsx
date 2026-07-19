@@ -25,6 +25,7 @@ import { ClineProvider } from "./providers/ClineProvider"
 import { DeepSeekProvider } from "./providers/DeepSeekProvider"
 import { DifyProvider } from "./providers/DifyProvider"
 import { DoubaoProvider } from "./providers/DoubaoProvider"
+import { ExternalAgentProvider } from "./providers/ExternalAgentProvider"
 import { FireworksProvider } from "./providers/FireworksProvider"
 import { GeminiProvider } from "./providers/GeminiProvider"
 import { GlmCodingPlanProvider } from "./providers/GlmCodingPlanProvider"
@@ -137,7 +138,15 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 		// Provider ladder (design/03): curated, priority-ordered. Free → GLM Coding Plan → Anthropic → OpenRouter
 		// → OpenAI-compatible. General metered "Z AI" is intentionally omitted (OpenRouter covers metered GLM; the
 		// GLM Coding Plan is the branded path). The order of this array IS the display order.
-		const allowedProviders = ["adsum-free", "zai-coding-plan", "anthropic", "openrouter", "openai", "anthropic-compatible"]
+		const allowedProviders = [
+			"adsum-free",
+			"external-agent",
+			"zai-coding-plan",
+			"anthropic",
+			"openrouter",
+			"openai",
+			"anthropic-compatible",
+		]
 		let providers = allowedProviders.flatMap((value) => {
 			const entry = PROVIDERS.list.find((p) => p.value === value)
 			return entry ? [entry] : []
@@ -357,6 +366,9 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 
 			{apiConfiguration && selectedProvider === "adsum-free" && (
 				<AdsumFreeProvider currentMode={currentMode} isPopup={isPopup} />
+			)}
+			{apiConfiguration && selectedProvider === "external-agent" && (
+				<ExternalAgentProvider currentMode={currentMode} isPopup={isPopup} />
 			)}
 			{apiConfiguration && selectedProvider === "hicap" && (
 				<HicapProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />

@@ -37,6 +37,8 @@ import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
 import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
+import { handOverCard } from "./welcome/handOverCard"
+import { useRunTarget } from "./welcome/useRunTarget"
 import WelcomeView from "./welcome/WelcomeView"
 
 interface ChatViewProps {
@@ -66,6 +68,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		demoAutoStart,
 		handoverUi,
 	} = useExtensionState()
+	const { target: runTarget } = useRunTarget()
 	const isProdHostedApp = userInfo?.apiBaseUrl === "https://app.cline.bot"
 	const shouldShowQuickWins = false
 
@@ -276,10 +279,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 
 	const handleStartTask = useCallback(
 		async (text: string) => {
+			// Provider "external-agent" (or conductor mode): a typed task is a mission for the developer's
+			// coding agent, not an in-panel run — hand it over instead of starting a task that could never
+			// call a model (mcp-sdk/13 D7; the factory guard would refuse it with an error otherwise).
+			if (runTarget === "agent") {
+				await handOverCard({ prompt: text })
+				return
+			}
 			setNordicPhase("active")
 			await messageHandlers.handleSendMessage(text, [], [])
 		},
-		[messageHandlers, setNordicPhase],
+		[messageHandlers, setNordicPhase, runTarget],
 	)
 
 	// Auto-start the demo once when the host requests it (e.g. the first-run announcement toast CTA

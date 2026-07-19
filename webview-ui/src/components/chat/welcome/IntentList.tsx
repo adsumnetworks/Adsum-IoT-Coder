@@ -1,7 +1,8 @@
 import React from "react"
+import { useExtensionState } from "@/context/ExtensionStateContext"
 import type { NordicModeId } from "../nordicModes"
+import { handOverCard } from "./handOverCard"
 import IntentCard from "./IntentCard"
-import RunTargetPicker, { handOverCard } from "./RunTargetPicker"
 import { runIntent } from "./runIntent"
 import { useRunTarget } from "./useRunTarget"
 import { buildIntentPrompt, type IntentDef, intentDescription, type WorkspacePlatform } from "./welcomeIntents"
@@ -42,7 +43,8 @@ const IntentList: React.FC<IntentListProps> = ({
 }) => {
 	const live = intents.filter((i) => !i.comingSoon)
 	const roadmap = intents.filter((i) => i.comingSoon)
-	const { target } = useRunTarget()
+	const { navigateToSettings } = useExtensionState()
+	const { target, conducting } = useRunTarget()
 
 	const agentMode = target === "agent"
 	const anyAgentRunnable = live.some((i) => i.agentRunnable)
@@ -81,7 +83,38 @@ const IntentList: React.FC<IntentListProps> = ({
 
 	return (
 		<div className="flex flex-col gap-3 w-full">
-			{anyAgentRunnable ? <RunTargetPicker /> : null}
+			{anyAgentRunnable && target === "agent" ? (
+				/* The run-target choice lives in Settings with the other providers (mcp-sdk/13); this
+				   line is only the STATE, visible where the click happens, with the door to change it. */
+				<div
+					style={{
+						display: "flex",
+						alignItems: "center",
+						gap: "6px",
+						fontSize: "11px",
+						color: "var(--vscode-descriptionForeground)",
+						padding: "0 2px",
+					}}>
+					<span>
+						⇄ Cards run on <strong style={{ color: "var(--vscode-foreground)" }}>your coding agent</strong>
+						{conducting ? " — no model configured, Adsum is conducting" : ""} ·
+					</span>
+					<button
+						onClick={() => navigateToSettings("api-config")}
+						style={{
+							background: "none",
+							border: "none",
+							padding: 0,
+							cursor: "pointer",
+							fontSize: "11px",
+							color: "var(--vscode-textLink-foreground)",
+							textDecoration: "underline",
+						}}
+						type="button">
+						change
+					</button>
+				</div>
+			) : null}
 			{live.map(card)}
 			{roadmap.length > 0 && (
 				<>

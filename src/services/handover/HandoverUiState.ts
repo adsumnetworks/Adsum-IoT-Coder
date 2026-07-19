@@ -126,10 +126,11 @@ export function buildHandoverUiState(
 	root: string,
 	conductor: { active: boolean; reason: string },
 	now: number = Date.now(),
+	agent?: { present: boolean; how?: string },
 ): HandoverUiState {
 	const id = pickHandover(root, now)
 	if (!id) {
-		return { conductor, strip: null }
+		return { conductor, agent, strip: null }
 	}
 	const dir = path.join(root, id)
 	const brief = readJson(path.join(dir, "brief.json"), {}) ?? {}
@@ -236,6 +237,7 @@ export function buildHandoverUiState(
 	const governingBit = (brief.bits ?? []).find((b: any) => b.id === brief.governing)
 	return {
 		conductor,
+		agent,
 		strip: {
 			id,
 			phase,
@@ -272,18 +274,25 @@ export function buildHandoverUiState(
 const DEFAULT_ROOT = path.join(os.homedir(), ".adsum", "handovers")
 /** Honest default: "not conductor / not yet resolved" — never claim there is no model before looking. */
 let conductorCache: { active: boolean; reason: string } = { active: false, reason: "not yet resolved" }
+/** Whether an auto-configurable coding agent is present — host-resolved (detectClaudeCode). */
+let agentCache: { present: boolean; how?: string } | undefined
 
 /** Set by the host once it has resolved whether any inference is configured. */
 export function setConductorMode(v: { active: boolean; reason: string }): void {
 	conductorCache = v
 }
 
+/** Set by the host once it has detected (or not) a coding agent it can auto-configure. */
+export function setAgentFacts(v: { present: boolean; how?: string }): void {
+	agentCache = v
+}
+
 /** The handover view for the webview (ExtensionState.handoverUi). Safe to call any time. */
 export function getHandoverUiState(root: string = DEFAULT_ROOT): HandoverUiState {
 	try {
-		return buildHandoverUiState(root, conductorCache)
+		return buildHandoverUiState(root, conductorCache, Date.now(), agentCache)
 	} catch {
-		return { conductor: conductorCache, strip: null }
+		return { conductor: conductorCache, agent: agentCache, strip: null }
 	}
 }
 

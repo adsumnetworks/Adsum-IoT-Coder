@@ -56,5 +56,9 @@ export interface HandoverStrip {
 export interface HandoverUiState {
 	/** Conductor mode = Adsum has no model of its own, so handing over IS the execution path. */
 	conductor: { active: boolean; reason: string }
+	/** Whether a coding agent we can auto-configure (Claude Code) is on this machine — drives the
+	 *  external-agent settings panel's detection line and the auto-setup default. Host-resolved; the
+	 *  webview never probes the filesystem. */
+	agent?: { present: boolean; how?: string }
 	strip: HandoverStrip | null
 }

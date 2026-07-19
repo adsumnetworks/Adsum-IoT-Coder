@@ -3,7 +3,7 @@ import { ArrowRightLeftIcon, KeyRoundIcon } from "lucide-react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { BRAND_CORAL, brandAlpha } from "./brandColors"
 import InviteCodeField from "./InviteCodeField"
-import { handOverCard } from "./welcome/RunTargetPicker"
+import { handOverCard } from "./welcome/handOverCard"
 
 /**
  * Shown when the Adsum free-tier quota is exhausted (HTTP 402). Three ways forward, and the third is
