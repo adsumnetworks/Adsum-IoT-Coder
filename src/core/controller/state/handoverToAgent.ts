@@ -1,4 +1,4 @@
-import { Empty, EmptyRequest } from "@shared/proto/cline/common"
+import { Empty, StringRequest } from "@shared/proto/cline/common"
 import { getHandoverActions } from "@/services/handover/HandoverActions"
 import type { Controller } from ".."
 
@@ -9,9 +9,9 @@ import type { Controller } from ".."
  * knowledge closure → project wiring → clipboard pickup → tracking), and it is the same code path the
  * command palette runs. Duplicating any of it here would give us two versions of one decision.
  */
-export async function handoverToAgent(_controller: Controller, _request: EmptyRequest): Promise<Empty> {
+export async function handoverToAgent(_controller: Controller, request: StringRequest): Promise<Empty> {
 	try {
-		await getHandoverActions()?.handOver()
+		await getHandoverActions()?.handOver(request.value || undefined)
 	} catch (error) {
 		console.error("[handover] failed to start a handover:", error)
 	}

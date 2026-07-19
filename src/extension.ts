@@ -543,7 +543,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		handover.markReturned(resume.id)
 	}
 	registerHandoverActions({
-		handOver: () => handover.handOver(),
+		handOver: (cardPayload) => handover.handOver(cardPayload),
 		continueHere: continueHandoverHere,
 		showWorklog: () => handover.showWorklog(),
 		messageAgent: (text) => handover.messageAgent(text),

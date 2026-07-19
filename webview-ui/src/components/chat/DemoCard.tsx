@@ -1,6 +1,7 @@
 import React from "react"
 import { BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha, brandSubtle } from "./brandColors"
 import { DEFAULT_DEMO_SCENARIO_ID, DEMO_SCENARIOS } from "./demoScenarios"
+import { useRunTarget } from "./welcome/useRunTarget"
 
 interface DemoCardProps {
 	onStartDemo: (scenarioId: string) => void
@@ -16,6 +17,11 @@ const NEUTRAL_ICON_BG = "color-mix(in srgb, var(--vscode-foreground) 10%, transp
 const DemoCard: React.FC<DemoCardProps> = ({ onStartDemo, disabled = false, variant = "hero" }) => {
 	const scenario = DEMO_SCENARIOS[DEFAULT_DEMO_SCENARIO_ID]
 	const isRerun = variant === "rerun"
+	// The sample is Adsum's own guided showcase — it always runs here, even in agent mode. That
+	// exception must be VISIBLE, not silent: the run-target toggle promised "no Adsum tokens", so a
+	// surface that still spends them says so before the click.
+	const { target } = useRunTarget()
+	const adsumRunNote = target === "agent" && !disabled
 
 	// Hero = cyan, prominent, full copy. Rerun = neutral, compact, title only.
 	const borderColor = isRerun ? NEUTRAL_BORDER : BRAND_CYAN_600
@@ -29,6 +35,16 @@ const DemoCard: React.FC<DemoCardProps> = ({ onStartDemo, disabled = false, vari
 
 	return (
 		<div style={{ width: "100%", marginBottom: isRerun ? 0 : "16px" }}>
+			{adsumRunNote && !isRerun ? (
+				<div
+					style={{
+						fontSize: "10px",
+						color: "var(--vscode-descriptionForeground)",
+						margin: "0 2px 4px",
+					}}>
+					sample runs here in Adsum (guided showcase) — it does not go to your coding agent
+				</div>
+			) : null}
 			<button
 				data-testid="demo-card-button"
 				disabled={disabled}

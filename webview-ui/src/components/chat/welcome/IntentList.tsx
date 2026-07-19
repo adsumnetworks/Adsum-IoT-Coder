@@ -1,12 +1,12 @@
-import { EmptyRequest } from "@shared/proto/cline/common"
-import React, { useEffect, useState } from "react"
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { StringRequest } from "@shared/proto/cline/common"
+import React from "react"
 import { StateServiceClient } from "@/services/grpc-client"
 import type { NordicModeId } from "../nordicModes"
 import IntentCard from "./IntentCard"
-import RunTargetToggle, { type RunTarget } from "./RunTargetToggle"
+import RunTargetToggle from "./RunTargetToggle"
 import { runIntent } from "./runIntent"
-import { type IntentDef, intentDescription, type WorkspacePlatform } from "./welcomeIntents"
+import { useRunTarget } from "./useRunTarget"
+import { buildIntentPrompt, type IntentDef, intentDescription, type WorkspacePlatform } from "./welcomeIntents"
 
 interface IntentListProps {
 	intents: IntentDef[]
@@ -22,9 +22,6 @@ interface IntentListProps {
 	/** Prefix for each card's testId, e.g. "intent-card" (welcome) or "next-step" (post-task). */
 	testIdPrefix: string
 }
-
-/** Persist the chosen run-target (the CraNudge localStorage pattern — a UI preference, not state). */
-const TARGET_KEY = "adsum.runTarget"
 
 /**
  * Renders a context-aware intent-card list: live cards first, then — if the set has roadmap
@@ -45,37 +42,24 @@ const IntentList: React.FC<IntentListProps> = ({
 	hasBle = false,
 	testIdPrefix,
 }) => {
-	const { handoverUi } = useExtensionState()
 	const live = intents.filter((i) => !i.comingSoon)
 	const roadmap = intents.filter((i) => i.comingSoon)
-
-	// Conductor mode (no model configured) locks the Adsum segment and pre-selects the agent.
-	const conducting = !!handoverUi?.conductor.active
-	const [target, setTarget] = useState<RunTarget>(() => {
-		if (conducting) {
-			return "agent"
-		}
-		try {
-			return localStorage.getItem(TARGET_KEY) === "agent" ? "agent" : "adsum"
-		} catch {
-			return "adsum"
-		}
-	})
-	useEffect(() => {
-		if (conducting && target !== "agent") {
-			setTarget("agent")
-		}
-	}, [conducting, target])
-	const pickTarget = (t: RunTarget) => {
-		setTarget(t)
-		try {
-			localStorage.setItem(TARGET_KEY, t)
-		} catch {}
-	}
+	const { target, conducting, setTarget: pickTarget } = useRunTarget()
 
 	const agentMode = target === "agent"
 	const anyAgentRunnable = live.some((i) => i.agentRunnable)
-	const handOver = () => StateServiceClient.handoverToAgent(EmptyRequest.create({})).catch(() => {})
+	// The card's own prompt travels with the handover — the mission and the workflow closure come from
+	// the card the developer clicked, never from whatever session happens to be newest.
+	const handOver = (intent: IntentDef) =>
+		StateServiceClient.handoverToAgent(
+			StringRequest.create({
+				value: JSON.stringify({
+					intentId: intent.id,
+					platform,
+					prompt: buildIntentPrompt(intent.id, projectName, platform, hasBle),
+				}),
+			}),
+		).catch(() => {})
 
 	const card = (intent: IntentDef) => {
 		const routesToAgent = agentMode && !!intent.agentRunnable && !intent.comingSoon
@@ -87,7 +71,7 @@ const IntentList: React.FC<IntentListProps> = ({
 				key={intent.id}
 				onClick={
 					routesToAgent
-						? handOver
+						? () => handOver(intent)
 						: () => runIntent(intent.id, { onSelectMode, onStartTask, onStartDemo, projectName, platform, hasBle })
 				}
 				pill={intent.pill}

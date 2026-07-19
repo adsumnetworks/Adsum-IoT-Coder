@@ -11,8 +11,10 @@
  * subtly different version of the flow.
  */
 export interface HandoverActions {
-	/** Post the current session to the developer's coding agent. */
-	handOver(): Promise<void>
+	/** Post a session to the developer's coding agent. `cardPayload` (JSON {intentId, platform, prompt})
+	 *  is present when a CARD starts the handover — it becomes the mission and seeds the workflow closure;
+	 *  absent = hand over the current/most-recent session. */
+	handOver(cardPayload?: string): Promise<void>
 	/** Bring a handed-over session back into Adsum, carrying what the agent did. */
 	continueHere(): Promise<void>
 	/** Open the full worklog of a handed-over session. */
