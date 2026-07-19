@@ -37,6 +37,7 @@ const mockState = (opts: {
 	taskHistory?: { task: string }[]
 	workspaceFeatures?: { hasBle: boolean; hasComplianceArtifacts: boolean }
 	workspaceClassification?: "nrf" | "esp" | "both" | "none"
+	handoverUi?: unknown
 }) => {
 	vi.mocked(useExtensionState).mockReturnValue({
 		navigateToHistory: vi.fn(),
@@ -45,6 +46,7 @@ const mockState = (opts: {
 		taskHistory: opts.taskHistory ?? [],
 		workspaceFeatures: opts.workspaceFeatures,
 		workspaceClassification: opts.workspaceClassification,
+		handoverUi: opts.handoverUi,
 	} as any)
 }
 
@@ -106,6 +108,34 @@ describe("WelcomeView — context-aware intent cards", () => {
 		expect(screen.queryByTestId("intent-card-sdkMigration")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("intent-card-debug")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("intent-card-prototype")).not.toBeInTheDocument()
+	})
+
+	it("cards stay reachable while an agent session is live (the panel is never owned)", () => {
+		// Field report: with a handover in flight nothing was clickable — no cards, no sample runs, no
+		// history — because the session view replaced the whole welcome surface.
+		mockState({
+			openFolderPaths: ["/Users/me/central_uart"],
+			taskHistory: [],
+			handoverUi: {
+				conductor: { active: false, reason: "free tier active" },
+				strip: {
+					id: "t1",
+					phase: "working",
+					mission: "Build, flash and debug softAP",
+					calls: 4,
+					startedAt: new Date().toISOString(),
+					pickupPrompt: "x",
+					baseline: { created: true, snapshots: 0 },
+					packed: { bits: 12 },
+					milestones: [],
+					truncated: false,
+					liveness: { state: "working", sinceSec: 5 },
+				},
+			},
+		})
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("intent-card-buildFlashDebug")).toBeInTheDocument()
+		expect(screen.getByTestId("intent-card-testValidate")).toBeInTheDocument()
 	})
 
 	it("no project → no-project intents", () => {
