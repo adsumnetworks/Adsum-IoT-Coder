@@ -722,8 +722,12 @@ describe("HandoverUiState — the strip's contract (pure builder)", () => {
 		fs.rmSync(closed.root, { recursive: true, force: true })
 
 		// the developer pulled it back — nothing to show
+		// A just-returned session still renders — flagged `returned` so the resumed task can show the
+		// agent's turns as its own history instead of sending the developer to a markdown file.
 		const returned = uiFixture({ status: "returned" })
-		assert.equal(buildHandoverUiState(returned.root, CONDUCTOR).strip, null, "returned → no strip")
+		const rs = buildHandoverUiState(returned.root, CONDUCTOR).strip
+		assert.equal(rs?.returned, true, "returned → still rendered, flagged as history")
+		assert.equal(rs?.phase, "closed")
 		fs.rmSync(returned.root, { recursive: true, force: true })
 
 		// a handover from last week must not haunt the panel
@@ -1214,6 +1218,33 @@ describe("a write never guesses its session (the crossed-histories bug)", () => 
 			c.kill()
 			fs.rmSync(root, { recursive: true, force: true })
 		}
+	})
+})
+
+describe("a returned session stays visible so the resumed task carries its history", () => {
+	test("returned within the window renders with returned:true; beyond it, nothing", () => {
+		const now = Date.parse(T(59))
+		const fresh = uiFixture({ status: "active", ledger: [{ t: T(0), event: "resume" }] })
+		fs.writeFileSync(
+			path.join(fresh.root, fresh.id, "state.json"),
+			JSON.stringify({ status: "returned", createdAt: T(0), returnedAt: T(50) }),
+		)
+		const s = buildHandoverUiState(fresh.root, CONDUCTOR, now).strip
+		assert.equal(s?.returned, true, "the agent's turns are still available to the thread that continues them")
+		assert.equal(s?.phase, "closed")
+		fs.rmSync(fresh.root, { recursive: true, force: true })
+
+		const old = uiFixture({ status: "active", ledger: [{ t: T(0), event: "resume" }] })
+		fs.writeFileSync(
+			path.join(old.root, old.id, "state.json"),
+			JSON.stringify({ status: "returned", createdAt: T(0), returnedAt: T(0) }),
+		)
+		assert.equal(
+			buildHandoverUiState(old.root, CONDUCTOR, Date.parse(T(0)) + 13 * 60 * 60 * 1000).strip,
+			null,
+			"a day-old returned session is history, not live UI",
+		)
+		fs.rmSync(old.root, { recursive: true, force: true })
 	})
 })
 

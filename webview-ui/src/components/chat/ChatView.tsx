@@ -5,14 +5,14 @@ import { combineErrorRetryMessages } from "@shared/combineErrorRetryMessages"
 import { combineHookSequences } from "@shared/combineHookSequences"
 import type { ClineApiReqInfo, ClineMessage } from "@shared/ExtensionMessage"
 import { getApiMetrics } from "@shared/getApiMetrics"
-import { BooleanRequest, StringRequest } from "@shared/proto/cline/common"
+import { BooleanRequest, EmptyRequest, StringRequest } from "@shared/proto/cline/common"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useMount } from "react-use"
 import { collectSessionKbits } from "@/components/chat/task-header/KbitPill"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useShowNavbar } from "@/context/PlatformContext"
-import { FileServiceClient, UiServiceClient } from "@/services/grpc-client"
+import { FileServiceClient, StateServiceClient, UiServiceClient } from "@/services/grpc-client"
 import { Navbar } from "../menu/Navbar"
 import AiLimitationsFooter from "./AiLimitationsFooter"
 // Import utilities and hooks from the new structure
@@ -35,9 +35,12 @@ import {
 import { getButtonConfig } from "./chat-view/shared/buttonConfig"
 import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
+import AgentSessionBanner from "./handover/AgentSessionBanner"
+import AgentSessionRecap from "./handover/AgentSessionRecap"
 import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
 import { handOverCard } from "./welcome/handOverCard"
+import { routeDemo, routeTypedTask } from "./welcome/runRouting"
 import { useRunTarget } from "./welcome/useRunTarget"
 import WelcomeView from "./welcome/WelcomeView"
 
@@ -69,12 +72,13 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		handoverUi,
 	} = useExtensionState()
 	const { target: runTarget } = useRunTarget()
-	// Hides the agent-session view without ending the session (New Task, or its own "show the cards").
-	// Reset whenever a different session arrives so a NEW handover is never silently invisible.
-	const [sessionViewDismissed, setSessionViewDismissed] = useState(false)
+	// The agent session is a BANNER by default and opens on demand. It must never own the panel: when it
+	// did, a live handover left nothing clickable — no cards, no sample runs, no way back — because the
+	// welcome surface simply was not rendered. Opt-IN, and closed again whenever a new session arrives.
+	const [sessionViewOpen, setSessionViewOpen] = useState(false)
 	const stripId = handoverUi?.strip?.id
 	useEffect(() => {
-		setSessionViewDismissed(false)
+		setSessionViewOpen(false)
 	}, [stripId])
 	const isProdHostedApp = userInfo?.apiBaseUrl === "https://app.cline.bot"
 	const shouldShowQuickWins = false
@@ -271,6 +275,14 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			const scenario = DEMO_SCENARIOS[scenarioId]
 			if (!scenario) return
 			try {
+				// A sample is the zero-risk way to experience the loop, so in agent mode it HANDS OVER like
+				// any other card — the card already promises "sample hands to your coding agent". Without
+				// this branch the click fell through to handleSendMessage → buildApiHandler → our own
+				// external-agent guard, which throws into the catch below: the field saw a dead sample row.
+				if (routeDemo(runTarget, scenario.agentRunnable).kind === "hand-over-demo") {
+					await handOverCard({ demo: scenarioId })
+					return
+				}
 				setIsDemoRun(true)
 				setNordicPhase("active")
 				setExpandTaskHeader(false)
@@ -281,22 +293,37 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				setNordicPhase("awaiting_mode")
 			}
 		},
-		[messageHandlers, setNordicPhase, setExpandTaskHeader],
+		[messageHandlers, setNordicPhase, setExpandTaskHeader, runTarget],
 	)
 
 	const handleStartTask = useCallback(
 		async (text: string) => {
-			// Provider "external-agent" (or conductor mode): a typed task is a mission for the developer's
-			// coding agent, not an in-panel run — hand it over instead of starting a task that could never
-			// call a model (mcp-sdk/13 D7; the factory guard would refuse it with an error otherwise).
-			if (runTarget === "agent") {
+			// Where does a typed message go while the run-target is the developer's own agent?
+			//   • a session is LIVE and reachable  → it is a message to that agent, not a new mission
+			//   • no live session                  → it is a new mission: hand it over
+			//   • live but the agent has stopped   → neither; say so instead of swallowing it
+			// Sending a message into a dead session, or silently opening a second handover, both read as
+			// "nothing happened" — which is exactly what the field reported.
+			const route = routeTypedTask(runTarget, handoverUi?.strip)
+			if (route.kind === "message-agent") {
+				await StateServiceClient.messageHandoverAgent(StringRequest.create({ value: text })).catch(() => {})
+				// Open the session so the message is SEEN landing in the queue. Sending into a collapsed
+				// banner is indistinguishable from the dead click this fixes.
+				setSessionViewOpen(true)
+				return
+			}
+			if (route.kind === "continue-here") {
+				await StateServiceClient.continueHandoverHere(EmptyRequest.create({})).catch(() => {})
+				return
+			}
+			if (route.kind === "hand-over") {
 				await handOverCard({ prompt: text })
 				return
 			}
 			setNordicPhase("active")
 			await messageHandlers.handleSendMessage(text, [], [])
 		},
-		[messageHandlers, setNordicPhase, runTarget],
+		[messageHandlers, setNordicPhase, runTarget, handoverUi],
 	)
 
 	// Auto-start the demo once when the host requests it (e.g. the first-run announcement toast CTA
@@ -479,6 +506,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			<div className="flex flex-col flex-1 overflow-hidden">
 				{showNavbar && <Navbar />}
 				<FreeTierStrip />
+				{handoverUi?.strip && !handoverUi.strip.returned && !sessionViewOpen ? (
+					<AgentSessionBanner onOpen={() => setSessionViewOpen(true)} />
+				) : null}
 				{task ? (
 					<TaskSection
 						apiMetrics={apiMetrics}
@@ -492,13 +522,10 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						sessionKbits={sessionKbits}
 						task={task}
 					/>
-				) : handoverUi?.strip && !sessionViewDismissed ? (
-					/* A session out with the developer's coding agent IS a session — it takes the chat
-					   view exactly where a local run would, until it is returned (mockup mcp-sdk/12).
-					   A local task still wins the slot, and it is DISMISSIBLE: in the field this view had
-					   no exit, so New Task appeared dead and the only escape was opening an unrelated
-					   session. Dismissing hides it; the session itself keeps running and stays reachable. */
-					<AgentSessionView onDismiss={() => setSessionViewDismissed(true)} />
+				) : handoverUi?.strip && !handoverUi.strip.returned && sessionViewOpen ? (
+					/* Opened deliberately from the banner — the conversation rendering of mockup 12, with a
+					   way back that is always present. A local task still wins the slot outright. */
+					<AgentSessionView onDismiss={() => setSessionViewOpen(false)} />
 				) : (
 					<WelcomeView
 						onSelectMode={handleModeSelect}
@@ -508,6 +535,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						showUpgradeCard={showAnnouncement}
 					/>
 				)}
+				{task && <AgentSessionRecap />}
 				{task && (
 					<MessagesArea
 						chatState={chatState}

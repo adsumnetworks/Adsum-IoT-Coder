@@ -452,7 +452,8 @@
 		"docs:rename-file": "cd docs && npm run rename",
 		"report-issue": "node scripts/report-issue.js",
 		"storybook": "cd webview-ui && npm run storybook",
-		"test:handover": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/handover/handover.test.ts"
+		"test:handover": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/handover/handover.test.ts",
+		"test:provider": "ts-node --transpile-only -P tsconfig.unit-test.json src/shared/proto-conversions/models/api-configuration-conversion.test.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [
