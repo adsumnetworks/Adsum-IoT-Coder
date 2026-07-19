@@ -138,7 +138,15 @@ export function extractBriefParts(ui: any[], meta: any): BriefParts {
 	const say = (m: any, kind: string) => m?.say === kind && typeof m.text === "string" && m.text.length > 0
 	const texts = ui.filter((m) => say(m, "text"))
 	// The opening user prompt is the first text message; the last one is the agent's latest state summary.
-	const mission = texts[0]?.text?.trim() ?? ""
+	// The opening prompt IS the mission — unless it is our own reverse-handoff boilerplate ("Continue
+	// this task — it was handed to my coding agent…"), which happens whenever a returned session is
+	// handed over again. Ingesting that verbatim degrades the mission one generation per round trip
+	// (seen live: the strip read "· Continue this task — it was handed to…"). The boilerplate carries
+	// the real mission on its "Original mission:" line — recover it instead.
+	const opening = texts[0]?.text?.trim() ?? ""
+	const mission = opening.startsWith("Continue this task — it was handed to my coding agent")
+		? (opening.match(/^Original mission:\s*(.+)$/m)?.[1]?.trim() ?? opening)
+		: opening
 	const lastSummary = texts.length > 1 ? texts[texts.length - 1].text.trim() : ""
 
 	// The agent maintains a markdown checklist in task_progress — the freshest one IS the worklog.

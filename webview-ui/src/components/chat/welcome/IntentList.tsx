@@ -1,8 +1,10 @@
-import React from "react"
+import { EmptyRequest } from "@shared/proto/cline/common"
+import React, { useEffect, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { StateServiceClient } from "@/services/grpc-client"
 import type { NordicModeId } from "../nordicModes"
-import AgentRunRow from "./AgentRunRow"
 import IntentCard from "./IntentCard"
+import RunTargetToggle, { type RunTarget } from "./RunTargetToggle"
 import { runIntent } from "./runIntent"
 import { type IntentDef, intentDescription, type WorkspacePlatform } from "./welcomeIntents"
 
@@ -21,10 +23,17 @@ interface IntentListProps {
 	testIdPrefix: string
 }
 
+/** Persist the chosen run-target (the CraNudge localStorage pattern — a UI preference, not state). */
+const TARGET_KEY = "adsum.runTarget"
+
 /**
  * Renders a context-aware intent-card list: live cards first, then — if the set has roadmap
  * ("coming soon") entries — an "on the roadmap" divider followed by the disabled cards.
  * Shared by the welcome screen and the post-task NextStepChooser so both stay identical.
+ *
+ * The run-target toggle (mockup mcp-sdk/11) decides where a card executes: this panel, or the
+ * developer's own coding agent. One control, one door per card — while agent mode is on, runnable
+ * cards carry a "→ your agent" route chip so the mode stays visible at the point of action.
  */
 const IntentList: React.FC<IntentListProps> = ({
 	intents,
@@ -40,37 +49,60 @@ const IntentList: React.FC<IntentListProps> = ({
 	const live = intents.filter((i) => !i.comingSoon)
 	const roadmap = intents.filter((i) => i.comingSoon)
 
-	// A workflow-backed card has two doors: run it here, or hand it to the developer's own coding agent.
-	// Which one leads is decided by conductor mode (no model configured → the agent path is the action).
+	// Conductor mode (no model configured) locks the Adsum segment and pre-selects the agent.
 	const conducting = !!handoverUi?.conductor.active
+	const [target, setTarget] = useState<RunTarget>(() => {
+		if (conducting) {
+			return "agent"
+		}
+		try {
+			return localStorage.getItem(TARGET_KEY) === "agent" ? "agent" : "adsum"
+		} catch {
+			return "adsum"
+		}
+	})
+	useEffect(() => {
+		if (conducting && target !== "agent") {
+			setTarget("agent")
+		}
+	}, [conducting, target])
+	const pickTarget = (t: RunTarget) => {
+		setTarget(t)
+		try {
+			localStorage.setItem(TARGET_KEY, t)
+		} catch {}
+	}
+
+	const agentMode = target === "agent"
+	const anyAgentRunnable = live.some((i) => i.agentRunnable)
+	const handOver = () => StateServiceClient.handoverToAgent(EmptyRequest.create({})).catch(() => {})
 
 	const card = (intent: IntentDef) => {
-		const cardEl = (
+		const routesToAgent = agentMode && !!intent.agentRunnable && !intent.comingSoon
+		return (
 			<IntentCard
 				comingSoon={intent.comingSoon}
 				description={intentDescription(intent, projectName, platform)}
 				icon={intent.icon}
-				onClick={() => runIntent(intent.id, { onSelectMode, onStartTask, onStartDemo, projectName, platform, hasBle })}
+				key={intent.id}
+				onClick={
+					routesToAgent
+						? handOver
+						: () => runIntent(intent.id, { onSelectMode, onStartTask, onStartDemo, projectName, platform, hasBle })
+				}
 				pill={intent.pill}
-				primary={intent.primary && !conducting}
+				primary={intent.primary}
+				routeChip={routesToAgent ? "→ your agent" : undefined}
 				subline={intent.subline}
 				testId={`${testIdPrefix}-${intent.id}`}
 				title={intent.title}
 			/>
 		)
-		if (!intent.agentRunnable) {
-			return <div key={intent.id}>{cardEl}</div>
-		}
-		return (
-			<div className="flex flex-col gap-2" key={intent.id}>
-				{cardEl}
-				<AgentRunRow conducting={conducting} />
-			</div>
-		)
 	}
 
 	return (
 		<div className="flex flex-col gap-3 w-full">
+			{anyAgentRunnable ? <RunTargetToggle conducting={conducting} onChange={pickTarget} target={target} /> : null}
 			{live.map(card)}
 			{roadmap.length > 0 && (
 				<>

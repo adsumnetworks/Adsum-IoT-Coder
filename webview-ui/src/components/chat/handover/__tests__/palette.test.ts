@@ -13,12 +13,7 @@ import { describe, expect, it } from "vitest"
 
 const DIR = path.resolve(__dirname, "..")
 const WELCOME = path.resolve(__dirname, "../../welcome")
-const files = [
-	path.join(DIR, "AgentStrip.tsx"),
-	path.join(DIR, "MilestoneList.tsx"),
-	path.join(WELCOME, "AgentRunRow.tsx"),
-	path.join(WELCOME, "StatusHeader.tsx"),
-]
+const files = [path.join(DIR, "AgentStrip.tsx"), path.join(DIR, "MilestoneList.tsx"), path.join(WELCOME, "RunTargetToggle.tsx")]
 const read = (f: string) => fs.readFileSync(f, "utf8")
 
 describe("handover UI palette compliance", () => {
@@ -49,7 +44,7 @@ describe("handover UI palette compliance", () => {
 	})
 
 	it("selects cyan text by theme wherever it sits on a tinted surface (FreeTierStrip's recipe)", () => {
-		for (const f of [path.join(DIR, "AgentStrip.tsx"), path.join(WELCOME, "AgentRunRow.tsx")]) {
+		for (const f of [path.join(DIR, "AgentStrip.tsx"), path.join(WELCOME, "RunTargetToggle.tsx")]) {
 			const src = read(f)
 			expect(src, `${path.basename(f)} must not pin one cyan for both themes`).toContain("useVSCodeTheme")
 			expect(src).toMatch(/isDark \? BRAND_CYAN_300 : BRAND_CYAN_700/)
@@ -61,9 +56,9 @@ describe("handover UI palette compliance", () => {
 		// green marks the CLOSED state (a status), and must not be attached to any quality claim
 		expect(strip).toMatch(/closed:\s*BRAND_SUCCESS/)
 		expect(strip).not.toMatch(/BRAND_SUCCESS.*(good|pass|safe|correct|compliant)/i)
-		// the conductor pill is identity → coral, and carries no fill
-		const header = read(path.join(WELCOME, "StatusHeader.tsx"))
-		expect(header).toMatch(/border:\s*`1px solid \$\{brandAlpha\(BRAND_CORAL/)
-		expect(header).toMatch(/background:\s*"transparent"/)
+		// conductor identity in the toggle is coral TEXT ("Adsum is conducting"), never a fill
+		const toggle = read(path.join(WELCOME, "RunTargetToggle.tsx"))
+		expect(toggle).toMatch(/color:\s*BRAND_CORAL/)
+		expect(toggle).not.toMatch(/background:\s*BRAND_CORAL/)
 	})
 })
