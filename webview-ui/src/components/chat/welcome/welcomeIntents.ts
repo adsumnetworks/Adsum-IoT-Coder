@@ -185,6 +185,10 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 	{
 		id: "prototype",
 		icon: "tools",
+		// Scaffolding from a description is work any agent can do, and in agent mode there is no Adsum
+		// model to do it here — so it must route like the others AND say so. Unflagged, it handed over
+		// silently through the generic path, with no "→ your agent" chip on the card.
+		agentRunnable: true,
 		title: "Start a prototype",
 		description: "Tell me what you're building — I'll scaffold from the right verified sample.",
 	},

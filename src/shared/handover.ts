@@ -31,6 +31,10 @@ export interface HandoverStrip {
 	/** internal only — never rendered; the developer never sees a handover id */
 	id: string
 	phase: "posted" | "pickedUp" | "working" | "closed"
+	/** True once the developer brought it back into Adsum. The session keeps rendering for a window so
+	 *  the resumed task can show the agent's turns as its own history — one continuous thread, rather
+	 *  than a separate document the developer has to go and find. */
+	returned?: boolean
 	mission: string
 	calls: number
 	startedAt: string
