@@ -72,7 +72,7 @@ const RowBody: React.FC<{ row: MilestoneRow }> = ({ row }) => {
 						<span
 							style={{
 								display: "inline-block",
-								background: "var(--vscode-badge-background)",
+								background: "transparent",
 								border: "1px solid var(--vscode-panel-border)",
 								borderRadius: "8px",
 								padding: "0 6px",
