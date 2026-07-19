@@ -54,7 +54,7 @@ describe("handover UI palette compliance", () => {
 	it("keeps coral for identity and semantic colors for status only — never a verdict", () => {
 		const strip = read(path.join(DIR, "AgentSessionView.tsx"))
 		// green marks the CLOSED state (a status), and must not be attached to any quality claim
-		expect(strip).toMatch(/closed \? BRAND_SUCCESS/)
+		expect(strip).toMatch(/closed\s*\?\s*BRAND_SUCCESS/)
 		expect(strip).not.toMatch(/BRAND_SUCCESS.*(good|pass|safe|correct|compliant)/i)
 		// conductor identity in the toggle is coral TEXT ("Adsum is conducting"), never a fill
 		const toggle = read(path.join(WELCOME, "RunTargetToggle.tsx"))

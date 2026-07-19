@@ -11,7 +11,8 @@ import { BRAND_CORAL, BRAND_CYAN_300, BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha
  * says what the pill used to. The hidden-mode trap is mitigated at the point of action: while agent
  * mode is on, every runnable card shows a small "→ your agent" route chip (rendered by IntentList).
  */
-export type RunTarget = "adsum" | "agent"
+import type { RunTarget } from "./useRunTarget"
+export type { RunTarget }
 
 const formatTokens = (n: number): string => {
 	if (n >= 1_000_000) {

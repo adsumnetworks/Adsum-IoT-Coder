@@ -34,8 +34,10 @@ service StateService {
   rpc checkCliInstallation(EmptyRequest) returns (Boolean);
   rpc getProcessInfo(EmptyRequest) returns (ProcessInfo);
   rpc flushPendingState(EmptyRequest) returns (Empty);
-  // Hand the current session to the developer's own coding agent (posts it, wires the project).
-  rpc handoverToAgent(EmptyRequest) returns (Empty);
+  // Hand a session to the developer's own coding agent (posts it, wires the project). The optional
+  // value is a JSON {intentId, platform, prompt} when a CARD starts the handover — it becomes the
+  // mission and seeds the right workflow closure. Empty = hand over the current/most-recent session.
+  rpc handoverToAgent(StringRequest) returns (Empty);
   // Bring a handed-over session back into Adsum, carrying what the agent did.
   rpc continueHandoverHere(EmptyRequest) returns (Empty);
   // Open the full worklog of a handed-over session.

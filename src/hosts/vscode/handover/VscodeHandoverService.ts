@@ -20,6 +20,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import * as vscode from "vscode"
+import { StateManager } from "@/core/storage/StateManager"
 import { getFreeTierTokensForDisplay } from "@/services/adsum/FreeTierState"
 import {
 	bridgeLoadVerbs,
@@ -360,21 +361,57 @@ export class VscodeHandoverService {
 		return { cmd: "claude", bundled: false }
 	}
 
+	/** The workflow that governs each agent-runnable card, per platform — the closure seed for a
+	 *  card-started handover. Ids must exist in the corpus; a miss is honestly listed as unresolved. */
+	private static readonly CARD_WORKFLOWS: Record<string, Partial<Record<"esp" | "nrf", string>>> = {
+		buildFlashDebug: { esp: "platforms/esp/workflows/debug-loop.md", nrf: "platforms/nrf/workflows/debug-loop.md" },
+		addFeature: { esp: "platforms/esp/workflows/add-feature.md", nrf: "platforms/nrf/workflows/add-feature.md" },
+		testValidate: { esp: "platforms/esp/workflows/test-validate.md", nrf: "platforms/nrf/workflows/test-validate.md" },
+		craCheck: { esp: "platforms/cra/workflows/cra-readiness.md", nrf: "platforms/cra/workflows/cra-readiness.md" },
+	}
+
+	private parseCardPayload(payload?: string): { prompt: string; workflowRels: string[] } | null {
+		if (!payload) {
+			return null
+		}
+		try {
+			const p = JSON.parse(payload)
+			if (typeof p?.prompt !== "string" || !p.prompt.trim()) {
+				return null
+			}
+			const map = VscodeHandoverService.CARD_WORKFLOWS[String(p.intentId)] ?? {}
+			const platforms: ("esp" | "nrf")[] = p.platform === "both" ? ["esp", "nrf"] : [p.platform]
+			const workflowRels = [...new Set(platforms.map((pl) => map[pl]).filter(Boolean))] as string[]
+			return { prompt: p.prompt.trim(), workflowRels }
+		} catch {
+			return null
+		}
+	}
+
 	// ── the command: hand over ───────────────────────────────────────────────
-	async handOver(): Promise<void> {
+	async handOver(cardPayload?: string): Promise<void> {
 		const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
 		if (!ws) {
 			vscode.window.showWarningMessage("Adsum: open a project folder before handing a session over.")
 			return
 		}
-		const taskDir = this.newestTaskDir()
 		let parts = { mission: "", worklog: [] as string[], nextStep: "", lastSummary: "", kbitRelPaths: [] as string[] }
-		if (taskDir) {
-			try {
-				const ui = JSON.parse(fs.readFileSync(path.join(taskDir, "ui_messages.json"), "utf8"))
-				const meta = JSON.parse(fs.readFileSync(path.join(taskDir, "task_metadata.json"), "utf8"))
-				parts = extractBriefParts(ui, meta)
-			} catch {}
+		// A CARD started this handover: its prompt IS the mission, and its workflow seeds the closure.
+		// Without this, a card click inherited the newest session's mission and bits — the "Test &
+		// validate" door could post a "debug BLE" brief (seen live on the F5 strip).
+		const card = this.parseCardPayload(cardPayload)
+		if (card) {
+			parts.mission = card.prompt
+			parts.kbitRelPaths = card.workflowRels
+		} else {
+			const taskDir = this.newestTaskDir()
+			if (taskDir) {
+				try {
+					const ui = JSON.parse(fs.readFileSync(path.join(taskDir, "ui_messages.json"), "utf8"))
+					const meta = JSON.parse(fs.readFileSync(path.join(taskDir, "task_metadata.json"), "utf8"))
+					parts = extractBriefParts(ui, meta)
+				} catch {}
+			}
 		}
 		// A handover with no prior session is legitimate (hand over a fresh card) — the brief is just thinner.
 		const { bits, unresolved } = await this.collectBits(parts.kbitRelPaths)
@@ -808,21 +845,27 @@ export class VscodeHandoverService {
 			return { conductor: false, reason: "disabled in settings" }
 		}
 		// auto — evidence-based, in order of certainty:
-		// 1. The free tier IS inference. Guessed secret names missed it live (the panel showed 9M free
-		//    tokens while the toggle claimed "needs a model") — read the same cache the FreeTierStrip does.
+		// 1. The free tier IS inference — read the same cache the FreeTierStrip renders.
 		const freeTokens = getFreeTierTokensForDisplay()
 		if (freeTokens !== undefined && freeTokens > 0) {
 			return { conductor: false, reason: "free tier active" }
 		}
-		// 2. A configured provider key (BYOK). Probe the common secret slots.
-		const provider = this.context.globalState.get<string>("apiProvider")
-		const secretKeys = ["apiKey", "openRouterApiKey", "openAiApiKey", "anthropicApiKey", "geminiApiKey"]
-		for (const k of secretKeys) {
-			try {
-				if (await this.context.secrets.get(k)) {
-					return { conductor: false, reason: `inference available (${provider ?? "provider configured"})` }
-				}
-			} catch {}
+		// 2. Any configured provider. Never guess secret names (a 5-name probe missed GLM's zaiApiKey and
+		//    ~35 other slots live) — ask the SAME assembled configuration the app runs tasks with, and
+		//    count any populated credential field, or a local provider that needs none.
+		try {
+			const cfg = StateManager.get().getApiConfiguration() as Record<string, unknown>
+			const CRED = /(apikey|accesskey|secretkey|sessiontoken|clientsecret|refreshtoken)$/i
+			const hasCredential = Object.entries(cfg).some(
+				([k, v]) => CRED.test(k) && typeof v === "string" && v.trim().length > 0,
+			)
+			const providers = [cfg.planModeApiProvider, cfg.actModeApiProvider].filter(Boolean).map(String)
+			const KEYLESS = new Set(["ollama", "lmstudio", "vscode-lm"])
+			if (hasCredential || providers.some((p) => KEYLESS.has(p))) {
+				return { conductor: false, reason: `inference available (${providers[0] ?? "provider configured"})` }
+			}
+		} catch {
+			// StateManager not initialized yet — fall through to the honest default below
 		}
 		if (freeTokens !== undefined) {
 			return { conductor: true, reason: "free tier used up, no key added" }
