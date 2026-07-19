@@ -47,3 +47,23 @@ describe("api configuration proto round-trip", () => {
 		assert.equal(out.externalAgentWriteAgentsMd, true)
 	})
 })
+
+/**
+ * The keyless-call backstop. "Your own coding agent" has no model, so the provider factory must never
+ * fall through to the AnthropicHandler default — that would make real Anthropic calls with no key.
+ *
+ * The backstop used to be a throw inside the factory, which also made a Task impossible to CONSTRUCT,
+ * so every past session became unopenable while the provider was selected. It now lives on the call
+ * itself: constructing and reading are safe, calling a model is not.
+ */
+describe("external-agent never reaches a real inference backend", () => {
+	test("the handler renders, but refuses to call anything", async () => {
+		const { ExternalAgentHandler, NEEDS_A_MODEL } = await import("@core/api/providers/external-agent")
+		const h = new ExternalAgentHandler()
+		// getModel must be safe: the token/context UI calls it while rendering a past session.
+		assert.equal(h.getModel().id, "external-agent")
+		assert.ok((h.getModel().info.contextWindow ?? 0) > 0, "a zero context window would break the context UI")
+		assert.throws(() => h.createMessage("sys", []), /hands work over instead of calling a model/)
+		assert.match(NEEDS_A_MODEL, /Settings/, "the message must tell the developer what to do next")
+	})
+})

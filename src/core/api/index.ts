@@ -15,6 +15,7 @@ import { ClineHandler } from "./providers/cline"
 import { DeepSeekHandler } from "./providers/deepseek"
 import { DifyHandler } from "./providers/dify"
 import { DoubaoHandler } from "./providers/doubao"
+import { ExternalAgentHandler } from "./providers/external-agent"
 import { FireworksHandler } from "./providers/fireworks"
 import { GeminiHandler } from "./providers/gemini"
 import { GroqHandler } from "./providers/groq"
@@ -89,11 +90,9 @@ function createHandlerForProvider(
 		case "external-agent":
 			// "Your own coding agent" is a run-TARGET, not an inference backend — Adsum hands work over
 			// instead of calling a model. It must never reach the AnthropicHandler default below (which
-			// would attempt real Anthropic calls with no key). In practice the UI routes tasks to a
-			// handover before this runs; this throw is the backstop, and its message is actionable.
-			throw new Error(
-				"This workspace runs on your own coding agent — Adsum hands work over instead of calling a model. Pick a card or hand the session over, or switch provider in Settings.",
-			)
+			// would attempt real Anthropic calls with no key). The backstop lives inside the handler, on
+			// createMessage, so a past session can still be OPENED and read without a model.
+			return new ExternalAgentHandler()
 		case "anthropic":
 			return new AnthropicHandler({
 				onRetryAttempt: options.onRetryAttempt,

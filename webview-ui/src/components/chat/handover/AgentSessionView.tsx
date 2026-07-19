@@ -294,7 +294,7 @@ const TurnView: React.FC<{ turn: Turn }> = ({ turn }) => {
 
 // ── the session view ────────────────────────────────────────────────────────
 const AgentSessionView: React.FC<{ onDismiss?: () => void }> = ({ onDismiss }) => {
-	const { handoverUi } = useExtensionState()
+	const { handoverUi, navigateToSettings, freeTierRemainingTokens, apiConfiguration } = useExtensionState()
 	const { isDark } = useVSCodeTheme()
 	const strip = handoverUi?.strip
 	const [draft, setDraft] = useState("")
@@ -316,6 +316,9 @@ const AgentSessionView: React.FC<{ onDismiss?: () => void }> = ({ onDismiss }) =
 	// We cannot see the agent's process, so everything we say about it is derived from call recency.
 	// Say only that. A stopped agent that we labelled "Working" swallowed two of the developer's
 	// messages in the field — the composer must not offer to send into a void.
+	// "Has Adsum a model of its own?" — free-tier quota, or a provider that is not the agent itself.
+	const provider = apiConfiguration?.actModeApiProvider ?? apiConfiguration?.planModeApiProvider
+	const hasOwnModel = (freeTierRemainingTokens ?? 0) > 0 || (!!provider && provider !== "external-agent")
 	const lv = strip.liveness
 	const mins = Math.round(lv.sinceSec / 60)
 	const canReach = lv.state === "working" || lv.state === "idle"
@@ -331,6 +334,7 @@ const AgentSessionView: React.FC<{ onDismiss?: () => void }> = ({ onDismiss }) =
 						: `stopped responding — last heard ${mins} min ago`
 
 	const continueHere = () => StateServiceClient.continueHandoverHere(EmptyRequest.create({})).catch(() => {})
+	const addModel = () => navigateToSettings("api-config")
 	const send = () => {
 		const text = draft.trim()
 		if (!text) {
@@ -600,6 +604,36 @@ const AgentSessionView: React.FC<{ onDismiss?: () => void }> = ({ onDismiss }) =
 					</div>
 				) : null}
 			</div>
+
+			{/* Adsum can only answer the developer directly if it has a model of its own. When it does not,
+			    say so once here rather than letting every typed line disappear into the agent's queue. */}
+			{!hasOwnModel ? (
+				<div
+					style={{
+						padding: "6px 12px 0",
+						fontSize: "10.5px",
+						color: "var(--vscode-descriptionForeground)",
+						lineHeight: 1.5,
+					}}>
+					Messages here go to your agent. To ask <strong style={{ color: "var(--vscode-foreground)" }}>Adsum</strong>{" "}
+					questions in this session,{" "}
+					<button
+						onClick={addModel}
+						style={{
+							background: "none",
+							border: "none",
+							padding: 0,
+							cursor: "pointer",
+							color: BRAND_CYAN_700,
+							fontSize: "10.5px",
+							textDecoration: "underline",
+						}}
+						type="button">
+						add a model
+					</button>{" "}
+					— your agent keeps running either way.
+				</div>
+			) : null}
 
 			{/* composer — honest about the transport */}
 			<div

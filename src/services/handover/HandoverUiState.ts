@@ -30,6 +30,8 @@ const LIVE_WINDOW_MS = 90_000
  *  the composer stops offering to queue. Live evidence: two messages queued to an agent that had ended
  *  its session 5 minutes earlier were never delivered and were silently lost. */
 const STOPPED_AFTER_MS = 15 * 60_000
+/** How long a RETURNED session keeps rendering, so the resumed task can carry its turns as history. */
+const RETURNED_WINDOW_MS = 12 * 60 * 60 * 1000
 
 const readJson = (p: string, fallback: any = null) => {
 	try {
@@ -109,22 +111,33 @@ function deriveNudges(events: any[]): MilestoneRow[] {
 
 /** The newest handover that should own the strip, or null. */
 function pickHandover(root: string, now: number): string | null {
-	let dirs: { id: string; created: number }[] = []
+	let dirs: { id: string; created: number; status?: string; returnedAt?: number }[] = []
 	try {
 		dirs = fs
 			.readdirSync(root, { withFileTypes: true })
 			.filter((e) => e.isDirectory())
 			.map((e) => {
 				const st = readJson(path.join(root, e.name, "state.json"), {}) ?? {}
-				return { id: e.name, created: Date.parse(st.createdAt ?? "") || 0, status: st.status }
+				return {
+					id: e.name,
+					created: Date.parse(st.createdAt ?? "") || 0,
+					status: st.status,
+					returnedAt: Date.parse(st.returnedAt ?? "") || 0,
+				}
 			})
-			.filter((d) => ["pending", "active", "closed-by-agent"].includes(d.status))
+			// "returned" is included on purpose: the resumed task renders the agent's turns as its own
+			// history, so the session has to survive its own homecoming (bounded below).
+			.filter((d) => ["pending", "active", "closed-by-agent", "returned"].includes(d.status))
 			.sort((a, b) => b.created - a.created)
 	} catch {
 		return null
 	}
 	const newest = dirs[0]
 	if (!newest || (newest.created && now - newest.created > STALE_AFTER_MS)) {
+		return null
+	}
+	// A returned session keeps rendering only long enough to be the resumed task's visible history.
+	if (newest.status === "returned" && newest.returnedAt && now - newest.returnedAt > RETURNED_WINDOW_MS) {
 		return null
 	}
 	return newest.id
@@ -157,7 +170,7 @@ export function buildHandoverUiState(
 	const hasWork = events.some((e) => ["checkpoint", "tool_exec", "tool_build"].includes(e.event))
 	const resumed = events.some((e) => e.event === "resume")
 	const phase: HandoverStrip["phase"] =
-		state.status === "closed-by-agent"
+		state.status === "closed-by-agent" || state.status === "returned"
 			? "closed"
 			: state.status === "pending"
 				? "posted"
@@ -274,6 +287,7 @@ export function buildHandoverUiState(
 		strip: {
 			id,
 			phase,
+			returned: state.status === "returned",
 			mission: brief.mission ?? "",
 			calls: events.filter((e) => e.event !== "returned").length,
 			startedAt: state.createdAt ?? brief.createdAt ?? "",
