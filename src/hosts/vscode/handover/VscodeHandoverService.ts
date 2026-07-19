@@ -895,6 +895,7 @@ export class VscodeHandoverService {
 		if (!hid) {
 			return undefined
 		}
+		this.writeSessionRecord(hid) // the prompt points at it, so it must exist first
 		const dir = path.join(HANDOVER_ROOT, hid)
 		let brief: any = {}
 		try {
@@ -954,6 +955,7 @@ export class VscodeHandoverService {
 			undelivered.length
 				? `I typed these while the agent was away — it never received them:\n${undelivered.map((m) => `- ${m}`).join("\n")}`
 				: "",
+			`(Full record of the agent's session: ${path.join(HANDOVER_ROOT, hid, "worklog.md")})`,
 			"",
 			"Pick up from there.",
 		]
