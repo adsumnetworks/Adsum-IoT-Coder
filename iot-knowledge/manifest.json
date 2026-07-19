@@ -51,7 +51,7 @@
 			"id": "adsum/esp/rules/esp-terminal",
 			"title": "ESP Platform Rule: The ESP-IDF Device Tool",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -60,7 +60,7 @@
 			"domain": "embedded-iot",
 			"platform": "esp",
 			"path": "platforms/esp/rules/esp-terminal.md",
-			"content_hash": "0ca46f26f7b65e306e1162b07822c48c7bc60826573a19e9cb76f79b6d78fec5"
+			"content_hash": "b74abdc56c5f7f3772a8c5363142a2e270630fe463b55d66cb6ca108e85c199b"
 		},
 		{
 			"id": "adsum/esp/rules/skill-loading",

@@ -1,6 +1,9 @@
+import { StringRequest } from "@shared/proto/cline/common"
 import React from "react"
+import { StateServiceClient } from "@/services/grpc-client"
 import { BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha, brandSubtle } from "./brandColors"
 import { DEFAULT_DEMO_SCENARIO_ID, DEMO_SCENARIOS } from "./demoScenarios"
+import { useRunTarget } from "./welcome/useRunTarget"
 
 interface DemoCardProps {
 	onStartDemo: (scenarioId: string) => void
@@ -16,6 +19,13 @@ const NEUTRAL_ICON_BG = "color-mix(in srgb, var(--vscode-foreground) 10%, transp
 const DemoCard: React.FC<DemoCardProps> = ({ onStartDemo, disabled = false, variant = "hero" }) => {
 	const scenario = DEMO_SCENARIOS[DEFAULT_DEMO_SCENARIO_ID]
 	const isRerun = variant === "rerun"
+	// In agent mode a self-contained sample HANDS OVER — it is the zero-risk way to experience the
+	// whole loop. Only a sample needing an Adsum-only capability stays here, and then it says so
+	// before the click: the toggle promised "no Adsum tokens", so an exception is labeled, not silent.
+	const { target } = useRunTarget()
+	const agentMode = target === "agent" && !disabled
+	const routesToAgent = agentMode && !!scenario.agentRunnable
+	const adsumRunNote = agentMode && !scenario.agentRunnable
 
 	// Hero = cyan, prominent, full copy. Rerun = neutral, compact, title only.
 	const borderColor = isRerun ? NEUTRAL_BORDER : BRAND_CYAN_600
@@ -29,10 +39,32 @@ const DemoCard: React.FC<DemoCardProps> = ({ onStartDemo, disabled = false, vari
 
 	return (
 		<div style={{ width: "100%", marginBottom: isRerun ? 0 : "16px" }}>
+			{!isRerun && routesToAgent ? (
+				<div style={{ fontSize: "10px", color: "var(--vscode-descriptionForeground)", margin: "0 2px 4px" }}>
+					sample hands to your coding agent — a fresh copy, nothing of yours touched
+				</div>
+			) : null}
+			{!isRerun && adsumRunNote ? (
+				<div style={{ fontSize: "10px", color: "var(--vscode-descriptionForeground)", margin: "0 2px 4px" }}>
+					this sample runs here in Adsum — it needs a capability your agent cannot call yet
+				</div>
+			) : null}
+			{!isRerun && routesToAgent && scenario.agentCaveat ? (
+				<div
+					style={{ fontSize: "10px", color: "var(--vscode-descriptionForeground)", margin: "0 2px 4px", opacity: 0.9 }}>
+					{scenario.agentCaveat}
+				</div>
+			) : null}
 			<button
 				data-testid="demo-card-button"
 				disabled={disabled}
-				onClick={() => onStartDemo(DEFAULT_DEMO_SCENARIO_ID)}
+				onClick={() =>
+					routesToAgent
+						? StateServiceClient.handoverToAgent(
+								StringRequest.create({ value: JSON.stringify({ demo: DEFAULT_DEMO_SCENARIO_ID }) }),
+							).catch(() => {})
+						: onStartDemo(DEFAULT_DEMO_SCENARIO_ID)
+				}
 				onMouseEnter={(e) => {
 					if (!disabled) {
 						e.currentTarget.style.borderColor = borderHover

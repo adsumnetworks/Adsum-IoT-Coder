@@ -35,7 +35,10 @@ import {
 import { getButtonConfig } from "./chat-view/shared/buttonConfig"
 import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
+import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
+import { handOverCard } from "./welcome/handOverCard"
+import { useRunTarget } from "./welcome/useRunTarget"
 import WelcomeView from "./welcome/WelcomeView"
 
 interface ChatViewProps {
@@ -63,7 +66,16 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		hooksEnabled,
 		setExpandTaskHeader,
 		demoAutoStart,
+		handoverUi,
 	} = useExtensionState()
+	const { target: runTarget } = useRunTarget()
+	// Hides the agent-session view without ending the session (New Task, or its own "show the cards").
+	// Reset whenever a different session arrives so a NEW handover is never silently invisible.
+	const [sessionViewDismissed, setSessionViewDismissed] = useState(false)
+	const stripId = handoverUi?.strip?.id
+	useEffect(() => {
+		setSessionViewDismissed(false)
+	}, [stripId])
 	const isProdHostedApp = userInfo?.apiBaseUrl === "https://app.cline.bot"
 	const shouldShowQuickWins = false
 
@@ -274,10 +286,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 
 	const handleStartTask = useCallback(
 		async (text: string) => {
+			// Provider "external-agent" (or conductor mode): a typed task is a mission for the developer's
+			// coding agent, not an in-panel run — hand it over instead of starting a task that could never
+			// call a model (mcp-sdk/13 D7; the factory guard would refuse it with an error otherwise).
+			if (runTarget === "agent") {
+				await handOverCard({ prompt: text })
+				return
+			}
 			setNordicPhase("active")
 			await messageHandlers.handleSendMessage(text, [], [])
 		},
-		[messageHandlers, setNordicPhase],
+		[messageHandlers, setNordicPhase, runTarget],
 	)
 
 	// Auto-start the demo once when the host requests it (e.g. the first-run announcement toast CTA
@@ -473,6 +492,13 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						sessionKbits={sessionKbits}
 						task={task}
 					/>
+				) : handoverUi?.strip && !sessionViewDismissed ? (
+					/* A session out with the developer's coding agent IS a session — it takes the chat
+					   view exactly where a local run would, until it is returned (mockup mcp-sdk/12).
+					   A local task still wins the slot, and it is DISMISSIBLE: in the field this view had
+					   no exit, so New Task appeared dead and the only escape was opening an unrelated
+					   session. Dismissing hides it; the session itself keeps running and stays reachable. */
+					<AgentSessionView onDismiss={() => setSessionViewDismissed(true)} />
 				) : (
 					<WelcomeView
 						onSelectMode={handleModeSelect}

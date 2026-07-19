@@ -1,13 +1,15 @@
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
-import { KeyRoundIcon } from "lucide-react"
+import { ArrowRightLeftIcon, KeyRoundIcon } from "lucide-react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { BRAND_CORAL, brandAlpha } from "./brandColors"
 import InviteCodeField from "./InviteCodeField"
+import { handOverCard } from "./welcome/handOverCard"
 
 /**
- * Conversion card shown when the Adsum free-tier quota is exhausted (HTTP 402).
- * Offers two paths: add a BYOK key for unlimited access, or redeem an invite code
- * for extra free-tier tokens.
+ * Shown when the Adsum free-tier quota is exhausted (HTTP 402). Three ways forward, and the third is
+ * the one that costs nothing: a developer with a Claude Code subscription already pays for inference,
+ * so Adsum can keep conducting (knowledge, toolchain, tracking, snapshots) on their agent instead of
+ * dead-ending them at a paywall. BYOK and the invite code remain for people who want to run here.
  */
 const QuotaExhaustedCard = () => {
 	const { navigateToSettings } = useExtensionState()
@@ -24,7 +26,8 @@ const QuotaExhaustedCard = () => {
 					Free tier quota reached
 				</p>
 				<p className="m-0 text-sm" style={{ color: "var(--vscode-descriptionForeground)" }}>
-					You've used your free session. Add your own API key to keep debugging with unlimited access.
+					Two ways to keep going: add your own API key, or keep working on the coding-agent subscription you already pay
+					for — Adsum guides it either way.
 				</p>
 			</div>
 
@@ -32,6 +35,19 @@ const QuotaExhaustedCard = () => {
 				<KeyRoundIcon className="mr-2" size={14} />
 				Add your own API key
 			</VSCodeButton>
+
+			{/* The escape hatch that costs nothing: their Claude Code subscription already runs models.
+			    Adsum keeps conducting — knowledge, toolchain, tracking, snapshots — on zero Adsum tokens. */}
+			<VSCodeButton
+				appearance="secondary"
+				className="w-full mt-2"
+				onClick={() => handOverCard({ intentId: "buildFlashDebug", platform: "both", prompt: "" })}>
+				<ArrowRightLeftIcon className="mr-2" size={14} />
+				Continue on my coding agent
+			</VSCodeButton>
+			<p className="m-0 mt-1 text-xs" style={{ color: "var(--vscode-descriptionForeground)" }}>
+				Claude Code runs it on your subscription · no Adsum tokens
+			</p>
 
 			<InviteCodeField />
 		</div>

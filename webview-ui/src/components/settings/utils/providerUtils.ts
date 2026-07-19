@@ -205,6 +205,17 @@ export function normalizeApiConfiguration(
 	switch (provider) {
 		case "adsum-free":
 			return getProviderData(adsumFreeModels, adsumFreeDefaultModelId)
+		case "external-agent":
+			// "Your own coding agent" is a run-TARGET, not an inference backend: Adsum hands work over and
+			// never calls a model, so there is no model to normalize. It still needs an explicit case —
+			// the default below falls back to Anthropic, which would render Anthropic's key form under
+			// our provider (it did, live). The empty ModelInfo keeps every consumer's optional-chaining
+			// happy without implying a model exists.
+			return {
+				selectedProvider: provider,
+				selectedModelId: "",
+				selectedModelInfo: {} as ModelInfo,
+			}
 		case "anthropic":
 			return getProviderData(anthropicModels, anthropicDefaultModelId)
 		case "claude-code":

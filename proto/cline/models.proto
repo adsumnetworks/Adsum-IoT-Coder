@@ -443,6 +443,9 @@ enum ApiProvider {
   ADSUM_FREE = 41;
   ZAI_CODING_PLAN = 42;
   ANTHROPIC_COMPATIBLE = 43;
+  // "Your own coding agent" — a run TARGET, not an inference backend. Needs a member anyway: the
+  // provider crosses the webview↔host wire as this enum, and an unmapped value becomes ANTHROPIC.
+  EXTERNAL_AGENT = 44;
 }
 
 enum ApiFormat {
@@ -670,4 +673,9 @@ message ModelsApiConfiguration {
   optional OpenRouterModelInfo plan_mode_anthropic_compatible_model_info = 141;
   optional string act_mode_anthropic_compatible_model_id = 240;
   optional OpenRouterModelInfo act_mode_anthropic_compatible_model_info = 241;
+  // "Your own coding agent" setup preferences (not inference config) — see adsum mcp-sdk/13.
+  optional string external_agent_kind = 242;
+  optional bool external_agent_auto_mcp = 243;
+  optional bool external_agent_manage_claude_md = 244;
+  optional bool external_agent_write_agents_md = 245;
 }

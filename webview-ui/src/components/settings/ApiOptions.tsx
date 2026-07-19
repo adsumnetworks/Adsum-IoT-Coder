@@ -6,6 +6,7 @@ import Fuse from "fuse.js"
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useInterval } from "react-use"
 import styled from "styled-components"
+import { BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha } from "@/components/chat/brandColors"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { PLATFORM_CONFIG, PlatformType } from "@/config/platform.config"
@@ -25,6 +26,7 @@ import { ClineProvider } from "./providers/ClineProvider"
 import { DeepSeekProvider } from "./providers/DeepSeekProvider"
 import { DifyProvider } from "./providers/DifyProvider"
 import { DoubaoProvider } from "./providers/DoubaoProvider"
+import { ExternalAgentProvider } from "./providers/ExternalAgentProvider"
 import { FireworksProvider } from "./providers/FireworksProvider"
 import { GeminiProvider } from "./providers/GeminiProvider"
 import { GlmCodingPlanProvider } from "./providers/GlmCodingPlanProvider"
@@ -137,7 +139,15 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 		// Provider ladder (design/03): curated, priority-ordered. Free → GLM Coding Plan → Anthropic → OpenRouter
 		// → OpenAI-compatible. General metered "Z AI" is intentionally omitted (OpenRouter covers metered GLM; the
 		// GLM Coding Plan is the branded path). The order of this array IS the display order.
-		const allowedProviders = ["adsum-free", "zai-coding-plan", "anthropic", "openrouter", "openai", "anthropic-compatible"]
+		const allowedProviders = [
+			"adsum-free",
+			"external-agent",
+			"zai-coding-plan",
+			"anthropic",
+			"openrouter",
+			"openai",
+			"anthropic-compatible",
+		]
 		let providers = allowedProviders.flatMap((value) => {
 			const entry = PROVIDERS.list.find((p) => p.value === value)
 			return entry ? [entry] : []
@@ -347,7 +357,25 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 									ref={(el) => {
 										itemRefs.current[index] = el
 									}}>
-									<span>{item.html}</span>
+									<span>
+										{item.html}
+										{item.value === "external-agent" && (
+											<span
+												style={{
+													marginLeft: "6px",
+													fontSize: "9px",
+													fontWeight: 700,
+													letterSpacing: "0.4px",
+													padding: "1px 5px",
+													borderRadius: "8px",
+													color: BRAND_CYAN_700,
+													border: `1px solid ${brandAlpha(BRAND_CYAN_600, 0.45)}`,
+													verticalAlign: "1px",
+												}}>
+												BETA
+											</span>
+										)}
+									</span>
 								</ProviderDropdownItem>
 							))}
 						</ProviderDropdownList>
@@ -357,6 +385,9 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 
 			{apiConfiguration && selectedProvider === "adsum-free" && (
 				<AdsumFreeProvider currentMode={currentMode} isPopup={isPopup} />
+			)}
+			{apiConfiguration && selectedProvider === "external-agent" && (
+				<ExternalAgentProvider currentMode={currentMode} isPopup={isPopup} />
 			)}
 			{apiConfiguration && selectedProvider === "hicap" && (
 				<HicapProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />
