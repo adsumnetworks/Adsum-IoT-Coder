@@ -267,6 +267,16 @@ export function readEspBuildInfo(roots: string[]): EspBuildInfo {
  * the build dir; the subfolder scan covers a nested app in a multi-root workspace).
  * Exported for tests.
  */
+/**
+ * FRESH project pin, read from disk right now — bypasses the environment cache. The cache is only
+ * refreshed at activation / workspace-change, so a `dependencies.lock` the agent writes mid-session is
+ * invisible to it (field report 2026-07-14: a valid pin was ignored, tool reported "no resolved idf").
+ * Resolution must consult this, not only the cache.
+ */
+export function readFreshProjectIdfVersion(): string | undefined {
+	return readProjectIdfVersionFromLock(_workspaceRoots)
+}
+
 export function readProjectIdfVersionFromLock(roots: string[]): string | undefined {
 	for (const root of roots) {
 		const candidates = [root]

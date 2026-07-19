@@ -317,12 +317,15 @@ export function selectIdfInstall(
  */
 export function idfAmbiguousMessage(installs: IdfInstall[]): string {
 	const list = installs.map((i) => `  - ${i.path}${i.version ? ` (v${i.version})` : ""}`).join("\n")
+	// Example version comes from an ACTUAL install — a hardcoded "5.5.2" that no one had installed sent the
+	// agent guessing at version strings for ~100 rounds (field report 2026-07-14, bug #2).
+	const example = installs.find((i) => i.version)?.version ?? "5.5.4"
 	return (
 		"Multiple ESP-IDF versions are installed and this project does not pin one " +
 		"(no resolved `idf:` version in dependencies.lock):\n" +
 		`${list}\n` +
 		"Ask the user which ESP-IDF version to use, then re-run this action with " +
-		'`idf_version="5.5.2"`. The choice is remembered for this project.'
+		`\`idf_version="${example}"\`. The choice is remembered for this project.`
 	)
 }
 
