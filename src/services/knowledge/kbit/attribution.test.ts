@@ -16,6 +16,7 @@ const code = (rel: string) =>
 const ATTRIBUTION_UI = [
 	"webview-ui/src/components/chat/KbitCredit.tsx",
 	"webview-ui/src/components/chat/task-header/KbitPill.tsx",
+	"webview-ui/src/components/chat/kbitAuthors.ts",
 	"src/services/knowledge/kbit/credit.ts",
 ]
 
@@ -35,6 +36,22 @@ describe("attribution — credit facts", () => {
 			assert.equal(c.attributed, false, `"${placeholder}" must not read as an author`)
 			assert.equal(c.author, ATTRIBUTION_FALLBACK)
 		}
+	})
+
+	test("co-authors survive a re-attribution, without duplicating or inventing anyone", () => {
+		const c = creditFromMeta({ id: "adsum/esp/boards/esp32-s3", author: "Yaman Kalaji", contributors: "Omar Morceli" })
+		assert.deepEqual(c.contributors, ["Omar Morceli"])
+		// declared in either shape, same result — a list-form bit must not silently drop a person
+		assert.deepEqual(creditFromMeta({ id: "x", author: "A", contributors: ["B", "C"] }).contributors, ["B", "C"])
+		// the lead is never repeated as their own co-author, and a placeholder handle is not a person
+		assert.deepEqual(creditFromMeta({ id: "x", author: "A", contributors: "A, adsum, B, B" }).contributors, ["B"])
+		assert.deepEqual(creditFromMeta({ id: "x", author: "A" }).contributors, [])
+	})
+
+	test("contributors are read from frontmatter in both inline and list form", () => {
+		assert.deepEqual(creditFieldsFromYaml("author: A\ncontributors: B, C\n").contributors, ["B", " C"])
+		assert.deepEqual(creditFieldsFromYaml("author: A\ncontributors:\n  - B\n  - C\nlicense: x\n").contributors, ["B", "C"])
+		assert.equal(creditFieldsFromYaml("author: A\n").contributors, undefined)
 	})
 
 	test("a Tool bit is a Tool bit", () => {
@@ -130,6 +147,7 @@ describe("attribution — copy law (build-time lint)", () => {
 		for (const rel of [
 			"webview-ui/src/components/chat/KbitCredit.tsx",
 			"webview-ui/src/components/chat/task-header/KbitPill.tsx",
+			"webview-ui/src/components/chat/kbitAuthors.ts",
 		]) {
 			const src = code(rel)
 			for (const offPalette of ["charts-purple", "charts-orange", "violet", "purple"]) {
