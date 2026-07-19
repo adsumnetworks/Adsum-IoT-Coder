@@ -555,7 +555,18 @@ export async function activate(context: vscode.ExtensionContext) {
 		await vscode.commands.executeCommand("adsum-iot-coder.focusChatInput")
 		await WebviewProvider.getInstance().controller.initTask(resume.prompt)
 		handover.markReturned(resume.id)
-		vscode.window.setStatusBarMessage("Adsum: session returned — continuing here", 5000)
+		// The live view unmounts the moment the session is returned. Without a pointer the developer
+		// experiences it as "my agent conversation disappeared" — so offer the durable record right here.
+		void vscode.window
+			.showInformationMessage(
+				`Adsum: session returned — continuing here. Everything your agent did is kept.`,
+				"View what the agent did",
+			)
+			.then((pick) => {
+				if (pick) {
+					void handover.showWorklog(resume.id)
+				}
+			})
 	}
 	registerHandoverActions({
 		handOver: (cardPayload) => handover.handOver(cardPayload),

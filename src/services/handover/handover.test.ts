@@ -30,6 +30,7 @@ const SERVER = path.join(REPO, "mcp", "adsum-mcp.mjs")
 // ── a tiny MCP client: exactly what Claude Code does — newline-delimited JSON-RPC over stdio ──
 function mcpClient(handoverDir: string) {
 	const p = spawn(process.execPath, [SERVER, "--handover-dir", handoverDir], { stdio: ["pipe", "pipe", "pipe"] })
+	let notifyListener: ((m: string) => void) | undefined
 	let buf = ""
 	const waiters = new Map<number, (v: any) => void>()
 	p.stdout.setEncoding("utf8")
@@ -43,6 +44,9 @@ function mcpClient(handoverDir: string) {
 				continue
 			}
 			const msg = JSON.parse(line)
+			if (msg.id === undefined && msg.method) {
+				notifyListener?.(msg.method)
+			}
 			waiters.get(msg.id)?.(msg)
 			waiters.delete(msg.id)
 		}
@@ -57,7 +61,7 @@ function mcpClient(handoverDir: string) {
 		})
 	const notify = (method: string) => p.stdin.write(JSON.stringify({ jsonrpc: "2.0", method }) + "\n")
 	const raw = (s: string) => p.stdin.write(s + "\n")
-	return { call, notify, raw, kill: () => p.kill() }
+	return { call, notify, raw, onNotification: (fn: (m: string) => void) => (notifyListener = fn), kill: () => p.kill() }
 }
 
 function fixture(): { root: string; id: string } {
@@ -1150,6 +1154,66 @@ describe("the v9b2 live-run defects (doc 14)", () => {
 		})
 		assert.equal(buildHandoverUiState(drift.root, CONDUCTOR).strip!.milestones.filter((r) => r.kind === "nudge").length, 1)
 		fs.rmSync(drift.root, { recursive: true, force: true })
+	})
+})
+
+describe("a write never guesses its session (the crossed-histories bug)", () => {
+	test("checkpoint without a resumed session refuses instead of routing to the newest handover", async () => {
+		const { root, id } = richFixture()
+		// a SECOND, newer handover — exactly the shape that stole the other one's closing checkpoint
+		const other = "zzz9"
+		fs.mkdirSync(path.join(root, other), { recursive: true })
+		fs.writeFileSync(path.join(root, other, "brief.json"), JSON.stringify({ mission: "a newer, unrelated session" }))
+		fs.writeFileSync(
+			path.join(root, other, "state.json"),
+			JSON.stringify({ status: "pending", createdAt: new Date().toISOString() }),
+		)
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", { protocolVersion: "2025-06-18" })
+			// no resume_handover yet — the client has no active session
+			const blind = await c.call("tools/call", {
+				name: "checkpoint",
+				arguments: { worklog: "closing out the OTHER session", step: "off-plan", tools_used: ["editor_tools"] },
+			})
+			assert.equal(blind.result.isError, true, "a milestone with no addressed session must not be recorded")
+			assert.match(blind.result.content[0].text, /do not know which session/)
+			assert.ok(!fs.existsSync(path.join(root, other, "ledger.jsonl")), "and nothing lands on the newest handover")
+
+			// explicitly addressed → accepted
+			const addressed = await c.call("tools/call", {
+				name: "checkpoint",
+				arguments: { worklog: "explicit", step: "off-plan", tools_used: ["editor_tools"], handover_id: id },
+			})
+			assert.equal(addressed.result.isError, false)
+			const events = fs
+				.readFileSync(path.join(root, id, "ledger.jsonl"), "utf8")
+				.trim()
+				.split("\n")
+				.map((l) => JSON.parse(l))
+			assert.ok(events.some((e) => e.event === "checkpoint" && e.worklog === "explicit"))
+		} finally {
+			c.kill()
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+
+	test("resuming a different session tells the client its tool schema changed", async () => {
+		const { root } = richFixture()
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", { protocolVersion: "2025-06-18" })
+			const notes: string[] = []
+			c.onNotification?.((m: string) => notes.push(m))
+			await c.call("tools/call", { name: "resume_handover", arguments: {} })
+			// the step enum is per-handover and clients cache tools/list; without the notification an
+			// agent keeps the previous session's steps and reports real work as off-plan.
+			await new Promise((r) => setTimeout(r, 50))
+			assert.ok(notes.includes("notifications/tools/list_changed"), "client is told to refetch the tools")
+		} finally {
+			c.kill()
+			fs.rmSync(root, { recursive: true, force: true })
+		}
 	})
 })
 

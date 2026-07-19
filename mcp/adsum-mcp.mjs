@@ -157,6 +157,11 @@ function buildTools(ctx) {
 				type: "object",
 				properties: {
 					worklog: { type: "string", description: "One line: what was just accomplished." },
+					handover_id: {
+						type: "string",
+						description:
+							"Only needed if you have not called resume_handover in this session — the id of the session this milestone belongs to.",
+					},
 					step: {
 						type: "string",
 						...(steps.length ? { enum: stepEnum } : {}),
@@ -456,9 +461,18 @@ function drainDeveloperMessages(id) {
  * enums — deterministic, zero inference (conductor-mode invariant).
  */
 function toolCheckpoint(args, ctx) {
-	const id = ctx.activeId || newestHandover()
+	// A WRITE must never guess its session. Falling back to "newest" once routed a closing checkpoint
+	// for one handover into a different one that happened to be posted more recently — the two sessions'
+	// histories crossed and the real one lost its closure. Reads may be global; writes must be addressed.
+	const id = args?.handover_id || ctx.activeId
 	if (!id) {
-		return { isError: true, text: "No active Adsum handover — call resume_handover first." }
+		return {
+			isError: true,
+			text: "I do not know which session this belongs to. Call resume_handover first (or pass handover_id) — recording a milestone against the wrong session would corrupt both.",
+		}
+	}
+	if (!readJson(path.join(dirOf(id), "brief.json"))) {
+		return { isError: true, text: `No handover "${id}" on this machine.` }
 	}
 	const worklog = String(args?.worklog ?? "").trim()
 	if (!worklog) {
@@ -610,9 +624,12 @@ function runInEnv(id, brief, command, cwd, eventName) {
 }
 
 function toolExec(args, ctx) {
-	const id = ctx.activeId || newestHandover()
+	const id = ctx.activeId
 	if (!id) {
-		return { isError: true, text: "No active Adsum handover — call resume_handover first." }
+		return {
+			isError: true,
+			text: "No active Adsum handover — call resume_handover first so this run is recorded against the right session.",
+		}
 	}
 	const command = String(args?.command ?? "").trim()
 	if (!command) {
@@ -623,9 +640,12 @@ function toolExec(args, ctx) {
 }
 
 function toolBuild(args, ctx) {
-	const id = ctx.activeId || newestHandover()
+	const id = ctx.activeId
 	if (!id) {
-		return { isError: true, text: "No active Adsum handover — call resume_handover first." }
+		return {
+			isError: true,
+			text: "No active Adsum handover — call resume_handover first so this run is recorded against the right session.",
+		}
 	}
 	const brief = readJson(path.join(dirOf(id), "brief.json"), {}) ?? {}
 	return runInEnv(id, brief, "idf.py build", args?.cwd, "tool_build")
@@ -666,7 +686,16 @@ function handle(msg) {
 			else if (name === "resume_handover") {
 				out = toolResumeHandover(args)
 				if (!out.isError) {
-					ctx.activeId = args?.handover_id || newestHandover()
+					const next = args?.handover_id || newestHandover()
+					const changed = next !== ctx.activeId
+					ctx.activeId = next
+					// The checkpoint schema's step enum is built from THIS handover's workflow, and clients
+					// cache tools/list from session start. Without this notification an agent resuming a
+					// second session keeps the first one's steps and is forced to report "off-plan" for
+					// real work — seen live: a 6-step workflow offered only "Step 0" and "off-plan".
+					if (changed) {
+						send({ jsonrpc: "2.0", method: "notifications/tools/list_changed" })
+					}
 				}
 			} else if (name === "load_skill") {
 				out = toolLoadSkill(args, ctx)
