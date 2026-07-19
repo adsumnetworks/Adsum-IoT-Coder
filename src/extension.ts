@@ -517,6 +517,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	// keep the cached verdict fresh (it drives run-path ordering on the session cards).
 	void handover.refreshConductorCache()
 	void handover.announceConductorMode()
+	// The free tier appearing/running out changes the conductor verdict mid-session.
+	context.subscriptions.push({ dispose: onFreeTokensChanged(() => void handover.refreshConductorCache()) })
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeConfiguration((e) => {
 			if (e.affectsConfiguration("adsum-iot-coder.conductorMode")) {

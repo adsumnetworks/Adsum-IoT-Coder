@@ -20,6 +20,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import * as vscode from "vscode"
+import { getFreeTierTokensForDisplay } from "@/services/adsum/FreeTierState"
 import {
 	bridgeLoadVerbs,
 	coreFallbackId,
@@ -745,15 +746,25 @@ export class VscodeHandoverService {
 		if (override === "off") {
 			return { conductor: false, reason: "disabled in settings" }
 		}
-		// auto: is any inference configured? Provider choice lives in globalState; keys in secrets.
+		// auto — evidence-based, in order of certainty:
+		// 1. The free tier IS inference. Guessed secret names missed it live (the panel showed 9M free
+		//    tokens while the toggle claimed "needs a model") — read the same cache the FreeTierStrip does.
+		const freeTokens = getFreeTierTokensForDisplay()
+		if (freeTokens !== undefined && freeTokens > 0) {
+			return { conductor: false, reason: "free tier active" }
+		}
+		// 2. A configured provider key (BYOK). Probe the common secret slots.
 		const provider = this.context.globalState.get<string>("apiProvider")
-		const secretKeys = ["apiKey", "openRouterApiKey", "openAiApiKey", "anthropicApiKey", "geminiApiKey", "adsumFreeTierToken"]
+		const secretKeys = ["apiKey", "openRouterApiKey", "openAiApiKey", "anthropicApiKey", "geminiApiKey"]
 		for (const k of secretKeys) {
 			try {
 				if (await this.context.secrets.get(k)) {
 					return { conductor: false, reason: `inference available (${provider ?? "provider configured"})` }
 				}
 			} catch {}
+		}
+		if (freeTokens !== undefined) {
+			return { conductor: true, reason: "free tier used up, no key added" }
 		}
 		return { conductor: true, reason: "no inference provider configured" }
 	}
