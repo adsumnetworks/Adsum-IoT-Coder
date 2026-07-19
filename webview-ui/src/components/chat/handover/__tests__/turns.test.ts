@@ -20,6 +20,7 @@ const base = (over: Partial<HandoverStrip> = {}): HandoverStrip => ({
 	packed: { bits: 14, governing: { title: "Test & Validate Workflow", author: "Omar Morceli" } },
 	milestones: [],
 	truncated: false,
+	liveness: { state: "working", sinceSec: 5 },
 	...over,
 })
 

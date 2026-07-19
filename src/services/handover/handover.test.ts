@@ -520,12 +520,12 @@ describe("H2.1 v1 — the milestone dialogue (interrogating responses, zero infe
 				arguments: {
 					worklog: "extracted sta_table.h",
 					step: "Step 2: Survey what's actually runnable",
-					tools_used: ["own_terminal"],
+					tools_used: ["own_terminal_toolchain"],
 					files_touched: ["main/sta_table.h", "main/softap_example_main.c"],
 				},
 			})
 			const bt = b.result.content[0].text
-			assert.match(bt, /own terminal/, "own-terminal use is questioned")
+			assert.match(bt, /toolchain command ran outside/, "only real toolchain drift is questioned")
 			assert.match(bt, /`exec`\/`build`/, "steered to the env-carrying tools")
 			assert.match(bt, /Run `build` before claiming this step done/, "mutation → build gate nudge")
 			// closing checkpoint flips the state and stops interrogating
@@ -549,7 +549,7 @@ describe("H2.1 v1 — the milestone dialogue (interrogating responses, zero infe
 				.split("\n")
 				.map((l) => JSON.parse(l))
 			const cps = events.filter((e) => e.event === "checkpoint")
-			assert.deepEqual(cps[1].tools_used, ["own_terminal"])
+			assert.deepEqual(cps[1].tools_used, ["own_terminal_toolchain"])
 			assert.deepEqual(cps[2].files_touched, ["test/main/test_sta.c"])
 			assert.equal(cps[2].final, true)
 		} finally {
@@ -766,7 +766,13 @@ describe("HandoverUiState — the strip's contract (pure builder)", () => {
 		const { root } = uiFixture({
 			status: "active",
 			ledger: [
-				{ t: T(1), event: "checkpoint", worklog: "probed the env", step: "Step 1", tools_used: ["own_terminal"] },
+				{
+					t: T(1),
+					event: "checkpoint",
+					worklog: "probed the env",
+					step: "Step 1",
+					tools_used: ["own_terminal_toolchain"],
+				},
 				{
 					t: T(2),
 					event: "checkpoint",
@@ -779,7 +785,7 @@ describe("HandoverUiState — the strip's contract (pure builder)", () => {
 		})
 		const nudges = buildHandoverUiState(root, CONDUCTOR).strip!.milestones.filter((r) => r.kind === "nudge") as any[]
 		assert.equal(nudges.length, 2)
-		assert.match(nudges[0].text, /its own terminal/)
+		assert.match(nudges[0].text, /toolchain command ran outside/)
 		assert.match(nudges[1].text, /without building/)
 		fs.rmSync(root, { recursive: true, force: true })
 	})
@@ -875,19 +881,34 @@ describe("HandoverUiState — the strip's contract (pure builder)", () => {
 		const now = Date.parse(T(10))
 		const fresh = uiFixture({
 			status: "active",
-			ledger: [{ t: T(10), event: "tool_build", command: "idf.py build", exit: 0 }],
+			ledger: [
+				{ t: T(0), event: "resume" },
+				{ t: T(10), event: "tool_build", command: "idf.py build", exit: 0 },
+			],
 		})
-		const live = buildHandoverUiState(fresh.root, CONDUCTOR, now).strip!.live
-		assert.equal(live?.verb, "building…", "the verb names what is actually happening")
+		const fs2 = buildHandoverUiState(fresh.root, CONDUCTOR, now).strip!
+		assert.equal(fs2.live?.verb, "building…", "the verb names what is actually happening")
+		assert.equal(fs2.liveness.state, "working")
 		fs.rmSync(fresh.root, { recursive: true, force: true })
 
-		const quiet = uiFixture({ status: "active", ledger: [{ t: T(0), event: "checkpoint", worklog: "x" }] })
-		assert.equal(buildHandoverUiState(quiet.root, CONDUCTOR, now).strip!.live, undefined, "10 min quiet → no false 'live'")
+		const quiet = uiFixture({
+			status: "active",
+			ledger: [
+				{ t: T(0), event: "resume" },
+				{ t: T(0), event: "checkpoint", worklog: "x" },
+			],
+		})
+		const qs = buildHandoverUiState(quiet.root, CONDUCTOR, now).strip!
+		assert.equal(qs.live, undefined, "10 min quiet → no false 'live'")
+		assert.equal(qs.liveness.state, "idle", "and we say idle rather than implying it is working")
 		fs.rmSync(quiet.root, { recursive: true, force: true })
 
 		const many = uiFixture({
 			status: "active",
-			ledger: Array.from({ length: 40 }, (_, i) => ({ t: T(i), event: "checkpoint", worklog: `step ${i}` })),
+			ledger: [
+				{ t: T(0), event: "resume" },
+				...Array.from({ length: 40 }, (_, i) => ({ t: T(i), event: "checkpoint", worklog: `step ${i}` })),
+			],
 		})
 		const s = buildHandoverUiState(many.root, CONDUCTOR, now).strip!
 		assert.equal(s.milestones.length, 30, "capped")
@@ -1030,6 +1051,105 @@ describe("agent setup — registering the MCP server without the developer editi
 		} finally {
 			fs.rmSync(ws, { recursive: true, force: true })
 		}
+	})
+})
+
+describe("the v9b2 live-run defects (doc 14)", () => {
+	test("step parser reads Phase headings too — debug-loop is 6 steps, not 1", () => {
+		// Verbatim heading shapes from the real debug-loop.md that shipped 1-of-6 to a live agent.
+		const body = [
+			"# Autonomous Debug Loop",
+			"## Step 0: Identify the hardware (first iteration only)",
+			"## Pre-Loop: Permission Mode",
+			"## Loop Phases",
+			"### Phase 1: Build",
+			"### Phase 2: Flash",
+			"### Phase 3: Capture Logs",
+			"### Phase 4: Analyze",
+			"### Phase 5: Fix & Repeat",
+			"## Safety Guards (Auto-Approve mode)",
+		].join("\n")
+		const steps = parseWorkflowSteps(body)
+		assert.equal(steps.length, 6, "Step 0 + Phases 1-5 — the loop the agent must actually follow")
+		assert.equal(steps[0], "Step 0: Identify the hardware")
+		assert.equal(steps[1], "Phase 1: Build")
+		assert.equal(steps[5], "Phase 5: Fix & Repeat")
+		// prose headings are not steps
+		assert.ok(!steps.some((s) => /Pre-Loop|Safety Guards|Loop Phases/.test(s)))
+	})
+
+	test("core-corpus refs resolve at the root — no adsum/rules/rules phantom", () => {
+		// The live brief listed `adsum/rules/rules/next-step` as "referenced but not bundled": a bit that
+		// never existed, because "rules" was treated as a platform segment.
+		const refs = extractBitRefs("adsum/rules/next-step", "see `rules/core.md` and `references/x.md`")
+		assert.ok(refs.includes("adsum/rules/core"), "core ref resolves at the corpus root")
+		assert.ok(!refs.some((r) => r.includes("rules/rules")), "no doubled platform segment")
+		// a real platform bit still scopes to its platform
+		assert.ok(extractBitRefs("adsum/esp/workflows/debug-loop", "`actions/build.md`").includes("adsum/esp/actions/build"))
+	})
+
+	test("liveness never claims more than call-recency proves", () => {
+		const now = Date.parse(T(30))
+		const mk = (lastMin: number) =>
+			uiFixture({
+				status: "active",
+				ledger: [
+					{ t: T(0), event: "resume" },
+					{ t: T(lastMin), event: "checkpoint", worklog: "x" },
+				],
+			})
+		const a = mk(30)
+		assert.equal(buildHandoverUiState(a.root, CONDUCTOR, now).strip!.liveness.state, "working")
+		fs.rmSync(a.root, { recursive: true, force: true })
+		const b = mk(25) // 5 min quiet — the exact v9b2 gap
+		assert.equal(buildHandoverUiState(b.root, CONDUCTOR, now).strip!.liveness.state, "idle")
+		fs.rmSync(b.root, { recursive: true, force: true })
+		const c = mk(5) // 25 min quiet — treat as gone, stop offering to queue
+		assert.equal(buildHandoverUiState(c.root, CONDUCTOR, now).strip!.liveness.state, "stopped")
+		fs.rmSync(c.root, { recursive: true, force: true })
+		const d = uiFixture({ status: "pending" })
+		assert.equal(buildHandoverUiState(d.root, CONDUCTOR, now).strip!.liveness.state, "never-picked-up")
+		fs.rmSync(d.root, { recursive: true, force: true })
+	})
+
+	test("undelivered messages surface with their age instead of vanishing", () => {
+		const { root, id } = uiFixture({ status: "active", ledger: [{ t: T(0), event: "resume" }] })
+		fs.writeFileSync(path.join(root, id, "messages.jsonl"), `${JSON.stringify({ t: T(20), text: "continue" })}\n`)
+		const s = buildHandoverUiState(root, CONDUCTOR, Date.parse(T(30))).strip!
+		assert.equal(s.queued?.length, 1, "the developer's un-received message is visible, not silently held")
+		assert.equal(s.queued?.[0].text, "continue")
+		assert.ok((s.queued?.[0].ageSec ?? 0) >= 600, "and carries its age so a stale queue is obvious")
+		fs.rmSync(root, { recursive: true, force: true })
+	})
+
+	test("reading files with its own shell is not drift; a toolchain command is", () => {
+		const read = uiFixture({
+			status: "active",
+			ledger: [
+				{ t: T(0), event: "resume" },
+				{
+					t: T(1),
+					event: "checkpoint",
+					worklog: "grepped the build log",
+					tools_used: ["adsum.build", "own_terminal_read"],
+				},
+			],
+		})
+		assert.equal(
+			buildHandoverUiState(read.root, CONDUCTOR).strip!.milestones.filter((r) => r.kind === "nudge").length,
+			0,
+			"our own truncated build output forced this workaround — nudging it was a false accusation",
+		)
+		fs.rmSync(read.root, { recursive: true, force: true })
+		const drift = uiFixture({
+			status: "active",
+			ledger: [
+				{ t: T(0), event: "resume" },
+				{ t: T(1), event: "checkpoint", worklog: "ran idf.py myself", tools_used: ["own_terminal_toolchain"] },
+			],
+		})
+		assert.equal(buildHandoverUiState(drift.root, CONDUCTOR).strip!.milestones.filter((r) => r.kind === "nudge").length, 1)
+		fs.rmSync(drift.root, { recursive: true, force: true })
 	})
 })
 

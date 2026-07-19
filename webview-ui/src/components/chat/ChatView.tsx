@@ -69,6 +69,13 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		handoverUi,
 	} = useExtensionState()
 	const { target: runTarget } = useRunTarget()
+	// Hides the agent-session view without ending the session (New Task, or its own "show the cards").
+	// Reset whenever a different session arrives so a NEW handover is never silently invisible.
+	const [sessionViewDismissed, setSessionViewDismissed] = useState(false)
+	const stripId = handoverUi?.strip?.id
+	useEffect(() => {
+		setSessionViewDismissed(false)
+	}, [stripId])
 	const isProdHostedApp = userInfo?.apiBaseUrl === "https://app.cline.bot"
 	const shouldShowQuickWins = false
 
@@ -485,11 +492,13 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						sessionKbits={sessionKbits}
 						task={task}
 					/>
-				) : handoverUi?.strip ? (
+				) : handoverUi?.strip && !sessionViewDismissed ? (
 					/* A session out with the developer's coding agent IS a session — it takes the chat
 					   view exactly where a local run would, until it is returned (mockup mcp-sdk/12).
-					   A local task still wins the slot: starting one never gets blocked by tracking. */
-					<AgentSessionView />
+					   A local task still wins the slot, and it is DISMISSIBLE: in the field this view had
+					   no exit, so New Task appeared dead and the only escape was opening an unrelated
+					   session. Dismissing hides it; the session itself keeps running and stays reachable. */
+					<AgentSessionView onDismiss={() => setSessionViewDismissed(true)} />
 				) : (
 					<WelcomeView
 						onSelectMode={handleModeSelect}

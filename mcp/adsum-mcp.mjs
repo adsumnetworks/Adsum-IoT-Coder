@@ -522,10 +522,10 @@ function toolCheckpoint(args, ctx) {
 		)
 	}
 	// Tool check (the drift question)
-	if (toolsUsed.includes("own_terminal")) {
+	if (toolsUsed.includes("own_terminal_toolchain")) {
 		out.push(
 			"",
-			"⚠ You used your own terminal for work this session. Embedded commands (idf.py, esptool, west, serial ports) belong in `exec`/`build` — they carry the toolchain environment and keep the developer's tracking honest. What did you run there?",
+			"⚠ A toolchain command ran outside `exec`/`build`. Those carry the embedded environment and keep the developer's record complete — which command was it, and did it need something exec/build could not give you?",
 		)
 	}
 	// Mutation check (the safety question)
@@ -583,6 +583,18 @@ function runInEnv(id, brief, command, cwd, eventName) {
 	const tail = (s, n) => {
 		const t = (s || "").trim()
 		return t.length > n ? `…\n${t.slice(-n)}` : t
+	}
+	// A failing build's TAIL is usually a sub-project succeeding — the real error sits above the cut.
+	// Live evidence: a compile failure showed only the bootloader linking, so the agent had to grep the
+	// log files with its own shell, and our own drift nudge then fired at it. Surface the error lines.
+	const ERR_RE =
+		/(?:^|\s)(error:|fatal error:|undefined reference|No such file|multiple definition|region `?\w+'? overflowed|does not fit|ninja: build stopped)/i
+	const errorLines = (s) => {
+		const hits = (s || "")
+			.split("\n")
+			.filter((l) => ERR_RE.test(l) && !/^\s*\[\d+\/\d+\]/.test(l))
+			.map((l) => l.trim())
+		return [...new Set(hits)].slice(0, 12)
 	}
 	ledger(id, { event: eventName, command, cwd: wd, exit })
 	patchState(id, {})

@@ -538,9 +538,24 @@ export async function activate(context: vscode.ExtensionContext) {
 			vscode.window.showInformationMessage("Adsum: no handed-over session to continue.")
 			return
 		}
+		// Continuing HERE needs a model. While the run-target is "your own coding agent" the factory
+		// refuses to build a handler, so the task would never start — in the field this button looked
+		// dead. Restore the provider that ran work before the handover; if there is none, say so.
+		if (!(await handover.restoreProviderForReturn())) {
+			const pick = await vscode.window.showWarningMessage(
+				"Continuing here needs a model — this workspace is set to run on your own coding agent, and no other provider is configured.",
+				"Choose a model",
+				"Keep working with my agent",
+			)
+			if (pick === "Choose a model") {
+				await vscode.commands.executeCommand("adsum-iot-coder.settingsButtonClicked")
+			}
+			return
+		}
 		await vscode.commands.executeCommand("adsum-iot-coder.focusChatInput")
 		await WebviewProvider.getInstance().controller.initTask(resume.prompt)
 		handover.markReturned(resume.id)
+		vscode.window.setStatusBarMessage("Adsum: session returned — continuing here", 5000)
 	}
 	registerHandoverActions({
 		handOver: (cardPayload) => handover.handOver(cardPayload),
