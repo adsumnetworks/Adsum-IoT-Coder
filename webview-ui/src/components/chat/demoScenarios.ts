@@ -10,6 +10,10 @@
  */
 
 export interface DemoScenario {
+	/** True when the materialized sample can genuinely be worked by an EXTERNAL coding agent (the
+	 *  workspace is self-contained and no Adsum-only host capability is required). Drives whether the
+	 *  run-target toggle routes this sample to the agent or labels it as Adsum-run. */
+	agentRunnable?: boolean
 	id: string
 	title: string
 	honestLabel: string
@@ -42,6 +46,10 @@ export interface DemoScenario {
 export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 	"nus-uart": {
 		id: "nus-uart",
+		// The materialized sample (real NCS source + recorded hardware logs) is a complete, self-
+		// contained project — an external agent can genuinely work it. It is the zero-risk first
+		// handover: known project, known bug, nothing of the developer's to break.
+		agentRunnable: true,
 		title: "BLE NUS one-directional communication",
 		honestLabel: "Real NCS source + logs from nRF52840DK + nRF5340DK hardware.",
 		taskPrompt: "Demo: BLE NUS one-directional bug — no setup needed\n\n[ADSUM_DEMO:nus-uart]",
@@ -52,6 +60,9 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 	},
 	"cra-sample": {
 		id: "cra-sample",
+		// NOT agent-runnable yet: the CRA scan is an Adsum host capability (the scanner is not exposed
+		// as a tool an external agent can call until hosted tool-bits land). Labeled, never silent.
+		agentRunnable: false,
 		title: "Preview CRA readiness on a sample",
 		honestLabel: "Runs the real CRA workflow on our pre-built nRF reference sample — not your build.",
 		taskPrompt: "Demo: CRA SBOM & Fix on a bundled sample — no project needed\n\n[ADSUM_DEMO:cra-sample]",

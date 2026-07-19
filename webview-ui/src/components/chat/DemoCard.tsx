@@ -17,11 +17,13 @@ const NEUTRAL_ICON_BG = "color-mix(in srgb, var(--vscode-foreground) 10%, transp
 const DemoCard: React.FC<DemoCardProps> = ({ onStartDemo, disabled = false, variant = "hero" }) => {
 	const scenario = DEMO_SCENARIOS[DEFAULT_DEMO_SCENARIO_ID]
 	const isRerun = variant === "rerun"
-	// The sample is Adsum's own guided showcase — it always runs here, even in agent mode. That
-	// exception must be VISIBLE, not silent: the run-target toggle promised "no Adsum tokens", so a
-	// surface that still spends them says so before the click.
+	// In agent mode a self-contained sample HANDS OVER — it is the zero-risk way to experience the
+	// whole loop. Only a sample needing an Adsum-only capability stays here, and then it says so
+	// before the click: the toggle promised "no Adsum tokens", so an exception is labeled, not silent.
 	const { target } = useRunTarget()
-	const adsumRunNote = target === "agent" && !disabled
+	const agentMode = target === "agent" && !disabled
+	const routesToAgent = agentMode && !!scenario.agentRunnable
+	const adsumRunNote = agentMode && !scenario.agentRunnable
 
 	// Hero = cyan, prominent, full copy. Rerun = neutral, compact, title only.
 	const borderColor = isRerun ? NEUTRAL_BORDER : BRAND_CYAN_600
@@ -35,20 +37,26 @@ const DemoCard: React.FC<DemoCardProps> = ({ onStartDemo, disabled = false, vari
 
 	return (
 		<div style={{ width: "100%", marginBottom: isRerun ? 0 : "16px" }}>
-			{adsumRunNote && !isRerun ? (
-				<div
-					style={{
-						fontSize: "10px",
-						color: "var(--vscode-descriptionForeground)",
-						margin: "0 2px 4px",
-					}}>
-					sample runs here in Adsum (guided showcase) — it does not go to your coding agent
+			{!isRerun && routesToAgent ? (
+				<div style={{ fontSize: "10px", color: "var(--vscode-descriptionForeground)", margin: "0 2px 4px" }}>
+					sample hands to your coding agent — a fresh copy, nothing of yours touched
+				</div>
+			) : null}
+			{!isRerun && adsumRunNote ? (
+				<div style={{ fontSize: "10px", color: "var(--vscode-descriptionForeground)", margin: "0 2px 4px" }}>
+					this sample needs Adsum's compliance scanner, so it runs here — agent support comes with hosted tools
 				</div>
 			) : null}
 			<button
 				data-testid="demo-card-button"
 				disabled={disabled}
-				onClick={() => onStartDemo(DEFAULT_DEMO_SCENARIO_ID)}
+				onClick={() =>
+					routesToAgent
+						? StateServiceClient.handoverToAgent(
+								StringRequest.create({ value: JSON.stringify({ demo: DEFAULT_DEMO_SCENARIO_ID }) }),
+							).catch(() => {})
+						: onStartDemo(DEFAULT_DEMO_SCENARIO_ID)
+				}
 				onMouseEnter={(e) => {
 					if (!disabled) {
 						e.currentTarget.style.borderColor = borderHover
