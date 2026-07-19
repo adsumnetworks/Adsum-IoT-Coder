@@ -41,6 +41,7 @@ const strip = (over: Partial<HandoverStrip> = {}): HandoverUiState => ({
 			{ kind: "nudge", t: "2026-07-19T10:03:00Z", text: "nudged: edited source without building" },
 		],
 		truncated: false,
+		liveness: { state: "working", sinceSec: 5 },
 		...over,
 	},
 })
@@ -92,6 +93,7 @@ describe("AgentSessionView — the handed-over session as a conversation", () =>
 	it("closed: receipt separates 'it says' from 'measured'; composer hands back to Adsum", () => {
 		mockState.handoverUi = strip({
 			phase: "closed",
+			liveness: { state: "stopped", sinceSec: 900 },
 			closedAt: new Date().toISOString(),
 			closing: {
 				headline: "Suite scaffolded and green",
@@ -110,6 +112,31 @@ describe("AgentSessionView — the handed-over session as a conversation", () =>
 		fireEvent.keyDown(input, { key: "Enter" })
 		expect(rpc.continueHandoverHere).toHaveBeenCalled()
 		expect(rpc.messageHandoverAgent).not.toHaveBeenCalled()
+	})
+
+	it("says idle rather than claiming Working when the agent has gone quiet", () => {
+		mockState.handoverUi = strip({ liveness: { state: "idle", sinceSec: 300 } })
+		render(<AgentSessionView />)
+		expect(screen.getByText(/idle — last heard 5 min ago/)).toBeInTheDocument()
+		expect(screen.queryByText(/working ·/)).not.toBeInTheDocument()
+	})
+
+	it("a stopped agent gets no offer to queue — the composer redirects to continuing here", () => {
+		mockState.handoverUi = strip({ liveness: { state: "stopped", sinceSec: 1200 } })
+		render(<AgentSessionView />)
+		const input = screen.getByPlaceholderText(/stopped responding/)
+		fireEvent.change(input, { target: { value: "continue" } })
+		fireEvent.keyDown(input, { key: "Enter" })
+		expect(rpc.messageHandoverAgent).not.toHaveBeenCalled()
+		expect(rpc.continueHandoverHere).toHaveBeenCalled()
+	})
+
+	it("is dismissible — the view must never be a trap", () => {
+		const onDismiss = vi.fn()
+		mockState.handoverUi = strip()
+		render(<AgentSessionView onDismiss={onDismiss} />)
+		fireEvent.click(screen.getByTitle(/Hide this view and show the cards/))
+		expect(onDismiss).toHaveBeenCalled()
 	})
 
 	it("never leaks internal vocabulary", () => {

@@ -21,7 +21,18 @@ import * as path from "node:path"
 
 /** The kinds a bit path names — lets a platform-relative ref (`actions/x.md`) resolve to a full id. */
 const BIT_KINDS = "actions|workflows|rules|references|knowledges|sdks|boards|protocols"
-const platformOf = (id: string) => id.replace(/^adsum\//, "").split("/")[0]
+/** The platform an id belongs to, or "" for the CORE corpus (adsum/rules/…, adsum/references/…).
+ *  Treating "rules" as a platform produced the phantom `adsum/rules/rules/next-step` in a live brief. */
+const CORE_KINDS = new Set(["rules", "references", "knowledges", "agent", "core"])
+const platformOf = (id: string) => {
+	const first = id.replace(/^adsum\//, "").split("/")[0]
+	return CORE_KINDS.has(first) ? "" : first
+}
+/** Prefix for a platform-relative ref: core bits resolve against the corpus root, not a platform. */
+const relBase = (id: string) => {
+	const p = platformOf(id)
+	return p ? `platforms/${p}/` : ""
+}
 
 /** id from an iot-knowledge-relative path. Inlined copy of KnowledgeResolver.deriveIdFromRel — kept here
  *  so this pure module stays free of the resolver's transitive (vscode/HostProvider) import graph. */
@@ -40,13 +51,13 @@ const idFromRel = (rel: string): string =>
  */
 export function extractBitRefs(sourceId: string, body: string): string[] {
 	const ids = new Set<string>()
-	const plat = platformOf(sourceId)
+	const base = relBase(sourceId)
 	for (const m of body.matchAll(/platforms\/([\w/-]+\.md)/gi)) {
 		ids.add(idFromRel(`platforms/${m[1]}`))
 	}
 	const rel = new RegExp(`(?:^|[^\\w/.])((?:${BIT_KINDS})/[\\w/-]+\\.md)`, "gi")
 	for (const m of body.matchAll(rel)) {
-		ids.add(idFromRel(`platforms/${plat}/${m[1]}`))
+		ids.add(idFromRel(`${base}${m[1]}`))
 	}
 	ids.delete(sourceId) // a bit naming itself (its own header) is not a dependency
 	return [...ids]
@@ -58,8 +69,8 @@ export function extractBitRefs(sourceId: string, body: string): string[] {
  * `` `read_file` → `…/x.md` `` directive is touched; every other line of curated prose is left alone.
  */
 export function bridgeLoadVerbs(sourceId: string, body: string): string {
-	const plat = platformOf(sourceId)
-	const idFor = (p: string) => (p.startsWith("platforms/") ? idFromRel(p) : idFromRel(`platforms/${plat}/${p}`))
+	const base = relBase(sourceId)
+	const idFor = (p: string) => (p.startsWith("platforms/") ? idFromRel(p) : idFromRel(`${base}${p}`))
 	return body.replace(
 		new RegExp(`\`?read_file\`?\\s*(?:→|->)\\s*\`?((?:platforms/|(?:${BIT_KINDS})/)[\\w/-]+\\.md)\`?`, "gi"),
 		(_full, p: string) => `call \`load_skill("${idFor(p)}")\``,
@@ -102,8 +113,13 @@ export function extractRequires(yaml: string): string[] {
  */
 export function parseWorkflowSteps(body: string): string[] {
 	const steps: string[] = []
-	for (const m of body.matchAll(/^##+\s*STEP\s*(\d+[a-z]?)\s*[:—–-]\s*(.+?)\s*$/gim)) {
-		steps.push(`Step ${m[1]}: ${m[2].replace(/\(.*?\)\s*$/, "").trim()}`)
+	// Workflows label their sequence as either "Step N" or "Phase N", at whatever heading depth the
+	// author chose — debug-loop.md opens with `## Step 0` then runs `### Phase 1..5`. Matching only
+	// "Step" saw 1 of 6, so the server told the agent it was finished before it had built anything,
+	// and real Phase-1 work had to be reported as off-plan. Match both, in document order.
+	for (const m of body.matchAll(/^#{2,4}\s*(step|phase)\s*(\d+[a-z]?)\s*[:—–-]\s*(.+?)\s*$/gim)) {
+		const kind = m[1][0].toUpperCase() + m[1].slice(1).toLowerCase()
+		steps.push(`${kind} ${m[2]}: ${m[3].replace(/\(.*?\)\s*$/, "").trim()}`)
 	}
 	return steps
 }

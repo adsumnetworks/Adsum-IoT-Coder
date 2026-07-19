@@ -42,7 +42,13 @@ export interface HandoverStrip {
 	milestones: MilestoneRow[]
 	/** true when older rows were dropped — the strip offers the full worklog */
 	truncated: boolean
+	/** What we actually know about the agent's presence — we cannot see its process, so this is derived
+	 *  from call recency and never asserts more than that. Drives the header, the pulse, and whether the
+	 *  composer offers to send at all (a message to a stopped agent would queue into a void). */
+	liveness: { state: "never-picked-up" | "working" | "idle" | "stopped"; sinceSec: number }
 	live?: { verb: string; sinceSec: number }
+	/** Messages typed by the developer that the agent has not received yet, oldest first. */
+	queued?: { text: string; ageSec: number }[]
 	closing?: {
 		headline: string
 		/** what the agent SAYS it did */

@@ -26,6 +26,10 @@ const MILESTONE_CAP = 30
 const STALE_AFTER_MS = 48 * 60 * 60 * 1000
 /** No ledger activity for this long → drop the "live" pulse (claiming live when it isn't is a lie). */
 const LIVE_WINDOW_MS = 90_000
+/** Beyond this with no call, the agent is treated as STOPPED: we stop implying it will come back, and
+ *  the composer stops offering to queue. Live evidence: two messages queued to an agent that had ended
+ *  its session 5 minutes earlier were never delivered and were silently lost. */
+const STOPPED_AFTER_MS = 15 * 60_000
 
 const readJson = (p: string, fallback: any = null) => {
 	try {
@@ -66,11 +70,15 @@ function deriveNudges(events: any[]): MilestoneRow[] {
 	const out: MilestoneRow[] = []
 	const checkpoints = events.filter((e) => e.event === "checkpoint")
 	for (const [i, cp] of checkpoints.entries()) {
-		if (Array.isArray(cp.tools_used) && cp.tools_used.includes("own_terminal")) {
+		// Only TOOLCHAIN commands outside exec/build are drift. Reading files or grepping logs with its
+		// own shell is legitimate — and we forced exactly that by truncating a failing build's real error
+		// out of the tool output, then nudged the agent for the workaround our own tool required. A false
+		// accusation in amber teaches the developer to distrust the signal, so this fires narrowly now.
+		if (Array.isArray(cp.tools_used) && cp.tools_used.includes("own_terminal_toolchain")) {
 			out.push({
 				kind: "nudge",
 				t: cp.t,
-				text: "nudged: it used its own terminal — Adsum pointed it back to the guided path",
+				text: "nudged: a toolchain command ran outside Adsum's tools — Adsum asked which one and why",
 			})
 		}
 		// The CLOSING checkpoint lists the files touched across the whole session, not a fresh mutation, so
@@ -79,7 +87,14 @@ function deriveNudges(events: any[]): MilestoneRow[] {
 		if (!cp.final && Array.isArray(cp.files_touched) && cp.files_touched.length > 0) {
 			// did a build run through us between this checkpoint and the next one?
 			const next = checkpoints[i + 1]
-			const built = events.some((e) => e.event === "tool_build" && e.t > cp.t && (!next || e.t <= next.t))
+			// A build that lands inside the same milestone (even before the next checkpoint is recorded)
+			// counts — the earlier window was tight enough to fire on a session that DID build.
+			const cpMs = Date.parse(cp.t) || 0
+			const built = events.some(
+				(e) =>
+					e.event === "tool_build" &&
+					((e.t > cp.t && (!next || e.t <= next.t)) || Math.abs((Date.parse(e.t) || 0) - cpMs) < 60_000),
+			)
 			if (!built) {
 				out.push({
 					kind: "nudge",
@@ -193,11 +208,29 @@ export function buildHandoverUiState(
 	const truncated = rows.length > MILESTONE_CAP
 	const milestones = truncated ? rows.slice(-MILESTONE_CAP) : rows
 
-	// ── live pulse: only while genuinely recent ───────────────────────────────
+	// ── liveness: what we can honestly claim about the agent's presence ───────
 	const last = events[events.length - 1]
 	const lastAt = Date.parse(last?.t ?? "") || 0
+	const sinceMs = lastAt ? now - lastAt : now - (Date.parse(state.createdAt ?? "") || now)
+	const liveness: HandoverStrip["liveness"] = {
+		state: !resumed
+			? "never-picked-up"
+			: phase === "closed"
+				? "stopped"
+				: sinceMs < LIVE_WINDOW_MS
+					? "working"
+					: sinceMs < STOPPED_AFTER_MS
+						? "idle"
+						: "stopped",
+		sinceSec: Math.max(0, Math.round(sinceMs / 1000)),
+	}
+
+	// queued-but-undelivered developer messages, with their age (a 10-minute-old queue is a red flag)
+	const queued = readJsonl(path.join(dir, "messages.jsonl"))
+		.filter((m) => typeof m.text === "string")
+		.map((m) => ({ text: m.text as string, ageSec: Math.max(0, Math.round((now - (Date.parse(m.t) || now)) / 1000)) }))
 	let live: HandoverStrip["live"]
-	if (phase === "working" && lastAt && now - lastAt < LIVE_WINDOW_MS) {
+	if (liveness.state === "working" && lastAt) {
 		const verb =
 			last.event === "tool_build"
 				? "building…"
@@ -259,6 +292,8 @@ export function buildHandoverUiState(
 			},
 			milestones,
 			truncated,
+			liveness,
+			queued: queued.length ? queued : undefined,
 			live,
 			closing,
 		},

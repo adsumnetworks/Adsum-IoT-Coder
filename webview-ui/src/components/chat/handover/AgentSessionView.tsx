@@ -35,6 +35,17 @@ const PHASE_LABEL: Record<HandoverStrip["phase"], string> = {
 }
 const PHASE_IDX: Record<HandoverStrip["phase"], number> = { posted: 0, pickedUp: 1, working: 2, closed: 3 }
 
+/** Human duration between two timestamps — used for the closed session's total. */
+const elapsed = (from: string, to?: string): string => {
+	const a = Date.parse(from)
+	const b = to ? Date.parse(to) : Date.now()
+	if (Number.isNaN(a) || Number.isNaN(b) || b < a) {
+		return ""
+	}
+	const min = Math.round((b - a) / 60000)
+	return min < 1 ? "just now" : min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}m`
+}
+
 const clock = (iso: string) => {
 	const d = new Date(iso)
 	return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -282,7 +293,7 @@ const TurnView: React.FC<{ turn: Turn }> = ({ turn }) => {
 }
 
 // ── the session view ────────────────────────────────────────────────────────
-const AgentSessionView: React.FC = () => {
+const AgentSessionView: React.FC<{ onDismiss?: () => void }> = ({ onDismiss }) => {
 	const { handoverUi } = useExtensionState()
 	const { isDark } = useVSCodeTheme()
 	const strip = handoverUi?.strip
@@ -302,6 +313,22 @@ const AgentSessionView: React.FC = () => {
 	const labelCyan = isDark ? BRAND_CYAN_300 : BRAND_CYAN_700
 	const closed = strip.phase === "closed"
 	const turns = buildTurns(strip)
+	// We cannot see the agent's process, so everything we say about it is derived from call recency.
+	// Say only that. A stopped agent that we labelled "Working" swallowed two of the developer's
+	// messages in the field — the composer must not offer to send into a void.
+	const lv = strip.liveness
+	const mins = Math.round(lv.sinceSec / 60)
+	const canReach = lv.state === "working" || lv.state === "idle"
+	const livenessLabel =
+		lv.state === "working"
+			? `working · ${strip.calls} call${strip.calls === 1 ? "" : "s"}`
+			: lv.state === "idle"
+				? `idle — last heard ${mins} min ago`
+				: lv.state === "never-picked-up"
+					? "waiting to be picked up"
+					: closed
+						? `closed cleanly · ${strip.calls} calls · ${elapsed(strip.startedAt, strip.closedAt)}`
+						: `stopped responding — last heard ${mins} min ago`
 
 	const continueHere = () => StateServiceClient.continueHandoverHere(EmptyRequest.create({})).catch(() => {})
 	const send = () => {
@@ -309,7 +336,8 @@ const AgentSessionView: React.FC = () => {
 		if (!text) {
 			return
 		}
-		if (closed) {
+		if (closed || !canReach) {
+			// Nothing would ever deliver this — bring the session back instead of queueing into a void.
 			continueHere()
 			return
 		}
@@ -371,8 +399,7 @@ const AgentSessionView: React.FC = () => {
 						flexShrink: 0,
 					}}
 					title={`${PHASE_LABEL[strip.phase]} · ${strip.calls} call${strip.calls === 1 ? "" : "s"}`}>
-					{Array.from({ length: 4 }, (_, i) => (i <= PHASE_IDX[strip.phase] ? "●" : "○")).join("")}{" "}
-					{PHASE_LABEL[strip.phase]}
+					{Array.from({ length: 4 }, (_, i) => (i <= PHASE_IDX[strip.phase] ? "●" : "○")).join("")} {livenessLabel}
 				</span>
 				<button
 					onClick={continueHere}
@@ -392,6 +419,23 @@ const AgentSessionView: React.FC = () => {
 					type="button">
 					Continue here
 				</button>
+				{onDismiss ? (
+					<button
+						onClick={onDismiss}
+						style={{
+							border: "none",
+							background: "none",
+							cursor: "pointer",
+							color: "var(--vscode-descriptionForeground)",
+							fontSize: "13px",
+							padding: "2px 4px",
+							flexShrink: 0,
+						}}
+						title="Hide this view and show the cards — the session keeps running and stays reachable"
+						type="button">
+						✕
+					</button>
+				) : null}
 			</div>
 
 			{/* the conversation */}
@@ -582,7 +626,13 @@ const AgentSessionView: React.FC = () => {
 							}
 						}}
 						placeholder={
-							closed ? "Continue this session in Adsum…" : "Message your agent — lands at its next milestone…"
+							closed
+								? "Continue this session in Adsum…"
+								: !canReach
+									? "Your agent has stopped responding — press ▶ to continue here instead"
+									: lv.state === "never-picked-up"
+										? "Nobody has picked this up yet — your message will arrive when they do…"
+										: "Message your agent — lands at its next milestone…"
 						}
 						readOnly={closed}
 						style={{

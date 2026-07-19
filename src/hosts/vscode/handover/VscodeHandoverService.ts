@@ -38,6 +38,7 @@ import { getHandoverUiState, handoverUiFingerprint, setAgentFacts, setConductorM
 import { creditFor, deriveIdFromRel, listAllBits, loadBit, resolveBitPath } from "@/services/knowledge/KnowledgeResolver"
 import { ATTRIBUTION_FALLBACK, type KbitKind } from "@/services/knowledge/kbit/credit"
 import { extractFrontmatter } from "@/services/knowledge/kbit/frontmatter"
+import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 
 const HANDOVER_ROOT = path.join(os.homedir(), ".adsum", "handovers")
 
@@ -510,8 +511,21 @@ export class VscodeHandoverService {
 		const governing = this.governingOf(bits)
 		const steps = governing ? parseWorkflowSteps(governing.body) : []
 		const inClosure = new Set(bits.map((b) => b.id))
-		const index = (await listAllBits())
-			.filter((e) => !inClosure.has(e.id))
+		// Field of view, not the whole warehouse: a live ESP pickup listed 62 rows of which 38 were nRF
+		// boards, BLE sniffers and NCS SDK bits — ~1.3k tokens of noise before the agent read a word of
+		// the mission. Keep this workspace's platform plus the cross-platform corpus; the rest stays one
+		// load_skill away and the count of what was set aside is stated honestly.
+		const plat = getCachedWorkspaceSummary()
+		const keepPlatform = (id: string) => {
+			const seg = id.replace(/^adsum\//, "").split("/")[0]
+			if (["rules", "references", "knowledges", "agent", "core", "cra"].includes(seg)) {
+				return true
+			}
+			return plat === "both" || plat === undefined || plat === "none" ? true : seg === plat
+		}
+		const allBits = (await listAllBits()).filter((e) => !inClosure.has(e.id))
+		const index = allBits
+			.filter((e) => keepPlatform(e.id))
 			.map(({ id, title, author, version, kind, platform, path: p }) => ({
 				id,
 				title,
@@ -548,6 +562,7 @@ export class VscodeHandoverService {
 					bits,
 					unresolved,
 					index,
+					indexFilteredOut: allBits.length - index.length,
 					baseline,
 					idf: idfActivate ? { activate: idfActivate } : undefined,
 					extVersion: this.context.extension.packageJSON.version,
@@ -893,6 +908,17 @@ export class VscodeHandoverService {
 				} catch {}
 			}
 		} catch {}
+		// Anything the developer typed while the agent was away must come BACK with them — in the field
+		// two "continue" messages sat undelivered on disk while the agent had already stopped.
+		let undelivered: string[] = []
+		try {
+			undelivered = fs
+				.readFileSync(path.join(dir, "messages.jsonl"), "utf8")
+				.split("\n")
+				.filter(Boolean)
+				.map((l) => JSON.parse(l).text)
+				.filter((t) => typeof t === "string")
+		} catch {}
 		const checkpoints = events.filter((e) => e.event === "checkpoint").map((e) => e.worklog)
 		const loaded = [...new Set(events.filter((e) => e.event === "kbit_load").map((e) => e.id))]
 		const closing = events.filter((e) => e.event === "checkpoint" && e.final).pop()
@@ -925,6 +951,9 @@ export class VscodeHandoverService {
 			closing?.next_step ? `Its stated next step: ${closing.next_step}` : "",
 			observed,
 			loaded.length ? `Knowledge it used: ${loaded.join(", ")}` : "",
+			undelivered.length
+				? `I typed these while the agent was away — it never received them:\n${undelivered.map((m) => `- ${m}`).join("\n")}`
+				: "",
 			"",
 			"Pick up from there.",
 		]
@@ -1056,12 +1085,32 @@ export class VscodeHandoverService {
 		}
 	}
 
+	/** Keep a durable, human-readable record of a handed-over session next to the handover, so a returned
+	 *  session is not lost the moment the live view unmounts. The operator reported exactly that: "I lost
+	 *  the past external agent conversation." Written on return; opened by the worklog command. */
+	private writeSessionRecord(id: string): void {
+		try {
+			const doc = this.renderWorklog(id)
+			fs.writeFileSync(path.join(HANDOVER_ROOT, id, "worklog.md"), doc)
+		} catch {}
+	}
+
 	// ── the worklog view: the card-menu rendering of the handed-away session ─
 	async showWorklog(id?: string): Promise<void> {
 		const hid = id ?? this.activeId ?? this.newestHandoverId()
 		if (!hid) {
-			vscode.window.showInformationMessage("Adsum: no handover to show.")
+			vscode.window.showInformationMessage("Adsum: no handed-over session to show.")
 			return
+		}
+		const doc = await vscode.workspace.openTextDocument({ language: "markdown", content: this.renderWorklog(hid) })
+		await vscode.window.showTextDocument(doc, { preview: true })
+	}
+
+	/** The worklog document for a handover — pure string building over the on-disk record. */
+	private renderWorklog(id?: string): string {
+		const hid = id ?? this.activeId ?? this.newestHandoverId()
+		if (!hid) {
+			return "# No handed-over session on this machine"
 		}
 		const dir = path.join(HANDOVER_ROOT, hid)
 		const brief = (() => {
@@ -1109,8 +1158,34 @@ export class VscodeHandoverService {
 			"## Working-tree changes (host-observed — agent cooperation not required)",
 			...obs.slice(-20).map((o) => `- ${o.t} — ${o.files?.length ?? 0} file(s): ${(o.files ?? []).slice(0, 6).join(", ")}`),
 		].filter((l) => l !== "")
-		const doc = await vscode.workspace.openTextDocument({ language: "markdown", content: lines.join("\n") })
-		await vscode.window.showTextDocument(doc, { preview: true })
+		return lines.join("\n")
+	}
+
+	/** The provider that ran work before this handover, if we recorded one. */
+	private providerBeforeHandover(): string | undefined {
+		return this.context.globalState.get<string>("adsum.providerBeforeHandover")
+	}
+
+	/** Restore inference so a returned session can actually run here. Returns false when nothing usable
+	 *  is configured — the caller must say so rather than starting a task that cannot call a model. */
+	async restoreProviderForReturn(): Promise<boolean> {
+		try {
+			const sm = StateManager.get()
+			const cfg = sm.getApiConfiguration() as any
+			const current = cfg.actModeApiProvider ?? cfg.planModeApiProvider
+			if (current !== "external-agent") {
+				return true // already on something that can run
+			}
+			const prev = this.providerBeforeHandover()
+			if (!prev) {
+				return false
+			}
+			sm.setApiConfiguration({ ...cfg, planModeApiProvider: prev, actModeApiProvider: prev })
+			await this.refreshConductorCache()
+			return true
+		} catch {
+			return false
+		}
 	}
 
 	markReturned(id: string): void {
@@ -1122,6 +1197,10 @@ export class VscodeHandoverService {
 				path.join(HANDOVER_ROOT, id, "ledger.jsonl"),
 				JSON.stringify({ t: new Date().toISOString(), event: "returned" }) + "\n",
 			)
+			this.writeSessionRecord(id)
+			// The queue is carried into the resume prompt by buildResumePrompt; clear it so a future
+			// handover never delivers a message the developer already got back.
+			fs.rmSync(path.join(HANDOVER_ROOT, id, "messages.jsonl"), { force: true })
 		} catch {}
 		this.stopTracking()
 		this.status?.hide()
