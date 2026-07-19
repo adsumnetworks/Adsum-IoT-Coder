@@ -11,6 +11,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import { describe, test } from "node:test"
+import { installMcpServer, readInstalledServerPath } from "./AgentSetup"
 import {
 	bridgeLoadVerbs,
 	coreFallbackId,
@@ -975,6 +976,60 @@ describe("developer→agent messages — delivered at the next milestone, never 
 		assert.equal(rows.length, 1)
 		assert.equal(rows[0].delivered, false, "still queued — the view must say so, not imply the agent saw it")
 		fs.rmSync(root, { recursive: true, force: true })
+	})
+})
+
+describe("agent setup — registering the MCP server without the developer editing JSON", () => {
+	test("installs into the project config, is idempotent, and preserves other servers", () => {
+		const ws = fs.mkdtempSync(path.join(os.tmpdir(), "adsum-setup-"))
+		try {
+			// a project that already has its own MCP servers configured
+			fs.writeFileSync(
+				path.join(ws, ".mcp.json"),
+				JSON.stringify({ mcpServers: { github: { command: "npx", args: ["-y", "gh-mcp"] } } }, null, 2),
+			)
+			const first = installMcpServer({ agent: "claude-code", workspace: ws, serverPath: "/install/mcp/adsum-mcp.mjs" })
+			assert.equal(first.status, "installed")
+			assert.equal(first.needsSessionRestart, true, "an open session loaded its servers already — say so")
+			const cfg = JSON.parse(fs.readFileSync(path.join(ws, ".mcp.json"), "utf8"))
+			assert.ok(cfg.mcpServers.github, "another server must survive untouched")
+			assert.deepEqual(cfg.mcpServers.adsum, { command: "node", args: ["/install/mcp/adsum-mcp.mjs"] })
+
+			// same install again → no write, no restart nag
+			const second = installMcpServer({ agent: "claude-code", workspace: ws, serverPath: "/install/mcp/adsum-mcp.mjs" })
+			assert.equal(second.status, "already")
+			assert.equal(second.needsSessionRestart, false)
+
+			// upgraded extension → path changes → rewritten
+			const third = installMcpServer({ agent: "claude-code", workspace: ws, serverPath: "/install-v2/mcp/adsum-mcp.mjs" })
+			assert.equal(third.status, "updated")
+			assert.equal(readInstalledServerPath(path.join(ws, ".mcp.json")), "/install-v2/mcp/adsum-mcp.mjs")
+		} finally {
+			fs.rmSync(ws, { recursive: true, force: true })
+		}
+	})
+
+	test("a fresh project gets a valid config created from nothing", () => {
+		const ws = fs.mkdtempSync(path.join(os.tmpdir(), "adsum-setup2-"))
+		try {
+			const r = installMcpServer({ agent: "claude-code", workspace: ws, serverPath: "/x/adsum-mcp.mjs" })
+			assert.equal(r.status, "installed")
+			assert.equal(readInstalledServerPath(r.configPath!), "/x/adsum-mcp.mjs")
+		} finally {
+			fs.rmSync(ws, { recursive: true, force: true })
+		}
+	})
+
+	test("an unknown agent is told the truth, not silently 'installed'", () => {
+		const ws = fs.mkdtempSync(path.join(os.tmpdir(), "adsum-setup3-"))
+		try {
+			const r = installMcpServer({ agent: "other", workspace: ws, serverPath: "/x/adsum-mcp.mjs" })
+			assert.equal(r.status, "unsupported")
+			assert.match(r.detail ?? "", /add the server to its own MCP config/)
+			assert.ok(!fs.existsSync(path.join(ws, ".mcp.json")), "we do not write a config we cannot vouch for")
+		} finally {
+			fs.rmSync(ws, { recursive: true, force: true })
+		}
 	})
 })
 

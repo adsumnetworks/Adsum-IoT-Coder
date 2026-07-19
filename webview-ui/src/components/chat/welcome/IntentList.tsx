@@ -1,9 +1,7 @@
-import { StringRequest } from "@shared/proto/cline/common"
 import React from "react"
-import { StateServiceClient } from "@/services/grpc-client"
 import type { NordicModeId } from "../nordicModes"
 import IntentCard from "./IntentCard"
-import RunTargetToggle from "./RunTargetToggle"
+import RunTargetPicker, { handOverCard } from "./RunTargetPicker"
 import { runIntent } from "./runIntent"
 import { useRunTarget } from "./useRunTarget"
 import { buildIntentPrompt, type IntentDef, intentDescription, type WorkspacePlatform } from "./welcomeIntents"
@@ -44,27 +42,24 @@ const IntentList: React.FC<IntentListProps> = ({
 }) => {
 	const live = intents.filter((i) => !i.comingSoon)
 	const roadmap = intents.filter((i) => i.comingSoon)
-	const { target, conducting, setTarget: pickTarget } = useRunTarget()
+	const { target } = useRunTarget()
 
 	const agentMode = target === "agent"
 	const anyAgentRunnable = live.some((i) => i.agentRunnable)
 	// The card's own prompt travels with the handover — the mission and the workflow closure come from
 	// the card the developer clicked, never from whatever session happens to be newest.
 	const handOver = (intent: IntentDef) =>
-		StateServiceClient.handoverToAgent(
-			StringRequest.create({
-				value: JSON.stringify({
-					intentId: intent.id,
-					platform,
-					prompt: buildIntentPrompt(intent.id, projectName, platform, hasBle),
-				}),
-			}),
-		).catch(() => {})
+		handOverCard({
+			intentId: intent.id,
+			platform,
+			prompt: buildIntentPrompt(intent.id, projectName, platform, hasBle),
+		})
 
 	const card = (intent: IntentDef) => {
 		const routesToAgent = agentMode && !!intent.agentRunnable && !intent.comingSoon
 		return (
 			<IntentCard
+				caveat={routesToAgent ? intent.agentCaveat : undefined}
 				comingSoon={intent.comingSoon}
 				description={intentDescription(intent, projectName, platform)}
 				icon={intent.icon}
@@ -86,7 +81,7 @@ const IntentList: React.FC<IntentListProps> = ({
 
 	return (
 		<div className="flex flex-col gap-3 w-full">
-			{anyAgentRunnable ? <RunTargetToggle conducting={conducting} onChange={pickTarget} target={target} /> : null}
+			{anyAgentRunnable ? <RunTargetPicker /> : null}
 			{live.map(card)}
 			{roadmap.length > 0 && (
 				<>
