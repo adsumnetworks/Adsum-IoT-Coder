@@ -12,6 +12,10 @@ interface IntentCardProps {
 	subline?: string
 	/** Roadmap card: dashed/dimmed, non-interactive. */
 	comingSoon?: boolean
+	/** Agent-mode route marker ("→ your agent") — the run-target picker's point-of-action signal. */
+	routeChip?: string
+	/** Honest caveat shown only while this card routes to the agent (e.g. model-dependent quality). */
+	caveat?: string
 	disabled?: boolean
 	onClick: () => void
 	testId?: string
@@ -29,6 +33,8 @@ const IntentCard: React.FC<IntentCardProps> = ({
 	pill,
 	subline,
 	comingSoon = false,
+	routeChip,
+	caveat,
 	disabled = false,
 	onClick,
 	testId,
@@ -104,6 +110,20 @@ const IntentCard: React.FC<IntentCardProps> = ({
 					}}>
 					{title}
 					{pillText && <Pill text={pillText} variant={comingSoon ? "soon" : "primary"} />}
+					{routeChip && (
+						<span
+							style={{
+								fontSize: "9px",
+								fontWeight: 700,
+								color: BRAND_CYAN_700,
+								border: `1px solid ${brandAlpha(BRAND_CYAN_600, 0.45)}`,
+								borderRadius: "9px",
+								padding: "1px 7px",
+								whiteSpace: "nowrap",
+							}}>
+							{routeChip}
+						</span>
+					)}
 				</div>
 				<div
 					style={{
@@ -113,6 +133,18 @@ const IntentCard: React.FC<IntentCardProps> = ({
 					}}>
 					{description}
 				</div>
+				{caveat && (
+					<div
+						style={{
+							fontSize: "10px",
+							color: "var(--vscode-descriptionForeground)",
+							marginTop: "5px",
+							lineHeight: 1.4,
+							opacity: 0.9,
+						}}>
+						{caveat}
+					</div>
+				)}
 				{subline && (
 					<div
 						data-testid={testId ? `${testId}-subline` : undefined}

@@ -198,6 +198,26 @@
 				"title": "Abort Commit Message Generation",
 				"category": "Adsum IoT Coder",
 				"icon": "$(close)"
+			},
+			{
+				"command": "adsum-iot-coder.handoverToAgent",
+				"title": "Adsum: Hand session to my coding agent",
+				"icon": "$(link-external)"
+			},
+			{
+				"command": "adsum-iot-coder.continueHandoverHere",
+				"title": "Adsum: Continue handed-over session here",
+				"icon": "$(reply)"
+			},
+			{
+				"command": "adsum-iot-coder.watchHandover",
+				"title": "Adsum: Watch handed-over session",
+				"icon": "$(broadcast)"
+			},
+			{
+				"command": "adsum-iot-coder.showHandoverWorklog",
+				"title": "Adsum: Show handed-over session worklog",
+				"icon": "$(checklist)"
 			}
 		],
 		"keybindings": [
@@ -330,6 +350,16 @@
 					"type": "string",
 					"default": "",
 					"markdownDescription": "Path to the Wireshark executable, used to open captured `.pcap`/`.btmon` files. Leave empty to auto-detect (checks the standard install location for your OS, then `PATH`)."
+				},
+				"adsum-iot-coder.conductorMode": {
+					"type": "string",
+					"enum": [
+						"auto",
+						"always",
+						"off"
+					],
+					"default": "auto",
+					"markdownDescription": "How Adsum behaves when no inference model is configured. `auto`: if no provider/key is set, card execution defaults to handing over to your own coding agent (Adsum conducts: knowledge, toolchain commands, tracking, snapshots — zero Adsum tokens). `always`: conductor mode even when a provider is configured. `off`: never suggest conductor mode."
 				}
 			}
 		}
@@ -421,7 +451,8 @@
 		"docs:check-links": "cd docs && npm run check",
 		"docs:rename-file": "cd docs && npm run rename",
 		"report-issue": "node scripts/report-issue.js",
-		"storybook": "cd webview-ui && npm run storybook"
+		"storybook": "cd webview-ui && npm run storybook",
+		"test:handover": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/handover/handover.test.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [

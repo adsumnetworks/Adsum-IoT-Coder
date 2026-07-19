@@ -2,7 +2,7 @@
 id: adsum/esp/rules/esp-terminal
 title: "ESP Platform Rule: The ESP-IDF Device Tool"
 type: knowledge
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -45,3 +45,16 @@ A plain terminal has no ESP-IDF environment (`IDF_PATH`, the Xtensa/RISC-V toolc
 
 ## If the environment can't be found
 If `triggerEspAction` reports that the ESP-IDF environment could not be located, tell the user to either install the official **Espressif ESP-IDF** VS Code extension (it sets `idf.espIdfPath`) or set the `IDF_PATH` environment variable to their ESP-IDF checkout, then retry. Do NOT fall back to `execute_command`.
+
+## Running outside the Adsum extension (handed-over sessions, external coding agents)
+When there is no `triggerEspAction` tool (you are a coding agent working a handed-over Adsum session):
+1. **Prefer the Adsum MCP tools `exec` and `build`** if the `adsum` server offers them — they run the
+   command with the ESP-IDF environment already sourced, exactly like the device tool does in-extension.
+2. Only if those tools are absent: source the environment **in the same shell invocation as the
+   command** — the per-version activation script (`~/.espressif/tools/activate_idf_v*.sh`, written by
+   the Espressif installer/eim) or `$IDF_PATH/export.sh`. Never rely on a previously "activated"
+   shell; every command carries its own sourcing.
+3. **If the installation is broken or incomplete** (activation fails, `idf.py` still unresolved, the
+   IDF Python venv is missing): STOP. Report exactly what is missing and ask the developer before
+   running any install or repair — `install.sh` and toolchain downloads mutate the developer's global
+   `~/.espressif` and are **never** run unprompted.

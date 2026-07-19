@@ -5,6 +5,12 @@ import { DEFAULT_DEMO_SCENARIO_ID, DEMO_SCENARIOS } from "../demoScenarios"
 
 const scenario = DEMO_SCENARIOS[DEFAULT_DEMO_SCENARIO_ID]
 
+// DemoCard reads the run-target (to label itself honestly in agent mode) — default it to "adsum"
+// so the existing hero/rerun assertions run against the unlabeled baseline.
+vi.mock("@/services/grpc-client", () => ({ StateServiceClient: { handoverToAgent: vi.fn(() => Promise.resolve({})) } }))
+vi.mock("@shared/proto/cline/common", () => ({ StringRequest: { create: (v: any) => v } }))
+vi.mock("../welcome/useRunTarget", () => ({ useRunTarget: () => ({ target: "adsum", conducting: false, setTarget: () => {} }) }))
+
 describe("DemoCard — hero variant (default)", () => {
 	let onStartDemo: ReturnType<typeof vi.fn>
 

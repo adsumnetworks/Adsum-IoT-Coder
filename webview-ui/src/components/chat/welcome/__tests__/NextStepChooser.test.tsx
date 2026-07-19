@@ -38,30 +38,26 @@ describe("NextStepChooser — context-aware cards", () => {
 			/>,
 		)
 
-	it("project open → renders the live project intents + roadmap cards", () => {
+	it("project open → renders the live project intents; roadmap cards are hidden", () => {
 		mockState(["/Users/me/central_uart"])
 		renderChooser(false)
 		// live
 		expect(screen.getByTestId("next-step-buildFlashDebug")).toBeInTheDocument()
 		expect(screen.getByTestId("next-step-addFeature")).toBeInTheDocument()
 		expect(screen.getByTestId("next-step-testValidate")).toBeInTheDocument()
-		// roadmap (coming soon)
-		expect(screen.getByTestId("next-step-sdkMigration")).toBeInTheDocument()
-		expect(screen.getByTestId("next-step-boardBringUp")).toBeInTheDocument()
+		// roadmap cards are no longer shown at all — a card you cannot click earns no space (2026-07-19)
+		expect(screen.queryByTestId("next-step-sdkMigration")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("next-step-boardBringUp")).not.toBeInTheDocument()
 		// merged-away standalone cards are gone
 		expect(screen.queryByTestId("next-step-debug")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("next-step-buildFlash")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("next-step-prototype")).not.toBeInTheDocument()
 	})
 
-	it("roadmap cards are disabled and never route", () => {
+	it("the roadmap divider goes with the cards — no empty section header", () => {
 		mockState(["/Users/me/central_uart"])
 		renderChooser(false)
-		const soon = screen.getByTestId("next-step-sdkMigration") as HTMLButtonElement
-		expect(soon.disabled).toBe(true)
-		fireEvent.click(soon)
-		expect(onStartTask).not.toHaveBeenCalled()
-		expect(onSelectMode).not.toHaveBeenCalled()
+		expect(screen.queryByText(/on the roadmap/i)).not.toBeInTheDocument()
 	})
 
 	it("no project → renders the no-project intents", () => {

@@ -43,6 +43,12 @@ export interface IntentDef {
 	subline?: string
 	/** Roadmap card — rendered disabled under an "on the roadmap" divider, never routes. */
 	comingSoon?: boolean
+	/** This card maps to a curated workflow, so it can also be run by the developer's own coding agent
+	 *  (Adsum conducts: knowledge, toolchain, tracking, snapshots). */
+	agentRunnable?: boolean
+	/** Shown under the card when it routes to the agent — a capability caveat we can state honestly
+	 *  (e.g. CRA quality is model-dependent). Never a blocker; the developer decides. */
+	agentCaveat?: string
 }
 
 /**
@@ -200,6 +206,7 @@ export const NO_PROJECT_INTENTS: IntentDef[] = [
 export const PROJECT_INTENTS: IntentDef[] = [
 	{
 		id: "buildFlashDebug",
+		agentRunnable: true,
 		icon: "zap",
 		title: "Build, flash & debug",
 		description: "Build, flash & stream live logs.",
@@ -208,18 +215,23 @@ export const PROJECT_INTENTS: IntentDef[] = [
 	},
 	{
 		id: "addFeature",
+		agentRunnable: true,
 		icon: "extensions",
 		title: "Add a feature",
 		description: "Add a Zephyr shell, a BLE service, NVS storage… to your real project, not a sample.",
 	},
 	{
 		id: "testValidate",
+		agentRunnable: true,
 		icon: "beaker",
 		title: "Test & validate",
 		description: "Prove it works — host tests (native_sim) now, on-hardware checks when a board's connected.",
 	},
 	{
 		id: "craCheck",
+		agentRunnable: true,
+		agentCaveat:
+			"CRA output quality depends on the model. We benchmark this workflow on our recommended models — on a weaker one, expect a thinner SBOM and shakier posture findings, so review before you rely on it.",
 		icon: "shield",
 		title: "CRA SBOM & Fix",
 		description:

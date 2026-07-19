@@ -32,6 +32,7 @@ import { HookProcessRegistry } from "./core/hooks/HookProcessRegistry"
 import { workspaceResolver } from "./core/workspace"
 import { findMatchingNotebookCell, getContextForCommand, showWebview } from "./hosts/vscode/commandUtils"
 import { abortCommitGeneration, generateCommitMsg } from "./hosts/vscode/commit-message-generator"
+import { VscodeHandoverService } from "./hosts/vscode/handover/VscodeHandoverService"
 import {
 	disposeVscodeCommentReviewController,
 	getVscodeCommentReviewController,
@@ -52,6 +53,7 @@ import {
 	setEspWorkspaceRoots,
 } from "./services/esp/EspEnvironmentDetector"
 import { setIdfToolsPathHint } from "./services/esp/espChipProbe"
+import { registerHandoverActions } from "./services/handover/HandoverActions"
 import {
 	clearNrfEnvironmentCache,
 	detectNrfEnvironment,
@@ -505,6 +507,79 @@ export async function activate(context: vscode.ExtensionContext) {
 				],
 			},
 		),
+	)
+
+	// ── Agent handover (H1): hand this session to the developer's own coding agent, keep tracking it,
+	// and bring it back. Adsum stays the knowledge/tool layer; their subscription runs the model.
+	const handover = new VscodeHandoverService(context)
+	// Conductor mode: with no inference configured (or by explicit setting), handing to the developer's
+	// own agent IS the default execution path — announce it once so the front door is discoverable, and
+	// keep the cached verdict fresh (it drives run-path ordering on the session cards).
+	void handover.refreshConductorCache()
+	void handover.announceConductorMode()
+	// A window restart must not orphan a session that is out with the agent: re-arm the witnessing
+	// (tree observations, snapshots) for any handover still in flight. The agent's own record never
+	// paused — its MCP server runs in the agent's process, not ours.
+	handover.resumeTrackingIfActive()
+	// The free tier appearing/running out changes the conductor verdict mid-session.
+	context.subscriptions.push({ dispose: onFreeTokensChanged(() => void handover.refreshConductorCache()) })
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((e) => {
+			if (e.affectsConfiguration("adsum-iot-coder.conductorMode")) {
+				void handover.refreshConductorCache()
+			}
+		}),
+	)
+	// ONE implementation per action, shared by the command palette and the webview's buttons (the
+	// webview reaches these through the HandoverActions registry — it cannot execute VS Code commands).
+	const continueHandoverHere = async () => {
+		const resume = handover.buildResumePrompt()
+		if (!resume) {
+			vscode.window.showInformationMessage("Adsum: no handed-over session to continue.")
+			return
+		}
+		// Continuing HERE needs a model. While the run-target is "your own coding agent" the factory
+		// refuses to build a handler, so the task would never start — in the field this button looked
+		// dead. Restore the provider that ran work before the handover; if there is none, say so.
+		if (!(await handover.restoreProviderForReturn())) {
+			const pick = await vscode.window.showWarningMessage(
+				"Continuing here needs a model — this workspace is set to run on your own coding agent, and no other provider is configured.",
+				"Choose a model",
+				"Keep working with my agent",
+			)
+			if (pick === "Choose a model") {
+				await vscode.commands.executeCommand("adsum-iot-coder.settingsButtonClicked")
+			}
+			return
+		}
+		await vscode.commands.executeCommand("adsum-iot-coder.focusChatInput")
+		await WebviewProvider.getInstance().controller.initTask(resume.prompt)
+		handover.markReturned(resume.id)
+		// The live view unmounts the moment the session is returned. Without a pointer the developer
+		// experiences it as "my agent conversation disappeared" — so offer the durable record right here.
+		void vscode.window
+			.showInformationMessage(
+				`Adsum: session returned — continuing here. Everything your agent did is kept.`,
+				"View what the agent did",
+			)
+			.then((pick) => {
+				if (pick) {
+					void handover.showWorklog(resume.id)
+				}
+			})
+	}
+	registerHandoverActions({
+		handOver: (cardPayload) => handover.handOver(cardPayload),
+		continueHere: continueHandoverHere,
+		showWorklog: () => handover.showWorklog(),
+		messageAgent: (text) => handover.messageAgent(text),
+	})
+	context.subscriptions.push(
+		handover,
+		vscode.commands.registerCommand("adsum-iot-coder.handoverToAgent", () => handover.handOver()),
+		vscode.commands.registerCommand("adsum-iot-coder.watchHandover", () => handover.watch()),
+		vscode.commands.registerCommand("adsum-iot-coder.showHandoverWorklog", () => handover.showWorklog()),
+		vscode.commands.registerCommand("adsum-iot-coder.continueHandoverHere", continueHandoverHere),
 	)
 
 	// Register the command handlers

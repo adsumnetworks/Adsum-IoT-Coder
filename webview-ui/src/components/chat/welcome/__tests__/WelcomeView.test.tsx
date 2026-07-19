@@ -98,12 +98,12 @@ describe("WelcomeView — context-aware intent cards", () => {
 		vi.mocked(useExtensionState).mockReset()
 	})
 
-	it("project open → project intents (merged primary + roadmap)", () => {
+	it("project open → project intents; roadmap cards hidden", () => {
 		mockState({ openFolderPaths: ["/Users/me/central_uart"], taskHistory: [] })
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.getByTestId("intent-card-buildFlashDebug")).toBeInTheDocument()
 		expect(screen.getByTestId("intent-card-addFeature")).toBeInTheDocument()
-		expect(screen.getByTestId("intent-card-sdkMigration")).toBeInTheDocument()
+		expect(screen.queryByTestId("intent-card-sdkMigration")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("intent-card-debug")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("intent-card-prototype")).not.toBeInTheDocument()
 	})

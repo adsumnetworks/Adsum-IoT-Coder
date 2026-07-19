@@ -5,6 +5,10 @@
 			"label": "Adsum Free Tier"
 		},
 		{
+			"value": "external-agent",
+			"label": "Your own coding agent"
+		},
+		{
 			"value": "cline",
 			"label": "Cline"
 		},
