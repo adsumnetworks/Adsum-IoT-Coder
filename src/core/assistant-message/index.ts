@@ -65,6 +65,12 @@ export const toolParamNames = [
 	// fails "Multiple NCS versions installed… re-run with ncs_version" even when one IS supplied (observed on a
 	// live run with v3.2.1 + v3.3.1 both installed — the agent + user picked a version 8× and it was ignored).
 	"ncs_version",
+	// triggerEspAction param — the ESP twin of ncs_version above, and the SAME lesson learned twice: the
+	// prompt documented <idf_version>, the model passed it (12 of 15 calls in a live run), and the parser
+	// silently dropped it because it was missing here — so the handler saw undefined, the multi-IDF gate
+	// stayed "ambiguous" forever, and persistence (`if (explicitVersion)`) never armed. Field runs
+	// 1783956686373 (19 errors) and 1784481678488 (30 errors, WITH the resolver fixes already in the build).
+	"idf_version",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]

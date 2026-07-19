@@ -278,23 +278,35 @@ export function readFreshProjectIdfVersion(): string | undefined {
 }
 
 export function readProjectIdfVersionFromLock(roots: string[]): string | undefined {
-	for (const root of roots) {
-		const candidates = [root]
-		try {
-			for (const entry of readdirSync(root)) candidates.push(join(root, entry))
-		} catch {
-			// unreadable root — fall through to next
-		}
-		for (const dir of candidates) {
+	// Bounded breadth-first scan, depth ≤ 3. Depth 1 is not enough in the field: a live run had the
+	// workspace root at Desktop with the project at Desktop/bwg840-gateway/esp-gateway/ — the lock sat two
+	// levels down and the pin was invisible. Heavy/irrelevant dirs are skipped so this stays cheap.
+	const SKIP = new Set(["build", "managed_components", "node_modules", ".git", ".vscode", "components", "out", "dist"])
+	const MAX_DEPTH = 3
+	let frontier = roots.map((r) => ({ dir: r, depth: 0 }))
+	while (frontier.length > 0) {
+		const next: { dir: string; depth: number }[] = []
+		for (const { dir, depth } of frontier) {
 			const p = join(dir, "dependencies.lock")
-			if (!existsSync(p)) continue
+			if (existsSync(p)) {
+				try {
+					const v = parseDependenciesLockIdfVersion(readFileSync(p, "utf8"))
+					if (v) return v
+				} catch {
+					// unreadable/unparseable — keep scanning
+				}
+			}
+			if (depth >= MAX_DEPTH) continue
 			try {
-				const v = parseDependenciesLockIdfVersion(readFileSync(p, "utf8"))
-				if (v) return v
+				for (const entry of readdirSync(dir)) {
+					if (entry.startsWith(".") || SKIP.has(entry)) continue
+					next.push({ dir: join(dir, entry), depth: depth + 1 })
+				}
 			} catch {
-				// try next candidate
+				// unreadable dir — skip its subtree
 			}
 		}
+		frontier = next
 	}
 	return undefined
 }
