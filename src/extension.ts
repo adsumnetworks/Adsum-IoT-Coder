@@ -517,6 +517,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	// keep the cached verdict fresh (it drives run-path ordering on the session cards).
 	void handover.refreshConductorCache()
 	void handover.announceConductorMode()
+	// A window restart must not orphan a session that is out with the agent: re-arm the witnessing
+	// (tree observations, snapshots) for any handover still in flight. The agent's own record never
+	// paused — its MCP server runs in the agent's process, not ours.
+	handover.resumeTrackingIfActive()
 	// The free tier appearing/running out changes the conductor verdict mid-session.
 	context.subscriptions.push({ dispose: onFreeTokensChanged(() => void handover.refreshConductorCache()) })
 	context.subscriptions.push(

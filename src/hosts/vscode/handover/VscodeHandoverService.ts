@@ -560,16 +560,49 @@ export class VscodeHandoverService {
 		} catch {}
 	}
 
+	/**
+	 * Re-arm tracking after a VS Code restart. The agent's side never pauses — its MCP server is spawned
+	 * by the AGENT's process, so the ledger keeps recording with VS Code closed — but OUR witnessing
+	 * (tree observations, snapshot-per-checkpoint, the diffstat) stops with the window, and nothing
+	 * restarted it: startTracking was only ever called by handOver(). Called at activation.
+	 *
+	 * Resumes with the ledger FAST-FORWARDED: a fresh tracker starts at offset 0, which would replay the
+	 * whole history — re-logging every event and re-snapshotting every old checkpoint. History is already
+	 * on disk and already rendered; only NEW events may trigger side effects.
+	 */
+	resumeTrackingIfActive(): void {
+		if (this.tracker) {
+			return // already live (this window did the handover)
+		}
+		const strip = getHandoverUiState(HANDOVER_ROOT).strip
+		if (!strip || strip.phase === "closed") {
+			return // nothing in flight — closed sessions only need "Continue here", not a live tracker
+		}
+		this.startTracking(strip.id, { resume: true })
+	}
+
 	// ── tracking: the ledger is the only honest record ───────────────────────
-	private startTracking(id: string): void {
+	private startTracking(id: string, opts?: { resume?: boolean }): void {
 		this.stopTracking()
 		this.activeId = id
-		this.offset = 0
+		// A resumed tracker skips history: everything before this size already happened, was already
+		// shown, and must not re-fire snapshots. A fresh handover's ledger is empty, so 0 is exact there.
+		this.offset = opts?.resume ? this.ledgerSize(id) : 0
 		this.out ??= vscode.window.createOutputChannel("Adsum Handover")
 		this.status ??= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99)
-		this.out.show(true)
-		this.out.appendLine(`— handover ${id} — watching what your agent does with it —`)
-		this.out.appendLine(`  (nothing appears here until the agent calls an adsum tool — approve the MCP server if prompted)`)
+		if (!opts?.resume) {
+			this.out.show(true)
+		}
+		this.out.appendLine(
+			opts?.resume
+				? `— handover ${id} — tracking resumed (window restarted; the agent's record never paused) —`
+				: `— handover ${id} — watching what your agent does with it —`,
+		)
+		if (!opts?.resume) {
+			this.out.appendLine(
+				`  (nothing appears here until the agent calls an adsum tool — approve the MCP server if prompted)`,
+			)
+		}
 		let calls = 0
 		let lastEventAt = Date.now()
 		let ticks = 0
@@ -646,6 +679,14 @@ export class VscodeHandoverService {
 				this.status.show()
 			}
 		}, 3000)
+	}
+
+	private ledgerSize(id: string): number {
+		try {
+			return fs.statSync(path.join(HANDOVER_ROOT, id, "ledger.jsonl")).size
+		} catch {
+			return 0
+		}
 	}
 
 	private stopTracking(): void {
