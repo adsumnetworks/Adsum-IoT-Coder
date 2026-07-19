@@ -17,6 +17,8 @@ export interface HandoverActions {
 	continueHere(): Promise<void>
 	/** Open the full worklog of a handed-over session. */
 	showWorklog(): Promise<void>
+	/** Queue a message for the agent — delivered in the response to its next milestone. */
+	messageAgent(text: string): Promise<void>
 }
 
 let registered: HandoverActions | null = null

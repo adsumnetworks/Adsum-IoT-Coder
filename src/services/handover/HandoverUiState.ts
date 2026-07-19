@@ -175,6 +175,18 @@ export function buildHandoverUiState(
 			rows.push({ kind: "snap", t: o.t })
 		}
 	}
+	// Developer→agent messages: still-queued ones live in messages.jsonl (the server deletes the file
+	// when it delivers); delivered ones are ledger facts. Both render as "you" turns in the session.
+	for (const m of readJsonl(path.join(dir, "messages.jsonl"))) {
+		if (typeof m.text === "string") {
+			rows.push({ kind: "msg", t: m.t, text: m.text, delivered: false })
+		}
+	}
+	for (const e of events) {
+		if (e.event === "dev_message" && typeof e.text === "string") {
+			rows.push({ kind: "msg", t: e.t, text: e.text, delivered: true })
+		}
+	}
 	rows.push(...deriveNudges(events))
 	rows.sort((a, b) => String(a.t).localeCompare(String(b.t)))
 	const truncated = rows.length > MILESTONE_CAP

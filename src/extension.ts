@@ -546,6 +546,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		handOver: () => handover.handOver(),
 		continueHere: continueHandoverHere,
 		showWorklog: () => handover.showWorklog(),
+		messageAgent: (text) => handover.messageAgent(text),
 	})
 	context.subscriptions.push(
 		handover,

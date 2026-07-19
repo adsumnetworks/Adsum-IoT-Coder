@@ -40,6 +40,8 @@ service StateService {
   rpc continueHandoverHere(EmptyRequest) returns (Empty);
   // Open the full worklog of a handed-over session.
   rpc showHandoverWorklog(EmptyRequest) returns (Empty);
+  // Queue a message for the coding agent working a handed-over session (delivered at its next milestone).
+  rpc messageHandoverAgent(StringRequest) returns (Empty);
 }
 
 message AutoApprovalActions {
