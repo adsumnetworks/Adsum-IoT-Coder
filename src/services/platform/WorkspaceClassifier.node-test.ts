@@ -179,3 +179,38 @@ test("MOAT: getCachedWorkspaceFeatures / hasComplianceArtifacts are never read u
 	// signal is fenced. If this fails, a prompt-path file started reading workspaceFeatures (moat breach).
 	assert.deepEqual(offenders, [], `prompt-path must not read workspaceFeatures: ${offenders.join(", ")}`)
 })
+
+// ── Adsum's own source tree is the tool, not the developer's firmware ──────────
+test("the extension's own repo is not classified as a project to nudge about", () => {
+	// Field report: opening the Adsum source repo showed "Wi-Fi detected · no compliance artifacts in
+	// this project yet" and offered a CRA readiness check — for our own bundled test fixtures.
+	const own = fixture({
+		"/repo/package.json": JSON.stringify({ name: "nrf-ai-debugger", version: "0.1.8" }),
+		"/repo/demo-scenarios/esp-wifi/CMakeLists.txt": ESP,
+		"/repo/demo-scenarios/esp-wifi/sdkconfig": "CONFIG_ESP_WIFI_ENABLED=y",
+		"/repo/demo-scenarios/esp-wifi/main/main.c": '#include "esp_wifi.h"\n',
+	})
+	const r = classifyWorkspace(["/repo"], own)
+	assert.equal(r.summary, "none", "our own fixtures must not read as the developer's project")
+	assert.equal(r.features.hasWifi, false, "…and must not raise the CRA nudge")
+	assert.equal(r.apps.length, 0)
+
+	// A developer's project that merely HAS a package.json is untouched.
+	const theirs = fixture({
+		"/proj/package.json": JSON.stringify({ name: "my-firmware-tools" }),
+		"/proj/CMakeLists.txt": ESP,
+		"/proj/sdkconfig": "CONFIG_ESP_WIFI_ENABLED=y",
+		"/proj/main/main.c": '#include "esp_wifi.h"\n',
+	})
+	const t = classifyWorkspace(["/proj"], theirs)
+	assert.equal(t.summary, "esp")
+	assert.equal(t.features.hasWifi, true)
+
+	// An unreadable/!JSON package.json must not silently skip a real project.
+	const broken = fixture({
+		"/p2/package.json": "{ not json",
+		"/p2/CMakeLists.txt": ESP,
+		"/p2/sdkconfig": "CONFIG_ESP_WIFI_ENABLED=y",
+	})
+	assert.equal(classifyWorkspace(["/p2"], broken).summary, "esp")
+})
