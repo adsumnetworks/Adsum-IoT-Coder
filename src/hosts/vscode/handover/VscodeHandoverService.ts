@@ -20,6 +20,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import * as vscode from "vscode"
+import { prepareDemoWorkspace } from "@/core/demos/DemoManager"
 import { StateManager } from "@/core/storage/StateManager"
 import { getFreeTierTokensForDisplay } from "@/services/adsum/FreeTierState"
 import {
@@ -254,7 +255,7 @@ export class VscodeHandoverService {
 	 * commits, offer — modal, host-side, per the confirm-first rule — to create `snapshot-0`. Returns
 	 * what the brief records; `managed: true` means WE own snapshots and may auto-commit at checkpoints.
 	 */
-	private async ensureGitBaseline(ws: string): Promise<{ ref?: string; managed: boolean }> {
+	private async ensureGitBaseline(ws: string, auto = false): Promise<{ ref?: string; managed: boolean }> {
 		const git = (cmd: string) => execSync(`git ${cmd}`, { cwd: ws, timeout: 15000 }).toString().trim()
 		let hasRepo = false
 		let hasCommits = false
@@ -265,6 +266,22 @@ export class VscodeHandoverService {
 		} catch {}
 		if (hasCommits) {
 			return { ref: git("rev-parse HEAD"), managed: false } // the developer's own history is the baseline
+		}
+		if (auto) {
+			// OUR materialized sample copy, not the developer's project — baseline without asking.
+			try {
+				if (!hasRepo) {
+					git("init")
+				}
+				git("add -A")
+				execSync(`git -c user.name=Adsum -c user.email=adsum@local commit -m "adsum snapshot-0 (handover baseline)"`, {
+					cwd: ws,
+					timeout: 30000,
+				})
+				return { ref: git("rev-parse HEAD"), managed: true }
+			} catch {
+				return { managed: false }
+			}
 		}
 		const pick = await vscode.window.showWarningMessage(
 			hasRepo
@@ -370,12 +387,32 @@ export class VscodeHandoverService {
 		craCheck: { esp: "platforms/cra/workflows/cra-readiness.md", nrf: "platforms/cra/workflows/cra-readiness.md" },
 	}
 
-	private parseCardPayload(payload?: string): { prompt: string; workflowRels: string[] } | null {
+	private async parseCardPayload(
+		payload?: string,
+	): Promise<{ prompt: string; workflowRels: string[]; workspace?: string; autoBaseline?: boolean } | null> {
 		if (!payload) {
 			return null
 		}
 		try {
 			const p = JSON.parse(payload)
+			// A SAMPLE handover: materialize the pristine bundled sample (the same copy a local demo run
+			// uses) and hand THAT project over. The sample is the zero-risk first handover — a known
+			// project with a known bug, so the developer can experience the whole loop without exposing
+			// their own code. Our throwaway copy → the git baseline is created without asking.
+			if (p.demo === "nus-uart") {
+				const dws = await prepareDemoWorkspace()
+				return {
+					prompt: [
+						"Debug a real BLE NUS bug in this sample NCS workspace: the central and peripheral connect,",
+						"but data flows ONE WAY only. Find why and fix it in the source.",
+						"Recorded logs from real nRF hardware (nRF52840DK + nRF5340DK) are in the project — ground",
+						"every claim in those logs and the source; do not invent hardware runs.",
+					].join(" "),
+					workflowRels: ["platforms/nrf/workflows/demo-debug.md"],
+					workspace: dws.rootPath,
+					autoBaseline: true,
+				}
+			}
 			if (typeof p?.prompt !== "string" || !p.prompt.trim()) {
 				return null
 			}
@@ -390,16 +427,17 @@ export class VscodeHandoverService {
 
 	// ── the command: hand over ───────────────────────────────────────────────
 	async handOver(cardPayload?: string): Promise<void> {
-		const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+		// A CARD started this handover: its prompt IS the mission, and its workflow seeds the closure.
+		// Without this, a card click inherited the newest session's mission and bits — the "Test &
+		// validate" door could post a "debug BLE" brief (seen live on the F5 strip). A SAMPLE card also
+		// brings its own materialized workspace.
+		const card = await this.parseCardPayload(cardPayload)
+		const ws = card?.workspace ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
 		if (!ws) {
 			vscode.window.showWarningMessage("Adsum: open a project folder before handing a session over.")
 			return
 		}
 		let parts = { mission: "", worklog: [] as string[], nextStep: "", lastSummary: "", kbitRelPaths: [] as string[] }
-		// A CARD started this handover: its prompt IS the mission, and its workflow seeds the closure.
-		// Without this, a card click inherited the newest session's mission and bits — the "Test &
-		// validate" door could post a "debug BLE" brief (seen live on the F5 strip).
-		const card = this.parseCardPayload(cardPayload)
 		if (card) {
 			parts.mission = card.prompt
 			parts.kbitRelPaths = card.workflowRels
@@ -432,7 +470,7 @@ export class VscodeHandoverService {
 				path: p,
 			}))
 		// Safety net + environment facts the server's t-bits need (resolved here; the server stays dumb).
-		const baseline = await this.ensureGitBaseline(ws)
+		const baseline = await this.ensureGitBaseline(ws, card?.autoBaseline)
 		const idfActivate = this.detectIdfActivation(ws)
 		// Supersede any older still-pending handovers: a stale 'pending' from an attempt that never got
 		// picked up would otherwise clutter `inbox` and make "which one?" ambiguous (it bit us twice in
@@ -643,7 +681,13 @@ export class VscodeHandoverService {
 		let calls = 0
 		let lastEventAt = Date.now()
 		let ticks = 0
-		const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+		// Observe the workspace the handover is ABOUT (a sample handover materializes its own copy) —
+		// the folder VS Code happens to have open is only the fallback.
+		let briefWs: string | undefined
+		try {
+			briefWs = JSON.parse(fs.readFileSync(path.join(HANDOVER_ROOT, id, "brief.json"), "utf8")).workspace
+		} catch {}
+		const ws = briefWs ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
 		const lastDirty = { v: "" }
 		// Show the indicator immediately: "we are watching, the agent hasn't called yet" is real state and
 		// far more useful than an empty status bar that looks like the command did nothing.
