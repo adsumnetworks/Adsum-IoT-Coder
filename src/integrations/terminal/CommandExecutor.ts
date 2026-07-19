@@ -49,6 +49,11 @@ export class CommandExecutor {
 	// Track the currently executing foreground process for cancellation
 	private currentProcess: TerminalProcessResultPromise | null = null
 
+	// The VS Code terminal running the current foreground command. A VS Code terminal's process cannot be
+	// force-killed through the terminal interface (see types.ts), so Stop sends it an interrupt (Ctrl+C)
+	// instead — the same signal a user would press, with no deadline that could kill a legitimate long build.
+	private currentTerminal: { sendText(text: string, addNewLine?: boolean): void } | null = null
+
 	// Flag to track if the current command was cancelled externally
 	private wasCancelledExternally = false
 
@@ -161,8 +166,10 @@ export class CommandExecutor {
 		// Reset cancellation flag and track the current process
 		this.wasCancelledExternally = false
 		this.currentProcess = process
+		this.currentTerminal = terminalInfo.terminal
 		const clearCurrentProcess = () => {
 			this.currentProcess = null
+			this.currentTerminal = null
 		}
 		process.once("completed", clearCurrentProcess)
 		process.once("error", clearCurrentProcess)
@@ -232,8 +239,24 @@ export class CommandExecutor {
 			this.wasCancelledExternally = true
 			;(this.currentProcess as any).terminate()
 			this.currentProcess = null
+			this.currentTerminal = null
 			cancelled = true
 			Logger.info("Cancelled foreground command")
+		} else if (this.currentProcess && this.currentTerminal) {
+			// VS Code terminal foreground command: the process can't be force-killed through the terminal
+			// interface, so send an interrupt (Ctrl+C = ETX / \x03) — this aborts a hanging command
+			// (e.g. curl on an unreachable device) immediately, without a deadline that would also kill a
+			// legitimate multi-minute build. Field report 2026-07-14: Stop had no effect on such commands.
+			this.wasCancelledExternally = true
+			try {
+				this.currentTerminal.sendText("\u0003", false)
+			} catch (e) {
+				Logger.warn(`Stop: failed to send interrupt to terminal: ${e}`)
+			}
+			this.currentProcess = null
+			this.currentTerminal = null
+			cancelled = true
+			Logger.info("Sent interrupt (Ctrl+C) to foreground VS Code terminal command")
 		}
 
 		// 3. Update UI state and notify user by modifying existing message
