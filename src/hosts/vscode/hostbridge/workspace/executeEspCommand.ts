@@ -24,7 +24,7 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import * as vscode from "vscode"
-import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
+import { getCachedEspEnvironment, readFreshProjectIdfVersion } from "@/services/esp/EspEnvironmentDetector"
 import {
 	buildEspShellCommand,
 	detectShell,
@@ -117,7 +117,9 @@ export function selectHostIdf(opts: { explicitVersion?: string; persistedVersion
 		return cmake ? parseIdfVersionCmake(cmake) : undefined
 	}
 	const installs = enumerateIdfInstalls(platform, process.env, fs.existsSync, listDir, readVersion, explicit)
-	const pin = getCachedEspEnvironment().projectIdfVersion
+	// Pin FRESH from dependencies.lock, cache only as a fallback: the cache misses a lock written after
+	// activation (field report 2026-07-14 — valid pin ignored because resolution read a stale cache).
+	const pin = readFreshProjectIdfVersion() ?? getCachedEspEnvironment().projectIdfVersion
 	return selectIdfInstall(installs, pin, explicit, {
 		explicit: opts.explicitVersion,
 		persisted: opts.persistedVersion,
