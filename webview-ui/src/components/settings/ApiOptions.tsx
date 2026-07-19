@@ -6,6 +6,7 @@ import Fuse from "fuse.js"
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useInterval } from "react-use"
 import styled from "styled-components"
+import { BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha } from "@/components/chat/brandColors"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { PLATFORM_CONFIG, PlatformType } from "@/config/platform.config"
@@ -356,7 +357,25 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 									ref={(el) => {
 										itemRefs.current[index] = el
 									}}>
-									<span>{item.html}</span>
+									<span>
+										{item.html}
+										{item.value === "external-agent" && (
+											<span
+												style={{
+													marginLeft: "6px",
+													fontSize: "9px",
+													fontWeight: 700,
+													letterSpacing: "0.4px",
+													padding: "1px 5px",
+													borderRadius: "8px",
+													color: BRAND_CYAN_700,
+													border: `1px solid ${brandAlpha(BRAND_CYAN_600, 0.45)}`,
+													verticalAlign: "1px",
+												}}>
+												BETA
+											</span>
+										)}
+									</span>
 								</ProviderDropdownItem>
 							))}
 						</ProviderDropdownList>

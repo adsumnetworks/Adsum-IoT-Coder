@@ -42,7 +42,9 @@ const IntentList: React.FC<IntentListProps> = ({
 	testIdPrefix,
 }) => {
 	const live = intents.filter((i) => !i.comingSoon)
-	const roadmap = intents.filter((i) => i.comingSoon)
+	// Roadmap cards are hidden from the UI (operator, 2026-07-19) — a card you cannot click earns no
+	// space on a working surface. The definitions stay in welcomeIntents.ts so re-enabling is one line.
+	const roadmap: IntentDef[] = []
 	const { navigateToSettings } = useExtensionState()
 	const { target, conducting } = useRunTarget()
 
