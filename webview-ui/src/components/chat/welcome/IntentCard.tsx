@@ -12,6 +12,8 @@ interface IntentCardProps {
 	subline?: string
 	/** Roadmap card: dashed/dimmed, non-interactive. */
 	comingSoon?: boolean
+	/** Agent-mode route marker ("→ your agent") — the run-target toggle's point-of-action signal. */
+	routeChip?: string
 	disabled?: boolean
 	onClick: () => void
 	testId?: string
@@ -29,6 +31,7 @@ const IntentCard: React.FC<IntentCardProps> = ({
 	pill,
 	subline,
 	comingSoon = false,
+	routeChip,
 	disabled = false,
 	onClick,
 	testId,

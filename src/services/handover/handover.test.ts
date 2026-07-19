@@ -286,6 +286,19 @@ describe("brief extraction from a recorded session", () => {
 		}
 		const b = extractBriefParts(ui, meta)
 		assert.equal(b.mission, "Debug peripheral_uart — find why it disconnects.")
+		// Re-handover of a returned session: the opening prompt is OUR boilerplate, not the mission —
+		// ingesting it verbatim degrades the mission one generation per round trip (seen live on the strip).
+		const rehandover = extractBriefParts(
+			[
+				{
+					type: "say",
+					say: "text",
+					text: "Continue this task — it was handed to my coding agent and I'm bringing it back.\n\nOriginal mission: Test and validate softAP — host tests now.\nDone before handover:\n- built firmware",
+				},
+			],
+			{},
+		)
+		assert.equal(rehandover.mission, "Test and validate softAP — host tests now.", "recovers the real mission")
 		assert.deepEqual(b.worklog, ["enumerate devices", "build firmware"], "only COMPLETED items are 'done so far'")
 		assert.equal(b.nextStep, "capture logs", "the first unchecked item is the next step")
 		assert.equal(b.lastSummary, "Build passed; firmware is flashed.")

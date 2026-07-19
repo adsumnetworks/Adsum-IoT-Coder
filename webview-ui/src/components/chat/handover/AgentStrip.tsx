@@ -163,20 +163,21 @@ const AgentStrip: React.FC = () => {
 						animation: strip.phase === "working" ? "adsum-pulse 1.1s infinite" : undefined,
 					}}
 				/>
-				<span style={{ fontSize: "12px", fontWeight: 700, minWidth: 0 }}>
-					Your coding agent{" "}
-					<span
-						style={{
-							fontWeight: 400,
-							color: "var(--vscode-descriptionForeground)",
-							whiteSpace: "nowrap",
-							overflow: "hidden",
-							textOverflow: "ellipsis",
-						}}>
-						· {sub}
-					</span>
+				<span style={{ fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>Your coding agent</span>
+				{/* the mission is the ONLY flexible element: it truncates, everything else keeps its size */}
+				<span
+					style={{
+						flex: 1,
+						minWidth: 0,
+						fontSize: "11px",
+						color: "var(--vscode-descriptionForeground)",
+						whiteSpace: "nowrap",
+						overflow: "hidden",
+						textOverflow: "ellipsis",
+					}}
+					title={sub}>
+					· {sub}
 				</span>
-				<span style={{ flex: 1 }} />
 				<button
 					onClick={continueHere}
 					style={{
