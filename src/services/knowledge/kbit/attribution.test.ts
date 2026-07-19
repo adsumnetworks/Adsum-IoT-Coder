@@ -39,19 +39,35 @@ describe("attribution — credit facts", () => {
 	})
 
 	test("co-authors survive a re-attribution, without duplicating or inventing anyone", () => {
-		const c = creditFromMeta({ id: "adsum/esp/boards/esp32-s3", author: "Yaman Kalaji", contributors: "Omar Morceli" })
-		assert.deepEqual(c.contributors, ["Omar Morceli"])
-		// declared in either shape, same result — a list-form bit must not silently drop a person
-		assert.deepEqual(creditFromMeta({ id: "x", author: "A", contributors: ["B", "C"] }).contributors, ["B", "C"])
+		// the shape the schema actually defines: co_authors entries with a handle and a display name
+		const c = creditFromMeta({
+			id: "adsum/esp/boards/esp32-s3",
+			author: "Yaman Kalaji",
+			co_authors: [{ handle: "omar-morceli", name: "Omar Morceli" }],
+		})
+		assert.deepEqual(c.coAuthors, ["Omar Morceli"])
+		// a handle-only entry still credits the person rather than dropping them
+		assert.deepEqual(creditFromMeta({ id: "x", author: "A", co_authors: [{ handle: "b-dev" }] }).coAuthors, ["b-dev"])
+		// plain names and one comma-separated string normalise identically
+		assert.deepEqual(creditFromMeta({ id: "x", author: "A", co_authors: ["B", "C"] }).coAuthors, ["B", "C"])
 		// the lead is never repeated as their own co-author, and a placeholder handle is not a person
-		assert.deepEqual(creditFromMeta({ id: "x", author: "A", contributors: "A, adsum, B, B" }).contributors, ["B"])
-		assert.deepEqual(creditFromMeta({ id: "x", author: "A" }).contributors, [])
+		assert.deepEqual(creditFromMeta({ id: "x", author: "A", co_authors: "A, adsum, B, B" }).coAuthors, ["B"])
+		assert.deepEqual(creditFromMeta({ id: "x", author: "A" }).coAuthors, [])
 	})
 
-	test("contributors are read from frontmatter in both inline and list form", () => {
-		assert.deepEqual(creditFieldsFromYaml("author: A\ncontributors: B, C\n").contributors, ["B", " C"])
-		assert.deepEqual(creditFieldsFromYaml("author: A\ncontributors:\n  - B\n  - C\nlicense: x\n").contributors, ["B", "C"])
-		assert.equal(creditFieldsFromYaml("author: A\n").contributors, undefined)
+	test("co_authors are read out of real frontmatter, name winning over handle", () => {
+		const yaml = [
+			"author: Redouane Elmagroud",
+			"co_authors:",
+			"  - handle: ismail-hamdad",
+			"    name: Ismail Hamdad",
+			"  - handle: omar-morceli",
+			"license: LicenseRef-Adsum-Proprietary",
+		].join("\n")
+		assert.deepEqual(creditFieldsFromYaml(yaml).co_authors, ["Ismail Hamdad", "omar-morceli"])
+		assert.equal(creditFieldsFromYaml("author: A\nlicense: x\n").co_authors, undefined)
+		// end-to-end: frontmatter → credit facts
+		assert.deepEqual(creditFromMeta(creditFieldsFromYaml(yaml)).coAuthors, ["Ismail Hamdad", "omar-morceli"])
 	})
 
 	test("a Tool bit is a Tool bit", () => {

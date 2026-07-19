@@ -24,7 +24,7 @@ export interface KbitLoadedPayload {
 	attributed?: boolean
 	/** Co-authors of the bit, in declared order — typically whoever curated the version this one grew out
 	 *  of. Absent for a single-author bit, so an older payload renders exactly as before. */
-	contributors?: string[]
+	coAuthors?: string[]
 	version?: string
 	license?: string
 	platform?: string
@@ -154,7 +154,7 @@ const AuthorName = ({ bit }: { bit: KbitLoadedPayload }) =>
 /** Co-authors on the one-line credit: the first name in full, the rest as a count the popover expands.
  *  Re-attributing a bit moves the lead name; this is what keeps the previous curator visible. */
 export const CoAuthors = ({ bit, color }: { bit: KbitLoadedPayload; color?: string }) => {
-	const co = bit.contributors ?? []
+	const co = bit.coAuthors ?? []
 	if (co.length === 0) {
 		return null
 	}
@@ -209,9 +209,9 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 			</ProvRow>
 			{/* Credit is cumulative: whoever curated the version this one grew out of stays named here after
 			    the lead changes hands. Absent when the bit declares no co-authors. */}
-			{bit.contributors?.length ? (
+			{bit.coAuthors?.length ? (
 				<ProvRow label="Co-authored by">
-					{bit.contributors.map((name, i) => (
+					{bit.coAuthors.map((name, i) => (
 						<span key={name}>
 							{i > 0 ? ", " : ""}
 							<PersonLink color="inherit" name={name} />
