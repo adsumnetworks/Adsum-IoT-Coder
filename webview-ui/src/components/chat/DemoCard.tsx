@@ -1,4 +1,6 @@
+import { StringRequest } from "@shared/proto/cline/common"
 import React from "react"
+import { StateServiceClient } from "@/services/grpc-client"
 import { BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha, brandSubtle } from "./brandColors"
 import { DEFAULT_DEMO_SCENARIO_ID, DEMO_SCENARIOS } from "./demoScenarios"
 import { useRunTarget } from "./welcome/useRunTarget"
