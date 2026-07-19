@@ -1,6 +1,6 @@
 import type { ClineMessage } from "@shared/ExtensionMessage"
 import { BRAND_CORAL } from "@/components/chat/brandColors"
-import { type KbitLoadedPayload, parseKbitPayload } from "@/components/chat/KbitCredit"
+import { CoAuthors, type KbitLoadedPayload, PersonLink, parseKbitPayload } from "@/components/chat/KbitCredit"
 import { KbitMark, TbitMark } from "@/components/chat/KbitMark"
 
 /**
@@ -47,10 +47,10 @@ export const KbitPill = ({ bits, compact }: { bits: KbitLoadedPayload[]; compact
 				<span>×{bits.length}</span>
 			) : (
 				<span className="whitespace-nowrap">
-					<span style={{ color: BRAND_CORAL }}>
-						{lead}
-						{extra}
-					</span>
+					{/* PersonLink stops click propagation: the pill sits inside the header's expand/collapse
+					    target, so opening a profile must not also toggle the header. */}
+					<PersonLink name={lead} />
+					<span style={{ color: BRAND_CORAL }}>{extra}</span>
 				</span>
 			)}
 		</div>
@@ -80,7 +80,9 @@ export const KbitRoster = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 								{b.version && <span className="opacity-50 font-mono text-[10px]"> v{b.version}</span>}
 							</div>
 							<div className="opacity-65 text-[10.5px]">
-								{b.kind === "tool" ? "Tool bit · " : ""}by {b.author}
+								{b.kind === "tool" ? "Tool bit · " : ""}by{" "}
+								{b.attributed === false ? b.author : <PersonLink color="inherit" name={b.author} />}
+								<CoAuthors bit={b} color="inherit" />
 							</div>
 						</div>
 					</div>

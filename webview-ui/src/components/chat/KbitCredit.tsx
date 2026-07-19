@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { type ReactNode, useState } from "react"
 import { BRAND_CORAL, BRAND_CYAN_600, brandAlpha } from "./brandColors"
 import { KbitMark, TbitMark } from "./KbitMark"
+import { authorLink } from "./kbitAuthors"
 
 /**
  * K-bit attribution — the credit line that replaces the anonymous "read this file" row when Adsum loads a
@@ -21,6 +22,9 @@ export interface KbitLoadedPayload {
 	kind: "knowledge" | "tool"
 	author: string
 	attributed?: boolean
+	/** Co-authors of the bit, in declared order — typically whoever curated the version this one grew out
+	 *  of. Absent for a single-author bit, so an older payload renders exactly as before. */
+	contributors?: string[]
 	version?: string
 	license?: string
 	platform?: string
@@ -119,13 +123,49 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 const KindChip = ({ kind, size = 17 }: { kind: KbitLoadedPayload["kind"]; size?: number }) =>
 	kind === "tool" ? <TbitMark size={size} /> : <KbitMark size={size} />
 
+/**
+ * A credited person. Links to their LinkedIn when we have an operator-confirmed URL (kbitAuthors.ts) and
+ * renders as plain text when we do not — a missing link is honest, never a broken one, and we never guess a
+ * profile from a name. The webview host opens anchors externally.
+ */
+export const PersonLink = ({ name, color }: { name: string; color?: string }) => {
+	const href = authorLink(name)
+	const tone = color ?? BRAND_CORAL
+	return href ? (
+		<a
+			className="no-underline hover:underline"
+			href={href}
+			onClick={(e) => e.stopPropagation()}
+			rel="noreferrer"
+			style={{ color: tone }}
+			target="_blank"
+			title={`${name} on LinkedIn`}>
+			{name}
+		</a>
+	) : (
+		<span style={{ color: tone }}>{name}</span>
+	)
+}
+
 /** Only a real, attributed person is a name; an unattributed bit says so plainly rather than inventing one. */
 const AuthorName = ({ bit }: { bit: KbitLoadedPayload }) =>
-	bit.attributed === false ? (
-		<span className="opacity-80">{bit.author}</span>
-	) : (
-		<span style={{ color: BRAND_CORAL }}>{bit.author}</span>
+	bit.attributed === false ? <span className="opacity-80">{bit.author}</span> : <PersonLink name={bit.author} />
+
+/** Co-authors on the one-line credit: the first name in full, the rest as a count the popover expands.
+ *  Re-attributing a bit moves the lead name; this is what keeps the previous curator visible. */
+export const CoAuthors = ({ bit, color }: { bit: KbitLoadedPayload; color?: string }) => {
+	const co = bit.contributors ?? []
+	if (co.length === 0) {
+		return null
+	}
+	return (
+		<span>
+			{" with "}
+			<PersonLink color={color} name={co[0]} />
+			{co.length > 1 ? <span className="opacity-70">{` +${co.length - 1}`}</span> : null}
+		</span>
 	)
+}
 
 /**
  * Provenance, one click deep. Delivery mechanics (bundled vs registry) are deliberately NOT shown — they are
@@ -164,14 +204,28 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 		    author in one five-line card — and read near-identically for every bit by the same author on the
 		    same platform. Platform moved into the metadata line; everything factual is a labelled row. */}
 		<div className="mt-[10px] flex flex-col gap-[6px]">
-			<ProvRow label="Curated by" muted={bit.attributed === false} value={bit.author} />
+			<ProvRow label="Curated by" muted={bit.attributed === false}>
+				{bit.attributed === false ? bit.author : <PersonLink color="inherit" name={bit.author} />}
+			</ProvRow>
+			{/* Credit is cumulative: whoever curated the version this one grew out of stays named here after
+			    the lead changes hands. Absent when the bit declares no co-authors. */}
+			{bit.contributors?.length ? (
+				<ProvRow label="Co-authored by">
+					{bit.contributors.map((name, i) => (
+						<span key={name}>
+							{i > 0 ? ", " : ""}
+							<PersonLink color="inherit" name={name} />
+						</span>
+					))}
+				</ProvRow>
+			) : null}
 			{/* No signing row until signatures are real. Delegated org signing (an author's recorded approval
 			    authorising Adsum to sign) is designed but not shipped, and a permanent "pending" placeholder is
 			    noise on every bit forever — it reads as a defect rather than a roadmap. Restore this row when
 			    signatures actually exist, showing the two facts separately (approved by X / signed: Adsum). */}
-			<ProvRow label="Maintained by" value={bit.steward || "Adsum Networks"} />
+			<ProvRow label="Maintained by">{bit.steward || "Adsum Networks"}</ProvRow>
 			{/* Hardware evidence is a FACT, so it gets a row like the others — and only when one exists. */}
-			{bit.witness && <ProvRow label="Run on" value={bit.witness} />}
+			{bit.witness && <ProvRow label="Run on">{bit.witness}</ProvRow>}
 		</div>
 		{/* The provenance boundary (attribution is credit, never a statement about YOUR device) is stated in
 		    the docs rather than as small print on every popover: nobody reads a credit card expecting a
@@ -186,11 +240,11 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 	</div>
 )
 
-const ProvRow = ({ label, value, muted }: { label: string; value: string; muted?: boolean }) => (
+const ProvRow = ({ label, children, muted }: { label: string; children: ReactNode; muted?: boolean }) => (
 	<div>
 		<div className="uppercase tracking-wide font-semibold text-[9px] opacity-55">{label}</div>
 		<div className={muted ? "opacity-60 text-[12px]" : "text-[12px]"} style={{ color: "var(--vscode-foreground)" }}>
-			{value}
+			{children}
 		</div>
 	</div>
 )
