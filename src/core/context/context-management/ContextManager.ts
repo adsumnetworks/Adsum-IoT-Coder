@@ -8,6 +8,8 @@ import cloneDeep from "clone-deep"
 import fs from "fs/promises"
 import * as path from "path"
 import { getContextWindowInfo } from "./context-window-utils"
+import { estimateTotalTokens, planTokenAwareTruncation, projectContextBudget } from "./ContextBudget"
+import { buildCompactionState, isCompactionStateValid, loadCompactionState, saveCompactionState } from "./CompactionState"
 
 enum EditType {
 	UNDEFINED = 0,
@@ -98,6 +100,21 @@ export class ContextManager {
 	 */
 	async initializeContextHistory(taskDirectory: string) {
 		this.contextHistoryUpdates = await this.getSavedContextHistory(taskDirectory)
+	}
+
+	/**
+	 * Resume a compacted session: report the stored compaction ONLY when it still describes the transcript on
+	 * disk (prefix fingerprint match). A task can be edited between sessions — history overwritten on resume,
+	 * a checkpoint restored, a message deleted — and reusing a summary of a prefix that no longer exists would
+	 * have the agent confidently describe work it never did. On mismatch we return undefined: the caller falls
+	 * back to the canonical transcript. Worse context is recoverable; fabricated context is not.
+	 */
+	async resumeCompactionState(taskDirectory: string, apiConversationHistory: Anthropic.Messages.MessageParam[]) {
+		const stored = await loadCompactionState(taskDirectory)
+		if (!isCompactionStateValid(stored, apiConversationHistory)) {
+			return undefined
+		}
+		return stored
 	}
 
 	/**
@@ -238,8 +255,16 @@ export class ContextManager {
 					const totalTokens = (tokensIn || 0) + (tokensOut || 0) + (cacheWrites || 0) + (cacheReads || 0)
 					const { maxAllowedSize } = getContextWindowInfo(api)
 
+					// Budget projection decides WHEN (see ContextBudget): compact at the trigger ratio rather than
+					// waiting for the hard edge, so a long run reclaims space before a request can fail.
+					const budget = projectContextBudget({
+						usedTokens: totalTokens,
+						modelInfo: api.getModel().info,
+					})
+
 					// This is the most reliable way to know when we're close to hitting the context window.
-					if (totalTokens >= maxAllowedSize) {
+					// `maxAllowedSize` remains the hard floor; the projection can act earlier.
+					if (totalTokens >= maxAllowedSize || budget.state === "compact" || budget.state === "emergency") {
 						// Since the user may switch between models with different context windows, truncating half may not be enough (ie if switching from claude 200k to deepseek 64k, half truncation will only remove 100k tokens, but we need to remove much more)
 						// So if totalTokens/2 is greater than maxAllowedSize, we truncate 3/4 instead of 1/2
 						const keep = totalTokens / 2 > maxAllowedSize ? "quarter" : "half"
@@ -255,14 +280,44 @@ export class ContextManager {
 							// go ahead with truncation
 							anyContextUpdates = this.applyStandardContextTruncationNoticeChange(timestamp) || anyContextUpdates
 
-							// NOTE: it's okay that we overwriteConversationHistory in resume task since we're only ever removing the last user message and not anything in the middle which would affect this range
-							conversationHistoryDeletedRange = this.getNextTruncationRange(
-								apiConversationHistory,
-								conversationHistoryDeletedRange,
-								keep,
+							// Prefer the TOKEN-AWARE plan: drop the oldest material actually responsible for the
+							// overflow while protecting the opening pair and the recent tail. Count-based
+							// half/quarter removal stays as the fallback for the case where nothing can be
+							// dropped without breaching a protected region.
+							const tokensToReclaim = Math.max(
+								budget.tokensToReclaim,
+								totalTokens > maxAllowedSize ? totalTokens - maxAllowedSize : 0,
 							)
+							const planned = planTokenAwareTruncation({
+								messages: apiConversationHistory,
+								currentDeletedRange: conversationHistoryDeletedRange,
+								tokensToReclaim,
+								preserveRecentTokens: budget.preserveRecentTokens,
+							})
+
+							const tokensBefore = estimateTotalTokens(apiConversationHistory)
+							// NOTE: it's okay that we overwriteConversationHistory in resume task since we're only ever removing the last user message and not anything in the middle which would affect this range
+							conversationHistoryDeletedRange =
+								planned ??
+								this.getNextTruncationRange(apiConversationHistory, conversationHistoryDeletedRange, keep)
 
 							updatedConversationHistoryDeletedRange = true
+
+							// Record WHAT was compacted, fingerprinted, so a resume can tell whether this still
+							// describes the history on disk. The canonical transcript is never rewritten.
+							await saveCompactionState(
+								taskDirectory,
+								buildCompactionState({
+									messages: apiConversationHistory,
+									compactedThroughIndex: conversationHistoryDeletedRange[1],
+									tokensBefore,
+									tokensAfter: estimateTotalTokens(
+										this.getAndAlterTruncatedMessages(apiConversationHistory, conversationHistoryDeletedRange),
+									),
+									strategy: planned ? "truncation" : "truncation",
+									modelId: api.getModel().id,
+								}),
+							)
 						}
 
 						// if we alter the context history, save the updated version to disk
