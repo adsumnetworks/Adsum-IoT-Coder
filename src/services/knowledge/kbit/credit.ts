@@ -36,7 +36,7 @@ export interface KbitCredit {
 	attributed: boolean
 	/** Co-authors, in declared order — people whose earlier work the current version stands on. Never
 	 *  includes the lead author, and never a placeholder handle. Empty when the bit declares none. */
-	contributors: string[]
+	coAuthors: string[]
 	version?: string
 	license?: string
 	platform?: string
@@ -66,9 +66,10 @@ export interface KbitMetaLike {
 	license?: string
 	platform?: string
 	owner?: string
-	/** `contributors: A, B` or a YAML list. Manifest entries arrive parsed (array); the local frontmatter
-	 *  reader hands back the raw scalar. Both shapes normalise to the same string[]. */
-	contributors?: string | string[]
+	/** Schema field `co_authors` (R5.x): a list of `{handle, name?}` entries. Manifest entries arrive
+	 *  parsed from YAML; the local frontmatter reader hands back display names it already extracted. Every
+	 *  shape — objects, plain names, one comma-separated string — normalises to the same string[]. */
+	co_authors?: string | string[] | Array<{ handle?: string; name?: string }>
 }
 
 /** Build the credit facts for a bit from whatever metadata we have (manifest entry or parsed frontmatter). */
@@ -86,22 +87,26 @@ export function creditFromMeta(meta: KbitMetaLike, fallbackId?: string): KbitCre
 		license: meta.license?.trim() || undefined,
 		platform: meta.platform?.trim() || undefined,
 		steward: STEWARD,
-		contributors: normalizeContributors(meta.contributors, attributed ? raw : undefined),
+		coAuthors: normalizeCoAuthors(meta.co_authors, attributed ? raw : undefined),
 	}
 }
 
 /**
  * Co-authors, cleaned. Re-attributing a bit must not erase whoever wrote the version it grew out of — that
  * person keeps a credit here. Drops placeholders and the lead author (a name must never appear twice in one
- * credit line), and preserves declared order: earlier contributors first.
+ * credit line), and preserves declared order: earliest co-author first.
  */
-function normalizeContributors(raw: string | string[] | undefined, lead: string | undefined): string[] {
-	const list = Array.isArray(raw) ? raw : (raw ?? "").split(",")
+function normalizeCoAuthors(raw: KbitMetaLike["co_authors"], lead: string | undefined): string[] {
+	const list: unknown[] = Array.isArray(raw) ? raw : String(raw ?? "").split(",")
 	const out: string[] = []
 	for (const entry of list) {
-		const name = String(entry ?? "")
-			.trim()
-			.replace(/^["']|["']$/g, "")
+		// A `{handle, name}` entry displays its name; a handle-only entry displays the handle rather than
+		// dropping the person — an unpolished credit still credits them.
+		const display =
+			entry && typeof entry === "object"
+				? ((entry as { name?: string; handle?: string }).name ?? (entry as { handle?: string }).handle ?? "")
+				: String(entry ?? "")
+		const name = display.trim().replace(/^["']|["']$/g, "")
 		if (!name || PLACEHOLDER_AUTHORS.has(name.toLowerCase()) || name === lead || out.includes(name)) {
 			continue
 		}
@@ -130,21 +135,24 @@ export function creditFieldsFromYaml(yaml: string): KbitMetaLike {
 		const v = m[1].trim().replace(/^["']|["']$/g, "")
 		return v === "" ? undefined : v
 	}
-	/** Reads BOTH `key: A, B` and a YAML block list under `key:` — the one place this reader goes past
-	 *  scalars, because the alternative is silently dropping a person's credit when a bit uses list form. */
-	const names = (key: string): string[] | undefined => {
-		const inline = scalar(key)
-		if (inline) {
-			return inline.split(",")
+	/** `co_authors:` block list → display names. The one place this reader goes past scalars, because the
+	 *  alternative is silently dropping a person's credit; within an entry, `name` wins over `handle`. */
+	const coAuthorNames = (): string[] | undefined => {
+		const block = yaml.match(/^co_authors:[ \t]*$\n((?:[ \t]+\S.*\n?)+)/m)
+		if (!block) {
+			return undefined
 		}
-		const block = yaml.match(new RegExp(`^${key}:[ \\t]*$\\n((?:[ \\t]*-[ \\t]*.+\\n?)+)`, "m"))
-		return block
-			? block[1]
-					.split("\n")
-					.map((l) => l.replace(/^[ \t]*-[ \t]*/, ""))
-					.filter(Boolean)
-			: undefined
+		const names = block[1]
+			.split(/^[ \t]*-[ \t]*/m)
+			.slice(1)
+			.map((entry) => {
+				const field = (k: string) => new RegExp(`(?:^|\\n)[ \\t]*${k}:[ \\t]*(.+?)[ \\t]*$`, "m").exec(entry)?.[1]
+				return (field("name") ?? field("handle") ?? "").replace(/^["']|["']$/g, "")
+			})
+			.filter(Boolean)
+		return names.length ? names : undefined
 	}
+
 	return {
 		id: scalar("id"),
 		title: scalar("title"),
@@ -154,7 +162,7 @@ export function creditFieldsFromYaml(yaml: string): KbitMetaLike {
 		license: scalar("license"),
 		platform: scalar("platform"),
 		owner: scalar("owner"),
-		contributors: names("contributors"),
+		co_authors: coAuthorNames(),
 	}
 }
 

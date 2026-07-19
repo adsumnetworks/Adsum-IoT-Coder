@@ -51,7 +51,7 @@ interface BriefBit {
 	/** True when `author` is a person the bit actually names (the foreign agent shows it either way). */
 	attributed?: boolean
 	/** Co-authors the bit names — credit travels with the bit into the foreign agent's context. */
-	contributors?: string[]
+	coAuthors?: string[]
 	kind?: KbitKind
 	steward?: string
 	triggers?: string[]
@@ -134,7 +134,7 @@ export class VscodeHandoverService {
 			version: credit?.version,
 			author: credit?.author ?? ATTRIBUTION_FALLBACK,
 			attributed: credit?.attributed ?? false,
-			contributors: credit?.contributors?.length ? credit.contributors : undefined,
+			coAuthors: credit?.coAuthors?.length ? credit.coAuthors : undefined,
 			kind: credit?.kind ?? "knowledge",
 			steward: credit?.steward,
 			triggers,

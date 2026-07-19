@@ -51,7 +51,7 @@ async function sayKbitCredit(config: any, credit: KbitCredit | null, source: "bu
 				attributed: credit.attributed,
 				// Co-authors ride with the lead so the UI can credit them without a second lookup; omitted
 				// when empty so the payload of a single-author bit is unchanged (older webviews ignore it).
-				contributors: credit.contributors.length ? credit.contributors : undefined,
+				coAuthors: credit.coAuthors.length ? credit.coAuthors : undefined,
 				version: credit.version,
 				license: credit.license,
 				platform: credit.platform,
