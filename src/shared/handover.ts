@@ -23,6 +23,9 @@ export type MilestoneRow =
 	| { kind: "snap"; t: string }
 	/** ◇ a drift nudge — derived from the ledger, not stored */
 	| { kind: "nudge"; t: string; text: string }
+	/** ✉ a message the developer typed for the agent. MCP cannot push, so it is DELIVERED in the
+	 *  response to the agent's next milestone — `delivered: false` means still queued. */
+	| { kind: "msg"; t: string; text: string; delivered: boolean }
 
 export interface HandoverStrip {
 	/** internal only — never rendered; the developer never sees a handover id */

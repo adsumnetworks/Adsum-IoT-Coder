@@ -772,6 +772,26 @@ export class VscodeHandoverService {
 		}
 	}
 
+	/** Queue a message for the agent. The server delivers it in the response to the agent's next
+	 *  milestone and records the delivery in the ledger — the queue file only ever holds the undelivered. */
+	async messageAgent(text: string): Promise<void> {
+		const id = this.activeId ?? this.newestHandoverId()
+		if (!id) {
+			vscode.window.showInformationMessage("Adsum: no handed-over session to message.")
+			return
+		}
+		try {
+			fs.appendFileSync(
+				path.join(HANDOVER_ROOT, id, "messages.jsonl"),
+				JSON.stringify({ t: new Date().toISOString(), text }) + "\n",
+			)
+			this.out?.appendLine(`✉ queued for the agent: ${text.slice(0, 80)}`)
+			this.pushUiState(true) // the "you" turn appears immediately, marked queued
+		} catch (e) {
+			vscode.window.showWarningMessage(`Adsum: could not queue the message (${e}).`)
+		}
+	}
+
 	// ── conductor mode: no inference on our side? handover IS the execution path ──
 	/**
 	 * "Conductor" = Adsum has no model to run cards with (no provider configured, or the developer set

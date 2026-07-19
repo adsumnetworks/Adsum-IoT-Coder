@@ -922,6 +922,62 @@ describe("HandoverUiState — the strip's contract (pure builder)", () => {
 	})
 })
 
+describe("developer→agent messages — delivered at the next milestone, never twice", () => {
+	test("queued messages ride the checkpoint response, become ledger facts, and the queue empties", async () => {
+		const { root, id } = richFixture()
+		fs.writeFileSync(
+			path.join(root, id, "messages.jsonl"),
+			`${JSON.stringify({ t: "2026-07-19T10:00:00Z", text: "prefer pytest over unity" })}\n`,
+		)
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", { protocolVersion: "2025-06-18" })
+			await c.call("tools/call", { name: "resume_handover", arguments: {} })
+			// resume already drained the pre-pickup queue
+			const events = fs
+				.readFileSync(path.join(root, id, "ledger.jsonl"), "utf8")
+				.trim()
+				.split("\n")
+				.map((l) => JSON.parse(l))
+			assert.ok(events.some((e) => e.event === "dev_message" && e.text === "prefer pytest over unity"))
+			assert.ok(!fs.existsSync(path.join(root, id, "messages.jsonl")), "queue file deleted — no double delivery")
+
+			// a message typed mid-flight lands in the NEXT checkpoint's response
+			fs.writeFileSync(
+				path.join(root, id, "messages.jsonl"),
+				`${JSON.stringify({ t: "2026-07-19T10:05:00Z", text: "ship it when green" })}\n`,
+			)
+			const ck = await c.call("tools/call", {
+				name: "checkpoint",
+				arguments: { worklog: "suite running", step: "off-plan", tools_used: ["adsum.build"] },
+			})
+			const text = ck.result.content[0].text
+			assert.match(text, /Message from the developer/, "delivery happens in the milestone response")
+			assert.match(text, /ship it when green/)
+			assert.ok(!fs.existsSync(path.join(root, id, "messages.jsonl")))
+			// and the builder renders both as delivered "you" rows
+			const rows = buildHandoverUiState(root, CONDUCTOR).strip!.milestones.filter((r) => r.kind === "msg") as any[]
+			assert.equal(rows.length, 2)
+			assert.ok(rows.every((r) => r.delivered === true))
+		} finally {
+			c.kill()
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+
+	test("an undelivered queue renders as a queued 'you' row", () => {
+		const { root, id } = uiFixture({ status: "active", ledger: [{ t: T(1), event: "resume" }] })
+		fs.writeFileSync(
+			path.join(root, id, "messages.jsonl"),
+			`${JSON.stringify({ t: T(2), text: "check the Kconfig first" })}\n`,
+		)
+		const rows = buildHandoverUiState(root, CONDUCTOR).strip!.milestones.filter((r) => r.kind === "msg") as any[]
+		assert.equal(rows.length, 1)
+		assert.equal(rows[0].delivered, false, "still queued — the view must say so, not imply the agent saw it")
+		fs.rmSync(root, { recursive: true, force: true })
+	})
+})
+
 describe("conductor-mode invariant — the handover plane never calls inference", () => {
 	test("no inference API surface in the server or the pure brief module", () => {
 		for (const f of [SERVER, path.join(__dirname, "HandoverBrief.ts")]) {

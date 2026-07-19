@@ -35,7 +35,7 @@ import {
 import { getButtonConfig } from "./chat-view/shared/buttonConfig"
 import { DEMO_SCENARIOS } from "./demoScenarios"
 import FreeTierStrip from "./FreeTierStrip"
-import AgentStrip from "./handover/AgentStrip"
+import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
 import WelcomeView from "./welcome/WelcomeView"
 
@@ -64,6 +64,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		hooksEnabled,
 		setExpandTaskHeader,
 		demoAutoStart,
+		handoverUi,
 	} = useExtensionState()
 	const isProdHostedApp = userInfo?.apiBaseUrl === "https://app.cline.bot"
 	const shouldShowQuickWins = false
@@ -461,7 +462,6 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			<div className="flex flex-col flex-1 overflow-hidden">
 				{showNavbar && <Navbar />}
 				<FreeTierStrip />
-				<AgentStrip />
 				{task ? (
 					<TaskSection
 						apiMetrics={apiMetrics}
@@ -475,6 +475,11 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						sessionKbits={sessionKbits}
 						task={task}
 					/>
+				) : handoverUi?.strip ? (
+					/* A session out with the developer's coding agent IS a session — it takes the chat
+					   view exactly where a local run would, until it is returned (mockup mcp-sdk/12).
+					   A local task still wins the slot: starting one never gets blocked by tracking. */
+					<AgentSessionView />
 				) : (
 					<WelcomeView
 						onSelectMode={handleModeSelect}

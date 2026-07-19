@@ -320,6 +320,11 @@ function toolResumeHandover(args) {
 	]
 	patchState(id, { status: "active", resumedAt: new Date().toISOString(), currentStepIdx: -1 })
 	ledger(id, { event: "resume", bits: bits.length, governing: brief.governing, steps: steps.length })
+	// Messages queued while nobody had picked the session up are delivered with the resume itself.
+	const queued = drainDeveloperMessages(id)
+	if (queued.length) {
+		lines.push("", "**Message from the developer:**", ...queued.map((m) => `> ${m}`))
+	}
 	return { text: lines.filter((l) => l !== null).join("\n") }
 }
 
@@ -408,6 +413,43 @@ function toolLoadSkill(args, ctx) {
 }
 
 /**
+ * Deliver anything the developer typed while the agent was working. MCP cannot push, so the extension
+ * queues messages in messages.jsonl and the agent receives them HERE — in the response to its next
+ * milestone (exactly what the composer promises). Delivery is a ledger fact; the queue file is deleted
+ * so a message is never delivered twice.
+ */
+function drainDeveloperMessages(id) {
+	const p = path.join(dirOf(id), "messages.jsonl")
+	let msgs = []
+	try {
+		msgs = fs
+			.readFileSync(p, "utf8")
+			.split("\n")
+			.filter(Boolean)
+			.map((l) => {
+				try {
+					return JSON.parse(l)
+				} catch {
+					return null
+				}
+			})
+			.filter((m) => m && typeof m.text === "string")
+	} catch {
+		return []
+	}
+	if (!msgs.length) {
+		return []
+	}
+	try {
+		fs.unlinkSync(p)
+	} catch {}
+	for (const m of msgs) {
+		ledger(id, { event: "dev_message", text: m.text })
+	}
+	return msgs.map((m) => m.text)
+}
+
+/**
  * The milestone dialogue (H2.1 v1, reminder-strength). MCP servers cannot speak first, so every
  * checkpoint RESPONSE carries the interrogation: where the agent is in the governing workflow, what
  * comes next, and the standing bit/tool checks. All of it is a template over parsed steps + reported
@@ -447,6 +489,11 @@ function toolCheckpoint(args, ctx) {
 	})
 
 	const out = [`✓ Recorded to Adsum session ${id}.`]
+	// The developer may have typed messages since the last milestone — this response IS the delivery.
+	const devMsgs = drainDeveloperMessages(id)
+	if (devMsgs.length) {
+		out.push("", "**Message from the developer:**", ...devMsgs.map((m) => `> ${m}`), "", "Address this before continuing.")
+	}
 	if (final) {
 		out.push(
 			"",
