@@ -28,22 +28,29 @@ const RunTargetToggle: React.FC<{
 	conducting: boolean
 	onChange: (t: RunTarget) => void
 }> = ({ target, conducting, onChange }) => {
-	const { freeTierRemainingTokens } = useExtensionState()
+	const { freeTierRemainingTokens, navigateToSettings } = useExtensionState()
 	const { isDark } = useVSCodeTheme()
 	const cyanText = isDark ? BRAND_CYAN_300 : BRAND_CYAN_700
 
-	const seg = (opts: { key: RunTarget; label: string; sub: React.ReactNode; locked?: boolean; lockedTitle?: string }) => {
+	const seg = (opts: {
+		key: RunTarget
+		label: string
+		sub: React.ReactNode
+		locked?: boolean
+		lockedTitle?: string
+		/** A locked segment stays a DOOR: clicking it routes to fixing what locks it (add a model). */
+		onLockedClick?: () => void
+	}) => {
 		const on = target === opts.key
 		return (
 			<button
-				disabled={opts.locked}
 				key={opts.key}
-				onClick={opts.locked ? undefined : () => onChange(opts.key)}
+				onClick={opts.locked ? opts.onLockedClick : () => onChange(opts.key)}
 				style={{
 					flex: 1,
 					textAlign: "center",
 					padding: "6px 8px",
-					cursor: opts.locked ? "default" : "pointer",
+					cursor: "pointer",
 					border: "none",
 					background: on ? brandAlpha(BRAND_CYAN_600, 0.1) : "var(--vscode-input-background)",
 					boxShadow: on ? `inset 0 0 0 1.5px ${BRAND_CYAN_600}` : "none",
