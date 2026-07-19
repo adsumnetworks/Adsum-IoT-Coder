@@ -297,6 +297,29 @@ function findArtifact(dir: string, names: string[], fs: FsAdapter, depth: number
 // Public API
 // ---------------------------------------------------------------------------
 
+/** The extension's own package name — the one marker that cannot be mistaken for a developer's firmware. */
+const OWN_PACKAGE_NAME = "nrf-ai-debugger"
+
+/**
+ * Is this root Adsum's own source tree?
+ *
+ * It ships real embedded fixtures (`demo-scenarios/esp-wifi`, BLE samples), so classifying it detects
+ * Wi-Fi and BLE and then nudges the developer about CRA compliance for the tool's own test data. The
+ * detection is correct; the conclusion is not — this root is the tool, not the firmware being built.
+ * Matching on the package name rather than the path keeps it working in any checkout or clone.
+ */
+function isExtensionOwnRepo(root: string, fsAdapter: FsAdapter): boolean {
+	const pkg = join(root, "package.json")
+	if (!fsAdapter.exists(pkg)) {
+		return false
+	}
+	try {
+		return JSON.parse(fsAdapter.readFile(pkg))?.name === OWN_PACKAGE_NAME
+	} catch {
+		return false // unreadable or not JSON — treat it as a normal project rather than skipping it
+	}
+}
+
 /**
  * Classify what embedded platform(s) are present in the given workspace roots.
  *
@@ -344,6 +367,12 @@ export function classifyWorkspace(roots: string[], fsAdapter: FsAdapter = realFs
 	}
 
 	for (const root of roots) {
+		// Adsum's own source tree ships real fixtures (demo-scenarios/esp-wifi, BLE samples), so opening it
+		// made the extension detect Wi-Fi "in your project" and nudge the developer about CRA compliance
+		// for its own test data. Correct, and useless: this root is the tool, not the developer's firmware.
+		if (isExtensionOwnRepo(root, fsAdapter)) {
+			continue
+		}
 		visitFolder(root)
 		scanSubfolders(root, 1)
 	}
