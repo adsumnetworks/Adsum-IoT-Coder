@@ -2,8 +2,9 @@ import type { HandoverStrip } from "@shared/handover"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import { useEffect, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import { StateServiceClient } from "@/services/grpc-client"
-import { BRAND_CORAL, BRAND_CYAN_600, BRAND_CYAN_700, BRAND_SUCCESS, brandAlpha } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_300, BRAND_CYAN_600, BRAND_CYAN_700, BRAND_SUCCESS, brandAlpha } from "../brandColors"
 import MilestoneList from "./MilestoneList"
 
 /**
@@ -99,6 +100,7 @@ const Stepper: React.FC<{ phase: HandoverStrip["phase"] }> = ({ phase }) => {
 
 const AgentStrip: React.FC = () => {
 	const { handoverUi } = useExtensionState()
+	const { isDark } = useVSCodeTheme()
 	const strip = handoverUi?.strip
 	const [copied, setCopied] = useState(false)
 
@@ -123,6 +125,8 @@ const AgentStrip: React.FC = () => {
 	const continueHere = () => StateServiceClient.continueHandoverHere(EmptyRequest.create({})).catch(() => {})
 	const viewWorklog = () => StateServiceClient.showHandoverWorklog(EmptyRequest.create({})).catch(() => {})
 
+	// Light cyan reads on dark panels but washes out on a light theme; fall to the on-fill-safe cyan.
+	const labelCyan = isDark ? BRAND_CYAN_300 : BRAND_CYAN_700
 	const closed = strip.phase === "closed"
 	const sub = closed
 		? `closed cleanly · ${strip.calls} call${strip.calls === 1 ? "" : "s"} · ${elapsed(strip.startedAt, strip.closedAt)}`
@@ -183,8 +187,11 @@ const AgentStrip: React.FC = () => {
 						fontSize: "11.5px",
 						cursor: "pointer",
 						whiteSpace: "nowrap",
-						background: closed ? BRAND_CYAN_600 : "var(--vscode-badge-background)",
-						color: closed ? "#04222a" : "var(--vscode-descriptionForeground)",
+						// Filled cyan follows the house convention (UpgradeCard/CraNudge): the on-fill token
+						// with white text. Secondary uses VS Code's own secondary-button tokens rather than a
+						// badge fill — badge backgrounds are saturated accents in many themes.
+						background: closed ? BRAND_CYAN_700 : "var(--vscode-button-secondaryBackground)",
+						color: closed ? "#fff" : "var(--vscode-button-secondaryForeground)",
 					}}
 					title="Bring this session back into Adsum, carrying everything the agent did"
 					type="button">
@@ -216,8 +223,8 @@ const AgentStrip: React.FC = () => {
 							<button
 								onClick={copyPickup}
 								style={{
-									background: BRAND_CYAN_600,
-									color: "#04222a",
+									background: BRAND_CYAN_700,
+									color: "#fff",
 									border: "none",
 									borderRadius: "6px",
 									padding: "3px 10px",
@@ -322,12 +329,12 @@ const AgentStrip: React.FC = () => {
 							<span style={{ color: BRAND_SUCCESS }}>✓</span>
 							{strip.closing.headline}
 						</div>
-						<Receipt label="It says">
+						<Receipt label="It says" labelColor={labelCyan}>
 							{strip.closing.itSays.files.length
 								? `Touched ${strip.closing.itSays.files.join(", ")}`
 								: "Reported no file changes"}
 						</Receipt>
-						<Receipt label="Adsum saw">
+						<Receipt label="Adsum saw" labelColor={labelCyan}>
 							{strip.closing.adsumSaw.diffstat ? (
 								<strong style={{ color: "var(--vscode-foreground)" }}>{strip.closing.adsumSaw.diffstat}</strong>
 							) : (
@@ -337,10 +344,12 @@ const AgentStrip: React.FC = () => {
 							{strip.closing.adsumSaw.buildsGreen ? " · builds green" : ""}
 						</Receipt>
 						{strip.closing.itSays.nextStep ? (
-							<Receipt label="Next step">{strip.closing.itSays.nextStep}</Receipt>
+							<Receipt label="Next step" labelColor={labelCyan}>
+								{strip.closing.itSays.nextStep}
+							</Receipt>
 						) : null}
 						{strip.closing.standingOn.authors.length ? (
-							<Receipt label="Standing on">
+							<Receipt label="Standing on" labelColor={labelCyan}>
 								<span style={{ color: BRAND_CORAL }}>◆</span>{" "}
 								{`${strip.closing.standingOn.bits} bit${strip.closing.standingOn.bits === 1 ? "" : "s"} by `}
 								<span style={{ color: BRAND_CORAL }}>{strip.closing.standingOn.authors.join(", ")}</span>
@@ -355,7 +364,7 @@ const AgentStrip: React.FC = () => {
 	)
 }
 
-const Receipt: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+const Receipt: React.FC<{ label: string; labelColor: string; children: React.ReactNode }> = ({ label, labelColor, children }) => (
 	<div style={{ display: "flex", gap: "8px", fontSize: "11.5px", color: "var(--vscode-descriptionForeground)" }}>
 		<span
 			style={{
@@ -366,7 +375,7 @@ const Receipt: React.FC<{ label: string; children: React.ReactNode }> = ({ label
 				letterSpacing: "0.5px",
 				fontWeight: 700,
 				paddingTop: "2px",
-				color: BRAND_CYAN_700,
+				color: labelColor,
 			}}>
 			{label}
 		</span>

@@ -21,8 +21,11 @@ const ConductorPill: React.FC<{ reason: string }> = ({ reason }) => (
 			alignSelf: "flex-start",
 			fontSize: "10.5px",
 			color: "var(--vscode-descriptionForeground)",
-			background: "var(--vscode-badge-background)",
-			border: `1px solid ${brandAlpha(BRAND_CORAL, 0.45)}`,
+			// No fill: --vscode-badge-background is a saturated accent in many themes (a blue block in
+			// light ones), which both fights coral and buries the text. A hairline coral border carries
+			// the identity signal on any background — same recipe as KbitPill.
+			background: "transparent",
+			border: `1px solid ${brandAlpha(BRAND_CORAL, 0.4)}`,
 			padding: "2px 9px",
 			borderRadius: "20px",
 			whiteSpace: "nowrap",

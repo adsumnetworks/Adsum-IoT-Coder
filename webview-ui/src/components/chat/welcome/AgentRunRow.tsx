@@ -1,7 +1,8 @@
 import { EmptyRequest } from "@shared/proto/cline/common"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import { StateServiceClient } from "@/services/grpc-client"
-import { BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha } from "../brandColors"
+import { BRAND_CYAN_300, BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha } from "../brandColors"
 
 /**
  * The second run-path on a workflow card: run it with the developer's OWN coding agent.
@@ -16,6 +17,9 @@ import { BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha } from "../brandColors"
  */
 const AgentRunRow: React.FC<{ conducting: boolean }> = ({ conducting }) => {
 	const { navigateToSettings } = useExtensionState()
+	const { isDark } = useVSCodeTheme()
+	// Cyan label on a tinted surface: light cyan on dark themes, on-fill-safe cyan on light ones.
+	const cyanText = isDark ? BRAND_CYAN_300 : BRAND_CYAN_700
 
 	const handOver = () => StateServiceClient.handoverToAgent(EmptyRequest.create({})).catch(() => {})
 
@@ -38,7 +42,7 @@ const AgentRunRow: React.FC<{ conducting: boolean }> = ({ conducting }) => {
 				}}
 				title="Adsum posts the mission and the curated knowledge to your agent, gives it the toolchain, tracks every step and keeps snapshots"
 				type="button">
-				<span style={{ fontSize: "12px", fontWeight: 700, color: BRAND_CYAN_700 }}>Run with my coding agent →</span>
+				<span style={{ fontSize: "12px", fontWeight: 700, color: cyanText }}>Run with my coding agent →</span>
 				<span style={{ fontSize: "10.5px", color: "var(--vscode-descriptionForeground)", lineHeight: 1.4 }}>
 					Your agent does the work · Adsum guides it, tracks every step, keeps snapshots · no Adsum tokens
 				</span>
