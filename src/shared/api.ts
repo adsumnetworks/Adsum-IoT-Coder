@@ -3,6 +3,7 @@ import { ApiHandlerSettings } from "./storage/state-keys"
 
 export type ApiProvider =
 	| "adsum-free"
+	| "external-agent" // "Your own coding agent" — Adsum hands work over; never calls a model itself.
 	| "anthropic"
 	| "claude-code"
 	| "openrouter"

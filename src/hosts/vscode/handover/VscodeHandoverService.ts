@@ -34,7 +34,7 @@ import {
 	parseWorkflowSteps,
 	upsertManagedBlock,
 } from "@/services/handover/HandoverBrief"
-import { getHandoverUiState, handoverUiFingerprint, setConductorMode } from "@/services/handover/HandoverUiState"
+import { getHandoverUiState, handoverUiFingerprint, setAgentFacts, setConductorMode } from "@/services/handover/HandoverUiState"
 import { creditFor, deriveIdFromRel, listAllBits, loadBit, resolveBitPath } from "@/services/knowledge/KnowledgeResolver"
 import { ATTRIBUTION_FALLBACK, type KbitKind } from "@/services/knowledge/kbit/credit"
 import { extractFrontmatter } from "@/services/knowledge/kbit/frontmatter"
@@ -378,6 +378,21 @@ export class VscodeHandoverService {
 		return { cmd: "claude", bundled: false }
 	}
 
+	/** The external-agent provider's setup preferences, with the D2 defaults applied. */
+	private agentPrefs(): { kind: "claude-code" | "other"; autoMcp: boolean; manageClaudeMd: boolean; writeAgentsMd: boolean } {
+		try {
+			const cfg = StateManager.get().getApiConfiguration() as any
+			return {
+				kind: cfg.externalAgentKind === "other" ? "other" : "claude-code",
+				autoMcp: cfg.externalAgentAutoMcp !== false,
+				manageClaudeMd: cfg.externalAgentManageClaudeMd !== false,
+				writeAgentsMd: cfg.externalAgentWriteAgentsMd === true,
+			}
+		} catch {
+			return { kind: "claude-code", autoMcp: true, manageClaudeMd: true, writeAgentsMd: false }
+		}
+	}
+
 	/** Where Claude Code's VS Code extension may live — evidence for detectClaudeCode (a bundled binary
 	 *  under any versioned extension dir). vscode.* is legal here; the detector itself stays pure. */
 	private claudeExtensionPaths(): string[] {
@@ -550,15 +565,27 @@ export class VscodeHandoverService {
 		// serverPath points INSIDE the running install, never at a repo working tree — a config aimed at
 		// a checkout silently changes meaning when a branch is switched (it bit us in testing).
 		const serverPath = path.join(this.context.extensionPath, "mcp", "adsum-mcp.mjs")
+		// The external-agent provider's setup preferences (mcp-sdk/13 D2). Defaults are the ON path;
+		// every OFF is honored AND stated in the toast — a skipped setup must never look like a done one.
+		const prefs = this.agentPrefs()
 		// Only claim an automatic setup for an agent we can actually see on this machine; otherwise say
 		// what to add, rather than writing a config for a client that may not exist.
 		const claude = detectClaudeCode(this.claudeExtensionPaths())
-		const setup = installMcpServer({
-			agent: claude.present ? "claude-code" : "other",
-			workspace: ws,
-			serverPath,
-		})
-		const blockResult = upsertManagedBlock(path.join(ws, "CLAUDE.md"), managedBlockBody(id))
+		const setup = prefs.autoMcp
+			? installMcpServer({
+					agent: claude.present && prefs.kind !== "other" ? "claude-code" : "other",
+					workspace: ws,
+					serverPath,
+				})
+			: ({ status: "skipped", needsSessionRestart: false } as const)
+		const blockResult = prefs.manageClaudeMd
+			? upsertManagedBlock(path.join(ws, "CLAUDE.md"), managedBlockBody(id))
+			: ("skipped" as const)
+		if (prefs.writeAgentsMd) {
+			// The same fingerprint-guarded block into the cross-agent convention file — how a non-Claude
+			// agent gets the same standing instructions with zero new machinery.
+			upsertManagedBlock(path.join(ws, "AGENTS.md"), managedBlockBody(id))
+		}
 
 		// INBOX-FIRST (the Studio pattern): the handover is now POSTED — the brief on disk IS the inbox
 		// entry, and any agent session connected to the adsum MCP server pulls it with the `inbox` tool.
@@ -569,7 +596,12 @@ export class VscodeHandoverService {
 		await vscode.env.clipboard.writeText(pickup)
 		this.startTracking(id)
 		this.pushUiState(true) // the strip appears immediately, in "posted" state
-		const note = blockResult === "skipped-user-edited" ? " (CLAUDE.md block left as you edited it)" : ""
+		const note =
+			blockResult === "skipped-user-edited"
+				? " (CLAUDE.md block left as you edited it)"
+				: blockResult === "skipped"
+					? " (CLAUDE.md guidance is off in your agent settings)"
+					: ""
 		// Say what we set up, and the one manual beat we cannot do for them: an agent loads its MCP
 		// servers at session start, so a session that is already open will not see Adsum until restarted.
 		const setupNote =
@@ -581,7 +613,9 @@ export class VscodeHandoverService {
 						? ` Could not write ${setup.configPath} — add the adsum MCP server manually.`
 						: setup.status === "unsupported"
 							? " Claude Code was not found here — add the adsum MCP server to your agent's config to connect it."
-							: ""
+							: setup.status === "skipped"
+								? " MCP auto-setup is off in your agent settings — the adsum server must already be configured in your agent."
+								: ""
 		const pick = await vscode.window.showInformationMessage(
 			`Handover ${id} posted to your agent's Adsum inbox${note}.${setupNote} In your Claude Code session, paste the prompt (already copied) — or just say "check the Adsum inbox". New session? It needs a restart to load the adsum MCP server.`,
 			"Watch progress",
@@ -980,6 +1014,9 @@ export class VscodeHandoverService {
 		try {
 			const { conductor, reason } = await this.detectConductorMode()
 			setConductorMode({ active: conductor, reason })
+			// Same refresh point resolves whether an auto-configurable agent is here (drives the
+			// external-agent settings panel's detection line). Host-side; the webview never probes fs.
+			setAgentFacts(detectClaudeCode(this.claudeExtensionPaths()))
 			this.pushUiState(true)
 		} catch {}
 	}

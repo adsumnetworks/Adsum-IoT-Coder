@@ -1,38 +1,19 @@
-import { useEffect, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 
 export type RunTarget = "adsum" | "agent"
-const TARGET_KEY = "adsum.runTarget"
 
 /**
- * The session-level run-target (mockup mcp-sdk/11): where do cards execute — this panel, or the
- * developer's own coding agent? Persisted per install; conductor mode (no usable model) locks it to
- * the agent. Shared by every surface that starts work, so the toggle's promise holds everywhere —
- * a surface that ignored it would silently spend Adsum inference the developer just opted out of.
+ * Where cards and typed tasks execute — derived, never stored separately (mcp-sdk/13 D6).
+ *
+ * The single source of truth is the SELECTED PROVIDER: picking "Your own coding agent" in the API
+ * Provider list is what turns agent mode on, exactly like picking any other provider decides where
+ * inference runs. Conductor mode (no usable model at all) overlays agent mode WITHOUT touching the
+ * stored config — a detector must never mutate what the developer chose.
  */
-export function useRunTarget(): { target: RunTarget; conducting: boolean; setTarget: (t: RunTarget) => void } {
-	const { handoverUi } = useExtensionState()
+export function useRunTarget(): { target: RunTarget; conducting: boolean } {
+	const { handoverUi, apiConfiguration, mode } = useExtensionState()
 	const conducting = !!handoverUi?.conductor.active
-	const [target, setTargetState] = useState<RunTarget>(() => {
-		if (conducting) {
-			return "agent"
-		}
-		try {
-			return localStorage.getItem(TARGET_KEY) === "agent" ? "agent" : "adsum"
-		} catch {
-			return "adsum"
-		}
-	})
-	useEffect(() => {
-		if (conducting && target !== "agent") {
-			setTargetState("agent")
-		}
-	}, [conducting, target])
-	const setTarget = (t: RunTarget) => {
-		setTargetState(t)
-		try {
-			localStorage.setItem(TARGET_KEY, t)
-		} catch {}
-	}
-	return { target, conducting, setTarget }
+	const provider = mode === "plan" ? apiConfiguration?.planModeApiProvider : apiConfiguration?.actModeApiProvider
+	const target: RunTarget = conducting || provider === "external-agent" ? "agent" : "adsum"
+	return { target, conducting }
 }
