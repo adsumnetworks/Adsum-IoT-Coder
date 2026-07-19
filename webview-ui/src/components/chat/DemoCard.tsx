@@ -46,7 +46,13 @@ const DemoCard: React.FC<DemoCardProps> = ({ onStartDemo, disabled = false, vari
 			) : null}
 			{!isRerun && adsumRunNote ? (
 				<div style={{ fontSize: "10px", color: "var(--vscode-descriptionForeground)", margin: "0 2px 4px" }}>
-					this sample needs Adsum's compliance scanner, so it runs here — agent support comes with hosted tools
+					this sample runs here in Adsum — it needs a capability your agent cannot call yet
+				</div>
+			) : null}
+			{!isRerun && routesToAgent && scenario.agentCaveat ? (
+				<div
+					style={{ fontSize: "10px", color: "var(--vscode-descriptionForeground)", margin: "0 2px 4px", opacity: 0.9 }}>
+					{scenario.agentCaveat}
 				</div>
 			) : null}
 			<button

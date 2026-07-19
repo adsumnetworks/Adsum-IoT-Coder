@@ -20,9 +20,10 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import * as vscode from "vscode"
-import { prepareDemoWorkspace } from "@/core/demos/DemoManager"
+import { prepareCraBundle, prepareDemoWorkspace } from "@/core/demos/DemoManager"
 import { StateManager } from "@/core/storage/StateManager"
 import { getFreeTierTokensForDisplay } from "@/services/adsum/FreeTierState"
+import { detectClaudeCode, installMcpServer } from "@/services/handover/AgentSetup"
 import {
 	bridgeLoadVerbs,
 	coreFallbackId,
@@ -32,7 +33,6 @@ import {
 	managedBlockBody,
 	parseWorkflowSteps,
 	upsertManagedBlock,
-	upsertMcpJson,
 } from "@/services/handover/HandoverBrief"
 import { getHandoverUiState, handoverUiFingerprint, setConductorMode } from "@/services/handover/HandoverUiState"
 import { creditFor, deriveIdFromRel, listAllBits, loadBit, resolveBitPath } from "@/services/knowledge/KnowledgeResolver"
@@ -378,6 +378,27 @@ export class VscodeHandoverService {
 		return { cmd: "claude", bundled: false }
 	}
 
+	/** Where Claude Code's VS Code extension may live — evidence for detectClaudeCode (a bundled binary
+	 *  under any versioned extension dir). vscode.* is legal here; the detector itself stays pure. */
+	private claudeExtensionPaths(): string[] {
+		const out: string[] = []
+		try {
+			const ext = vscode.extensions.getExtension("anthropic.claude-code")
+			if (ext) {
+				out.push(ext.extensionPath)
+			}
+		} catch {}
+		try {
+			const root = path.join(os.homedir(), ".vscode", "extensions")
+			for (const d of fs.readdirSync(root)) {
+				if (d.startsWith("anthropic.claude-code-")) {
+					out.push(path.join(root, d))
+				}
+			}
+		} catch {}
+		return out
+	}
+
 	/** The workflow that governs each agent-runnable card, per platform — the closure seed for a
 	 *  card-started handover. Ids must exist in the corpus; a miss is honestly listed as unresolved. */
 	private static readonly CARD_WORKFLOWS: Record<string, Partial<Record<"esp" | "nrf", string>>> = {
@@ -413,6 +434,22 @@ export class VscodeHandoverService {
 					autoBaseline: true,
 				}
 			}
+			if (p.demo === "cra-sample") {
+				const bundle = await prepareCraBundle("nrf")
+				return {
+					prompt: [
+						"Run the CRA readiness workflow on this pre-built reference firmware bundle:",
+						"produce the SBOM, a secure-by-design posture preview, and a readiness check.",
+						"Ground every finding in the bundle's real artifacts — never assert compliance,",
+						"describe evidence and let the developer decide.",
+					].join(" "),
+					workflowRels: ["platforms/cra/workflows/cra-readiness.md"],
+					workspace: bundle,
+					autoBaseline: true,
+				}
+			}
+			// No prompt (e.g. the quota card's "continue on my agent"): fall through to the current
+			// session's brief — the developer is continuing work, not starting a card.
 			if (typeof p?.prompt !== "string" || !p.prompt.trim()) {
 				return null
 			}
@@ -509,9 +546,18 @@ export class VscodeHandoverService {
 			JSON.stringify({ status: "pending", createdAt: new Date().toISOString() }, null, 1),
 		)
 
-		// Wire the project: standard MCP config + the managed instruction block.
+		// Wire the project: register the MCP server in the agent's own config + the managed block.
+		// serverPath points INSIDE the running install, never at a repo working tree — a config aimed at
+		// a checkout silently changes meaning when a branch is switched (it bit us in testing).
 		const serverPath = path.join(this.context.extensionPath, "mcp", "adsum-mcp.mjs")
-		upsertMcpJson(path.join(ws, ".mcp.json"), serverPath)
+		// Only claim an automatic setup for an agent we can actually see on this machine; otherwise say
+		// what to add, rather than writing a config for a client that may not exist.
+		const claude = detectClaudeCode(this.claudeExtensionPaths())
+		const setup = installMcpServer({
+			agent: claude.present ? "claude-code" : "other",
+			workspace: ws,
+			serverPath,
+		})
 		const blockResult = upsertManagedBlock(path.join(ws, "CLAUDE.md"), managedBlockBody(id))
 
 		// INBOX-FIRST (the Studio pattern): the handover is now POSTED — the brief on disk IS the inbox
@@ -524,8 +570,20 @@ export class VscodeHandoverService {
 		this.startTracking(id)
 		this.pushUiState(true) // the strip appears immediately, in "posted" state
 		const note = blockResult === "skipped-user-edited" ? " (CLAUDE.md block left as you edited it)" : ""
+		// Say what we set up, and the one manual beat we cannot do for them: an agent loads its MCP
+		// servers at session start, so a session that is already open will not see Adsum until restarted.
+		const setupNote =
+			setup.status === "installed" || setup.status === "updated"
+				? " Adsum is now registered with Claude Code for this project — a NEW agent session picks it up (restart an open one)."
+				: setup.status === "already"
+					? ""
+					: setup.status === "failed"
+						? ` Could not write ${setup.configPath} — add the adsum MCP server manually.`
+						: setup.status === "unsupported"
+							? " Claude Code was not found here — add the adsum MCP server to your agent's config to connect it."
+							: ""
 		const pick = await vscode.window.showInformationMessage(
-			`Handover ${id} posted to your agent's Adsum inbox${note}. In your Claude Code session, paste the prompt (already copied) — or just say "check the Adsum inbox". New session? It needs a restart to load the adsum MCP server.`,
+			`Handover ${id} posted to your agent's Adsum inbox${note}.${setupNote} In your Claude Code session, paste the prompt (already copied) — or just say "check the Adsum inbox". New session? It needs a restart to load the adsum MCP server.`,
 			"Watch progress",
 			"Copy prompt again",
 			"Launch a new Claude Code",

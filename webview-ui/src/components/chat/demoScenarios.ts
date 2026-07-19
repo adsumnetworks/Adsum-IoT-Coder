@@ -11,9 +11,10 @@
 
 export interface DemoScenario {
 	/** True when the materialized sample can genuinely be worked by an EXTERNAL coding agent (the
-	 *  workspace is self-contained and no Adsum-only host capability is required). Drives whether the
-	 *  run-target toggle routes this sample to the agent or labels it as Adsum-run. */
+	 *  workspace is self-contained). Drives whether the run-target routes this sample to the agent. */
 	agentRunnable?: boolean
+	/** Honest caveat shown when this sample routes to the agent (e.g. model-dependent quality). */
+	agentCaveat?: string
 	id: string
 	title: string
 	honestLabel: string
@@ -60,9 +61,11 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 	},
 	"cra-sample": {
 		id: "cra-sample",
-		// NOT agent-runnable yet: the CRA scan is an Adsum host capability (the scanner is not exposed
-		// as a tool an external agent can call until hosted tool-bits land). Labeled, never silent.
-		agentRunnable: false,
+		// Agent-runnable: the workflow + the pre-built bundle travel, so an external agent can produce
+		// the SBOM and posture from the same sources. Quality is model-dependent — say so (agentCaveat).
+		agentRunnable: true,
+		agentCaveat:
+			"CRA quality depends on the model — we benchmark on our recommended ones; review the output before relying on it.",
 		title: "Preview CRA readiness on a sample",
 		honestLabel: "Runs the real CRA workflow on our pre-built nRF reference sample — not your build.",
 		taskPrompt: "Demo: CRA SBOM & Fix on a bundled sample — no project needed\n\n[ADSUM_DEMO:cra-sample]",
