@@ -329,6 +329,8 @@ function convertApiProviderToProto(provider: string | undefined): ProtoApiProvid
 			return ProtoApiProvider.OPENAI_CODEX
 		case "adsum-free":
 			return ProtoApiProvider.ADSUM_FREE
+		case "external-agent":
+			return ProtoApiProvider.EXTERNAL_AGENT
 		default:
 			return ProtoApiProvider.ANTHROPIC
 	}
@@ -425,6 +427,8 @@ export function convertProtoToApiProvider(provider: ProtoApiProvider): ApiProvid
 			return "openai-codex"
 		case ProtoApiProvider.ADSUM_FREE:
 			return "adsum-free"
+		case ProtoApiProvider.EXTERNAL_AGENT:
+			return "external-agent"
 		default:
 			return "anthropic"
 	}
@@ -457,6 +461,10 @@ export function convertApiConfigurationToProto(config: ApiConfiguration): ProtoA
 		awsBedrockApiKey: config.awsBedrockApiKey,
 		awsBedrockEndpoint: config.awsBedrockEndpoint,
 		claudeCodePath: config.claudeCodePath,
+		externalAgentKind: config.externalAgentKind,
+		externalAgentAutoMcp: config.externalAgentAutoMcp,
+		externalAgentManageClaudeMd: config.externalAgentManageClaudeMd,
+		externalAgentWriteAgentsMd: config.externalAgentWriteAgentsMd,
 		vertexProjectId: config.vertexProjectId,
 		vertexRegion: config.vertexRegion,
 		openAiBaseUrl: config.openAiBaseUrl,
@@ -637,6 +645,10 @@ export function convertProtoToApiConfiguration(protoConfig: ProtoApiConfiguratio
 		awsBedrockApiKey: protoConfig.awsBedrockApiKey,
 		awsBedrockEndpoint: protoConfig.awsBedrockEndpoint,
 		claudeCodePath: protoConfig.claudeCodePath,
+		externalAgentKind: protoConfig.externalAgentKind,
+		externalAgentAutoMcp: protoConfig.externalAgentAutoMcp,
+		externalAgentManageClaudeMd: protoConfig.externalAgentManageClaudeMd,
+		externalAgentWriteAgentsMd: protoConfig.externalAgentWriteAgentsMd,
 		vertexProjectId: protoConfig.vertexProjectId,
 		vertexRegion: protoConfig.vertexRegion,
 		openAiBaseUrl: protoConfig.openAiBaseUrl,
