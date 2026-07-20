@@ -126,7 +126,14 @@ const KindChip = ({ kind, size = 17 }: { kind: KbitLoadedPayload["kind"]; size?:
 /**
  * A credited person. Links to their LinkedIn when we have an operator-confirmed URL (kbitAuthors.ts) and
  * renders as plain text when we do not — a missing link is honest, never a broken one, and we never guess a
- * profile from a name. The webview host opens anchors externally.
+ * profile from a name.
+ *
+ * NEVER call stopPropagation (or preventDefault) on this anchor. A VS Code webview opens external links via
+ * a DELEGATED listener on document.body; React attaches its own handlers at the app root, INSIDE body, so
+ * stopping propagation there means the click never reaches VS Code and the link silently does nothing — it
+ * looks alive (cursor, underline, tooltip) and goes nowhere. An earlier version did exactly this to stop the
+ * task header expanding when the pill was clicked; that is fixed on the header side instead, which ignores
+ * clicks originating inside an <a>.
  */
 export const PersonLink = ({ name, color }: { name: string; color?: string }) => {
 	const href = authorLink(name)
@@ -135,7 +142,6 @@ export const PersonLink = ({ name, color }: { name: string; color?: string }) =>
 		<a
 			className="no-underline hover:underline"
 			href={href}
-			onClick={(e) => e.stopPropagation()}
 			rel="noreferrer"
 			style={{ color: tone }}
 			target="_blank"

@@ -149,6 +149,28 @@ describe("attribution — copy law (build-time lint)", () => {
 		assert.match(ui, /Learn more about Knowledge bits/, "the link must be discoverable copy, not a bare URL")
 	})
 
+	test("author links never stop the click that opens them", () => {
+		// A VS Code webview opens external links from a DELEGATED listener on document.body. React attaches its
+		// handlers at the app root, inside body — so stopPropagation/preventDefault anywhere in the attribution
+		// UI means the click never reaches VS Code and the profile link silently does nothing while still
+		// looking alive (cursor, underline, tooltip). Shipped exactly that way once: the pill sits inside the
+		// task header's expand target and stopped propagation to avoid toggling it. The header now ignores
+		// clicks originating in an <a> instead, which is the fix this lint protects.
+		for (const rel of [
+			"webview-ui/src/components/chat/KbitCredit.tsx",
+			"webview-ui/src/components/chat/task-header/KbitPill.tsx",
+		]) {
+			const src = code(rel)
+			assert.doesNotMatch(
+				src,
+				/stopPropagation|preventDefault/,
+				`${rel}: a stopped click never reaches VS Code's link handler`,
+			)
+		}
+		const header = read("webview-ui/src/components/chat/task-header/TaskHeader.tsx")
+		assert.match(header, /closest\("a"\)/, "the header must let clicks on a link through instead of toggling")
+	})
+
 	test("no permanently-pending placeholder rows", () => {
 		// A row that says "pending" on every bit forever reads as a defect, not a roadmap. Restore the signing
 		// row when signatures are real — the copy law for it (two facts, never "Signed by <person>") stands.
