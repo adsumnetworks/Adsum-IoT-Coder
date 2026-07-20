@@ -1193,11 +1193,16 @@ export class VscodeHandoverService {
 		}
 	}
 
-	markReturned(id: string): void {
+	/** @param resumedTaskId the Adsum task the developer is continuing in. Recorded so the agent's turns
+	 *  render as THAT task's history and no other — see HandoverStrip.resumedTaskId. */
+	markReturned(id: string, resumedTaskId?: string): void {
 		const p = path.join(HANDOVER_ROOT, id, "state.json")
 		try {
 			const cur = JSON.parse(fs.readFileSync(p, "utf8"))
-			fs.writeFileSync(p, JSON.stringify({ ...cur, status: "returned", returnedAt: new Date().toISOString() }, null, 1))
+			fs.writeFileSync(
+				p,
+				JSON.stringify({ ...cur, status: "returned", returnedAt: new Date().toISOString(), resumedTaskId }, null, 1),
+			)
 			fs.appendFileSync(
 				path.join(HANDOVER_ROOT, id, "ledger.jsonl"),
 				JSON.stringify({ t: new Date().toISOString(), event: "returned" }) + "\n",

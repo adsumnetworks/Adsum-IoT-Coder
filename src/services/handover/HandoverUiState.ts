@@ -288,6 +288,7 @@ export function buildHandoverUiState(
 			id,
 			phase,
 			returned: state.status === "returned",
+			resumedTaskId: typeof state.resumedTaskId === "string" ? state.resumedTaskId : undefined,
 			mission: brief.mission ?? "",
 			calls: events.filter((e) => e.event !== "returned").length,
 			startedAt: state.createdAt ?? brief.createdAt ?? "",

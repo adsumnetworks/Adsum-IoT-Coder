@@ -553,8 +553,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			return
 		}
 		await vscode.commands.executeCommand("adsum-iot-coder.focusChatInput")
-		await WebviewProvider.getInstance().controller.initTask(resume.prompt)
-		handover.markReturned(resume.id)
+		const resumedTaskId = await WebviewProvider.getInstance().controller.initTask(resume.prompt)
+		handover.markReturned(resume.id, resumedTaskId)
 		// The live view unmounts the moment the session is returned. Without a pointer the developer
 		// experiences it as "my agent conversation disappeared" — so offer the durable record right here.
 		void vscode.window
