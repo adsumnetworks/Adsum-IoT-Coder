@@ -134,7 +134,16 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 				<div
 					aria-label={isTaskExpanded ? "Collapse task header" : "Expand task header"}
 					className="flex justify-between items-center cursor-pointer"
-					onClick={toggleTaskExpanded}
+					onClick={(e) => {
+						// A link inside the header (an author's profile in the attribution pill) must open rather
+						// than toggle. Checked here rather than by stopping propagation in the link itself: VS Code
+						// opens webview links from a delegated listener on document.body, so an event stopped at
+						// the React root reaches nobody and the link dies silently while still looking alive.
+						if ((e.target as HTMLElement).closest("a")) {
+							return
+						}
+						toggleTaskExpanded()
+					}}
 					onKeyDown={(e) => {
 						if (e.key === "Enter" || e.key === " ") {
 							e.preventDefault()

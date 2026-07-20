@@ -47,8 +47,8 @@ export const KbitPill = ({ bits, compact }: { bits: KbitLoadedPayload[]; compact
 				<span>×{bits.length}</span>
 			) : (
 				<span className="whitespace-nowrap">
-					{/* PersonLink stops click propagation: the pill sits inside the header's expand/collapse
-					    target, so opening a profile must not also toggle the header. */}
+					{/* The pill sits inside the header's expand/collapse target. The header ignores clicks that
+					    come from an <a>, so a profile link opens without also toggling — see TaskHeader. */}
 					<PersonLink name={lead} />
 					<span style={{ color: BRAND_CORAL }}>{extra}</span>
 				</span>
