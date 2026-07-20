@@ -649,7 +649,14 @@ describe("t-bit slice — exec/build carry the environment; installs are refused
 })
 
 // ── the webview's view of a handover (WP-1: the pure builder) ──────────────
-function uiFixture(opts: { status?: string; ledger?: any[]; observations?: any[]; brief?: any; createdAt?: string }): {
+function uiFixture(opts: {
+	status?: string
+	ledger?: any[]
+	observations?: any[]
+	brief?: any
+	createdAt?: string
+	state?: Record<string, unknown>
+}): {
 	root: string
 	id: string
 } {
@@ -678,7 +685,10 @@ function uiFixture(opts: { status?: string; ledger?: any[]; observations?: any[]
 			...opts.brief,
 		}),
 	)
-	fs.writeFileSync(path.join(root, id, "state.json"), JSON.stringify({ status: opts.status ?? "pending", createdAt }))
+	fs.writeFileSync(
+		path.join(root, id, "state.json"),
+		JSON.stringify({ status: opts.status ?? "pending", createdAt, ...opts.state }),
+	)
 	if (opts.ledger) {
 		fs.writeFileSync(path.join(root, id, "ledger.jsonl"), opts.ledger.map((e) => JSON.stringify(e)).join("\n") + "\n")
 	}
@@ -729,6 +739,19 @@ describe("HandoverUiState — the strip's contract (pure builder)", () => {
 		assert.equal(rs?.returned, true, "returned → still rendered, flagged as history")
 		assert.equal(rs?.phase, "closed")
 		fs.rmSync(returned.root, { recursive: true, force: true })
+
+		// The recap of the agent's turns is the resumed task's OWN history, so the strip has to name that
+		// task. Without the pairing every task opened inside the 12h window was told "Earlier in this
+		// session" about work it never did — recency standing in for identity.
+		const bound = uiFixture({ status: "returned", state: { resumedTaskId: "1784500000000" } })
+		assert.equal(buildHandoverUiState(bound.root, CONDUCTOR).strip?.resumedTaskId, "1784500000000")
+		fs.rmSync(bound.root, { recursive: true, force: true })
+
+		// A session returned before the pairing was recorded stays unproven — the UI shows nothing rather
+		// than guessing which task it belongs to.
+		const unbound = uiFixture({ status: "returned" })
+		assert.equal(buildHandoverUiState(unbound.root, CONDUCTOR).strip?.resumedTaskId, undefined)
+		fs.rmSync(unbound.root, { recursive: true, force: true })
 
 		// a handover from last week must not haunt the panel
 		const stale = uiFixture({ status: "active", createdAt: new Date(Date.now() - 72 * 3600_000).toISOString() })

@@ -10,12 +10,17 @@ import { buildTurns } from "./turns"
  * about to continue — not a separate document to go and find. Opening a markdown file to see "what the
  * agent did" breaks the continuity that made the handover worth doing. So the turns live here, inline,
  * above the resumed task: collapsed to one line by default, expanded in place.
+ *
+ * It belongs to ONE task: the one that resumed the session. This used to be bounded only by a 12h clock
+ * on a globally-held strip, so every task opened in that window — including brand-new, unrelated ones —
+ * was told "Earlier in this session" about work it had nothing to do with. Identity, not recency, decides:
+ * no recorded pairing ⇒ nothing renders, because we cannot show it is the same thread.
  */
 const AgentSessionRecap: React.FC = () => {
-	const { handoverUi } = useExtensionState()
+	const { handoverUi, currentTaskItem } = useExtensionState()
 	const [open, setOpen] = useState(false)
 	const strip = handoverUi?.strip
-	if (!strip?.returned) {
+	if (!strip?.returned || !strip.resumedTaskId || strip.resumedTaskId !== currentTaskItem?.id) {
 		return null
 	}
 	const turns = buildTurns(strip)

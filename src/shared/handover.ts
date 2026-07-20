@@ -35,6 +35,11 @@ export interface HandoverStrip {
 	 *  the resumed task can show the agent's turns as its own history — one continuous thread, rather
 	 *  than a separate document the developer has to go and find. */
 	returned?: boolean
+	/** The id of the Adsum task that resumed this session. The recap of the agent's turns is that task's
+	 *  OWN history, so it renders there and nowhere else — an unrelated task must never be told "earlier
+	 *  in this session". Absent on a session returned before this was recorded ⇒ nothing renders, which is
+	 *  the honest answer when we cannot prove the two belong together. */
+	resumedTaskId?: string
 	mission: string
 	calls: number
 	startedAt: string
