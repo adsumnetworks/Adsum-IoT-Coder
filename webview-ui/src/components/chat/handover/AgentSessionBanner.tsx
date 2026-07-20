@@ -1,5 +1,5 @@
 import type { HandoverStrip } from "@shared/handover"
-import { EmptyRequest } from "@shared/proto/cline/common"
+import { StringRequest } from "@shared/proto/cline/common"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { StateServiceClient } from "@/services/grpc-client"
 import { BRAND_CYAN_600, BRAND_CYAN_700, BRAND_SUCCESS, BRAND_WARNING, brandAlpha } from "../brandColors"
@@ -95,7 +95,7 @@ const AgentSessionBanner: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
 				View session
 			</button>
 			<button
-				onClick={() => StateServiceClient.continueHandoverHere(EmptyRequest.create({})).catch(() => {})}
+				onClick={() => StateServiceClient.continueHandoverHere(StringRequest.create({ value: "" })).catch(() => {})}
 				style={{
 					background: "none",
 					border: "none",

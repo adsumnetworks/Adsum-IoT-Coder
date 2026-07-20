@@ -22,7 +22,7 @@ import {
 	parseWorkflowSteps,
 	upsertManagedBlock,
 } from "./HandoverBrief"
-import { buildHandoverUiState, handoverUiFingerprint } from "./HandoverUiState"
+import { buildHandoverStripById, buildHandoverUiState, deleteHandoverDir, handoverUiFingerprint } from "./HandoverUiState"
 
 const REPO = path.resolve(__dirname, "..", "..", "..")
 const SERVER = path.join(REPO, "mcp", "adsum-mcp.mjs")
@@ -757,6 +757,36 @@ describe("HandoverUiState — the strip's contract (pure builder)", () => {
 		const stale = uiFixture({ status: "active", createdAt: new Date(Date.now() - 72 * 3600_000).toISOString() })
 		assert.equal(buildHandoverUiState(stale.root, CONDUCTOR).strip, null, "stale → no strip")
 		fs.rmSync(stale.root, { recursive: true, force: true })
+	})
+
+	test("by id: a session the live slot has aged out is still readable, and ids cannot escape the root", () => {
+		// An agent session is a session (operator ruling 2026-07-20): the history list must be able to open
+		// one long after the strip stopped owning the panel. pickHandover's recency windows exist to decide
+		// what is LIVE and must not reach a record the developer asked for by name.
+		const old = uiFixture({
+			status: "closed-by-agent",
+			createdAt: new Date(Date.now() - 30 * 24 * 3600_000).toISOString(),
+			ledger: [{ t: T(5), event: "checkpoint", worklog: "suite green", final: true }],
+		})
+		assert.equal(buildHandoverUiState(old.root, CONDUCTOR).strip, null, "a month-old session is not the LIVE one")
+		const byId = buildHandoverStripById(old.root, old.id)
+		assert.equal(byId?.id, old.id, "…but it opens by id")
+		assert.equal(byId?.phase, "closed")
+		assert.equal(byId?.closing?.headline, "suite green", "its receipt survives with it")
+
+		assert.equal(buildHandoverStripById(old.root, "no-such-session"), null)
+		// ids are directory names we wrote; a corrupted history row must not walk out of the root
+		assert.equal(buildHandoverStripById(old.root, "../../etc"), null)
+		fs.rmSync(old.root, { recursive: true, force: true })
+	})
+
+	test("deleting an agent session removes its record — one lifecycle, and no traversal", () => {
+		const { root, id } = uiFixture({ status: "closed-by-agent" })
+		deleteHandoverDir("../..", root) // must be refused before it can delete anything
+		assert.ok(fs.existsSync(path.join(root, id)), "a traversal id deletes nothing")
+		deleteHandoverDir(id, root)
+		assert.equal(fs.existsSync(path.join(root, id)), false, "the session's record is gone with its row")
+		fs.rmSync(root, { recursive: true, force: true })
 	})
 
 	test("milestones: all six row kinds, time-ordered, two witnesses kept distinct", () => {

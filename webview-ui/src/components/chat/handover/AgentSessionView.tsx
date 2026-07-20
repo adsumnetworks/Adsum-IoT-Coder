@@ -1,5 +1,5 @@
 import type { HandoverStrip, MilestoneRow } from "@shared/handover"
-import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
+import { StringRequest } from "@shared/proto/cline/common"
 import { useEffect, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
@@ -293,10 +293,11 @@ const TurnView: React.FC<{ turn: Turn }> = ({ turn }) => {
 }
 
 // ── the session view ────────────────────────────────────────────────────────
-const AgentSessionView: React.FC<{ onDismiss?: () => void }> = ({ onDismiss }) => {
+/** `session` renders a specific one (opened from history); omitted = the live strip. */
+const AgentSessionView: React.FC<{ onDismiss?: () => void; session?: HandoverStrip | null }> = ({ onDismiss, session }) => {
 	const { handoverUi, navigateToSettings, freeTierRemainingTokens, apiConfiguration } = useExtensionState()
 	const { isDark } = useVSCodeTheme()
-	const strip = handoverUi?.strip
+	const strip = session ?? handoverUi?.strip
 	const [draft, setDraft] = useState("")
 	const [copied, setCopied] = useState(false)
 	useEffect(() => {
@@ -333,7 +334,9 @@ const AgentSessionView: React.FC<{ onDismiss?: () => void }> = ({ onDismiss }) =
 						? `closed cleanly · ${strip.calls} calls · ${elapsed(strip.startedAt, strip.closedAt)}`
 						: `stopped responding — last heard ${mins} min ago`
 
-	const continueHere = () => StateServiceClient.continueHandoverHere(EmptyRequest.create({})).catch(() => {})
+	// Name the session when one was opened from history — "the newest" is the wrong one to resume then.
+	const continueHere = () =>
+		StateServiceClient.continueHandoverHere(StringRequest.create({ value: session ? strip.id : "" })).catch(() => {})
 	const addModel = () => navigateToSettings("api-config")
 	const send = () => {
 		const text = draft.trim()

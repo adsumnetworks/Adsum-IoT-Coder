@@ -4,6 +4,7 @@ import { DEFAULT_BROWSER_SETTINGS } from "@shared/BrowserSettings"
 import { DEFAULT_DICTATION_SETTINGS, DictationSettings } from "@shared/DictationSettings"
 import { DEFAULT_PLATFORM, type ExtensionState } from "@shared/ExtensionMessage"
 import { DEFAULT_FOCUS_CHAIN_SETTINGS } from "@shared/FocusChainSettings"
+import type { HandoverStrip } from "@shared/handover"
 import { DEFAULT_MCP_DISPLAY_MODE } from "@shared/McpDisplayMode"
 import type { UserInfo } from "@shared/proto/cline/account"
 import { EmptyRequest } from "@shared/proto/cline/common"
@@ -60,6 +61,9 @@ export interface ExtensionStateContextType extends ExtensionState {
 	showAnnouncement: boolean
 	showChatModelSelector: boolean
 	expandTaskHeader: boolean
+	/** A session your own coding agent worked, opened from the history list. It has no task behind it, so
+	 *  it is held here and rendered read-only rather than loaded into the engine. Null = not viewing one. */
+	openedAgentSession: HandoverStrip | null
 
 	// Setters
 	setDictationSettings: (value: DictationSettings) => void
@@ -106,6 +110,8 @@ export interface ExtensionStateContextType extends ExtensionState {
 	navigateToAccount: () => void
 	navigateToWorktrees: () => void
 	navigateToChat: () => void
+	/** Show an agent session from history (null closes it and returns to the normal chat view). */
+	openAgentSession: (strip: HandoverStrip | null) => void
 
 	// Hide functions
 	hideSettings: () => void
@@ -216,6 +222,17 @@ export const ExtensionStateContextProvider: React.FC<{
 		setShowAccount(false)
 		setShowWorktrees(false)
 	}, [setShowSettings, closeMcpView, setShowHistory, setShowAccount, setShowWorktrees])
+
+	const [openedAgentSession, setOpenedAgentSession] = useState<HandoverStrip | null>(null)
+	const openAgentSession = useCallback(
+		(strip: HandoverStrip | null) => {
+			setOpenedAgentSession(strip)
+			if (strip) {
+				navigateToChat()
+			}
+		},
+		[navigateToChat],
+	)
 
 	const [state, setState] = useState<ExtensionState>({
 		version: "",
@@ -799,6 +816,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		showWorktrees,
 		showAnnouncement,
 		showChatModelSelector,
+		openedAgentSession,
 		globalClineRulesToggles: state.globalClineRulesToggles || {},
 		localClineRulesToggles: state.localClineRulesToggles || {},
 		localCursorRulesToggles: state.localCursorRulesToggles || {},
@@ -818,6 +836,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		navigateToAccount,
 		navigateToWorktrees,
 		navigateToChat,
+		openAgentSession,
 
 		// Hide functions
 		hideSettings,

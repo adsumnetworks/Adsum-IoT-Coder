@@ -15,8 +15,9 @@ export interface HandoverActions {
 	 *  is present when a CARD starts the handover — it becomes the mission and seeds the workflow closure;
 	 *  absent = hand over the current/most-recent session. */
 	handOver(cardPayload?: string): Promise<void>
-	/** Bring a handed-over session back into Adsum, carrying what the agent did. */
-	continueHere(): Promise<void>
+	/** Bring a handed-over session back into Adsum, carrying what the agent did. `id` names a specific
+	 *  session (opened from history); absent = the current/most-recent one. */
+	continueHere(id?: string): Promise<void>
 	/** Open the full worklog of a handed-over session. */
 	showWorklog(): Promise<void>
 	/** Queue a message for the agent — delivered in the response to its next milestone. */

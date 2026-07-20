@@ -13,7 +13,10 @@ const mockState: { handoverUi?: HandoverUiState } = {}
 vi.mock("@/context/ExtensionStateContext", () => ({ useExtensionState: () => mockState }))
 const rpc = vi.hoisted(() => ({ continueHandoverHere: vi.fn(() => Promise.resolve({})) }))
 vi.mock("@/services/grpc-client", () => ({ StateServiceClient: rpc }))
-vi.mock("@shared/proto/cline/common", () => ({ EmptyRequest: { create: () => ({}) } }))
+vi.mock("@shared/proto/cline/common", () => ({
+	EmptyRequest: { create: () => ({}) },
+	StringRequest: { create: (v: { value: string }) => v },
+}))
 
 const ui = (over: Partial<HandoverStrip> = {}): HandoverUiState => ({
 	conductor: { active: false, reason: "free tier active" },

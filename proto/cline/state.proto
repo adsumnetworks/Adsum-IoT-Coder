@@ -38,12 +38,21 @@ service StateService {
   // value is a JSON {intentId, platform, prompt} when a CARD starts the handover — it becomes the
   // mission and seeds the right workflow closure. Empty = hand over the current/most-recent session.
   rpc handoverToAgent(StringRequest) returns (Empty);
-  // Bring a handed-over session back into Adsum, carrying what the agent did.
-  rpc continueHandoverHere(EmptyRequest) returns (Empty);
+  // Bring a handed-over session back into Adsum, carrying what the agent did. The value is the session
+  // id when the developer opened a specific one from history; empty = the current/most-recent session.
+  rpc continueHandoverHere(StringRequest) returns (Empty);
+  // An agent session opened from the history list, as JSON (a HandoverStrip). Empty when it is gone.
+  rpc getAgentSession(StringRequest) returns (AgentSessionJson);
   // Open the full worklog of a handed-over session.
   rpc showHandoverWorklog(EmptyRequest) returns (Empty);
   // Queue a message for the coding agent working a handed-over session (delivered at its next milestone).
   rpc messageHandoverAgent(StringRequest) returns (Empty);
+}
+
+// The strip JSON for one agent session. A dedicated message rather than common.String: this file's
+// generated code casts values with the global String(), which an imported message of that name shadows.
+message AgentSessionJson {
+  string value = 1;
 }
 
 message AutoApprovalActions {

@@ -854,9 +854,11 @@ export class VscodeHandoverService {
 					if (ws) {
 						this.snapshotAtCheckpoint(id, ws, e.worklog ?? "")
 					}
-					// The agent closed out: measure what actually changed, once, for the receipt.
+					// The agent closed out: measure what actually changed, once, for the receipt — and give
+					// the finished session its place in task history.
 					if (e.final) {
 						this.recordDiffstat(id)
+						this.ensureSessionInHistory(id)
 					}
 				} else if (e.event === "tool_exec" || e.event === "tool_build") {
 					this.out?.appendLine(`⚙ ${e.event === "tool_build" ? "build" : "exec"}: ${e.command ?? ""} → exit ${e.exit}`)
@@ -1090,6 +1092,65 @@ export class VscodeHandoverService {
 		}
 	}
 
+	/**
+	 * An agent session IS a session (operator ruling 2026-07-20): once the agent closes it, it must exist
+	 * where every other session lives — the task history list — instead of evaporating with the live strip
+	 * 48h later. The row carries handoverId so the webview routes it to the session view (there is no task
+	 * directory behind it), and zero token/cost fields that are never rendered.
+	 *
+	 * Idempotent via state.json's historyEntry flag, so the three callers can overlap safely:
+	 * the tracker's final-checkpoint branch (window open when the agent finishes), markReturned (the
+	 * pre-flag path for sessions continued in Adsum), and the activation sweep (agent finished while no
+	 * window was open — plus the backfill for sessions closed before this shipped).
+	 */
+	private ensureSessionInHistory(id: string): void {
+		try {
+			const stateFile = path.join(HANDOVER_ROOT, id, "state.json")
+			const state = JSON.parse(fs.readFileSync(stateFile, "utf8"))
+			if (!["closed-by-agent", "returned"].includes(state.status) || state.historyEntry) {
+				return
+			}
+			// the durable markdown record too — a session that never comes back still leaves one
+			if (!fs.existsSync(path.join(HANDOVER_ROOT, id, "worklog.md"))) {
+				this.writeSessionRecord(id)
+			}
+			let mission = ""
+			try {
+				mission = JSON.parse(fs.readFileSync(path.join(HANDOVER_ROOT, id, "brief.json"), "utf8")).mission ?? ""
+			} catch {}
+			const sm = StateManager.get()
+			const history = sm.getGlobalStateKey("taskHistory") ?? []
+			if (!history.some((h) => h.id === id)) {
+				sm.setGlobalState("taskHistory", [
+					...history,
+					{
+						id,
+						handoverId: id,
+						ts: Date.parse(state.closedAt ?? "") || Date.now(),
+						task: mission || "Session worked by your coding agent",
+						tokensIn: 0,
+						tokensOut: 0,
+						totalCost: 0,
+					},
+				])
+			}
+			fs.writeFileSync(stateFile, JSON.stringify({ ...state, historyEntry: true }, null, 1))
+			this.pushUiState(true)
+		} catch {}
+	}
+
+	/** Every closed session gets its history row even if it closed while no window was tracking —
+	 *  and, once, the sessions closed before rows existed at all. Called at activation. */
+	sweepClosedSessionsIntoHistory(): void {
+		try {
+			for (const e of fs.readdirSync(HANDOVER_ROOT, { withFileTypes: true })) {
+				if (e.isDirectory()) {
+					this.ensureSessionInHistory(e.name)
+				}
+			}
+		} catch {}
+	}
+
 	/** Keep a durable, human-readable record of a handed-over session next to the handover, so a returned
 	 *  session is not lost the moment the live view unmounts. The operator reported exactly that: "I lost
 	 *  the past external agent conversation." Written on return; opened by the worklog command. */
@@ -1212,6 +1273,7 @@ export class VscodeHandoverService {
 			// handover never delivers a message the developer already got back.
 			fs.rmSync(path.join(HANDOVER_ROOT, id, "messages.jsonl"), { force: true })
 		} catch {}
+		this.ensureSessionInHistory(id)
 		this.stopTracking()
 		this.status?.hide()
 		this.pushUiState(true) // status is now 'returned' → the strip unmounts on this push
