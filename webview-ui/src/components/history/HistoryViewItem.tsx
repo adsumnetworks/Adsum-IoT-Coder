@@ -13,9 +13,11 @@ import {
 	TrashIcon,
 } from "lucide-react"
 import { memo, useCallback, useState } from "react"
+import { BRAND_CYAN_700 } from "@/components/chat/brandColors"
 import { Button } from "@/components/ui/button"
+import { useExtensionState } from "@/context/ExtensionStateContext"
 import { cn } from "@/lib/utils"
-import { TaskServiceClient } from "@/services/grpc-client"
+import { StateServiceClient, TaskServiceClient } from "@/services/grpc-client"
 import { formatLargeNumber, formatSize } from "@/utils/format"
 
 type HistoryViewItemProps = {
@@ -37,12 +39,25 @@ const HistoryViewItem = ({
 	selectedItems,
 }: HistoryViewItemProps) => {
 	const [expanded, setExpanded] = useState(false)
+	const { openAgentSession } = useExtensionState()
 
-	const handleShowTaskWithId = useCallback((id: string) => {
-		TaskServiceClient.showTaskWithId(StringRequest.create({ value: id })).catch((error) =>
-			console.error("Error showing task:", error),
-		)
-	}, [])
+	// A session worked by the developer's own coding agent has no task behind it — its record is the
+	// handover on disk. Fetch that record and render it read-only; loading it into the engine would mean
+	// inventing an Adsum conversation that never happened.
+	const handleOpen = useCallback(
+		(item: HistoryItem) => {
+			if (item.handoverId) {
+				StateServiceClient.getAgentSession(StringRequest.create({ value: item.handoverId }))
+					.then((r) => openAgentSession(r.value ? JSON.parse(r.value) : null))
+					.catch((error) => console.error("Error opening agent session:", error))
+				return
+			}
+			TaskServiceClient.showTaskWithId(StringRequest.create({ value: item.id })).catch((error) =>
+				console.error("Error showing task:", error),
+			)
+		},
+		[openAgentSession],
+	)
 
 	const formatDate = useCallback((timestamp: number) => {
 		const date = new Date(timestamp)
@@ -87,10 +102,19 @@ const HistoryViewItem = ({
 				className="flex flex-col gap-2 py-2 pl-2 pr-3 relative flex-grow w-full"
 				onClick={(e) => {
 					e.stopPropagation()
-					handleShowTaskWithId(item.id)
+					handleOpen(item)
 				}}>
 				<div className="flex justify-between items-center">
 					<div className="line-clamp-1 overflow-hidden break-words whitespace-pre-wrap">
+						{/* ⇄ marks whose engine did the work — the same glyph the handover banner uses. */}
+						{item.handoverId ? (
+							<span
+								className="mr-1 text-xs"
+								style={{ color: BRAND_CYAN_700 }}
+								title="worked by your own coding agent">
+								⇄
+							</span>
+						) : null}
 						<span className="ph-no-capture">{item.task}</span>
 					</div>
 					<div className="flex gap-2">
@@ -136,7 +160,13 @@ const HistoryViewItem = ({
 					<div className="flex items-center justify-between w-full">
 						<div className="text-description text-xs uppercase">{formatDate(item.ts)}</div>
 						<div className="self-end flex items-center text-xs">
-							<span className="text-description">${item.totalCost?.toFixed(4) ?? 0}</span>
+							{/* No price on an agent session: Adsum ran none of those tokens, so "$0.0000" would
+							    state a cost rather than the absence of one. */}
+							{item.handoverId ? (
+								<span className="text-description">your agent</span>
+							) : (
+								<span className="text-description">${item.totalCost?.toFixed(4) ?? 0}</span>
+							)}
 							{expanded ? (
 								<ChevronsDownUpIcon className="text-description" />
 							) : (

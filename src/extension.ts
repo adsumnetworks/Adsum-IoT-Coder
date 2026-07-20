@@ -521,6 +521,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// (tree observations, snapshots) for any handover still in flight. The agent's own record never
 	// paused — its MCP server runs in the agent's process, not ours.
 	handover.resumeTrackingIfActive()
+	handover.sweepClosedSessionsIntoHistory()
 	// The free tier appearing/running out changes the conductor verdict mid-session.
 	context.subscriptions.push({ dispose: onFreeTokensChanged(() => void handover.refreshConductorCache()) })
 	context.subscriptions.push(
@@ -532,8 +533,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	)
 	// ONE implementation per action, shared by the command palette and the webview's buttons (the
 	// webview reaches these through the HandoverActions registry — it cannot execute VS Code commands).
-	const continueHandoverHere = async () => {
-		const resume = handover.buildResumePrompt()
+	const continueHandoverHere = async (id?: string) => {
+		const resume = handover.buildResumePrompt(id)
 		if (!resume) {
 			vscode.window.showInformationMessage("Adsum: no handed-over session to continue.")
 			return
@@ -570,7 +571,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 	registerHandoverActions({
 		handOver: (cardPayload) => handover.handOver(cardPayload),
-		continueHere: continueHandoverHere,
+		continueHere: (id?: string) => continueHandoverHere(id),
 		showWorklog: () => handover.showWorklog(),
 		messageAgent: (text) => handover.messageAgent(text),
 	})

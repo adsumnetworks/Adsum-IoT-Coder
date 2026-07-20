@@ -160,7 +160,26 @@ export function buildHandoverUiState(
 	if (!id) {
 		return { conductor, agent, strip: null }
 	}
+	return { conductor, agent, strip: buildHandoverStripById(root, id, now) }
+}
+
+/**
+ * The strip for ONE handover, by id — the history view's path to a session.
+ *
+ * pickHandover above exists to decide what owns the LIVE slot, so it applies recency windows (stale
+ * after 48h, returned fades in 12h). None of that belongs here: a session opened from history was
+ * chosen by the developer, and a record that expires is not a record. Returns null only when the
+ * directory is missing or unreadable.
+ */
+export function buildHandoverStripById(root: string, id: string, now: number = Date.now()): HandoverStrip | null {
+	// ids are directory names we created; anything path-like is not ours and must not escape the root
+	if (!id || !/^[\w.-]+$/.test(id)) {
+		return null
+	}
 	const dir = path.join(root, id)
+	if (!fs.existsSync(path.join(dir, "state.json")) && !fs.existsSync(path.join(dir, "brief.json"))) {
+		return null
+	}
 	const brief = readJson(path.join(dir, "brief.json"), {}) ?? {}
 	const state = readJson(path.join(dir, "state.json"), {}) ?? {}
 	const events = readJsonl(path.join(dir, "ledger.jsonl"))
@@ -282,36 +301,32 @@ export function buildHandoverUiState(
 
 	const governingBit = (brief.bits ?? []).find((b: any) => b.id === brief.governing)
 	return {
-		conductor,
-		agent,
-		strip: {
-			id,
-			phase,
-			returned: state.status === "returned",
-			resumedTaskId: typeof state.resumedTaskId === "string" ? state.resumedTaskId : undefined,
-			mission: brief.mission ?? "",
-			calls: events.filter((e) => e.event !== "returned").length,
-			startedAt: state.createdAt ?? brief.createdAt ?? "",
-			closedAt: state.closedAt,
-			pickupPrompt: `Check the Adsum inbox and pick up the session (${id}).`,
-			baseline: { created: !!brief.baseline?.ref, snapshots },
-			packed: {
-				bits: (brief.bits ?? []).length,
-				governing: governingBit
-					? {
-							title: governingBit.title ?? governingBit.id,
-							author: governingBit.author ?? "the Adsum authoring team",
-							version: governingBit.version,
-						}
-					: undefined,
-			},
-			milestones,
-			truncated,
-			liveness,
-			queued: queued.length ? queued : undefined,
-			live,
-			closing,
+		id,
+		phase,
+		returned: state.status === "returned",
+		resumedTaskId: typeof state.resumedTaskId === "string" ? state.resumedTaskId : undefined,
+		mission: brief.mission ?? "",
+		calls: events.filter((e) => e.event !== "returned").length,
+		startedAt: state.createdAt ?? brief.createdAt ?? "",
+		closedAt: state.closedAt,
+		pickupPrompt: `Check the Adsum inbox and pick up the session (${id}).`,
+		baseline: { created: !!brief.baseline?.ref, snapshots },
+		packed: {
+			bits: (brief.bits ?? []).length,
+			governing: governingBit
+				? {
+						title: governingBit.title ?? governingBit.id,
+						author: governingBit.author ?? "the Adsum authoring team",
+						version: governingBit.version,
+					}
+				: undefined,
 		},
+		milestones,
+		truncated,
+		liveness,
+		queued: queued.length ? queued : undefined,
+		live,
+		closing,
 	}
 }
 
@@ -335,6 +350,29 @@ export function setConductorMode(v: { active: boolean; reason: string }): void {
 /** Set by the host once it has detected (or not) a coding agent it can auto-configure. */
 export function setAgentFacts(v: { present: boolean; how?: string }): void {
 	agentCache = v
+}
+
+/** By-id accessor for the controller (history click). Null when the session does not exist. */
+export function getHandoverStripById(id: string, root: string = DEFAULT_ROOT): HandoverStrip | null {
+	try {
+		return buildHandoverStripById(root, id)
+	} catch {
+		return null
+	}
+}
+
+/**
+ * Remove a handover's on-disk record — the delete half of "an agent session is a session": deleting its
+ * history row deletes the session, one lifecycle, exactly like a task row. The id gate mirrors
+ * buildHandoverStripById so a corrupted history item can never point the recursive rm outside the root.
+ */
+export function deleteHandoverDir(id: string, root: string = DEFAULT_ROOT): void {
+	if (!id || !/^[\w.-]+$/.test(id)) {
+		return
+	}
+	try {
+		fs.rmSync(path.join(root, id), { recursive: true, force: true })
+	} catch {}
 }
 
 /** The handover view for the webview (ExtensionState.handoverUi). Safe to call any time. */

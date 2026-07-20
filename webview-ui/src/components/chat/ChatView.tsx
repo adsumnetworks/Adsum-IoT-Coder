@@ -5,7 +5,7 @@ import { combineErrorRetryMessages } from "@shared/combineErrorRetryMessages"
 import { combineHookSequences } from "@shared/combineHookSequences"
 import type { ClineApiReqInfo, ClineMessage } from "@shared/ExtensionMessage"
 import { getApiMetrics } from "@shared/getApiMetrics"
-import { BooleanRequest, EmptyRequest, StringRequest } from "@shared/proto/cline/common"
+import { BooleanRequest, StringRequest } from "@shared/proto/cline/common"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useMount } from "react-use"
 import { collectSessionKbits } from "@/components/chat/task-header/KbitPill"
@@ -70,6 +70,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		setExpandTaskHeader,
 		demoAutoStart,
 		handoverUi,
+		openedAgentSession,
+		openAgentSession,
 	} = useExtensionState()
 	const { target: runTarget } = useRunTarget()
 	// The agent session is a BANNER by default and opens on demand. It must never own the panel: when it
@@ -313,7 +315,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				return
 			}
 			if (route.kind === "continue-here") {
-				await StateServiceClient.continueHandoverHere(EmptyRequest.create({})).catch(() => {})
+				await StateServiceClient.continueHandoverHere(StringRequest.create({ value: "" })).catch(() => {})
 				return
 			}
 			if (route.kind === "hand-over") {
@@ -506,10 +508,15 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			<div className="flex flex-col flex-1 overflow-hidden">
 				{showNavbar && <Navbar />}
 				<FreeTierStrip />
-				{handoverUi?.strip && !handoverUi.strip.returned && !sessionViewOpen ? (
+				{!openedAgentSession && handoverUi?.strip && !handoverUi.strip.returned && !sessionViewOpen ? (
 					<AgentSessionBanner onOpen={() => setSessionViewOpen(true)} />
 				) : null}
-				{task ? (
+				{/* A session opened from the history list OWNS the panel, exactly as opening a task does —
+				    the developer asked for this one by name. It is read-only history, so none of the live
+				    task furniture (recap, message stream, composer) renders behind it. */}
+				{openedAgentSession ? (
+					<AgentSessionView onDismiss={() => openAgentSession(null)} session={openedAgentSession} />
+				) : task ? (
 					<TaskSection
 						apiMetrics={apiMetrics}
 						lastApiReqTotalTokens={lastApiReqTotalTokens}
@@ -535,8 +542,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						showUpgradeCard={showAnnouncement}
 					/>
 				)}
-				{task && <AgentSessionRecap />}
-				{task && (
+				{task && !openedAgentSession && <AgentSessionRecap />}
+				{task && !openedAgentSession && (
 					<MessagesArea
 						chatState={chatState}
 						// No-ending sessions: the post-task NextStepChooser footer is gone — a completion renders
@@ -550,7 +557,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					/>
 				)}
 			</div>
-			{task && (
+			{task && !openedAgentSession && (
 				<footer className="bg-(--vscode-sidebar-background)" style={{ gridRow: "2" }}>
 					{/* Auto-approve moved into the input's bottom controls row (AutoApproveChip in ChatTextArea)
 					    — the full-width bar row here was standing clutter (operator 0707). */}

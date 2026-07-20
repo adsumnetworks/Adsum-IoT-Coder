@@ -2,6 +2,7 @@ import { Empty, StringArrayRequest } from "@shared/proto/cline/common"
 import fs from "fs/promises"
 import path from "path"
 import { HostProvider } from "@/hosts/host-provider"
+import { deleteHandoverDir } from "@/services/handover/HandoverUiState"
 import { ShowMessageType } from "@/shared/proto/host/window"
 import { fileExistsAtPath } from "../../../utils/fs"
 import { Controller } from ".."
@@ -47,6 +48,16 @@ export async function deleteTasksWithIds(controller: Controller, request: String
  * @param id The task ID to delete
  */
 async function deleteTaskWithId(controller: Controller, id: string): Promise<void> {
+	// An agent session's row has no task directory behind it — its record is the handover on disk. One
+	// lifecycle: deleting the row deletes that directory, exactly as deleting a task row deletes its files.
+	// Falling through to the task path instead would throw on getTaskWithId and strand the row forever.
+	const agentSession = (controller.stateManager.getGlobalStateKey("taskHistory") ?? []).find((h) => h.id === id && h.handoverId)
+	if (agentSession?.handoverId) {
+		deleteHandoverDir(agentSession.handoverId)
+		await controller.deleteTaskFromState(id)
+		await controller.postStateToWebview()
+		return
+	}
 	try {
 		// Clear current task if it matches the ID being deleted
 		if (id === controller.task?.taskId) {
