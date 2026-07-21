@@ -5,6 +5,7 @@ import { ClineEnv } from "@/config"
 import { ExtensionRegistryInfo } from "@/registry"
 import { getInstallId } from "@/services/adsum/InstallIdentity"
 import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
+import { getEditorIdentity } from "@/services/telemetry/editorIdentity"
 
 /**
  * Author bearer token for the draft channel (optional). Resolution, first hit wins:
@@ -131,6 +132,14 @@ export class RegistryClient {
 			const platform = getCachedWorkspaceSummary()
 			if (platform) {
 				h["X-Adsum-Platform"] = platform
+			}
+		} catch {}
+		try {
+			// The editor as a REQUEST HEADER, not telemetry: backend calls aren't gated by telemetry consent, so
+			// this is the only way to see the editor of the many Open VSX / Cursor installs that run telemetry-off.
+			const ed = getEditorIdentity()
+			if (ed?.scheme) {
+				h["X-Adsum-Editor"] = ed.scheme
 			}
 		} catch {}
 		this.cachedIdentity = h
