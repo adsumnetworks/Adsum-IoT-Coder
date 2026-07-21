@@ -4,6 +4,7 @@ import { ExtensionRegistryInfo } from "@/registry"
 import { getErrorLevelFromString } from "@/services/error"
 import { getDistinctId, setDistinctId } from "@/services/logging/distinctId"
 import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
+import { getEditorIdentity } from "@/services/telemetry/editorIdentity"
 import { Setting } from "@/shared/proto/index.host"
 import { posthogConfig } from "../../../../shared/services/config/posthog-config"
 import type { ClineAccountUserInfo } from "../../../auth/AuthService"
@@ -107,7 +108,14 @@ export class PostHogTelemetryProvider implements ITelemetryProvider {
 		this.client.capture({
 			distinctId: getDistinctId(),
 			event,
-			properties: { app_version: ExtensionRegistryInfo.version, iot_platform: getCachedWorkspaceSummary(), ...properties },
+			properties: {
+				app_version: ExtensionRegistryInfo.version,
+				iot_platform: getCachedWorkspaceSummary(),
+				// Which editor (VS Code / Cursor / Windsurf / VSCodium) — the consented-population editor mix.
+				editor: getEditorIdentity()?.name,
+				editor_channel: getEditorIdentity()?.scheme,
+				...properties,
+			},
 		})
 	}
 
@@ -118,6 +126,8 @@ export class PostHogTelemetryProvider implements ITelemetryProvider {
 			properties: {
 				app_version: ExtensionRegistryInfo.version,
 				iot_platform: getCachedWorkspaceSummary(),
+				editor: getEditorIdentity()?.name,
+				editor_channel: getEditorIdentity()?.scheme,
 				...properties,
 				_required: true,
 			},

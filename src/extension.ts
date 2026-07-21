@@ -63,6 +63,7 @@ import {
 import { refreshWorkspaceClassification } from "./services/platform/WorkspaceClassifier"
 import { createAdsumStatusBar, refreshAdsumStatusBar, setAdsumStatusBarTooltip } from "./services/statusbar/AdsumStatusBar"
 import { telemetryService } from "./services/telemetry"
+import { setEditorIdentity } from "./services/telemetry/editorIdentity"
 import { ClineTempManager } from "./services/temp"
 import { SharedUriHandler } from "./services/uri/SharedUriHandler"
 import { ShowMessageType } from "./shared/proto/host/window"
@@ -83,6 +84,10 @@ import { TerminalRegistry } from "./hosts/vscode/terminal/VscodeTerminalRegistry
 export async function activate(context: vscode.ExtensionContext) {
 	TerminalRegistry.setExtensionUri(context.extensionUri)
 	setupHostProvider(context)
+
+	// Record which editor we're in (VS Code / Cursor / Windsurf / VSCodium / Code-OSS) so telemetry and backend
+	// reach can be split by editor — the only way to size the Open VSX audience. Set here because env.* is host-only.
+	setEditorIdentity({ name: vscode.env.appName, scheme: vscode.env.uriScheme || "vscode" })
 
 	// Initialize hook discovery cache for performance optimization
 	HookDiscoveryCache.getInstance().initialize(
