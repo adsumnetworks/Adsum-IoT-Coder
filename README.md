@@ -8,7 +8,7 @@
 
 **An IoT coding agent for VS Code that works your whole firmware dev loop on Espressif ESP and Nordic nRF: scaffold, build, flash, test, observe, fix. It automates the routine firmware work you would rather not do, and cracks the runtime bugs general agents cannot, because it reads your board, not just your code.**
 
-**What makes it different is real human expertise, not just the AI model.** Adsum is augmented with curated firmware knowledge authored by engineers who have shipped, loaded on demand and validated by an [open benchmark](#benchmark) on real hardware. Human-curated, not AI-generated. It is the direction frontier research points to: equip a general model with curated, domain expertise that loads only when needed, rather than scale the model alone. The same approach appears in academic work on expert-skill-augmented models that shaped our benchmark ([arXiv:2603.19583](https://arxiv.org/abs/2603.19583)) and in industry practice ([context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents), [Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)).
+**What makes it different is real human expertise, not just the AI model.** Adsum is augmented with curated firmware knowledge authored by engineers who have shipped, loaded on demand and validated by an [open benchmark](#benchmark) on real hardware. Human-curated, not AI-generated.
 
 **Shipping today:** Espressif ESP32 (incl. S3, C6) on ESP-IDF · Nordic nRF52 / nRF53 / nRF54 on nRF Connect SDK (Zephyr) · BLE (Bluetooth Low Energy) and Wi-Fi · **one-click EU Cyber Resilience Act (CRA) readiness: an SBOM plus a secure-by-design posture check.** Open source under Apache 2.0.
 
@@ -20,11 +20,13 @@
   <a href="https://www.youtube.com/@adsumnetworks"><img src="https://img.shields.io/badge/YouTube-watch-FF0000?logo=youtube&logoColor=white" alt="YouTube"></a>
 </p>
 
-**[Watch the build →](https://youtu.be/WrRYutpmHi8)** · **[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[CRA readiness →](#cra-readiness-sbom-cve-and-secure-by-design)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
+**[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[CRA readiness →](#cra-readiness-sbom-cve-and-secure-by-design)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
 
 <a href="https://youtu.be/WrRYutpmHi8" target="_blank" rel="noopener noreferrer"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder building and debugging ESP32 and nRF firmware in VS Code" /></a>
 
 **[▶ See it build a two-chip BLE-to-WiFi gateway from one spec →](https://youtu.be/WrRYutpmHi8)** · **[Read the walkthrough →](https://docs.adsumnetworks.com/ble-wifi-gateway)**
+
+**No key, no account, no card.** The free tier is on by default: install and see it work on a real bug in your first minute.
 
 </div>
 
@@ -36,7 +38,7 @@
 
 ## What's New <sup>`v0.2.0`</sup>
 
-<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Build a whole product, not just a fix.** Expanded curated firmware knowledge now carries a full, long-horizon build end to end. The launch build: a complete two-chip BLE-to-WiFi gateway, an nRF52840 BLE scanner on Zephyr and an ESP32 Wi-Fi and MQTT uplink on ESP-IDF, for the Fanstel board, from one spec in one working session with you approving each step. It holds the thread across both toolchains, a big capture, and a full CRA sweep, without losing context. **[See the build](https://youtu.be/WrRYutpmHi8)** or **[read the walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway)**.
+<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Build a whole product, not just a fix.** Expanded curated firmware knowledge now carries a full, long-horizon build end to end. The launch build: a complete two-chip BLE-to-WiFi gateway, an nRF52840 BLE scanner on Zephyr and an ESP32 Wi-Fi and MQTT uplink on ESP-IDF, for the Fanstel board, from one spec in one working session with you approving each step. It holds the thread across both toolchains without losing context. **[See the build](https://youtu.be/WrRYutpmHi8)** or **[read the walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway)**.
 
 <img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Run it on your model, or your key.** A curated model picker: the free tier, the GLM Coding Plan, Claude (Sonnet 5, Opus 4.8, Haiku 4.5), DeepSeek V4, and any OpenAI or Anthropic-compatible endpoint, cloud or local. Switch on a live task, no restart.
 
@@ -44,25 +46,13 @@
 
 And every task rests on a clear next step instead of a dead-end "done". *[Full changelog](./CHANGELOG.md).*
 
-Adsum is now on [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) too, so Cursor, Windsurf, VSCodium, and other VS Code-compatible editors can install it.
+<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Now on Open VSX.** Cursor, Windsurf, VSCodium, and other VS Code-compatible editors can [install it](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) too.
 
 **Recently, in `v0.1.8`:**
 
 <img src="assets/icons/whatsnew-wave.png" width="18" valign="middle" alt="" /> &nbsp;**See a bug at every layer.** The 3-layer BLE debug across the app log, the HCI bus, and the over-the-air radio.
 
-**The flagship, shipped in `v0.1.7`:**
-
-<img src="assets/icons/whatsnew-cra.png" width="18" valign="middle" alt="" /> &nbsp;**CRA readiness, one click.** Run it on your build and get a machine-readable SBOM (SPDX) plus a full EU Cyber Resilience Act readiness report, written to a `compliance/` folder, on both nRF and ESP. A readiness aid to help you get ahead of the deadlines.
-
-<img src="assets/icons/whatsnew-posture.png" width="18" valign="middle" alt="" /> &nbsp;**Secure-by-design posture, from your real config.** It reads what your build actually sets, secure boot, signed updates, debug-port lock, secure storage and more, and lays out each requirement, where your build stands, and the fix, ranked so you tackle the biggest gap first.
-
-<img src="assets/icons/whatsnew-cve.png" width="18" valign="middle" alt="" /> &nbsp;**Scan your SBOM for known CVEs, and close them.** The check matches your build's identifiable components against public advisory databases and lists what's found. Hand it a specific CVE and it confirms the affected component is really in your build, links the advisory, then walks you through bumping the version, rebuilding, and regenerating the SBOM.
-
-<img src="assets/icons/whatsnew-fix.png" width="18" valign="middle" alt="" /> &nbsp;**Fix in the same loop.** It doesn't just flag gaps. It helps you wire the fix, a secure bootloader for example, rebuild, and re-verify, without leaving the agent.
-
-<img src="assets/icons/whatsnew-home.png" width="18" valign="middle" alt="" /> &nbsp;**A cleaner home.** The refreshed status strip shows every detected SDK version and the exact build it resolved, so it never asserts a version it can't back.
-
-*Full history in the [changelog](./CHANGELOG.md).*
+**And in `v0.1.7`, the flagship:** one-click CRA readiness, an SBOM (SPDX), a secure-by-design posture check, and a CVE fix loop, covered in full [below](#cra-readiness-sbom-cve-and-secure-by-design). *Full history in the [changelog](./CHANGELOG.md).*
 
 ## CRA Readiness: SBOM, CVE, and secure-by-design
 
@@ -91,9 +81,12 @@ Adsum does not replace the embedded engineer, it accelerates them. Embedded firm
 
 And the reason it is good at the hard parts is the part general agents do not have: **real human expertise.** The firmware knowledge that drives it is authored by engineers who have shipped, loaded on demand, and validated against an open benchmark. Human-curated, not AI-generated. And you can see whose: the first time the agent uses a piece of curated knowledge, it credits the engineer who wrote it, by name and linked, so the expertise is attributable, never anonymous.
 
+It is also the direction frontier research points to: equip a general model with curated domain expertise that loads only when needed, rather than scale the model alone. The same approach appears in academic work on expert-skill-augmented models that shaped our benchmark ([arXiv:2603.19583](https://arxiv.org/abs/2603.19583)) and in industry practice ([context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents), [Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)).
+
 ## What it does: debug, build, and prototype ESP and nRF firmware
 
 - **Automatic platform detection.** nRF, ESP, both, or a fresh start, with the right tools for each.
+- **Carry a full product build.** From one spec to a working two-chip BLE-to-WiFi gateway (nRF52840 + ESP32), across both toolchains, in one working session, with you approving each step. [See the walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway).
 - **Build, flash & debug.** The full loop on real hardware: build, flash, capture live logs (RTT/UART on nRF, serial monitor on ESP), analyze, fix, repeat.
 - **Capture & analyze device logs.** Correlated with your source, across one board or two.
 - **Debug across all three layers.** The agent correlates the app log, the HCI bus, and the over-the-air radio, so you see where a BLE flow actually breaks, not just what the app logged. A guided sample run makes it easy to try, no hardware required.
@@ -133,14 +126,6 @@ Both agents ran the same model on real nRF52 hardware, so the gap measures archi
 
 Full methodology, per-task results, and honest limitations are in the [benchmark report](./docs/benchmarks/v0.1-report.md). Methodology adapted from [arXiv:2603.19583](https://arxiv.org/abs/2603.19583).
 
-## Contributing
-
-That result comes from the expertise the agent runs on, not the model: curated firmware knowledge authored by practicing engineers and validated on real hardware. The agent gets stronger as that knowledge base grows, and there are two ways to get involved, both open to you.
-
-**Contribute knowledge (embedded experts and specialists).** This is the part that makes the agent good, and it is written by engineers, not the model: the hard-won fixes and idioms you only get from shipping nRF and ESP firmware. We are building a dedicated studio for authoring this expertise and will open it to outside specialists once it has earned its keep in-house. If you have lived inside these failure modes and want to shape it as a founding contributor, get credited for your work, and keep the rights to it, [start a discussion](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions).
-
-**Contribute code (open-source developers).** The extension is open source (Apache-2.0, built on [Cline](https://github.com/cline/cline)). Improve the tool itself, or add a benchmark task in [`evals/`](./evals/). [Open an issue or PR](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues).
-
 ## Getting Started
 
 Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) or [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) (for Cursor, Windsurf, and VSCodium) directly. No key, no account: the free tier is on by default.
@@ -171,7 +156,15 @@ Adsum ships a curated picker: the **GLM Coding Plan**, **Claude** (Sonnet 5, Opu
 
 ## Roadmap
 
-Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi, one-click CRA readiness (SBOM + secure-by-design posture), and a **guided 3-layer debug** that correlates the app log, on-device HCI, and the over-the-air radio to pinpoint where a flow actually broke, not just the app log. **Next:** more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), 3-layer decoding beyond BLE, power profiling, a growing community knowledge base, and, in beta, handing a running task to your own coding agent, so Adsum brings the embedded expertise and drives the toolchain while your agent does the work. The roadmap is shaped by what the community asks for and contributes.
+**Next:** more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), 3-layer decoding beyond BLE, power profiling, a growing community knowledge base, and, in beta, handing a running task to your own coding agent, so Adsum brings the embedded expertise and drives the toolchain while your agent does the work. The roadmap is shaped by what the community asks for and contributes.
+
+## Contributing
+
+That result comes from the expertise the agent runs on, not the model: curated firmware knowledge authored by practicing engineers and validated on real hardware. The agent gets stronger as that knowledge base grows, and there are two ways to get involved, both open to you.
+
+**Contribute knowledge (embedded experts and specialists).** This is the part that makes the agent good, and it is written by engineers, not the model: the hard-won fixes and idioms you only get from shipping nRF and ESP firmware. We are building a dedicated studio for authoring this expertise and will open it to outside specialists once it has earned its keep in-house. If you have lived inside these failure modes and want to shape it as a founding contributor, get credited for your work, and keep the rights to it, [start a discussion](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions).
+
+**Contribute code (open-source developers).** The extension is open source (Apache-2.0, built on [Cline](https://github.com/cline/cline)). Improve the tool itself, or add a benchmark task in [`evals/`](./evals/). [Open an issue or PR](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues).
 
 ## Limitations
 
@@ -188,6 +181,8 @@ The runtime runs entirely on your machine. Only the log snippets and code contex
 ---
 
 <div align="center" markdown="1">
+
+**Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) or [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) and see it work in your first minute. No key, no account.**
 
 **[adsumnetworks.com](https://adsumnetworks.com)** · **[GitHub](https://github.com/adsumnetworks/Adsum-IoT-Coder)** · **[Discussions](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions)** · **[YouTube](https://www.youtube.com/@adsumnetworks)**
 
