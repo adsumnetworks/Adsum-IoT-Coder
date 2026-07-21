@@ -46,6 +46,7 @@ import { telemetryService } from "@/services/telemetry"
 import { BannerCardData } from "@/shared/cline/banner"
 import { getAxiosSettings } from "@/shared/net"
 import { ShowMessageType } from "@/shared/proto/host/window"
+import { FeatureFlag } from "@/shared/services/feature-flags/feature-flags"
 import { getLatestAnnouncementId } from "@/utils/announcements"
 import { getCwd, getDesktopDir } from "@/utils/path"
 import { PromptRegistry } from "../prompts/system-prompt"
@@ -259,6 +260,11 @@ export class Controller {
 			telemetryService.captureCoreFeatureTriedAfterCra({ iot_platform: getCachedWorkspaceSummary() })
 		}
 
+		// Disarm the "leave a review" high-note guard: starting (or resuming) work is not a moment to ask.
+		// It re-arms only when a task completes successfully — so the nudge can never greet a cold reopen or a
+		// mid-work screen, only a fresh win.
+		this.stateManager.setGlobalState("reviewNudgeArmed", false)
+
 		await this.clearTask() // ensures that an existing task doesn't exist before starting a new one, although this shouldn't be possible since user must clear task before starting a new one
 
 		const autoApprovalSettings = this.stateManager.getGlobalSettingsKey("autoApprovalSettings")
@@ -440,6 +446,10 @@ export class Controller {
 
 		// Set flag to prevent concurrent cancellations
 		this.cancelInProgress = true
+
+		// Disarm the "leave a review" high-note guard: a cancelled/aborted task is the opposite of a win, so the
+		// welcome card must not appear when the user returns after hitting Stop (e.g. on a hung run).
+		this.stateManager.setGlobalState("reviewNudgeArmed", false)
 
 		try {
 			this.updateBackgroundCommandState(false)
@@ -1001,13 +1011,19 @@ export class Controller {
 			workspaceClassification: getCachedWorkspaceSummary(),
 			workspaceFeatures: getCachedWorkspaceFeatures(),
 			handoverUi: getHandoverUiState(),
-			// One-time "leave a review" nudge: eligible after a few successful completions, and not yet retired
-			// via the banner-dismissal ledger. Predicate + threshold are shared (src/shared/reviewNudge) so this
-			// show-gate cannot drift from the fire-gate in AttemptCompletionHandler.
-			reviewNudgeShow: reviewNudgeEligible(
-				this.stateManager.getGlobalStateKey("reviewNudgeCompletions") ?? 0,
-				this.stateManager.getGlobalStateKey("dismissedBanners") ?? [],
-			),
+			// One-time "leave a review" nudge — three independent gates must ALL hold:
+			//   1. flag: dark-launched, default OFF (src/shared/services/feature-flags) — flipped on remotely once a
+			//      5-star floor is seeded; the completion counter keeps running while off, so launch lands warm.
+			//   2. armed: the "ask on a high note" guard — set by a win, cleared on task start/cancel.
+			//   3. eligible: enough wins AND not retired via the banner-dismissal ledger (shared predicate +
+			//      threshold, so this show-gate cannot drift from the fire-gate in AttemptCompletionHandler).
+			reviewNudgeShow:
+				featureFlagsService.getBooleanFlagEnabled(FeatureFlag.REVIEW_NUDGE) &&
+				(this.stateManager.getGlobalStateKey("reviewNudgeArmed") ?? false) &&
+				reviewNudgeEligible(
+					this.stateManager.getGlobalStateKey("reviewNudgeCompletions") ?? 0,
+					this.stateManager.getGlobalStateKey("dismissedBanners") ?? [],
+				),
 		}
 	}
 

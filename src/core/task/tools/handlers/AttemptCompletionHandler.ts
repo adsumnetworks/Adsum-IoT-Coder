@@ -33,6 +33,9 @@ async function recordReviewProgress(): Promise<void> {
 		const sm = StateManager.get()
 		const next = (sm.getGlobalStateKey("reviewNudgeCompletions") ?? 0) + 1
 		sm.setGlobalState("reviewNudgeCompletions", next)
+		// Arm the "ask on a high note" guard: this is a win, so the welcome card may appear next paint. It is
+		// disarmed again the instant a new task starts or one is cancelled (see Controller).
+		sm.setGlobalState("reviewNudgeArmed", true)
 		if (next === REVIEW_NUDGE_THRESHOLD) {
 			telemetryService.captureReviewNudgeEligible(getInstallId())
 		}
