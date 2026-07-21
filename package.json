@@ -402,6 +402,7 @@
 		"test:kbits": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/kbit.test.ts",
 		"test:context": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/__tests__/context-budget.test.ts",
 		"test:attribution": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/attribution.test.ts",
+		"test:review-nudge": "ts-node --transpile-only -P tsconfig.unit-test.json src/shared/reviewNudge.test.ts",
 		"test:registry": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/registry/registry.test.ts",
 		"test:cra-honesty": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/verdictScan.test.ts",
 		"test:cra-structure": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/structureScan.node-test.ts",

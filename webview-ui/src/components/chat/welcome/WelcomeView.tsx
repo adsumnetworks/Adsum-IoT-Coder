@@ -120,6 +120,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 
 	// A3 — the grounded CRA nudge: project-open, a connectivity stack present, no SBOM yet, not dismissed.
 	const craBanner = hasWorkspace && (hasBle || hasWifi) && !hasCompliance && !craNudgeDismissed
+	// The dormant upgrade card owns the paint when it shows — the review nudge yields to it (see precedence below).
+	const upgradeCardShowing = tenure === "dormant" && showUpgradeCard && !craBanner
 	// Precedence (one grounded promotion per paint): the A10 deep-debug sub-line is suppressed while the nudge shows.
 	const showDebugSubline = hasBle && !craBanner
 
@@ -162,7 +164,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				{/* Dormant upgrade card (once per version). No separate "new user" nudge — the demo hero below is
 				    the single cyan focal point for first-run, so we don't stack a duplicate same-action CTA.
 				    Precedence: suppressed when the grounded CRA nudge shows (project-open → A3 owns CRA). */}
-				{tenure === "dormant" && showUpgradeCard && !craBanner && (
+				{upgradeCardShowing && (
 					<UpgradeCard
 						onDismiss={onUpgradeDismiss}
 						onStartDemo={() => onStartDemo("cra-sample")}
@@ -176,9 +178,12 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				    resolved before first paint — no uninitiated pop-in. The only mount/unmount is on a user-initiated
 				    change (folder add, or a save that creates compliance/ or enables CONFIG_BT), where motion is
 				    expected feedback; so we mount/unmount rather than reserve an always-empty placeholder slot. */}
-				{/* One-time "leave a review" nudge — welcome only, after a few wins; suppressed while the grounded
-				    CRA nudge owns the first paint (CRA precedence). Retires for good on either action. */}
-				{!craBanner && reviewNudgeShow && <ReviewNudge onDismiss={dismissReviewNudge} onReview={openReview} />}
+				{/* One-time "leave a review" nudge — welcome only, after a few wins. Lowest precedence of the paint's
+				    promotions: yields to both the grounded CRA nudge and the dormant upgrade card so only one shows
+				    at a time (the file's "one grounded promotion per paint" rule). Retires for good on either action. */}
+				{!craBanner && !upgradeCardShowing && reviewNudgeShow && (
+					<ReviewNudge onDismiss={dismissReviewNudge} onReview={openReview} />
+				)}
 
 				{craBanner && (
 					<CraNudge
