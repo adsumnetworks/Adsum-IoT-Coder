@@ -126,8 +126,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	const showDebugSubline = hasBle && !craBanner
 
 	// Adaptive intent set: inject the A10 sub-line on Build/flash/debug; once compliance/ exists, switch the CRA
-	// card to re-run copy. The "New" pill STAYS (CRA is a new product capability — keep it flagged on all CRA
-	// surfaces). No project → the no-project set, untouched.
+	// card to re-run copy. (CRA's "New" pill was retired in 0.2.0 — it shipped in 0.1.7, three releases back.)
+	// No project → the no-project set, untouched.
 	const intents: IntentDef[] = hasWorkspace
 		? PROJECT_INTENTS.map((i) => {
 				if (i.id === "buildFlashDebug" && showDebugSubline) {

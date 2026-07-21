@@ -84,10 +84,12 @@ describe("buildReengagementMessage", () => {
 		expect(c.cta).to.equal("Show me")
 	})
 
-	it("not CRA-relevant → the shared 3-pillar what's-new pitch (never a false per-project CRA claim)", () => {
-		const c = buildReengagementMessage({ craRelevant: false, version: "0.1.7" })
-		expect(c.message).to.contain("What's new in Adsum IoT Coder v0.1.7")
-		expect(c.message).to.contain("hardware-in-the-loop")
+	it("not CRA-relevant → the shared what's-new pitch (never a false per-project CRA claim)", () => {
+		// A re-engagement nudge goes to a RETURNING user, so it gets the returning line (BYOK + attribution +
+		// long-horizon), never the fresh-install welcome. Copy refreshed for 0.2.0.
+		const c = buildReengagementMessage({ craRelevant: false, version: "0.2.0" })
+		expect(c.message).to.contain("What's new in Adsum IoT Coder v0.2.0")
+		expect(c.message).to.contain("see who wrote the knowledge")
 		expect(c.cta).to.equal("See what's new")
 	})
 

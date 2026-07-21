@@ -90,21 +90,9 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		isNew: true,
 		teaser: "BLE, debugged at every layer — app, bus, radio.",
 	},
-	// A8 — ESP sample placeholder: a Wi-Fi debug session (ESP's connectivity story, parallel to the nRF/BLE HCI
-	// row). Disabled "soon" roadmap entry; Omar brings it to life via the host [ADSUM_DEMO:esp-wifi] handler + a
-	// bundled ESP-IDF Wi-Fi sample. "Wi-Fi" is highlighted as the row's protocol chip.
-	"esp-wifi": {
-		id: "esp-wifi",
-		title: "Debug an ESP32 Wi-Fi connection issue",
-		honestLabel:
-			"Build, flash & stream Wi-Fi logs on a bundled ESP-IDF sample project — the agent finds why it won't connect.",
-		taskPrompt: "Demo: ESP32 Wi-Fi connection debug\n\n[ADSUM_DEMO:esp-wifi]",
-		historyMatch: "Debug an ESP32 Wi-Fi connection issue",
-		platform: "esp",
-		icon: "broadcast",
-		comingSoon: true,
-		teaser: "ESP32 Wi-Fi, debugged on real hardware.",
-	},
+	// NOTE: the "esp-wifi" coming-soon placeholder was removed from the picker in 0.2.0 — we don't ship a greyed,
+	// un-clickable row. Its host implementation (DemoManager `[ADSUM_DEMO:esp-wifi]` + the bundled ESP-IDF sample)
+	// stays dormant; re-add a scenario entry here (drop `comingSoon`) to surface it once it's verified.
 }
 
 export const DEFAULT_DEMO_SCENARIO_ID = "nus-uart"
