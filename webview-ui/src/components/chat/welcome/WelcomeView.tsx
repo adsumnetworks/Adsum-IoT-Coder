@@ -164,13 +164,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				{/* Dormant upgrade card (once per version). No separate "new user" nudge — the demo hero below is
 				    the single cyan focal point for first-run, so we don't stack a duplicate same-action CTA.
 				    Precedence: suppressed when the grounded CRA nudge shows (project-open → A3 owns CRA). */}
-				{upgradeCardShowing && (
-					<UpgradeCard
-						onDismiss={onUpgradeDismiss}
-						onStartDemo={() => onStartDemo("cra-sample")}
-						version={version ?? ""}
-					/>
-				)}
+				{upgradeCardShowing && <UpgradeCard onDismiss={onUpgradeDismiss} version={version ?? ""} />}
 
 				{/* A3 — grounded CRA nudge (project-open). The single grounded promotion for a project-open first
 				    paint: evidence-mode (what was detected, never a verdict), demotes once compliance/ exists.
