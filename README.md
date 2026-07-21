@@ -13,7 +13,7 @@
 **Shipping today:** Espressif ESP32 (incl. S3, C6) on ESP-IDF · Nordic nRF52 / nRF53 / nRF54 on nRF Connect SDK (Zephyr) · BLE (Bluetooth Low Energy) and Wi-Fi · **one-click EU Cyber Resilience Act (CRA) readiness: an SBOM plus a secure-by-design posture check.** Open source under Apache 2.0.
 
 <p>
-  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/visual-studio-marketplace/i/AdsumNetwork.nrf-ai-debugger?label=VS%20Code%20Marketplace&color=00A9CE&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace installs"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://badgen.net/vs-marketplace/i/AdsumNetwork.nrf-ai-debugger?label=VS%20Code%20Marketplace&color=00a9ce" alt="VS Code Marketplace installs"></a>
   <a href="https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger"><img src="https://img.shields.io/open-vsx/dt/AdsumNetwork/nrf-ai-debugger?label=Open%20VSX&color=C160EF" alt="Open VSX installs"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-D76947" alt="License"></a>
   <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions"><img src="https://img.shields.io/badge/community-discussions-D76947" alt="Discussions"></a>
@@ -46,7 +46,9 @@ And every task rests on a clear next step instead of a dead-end "done". *[Full c
 
 Adsum is now on [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) too, so Cursor, Windsurf, VSCodium, and other VS Code-compatible editors can install it.
 
-<img src="assets/icons/whatsnew-wave.png" width="18" valign="middle" alt="" /> &nbsp;**Recently, in `v0.1.8`:** see a bug at every layer, the 3-layer BLE debug across the app log, the HCI bus, and the over-the-air radio.
+**Recently, in `v0.1.8`:**
+
+<img src="assets/icons/whatsnew-wave.png" width="18" valign="middle" alt="" /> &nbsp;**See a bug at every layer.** The 3-layer BLE debug across the app log, the HCI bus, and the over-the-air radio.
 
 **The flagship, shipped in `v0.1.7`:**
 
