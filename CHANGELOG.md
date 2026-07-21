@@ -20,7 +20,7 @@ The forward-handoff behavior CRA runs got in 0.1.8 now applies to every workflow
 
 ### Longer sessions hold up
 
-Token-aware context handling replaces blunt transcript truncation, so a long debug loop with a big BLE capture or a full CRA sweep is less likely to lose the data it needs mid-session.
+Token-aware context handling replaces blunt transcript truncation, so a long session, building a full two-chip BLE-to-WiFi gateway, running a big BLE capture, or sweeping a full CRA report, is less likely to lose the data it needs mid-session.
 
 ### Reliability
 

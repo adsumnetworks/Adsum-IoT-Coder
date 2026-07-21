@@ -36,13 +36,13 @@
 
 ## What's New <sup>`v0.2.0`</sup>
 
-<img src="assets/icons/whatsnew-wave.png" width="18" valign="middle" alt="" /> &nbsp;**Run it on your model, or your key.** A curated model picker: the free tier, the GLM Coding Plan, Claude (Sonnet 5, Opus 4.8, Haiku 4.5), DeepSeek V4, and any OpenAI or Anthropic-compatible endpoint, cloud or local. Switch on a live task, no restart.
+<img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Run it on your model, or your key.** A curated model picker: the free tier, the GLM Coding Plan, Claude (Sonnet 5, Opus 4.8, Haiku 4.5), DeepSeek V4, and any OpenAI or Anthropic-compatible endpoint, cloud or local. Switch on a live task, no restart.
 
-<img src="assets/icons/whatsnew-home.png" width="18" valign="middle" alt="" /> &nbsp;**Credited expertise.** When the agent uses a piece of curated knowledge, it names the engineer who wrote it, right in the conversation, linked. Human-curated, never anonymous AI output.
+<img src="assets/icons/whatsnew-knowledge.png" width="18" valign="middle" alt="" /> &nbsp;**Credited expertise.** When the agent uses a piece of curated knowledge, it names the engineer who wrote it, right in the conversation, linked. Human-curated, never anonymous AI output.
 
-Plus longer sessions hold up on big captures and full CRA sweeps, and every task rests on a clear next step instead of a dead-end "done". *[Full changelog](./CHANGELOG.md).*
+Plus longer sessions hold up: building a full two-chip BLE-to-WiFi gateway, running a big BLE capture, or sweeping a full CRA report, without losing the thread partway. And every task rests on a clear next step instead of a dead-end "done". *[Full changelog](./CHANGELOG.md).*
 
-**Recently, in `v0.1.8`:** see a bug at every layer, the 3-layer BLE debug across the app log, the HCI bus, and the over-the-air radio.
+<img src="assets/icons/whatsnew-wave.png" width="18" valign="middle" alt="" /> &nbsp;**Recently, in `v0.1.8`:** see a bug at every layer, the 3-layer BLE debug across the app log, the HCI bus, and the over-the-air radio.
 
 **The flagship, shipped in `v0.1.7`:**
 
