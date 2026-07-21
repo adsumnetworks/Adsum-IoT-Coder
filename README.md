@@ -15,6 +15,7 @@
 <p>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://img.shields.io/badge/VS%20Code%20Marketplace-install-00A9CE?logo=visualstudiocode&logoColor=white" alt="VS Marketplace"></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://badgen.net/vs-marketplace/i/AdsumNetwork.nrf-ai-debugger?color=00a9ce" alt="Installs"></a>
+  <a href="https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger"><img src="https://img.shields.io/open-vsx/dt/AdsumNetwork/nrf-ai-debugger?label=Open%20VSX&color=C160EF" alt="Open VSX installs"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-D76947" alt="License"></a>
   <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions"><img src="https://img.shields.io/badge/community-discussions-D76947" alt="Discussions"></a>
   <a href="https://www.youtube.com/@adsumnetworks"><img src="https://img.shields.io/badge/YouTube-watch-FF0000?logo=youtube&logoColor=white" alt="YouTube"></a>
@@ -22,7 +23,7 @@
 
 **[Watch the build →](https://youtu.be/WrRYutpmHi8)** · **[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[CRA readiness →](#cra-readiness-sbom-cve-and-secure-by-design)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
 
-<a href="https://youtu.be/WrRYutpmHi8"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder building and debugging ESP32 and nRF firmware in VS Code" /></a>
+<a href="https://youtu.be/WrRYutpmHi8" target="_blank" rel="noopener noreferrer"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder building and debugging ESP32 and nRF firmware in VS Code" /></a>
 
 **[▶ See it build a two-chip BLE-to-WiFi gateway from one spec →](https://youtu.be/WrRYutpmHi8)** · **[Read the walkthrough →](https://docs.adsumnetworks.com/ble-wifi-gateway)**
 
@@ -36,11 +37,15 @@
 
 ## What's New <sup>`v0.2.0`</sup>
 
+<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Build a whole product, not just a fix.** Expanded curated firmware knowledge now carries a full, long-horizon build end to end. The launch build: a complete two-chip BLE-to-WiFi gateway, an nRF52840 BLE scanner on Zephyr and an ESP32 Wi-Fi and MQTT uplink on ESP-IDF, for the Fanstel board, from one spec in one working session with you approving each step. It holds the thread across both toolchains, a big capture, and a full CRA sweep, without losing context. **[See the build](https://youtu.be/WrRYutpmHi8)** or **[read the walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway)**.
+
 <img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Run it on your model, or your key.** A curated model picker: the free tier, the GLM Coding Plan, Claude (Sonnet 5, Opus 4.8, Haiku 4.5), DeepSeek V4, and any OpenAI or Anthropic-compatible endpoint, cloud or local. Switch on a live task, no restart.
 
 <img src="assets/icons/whatsnew-knowledge.png" width="18" valign="middle" alt="" /> &nbsp;**Credited expertise.** When the agent uses a piece of curated knowledge, it names the engineer who wrote it, right in the conversation, linked. Human-curated, never anonymous AI output.
 
-Plus longer sessions hold up: building a full two-chip BLE-to-WiFi gateway, running a big BLE capture, or sweeping a full CRA report, without losing the thread partway. And every task rests on a clear next step instead of a dead-end "done". *[Full changelog](./CHANGELOG.md).*
+And every task rests on a clear next step instead of a dead-end "done". *[Full changelog](./CHANGELOG.md).*
+
+Adsum is now on [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) too, so Cursor, Windsurf, VSCodium, and other VS Code-compatible editors can install it.
 
 <img src="assets/icons/whatsnew-wave.png" width="18" valign="middle" alt="" /> &nbsp;**Recently, in `v0.1.8`:** see a bug at every layer, the 3-layer BLE debug across the app log, the HCI bus, and the over-the-air radio.
 
@@ -137,7 +142,7 @@ That result comes from the expertise the agent runs on, not the model: curated f
 
 ## Getting Started
 
-Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the [Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) directly. No key, no account: the free tier is on by default.
+Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) or [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) (for Cursor, Windsurf, and VSCodium) directly. No key, no account: the free tier is on by default.
 
 **Prerequisites:** the [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) for nRF work, or an ESP-IDF installation for ESP, plus Python 3.8+. Full requirements are in the [docs](https://docs.adsumnetworks.com/getting-started).
 
