@@ -55,10 +55,9 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 					alignItems: "center",
 					gap: "7px",
 				}}>
-				{/* Themed shield (coral = identity/framing on this coral nudge) — replaces the off-theme 🛡️ emoji,
-				    which the OS rendered in its own multicolor style ignoring our palette. Cyan stays on the CTA. */}
-				<i className="codicon codicon-shield" style={{ fontSize: "14px", color: BRAND_CORAL, flexShrink: 0 }} />
-				What's new in v{version} — CRA SBOM &amp; Fix
+				{/* Coral rocket = identity/"what's new" framing on this coral nudge (kept on-palette; cyan stays on the CTA). */}
+				<i className="codicon codicon-rocket" style={{ fontSize: "14px", color: BRAND_CORAL, flexShrink: 0 }} />
+				What's new in v{version} — your GLM plan or model key, and who wrote the knowledge
 			</div>
 
 			<div
@@ -68,8 +67,8 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 					marginBottom: "12px",
 					lineHeight: 1.5,
 				}}>
-				A connected product likely falls under the EU Cyber Resilience Act. Preview your secure-by-design posture — an
-				SBOM, a live CVE scan, and a readiness check — on a sample, no project needed.
+				A curated model picker — the free tier, the GLM Coding Plan, Claude, DeepSeek, or your own key — switchable on a
+				live task. Curated knowledge now credits the engineer who wrote it, and long sessions hold their context.
 			</div>
 
 			<div style={{ display: "flex", alignItems: "center" }}>
@@ -96,10 +95,10 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 						fontWeight: 600,
 						cursor: "pointer",
 					}}
-					title="Runs the CRA workflow on a pre-built reference sample — no project needed."
+					title="Runs a pre-built reference sample — watch the agent credit the engineers behind the knowledge it uses. No project needed."
 					type="button">
-					<i className="codicon codicon-shield" style={{ fontSize: "13px" }} />
-					Preview CRA on a sample ›
+					<i className="codicon codicon-play" style={{ fontSize: "13px" }} />
+					See it on a sample ›
 				</button>
 			</div>
 		</div>

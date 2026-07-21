@@ -235,7 +235,7 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext): 
 				const targetedCra = !isNewInstall && craRelevant
 				const message = targetedCra
 					? `Adsum IoT Coder v${currentVersion} — preview your project's CRA readiness from your build.`
-					: whatsNewToastMessage(currentVersion)
+					: whatsNewToastMessage(currentVersion, isNewInstall)
 				const cta = targetedCra ? "Show me →" : "See what's new →"
 				const relevant = craRelevant ? "cra" : "generic"
 				telemetryService.captureUpgradeToastShown({ targeted: targetedCra, relevant })
