@@ -136,6 +136,9 @@ export interface ExtensionState {
 	/** Live view of a session handed to the developer's own coding agent (the agent strip), plus whether
 	 *  Adsum is conducting (no inference of its own) — drives run-path ordering on the session cards. */
 	handoverUi?: HandoverUiState
+	/** After a few successful task completions, show the one-time "leave a review" nudge. Retired for good via the
+	 *  banner-dismissal ledger (id "review-nudge"), so it never nags. */
+	reviewNudgeShow?: boolean
 }
 
 export interface ClineMessage {

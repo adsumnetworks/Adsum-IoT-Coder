@@ -3,6 +3,7 @@ import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
+import { StateServiceClient, WebServiceClient } from "@/services/grpc-client"
 import AiLimitationsFooter from "../AiLimitationsFooter"
 import DemoCard from "../DemoCard"
 import { DEMO_SCENARIO_LIST, hasRunDemo, ranScenarioIds } from "../demoScenarios"
@@ -12,6 +13,7 @@ import CraNudge from "./CraNudge"
 import DemoPicker from "./DemoPicker"
 import DockCoachMark from "./DockCoachMark"
 import IntentList from "./IntentList"
+import ReviewNudge from "./ReviewNudge"
 import { runIntent } from "./runIntent"
 import StatusHeader from "./StatusHeader"
 import {
@@ -48,6 +50,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		workspaceFeatures,
 		nrfEnvironment,
 		espEnvironment,
+		reviewNudgeShow,
 	} = useExtensionState()
 
 	const hasWorkspace = openFolderPaths.length > 0
@@ -102,6 +105,19 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		}
 		setCraNudgeDismissed(true)
 	}
+	// One-time "leave a review" nudge. Eligibility (a few successful completions, not yet retired) is decided
+	// host-side and arrives as reviewNudgeShow. Both actions retire it for good via the banner-dismissal ledger
+	// (id "review-nudge"), so it never nags. openReview also opens the Marketplace review page.
+	const REVIEW_NUDGE_URL =
+		"https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger&ssr=false#review-details"
+	const dismissReviewNudge = () => {
+		StateServiceClient.dismissBanner({ value: "review-nudge" }).catch(console.error)
+	}
+	const openReview = () => {
+		WebServiceClient.openInBrowser({ value: REVIEW_NUDGE_URL }).catch(console.error)
+		StateServiceClient.dismissBanner({ value: "review-nudge" }).catch(console.error)
+	}
+
 	// A3 — the grounded CRA nudge: project-open, a connectivity stack present, no SBOM yet, not dismissed.
 	const craBanner = hasWorkspace && (hasBle || hasWifi) && !hasCompliance && !craNudgeDismissed
 	// Precedence (one grounded promotion per paint): the A10 deep-debug sub-line is suppressed while the nudge shows.
@@ -160,6 +176,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				    resolved before first paint — no uninitiated pop-in. The only mount/unmount is on a user-initiated
 				    change (folder add, or a save that creates compliance/ or enables CONFIG_BT), where motion is
 				    expected feedback; so we mount/unmount rather than reserve an always-empty placeholder slot. */}
+				{/* One-time "leave a review" nudge — welcome only, after a few wins; suppressed while the grounded
+				    CRA nudge owns the first paint (CRA precedence). Retires for good on either action. */}
+				{!craBanner && reviewNudgeShow && <ReviewNudge onDismiss={dismissReviewNudge} onReview={openReview} />}
+
 				{craBanner && (
 					<CraNudge
 						evidence={craEvidence}
