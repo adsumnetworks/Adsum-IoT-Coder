@@ -4,7 +4,11 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 
 ## [0.2.0] - 2026-07-21
 
-Your model or your key, credited expertise, and steadier long sessions.
+A full end-to-end gateway build, your model or your key, credited expertise, and a second marketplace.
+
+### Build a whole product, not just a fix
+
+Expanded curated firmware knowledge now carries a full, long-horizon build across two chips and two toolchains. The launch build is a complete two-chip BLE-to-WiFi gateway, an nRF52840 BLE scanner on Zephyr and an ESP32 Wi-Fi and MQTT uplink on ESP-IDF, for the Fanstel board, from one spec in one working session with the developer approving each step. See the [walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway).
 
 ### Choose your model
 
@@ -20,7 +24,11 @@ The forward-handoff behavior CRA runs got in 0.1.8 now applies to every workflow
 
 ### Longer sessions hold up
 
-Token-aware context handling replaces blunt transcript truncation, so a long session, building a full two-chip BLE-to-WiFi gateway, running a big BLE capture, or sweeping a full CRA report, is less likely to lose the data it needs mid-session.
+Token-aware context handling replaces blunt transcript truncation, so a long session (the gateway build above, a big BLE capture, a full CRA sweep) is less likely to lose the data it needs mid-session.
+
+### Now on Open VSX
+
+Adsum is published to [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) as well as the VS Code Marketplace, so Cursor, Windsurf, VSCodium, and other VS Code-compatible editors can install it.
 
 ### Reliability
 
