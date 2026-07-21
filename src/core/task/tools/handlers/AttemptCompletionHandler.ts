@@ -13,6 +13,7 @@ import { scanForVerdictLeaks } from "@services/knowledge/honesty/verdictScan"
 import { telemetryService } from "@services/telemetry"
 import { findLastIndex } from "@shared/array"
 import { COMPLETION_RESULT_CHANGES_FLAG } from "@shared/ExtensionMessage"
+import { REVIEW_NUDGE_THRESHOLD } from "@shared/reviewNudge"
 import { ClineDefaultTool } from "@shared/tools"
 import type { ToolResponse } from "../../index"
 import { buildUserFeedbackContent } from "../../utils/buildUserFeedbackContent"
@@ -21,11 +22,9 @@ import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 
-/** Successful-completion threshold at which the one-time "leave a review" nudge becomes eligible. */
-const REVIEW_NUDGE_THRESHOLD = 3
-
 /** Count a successful task completion toward the "leave a review" nudge. Fires the eligibility signal the first
- *  time the count crosses the threshold. Never throws: review accounting must never interrupt a completion. */
+ *  time the count crosses the threshold. Never throws: review accounting must never interrupt a completion.
+ *  The threshold is shared with the show-gate in Controller.postStateToWebview so the two cannot drift. */
 async function recordReviewProgress(): Promise<void> {
 	try {
 		// Lazy-load StateManager so importing this module (some unit tests do) does not pull in the
@@ -322,7 +321,7 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 				await config.callbacks.saveCheckpoint(true, completionMessageTs)
 				await addNewChangesFlagToLastCompletionResultMessage()
 				telemetryService.captureTaskCompleted(config.ulid)
-				recordReviewProgress()
+				void recordReviewProgress()
 				if (config.api instanceof AdsumFreeHandler) {
 					telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
 				}

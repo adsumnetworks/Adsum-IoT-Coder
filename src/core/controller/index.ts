@@ -13,6 +13,7 @@ import type { ChatContent } from "@shared/ChatContent"
 import type { ExtensionState, Platform } from "@shared/ExtensionMessage"
 import type { HistoryItem } from "@shared/HistoryItem"
 import type { McpMarketplaceCatalog, McpMarketplaceItem } from "@shared/mcp"
+import { reviewNudgeEligible } from "@shared/reviewNudge"
 import type { Settings } from "@shared/storage/state-keys"
 import type { Mode } from "@shared/storage/types"
 import type { TelemetrySetting } from "@shared/TelemetrySetting"
@@ -1001,10 +1002,12 @@ export class Controller {
 			workspaceFeatures: getCachedWorkspaceFeatures(),
 			handoverUi: getHandoverUiState(),
 			// One-time "leave a review" nudge: eligible after a few successful completions, and not yet retired
-			// via the banner-dismissal ledger. Computed from state directly to avoid a BannerService init dependency.
-			reviewNudgeShow:
-				(this.stateManager.getGlobalStateKey("reviewNudgeCompletions") ?? 0) >= 3 &&
-				!(this.stateManager.getGlobalStateKey("dismissedBanners") ?? []).some((b) => b.bannerId === "review-nudge"),
+			// via the banner-dismissal ledger. Predicate + threshold are shared (src/shared/reviewNudge) so this
+			// show-gate cannot drift from the fire-gate in AttemptCompletionHandler.
+			reviewNudgeShow: reviewNudgeEligible(
+				this.stateManager.getGlobalStateKey("reviewNudgeCompletions") ?? 0,
+				this.stateManager.getGlobalStateKey("dismissedBanners") ?? [],
+			),
 		}
 	}
 
