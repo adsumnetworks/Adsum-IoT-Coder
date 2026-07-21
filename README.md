@@ -20,9 +20,11 @@
   <a href="https://www.youtube.com/@adsumnetworks"><img src="https://img.shields.io/badge/YouTube-watch-FF0000?logo=youtube&logoColor=white" alt="YouTube"></a>
 </p>
 
-**[Watch the demo →](https://www.youtube.com/watch?v=67tUybg1phk)** · **[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[CRA readiness →](#cra-readiness-sbom-cve-and-secure-by-design)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
+**[Watch the build →](https://youtu.be/WrRYutpmHi8)** · **[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[CRA readiness →](#cra-readiness-sbom-cve-and-secure-by-design)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
 
-<a href="https://www.youtube.com/watch?v=67tUybg1phk"><img src="assets/docs/hero.gif" width="70%" alt="Adsum IoT Coder debugging ESP32 and nRF firmware in VS Code: capture, analyze, fix" /></a>
+<a href="https://youtu.be/WrRYutpmHi8"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder building and debugging ESP32 and nRF firmware in VS Code" /></a>
+
+**[▶ See it build a two-chip BLE-to-WiFi gateway from one spec →](https://youtu.be/WrRYutpmHi8)** · **[Read the walkthrough →](https://docs.adsumnetworks.com/ble-wifi-gateway)**
 
 </div>
 
@@ -32,15 +34,15 @@
 
 <p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
 
-## What's New <sup>`v0.1.8`</sup>
+## What's New <sup>`v0.2.0`</sup>
 
-<img src="assets/icons/whatsnew-wave.png" width="18" valign="middle" alt="" /> &nbsp;**See a bug at every layer.** Adsum now debugs across all three layers of a BLE connection: the application log, the HCI host↔controller bus, and the over-the-air radio, correlated so you see exactly where a flow broke, not just where the app noticed. A guided sample run makes it easy to try in one click, with no hardware, and the same debugging works on your own nRF boards.
+<img src="assets/icons/whatsnew-wave.png" width="18" valign="middle" alt="" /> &nbsp;**Run it on your model, or your key.** A curated model picker: the free tier, the GLM Coding Plan, Claude (Sonnet 5, Opus 4.8, Haiku 4.5), DeepSeek V4, and any OpenAI or Anthropic-compatible endpoint, cloud or local. Switch on a live task, no restart.
 
-<p align="center">
-  <img src="assets/docs/ble-sniffer.png" width="46%" alt="Adsum IoT Coder guided 3-layer debug in VS Code: the sniffer-dongle setup step (5/7) of the walkthrough, reading curated nRF knowledge files and rendering a generated nRF52840 dongle DFU-mode diagram" />
-</p>
+<img src="assets/icons/whatsnew-home.png" width="18" valign="middle" alt="" /> &nbsp;**Credited expertise.** When the agent uses a piece of curated knowledge, it names the engineer who wrote it, right in the conversation, linked. Human-curated, never anonymous AI output.
 
-Plus a **hardening pass**: smoother, safer CRA runs, more reliable Windows terminals, and a slimmer input area. *[Full changelog](./CHANGELOG.md).*
+Plus longer sessions hold up on big captures and full CRA sweeps, and every task rests on a clear next step instead of a dead-end "done". *[Full changelog](./CHANGELOG.md).*
+
+**Recently, in `v0.1.8`:** see a bug at every layer, the 3-layer BLE debug across the app log, the HCI bus, and the over-the-air radio.
 
 **The flagship, shipped in `v0.1.7`:**
 
@@ -75,13 +77,13 @@ It tells you which CRA date applies to you and writes a `compliance/` folder (re
 
 ## Why it exists
 
-Embedded firmware work is two jobs at once: a lot of routine, repetitive setup, and a handful of genuinely hard problems. General coding agents help with neither well, because both live outside the source file.
+Adsum does not replace the embedded engineer, it accelerates them. Embedded firmware work is two jobs at once: a lot of routine, repetitive setup, and a handful of genuinely hard problems. General coding agents help with neither well, because both live outside the source file.
 
 **The routine you would rather automate:** scaffolding a project, wiring devicetree and Kconfig, generating logging, adding a BLE service or a sensor, writing tests, bringing up a new board. Adsum does this work for you, idiomatically, on both ESP and nRF.
 
 **The hard bugs you cannot grep:** a missing `settings_load()` after `bt_enable()` that silently breaks notifications after a reconnect; an ESP-IDF partition mismatch that only fails at runtime; a fault visible only by correlating logs across two boards. Adsum reads the device, captures the live logs, and works them the way a senior engineer does.
 
-And the reason it is good at the hard parts is the part general agents do not have: **real human expertise.** The firmware knowledge that drives it is authored by engineers who have shipped, loaded on demand, and validated against an open benchmark. Human-curated, not AI-generated.
+And the reason it is good at the hard parts is the part general agents do not have: **real human expertise.** The firmware knowledge that drives it is authored by engineers who have shipped, loaded on demand, and validated against an open benchmark. Human-curated, not AI-generated. And you can see whose: the first time the agent uses a piece of curated knowledge, it credits the engineer who wrote it, by name and linked, so the expertise is attributable, never anonymous.
 
 ## What it does: debug, build, and prototype ESP and nRF firmware
 
@@ -150,20 +152,20 @@ Most tools make you choose a provider, paste an API key, and add a card before y
 
 Install Adsum IoT Coder and it just works. No key, no account, no card. The inference is on us, on a managed model, so you can point the agent at your own firmware in the first minute, not the first hour. It is a real working tier, generous enough to scaffold a project and run a full debug loop, not a locked demo.
 
-When you want your own model or heavier usage, drop in any OpenAI-compatible key (Claude, DeepSeek, or a local model with strong tool-calling) and the switch is instant: the task you are in keeps running, no restart. The free tier is token-metered, and when you reach the limit a one-click prompt moves you onto your own key and the same task picks up exactly where it left off.
+When you want your own model or heavier usage, drop in a key for the GLM Coding Plan, Claude, DeepSeek, or any OpenAI- or Anthropic-compatible endpoint (cloud or a local model with strong tool-calling) and the switch is instant: the task you are in keeps running, no restart. The free tier is token-metered, and when you reach the limit a one-click prompt moves you onto your own key and the same task picks up exactly where it left off.
 
 |  | Free tier | Bring your own key |
 |:---|:---|:---|
 | **API key** | Not required | Required |
 | **Cost to you** | Nothing, the inference is on us | Your provider's rates |
-| **Model** | Managed by Adsum | Any OpenAI-compatible model |
+| **Model** | Managed by Adsum | GLM, Claude, DeepSeek, or any compatible model |
 | **Best for** | First run, evaluation, quick fixes | Daily driver, long sessions, model choice |
 
-Recommended for bring-your-own-key: **Claude Haiku 4.5** (the benchmark model) and **DeepSeek-V4-Pro** (cost-effective long sessions). Full setup and tested models in the [docs](https://docs.adsumnetworks.com/models).
+Adsum ships a curated picker: the **GLM Coding Plan**, **Claude** (Sonnet 5, Opus 4.8, Haiku 4.5), **DeepSeek V4**, and any **OpenAI or Anthropic-compatible** endpoint, cloud or local. Recommended: **Claude Sonnet 5** for the strongest results, **Claude Haiku 4.5** (the benchmark model) for speed, the **GLM Coding Plan** or **DeepSeek V4** for cost-effective long sessions, or a **local model** to keep everything on your machine. Full setup and tested models in the [docs](https://docs.adsumnetworks.com/models).
 
 ## Roadmap
 
-Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi, one-click CRA readiness (SBOM + secure-by-design posture), and a **guided 3-layer debug** that correlates the app log, on-device HCI, and the over-the-air radio to pinpoint where a flow actually broke, not just the app log. **Next:** more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), 3-layer decoding beyond BLE, power profiling, and a growing community knowledge base. The roadmap is shaped by what the community asks for and contributes.
+Shipping today: Nordic nRF and Espressif ESP32, with BLE and Wi-Fi, one-click CRA readiness (SBOM + secure-by-design posture), and a **guided 3-layer debug** that correlates the app log, on-device HCI, and the over-the-air radio to pinpoint where a flow actually broke, not just the app log. **Next:** more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), 3-layer decoding beyond BLE, power profiling, a growing community knowledge base, and, in beta, handing a running task to your own coding agent, so Adsum brings the embedded expertise and drives the toolchain while your agent does the work. The roadmap is shaped by what the community asks for and contributes.
 
 ## Limitations
 
