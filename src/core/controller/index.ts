@@ -1000,6 +1000,11 @@ export class Controller {
 			workspaceClassification: getCachedWorkspaceSummary(),
 			workspaceFeatures: getCachedWorkspaceFeatures(),
 			handoverUi: getHandoverUiState(),
+			// One-time "leave a review" nudge: eligible after a few successful completions, and not yet retired
+			// via the banner-dismissal ledger. Computed from state directly to avoid a BannerService init dependency.
+			reviewNudgeShow:
+				(this.stateManager.getGlobalStateKey("reviewNudgeCompletions") ?? 0) >= 3 &&
+				!(this.stateManager.getGlobalStateKey("dismissedBanners") ?? []).some((b) => b.bannerId === "review-nudge"),
 		}
 	}
 

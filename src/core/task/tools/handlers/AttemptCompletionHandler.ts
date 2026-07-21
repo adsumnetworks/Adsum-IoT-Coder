@@ -21,6 +21,27 @@ import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 
+/** Successful-completion threshold at which the one-time "leave a review" nudge becomes eligible. */
+const REVIEW_NUDGE_THRESHOLD = 3
+
+/** Count a successful task completion toward the "leave a review" nudge. Fires the eligibility signal the first
+ *  time the count crosses the threshold. Never throws: review accounting must never interrupt a completion. */
+async function recordReviewProgress(): Promise<void> {
+	try {
+		// Lazy-load StateManager so importing this module (some unit tests do) does not pull in the
+		// vscode-dependent state layer at load time; it resolves only when a real completion runs in the host.
+		const { StateManager } = await import("@core/storage/StateManager")
+		const sm = StateManager.get()
+		const next = (sm.getGlobalStateKey("reviewNudgeCompletions") ?? 0) + 1
+		sm.setGlobalState("reviewNudgeCompletions", next)
+		if (next === REVIEW_NUDGE_THRESHOLD) {
+			telemetryService.captureReviewNudgeEligible(getInstallId())
+		}
+	} catch {
+		// swallow — a review counter must never break task completion
+	}
+}
+
 /** The demo scenario id this task is completing (matched from the launch bubble text), or undefined if it's not
  *  a demo task. Drives `demo_run_completed` attribution across ALL scenarios — previously only NUS was detected. */
 export function completingDemoScenarioId(config: TaskConfig): string | undefined {
@@ -301,6 +322,7 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 				await config.callbacks.saveCheckpoint(true, completionMessageTs)
 				await addNewChangesFlagToLastCompletionResultMessage()
 				telemetryService.captureTaskCompleted(config.ulid)
+				recordReviewProgress()
 				if (config.api instanceof AdsumFreeHandler) {
 					telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
 				}
@@ -338,6 +360,7 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			await config.callbacks.saveCheckpoint(true, completionMessageTs)
 			await addNewChangesFlagToLastCompletionResultMessage()
 			telemetryService.captureTaskCompleted(config.ulid)
+			void recordReviewProgress()
 			if (config.api instanceof AdsumFreeHandler) {
 				telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
 			}

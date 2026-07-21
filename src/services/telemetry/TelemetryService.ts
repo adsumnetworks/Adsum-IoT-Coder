@@ -228,6 +228,10 @@ export class TelemetryService {
 			// User clicked "Don't show again" — the red-line signal to watch
 			REENGAGEMENT_SILENCED: "free_tier.reengagement_silenced",
 		},
+		REVIEW_NUDGE: {
+			// The one-time "leave a review" nudge became eligible (user crossed the successful-completion threshold).
+			ELIGIBLE: "review_nudge.eligible",
+		},
 		NRF: {
 			ENV_DETECTED: "nrf.env_detected",
 		},
@@ -811,6 +815,13 @@ export class TelemetryService {
 		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.REENGAGEMENT_SILENCED, {
 			install_id: installId,
 			cohort,
+			tier: "anonymous",
+		})
+	}
+
+	public captureReviewNudgeEligible(installId: string) {
+		this.captureRequired(TelemetryService.EVENTS.REVIEW_NUDGE.ELIGIBLE, {
+			install_id: installId,
 			tier: "anonymous",
 		})
 	}

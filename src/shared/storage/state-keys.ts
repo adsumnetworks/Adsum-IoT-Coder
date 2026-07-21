@@ -97,6 +97,9 @@ const GLOBAL_STATE_FIELDS = {
 	reengagementNudgeIgnores: { default: undefined as number | undefined },
 	// User clicked "Don't show again" on a re-engagement nudge — silence it forever.
 	reengagementNudgeSilenced: { default: undefined as boolean | undefined },
+	// Successful task completions counted toward the one-time "leave a review" nudge. The nudge shows once the
+	// count crosses a small threshold; it is retired for good via the banner-dismissal ledger (id "review-nudge").
+	reviewNudgeCompletions: { default: 0 as number },
 } satisfies FieldDefinitions
 
 // Fields that map directly to ApiHandlerOptions in @shared/api.ts
