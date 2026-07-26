@@ -32,7 +32,7 @@
 
 ---
 
-> **vs Claude Code, same model (Claude Haiku 4.5): 5/6 vs 3/6 bugs closed on real nRF hardware, at 3.8× fewer tokens on average and up to 13× on individual tasks. The edge is architecture, not model scale.**
+> **On our open benchmark, running the identical model as Claude Code (Claude Haiku 4.5), Adsum fixed 4× more firmware bugs on the first device flash, at 3.8× fewer tokens on average and up to 13× on individual tasks. Anyone can rerun it.**
 
 <p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
 
@@ -113,7 +113,7 @@ CRA readiness (SBOM + secure-by-design posture) runs on both Nordic and Espressi
 
 ## Benchmark
 
-> **Adsum IoT Coder vs Claude Code, same model (Claude Haiku 4.5): 5/6 vs 3/6 bugs, 3.8× more token-efficient on average and up to 13× on individual tasks.**
+> **On our open benchmark, running the identical model as Claude Code (Claude Haiku 4.5), Adsum fixed 4× more firmware bugs on the first device flash, at 3.8× fewer tokens on average and up to 13× on individual tasks. Anyone can rerun it.**
 
 Both agents ran the same model on real nRF52 hardware, so the gap measures architecture, not model power. Adsum IoT Coder closed 5 of 6 bugs versus Claude Code's 3, using 3.8× fewer tokens on average and as much as 13× fewer on the hardest individual tasks. The benchmark, IoT-FirmwareDebugBench v0.1, is open source. Run it yourself.
 
