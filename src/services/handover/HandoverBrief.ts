@@ -113,16 +113,50 @@ export function extractRequires(yaml: string): string[] {
  */
 export function parseWorkflowSteps(body: string): string[] {
 	const steps: string[] = []
+	let seq: { depth: number; total: string } | null = null
 	// Workflows label their sequence as either "Step N" or "Phase N", at whatever heading depth the
 	// author chose — debug-loop.md opens with `## Step 0` then runs `### Phase 1..5`. Matching only
 	// "Step" saw 1 of 6, so the server told the agent it was finished before it had built anything,
 	// and real Phase-1 work had to be reported as off-plan. Match both, in document order.
-	for (const m of body.matchAll(/^#{2,4}\s*(step|phase)\s*(\d+[a-z]?)\s*[:—–-]\s*(.+?)\s*$/gim)) {
-		const kind = m[1][0].toUpperCase() + m[1].slice(1).toLowerCase()
-		steps.push(`${kind} ${m[2]}: ${m[3].replace(/\(.*?\)\s*$/, "").trim()}`)
+	for (const line of body.split("\n")) {
+		// A heading at or above the sequence heading's depth closes its list section.
+		const depth = line.match(/^(#{1,6})[ \t]/)
+		if (depth && seq && depth[1].length <= seq.depth) {
+			seq = null
+		}
+		const heading = line.match(HEADING_STEP_RE)
+		if (heading) {
+			const kind = heading[1][0].toUpperCase() + heading[1].slice(1).toLowerCase()
+			// Titles are passed through untouched apart from a trailing parenthetical aside. Normalising
+			// them further (e.g. cutting at an em dash) collapses "Post-Generation — RTT Check" and
+			// "Post-Generation — BLE Stack Check" into ONE label, and the server resolves progress with
+			// steps.indexOf() — so the agent reporting step 5 would be recorded as step 4.
+			steps.push(`${kind} ${heading[2].replace(/[ \t]/g, "")}: ${heading[3].replace(/\(.*?\)\s*$/, "").trim()}`)
+			continue
+		}
+		// cra-readiness writes its five phases as an ordered LIST under a heading that announces the
+		// sequence ("## The five phases (emit the `### Step N/5` banner…)"), not as headings — which is
+		// why the heading scan alone saw 1 of 7 and forced 6 of 7 checkpoints to report off-plan.
+		const announce = line.match(SEQ_HEADING_RE)
+		if (announce) {
+			seq = { depth: announce[1].length, total: announce[2] }
+			continue
+		}
+		const item = seq && line.match(LIST_STEP_RE)
+		if (item && seq) {
+			steps.push(`Step ${item[1]}/${seq.total}: ${item[2].replace(/\.\s*$/, "").trim()}`)
+		}
 	}
 	return steps
 }
+
+/** `## Step 0.5 — …`, `### Step 3/5 · …`, `## Phase 2: …` — the number may be decimal and carry an `/M`. */
+const HEADING_STEP_RE =
+	/^#{2,4}[ \t]*(step|phase)[ \t]*(\d+(?:\.\d+)?[a-z]?(?:[ \t]*\/[ \t]*\d+)?)[ \t]*[:—–·-][ \t]*(.+?)[ \t]*$/i
+/** A heading that announces its steps as an ordered list rather than as sub-headings (mentions `Step N/M`). */
+const SEQ_HEADING_RE = /^(#{2,4})[ \t]+.*?\b(?:step|phase)s?[ \t]*[n\d][ \t]*\/[ \t]*(\d+)/i
+/** A top-level ordered-list item with a bold title, inside a sequence-announcing section. */
+const LIST_STEP_RE = /^(\d+)\.[ \t]+\*\*(.+?)\*\*/
 
 /** A platform-scoped id's core-corpus fallback (`adsum/esp/rules/next-step` → `adsum/rules/next-step`).
  *  The corpus keeps cross-platform rules at the root; a platform-relative prose ref to one of them
