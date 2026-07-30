@@ -129,10 +129,13 @@ export function exportSessionFolder(opts: {
 		note: "Adsum session export. Secrets were redacted before this file was written; review before sharing widely.",
 	}
 
+	// File-vs-directory is decided by the NAME, not by whether the path exists yet: an output directory that
+	// has not been created would otherwise be treated as a filename, writing a bundle with no extension —
+	// which readers reject, since they pick their format by extension.
 	const file =
-		fs.existsSync(opts.outPath) && fs.statSync(opts.outPath).isDirectory()
-			? path.join(opts.outPath, `${taskId}${SESSION_EXPORT_EXT}`)
-			: opts.outPath
+		opts.outPath.endsWith(SESSION_EXPORT_EXT) || opts.outPath.endsWith(".gz")
+			? opts.outPath
+			: path.join(opts.outPath, `${taskId}${SESSION_EXPORT_EXT}`)
 	fs.mkdirSync(path.dirname(file), { recursive: true })
 	fs.writeFileSync(file, zlib.gzipSync(Buffer.from(JSON.stringify({ manifest, files }), "utf8")))
 
