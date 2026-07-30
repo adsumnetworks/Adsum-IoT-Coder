@@ -3,6 +3,9 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { ClineEnv } from "@/config"
 import { ExtensionRegistryInfo } from "@/registry"
+import { getInstallId } from "@/services/adsum/InstallIdentity"
+import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
+import { getEditorIdentity } from "@/services/telemetry/editorIdentity"
 
 /**
  * Author bearer token for the draft channel (optional). Resolution, first hit wins:
@@ -107,13 +110,49 @@ export class RegistryClient {
 		return this.get(`/v1/kbits/blob/${encodeURIComponent(contentHash)}`)
 	}
 
+	/** Anonymous identity headers so the registry can attribute its high-volume events (manifest/blob fetches)
+	 *  to an install and a platform — the two dimensions the 0.1.8 ops dashboard could not slice because these
+	 *  server-side events had no install_id (all one synthetic person) and no iot_platform (0% coverage).
+	 *  The install id is the SAME anonymous id already sent for inference/registration — no new PII. Resolved
+	 *  once and fully guarded: a missing host service (e.g. the standalone core) simply omits the headers, and
+	 *  the backend falls back to its old synthetic attribution. */
+	private cachedIdentity?: Record<string, string>
+	private identityHeaders(): Record<string, string> {
+		if (this.cachedIdentity) {
+			return this.cachedIdentity
+		}
+		const h: Record<string, string> = {}
+		try {
+			const id = getInstallId()
+			if (id) {
+				h["X-Adsum-Install"] = id
+			}
+		} catch {}
+		try {
+			const platform = getCachedWorkspaceSummary()
+			if (platform) {
+				h["X-Adsum-Platform"] = platform
+			}
+		} catch {}
+		try {
+			// The editor as a REQUEST HEADER, not telemetry: backend calls aren't gated by telemetry consent, so
+			// this is the only way to see the editor of the many Open VSX / Cursor installs that run telemetry-off.
+			const ed = getEditorIdentity()
+			if (ed?.scheme) {
+				h["X-Adsum-Editor"] = ed.scheme
+			}
+		} catch {}
+		this.cachedIdentity = h
+		return h
+	}
+
 	private async get(path: string): Promise<string | null> {
 		const url = `${this.baseUrl}${path}`
 		for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
 			const controller = new AbortController()
 			const timer = setTimeout(() => controller.abort(), this.timeoutMs)
 			try {
-				const headers: Record<string, string> = { Accept: "application/json" }
+				const headers: Record<string, string> = { Accept: "application/json", ...this.identityHeaders() }
 				// Draft channel: identify the author so the registry serves their own draft versions.
 				// Harmless on blob GETs (content-addressed, public); the server only ever returns the
 				// token-holder's own drafts, never anyone else's.

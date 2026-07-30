@@ -496,12 +496,20 @@ export class Task {
 			openAiCompatibleDomain = extractProviderDomainFromUrl(apiConfiguration.openAiBaseUrl)
 		}
 
+		// The model the task will actually run on — the "which model" dimension for the 0.2.0 picker/BYOK story.
+		const currentModelId = (() => {
+			try {
+				return this.api.getModel().id
+			} catch {
+				return undefined
+			}
+		})()
 		if (historyItem) {
 			// Open task from history
-			telemetryService.captureTaskRestarted(this.ulid, currentProvider, openAiCompatibleDomain)
+			telemetryService.captureTaskRestarted(this.ulid, currentProvider, openAiCompatibleDomain, currentModelId)
 		} else {
 			// New task started
-			telemetryService.captureTaskCreated(this.ulid, currentProvider, openAiCompatibleDomain)
+			telemetryService.captureTaskCreated(this.ulid, currentProvider, openAiCompatibleDomain, currentModelId)
 		}
 
 		// Initialize command executor with config and callbacks

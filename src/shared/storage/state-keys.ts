@@ -97,6 +97,13 @@ const GLOBAL_STATE_FIELDS = {
 	reengagementNudgeIgnores: { default: undefined as number | undefined },
 	// User clicked "Don't show again" on a re-engagement nudge — silence it forever.
 	reengagementNudgeSilenced: { default: undefined as boolean | undefined },
+	// Successful task completions counted toward the one-time "leave a review" nudge. The nudge shows once the
+	// count crosses a small threshold; it is retired for good via the banner-dismissal ledger (id "review-nudge").
+	reviewNudgeCompletions: { default: 0 as number },
+	// "Ask on a high note" guard: armed by a successful completion, disarmed the moment a task starts or is
+	// cancelled — so the nudge greets a win, never a cold reopen after a loop/force-quit. Orthogonal to the
+	// count (eligibility) and the feature flag (launch); all three must hold to show the card.
+	reviewNudgeArmed: { default: false as boolean },
 } satisfies FieldDefinitions
 
 // Fields that map directly to ApiHandlerOptions in @shared/api.ts

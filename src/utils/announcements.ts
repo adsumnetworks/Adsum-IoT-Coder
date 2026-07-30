@@ -14,11 +14,16 @@ export function getLatestAnnouncementId(): string {
 }
 
 /**
- * The 3-pillar "what's new" one-liner. Single source of truth shown on a fresh install, a generic (non-CRA)
- * update toast, AND as the recurring nudge's fallback when the open project isn't CRA-relevant — so those
- * surfaces never drift. It's a feature announcement (NOT a per-project CRA claim), so it's honest regardless
- * of the open project.
+ * The "what's new" one-liner. Single source of truth for the generic (non-CRA) update toast AND the recurring
+ * nudge's fallback — so those surfaces never drift. A feature announcement, honest regardless of the open project.
+ *
+ * Split by audience (`isNewInstall`): a returning user hears the new BYOK + attribution + long-horizon story
+ * (imperative "wire in your key" is right for them); a first-timer instead gets a Welcome that leads with the
+ * free tier, because telling a brand-new user to wire in a key contradicts "no key, no account" — and a
+ * "what's new in v…" line is odd when nothing is old for them yet.
  */
-export function whatsNewToastMessage(version: string): string {
-	return `✦ What's new in Adsum IoT Coder v${version} — CRA readiness · hardware-in-the-loop debug · expert know-how that augments the AI.`
+export function whatsNewToastMessage(version: string, isNewInstall = false): string {
+	return isNewInstall
+		? `✦ Welcome to Adsum IoT Coder — the free tier is on, no key needed · curated firmware expertise, credited to the engineers who wrote it.`
+		: `✦ What's new in Adsum IoT Coder v${version} — wire in your GLM plan or model key · see who wrote the knowledge · longer sessions hold up.`
 }

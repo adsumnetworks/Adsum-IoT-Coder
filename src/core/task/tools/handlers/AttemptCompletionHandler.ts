@@ -13,6 +13,7 @@ import { scanForVerdictLeaks } from "@services/knowledge/honesty/verdictScan"
 import { telemetryService } from "@services/telemetry"
 import { findLastIndex } from "@shared/array"
 import { COMPLETION_RESULT_CHANGES_FLAG } from "@shared/ExtensionMessage"
+import { REVIEW_NUDGE_THRESHOLD } from "@shared/reviewNudge"
 import { ClineDefaultTool } from "@shared/tools"
 import type { ToolResponse } from "../../index"
 import { buildUserFeedbackContent } from "../../utils/buildUserFeedbackContent"
@@ -20,6 +21,28 @@ import type { IPartialBlockHandler, IToolHandler } from "../ToolExecutorCoordina
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
+
+/** Count a successful task completion toward the "leave a review" nudge. Fires the eligibility signal the first
+ *  time the count crosses the threshold. Never throws: review accounting must never interrupt a completion.
+ *  The threshold is shared with the show-gate in Controller.postStateToWebview so the two cannot drift. */
+async function recordReviewProgress(): Promise<void> {
+	try {
+		// Lazy-load StateManager so importing this module (some unit tests do) does not pull in the
+		// vscode-dependent state layer at load time; it resolves only when a real completion runs in the host.
+		const { StateManager } = await import("@core/storage/StateManager")
+		const sm = StateManager.get()
+		const next = (sm.getGlobalStateKey("reviewNudgeCompletions") ?? 0) + 1
+		sm.setGlobalState("reviewNudgeCompletions", next)
+		// Arm the "ask on a high note" guard: this is a win, so the welcome card may appear next paint. It is
+		// disarmed again the instant a new task starts or one is cancelled (see Controller).
+		sm.setGlobalState("reviewNudgeArmed", true)
+		if (next === REVIEW_NUDGE_THRESHOLD) {
+			telemetryService.captureReviewNudgeEligible(getInstallId())
+		}
+	} catch {
+		// swallow — a review counter must never break task completion
+	}
+}
 
 /** The demo scenario id this task is completing (matched from the launch bubble text), or undefined if it's not
  *  a demo task. Drives `demo_run_completed` attribution across ALL scenarios — previously only NUS was detected. */
@@ -301,6 +324,7 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 				await config.callbacks.saveCheckpoint(true, completionMessageTs)
 				await addNewChangesFlagToLastCompletionResultMessage()
 				telemetryService.captureTaskCompleted(config.ulid)
+				void recordReviewProgress()
 				if (config.api instanceof AdsumFreeHandler) {
 					telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
 				}
@@ -338,6 +362,7 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			await config.callbacks.saveCheckpoint(true, completionMessageTs)
 			await addNewChangesFlagToLastCompletionResultMessage()
 			telemetryService.captureTaskCompleted(config.ulid)
+			void recordReviewProgress()
 			if (config.api instanceof AdsumFreeHandler) {
 				telemetryService.captureFreeTierDebugCycleCompleted(getInstallId(), "free-default", 0)
 			}

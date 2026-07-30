@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.1.8",
+	"version": "0.2.0",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -402,6 +402,7 @@
 		"test:kbits": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/kbit.test.ts",
 		"test:context": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/__tests__/context-budget.test.ts",
 		"test:attribution": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/attribution.test.ts",
+		"test:review-nudge": "ts-node --transpile-only -P tsconfig.unit-test.json src/shared/reviewNudge.test.ts",
 		"test:registry": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/registry/registry.test.ts",
 		"test:cra-honesty": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/verdictScan.test.ts",
 		"test:cra-structure": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/structureScan.node-test.ts",

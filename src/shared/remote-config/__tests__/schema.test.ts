@@ -32,8 +32,8 @@ describe("Remote Config Schema", () => {
 		it("should accept valid S3 access key settings with required fields", () => {
 			const validSettings = {
 				bucket: "my-bucket",
-				accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-				secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+				accessKeyId: "test-access-key-id",
+				secretAccessKey: "test-secret-access-key",
 			}
 			const result = S3AccessKeySettingsSchema.parse(validSettings)
 			expect(result).to.deep.equal(validSettings)
@@ -42,8 +42,8 @@ describe("Remote Config Schema", () => {
 		it("should accept S3 settings with all optional fields", () => {
 			const fullSettings = {
 				bucket: "my-bucket",
-				accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-				secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+				accessKeyId: "test-access-key-id",
+				secretAccessKey: "test-secret-access-key",
 				region: "us-east-1",
 				endpoint: "https://s3.us-east-1.amazonaws.com",
 				accountId: "123456789012",
@@ -61,8 +61,8 @@ describe("Remote Config Schema", () => {
 		it("should accept S3 settings with queue configuration fields", () => {
 			const settings = {
 				bucket: "my-bucket",
-				accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-				secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+				accessKeyId: "test-access-key-id",
+				secretAccessKey: "test-secret-access-key",
 				intervalMs: 60000,
 				maxRetries: 5,
 				batchSize: 50,
@@ -83,8 +83,8 @@ describe("Remote Config Schema", () => {
 			expect(() =>
 				S3AccessKeySettingsSchema.parse({
 					bucket: "my-bucket",
-					accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-					secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+					accessKeyId: "test-access-key-id",
+					secretAccessKey: "test-secret-access-key",
 					intervalMs: "30000",
 				}),
 			).to.throw()
@@ -94,8 +94,8 @@ describe("Remote Config Schema", () => {
 			expect(() =>
 				S3AccessKeySettingsSchema.parse({
 					bucket: "my-bucket",
-					accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-					secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+					accessKeyId: "test-access-key-id",
+					secretAccessKey: "test-secret-access-key",
 					maxRetries: "3",
 				}),
 			).to.throw()
@@ -105,8 +105,8 @@ describe("Remote Config Schema", () => {
 			expect(() =>
 				S3AccessKeySettingsSchema.parse({
 					bucket: "my-bucket",
-					accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-					secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+					accessKeyId: "test-access-key-id",
+					secretAccessKey: "test-secret-access-key",
 					backfillEnabled: "true",
 				}),
 			).to.throw()
@@ -115,8 +115,8 @@ describe("Remote Config Schema", () => {
 		it("should reject S3 settings with missing bucket", () => {
 			expect(() =>
 				S3AccessKeySettingsSchema.parse({
-					accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-					secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+					accessKeyId: "test-access-key-id",
+					secretAccessKey: "test-secret-access-key",
 				}),
 			).to.throw()
 		})
@@ -125,7 +125,7 @@ describe("Remote Config Schema", () => {
 			expect(() =>
 				S3AccessKeySettingsSchema.parse({
 					bucket: "my-bucket",
-					secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+					secretAccessKey: "test-secret-access-key",
 				}),
 			).to.throw()
 		})
@@ -134,7 +134,7 @@ describe("Remote Config Schema", () => {
 			expect(() =>
 				S3AccessKeySettingsSchema.parse({
 					bucket: "my-bucket",
-					accessKeyId: "AKIAIOSFODNN7EXAMPLE",
+					accessKeyId: "test-access-key-id",
 				}),
 			).to.throw()
 		})
@@ -173,8 +173,8 @@ describe("Remote Config Schema", () => {
 				type: "s3_access_keys" as const,
 				s3AccessSettings: {
 					bucket: "prompt-uploads-bucket",
-					accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-					secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+					accessKeyId: "test-access-key-id",
+					secretAccessKey: "test-secret-access-key",
 					region: "us-west-2",
 					endpoint: "https://s3.us-west-2.amazonaws.com",
 					accountId: "123456789012",
@@ -206,8 +206,8 @@ describe("Remote Config Schema", () => {
 				type: "s3_access_keys" as const,
 				s3AccessSettings: {
 					bucket: "my-bucket",
-					accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-					secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+					accessKeyId: "test-access-key-id",
+					secretAccessKey: "test-secret-access-key",
 				},
 			}
 			const result = PromptUploadingSchema.parse(config)
@@ -228,8 +228,8 @@ describe("Remote Config Schema", () => {
 				PromptUploadingSchema.parse({
 					enabled: true,
 					s3AccessSettings: {
-						accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-						secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+						accessKeyId: "test-access-key-id",
+						secretAccessKey: "test-secret-access-key",
 					},
 				}),
 			).to.throw()
@@ -738,8 +738,8 @@ describe("Remote Config Schema", () => {
 						type: "s3_access_keys",
 						s3AccessSettings: {
 							bucket: "enterprise-prompts",
-							accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-							secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+							accessKeyId: "test-access-key-id",
+							secretAccessKey: "test-secret-access-key",
 							region: "us-east-1",
 						},
 					},
