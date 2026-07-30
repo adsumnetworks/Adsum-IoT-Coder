@@ -22,6 +22,16 @@ import {
 	parseWorkflowSteps,
 	upsertManagedBlock,
 } from "./HandoverBrief"
+import {
+	CLAIM_STALE_MS,
+	claimIsLive,
+	claimOwnership,
+	pidAlive,
+	readClaim,
+	releaseOwnership,
+	renewOwnership,
+	windowOwnsWorkspace,
+} from "./HandoverOwner"
 import { buildHandoverStripById, buildHandoverUiState, deleteHandoverDir, handoverUiFingerprint } from "./HandoverUiState"
 
 const REPO = path.resolve(__dirname, "..", "..", "..")
@@ -1348,6 +1358,84 @@ describe("a returned session stays visible so the resumed task carries its histo
 // tools_used for "own_terminal_toolchain" while the server's schema only ever offered "own_terminal",
 // so no agent could send the value that fires it. Nothing caught it because the producer and the
 // consumers live in different files and neither side is wrong on its own. This is the seam test.
+// softAP: the agent probed seven serial ports with `timeout`, which macOS does not ship. Every probe
+// failed, but the loop still exited 0, so exec reported success and the agent nearly concluded no board
+// was attached. An exit code is not proof — and the error harvest written for exactly this was dead code.
+describe("exec — an exit code that contradicts the output is a failure, not a success", () => {
+	function execFixture(): { root: string; id: string; ws: string } {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), "adsum-exec-"))
+		const id = "ex3c"
+		const ws = fs.mkdtempSync(path.join(os.tmpdir(), "adsum-ws-"))
+		fs.mkdirSync(path.join(root, id), { recursive: true })
+		// A no-op activation script: exec refuses outright with no environment, and we are testing the
+		// exit-code logic, not environment detection.
+		const activate = path.join(root, "activate.sh")
+		fs.writeFileSync(activate, "# no-op\n")
+		fs.writeFileSync(
+			path.join(root, id, "brief.json"),
+			JSON.stringify({ mission: "m", workspace: ws, idf: { activate }, bits: [] }),
+		)
+		fs.writeFileSync(path.join(root, id, "state.json"), JSON.stringify({ status: "pending" }))
+		return { root, id, ws }
+	}
+
+	test("a loop that swallows `command not found` still fails the call and says why", async () => {
+		const { root, id } = execFixture()
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", {
+				protocolVersion: "2025-06-18",
+				capabilities: {},
+				clientInfo: { name: "t", version: "1" },
+			})
+			c.notify("notifications/initialized")
+			await c.call("tools/call", { name: "resume_handover", arguments: { handover_id: id } })
+
+			// Exactly the softAP shape: the inner command fails, the loop exits 0.
+			const masked = await c.call("tools/call", {
+				name: "exec",
+				arguments: { command: "for p in a b; do notarealbinary_xyz --probe $p; done; exit 0" },
+			})
+			const text = masked.result.content[0].text
+			assert.equal(masked.result.isError, true, "exit 0 with failures in the output is still a failure")
+			assert.match(text, /errors found/, "the harvested error lines are surfaced, not truncated away")
+			assert.match(text, /not found/, "names what actually failed")
+			assert.match(text, /exited 0 but the output contains failures/, "tells the agent not to trust the exit code")
+
+			// And the ledger records the masking, so the developer's record shows it too.
+			const events = fs
+				.readFileSync(path.join(root, id, "ledger.jsonl"), "utf8")
+				.trim()
+				.split("\n")
+				.map((l) => JSON.parse(l))
+			const execEvent = events.find((e) => e.event === "tool_exec")
+			assert.equal(execEvent.exit, 0, "the real exit code is still recorded honestly")
+			assert.equal(execEvent.masked, true, "and the contradiction is recorded alongside it")
+		} finally {
+			c.kill()
+		}
+	})
+
+	test("a genuinely clean command is not accused", async () => {
+		const { root, id } = execFixture()
+		const c = mcpClient(root)
+		try {
+			await c.call("initialize", {
+				protocolVersion: "2025-06-18",
+				capabilities: {},
+				clientInfo: { name: "t", version: "1" },
+			})
+			c.notify("notifications/initialized")
+			await c.call("tools/call", { name: "resume_handover", arguments: { handover_id: id } })
+			const ok = await c.call("tools/call", { name: "exec", arguments: { command: "echo built 0 errors" } })
+			assert.ok(!ok.result.isError, "a clean run stays clean — no false accusation")
+			assert.ok(!/exited 0 but the output contains failures/.test(ok.result.content[0].text))
+		} finally {
+			c.kill()
+		}
+	})
+})
+
 describe("tools_used vocabulary — every value a consumer tests for must be one an agent can send", () => {
 	test("no consumer checks a tools_used value that is absent from the server's enum", () => {
 		const server = fs.readFileSync(SERVER, "utf8")
@@ -1380,6 +1468,92 @@ describe("tools_used vocabulary — every value a consumer tests for must be one
 		assert.ok(allowed.has("own_terminal_toolchain"), "drift is expressible")
 		assert.ok(allowed.has("own_terminal_other"), "legitimate own-shell use is expressible")
 		assert.ok(allowed.has("own_terminal"), "the older undifferentiated value still validates")
+	})
+})
+
+// Every VS Code window arms a tracker against the same global handover dir, and that tracker runs
+// `git add -A` + `git commit --allow-empty` per checkpoint. So N windows = N commits today, and a window
+// with an unrelated project open commits into a repo it never opened. Both gates are tested here.
+describe("single-owner tracker — exactly one window may run the side effects", () => {
+	const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "adsum-owner-"))
+
+	// Two pids that are genuinely RUNNING — otherwise the loser would rightly reclaim a dead owner's
+	// session and the test would be asserting the wrong thing.
+	const LIVE_A = process.pid
+	const LIVE_B = process.ppid
+
+	test("two windows race for the same session; exactly one wins", () => {
+		const root = tmp()
+		const id = "own1"
+		assert.ok(pidAlive(LIVE_A) && pidAlive(LIVE_B) && LIVE_A !== LIVE_B, "fixture needs two distinct live pids")
+		const first = claimOwnership(root, id, "/ws/a", LIVE_A)
+		const second = claimOwnership(root, id, "/ws/a", LIVE_B)
+		assert.equal(first, true, "the first window tracks it")
+		assert.equal(second, false, "the second stands down instead of double-committing")
+		assert.equal(readClaim(root, id)?.pid, LIVE_A, "the winner owns the file")
+	})
+
+	test("the owner keeps renewing; the loser's renewal fails so it stops firing side effects", () => {
+		const root = tmp()
+		const id = "own2"
+		claimOwnership(root, id, "/ws/a", 111111)
+		assert.equal(renewOwnership(root, id, 111111), true, "the owner renews")
+		assert.equal(renewOwnership(root, id, 222222), false, "a non-owner is told to stand down")
+	})
+
+	test("a dead owner's claim is reclaimed — a crashed window must not strand the session", () => {
+		const root = tmp()
+		const id = "own3"
+		// A pid that is recent but definitely not running: the heartbeat gate alone would keep this alive,
+		// which is exactly why the pid gate exists too.
+		const dead = 999_999
+		assert.equal(pidAlive(dead), false, "fixture pid really is dead")
+		fs.mkdirSync(path.join(root, id), { recursive: true })
+		fs.writeFileSync(
+			path.join(root, id, "host.json"),
+			JSON.stringify({
+				pid: dead,
+				host: os.hostname(),
+				startedAt: new Date().toISOString(),
+				heartbeatAt: new Date().toISOString(),
+			}),
+		)
+		assert.equal(claimOwnership(root, id, "/ws/a", 111111), true, "a live window takes over from a crashed one")
+	})
+
+	test("an abandoned claim goes stale and is taken over; a fresh one is respected", () => {
+		const root = tmp()
+		const id = "own4"
+		const stale = new Date(Date.now() - CLAIM_STALE_MS - 1000).toISOString()
+		fs.mkdirSync(path.join(root, id), { recursive: true })
+		// Same pid as this process, so the pid gate PASSES — only the heartbeat age can reject it. This is
+		// the clean-shutdown case the pid check alone would miss.
+		fs.writeFileSync(
+			path.join(root, id, "host.json"),
+			JSON.stringify({ pid: process.pid, host: os.hostname(), startedAt: stale, heartbeatAt: stale }),
+		)
+		assert.equal(claimIsLive(readClaim(root, id)), false, "an un-renewed claim is not live, even with a live pid")
+		assert.equal(claimOwnership(root, id, "/ws/a", 222222), true, "so it can be taken over")
+	})
+
+	test("releasing hands the session on immediately, and never releases someone else's claim", () => {
+		const root = tmp()
+		const id = "own5"
+		claimOwnership(root, id, "/ws/a", 111111)
+		releaseOwnership(root, id, 222222)
+		assert.ok(readClaim(root, id), "a foreign release is a no-op")
+		releaseOwnership(root, id, 111111)
+		assert.equal(readClaim(root, id), null, "the owner's release frees it")
+		assert.equal(claimOwnership(root, id, "/ws/b", 222222), true, "the next window picks it up with no stale wait")
+	})
+
+	test("a window without the handover's project open never tracks it", () => {
+		assert.equal(windowOwnsWorkspace("/Users/x/softAP", ["/Users/x/softAP"]), true, "exact match")
+		assert.equal(windowOwnsWorkspace("/Users/x/softAP/", ["/Users/x/softAP"]), true, "trailing slash is not a difference")
+		assert.equal(windowOwnsWorkspace("/Users/x/softAP/app", ["/Users/x/softAP"]), true, "a subfolder of an open root")
+		assert.equal(windowOwnsWorkspace("/Users/x/other", ["/Users/x/softAP"]), false, "an unrelated project does NOT track")
+		assert.equal(windowOwnsWorkspace("/Users/x/softAP-evil", ["/Users/x/softAP"]), false, "prefix is not containment")
+		assert.equal(windowOwnsWorkspace(undefined, []), true, "a handover with no recorded folder is not stranded")
 	})
 })
 
