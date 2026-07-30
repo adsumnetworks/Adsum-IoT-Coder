@@ -34,6 +34,7 @@ import {
 	parseWorkflowSteps,
 	upsertManagedBlock,
 } from "@/services/handover/HandoverBrief"
+import { claimOwnership, releaseOwnership, renewOwnership, windowOwnsWorkspace } from "@/services/handover/HandoverOwner"
 import { getHandoverUiState, handoverUiFingerprint, setAgentFacts, setConductorMode } from "@/services/handover/HandoverUiState"
 import {
 	creditFor,
@@ -843,6 +844,21 @@ export class VscodeHandoverService {
 		if (!strip || strip.phase === "closed") {
 			return // nothing in flight — closed sessions only need "Continue here", not a live tracker
 		}
+		// onStartupFinished fires in EVERY window and HANDOVER_ROOT is global, so without these two gates
+		// each open window arms its own tracker on the same session — and the tracker runs `git add -A` +
+		// `git commit` per checkpoint. Today that means N commits, and a window with an unrelated project
+		// open commits into a repo it never opened.
+		let ws: string | undefined
+		try {
+			ws = JSON.parse(fs.readFileSync(path.join(HANDOVER_ROOT, strip.id, "brief.json"), "utf8"))?.workspace
+		} catch {}
+		const open = (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath)
+		if (!windowOwnsWorkspace(ws, open)) {
+			return // this handover belongs to a different window's project
+		}
+		if (!claimOwnership(HANDOVER_ROOT, strip.id, open[0])) {
+			return // another live window is already tracking it
+		}
 		this.startTracking(strip.id, { resume: true })
 	}
 
@@ -850,6 +866,9 @@ export class VscodeHandoverService {
 	private startTracking(id: string, opts?: { resume?: boolean }): void {
 		this.stopTracking()
 		this.activeId = id
+		// handOver() calls straight through here, so the claim is taken for that path too — otherwise the
+		// window that POSTED the handover would run unclaimed alongside a window that resumed it.
+		claimOwnership(HANDOVER_ROOT, id, vscode.workspace.workspaceFolders?.[0]?.uri.fsPath)
 		// A resumed tracker skips history: everything before this size already happened, was already
 		// shown, and must not re-fire snapshots. A fresh handover's ledger is empty, so 0 is exact there.
 		this.offset = opts?.resume ? this.ledgerSize(id) : 0
@@ -886,6 +905,15 @@ export class VscodeHandoverService {
 		this.status.command = "adsum-iot-coder.watchHandover"
 		this.status.show()
 		this.tracker = setInterval(() => {
+			// Renew the ownership heartbeat, and stand down if we no longer hold it. Everything below this
+			// line has side effects on the developer's repo (snapshot commits, diffstats), so exactly one
+			// window may reach it.
+			if (!renewOwnership(HANDOVER_ROOT, id)) {
+				this.out?.appendLine(`— handover ${id} — another window is tracking this session; standing down —`)
+				this.stopTracking()
+				this.status?.hide()
+				return
+			}
 			// Every 5th tick (~15 s), look at the tree itself — the agent's edits show here whether or
 			// not it ever reports them.
 			if (ws && ++ticks % 5 === 0) {
@@ -967,6 +995,11 @@ export class VscodeHandoverService {
 			clearInterval(this.tracker)
 		}
 		this.tracker = undefined
+		// Hand the session back so another window can pick it up immediately, rather than making it wait
+		// out the staleness window.
+		if (this.activeId) {
+			releaseOwnership(HANDOVER_ROOT, this.activeId)
+		}
 	}
 
 	watch(): void {
