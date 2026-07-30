@@ -1,17 +1,18 @@
 import React from "react"
-import { BRAND_CORAL, BRAND_CYAN_700, brandAlpha, brandSubtle } from "./brandColors"
+import { BRAND_CORAL, brandAlpha, brandSubtle } from "./brandColors"
 
 interface UpgradeCardProps {
 	version: string
-	onStartDemo: () => void
 	onDismiss: () => void
 }
 
 /**
- * Shown once per version update when the user has not previously activated the tool.
- * Primary CTA launches the live demo; secondary dismisses.
+ * Shown once per version update to a returning user who has not activated this version. An informational
+ * "what's new" notice — dismiss is the only action. No CTA button: the only demo it could launch (the CRA
+ * sample) duplicates the demo already on the welcome screen, and no one click can show the model picker
+ * (a setting, not a run). The user acts on their own; the sample stays one click away in the picker below.
  */
-const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismiss }) => {
+const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
 	return (
 		<div
 			style={{
@@ -55,52 +56,20 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onStartDemo, onDismi
 					alignItems: "center",
 					gap: "7px",
 				}}>
-				{/* Themed shield (coral = identity/framing on this coral nudge) — replaces the off-theme 🛡️ emoji,
-				    which the OS rendered in its own multicolor style ignoring our palette. Cyan stays on the CTA. */}
-				<i className="codicon codicon-shield" style={{ fontSize: "14px", color: BRAND_CORAL, flexShrink: 0 }} />
-				What's new in v{version} — CRA SBOM &amp; Fix
+				{/* Coral rocket = identity/"what's new" framing on this coral nudge (on-palette). */}
+				<i className="codicon codicon-rocket" style={{ fontSize: "14px", color: BRAND_CORAL, flexShrink: 0 }} />
+				What's new in v{version} — your GLM plan or model key, and who wrote the knowledge
 			</div>
 
 			<div
 				style={{
 					fontSize: "12px",
 					color: "var(--vscode-descriptionForeground)",
-					marginBottom: "12px",
+					marginBottom: 0,
 					lineHeight: 1.5,
 				}}>
-				A connected product likely falls under the EU Cyber Resilience Act. Preview your secure-by-design posture — an
-				SBOM, a live CVE scan, and a readiness check — on a sample, no project needed.
-			</div>
-
-			<div style={{ display: "flex", alignItems: "center" }}>
-				<button
-					onClick={onStartDemo}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.background = BRAND_CYAN_700
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.background = BRAND_CYAN_700
-					}}
-					style={{
-						display: "inline-flex",
-						alignItems: "center",
-						gap: "6px",
-						flexShrink: 0,
-						whiteSpace: "nowrap",
-						background: BRAND_CYAN_700,
-						color: "#fff",
-						border: "none",
-						borderRadius: "6px",
-						padding: "6px 14px",
-						fontSize: "12px",
-						fontWeight: 600,
-						cursor: "pointer",
-					}}
-					title="Runs the CRA workflow on a pre-built reference sample — no project needed."
-					type="button">
-					<i className="codicon codicon-shield" style={{ fontSize: "13px" }} />
-					Preview CRA on a sample ›
-				</button>
+				A curated model picker — the free tier, the GLM Coding Plan, Claude, DeepSeek, or your own key — switchable on a
+				live task. Curated knowledge now credits the engineer who wrote it, and long sessions hold their context.
 			</div>
 		</div>
 	)

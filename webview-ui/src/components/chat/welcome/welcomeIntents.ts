@@ -240,7 +240,6 @@ export const PROJECT_INTENTS: IntentDef[] = [
 		title: "CRA SBOM & Fix",
 		description:
 			"From your real build: an SBOM, a secure-by-design posture preview, and a readiness check — so you decide what to fix before the EU CRA.",
-		pill: "New",
 	},
 	{
 		id: "sdkMigration",

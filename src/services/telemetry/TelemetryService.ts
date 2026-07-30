@@ -228,6 +228,10 @@ export class TelemetryService {
 			// User clicked "Don't show again" — the red-line signal to watch
 			REENGAGEMENT_SILENCED: "free_tier.reengagement_silenced",
 		},
+		REVIEW_NUDGE: {
+			// The one-time "leave a review" nudge became eligible (user crossed the successful-completion threshold).
+			ELIGIBLE: "review_nudge.eligible",
+		},
 		NRF: {
 			ENV_DETECTED: "nrf.env_detected",
 		},
@@ -815,6 +819,13 @@ export class TelemetryService {
 		})
 	}
 
+	public captureReviewNudgeEligible(installId: string) {
+		this.captureRequired(TelemetryService.EVENTS.REVIEW_NUDGE.ELIGIBLE, {
+			install_id: installId,
+			tier: "anonymous",
+		})
+	}
+
 	// ─────────────────────────────────────────────────────────────────────────
 
 	public captureExtensionStorageError(errorMessage: string, eventName: string) {
@@ -1036,12 +1047,14 @@ export class TelemetryService {
 	 * @param ulid Unique identifier for the new task
 	 * @param apiProvider Optional API provider
 	 * @param openAiCompatibleDomain Optional domain for OpenAI Compatible providers (e.g., "api.example.com")
+	 * @param model Optional model id the task actually runs on — the "which model" signal behind the 0.2.0
+	 *              curated picker (GLM vs Claude vs DeepSeek vs free). Provider alone can't distinguish them.
 	 */
-	public captureTaskCreated(ulid: string, apiProvider?: string, openAiCompatibleDomain?: string) {
+	public captureTaskCreated(ulid: string, apiProvider?: string, openAiCompatibleDomain?: string, model?: string) {
 		this.resetTaskAggregates(ulid)
 		this.capture({
 			event: TelemetryService.EVENTS.TASK.CREATED,
-			properties: { ulid, apiProvider, openAiCompatibleDomain },
+			properties: { ulid, apiProvider, openAiCompatibleDomain, model },
 		})
 	}
 
@@ -1050,12 +1063,13 @@ export class TelemetryService {
 	 * @param ulid Unique identifier for the new task
 	 * @param apiProvider Optional API provider
 	 * @param openAiCompatibleDomain Optional domain for OpenAI Compatible providers (e.g., "api.example.com")
+	 * @param model Optional model id the task runs on (see captureTaskCreated).
 	 */
-	public captureTaskRestarted(ulid: string, apiProvider?: string, openAiCompatibleDomain?: string) {
+	public captureTaskRestarted(ulid: string, apiProvider?: string, openAiCompatibleDomain?: string, model?: string) {
 		this.resetTaskAggregates(ulid)
 		this.capture({
 			event: TelemetryService.EVENTS.TASK.RESTARTED,
-			properties: { ulid, apiProvider, openAiCompatibleDomain },
+			properties: { ulid, apiProvider, openAiCompatibleDomain, model },
 		})
 	}
 

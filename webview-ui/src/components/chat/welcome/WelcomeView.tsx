@@ -3,6 +3,7 @@ import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
+import { StateServiceClient, WebServiceClient } from "@/services/grpc-client"
 import AiLimitationsFooter from "../AiLimitationsFooter"
 import DemoCard from "../DemoCard"
 import { DEMO_SCENARIO_LIST, hasRunDemo, ranScenarioIds } from "../demoScenarios"
@@ -12,6 +13,7 @@ import CraNudge from "./CraNudge"
 import DemoPicker from "./DemoPicker"
 import DockCoachMark from "./DockCoachMark"
 import IntentList from "./IntentList"
+import ReviewNudge from "./ReviewNudge"
 import { runIntent } from "./runIntent"
 import StatusHeader from "./StatusHeader"
 import {
@@ -48,6 +50,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		workspaceFeatures,
 		nrfEnvironment,
 		espEnvironment,
+		reviewNudgeShow,
 	} = useExtensionState()
 
 	const hasWorkspace = openFolderPaths.length > 0
@@ -102,14 +105,29 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		}
 		setCraNudgeDismissed(true)
 	}
+	// One-time "leave a review" nudge. Eligibility (a few successful completions, not yet retired) is decided
+	// host-side and arrives as reviewNudgeShow. Both actions retire it for good via the banner-dismissal ledger
+	// (id "review-nudge"), so it never nags. openReview also opens the Marketplace review page.
+	const REVIEW_NUDGE_URL =
+		"https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger&ssr=false#review-details"
+	const dismissReviewNudge = () => {
+		StateServiceClient.dismissBanner({ value: "review-nudge" }).catch(console.error)
+	}
+	const openReview = () => {
+		WebServiceClient.openInBrowser({ value: REVIEW_NUDGE_URL }).catch(console.error)
+		StateServiceClient.dismissBanner({ value: "review-nudge" }).catch(console.error)
+	}
+
 	// A3 — the grounded CRA nudge: project-open, a connectivity stack present, no SBOM yet, not dismissed.
 	const craBanner = hasWorkspace && (hasBle || hasWifi) && !hasCompliance && !craNudgeDismissed
+	// The dormant upgrade card owns the paint when it shows — the review nudge yields to it (see precedence below).
+	const upgradeCardShowing = tenure === "dormant" && showUpgradeCard && !craBanner
 	// Precedence (one grounded promotion per paint): the A10 deep-debug sub-line is suppressed while the nudge shows.
 	const showDebugSubline = hasBle && !craBanner
 
 	// Adaptive intent set: inject the A10 sub-line on Build/flash/debug; once compliance/ exists, switch the CRA
-	// card to re-run copy. The "New" pill STAYS (CRA is a new product capability — keep it flagged on all CRA
-	// surfaces). No project → the no-project set, untouched.
+	// card to re-run copy. (CRA's "New" pill was retired in 0.2.0 — it shipped in 0.1.7, three releases back.)
+	// No project → the no-project set, untouched.
 	const intents: IntentDef[] = hasWorkspace
 		? PROJECT_INTENTS.map((i) => {
 				if (i.id === "buildFlashDebug" && showDebugSubline) {
@@ -146,13 +164,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				{/* Dormant upgrade card (once per version). No separate "new user" nudge — the demo hero below is
 				    the single cyan focal point for first-run, so we don't stack a duplicate same-action CTA.
 				    Precedence: suppressed when the grounded CRA nudge shows (project-open → A3 owns CRA). */}
-				{tenure === "dormant" && showUpgradeCard && !craBanner && (
-					<UpgradeCard
-						onDismiss={onUpgradeDismiss}
-						onStartDemo={() => onStartDemo("cra-sample")}
-						version={version ?? ""}
-					/>
-				)}
+				{upgradeCardShowing && <UpgradeCard onDismiss={onUpgradeDismiss} version={version ?? ""} />}
 
 				{/* A3 — grounded CRA nudge (project-open). The single grounded promotion for a project-open first
 				    paint: evidence-mode (what was detected, never a verdict), demotes once compliance/ exists.
@@ -160,6 +172,13 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				    resolved before first paint — no uninitiated pop-in. The only mount/unmount is on a user-initiated
 				    change (folder add, or a save that creates compliance/ or enables CONFIG_BT), where motion is
 				    expected feedback; so we mount/unmount rather than reserve an always-empty placeholder slot. */}
+				{/* One-time "leave a review" nudge — welcome only, after a few wins. Lowest precedence of the paint's
+				    promotions: yields to both the grounded CRA nudge and the dormant upgrade card so only one shows
+				    at a time (the file's "one grounded promotion per paint" rule). Retires for good on either action. */}
+				{!craBanner && !upgradeCardShowing && reviewNudgeShow && (
+					<ReviewNudge onDismiss={dismissReviewNudge} onReview={openReview} />
+				)}
+
 				{craBanner && (
 					<CraNudge
 						evidence={craEvidence}
