@@ -37,6 +37,7 @@ import {
 	disposeVscodeCommentReviewController,
 	getVscodeCommentReviewController,
 } from "./hosts/vscode/review/VscodeCommentReviewController"
+import { exportSessionCommand } from "./hosts/vscode/session-export/exportSessionCommand"
 import { runShellIntegrationDoctor } from "./hosts/vscode/terminal/ShellIntegrationDoctor"
 import { VscodeTerminalManager } from "./hosts/vscode/terminal/VscodeTerminalManager"
 import { VscodeDiffViewProvider } from "./hosts/vscode/VscodeDiffViewProvider"
@@ -586,6 +587,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand("adsum-iot-coder.watchHandover", () => handover.watch()),
 		vscode.commands.registerCommand("adsum-iot-coder.showHandoverWorklog", () => handover.showWorklog()),
 		vscode.commands.registerCommand("adsum-iot-coder.continueHandoverHere", continueHandoverHere),
+		vscode.commands.registerCommand("adsum-iot-coder.exportSession", () => exportSessionCommand(context)),
 	)
 
 	// Register the command handlers
