@@ -93,6 +93,18 @@ function manifestSyncMap(): Map<string, ManifestEntry> {
 	return map
 }
 
+/**
+ * Catalog metadata for a DOWNLOADED bit — the only place `requires`/`triggers` survive for one.
+ *
+ * The publisher strips frontmatter before hashing (`content_hash = sha256(body)`), so a downloaded blob
+ * carries no YAML at all; the fields live in the catalog instead, which spreads the whole published `meta`
+ * (`Adsum-Backend/src/db/kbits.ts:225`). Callers that read frontmatter off a bundled path — the handover
+ * closure builder did — see `undefined` for every downloaded bit and silently lose its declared deps.
+ */
+export async function downloadedMeta(id: string): Promise<Record<string, unknown> | null> {
+	return ((await downloadedManifest()).get(id) as Record<string, unknown> | undefined) ?? null
+}
+
 /** Absolute path for a bit id, or null if the id is unknown. */
 export async function resolveBitPath(id: string): Promise<string | null> {
 	const rel = (await manifest()).get(id)?.path

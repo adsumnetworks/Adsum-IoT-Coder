@@ -175,11 +175,16 @@ describe("MCP server (as a foreign agent sees it)", () => {
 				.trim()
 				.split("\n")
 				.map((l) => JSON.parse(l))
+			// A failed load is a fact too. It used to be recorded nowhere, so a session where the agent asked
+			// for a bit and was told "not available" — then silently skipped that work, which is exactly what
+			// happened to the CRA advisories section — looked identical to one where it never asked.
 			assert.deepEqual(
 				events.map((e) => e.event),
-				["resume", "kbit_load", "kbit_load", "checkpoint"],
+				["resume", "kbit_load", "kbit_load", "kbit_miss", "checkpoint"],
 			)
 			assert.equal(events[1].author, "Ismail Hamdad", "attribution is recorded, not just displayed")
+			assert.equal(events[3].query, "nonexistent-xyz", "the miss records what was actually asked for")
+			assert.equal(events[3].reason, "no-match")
 
 			// 7. resilience: a malformed line must not kill the server, and unknown methods are proper errors
 			c.raw("{not json at all")
@@ -388,6 +393,44 @@ describe("H2.0.1 — requires: frontmatter, workflow steps, core fallback (the s
 		assert.match(steps[2], /^Step 0: Environment, then tier/)
 		assert.match(steps[3], /^Step 7: Offer the durable setup — CI on GitHub/)
 		assert.equal(steps.length, 4)
+	})
+
+	// The n1ke run: the parser saw 1 of 7 steps in cra-readiness, so 6 of 7 checkpoints were forced to
+	// report "off-plan" and currentStepIdx never advanced past 0. Two causes, both reproduced here —
+	// a decimal step number, and five phases written as an ordered LIST under an announcing heading.
+	test("parseWorkflowSteps: decimal steps, N/M banners, and phases written as an ordered list", () => {
+		const body = [
+			"## Step 0 — detect platform & project; resolve where artifacts go (before writing anything)",
+			"prose",
+			"## Step 0.5 — front door: ONE ask, THREE options (ask FIRST, before building)",
+			"1. **Not a step** — this list is not under a sequence-announcing heading.",
+			"## The five phases (emit the `### Step N/5` banner at the start of each; MANDATORY SKILL LOAD per phase)",
+			"1. **Inventory (SBOM) — the door.** `read_file` → `platforms/nrf/actions/cra-generate-sbom.md`",
+			"   continuation line, not a step",
+			"2. **Scan for CVEs.** follow cve-scan.md",
+			"5. **One concrete next step — MANDATORY SKILL LOAD.** finding-driven",
+			"## Write + present (every path)",
+			"1. **Also not a step** — the announcing section was closed by the heading above.",
+		].join("\n")
+		const steps = parseWorkflowSteps(body)
+		assert.deepEqual(steps, [
+			"Step 0: detect platform & project; resolve where artifacts go",
+			"Step 0.5: front door: ONE ask, THREE options",
+			"Step 1/5: Inventory (SBOM) — the door",
+			"Step 2/5: Scan for CVEs",
+			"Step 5/5: One concrete next step — MANDATORY SKILL LOAD",
+		])
+	})
+
+	// Titles are passed through apart from a trailing parenthetical. Normalising them further (cutting at
+	// the em dash) collapsed these two into ONE label — and the server resolves progress with
+	// steps.indexOf(), so the agent reporting step 5 would have been recorded as having finished step 4.
+	test("parseWorkflowSteps: sibling steps sharing a title prefix stay distinct labels", () => {
+		const steps = parseWorkflowSteps(
+			["## Step 4: Post-Generation — RTT Check", "## Step 5: Post-Generation — BLE Stack Check"].join("\n"),
+		)
+		assert.deepEqual(steps, ["Step 4: Post-Generation — RTT Check", "Step 5: Post-Generation — BLE Stack Check"])
+		assert.equal(new Set(steps).size, steps.length, "duplicate labels would misresolve steps.indexOf()")
 	})
 
 	test("coreFallbackId: platform-scoped rules fall back to the core corpus; actions do not", () => {
@@ -1298,6 +1341,45 @@ describe("a returned session stays visible so the resumed task carries its histo
 			"a day-old returned session is history, not live UI",
 		)
 		fs.rmSync(old.root, { recursive: true, force: true })
+	})
+})
+
+// The drift nudge was dead in BOTH consumers for the whole life of the feature: they tested
+// tools_used for "own_terminal_toolchain" while the server's schema only ever offered "own_terminal",
+// so no agent could send the value that fires it. Nothing caught it because the producer and the
+// consumers live in different files and neither side is wrong on its own. This is the seam test.
+describe("tools_used vocabulary — every value a consumer tests for must be one an agent can send", () => {
+	test("no consumer checks a tools_used value that is absent from the server's enum", () => {
+		const server = fs.readFileSync(SERVER, "utf8")
+		const enumBlock = server.match(/tools_used:[\s\S]{0,900}?enum:\s*\[([\s\S]*?)\]/)
+		assert.ok(enumBlock, "found the tools_used enum in the server schema")
+		const allowed = new Set([...enumBlock![1].matchAll(/"([^"]+)"/g)].map((m) => m[1]))
+		assert.ok(allowed.size >= 5, `enum parsed (${[...allowed].join(", ")})`)
+
+		const consumers = [SERVER, path.join(__dirname, "HandoverUiState.ts")]
+		const tested: { file: string; value: string }[] = []
+		for (const f of consumers) {
+			const src = fs.readFileSync(f, "utf8")
+			for (const m of src.matchAll(/tools_used\s*(?:\.|\s*\)\s*\.)?[\s\S]{0,40}?\.includes\(\s*"([^"]+)"\s*\)/g)) {
+				tested.push({ file: path.basename(f), value: m[1] })
+			}
+			for (const m of src.matchAll(/toolsUsed\.includes\(\s*"([^"]+)"\s*\)/g)) {
+				tested.push({ file: path.basename(f), value: m[1] })
+			}
+		}
+		assert.ok(tested.length > 0, "found at least one tools_used consumer to check")
+		for (const { file, value } of tested) {
+			assert.ok(allowed.has(value), `${file} tests tools_used for "${value}", which no agent can send`)
+		}
+	})
+
+	test("the drift split exists — toolchain misuse is expressible and distinct from ordinary shell use", () => {
+		const server = fs.readFileSync(SERVER, "utf8")
+		const enumBlock = server.match(/tools_used:[\s\S]{0,900}?enum:\s*\[([\s\S]*?)\]/)
+		const allowed = new Set([...enumBlock![1].matchAll(/"([^"]+)"/g)].map((m) => m[1]))
+		assert.ok(allowed.has("own_terminal_toolchain"), "drift is expressible")
+		assert.ok(allowed.has("own_terminal_other"), "legitimate own-shell use is expressible")
+		assert.ok(allowed.has("own_terminal"), "the older undifferentiated value still validates")
 	})
 })
 

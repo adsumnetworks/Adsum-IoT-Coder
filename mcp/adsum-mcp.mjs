@@ -170,9 +170,27 @@ function buildTools(ctx) {
 					},
 					tools_used: {
 						type: "array",
-						items: { type: "string", enum: ["adsum.exec", "adsum.build", "own_terminal", "editor_tools", "none"] },
+						// Two kinds of own-terminal use, because only ONE of them is drift: running idf.py/west/
+						// esptool outside exec/build loses the embedded environment and the developer's record,
+						// while grepping a log with your own shell is perfectly legitimate. The old enum offered
+						// an undifferentiated "own_terminal" while BOTH consumers tested for
+						// "own_terminal_toolchain" — a value nothing could ever send — so the nudge was dead code
+						// in two places. Bare "own_terminal" stays accepted (in-flight sessions, older prompts)
+						// and counts as the NON-drift kind: never accuse on an ambiguous answer.
+						items: {
+							type: "string",
+							enum: [
+								"adsum.exec",
+								"adsum.build",
+								"own_terminal_toolchain",
+								"own_terminal_other",
+								"own_terminal",
+								"editor_tools",
+								"none",
+							],
+						},
 						description:
-							"Which tools did the work since the last checkpoint. Be honest — own_terminal is allowed but tracked.",
+							"Which tools did the work since the last checkpoint. Be honest — own_terminal_* is allowed but tracked. Use own_terminal_toolchain if you ran idf.py/west/esptool/nrfutil/openocd in your own shell; own_terminal_other for anything else (grep, cat, git).",
 					},
 					files_touched: {
 						type: "array",
@@ -344,6 +362,7 @@ function toolLoadSkill(args, ctx) {
 		.trim()
 		.toLowerCase()
 	if (!q) {
+		ledger(id, { event: "kbit_miss", query: "", reason: "empty-query" })
 		return { isError: true, text: "load_skill needs a query (a bit id or a keyword)." }
 	}
 
@@ -399,11 +418,16 @@ function toolLoadSkill(args, ctx) {
 		}
 	}
 	if (ihit) {
+		// A MISS is a fact about the handover, not a non-event: on the softAP run the agent asked for the
+		// advisories bit, got "not available", and silently skipped a whole report section — and the record
+		// showed nothing at all. An unrecorded miss is indistinguishable from a bit nobody wanted.
+		ledger(id, { event: "kbit_miss", query: q, id: ihit.id, reason: "body-not-available-offline" })
 		return {
 			isError: true,
 			text: `\`${ihit.id}\` exists but its body is not available offline in this handover (it lives on the registry). Ask the developer to include it, or proceed with the pinned closure.`,
 		}
 	}
+	ledger(id, { event: "kbit_miss", query: q, reason: "no-match" })
 	return {
 		isError: true,
 		text: `No curated bit matches "${args?.query}". Pinned in this session:\n${bits.map((b) => `- ${b.id} — ${b.title || ""}`).join("\n") || "(none)"}${
@@ -601,8 +625,12 @@ function runInEnv(id, brief, command, cwd, eventName) {
 	// A failing build's TAIL is usually a sub-project succeeding — the real error sits above the cut.
 	// Live evidence: a compile failure showed only the bootloader linking, so the agent had to grep the
 	// log files with its own shell, and our own drift nudge then fired at it. Surface the error lines.
+	// `command not found` / 127 are here because bash reports them on the INNER command while the outer
+	// shell still exits 0 — a loop body, a `;` chain, or a `|| true` all swallow the failure. On the softAP
+	// run `timeout` (absent on macOS) failed for all seven serial ports and exec answered exit 0, so the
+	// agent nearly concluded there was no board attached. An exit code is not proof of success.
 	const ERR_RE =
-		/(?:^|\s)(error:|fatal error:|undefined reference|No such file|multiple definition|region `?\w+'? overflowed|does not fit|ninja: build stopped)/i
+		/(?:^|\s)(error:|fatal error:|undefined reference|No such file|multiple definition|region `?\w+'? overflowed|does not fit|ninja: build stopped|command not found|: not found|Exit code 127)/i
 	const errorLines = (s) => {
 		const hits = (s || "")
 			.split("\n")
@@ -610,17 +638,27 @@ function runInEnv(id, brief, command, cwd, eventName) {
 			.map((l) => l.trim())
 		return [...new Set(hits)].slice(0, 12)
 	}
-	ledger(id, { event: eventName, command, cwd: wd, exit })
+	// Harvested from BOTH streams: a failing build's tail is usually a sub-project succeeding, so the real
+	// error sits above the cut. This harvest was written for exactly that and then never called — the
+	// output kept truncating the error away, which is what pushed the agent to its own shell in the first
+	// place, whereupon our drift nudge fired at it.
+	const errs = [...new Set([...errorLines(r.stdout), ...errorLines(r.stderr)])].slice(0, 12)
+	const masked = exit === 0 && errs.length > 0
+	ledger(id, { event: eventName, command, cwd: wd, exit, ...(masked ? { masked: true } : {}) })
 	patchState(id, {})
 	const body = [
 		`$ ${command}   (cwd: ${wd})`,
+		errs.length ? `--- errors found ---\n${errs.join("\n")}` : "",
 		tail(r.stdout, 6000),
 		r.stderr ? `--- stderr ---\n${tail(r.stderr, 2000)}` : "",
 		`exit ${exit}`,
+		masked
+			? "\n⚠ The shell exited 0 but the output contains failures — an inner command failed inside a loop, a `;` chain or a `|| true`. Treat this as a FAILURE: fix the inner command (or ask the developer) rather than reading the exit code as success."
+			: "",
 	]
 		.filter(Boolean)
 		.join("\n")
-	return { isError: exit !== 0, text: body }
+	return { isError: exit !== 0 || masked, text: body }
 }
 
 function toolExec(args, ctx) {

@@ -35,7 +35,14 @@ import {
 	upsertManagedBlock,
 } from "@/services/handover/HandoverBrief"
 import { getHandoverUiState, handoverUiFingerprint, setAgentFacts, setConductorMode } from "@/services/handover/HandoverUiState"
-import { creditFor, deriveIdFromRel, listAllBits, loadBit, resolveBitPath } from "@/services/knowledge/KnowledgeResolver"
+import {
+	creditFor,
+	deriveIdFromRel,
+	downloadedMeta,
+	listAllBits,
+	loadBit,
+	resolveBitPath,
+} from "@/services/knowledge/KnowledgeResolver"
 import { ATTRIBUTION_FALLBACK, type KbitKind } from "@/services/knowledge/kbit/credit"
 import { extractFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
@@ -124,6 +131,18 @@ export class VscodeHandoverService {
 				}
 			}
 		} catch {}
+		// A DOWNLOADED bit has no bundled path, so the block above never ran for it and its declared deps
+		// were lost — which is why cra-readiness's four mandatory `cra/*` bits, declared in its `requires:`
+		// since v0.4.3, never reached the closure on the softAP run. The publisher strips frontmatter before
+		// hashing, so those fields survive only in the catalog; read them from there.
+		if (!triggers || !requires) {
+			try {
+				const meta = await downloadedMeta(id)
+				const list = (v: unknown) => (Array.isArray(v) ? v.map(String).filter(Boolean) : undefined)
+				triggers ??= list(meta?.triggers)
+				requires ??= list(meta?.requires)
+			} catch {}
+		}
 		if (!body) {
 			return null // nothing to serve — skip rather than hand over an empty skill
 		}
@@ -157,7 +176,11 @@ export class VscodeHandoverService {
 	 */
 	private async collectBits(relPaths: string[]): Promise<{ bits: BriefBit[]; unresolved: { id: string; via: string }[] }> {
 		const HOP_MAX = 2
-		const CAP = 20
+		// Raised from 20: cra-readiness alone declares 11 `requires`, so once those are honored (see
+		// loadOneBit) a two-hop frontier overruns 20 — and the overflow used to vanish without a trace,
+		// because the cap breaks out of the loop WITHOUT recording anything in `unresolved`. Both halves
+		// are fixed here: a cap that fits the real corpus, and overflow that is reported rather than lost.
+		const CAP = 48
 		const seen = new Set<string>()
 		const out: BriefBit[] = []
 		// A referenced bit that doesn't serve is LISTED, never silently dropped — "missing" must stay
@@ -178,7 +201,10 @@ export class VscodeHandoverService {
 			const next: { id: string; via: string }[] = []
 			for (const { id, via } of frontier) {
 				if (out.length >= CAP) {
-					break
+					// Report what the cap cost us. Silently truncating reads to the agent as "this bit was
+					// never referenced", which is the one thing `unresolved` exists to prevent.
+					unresolved.push({ id, via: `${via} (closure cap ${CAP})` })
+					continue
 				}
 				// Platform-scoped miss → try the core corpus (`adsum/esp/rules/next-step` → `adsum/rules/
 				// next-step`): cross-platform rules live at the root, and a platform-relative prose ref
@@ -214,6 +240,57 @@ export class VscodeHandoverService {
 			frontier = next
 		}
 		return { bits: out.map(({ _raw, _requires, ...b }) => b), unresolved }
+	}
+
+	/**
+	 * Give every index row a path the zero-dep MCP server can actually open.
+	 *
+	 * A bundled bit already carries one. A DOWNLOADED bit deliberately has none: its body lives in a
+	 * hash-keyed blob cache behind the entitlement-aware loader, "not at a stable path"
+	 * (KnowledgeResolver). A plain-Node server can neither open that cache nor fetch with entitlement —
+	 * so on the softAP run 23 of 31 index rows came back `path: null` and every `load_skill` for them
+	 * answered "not available offline", including all four mandatory `cra/*` bits.
+	 *
+	 * So resolve them HERE, where the registry and entitlement are reachable, and write the bodies into
+	 * the handover's own `kbits/` folder. Bodies stay OUT of brief.json — the agent pays input tokens for
+	 * a bit only when it actually loads one. Whatever will not resolve keeps `path: undefined` and the
+	 * server's existing honest "it lives on the registry" message.
+	 *
+	 * (Plaintext-on-disk note: brief.json already carries closure bodies in plaintext in this same
+	 * directory, so this widens no exposure — but it does inherit that open question.)
+	 */
+	private async materialiseIndexBodies(dir: string, index: { id: string; path?: string }[]): Promise<number> {
+		const pending = index.filter((e) => !e.path)
+		if (!pending.length) {
+			return 0
+		}
+		const out = path.join(dir, "kbits")
+		fs.mkdirSync(out, { recursive: true })
+		// A cold catalog means one registry fetch per bit. Bounded lanes + a wall-clock budget so a slow
+		// or unreachable registry delays the handover by seconds, never blocks it: anything not resolved
+		// in time simply stays load-on-demand, which is the behaviour we already ship.
+		const DEADLINE = Date.now() + 5000
+		let cursor = 0
+		let written = 0
+		const worker = async (): Promise<void> => {
+			for (let i = cursor++; i < pending.length && Date.now() < DEADLINE; i = cursor++) {
+				const e = pending[i]
+				try {
+					const body = await loadBit(e.id)
+					if (!body) {
+						continue
+					}
+					const file = path.join(out, `${e.id.replace(/[^\w.-]+/g, "_")}.md`)
+					// Same verb bridging the closure bodies get, so a bit served from the index instructs
+					// the tool the foreign agent actually has.
+					fs.writeFileSync(file, bridgeLoadVerbs(e.id, body))
+					e.path = file
+					written++
+				} catch {}
+			}
+		}
+		await Promise.all(Array.from({ length: Math.min(6, pending.length) }, worker))
+		return written
 	}
 
 	/** The bit that GOVERNS the mission: the first hop-0 workflow, else the first hop-0 bit. */
@@ -549,6 +626,9 @@ export class VscodeHandoverService {
 		const id = Math.random().toString(36).slice(2, 6)
 		const dir = path.join(HANDOVER_ROOT, id)
 		fs.mkdirSync(dir, { recursive: true })
+		// Downloaded bits carry no readable path — resolve their bodies into the handover folder so the
+		// server can actually serve a load_skill for them (see materialiseIndexBodies).
+		await this.materialiseIndexBodies(dir, index)
 		fs.writeFileSync(
 			path.join(dir, "brief.json"),
 			JSON.stringify(
