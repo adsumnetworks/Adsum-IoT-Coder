@@ -58,6 +58,7 @@ export const config = createVariant(ModelFamily.HERMES)
 		ClineDefaultTool.NORDIC_ACTION,
 		ClineDefaultTool.ESP_ACTION,
 		ClineDefaultTool.CVE_SCAN,
+		ClineDefaultTool.UPDATE_MEMORY,
 	)
 	.placeholders({
 		MODEL_FAMILY: "hermes",

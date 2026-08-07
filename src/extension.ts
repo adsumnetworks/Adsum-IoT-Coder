@@ -29,6 +29,7 @@ import { sendAddToInputEvent } from "./core/controller/ui/subscribeToAddToInput"
 import { sendShowWebviewEvent } from "./core/controller/ui/subscribeToShowWebview"
 import { HookDiscoveryCache } from "./core/hooks/HookDiscoveryCache"
 import { HookProcessRegistry } from "./core/hooks/HookProcessRegistry"
+import { refreshHostMemory } from "./core/memory/workspace/refresh"
 import { workspaceResolver } from "./core/workspace"
 import { findMatchingNotebookCell, getContextForCommand, showWebview } from "./hosts/vscode/commandUtils"
 import { abortCommitGeneration, generateCommitMsg } from "./hosts/vscode/commit-message-generator"
@@ -196,6 +197,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	// command runs — so the user just finds a working terminal.
 	void runShellIntegrationDoctor("activation").catch(() => {})
 
+	// Record what we detected into workspace project memory (.adsum/), so the agent reads the
+	// toolchain versions and the file map instead of re-discovering them every session. Runs
+	// after the env detections above resolve, and never blocks activation.
+	const primaryRootForMemory = () => collectWorkspaceRoots()[0]
+	void Promise.allSettled([detectNrfEnvironment(), detectEspEnvironment()])
+		.then(() => refreshHostMemory(primaryRootForMemory(), new Date().toISOString()))
+		.catch(() => {})
+
 	// Re-detect both environments when workspace folders change.
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeWorkspaceFolders(() => {
@@ -225,7 +234,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			clearTimeout(reclassifyTimer)
 		}
 		reclassifyTimer = setTimeout(() => {
-			refreshWorkspaceClassification(collectWorkspaceRoots())
+			const roots = collectWorkspaceRoots()
+			refreshWorkspaceClassification(roots)
+			// A config save can add a build dir or change the board, so the stored file map and
+			// toolchain record are refreshed on the same debounce.
+			void refreshHostMemory(roots[0], new Date().toISOString()).catch(() => {})
 			void webview.controller.postStateToWebview().catch(() => {})
 		}, 500)
 	}

@@ -39,25 +39,44 @@ export async function getMcp(variant: PromptVariant, context: SystemPromptContex
 	return await getMcpServers(servers, variant, context)
 }
 
+/**
+ * True when this request will also ship every MCP tool as a NATIVE tool definition.
+ *
+ * Mirrors the exact gate in `ClineToolSet.getNativeTools` — the variant must advertise
+ * `use_native_tools` AND the user setting must be on. When both hold, each connected MCP
+ * tool's `inputSchema` is already sent as structured tool JSON, so repeating the same
+ * schema inside the prompt TEXT paid for it twice on every single request.
+ */
+export function nativeToolDefsCarryMcpSchemas(variant: PromptVariant, context: SystemPromptContext): boolean {
+	return variant.labels?.["use_native_tools"] === 1 && context.enableNativeToolCalls === true
+}
+
 async function getMcpServers(servers: McpServer[], variant: PromptVariant, context: SystemPromptContext): Promise<string> {
 	const template = variant.componentOverrides?.[SystemPromptSection.MCP]?.template || MCP_TEMPLATE_TEXT
 
-	const serversList = servers.length > 0 ? formatMcpServersList(servers) : "(No MCP servers currently connected)"
+	// In native mode keep the server + tool NAMES and descriptions — the model still has to know
+	// which servers exist and what each one is for — but drop the JSON schemas the native tool
+	// definitions already carry. In XML mode the prompt text is the ONLY place the schemas exist,
+	// so it is emitted byte-for-byte as before.
+	const includeSchemas = !nativeToolDefsCarryMcpSchemas(variant, context)
+	const serversList =
+		servers.length > 0 ? formatMcpServersList(servers, includeSchemas) : "(No MCP servers currently connected)"
 	return new TemplateEngine().resolve(template, context, {
 		MCP_SERVERS_LIST: serversList,
 	})
 }
 
-function formatMcpServersList(servers: McpServer[]): string {
+function formatMcpServersList(servers: McpServer[], includeSchemas: boolean): string {
 	return servers
 		.filter((server) => server.status === "connected")
 		.map((server) => {
 			const tools = server.tools
 				?.map((tool) => {
-					const schemaStr = tool.inputSchema
-						? `    Input Schema:
+					const schemaStr =
+						includeSchemas && tool.inputSchema
+							? `    Input Schema:
     ${JSON.stringify(tool.inputSchema, null, 2).split("\n").join("\n    ")}`
-						: ""
+							: ""
 
 					return `- ${tool.name}: ${tool.description}\n${schemaStr}`
 				})

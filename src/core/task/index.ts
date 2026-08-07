@@ -3,6 +3,7 @@ import { ApiHandler, ApiProviderInfo, buildApiHandler } from "@core/api"
 import { QuotaExhaustedError } from "@core/api/providers/adsum-free"
 import { ApiStream } from "@core/api/transform/stream"
 import { AssistantMessageContent, parseAssistantMessageV2, ToolUse } from "@core/assistant-message"
+import { buildCompactionLedger } from "@core/context/context-management/CompactionLedger"
 import { ContextManager } from "@core/context/context-management/ContextManager"
 import { checkContextWindowExceededError } from "@core/context/context-management/context-error-handling"
 import { getContextWindowInfo } from "@core/context/context-management/context-window-utils"
@@ -23,6 +24,7 @@ import {
 import { sendPartialMessageEvent } from "@core/controller/ui/subscribeToPartialMessage"
 import { executePreCompactHookWithCleanup, HookCancellationError, HookExecution } from "@core/hooks/precompact-executor"
 import { ClineIgnoreController } from "@core/ignore/ClineIgnoreController"
+import { withProjectStateTail } from "@core/memory/workspace/tailBlock"
 import { parseMentions } from "@core/mentions"
 import { CommandPermissionController } from "@core/permissions"
 import { summarizeTask } from "@core/prompts/contextManagement"
@@ -1741,6 +1743,7 @@ export class Task {
 			Date.now(),
 			await ensureTaskDirectoryExists(this.taskId),
 			apiConversationHistory,
+			buildCompactionLedger(this.messageStateHandler.getClineMessages()),
 		)
 
 		this.taskState.didAutomaticallyRetryFailedApiRequest = true
@@ -1891,10 +1894,39 @@ export class Task {
 			this.taskState.conversationHistoryDeletedRange = contextManagementMetadata.conversationHistoryDeletedRange
 			await this.messageStateHandler.saveClineMessagesAndUpdateHistory()
 			// saves task history item which we use to keep track of conversation history deleted range
+
+			// Surface it: real sessions have lost up to 93% of their messages here with ZERO UI signal,
+			// leaving users to discover the amnesia by re-explaining their task. Range is [start, end]
+			// inclusive message indices now hidden from the model (the transcript on disk is untouched).
+			const compactedRange = this.taskState.conversationHistoryDeletedRange
+			if (compactedRange) {
+				const hidden = Math.max(0, compactedRange[1] - compactedRange[0] + 1)
+				await this.say(
+					"info",
+					`Context window compacted: ${hidden} earlier message${hidden === 1 ? "" : "s"} are no longer visible to the model (the full transcript is still saved on disk). A task-state ledger (progress, last error, capture paths, edited files) was carried across, and key decisions survive in project memory.`,
+				)
+			}
 		}
 
+		// One-time warn row BEFORE compaction ever fires — the user should never discover
+		// compaction happened by noticing the agent forgot things.
+		const budgetSnapshot = contextManagementMetadata.budgetSnapshot
+		if (budgetSnapshot?.state === "warn" && !this.taskState.contextWarnShown) {
+			this.taskState.contextWarnShown = true
+			const pct = Math.round((budgetSnapshot.usedTokens / Math.max(1, budgetSnapshot.contextWindow)) * 100)
+			await this.say(
+				"info",
+				`Context window is ~${pct}% full. Older history will be auto-compacted soon — important decisions and device facts are being checkpointed to project memory so they survive.`,
+			)
+		}
+
+		// Tier B project memory: recite the goal, open defects and last error at the END of the
+		// context, where attention is strongest and where mutation costs nothing (it is downstream
+		// of the prompt cache breakpoint). This is what carries state across a compaction wipe.
+		const historyWithState = withProjectStateTail(contextManagementMetadata.truncatedConversationHistory, this.cwd)
+
 		// Response API requires native tool calls to be enabled
-		const stream = this.api.createMessage(systemPrompt, contextManagementMetadata.truncatedConversationHistory, tools)
+		const stream = this.api.createMessage(systemPrompt, historyWithState, tools)
 
 		const iterator = stream[Symbol.asyncIterator]()
 
