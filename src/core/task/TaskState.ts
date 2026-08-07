@@ -80,6 +80,11 @@ export class TaskState {
 	// Error tracking
 	consecutiveMistakeCount: number = 0
 	didAutomaticallyRetryFailedApiRequest = false
+
+	// Context-budget warn row: shown once per task when usage first crosses the warn threshold,
+	// so the user learns compaction is coming BEFORE history is dropped (measured runs lost 93%
+	// of messages with zero prior signal).
+	contextWarnShown = false
 	checkpointManagerErrorMessage?: string
 
 	// One-shot UX notice when a low-tier model keeps producing malformed tool

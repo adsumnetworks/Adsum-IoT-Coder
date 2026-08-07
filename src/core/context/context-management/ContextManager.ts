@@ -7,9 +7,10 @@ import { fileExistsAtPath } from "@utils/fs"
 import cloneDeep from "clone-deep"
 import fs from "fs/promises"
 import * as path from "path"
-import { getContextWindowInfo } from "./context-window-utils"
-import { estimateTotalTokens, planTokenAwareTruncation, projectContextBudget } from "./ContextBudget"
+import { buildCompactionLedger } from "./CompactionLedger"
 import { buildCompactionState, isCompactionStateValid, loadCompactionState, saveCompactionState } from "./CompactionState"
+import { estimateTotalTokens, planTokenAwareTruncation, projectContextBudget } from "./ContextBudget"
+import { getContextWindowInfo } from "./context-window-utils"
 
 enum EditType {
 	UNDEFINED = 0,
@@ -244,6 +245,7 @@ export class ContextManager {
 		useAutoCondense: boolean, // option to use new auto-condense or old programmatic context management
 	) {
 		let updatedConversationHistoryDeletedRange = false
+		let budgetSnapshot: { state: string; usedTokens: number; contextWindow: number } | undefined
 
 		if (!useAutoCondense) {
 			// If the previous API request's total token usage is close to the context window, truncate the conversation history to free up space for the new request
@@ -262,6 +264,27 @@ export class ContextManager {
 						modelInfo: api.getModel().info,
 					})
 
+					// Surface the budget state so the Task layer can warn the user BEFORE compaction
+					// (real runs lost 93% of messages with zero prior signal).
+					budgetSnapshot = {
+						state: budget.state,
+						usedTokens: totalTokens,
+						contextWindow: getContextWindowInfo(api).contextWindow,
+					}
+
+					// EAGER duplicate-read dedup while still under threshold: measured runs re-read the
+					// same file up to 17x (one 27K-token file 5x = 137K tokens) and the old code only
+					// deduped once compaction was already firing. Under "ok"/"warn" we stub earlier
+					// duplicates now; the over-threshold branch keeps its own dedup+metrics flow
+					// unchanged (its 30%-saved check decides whether truncation is still needed).
+					if (totalTokens < maxAllowedSize && (budget.state === "ok" || budget.state === "warn")) {
+						const eagerStart = conversationHistoryDeletedRange ? conversationHistoryDeletedRange[1] + 1 : 2
+						const [eagerUpdates] = this.applyContextOptimizations(apiConversationHistory, eagerStart, timestamp)
+						if (eagerUpdates) {
+							await this.saveContextHistory(taskDirectory)
+						}
+					}
+
 					// This is the most reliable way to know when we're close to hitting the context window.
 					// `maxAllowedSize` remains the hard floor; the projection can act earlier.
 					if (totalTokens >= maxAllowedSize || budget.state === "compact" || budget.state === "emergency") {
@@ -277,8 +300,14 @@ export class ContextManager {
 						)
 
 						if (needToTruncate) {
-							// go ahead with truncation
-							anyContextUpdates = this.applyStandardContextTruncationNoticeChange(timestamp) || anyContextUpdates
+							// go ahead with truncation — carry a deterministic task-state ledger into the
+							// notice so the model keeps the load-bearing facts (progress, last error,
+							// capture paths, edited files, user guidance) across the wipe.
+							anyContextUpdates =
+								this.applyStandardContextTruncationNoticeChange(
+									timestamp,
+									buildCompactionLedger(clineMessages),
+								) || anyContextUpdates
 
 							// Prefer the TOKEN-AWARE plan: drop the oldest material actually responsible for the
 							// overflow while protecting the opening pair and the recent tail. Count-based
@@ -312,9 +341,12 @@ export class ContextManager {
 									compactedThroughIndex: conversationHistoryDeletedRange[1],
 									tokensBefore,
 									tokensAfter: estimateTotalTokens(
-										this.getAndAlterTruncatedMessages(apiConversationHistory, conversationHistoryDeletedRange),
+										this.getAndAlterTruncatedMessages(
+											apiConversationHistory,
+											conversationHistoryDeletedRange,
+										),
 									),
-									strategy: planned ? "truncation" : "truncation",
+									strategy: planned ? "token-aware" : "count-based",
 									modelId: api.getModel().id,
 								}),
 							)
@@ -338,6 +370,7 @@ export class ContextManager {
 			conversationHistoryDeletedRange: conversationHistoryDeletedRange,
 			updatedConversationHistoryDeletedRange: updatedConversationHistoryDeletedRange,
 			truncatedConversationHistory: truncatedConversationHistory,
+			budgetSnapshot: budgetSnapshot,
 		}
 	}
 
@@ -746,8 +779,9 @@ export class ContextManager {
 		timestamp: number,
 		taskDirectory: string,
 		apiConversationHistory: Anthropic.Messages.MessageParam[],
+		ledger?: string,
 	) {
-		const assistantUpdated = this.applyStandardContextTruncationNoticeChange(timestamp)
+		const assistantUpdated = this.applyStandardContextTruncationNoticeChange(timestamp, ledger)
 		const userUpdated = this.applyFirstUserMessageReplacement(timestamp, apiConversationHistory)
 		if (assistantUpdated || userUpdated) {
 			await this.saveContextHistory(taskDirectory)
@@ -755,15 +789,31 @@ export class ContextManager {
 	}
 
 	/**
-	 * if there is any truncation and there is no other alteration already set, alter the assistant message to indicate this occurred
+	 * Alter the first assistant message to indicate truncation occurred. When a task-state ledger is
+	 * provided it is appended to the notice, and REFRESHED on every subsequent compaction by pushing
+	 * a newer change entry (applyContextHistoryUpdates uses the latest entry per block) — the old
+	 * behavior wrote the bare notice once and never updated it, so after a 93%-wipe compaction the
+	 * only surviving state was a 269-byte boilerplate.
 	 */
-	private applyStandardContextTruncationNoticeChange(timestamp: number): boolean {
-		if (!this.contextHistoryUpdates.has(1)) {
+	private applyStandardContextTruncationNoticeChange(timestamp: number, ledger?: string): boolean {
+		const noticeText = ledger
+			? `${formatResponse.contextTruncationNotice()}\n\n${ledger}`
+			: formatResponse.contextTruncationNotice()
+		const existing = this.contextHistoryUpdates.get(1)
+		if (!existing) {
 			// first assistant message always at index 1
 			const innerMap = new Map<number, ContextUpdate[]>()
-			innerMap.set(0, [[timestamp, "text", [formatResponse.contextTruncationNotice()], []]])
+			innerMap.set(0, [[timestamp, "text", [noticeText], []]])
 			this.contextHistoryUpdates.set(1, [0, innerMap]) // EditType is undefined for first assistant message
 			return true
+		}
+		if (ledger) {
+			// Refresh the ledger on repeat compactions — latest entry wins at apply time.
+			const changes = existing[1].get(0)
+			if (changes) {
+				changes.push([timestamp, "text", [noticeText], []])
+				return true
+			}
 		}
 		return false
 	}
