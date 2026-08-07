@@ -16,6 +16,7 @@ import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
+import { foldCommandOutput } from "./commandOutputFold"
 
 /**
  * Handler for executing commands in the nRF Connect terminal.
@@ -99,9 +100,15 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 		// Only Zephyr build tools need the NCS toolchain env (and thus a resolved version);
 		// nrfutil/nrfjprog and process cleanup just run bare with nrfutil on PATH.
-		return this.executeInAdsumNrfTerminal(config, block, command, {
+		const result = await this.executeInAdsumNrfTerminal(config, block, command, {
 			needsToolchain: this.commandNeedsToolchain(command),
 		})
+
+		// Fold long output before it enters context — a `west build --sysbuild` measured 44K chars of mostly
+		// compiler noise. Only the model's copy is folded; the terminal keeps the full output. Below the
+		// thresholds this is a no-op, so ordinary short command output is returned byte-identical. The
+		// log_device / sniff paths deliberately do NOT fold: those are captured logs the agent must read whole.
+		return foldCommandOutput(result, { source: 'the "Adsum nRF" terminal' })
 	}
 
 	/**
