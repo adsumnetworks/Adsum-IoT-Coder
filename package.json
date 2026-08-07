@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.2.0",
+	"version": "0.2.1-dev.2",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -414,11 +414,16 @@
 		"test:cra-artifact": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/craArtifact.test.ts",
 		"test:resting-ask": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/restingAskGuards.test.ts",
 		"test:resting-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/restingWorkflowGate.test.ts",
-		"test:esp-fold": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/espBuildFold.test.ts",
+		"test:esp-fold": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/commandOutputFold.test.ts",
+		"test:read-range": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/readFileRange.test.ts",
 		"test:workspace": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/platform/WorkspaceClassifier.node-test.ts",
 		"test:cve": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/cra/all.node-test.ts",
 		"test:cve:network": "RUN_OSV_NETWORK=1 ts-node --transpile-only -P tsconfig.unit-test.json src/services/cra/osvFetcher.integration.node-test.ts",
 		"test:tool-wiring": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/tools/toolWiring.node-test.ts",
+		"test:prompt-cost": "ts-node --transpile-only -P tsconfig.unit-test.json -r ./src/test/requires.ts src/core/prompts/system-prompt/components/promptCost.node-test.ts",
+		"test:edit-results": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/edit-result.test.ts",
+		"test:memory": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/memory.test.ts",
+		"test:memory-migrate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/migrate.test.ts",
 		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:workspace test:cve",
 		"kbit": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit.ts",
 		"qa": "bash qa/regression/run.sh",
@@ -460,7 +465,11 @@
 		"storybook": "cd webview-ui && npm run storybook",
 		"test:handover": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/handover/handover.test.ts",
 		"test:provider": "ts-node --transpile-only -P tsconfig.unit-test.json src/shared/proto-conversions/models/api-configuration-conversion.test.ts",
-		"test:session-export": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/session-export/sessionExport.test.ts"
+		"test:session-export": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/session-export/sessionExport.test.ts",
+		"test:usage-split": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/api/transform/openai-usage.test.ts",
+		"test:ledger": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/CompactionLedger.test.ts",
+		"test:memory-tiering": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/tiering.test.ts",
+		"test:memory-write": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/updateProjectMemory.test.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [

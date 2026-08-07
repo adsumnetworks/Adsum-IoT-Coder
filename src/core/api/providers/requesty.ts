@@ -129,7 +129,9 @@ export class RequestyHandler implements ApiHandler {
 
 			yield {
 				type: "usage",
-				inputTokens: inputTokens,
+				// prompt_tokens includes the cached share — report the non-cached
+				// remainder so the context gauge does not double-count cache reads.
+				inputTokens: Math.max(0, inputTokens - (cacheReadTokens || 0) - (cacheWriteTokens || 0)),
 				outputTokens: outputTokens,
 				cacheWriteTokens: cacheWriteTokens,
 				cacheReadTokens: cacheReadTokens,

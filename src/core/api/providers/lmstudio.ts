@@ -6,6 +6,7 @@ import { fetch } from "@/shared/net"
 import type { ApiHandler, CommonApiHandlerOptions } from "../"
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
+import { splitOpenAiUsage } from "../transform/openai-usage"
 import type { ApiStream } from "../transform/stream"
 import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
 
@@ -80,12 +81,9 @@ export class LmStudioHandler implements ApiHandler {
 				}
 
 				if (chunk.usage) {
-					yield {
-						type: "usage",
-						inputTokens: chunk.usage.prompt_tokens || 0,
-						outputTokens: chunk.usage.completion_tokens || 0,
-						cacheReadTokens: chunk.usage.prompt_tokens_details?.cached_tokens || 0,
-					}
+					// prompt_tokens includes cached_tokens — split to avoid the
+					// context gauge double-counting cached tokens.
+					yield splitOpenAiUsage(chunk.usage)
 				}
 			}
 		} catch {

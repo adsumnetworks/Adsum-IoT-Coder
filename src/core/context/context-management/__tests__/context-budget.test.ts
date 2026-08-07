@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, it } from "node:test"
 import type { Anthropic } from "@anthropic-ai/sdk"
+import type { ApiHandler } from "@core/api"
 import {
 	buildCompactionState,
 	hashPrefix,
@@ -19,6 +20,13 @@ import {
 	projectContextBudget,
 	resolveEffectiveMaxInputTokens,
 } from "../ContextBudget"
+import { getContextWindowInfo } from "../context-window-utils"
+
+/** Minimal fake — getContextWindowInfo only ever calls api.getModel(). */
+const fakeApi = (contextWindow: number | undefined, id = "some-model"): ApiHandler =>
+	({
+		getModel: () => ({ id, info: { contextWindow } }),
+	}) as unknown as ApiHandler
 
 const msg = (role: "user" | "assistant", text: string): Anthropic.Messages.MessageParam => ({ role, content: text })
 /** ~n tokens at 4 chars/token. */
@@ -92,7 +100,11 @@ describe("ContextBudget — token-aware truncation plan", () => {
 	})
 
 	it("never touches the opening user/assistant pair", () => {
-		const messages = [msg("user", "task"), msg("assistant", "ok"), ...Array.from({ length: 20 }, (_, i) => sized(i % 2 === 0 ? "user" : "assistant", 500))]
+		const messages = [
+			msg("user", "task"),
+			msg("assistant", "ok"),
+			...Array.from({ length: 20 }, (_, i) => sized(i % 2 === 0 ? "user" : "assistant", 500)),
+		]
 		const plan = planTokenAwareTruncation({
 			messages,
 			currentDeletedRange: undefined,
@@ -104,7 +116,11 @@ describe("ContextBudget — token-aware truncation plan", () => {
 	})
 
 	it("protects the recent tail — what the model is actually reasoning about", () => {
-		const messages = [msg("user", "task"), msg("assistant", "ok"), ...Array.from({ length: 20 }, (_, i) => sized(i % 2 === 0 ? "user" : "assistant", 1_000))]
+		const messages = [
+			msg("user", "task"),
+			msg("assistant", "ok"),
+			...Array.from({ length: 20 }, (_, i) => sized(i % 2 === 0 ? "user" : "assistant", 1_000)),
+		]
 		const preserve = 5_000
 		const plan = planTokenAwareTruncation({
 			messages,
@@ -121,7 +137,11 @@ describe("ContextBudget — token-aware truncation plan", () => {
 	})
 
 	it("ends a removal on an assistant message so the alternation survives", () => {
-		const messages = [msg("user", "task"), msg("assistant", "ok"), ...Array.from({ length: 12 }, (_, i) => sized(i % 2 === 0 ? "user" : "assistant", 800))]
+		const messages = [
+			msg("user", "task"),
+			msg("assistant", "ok"),
+			...Array.from({ length: 12 }, (_, i) => sized(i % 2 === 0 ? "user" : "assistant", 800)),
+		]
 		const plan = planTokenAwareTruncation({
 			messages,
 			currentDeletedRange: undefined,
@@ -145,9 +165,36 @@ describe("ContextBudget — token-aware truncation plan", () => {
 
 	it("no debt ⇒ no plan", () => {
 		assert.equal(
-			planTokenAwareTruncation({ messages: [msg("user", "a"), msg("assistant", "b")], currentDeletedRange: undefined, tokensToReclaim: 0, preserveRecentTokens: 100 }),
+			planTokenAwareTruncation({
+				messages: [msg("user", "a"), msg("assistant", "b")],
+				currentDeletedRange: undefined,
+				tokensToReclaim: 0,
+				preserveRecentTokens: 100,
+			}),
 			undefined,
 		)
+	})
+})
+
+describe("getContextWindowInfo — trusts the model's declared window", () => {
+	it("does NOT clamp a deepseek-id model reporting a 1M window (the stale bug)", () => {
+		const { contextWindow, maxAllowedSize } = getContextWindowInfo(fakeApi(1_000_000, "deepseek-v4-pro"))
+		assert.equal(contextWindow, 1_000_000, "the real 1M window must survive, not get force-clamped to 128K")
+		assert.equal(maxAllowedSize, 900_000, "buffer should be proportional (10%) at this scale, not a thin flat 40K")
+	})
+
+	it("falls back to a sane default when contextWindow is missing", () => {
+		assert.equal(getContextWindowInfo(fakeApi(undefined)).contextWindow, 128_000)
+	})
+
+	it("falls back to a sane default when contextWindow is 0", () => {
+		assert.equal(getContextWindowInfo(fakeApi(0)).contextWindow, 128_000)
+	})
+
+	it("leaves a 200K claude-style window's known buffer unchanged", () => {
+		const { contextWindow, maxAllowedSize } = getContextWindowInfo(fakeApi(200_000, "claude-sonnet"))
+		assert.equal(contextWindow, 200_000)
+		assert.equal(maxAllowedSize, 160_000)
 	})
 })
 
@@ -157,7 +204,14 @@ describe("CompactionState — resume must never fabricate history", () => {
 	it("round-trips through disk", async () => {
 		const dir = mkdtempSync(join(tmpdir(), "compaction-"))
 		try {
-			const state = buildCompactionState({ messages: history, compactedThroughIndex: 2, tokensBefore: 900, tokensAfter: 300, strategy: "truncation", modelId: "m" })
+			const state = buildCompactionState({
+				messages: history,
+				compactedThroughIndex: 2,
+				tokensBefore: 900,
+				tokensAfter: 300,
+				strategy: "truncation",
+				modelId: "m",
+			})
 			await saveCompactionState(dir, state)
 			assert.ok(existsSync(join(dir, "compaction_state.json")))
 			const loaded = await loadCompactionState(dir)
@@ -171,20 +225,38 @@ describe("CompactionState — resume must never fabricate history", () => {
 	it("REJECTS state when the prefix content changed but the length did not", () => {
 		// The dangerous case: same message count, different content (an edit, a restored checkpoint). An
 		// index-only check would accept this and let the agent describe work that no longer exists.
-		const state = buildCompactionState({ messages: history, compactedThroughIndex: 2, tokensBefore: 1, tokensAfter: 1, strategy: "truncation" })
+		const state = buildCompactionState({
+			messages: history,
+			compactedThroughIndex: 2,
+			tokensBefore: 1,
+			tokensAfter: 1,
+			strategy: "truncation",
+		})
 		const edited = [...history]
 		edited[1] = msg("assistant", "something entirely different")
 		assert.equal(isCompactionStateValid(state, edited), false)
 	})
 
 	it("rejects state pointing past the end of a shortened history", () => {
-		const state = buildCompactionState({ messages: history, compactedThroughIndex: 3, tokensBefore: 1, tokensAfter: 1, strategy: "truncation" })
+		const state = buildCompactionState({
+			messages: history,
+			compactedThroughIndex: 3,
+			tokensBefore: 1,
+			tokensAfter: 1,
+			strategy: "truncation",
+		})
 		assert.equal(isCompactionStateValid(state, history.slice(0, 2)), false)
 	})
 
 	it("accepts an unchanged prefix even when messages were APPENDED after it", () => {
 		// The normal resume: work continued past the compaction boundary.
-		const state = buildCompactionState({ messages: history, compactedThroughIndex: 1, tokensBefore: 1, tokensAfter: 1, strategy: "truncation" })
+		const state = buildCompactionState({
+			messages: history,
+			compactedThroughIndex: 1,
+			tokensBefore: 1,
+			tokensAfter: 1,
+			strategy: "truncation",
+		})
 		assert.ok(isCompactionStateValid(state, [...history, msg("user", "new turn"), msg("assistant", "reply")]))
 	})
 
