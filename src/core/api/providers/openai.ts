@@ -7,6 +7,7 @@ import { fetch } from "@/shared/net"
 import { ApiHandler, CommonApiHandlerOptions } from "../index"
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
+import { splitOpenAiUsage } from "../transform/openai-usage"
 import { convertToR1Format } from "../transform/r1-format"
 import { ApiStream } from "../transform/stream"
 import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
@@ -158,14 +159,10 @@ export class OpenAiHandler implements ApiHandler {
 			}
 
 			if (chunk.usage) {
-				yield {
-					type: "usage",
-					inputTokens: chunk.usage.prompt_tokens || 0,
-					outputTokens: chunk.usage.completion_tokens || 0,
-					cacheReadTokens: chunk.usage.prompt_tokens_details?.cached_tokens || 0,
-					// @ts-ignore-next-line
-					cacheWriteTokens: chunk.usage.prompt_cache_miss_tokens || 0,
-				}
+				// prompt_tokens already includes cached_tokens (and DeepSeek-style
+				// hit/miss fields sum to it) — split into disjoint buckets or the
+				// context gauge double-counts every cached token (~×1.9 measured).
+				yield splitOpenAiUsage(chunk.usage)
 			}
 		}
 	}
