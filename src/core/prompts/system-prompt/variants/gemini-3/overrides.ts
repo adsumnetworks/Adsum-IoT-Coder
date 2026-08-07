@@ -112,8 +112,8 @@ You have access to two tools for working with files: **write_to_file** and **rep
   - Adding/removing trailing commas in objects and arrays
   - Enforcing consistent brace style (e.g. same-line vs new-line)
   - Standardizing semicolon usage (adding or removing based on style)
-- The write_to_file and replace_in_file tool responses will include the final state of the file after any auto-formatting
-- Use this final state as your reference point for any subsequent edits. This is ESPECIALLY important when crafting SEARCH blocks for replace_in_file which require the content to match what's in the file exactly.
+- The write_to_file and replace_in_file tool responses confirm what was actually saved: a unified diff of the applied change, the surrounding lines of the saved file with line numbers, and any auto-formatting the editor applied. The full file is NOT echoed back for an existing file (only a newly created file is, and only if small)
+- Use that confirmation as your reference point for any subsequent edits. This is ESPECIALLY important when crafting SEARCH blocks for replace_in_file which require the content to match what's in the file exactly. If you need to edit a region the confirmation does not show, read that part of the file first.
 
 # Workflow Tips
 
@@ -121,7 +121,7 @@ You have access to two tools for working with files: **write_to_file** and **rep
 2. For targeted edits, apply replace_in_file with carefully crafted SEARCH/REPLACE blocks. If you need multiple changes, stack multiple SEARCH/REPLACE blocks within a single replace_in_file call.
 3. IMPORTANT: When you determine that you need to make several changes to the same file, prefer to use a single replace_in_file call with multiple SEARCH/REPLACE blocks. DO NOT make multiple successive replace_in_file calls for the same file. For example, if adding a component to a file, use one call with separate blocks for the import statement and component usage.
 4. For major overhauls or initial file creation, rely on write_to_file.
-5. Once the file has been edited, the system will provide you with the final state of the modified file. Use this updated content as the reference point for any subsequent SEARCH/REPLACE operations, since it reflects any auto-formatting or user-applied changes.
+5. Once the file has been edited, the system confirms the change with a diff plus the surrounding lines of the saved file, reflecting any auto-formatting or user-applied changes. Trust that confirmation — the edit landed exactly as shown — and use it as the reference point for subsequent SEARCH/REPLACE operations. Only re-read the file when you need a region the confirmation does not cover.
 
 By thoughtfully selecting between write_to_file and replace_in_file, you can make your file editing process smoother, safer, and more efficient.`
 
@@ -135,7 +135,7 @@ const GEMINI_3_RULES_TEMPLATE = (_context: SystemPromptContext) => `RULES
   - Using incomplete lines in SEARCH blocks (always include complete lines from start to end)
   - Forgetting the \`+++++++ REPLACE\` closing marker
   - Not listing multiple SEARCH/REPLACE blocks in the order they appear in the file
-  - Using the final auto-formatted file state (provided in tool responses) as the reference for subsequent edits is critical for success`
+  - Using the saved-state confirmation (the applied diff and surrounding lines returned in tool responses, including any auto-formatting) as the reference for subsequent edits is critical for success`
 
 const GEMINI_3_FEEDBACK_TEMPLATE = (_context: SystemPromptContext) => `FEEDBACK
 

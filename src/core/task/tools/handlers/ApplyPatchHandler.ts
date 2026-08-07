@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises"
 import type { ToolUse } from "@core/assistant-message"
+import { formatEditResult } from "@core/prompts/edit-result"
 import { resolveWorkspacePath } from "@core/workspace"
 import { processFilesIntoText } from "@integrations/misc/extract-text"
 import type { ClineSayTool } from "@shared/ExtensionMessage"
@@ -336,7 +337,19 @@ export class ApplyPatchHandler implements IFullyManagedTool {
 
 			this.config = undefined
 
-			// Build response with file contents and diagnostics
+			// Pre-edit content per RESULTING path, so the model gets a diff of what landed instead of a
+			// full echo of every patched file (see core/prompts/edit-result.ts). A move is treated as an
+			// edit of the destination — its "original" is the source file's content.
+			const preEditByPath = new Map<string, { fileExisted: boolean; originalContent?: string }>()
+			for (const [originalPath, change] of Object.entries(commit.changes)) {
+				const resultingPath = change.type === PatchActionType.UPDATE && change.movePath ? change.movePath : originalPath
+				preEditByPath.set(resultingPath, {
+					fileExisted: change.type === PatchActionType.UPDATE,
+					originalContent: change.oldContent,
+				})
+			}
+
+			// Build response with applied diffs and diagnostics
 			const responseLines = ["Successfully applied patch to the following files:"]
 
 			for (const [path, result] of Object.entries(applyResults)) {
@@ -344,10 +357,8 @@ export class ApplyPatchHandler implements IFullyManagedTool {
 					config.taskState.didEditFile = true
 					responseLines.push(`\n${path}: [deleted]`)
 				} else {
-					// Format response similar to WriteToFileToolHandler
 					if (result.userEdits) {
-						// User made edits during approval
-						responseLines.push(`\nThe user made edits to the file:\n${result.userEdits}\n`)
+						// User made edits during approval — surfaced in the UI as a diff row too
 						await config.callbacks.say(
 							"user_feedback_diff",
 							JSON.stringify({
@@ -357,17 +368,18 @@ export class ApplyPatchHandler implements IFullyManagedTool {
 							}),
 						)
 					}
-					if (result.autoFormattingEdits) {
-						responseLines.push(`\nAuto-formatting was applied to ${path}:\n${result.autoFormattingEdits}\n`)
-					}
-					if (result.finalContent) {
-						responseLines.push(`\n<final_file_content path="${path}">`)
-						responseLines.push(result.finalContent)
-						responseLines.push(`</final_file_content>`)
-					}
-					if (result.newProblemsMessage) {
-						responseLines.push(`\n\n${result.newProblemsMessage}`)
-					}
+					const preEdit = preEditByPath.get(path)
+					responseLines.push(
+						`\n${formatEditResult({
+							relPath: path,
+							fileExisted: preEdit?.fileExisted ?? true,
+							originalContent: preEdit?.originalContent,
+							finalContent: result.finalContent,
+							userEdits: result.userEdits,
+							autoFormattingEdits: result.autoFormattingEdits,
+							newProblemsMessage: result.newProblemsMessage,
+						})}`,
+					)
 				}
 			}
 
