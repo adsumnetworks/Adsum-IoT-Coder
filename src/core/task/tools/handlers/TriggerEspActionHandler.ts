@@ -9,7 +9,7 @@ import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
-import { foldEspBuildResult } from "./espBuildFold"
+import { foldCommandOutput } from "./commandOutputFold"
 
 /**
  * Handler for ESP-IDF hardware actions. The ESP counterpart of
@@ -139,9 +139,13 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 		} else {
 			telemetryService.captureEspActionExecuted(config.ulid, action, { command: sayPath, status: "success" })
 		}
-		// Fold the verbose build log before it enters context (build only — flash/monitor/execute are returned
-		// verbatim so serial logs and ad-hoc command output are never trimmed).
-		return action === "build" && !userRejected ? foldEspBuildResult(result) : result
+		// Fold long output before it enters context. Applies to every command action now, not just `build` —
+		// an ad-hoc `execute` leaks just as badly. `monitor` is exempt: it is a captured serial log, and the
+		// agent is meant to read it whole. Below the thresholds the fold is a no-op, so short output (flash,
+		// a one-line command) is still returned byte-identical.
+		return action !== "monitor" && !userRejected
+			? foldCommandOutput(result, { source: `the "${prepared.terminalName}" terminal` })
+			: result
 	}
 
 	/**

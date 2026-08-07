@@ -29,6 +29,8 @@ import type { ToolValidator } from "../ToolValidator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
+import { type CommandOutputFoldOptions, foldCommandOutputText } from "./commandOutputFold"
+import { formatRangeHeader, sliceLineRange } from "./readFileRange"
 
 /**
  * Emit the one-per-bit-per-task credit row the webview renders instead of an anonymous file path.
@@ -416,11 +418,61 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			config.taskState.userMessageContent.push(fileContent.imageBlock)
 		}
 
-		return fileContent.text
+		// Optional line window (start_line/end_line). Applied AFTER extraction so PDF/DOCX text windows
+		// the same way source does, and BEFORE the fold so a range that is *still* huge is capped by the
+		// same safety net as a whole-file read. Knowledge bits are exempt: they are curated, short, and
+		// their loaded-once bookkeeping assumes the whole bit — a range there is ignored silently.
+		let bodyText = fileContent.text
+		if (!isKnowledgeFile) {
+			const range = sliceLineRange(bodyText, block.params.start_line, block.params.end_line)
+			if (range.applied) {
+				bodyText = `${formatRangeHeader(range, displayPath)}\n${range.text}`
+			}
+		}
+
+		return capFileContentForContext(bodyText, absolutePath)
 	}
 }
 
-const LOG_PATH_PATTERN = /(^|[\\/])logs[\\/](rtt|uart|hci|btmon|monitor)[\\/].+\.(log|btmon)$/i
+// Also matches FLAT capture paths (logs/*.log) and logs/sniffer/** — 3 of 5 capture paths
+// observed in real gateway sessions were flat and missed the old subdirectory-only pattern.
+const LOG_PATH_PATTERN = /(^|[\\/])logs[\\/](?:(?:rtt|uart|hci|btmon|monitor|sniffer)[\\/])?[^\\/]+\.(log|btmon|txt)$/i
+
+// Ingest caps. Measured on real gateway sessions: ONE read of a captured RTT log reached
+// 333,192 tokens — bigger than an entire 200K-token context window in a single tool result —
+// and the same log was re-read 12×. Captured logs get an aggressive fold (they are on disk
+// and searchable); everything else gets a generous safety net that leaves normal source
+// files untouched (a 2,500-line C file passes whole) but stops megabyte-class reads.
+const LOG_READ_FOLD: CommandOutputFoldOptions = {
+	label: "LONG LOG FILE",
+	maxLines: 400,
+	maxChars: 24_000,
+	headLines: 60,
+	tailLines: 200,
+	maxErrorLines: 80,
+}
+const GENERAL_READ_FOLD: CommandOutputFoldOptions = {
+	label: "LONG FILE",
+	maxLines: 4_000,
+	maxChars: 100_000,
+	headLines: 1_200,
+	tailLines: 1_200,
+	maxErrorLines: 80,
+}
+
+function capFileContentForContext(text: string, absolutePath: string): string {
+	const opts = isLikelyCapturedLogPath(absolutePath) ? LOG_READ_FOLD : GENERAL_READ_FOLD
+	const folded = foldCommandOutputText(text, { ...opts, outputPath: absolutePath })
+	if (folded === text) {
+		return text
+	}
+	return (
+		folded +
+		`\n[The full file is on disk at the path above. To inspect the folded middle, use search_files with a ` +
+		`targeted regex (e.g. "error|panic|assert|LOG_ERR" or your symptom) on the file's directory instead of ` +
+		`re-reading the whole file.]`
+	)
+}
 
 function isLikelyCapturedLogPath(absolutePath: string): boolean {
 	return LOG_PATH_PATTERN.test(absolutePath)

@@ -55,6 +55,13 @@ export const toolParamNames = [
 	"devices",
 	"output",
 	"filename",
+	// update_project_memory params — the tool takes target/op/id/content instead of the old
+	// filename+content whole-file write. Absent from this list the XML parser drops <target>/<op>/<id>
+	// and every memory write arrives as "Missing 'target'", no matter what the model sent (the same
+	// silent-drop failure as sbom/build and ncs_version below).
+	"target",
+	"op",
+	"id",
 	// triggerCveScan params — MUST be here or the parser silently drops <sbom>/<build> and the handler
 	// reports "Missing value for required parameter 'sbom'" no matter what the model sends (observed on a
 	// live cra-sample run). A tool's params are only extracted if their names are in this list.
@@ -71,6 +78,11 @@ export const toolParamNames = [
 	// stayed "ambiguous" forever, and persistence (`if (explicitVersion)`) never armed. Field runs
 	// 1783956686373 (19 errors) and 1784481678488 (30 errors, WITH the resolver fixes already in the build).
 	"idf_version",
+	// read_file's optional line window — same rule as every entry above: absent from this list, the XML
+	// parser drops <start_line>/<end_line> and every ranged read silently degrades to a whole-file read
+	// (the exact waste the params exist to remove).
+	"start_line",
+	"end_line",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
