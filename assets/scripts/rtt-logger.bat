@@ -4,6 +4,10 @@ REM Provides a consistent interface for the RTT logging tool
 
 setlocal enabledelayedexpansion
 
+REM Isolate the interpreter from user-site .pth conflicts (see CLAUDE.md, bug B1).
+REM Set inside setlocal so it never leaks into the user's shell.
+set PYTHONNOUSERSITE=1
+
 REM Get the directory where this script is located
 set SCRIPT_DIR=%~dp0
 set PYTHON_SCRIPT=%SCRIPT_DIR%nrf_rtt_logger.py

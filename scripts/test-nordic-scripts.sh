@@ -26,18 +26,39 @@ echo ""
 # Test 1: Python Syntax Validation
 # ============================================================================
 
+# ----------------------------------------------------------------------------
+# Interpreter detection (Windows-first, per CLAUDE.md).
+# `python3` on Windows is usually the Microsoft Store alias stub: it exists on PATH,
+# prints "Python was not found", and exits 49 -- so probing with `command -v` gives a
+# false positive and every syntax check fails spuriously. Probe by RUNNING each
+# candidate and keep the first that actually works.
+# ----------------------------------------------------------------------------
+PY=""
+for cand in python3 python py; do
+    if "$cand" -c "import sys; sys.exit(0)" >/dev/null 2>&1; then
+        PY="$cand"
+        break
+    fi
+done
+if [ -z "$PY" ]; then
+    echo "FATAL: no working Python interpreter found (tried python3, python, py)."
+    exit 1
+fi
+echo "Using Python interpreter: $PY ($("$PY" --version 2>&1))"
+echo ""
+
 echo "Test 1: Python Syntax Validation"
 echo "─────────────────────────────────"
 
 for py_file in "$ASSETS_DIR"/*.py; do
     if [ -f "$py_file" ]; then
         filename=$(basename "$py_file")
-        if python3 -m py_compile "$py_file" 2>/dev/null; then
+        if "$PY" -m py_compile "$py_file" 2>/dev/null; then
             echo -e "${GREEN}✓${NC} $filename: Syntax OK"
             ((PASS++))
         else
             echo -e "${RED}✗${NC} $filename: Syntax ERROR"
-            python3 -m py_compile "$py_file"
+            "$PY" -m py_compile "$py_file"
             ((FAIL++))
         fi
     fi
@@ -117,11 +138,13 @@ for bat_file in "$ASSETS_DIR"/*.bat; do
             ((FAIL++))
         fi
         
-        if grep -q "python3" "$bat_file"; then
-            echo -e "${GREEN}✓${NC} $filename: Calls python3"
+        # Windows-first: a .bat must call `python` -- the Store `python3` alias is a stub that
+        # fails -- while the POSIX wrappers call `python3`. Accept either spelling here.
+        if grep -qE "python3?[ \"]" "$bat_file"; then
+            echo -e "${GREEN}✓${NC} $filename: Calls python"
             ((PASS++))
         else
-            echo -e "${RED}✗${NC} $filename: Missing python3 call"
+            echo -e "${RED}✗${NC} $filename: Missing python call"
             ((FAIL++))
         fi
         
