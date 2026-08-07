@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 17,
+	"count": 20,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -16,6 +16,21 @@
 			"platform": "universal",
 			"path": "AGENT.md",
 			"content_hash": "b51e31fb28797869f3911eaba4d5225d7643ed2425612e45f78fc37b1a1ed21b"
+		},
+		{
+			"id": "adsum/esp/actions/analyze-logs",
+			"title": "Action: Analyze Device Logs",
+			"type": "action",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "esp",
+			"path": "platforms/esp/actions/analyze-logs.md",
+			"content_hash": "55b777c52e689e7d194373420a3fe799f2f7b8f967b893b8df08b35333fc88a4"
 		},
 		{
 			"id": "adsum/esp/platform",
@@ -66,7 +81,7 @@
 			"id": "adsum/esp/rules/skill-loading",
 			"title": "ESP Platform Rule: Skill Loading",
 			"type": "knowledge",
-			"version": "1.1.0",
+			"version": "1.2.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -75,7 +90,7 @@
 			"domain": "embedded-iot",
 			"platform": "esp",
 			"path": "platforms/esp/rules/skill-loading.md",
-			"content_hash": "283207be0c14f0736c555ccfcc75774d5a792f01a4e17b8c9680f9828b82b473"
+			"content_hash": "96c204fb015e14aadff4af842cefd004c50ce3f80af672f5276054a589df9007"
 		},
 		{
 			"id": "adsum/esp/sdks/esp-idf/sdk",
@@ -91,6 +106,21 @@
 			"platform": "esp",
 			"path": "platforms/esp/sdks/esp-idf/SDK.md",
 			"content_hash": "a2a1d422fd5cef8164f26e7a35f20099156a705934ba16b65d6618131d44d558"
+		},
+		{
+			"id": "adsum/nrf/actions/analyze-logs",
+			"title": "Action: Analyze Device Logs",
+			"type": "action",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"path": "platforms/nrf/actions/analyze-logs.md",
+			"content_hash": "a601efee942877b890d3fb25960c2dc422dbfdfb26fa7749a0ab99e8ac3ff112"
 		},
 		{
 			"id": "adsum/nrf/actions/capture-logs",
@@ -186,7 +216,7 @@
 			"id": "adsum/nrf/rules/skill-loading",
 			"title": "nRF Platform Rule: Skill Loading",
 			"type": "knowledge",
-			"version": "1.3.0",
+			"version": "1.4.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -198,7 +228,7 @@
 				"flash"
 			],
 			"path": "platforms/nrf/rules/skill-loading.md",
-			"content_hash": "416694b98e131b360afe645b8b754d866b38687f69315f48bfcda8eb87a446b9"
+			"content_hash": "1caa59d58f94c9f8da0319eabd7c09b8aaa3706033d07de980860b0fe42bf9bb"
 		},
 		{
 			"id": "adsum/nrf/sdks/ncs/protocols/ble",
@@ -253,7 +283,7 @@
 			"id": "adsum/rules/core",
 			"title": "Universal Embedded Rules",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -262,7 +292,22 @@
 			"domain": "embedded-iot",
 			"platform": "universal",
 			"path": "rules/core.md",
-			"content_hash": "7656f94ececcc969cfbf529683df218074e3f415cc23b8b6d3e7a4ebd92b2cc7"
+			"content_hash": "f27e61a6b5da56fbd8fa529b516c5fa9d8e76b0faa19487c1122df189cb3744e"
+		},
+		{
+			"id": "adsum/rules/skill-loading",
+			"title": "Universal Rule: Skill Loading",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "adsum",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "universal",
+			"path": "rules/skill-loading.md",
+			"content_hash": "ef6831cfc4dbdf253e048f2b1318ca09509b292ae6b4dc19aaa5dd4b45adce67"
 		},
 		{
 			"id": "adsum/rules/tool-routing",
