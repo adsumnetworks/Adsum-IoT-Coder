@@ -74,6 +74,7 @@ export const config = createVariant(ModelFamily.NATIVE_GPT_5_1)
 		ClineDefaultTool.NORDIC_ACTION,
 		ClineDefaultTool.ESP_ACTION,
 		ClineDefaultTool.CVE_SCAN,
+		ClineDefaultTool.UPDATE_MEMORY,
 	)
 	.placeholders({
 		MODEL_FAMILY: ModelFamily.NATIVE_GPT_5_1,

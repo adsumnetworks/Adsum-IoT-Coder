@@ -35,6 +35,123 @@ test("every variant config that advertises the device tools also advertises CVE_
 	assert.ok(checked >= 10, `expected ≥10 variant configs to carry the device+CVE tools, found ${checked}`)
 })
 
+test("every variant config advertises UPDATE_MEMORY — the tool was dead because NO variant listed it", () => {
+	// The project-memory tool had a spec and a registered handler but appeared in zero `.tools(...)`
+	// lists, so no model ever saw it. Same silent-drop failure mode as CVE_SCAN above; pinned the same way.
+	const dirs = readdirSync(VARIANTS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory())
+	let checked = 0
+	for (const d of dirs) {
+		let content: string
+		try {
+			content = readFileSync(path.join(VARIANTS_DIR, d.name, "config.ts"), "utf8")
+		} catch {
+			continue
+		}
+		if (content.includes("ClineDefaultTool.ESP_ACTION")) {
+			assert.ok(
+				content.includes("ClineDefaultTool.UPDATE_MEMORY"),
+				`variant '${d.name}' advertises the device tools but is missing UPDATE_MEMORY`,
+			)
+			checked++
+		}
+	}
+	assert.ok(checked >= 10, `expected ≥10 variant configs to carry UPDATE_MEMORY, found ${checked}`)
+})
+
+test("update_project_memory is fully wired: enum, spec registration, handler, and params", () => {
+	assert.match(read("src/shared/tools.ts"), /UPDATE_MEMORY\s*=\s*"update_project_memory"/)
+	const init = read("src/core/prompts/system-prompt/tools/init.ts")
+	assert.match(init, /import\s*\{\s*update_project_memory_variants\s*\}/)
+	assert.match(init, /\.\.\.update_project_memory_variants/)
+	assert.match(read("src/core/task/ToolExecutor.ts"), /new UpdateProjectMemoryHandler\(/)
+	// The tool is SECTION-SCOPED as of Wave 3: target/op/id/content replaced the old whole-file
+	// `filename` clobber, so the model can no longer overwrite host-detected sections wholesale.
+	// Params must be in toolParamNames or the XML parser silently drops them.
+	const paramList = read("src/core/assistant-message/index.ts")
+	const declared = read("src/core/prompts/system-prompt/tools/update_project_memory.ts")
+	for (const p of ["target", "op", "id", "content"]) {
+		assert.match(declared, new RegExp(`name:\\s*"${p}"`), `update_project_memory spec should declare param '${p}'`)
+		assert.match(paramList, new RegExp(`["']${p}["']`), `toolParamNames must include '${p}' or the parser drops <${p}>`)
+	}
+	assert.ok(!/name:\s*"filename"/.test(declared), "the old whole-file `filename` param must be gone")
+})
+
+test("project memory is read back into the prompt from the WORKSPACE (.adsum), not globalStorage", () => {
+	// Both ends must be live: the tool writes memory, this injects it back. Wave 3 moved the store
+	// into the workspace so it is git-trackable, inspectable, and survives a folder move -- the
+	// md5(cwd) globalStorage layout orphaned itself when a real project folder was moved.
+	const ctx = read("src/core/prompts/system-prompt/components/iot_context.ts")
+	assert.match(ctx, /^\s*import \{ readMapMd, readProjectMd \}/m, "the workspace store import must be live")
+	assert.match(ctx, /buildProjectMemorySection\(cwd\)/, "the Tier A memory block must be appended")
+	assert.match(ctx, /migrateLegacyMemory\(cwd\)/, "legacy globalStorage memory must be migrated once")
+})
+
+test("TIER SPLIT: volatile memory must NOT be in the prompt fingerprint", () => {
+	// The load-bearing invariant. PROJECT.md / MAP.md are host-written and change only with the
+	// workspace, so they belong in the cached system prompt. status.json / session.json change
+	// constantly; if they were fingerprinted, every defect note would force a ~46K-token prompt
+	// rebuild. They ride on the last user message instead (tailBlock.ts).
+	const ctx = read("src/core/prompts/system-prompt/components/iot_context.ts")
+	assert.match(ctx, /adsum:PROJECT\.md=/, "PROJECT.md must be fingerprinted")
+	assert.match(ctx, /adsum:MAP\.md=/, "MAP.md must be fingerprinted")
+	assert.ok(!/status\.json=/.test(ctx), "status.json must NOT be fingerprinted (Tier B)")
+	assert.ok(!/session\.json=/.test(ctx), "session.json must NOT be fingerprinted (Tier B)")
+	assert.match(read("src/core/task/index.ts"), /withProjectStateTail\(/, "Tier B must be applied before the API call")
+})
+
+test("memory write rules are enforced: host-owned sections, evidence, and junk rejected", () => {
+	const rules = read("src/core/memory/workspace/writeRules.ts")
+	// A model may not overwrite what the host detects from live hardware/config.
+	assert.match(rules, /hw-detected|HOST_OWNED/, "host-owned sections must be rejected")
+	// A defect claim without a path:line is unfalsifiable, and pasted logs are what bloated memory.
+	assert.match(rules, /evidence/i, "defect writes must require evidence")
+	assert.match(rules, /verified/, "verified must be host-stamped, not model-set")
+})
+
+test("memory size caps exist and are applied on both the write and inject paths", () => {
+	// Unbounded memory would inflate EVERY system prompt for the workspace forever.
+	const limits = read("src/core/memory/memoryLimits.ts")
+	assert.match(limits, /MEMORY_INJECT_CAP\s*=\s*6000/)
+	assert.match(limits, /MEMORY_WRITE_CAP\s*=\s*24000/)
+	assert.match(read("src/core/memory/workspace/render.ts"), /PROJECT_MD_CAP\s*=\s*4096/, "PROJECT.md is capped")
+	assert.match(read("src/core/memory/workspace/render.ts"), /TAIL_BLOCK_CAP\s*=\s*1600/, "the tail block is capped")
+})
+
+test("a successful memory write reports the ABSOLUTE path so the model can read it back later", () => {
+	// The write path is: handler -> applyMemoryWrite (writeApply.ts), which builds the result text.
+	// The model cannot guess where memory lives, so every success must name the file it wrote.
+	const apply = read("src/core/memory/workspace/writeApply.ts")
+	assert.match(apply, /Written to: \$\{absPath\}/, "the success result must name the absolute file written")
+	assert.match(
+		read("src/core/task/tools/handlers/UpdateProjectMemoryHandler.ts"),
+		/applyMemoryWrite\(config\.cwd/,
+		"the handler must route writes through applyMemoryWrite",
+	)
+})
+
+test("read_file's optional line window (start_line/end_line) is declared on EVERY variant and registered for XML parsing", () => {
+	// Without the toolParamNames entries the parser drops <start_line>/<end_line> and every ranged read
+	// silently becomes a whole-file read — the exact waste the params exist to remove (measured: a
+	// 69,739-char sdkconfig read whole after search_files had already found the 570-char answer).
+	const declared = read("src/core/prompts/system-prompt/tools/read_file.ts")
+	const paramList = read("src/core/assistant-message/index.ts")
+	for (const p of ["start_line", "end_line"]) {
+		assert.match(declared, new RegExp(`name:\\s*"${p}"`), `read_file spec should declare param '${p}'`)
+		assert.match(paramList, new RegExp(`["']${p}["']`), `toolParamNames must include '${p}' or the parser drops <${p}>`)
+	}
+	// Both params must ride on all three variants (generic + the two native ones) or native-mode models
+	// get a JSON schema without them.
+	const variantParamBlocks = declared.match(/START_LINE_PARAMETER,\s*\n\s*END_LINE_PARAMETER,/g) ?? []
+	assert.ok(
+		variantParamBlocks.length >= 2,
+		`start_line/end_line must be listed in every read_file variant's parameters (found ${variantParamBlocks.length})`,
+	)
+	// The handler must actually apply the window, and the fold must still run last.
+	const handler = read("src/core/task/tools/handlers/ReadFileToolHandler.ts")
+	assert.match(handler, /sliceLineRange\(bodyText, block\.params\.start_line, block\.params\.end_line\)/)
+	assert.match(handler, /return capFileContentForContext\(bodyText, absolutePath\)/)
+})
+
 test("CVE_SCAN is in the enum (tools.ts) with the wire name 'triggerCveScan'", () => {
 	assert.match(read("src/shared/tools.ts"), /CVE_SCAN\s*=\s*"triggerCveScan"/)
 })

@@ -53,6 +53,7 @@ export const config = createVariant(ModelFamily.XS)
 		ClineDefaultTool.NORDIC_ACTION,
 		ClineDefaultTool.ESP_ACTION,
 		ClineDefaultTool.CVE_SCAN,
+		ClineDefaultTool.UPDATE_MEMORY,
 	)
 	.placeholders({
 		MODEL_FAMILY: ModelFamily.XS,

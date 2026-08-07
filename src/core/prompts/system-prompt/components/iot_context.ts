@@ -8,7 +8,10 @@ import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { routePlatform } from "@/services/platform/platformRouting"
 import { getCachedWorkspaceSummary, NRF_BLE_RE } from "@/services/platform/WorkspaceClassifier"
 import { fileExistsAtPath } from "@/utils/fs"
-// import { IotProjectMemoryManager } from "../../../memory/IotProjectMemoryManager"
+import { shouldInjectMap } from "../../../memory/workspace/mapGate"
+import { migrateLegacyMemory } from "../../../memory/workspace/migrate"
+import { resolveAdsumPaths } from "../../../memory/workspace/paths"
+import { readMapMd, readProjectMd } from "../../../memory/workspace/store"
 import { SystemPromptSection } from "../templates/placeholders"
 import { TemplateEngine } from "../templates/TemplateEngine"
 import type { PromptVariant, SystemPromptContext } from "../types"
@@ -441,8 +444,16 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
  */
 const MULTI_PLATFORM_NOTE = `> **MULTI-PLATFORM WORKSPACE.** This workspace contains BOTH an nRF Connect SDK / Zephyr app and an Espressif ESP-IDF app. The single-platform "Scope Gate" above is relaxed — BOTH nRF/NCS and ESP/ESP-IDF projects are in scope here. Before you build, flash, or debug, confirm with the user which app (nRF or ESP) the task targets, then use that platform's device tool (\`triggerNordicAction\` for nRF, \`triggerEspAction\` for ESP) and that platform's knowledge below.`
 
-async function getIotContextTemplateText(context: SystemPromptContext): Promise<string> {
-	const cwd = context.cwd || process.cwd()
+/**
+ * Assemble the whole IoT knowledge block for a workspace.
+ *
+ * `cwd` is the ONLY input taken from the request — everything else comes from the filesystem
+ * and the process-wide detector caches. That is what makes the memo below sound: two requests
+ * with the same cwd and unchanged inputs must produce the same bytes, whatever variant or
+ * model is asking. Keep it that way; if this ever needs another field off
+ * `SystemPromptContext`, that field must join the fingerprint too.
+ */
+async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	const kbPath = path.join(HostProvider.get().extensionFsPath, "iot-knowledge").replace(/\\/g, "/")
 
 	// Platform is selected at RUNTIME from the workspace classification (not a build
@@ -481,6 +492,9 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 	}
 	iotContext += (await load("rules/core.md")) + "\n\n"
 	iotContext += (await load("rules/tool-routing.md")) + "\n\n"
+	// Shared skill-loading framework (Scope Gate / Command Gate / MANDATORY SKILL LOAD) — factored
+	// out of the two per-platform copies (−3.1K chars each); the platform stubs reference it.
+	iotContext += (await load("rules/skill-loading.md")) + "\n\n"
 
 	// 2. Platform knowledge — load each platform the classification allows AND the
 	//    cwd confirms as a real project. A single-platform workspace loads exactly
@@ -519,13 +533,215 @@ async function getIotContextTemplateText(context: SystemPromptContext): Promise<
 		iotContext += "\n"
 	}
 
-	// 5. Load Project Memory
-	// TODO: Enable this feature after core stability is verified
-	// const memoryManager = new IotProjectMemoryManager(cwd)
-	// await memoryManager.initialize()
-	// iotContext += await memoryManager.getMemoryContext()
+	// 5. Project memory — TIER A ONLY.
+	//
+	//    This block is the cached prefix of every request. Whatever goes in here must change ONLY
+	//    when the workspace itself changes, because rewriting it forces the provider to re-process
+	//    ~46K tokens. So only the STABLE, host-written half lands here: goal, apps, detected
+	//    hardware, toolchain, notes index, and (when the task-start gate says so) the file map.
+	//
+	//    The volatile half — open defects, current focus, last error — is Tier B: rendered by
+	//    host code onto the LAST USER MESSAGE each turn (see renderTailBlock), where mutation is
+	//    free and where the model attends best. Never move Tier B content into this function.
+	//
+	//    Best-effort throughout: memory is an enhancement, so any storage failure must degrade to
+	//    "no memory" rather than taking down the system prompt.
+	try {
+		iotContext += buildProjectMemorySection(cwd)
+	} catch (e) {
+		console.error("Failed to load workspace project memory:", e)
+	}
 
 	return iotContext
+}
+
+/**
+ * Render the Tier A memory block: PROJECT.md, plus MAP.md when the map gate is on.
+ *
+ * Both are read straight off disk — host code is what keeps them current — so this stays a
+ * cheap, synchronous read on an already-memoized path.
+ */
+function buildProjectMemorySection(cwd: string): string {
+	// One-shot: import any pre-.adsum legacy memory (globalStorage/iot-memory/<hash>/) into
+	// .adsum/notes/ the first time this workspace is seen. The sentinel file short-circuits
+	// every call after the first, so this is cheap on the hot path.
+	migrateLegacyMemory(cwd)
+	const projectMd = readProjectMd(cwd)
+	const mapMd = shouldInjectMap(cwd) ? readMapMd(cwd) : ""
+	if (!projectMd && !mapMd) {
+		return ""
+	}
+	const paths = resolveAdsumPaths(cwd)
+	let out = "\n### 🧠 PROJECT MEMORY — persistent across sessions\n\n"
+	out +=
+		"This is what is already known about this project. It survives context compaction and new tasks. " +
+		"**Trust it over re-deriving:** do not re-run device discovery, SDK version probes, or directory " +
+		"listings for anything answered below. If a fact is marked stale, re-verify just that fact.\n\n"
+	out +=
+		"ASSUME INTERRUPTION: this session can be compacted or ended at any moment. Record decisions and " +
+		"findings as you make them, not at the end.\n\n"
+	if (projectMd) {
+		out += `${projectMd.trim()}\n\n`
+	}
+	if (mapMd) {
+		out += `${mapMd.trim()}\n\n`
+	}
+	out += `To record something durable, use update_project_memory. Files: ${paths.projectMd} (project facts), ${paths.statusJson} (goals + defects), ${paths.notesDir} (topic notes).\n\n`
+	return out
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// Assembly memo
+//
+// The block built above is the single largest slice of the system prompt (measured at
+// 37–46K tokens), and it was rebuilt from scratch on EVERY request: re-running platform
+// detection (directory scans, prj.conf / sdkconfig / build_info.yml reads) and re-reading
+// a dozen knowledge files, to produce — in the overwhelming majority of turns — a
+// byte-identical string.
+//
+// So we memoize per workspace, keyed on a fingerprint of the inputs the assembly actually
+// reads. The fingerprint is deliberately cheap (stats, not reads) and deliberately
+// *complete*: anything the builder consults must appear in it, or an edit to that input
+// would be silently ignored for the rest of the session. It covers
+//   - the workspace (cwd) and the knowledge root (extensionFsPath),
+//   - the cached workspace classification + the cached nRF / ESP environment probes,
+//   - mtime+size of every cwd-level detector input (prj.conf, CMakeLists.txt, sdkconfig,
+//     sdkconfig.defaults, main/idf_component.yml, main/CMakeLists.txt),
+//   - mtime+size of every build descriptor found one level down (build_info.yml,
+//     project_description.json) — these carry the board/target that selects board files,
+//   - mtime+size of the three project-memory files, which the agent rewrites mid-task.
+//
+// Fail-open: if the fingerprint cannot be computed the memo is bypassed entirely and the
+// block is rebuilt, so a stat failure can only cost time, never correctness.
+// ───────────────────────────────────────────────────────────────────────────────
+
+interface IotContextMemoEntry {
+	fingerprint: string
+	text: string
+}
+
+/** cwd → last assembled block. Bounded so a long-lived host that opens many workspaces
+ *  cannot accumulate 40K-token strings without limit. */
+const iotContextMemo = new Map<string, IotContextMemoEntry>()
+const IOT_CONTEXT_MEMO_MAX_ENTRIES = 8
+
+/** cwd-level files whose content feeds platform detection / feature flags. */
+const FINGERPRINT_FILES = [
+	"prj.conf",
+	"CMakeLists.txt",
+	"sdkconfig",
+	"sdkconfig.defaults",
+	path.join("main", "idf_component.yml"),
+	path.join("main", "CMakeLists.txt"),
+]
+
+/** Build descriptors scanned one level below cwd (nRF then ESP). */
+const FINGERPRINT_BUILD_DESCRIPTORS = ["build_info.yml", "project_description.json"]
+
+/** `mtime:size` for a path, or "-" when it does not exist / cannot be stat'd. */
+async function statSignature(filePath: string): Promise<string> {
+	try {
+		const s = await fs.stat(filePath)
+		return `${Math.round(s.mtimeMs)}:${s.size}`
+	} catch {
+		return "-"
+	}
+}
+
+/** Cheap fingerprint of every input `buildIotContextTemplateText` reads, or null if it
+ *  could not be computed (caller then skips the cache and rebuilds). */
+async function computeIotContextFingerprint(cwd: string): Promise<string | null> {
+	try {
+		const parts: string[] = [`cwd=${cwd}`, `ext=${HostProvider.get().extensionFsPath}`, `ws=${getCachedWorkspaceSummary()}`]
+
+		// Runtime env probes are read straight into the block (SDK/IDF version notes), so a
+		// re-probe that changes them must invalidate.
+		const nrf = getCachedNrfEnvironment()
+		parts.push(
+			`nrf=${(nrf.installedSdkVersions ?? []).join("|")}@${nrf.projectSdk?.version ?? ""}#${nrf.projectSdk?.source ?? ""}`,
+		)
+		const esp = getCachedEspEnvironment()
+		parts.push(`esp=${esp.idfVersion ?? ""}#${esp.projectIdfVersion ?? ""}`)
+
+		for (const rel of FINGERPRINT_FILES) {
+			parts.push(`${rel}=${await statSignature(path.join(cwd, rel))}`)
+		}
+
+		// Build folders can have any name (build, build_52840, build_central…), so mirror the
+		// detectors' own readdir rather than guessing names.
+		const buildSigs: string[] = []
+		try {
+			const entries = await fs.readdir(cwd, { withFileTypes: true })
+			for (const entry of entries) {
+				if (!entry.isDirectory()) {
+					continue
+				}
+				for (const name of FINGERPRINT_BUILD_DESCRIPTORS) {
+					const sig = await statSignature(path.join(cwd, entry.name, name))
+					if (sig !== "-") {
+						buildSigs.push(`${entry.name}/${name}=${sig}`)
+					}
+				}
+			}
+			buildSigs.sort()
+			parts.push(`builds=${buildSigs.join(",")}`)
+		} catch {
+			// cwd unreadable — the detectors will see the same thing; record it as a state.
+			parts.push("builds=unreadable")
+		}
+
+		// Tier A memory only. PROJECT.md and MAP.md are host-written and change only when the
+		// workspace changes, so including them here is correct: an invalidation coincides with a
+		// real change the prompt must reflect.
+		//
+		// status.json / local/session.json are deliberately ABSENT. They are Tier B — rendered
+		// onto the last user message every turn — and adding them here would reintroduce exactly
+		// the problem this split exists to remove: a defect note rewriting the cached prefix.
+		const adsum = resolveAdsumPaths(cwd)
+		parts.push(`adsum:PROJECT.md=${await statSignature(adsum.projectMd)}`)
+		parts.push(`adsum:MAP.md=${await statSignature(adsum.mapMd)}`)
+
+		return parts.join("\n")
+	} catch {
+		return null
+	}
+}
+
+/** Drop every memoized IoT-context block. For tests, and for any host-level event
+ *  (knowledge re-install, workspace re-classification) that should force a rebuild. */
+export function clearIotContextCache(): void {
+	iotContextMemo.clear()
+}
+
+async function getIotContextTemplateText(context: SystemPromptContext): Promise<string> {
+	const cwd = context.cwd || process.cwd()
+	const fingerprint = await computeIotContextFingerprint(cwd)
+
+	if (fingerprint !== null) {
+		const cached = iotContextMemo.get(cwd)
+		if (cached && cached.fingerprint === fingerprint) {
+			return cached.text
+		}
+	}
+
+	const text = await buildIotContextTemplateText(cwd)
+
+	if (fingerprint !== null) {
+		// Re-fingerprint AFTER the build. The build has one legitimate side effect on its own
+		// inputs — IotProjectMemoryManager.initialize() creates the three memory files the first
+		// time a workspace is seen — and storing the pre-build value would invalidate the entry
+		// we just wrote and force one wasted rebuild on the very next turn.
+		const settled = (await computeIotContextFingerprint(cwd)) ?? fingerprint
+		if (!iotContextMemo.has(cwd) && iotContextMemo.size >= IOT_CONTEXT_MEMO_MAX_ENTRIES) {
+			const oldest = iotContextMemo.keys().next().value
+			if (oldest !== undefined) {
+				iotContextMemo.delete(oldest)
+			}
+		}
+		iotContextMemo.set(cwd, { fingerprint: settled, text })
+	}
+
+	return text
 }
 
 export async function getIotContextSection(variant: PromptVariant, context: SystemPromptContext): Promise<string> {
