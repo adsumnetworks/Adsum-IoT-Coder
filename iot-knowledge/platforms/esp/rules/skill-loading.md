@@ -2,7 +2,7 @@
 id: adsum/esp/rules/skill-loading
 title: "ESP Platform Rule: Skill Loading"
 type: knowledge
-version: 1.1.0
+version: 1.2.0
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -14,16 +14,13 @@ platform: esp
 
 # ESP Platform Rule: Skill Loading (rules/skill-loading.md)
 
-This rule governs when and how you load Workflows and Actions from the `iot-knowledge` library.
-
-## The Operation-Gating Principle (read this first)
-
-**Before you perform any complex ESP operation, you MUST first `read_file` the Workflow that covers it.**
-
-This fires whenever you are *about to act*, however you got there:
-- The user asked for the operation, OR you decided to do it from your own analysis, OR another Workflow handed off to it, OR the conversation moved on and the next request needs it again.
-
-You may NOT execute a complex operation from pre-trained knowledge — the ESP-IDF API and idf.py surface change between versions, and the Workflow is the source of truth for the steps, permission gates, error handling and Action chain. "Loading" a Workflow is simply `read_file` on its markdown; there is no separate load tool.
+> **MANDATORY FIRST LOAD:** if the universal `rules/skill-loading.md` (`iot-knowledge/rules/skill-loading.md`)
+> is not already in your context this task, `read_file` it now (Load-Once — skip if already loaded). It
+> defines the Operation-Gating Principle, the Workflows-vs-Actions hierarchy, the Command Gate mechanics,
+> and Load-Once Optimization — shared verbatim across nRF and ESP. **This file has ONLY the ESP-specific
+> tables, Command Gate rationale, and worked examples** — it does not restate the general framework.
+> Note specific to ESP-IDF: the ESP-IDF API and `idf.py` surface change between versions, so the Workflow
+> (not pre-trained knowledge) is the source of truth for steps, gates, and error handling.
 
 ## Operation → Workflow
 
@@ -43,12 +40,10 @@ If an upcoming operation matches no row, you are not in a Workflow's scope — a
 
 **Protocol bugs use the curated protocol bit, not general knowledge.** Before you diagnose a Wi-Fi or BLE problem, the matching protocol reference (`protocols/WIFI.md` / `protocols/BLE.md`) MUST be in your context — the Command Gate below enforces it. These carry version-pinned failure modes you cannot reliably derive from pre-training.
 
-## Workflows vs Actions (Hierarchy)
-- **Workflows** are the **only** valid entry points. You load them via this rule.
-- **Actions** (`platforms/esp/actions/*.md`) are atomic subroutines invoked *by an active Workflow* through a `MANDATORY SKILL LOAD` directive. You are **STRICTLY FORBIDDEN** from loading an Action as the first read of a task — **except when the Command Gate below fires**.
+## The Command Gate (ESP) — table
 
-## The Command Gate (HARD RULE — fires at the moment of execution)
-The table above fires on *intent*. This gate fires on the *act*: the instant you are about to issue one of these commands, the matching Action file MUST already be in your context. If it is not, **STOP and `read_file` it first** — regardless of which Workflow you are in or how confident you feel.
+*(Mechanics — what a Command Gate is and why it fires, and the Workflows-vs-Actions hierarchy — are
+defined once in the universal `rules/skill-loading.md`. This table is the ESP-specific instance of it.)*
 
 | About to do (any phrasing, any entry path) | Action file that MUST be in context |
 |---|---|
@@ -64,12 +59,11 @@ The table above fires on *intent*. This gate fires on the *act*: the instant you
 | Pick an IDF example / registry component to copy or pull from | `platforms/esp/actions/find-sample.md` |
 | Create/edit a CI workflow for firmware build/tests | `platforms/esp/actions/setup-ci.md` |
 
-**Why this is non-negotiable:** these files carry hardware-verified rules you cannot derive from general knowledge — target reconciliation, the `sdkconfig` vs `sdkconfig.defaults` trap, the always-pass-the-port rule, monitor's backtrace decode, the Xtensa-vs-RISC-V `addr2line` prefix, the `linux`/QEMU tier split. Running these by trial-and-error is the #1 documented field failure. One `read_file` is cheaper than a failed flash or a misleading capture.
-
-**Capture without analysis is an unfinished operation.** After any log capture, the analyze step is part of the same operation — never end at "logs captured".
-
-## Load-Once Optimization
-If a Workflow or Action file is already in your current context (you read it earlier this task, e.g. on a previous debug-loop iteration), **do NOT read it again** — rely on what's already in context. Re-read only if it was truncated/compacted or you need to re-verify exact steps. Files listed under "Knowledge Already Loaded" in your system context are already present — never re-read those.
+**Why this is non-negotiable (ESP specifics):** target reconciliation, the `sdkconfig` vs
+`sdkconfig.defaults` trap, the always-pass-the-port rule, monitor's backtrace decode, the
+Xtensa-vs-RISC-V `addr2line` prefix, the `linux`/QEMU tier split — none of these are derivable from
+general knowledge. (See the universal rule for why the Command Gate mechanic itself is non-negotiable,
+and for the "capture without analysis" and Load-Once rules — both apply here unchanged.)
 
 ## Worked Examples
 1. **Fresh chat: "flash my code to the esp32-s3"** → about to flash → read `workflows/debug-loop.md`.

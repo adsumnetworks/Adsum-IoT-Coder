@@ -2,7 +2,7 @@
 id: adsum/rules/core
 title: "Universal Embedded Rules"
 type: knowledge
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -98,3 +98,13 @@ Some prerequisites are beyond your reach: they need admin/elevated rights (an ad
 2. **Give the exact command or download link** the user should run, and note the privilege level (e.g. *"run this in an **admin** PowerShell"*).
 3. **Tell them how to verify** it worked (e.g. `qemu-system-arm --version` prints a version) and that a **new terminal** may be needed for PATH changes.
 4. Offer to continue once it's done — via buttons (Rule 5). Do NOT silently work around the gap, retry in a loop, or pretend a degraded path is equivalent.
+
+## 12. Memory Checkpoints
+
+Call `update_project_memory` to persist state at these points — do not wait until the task ends:
+- **After every Build → Flash → Capture → Analyze cycle:** checkpoint what changed and what the logs showed to `session.md`.
+- **After any significant decision:** an observation method chosen (RTT vs UART), a root cause identified, or a config changed — checkpoint the "why" to `session.md`, or to `project.md` if it's an architecture decision that outlives this session.
+- **After confirming board/port/serial facts** (device role, serial number, COM/tty port, SoC/board target) — checkpoint them to `devices.md` so they never need re-discovery.
+- **Before `attempt_completion`:** checkpoint the final state of the session so a fresh chat can resume without re-deriving it.
+
+Keep each write focused on what changed — do not re-dump the whole file's history on every call.
