@@ -234,6 +234,7 @@ export interface ClineSayTool {
 		| "triggerNordicAction"
 		| "triggerEspAction"
 		| "triggerCveScan"
+		| "update_project_memory"
 	path?: string
 	diff?: string
 	content?: string

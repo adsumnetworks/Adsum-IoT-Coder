@@ -51,13 +51,17 @@ Usage:
 </execute_command>
 
 ## read_file
-Description: Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, or extract information from configuration files. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string. Do NOT use this tool to list the contents of a directory. Only use this tool on files.
+Description: Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, or extract information from configuration files. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string. Do NOT use this tool to list the contents of a directory. Only use this tool on files. Supports partial reads: pass the optional start_line/end_line parameters to read only a window of the file — prefer a range over a whole-file read once search_files has located the region you care about, and for large configuration or build artifacts.
 Parameters:
 - path: (required) The path of the file to read (relative to the current working directory /test/project)
+- start_line: (optional) (optional) First line to read, 1-based and inclusive. Use a line range whenever you already know roughly where the answer is — most importantly right after search_files reported a match at a line number (read a window around it instead of the whole file), and for large configuration or build artifacts (sdkconfig, .config, build_info.yml, generated headers, map files, logs) where reading everything would flood your context. Omit both start_line and end_line to read the whole file.
+- end_line: (optional) (optional) Last line to read, 1-based and inclusive. Values past the end of the file are clamped, so asking for a generous window is safe. The response is annotated with the exact range returned and the file's total line count, so you can request a further window if the region you need extends beyond it. Omit both start_line and end_line to read the whole file.
 - task_progress: (optional) A checklist showing task progress after this tool use is completed. The task_progress parameter must be included as a separate parameter inside of the parent tool call, it must be separate from other parameters such as content, arguments, etc. (See 'UPDATING TASK PROGRESS' section for more details)
 Usage:
 <read_file>
 <path>File path here</path>
+<start_line>Start line number here (optional, e.g. 120)</start_line>
+<end_line>End line number here (optional, e.g. 180)</end_line>
 <task_progress>Checklist here (optional)</task_progress>
 </read_file>
 
@@ -230,6 +234,15 @@ Parameters: None
 Usage:
 <load_mcp_documentation>
 </load_mcp_documentation>
+
+## focus_chain
+Description: Records or revises the task progress checklist for the overall task. Use this when creating the checklist for the first time (for example, right after switching from PLAN MODE to ACT MODE) or when the scope has changed enough that the existing checklist is no longer accurate. For a routine progress update on a step you are already completing, prefer attaching the task_progress parameter directly to the tool call you are making instead of calling this tool on its own.
+Parameters:
+- task_progress: (optional) A checklist showing task progress after this tool use is completed. The task_progress parameter must be included as a separate parameter inside of the parent tool call, it must be separate from other parameters such as content, arguments, etc. (See 'UPDATING TASK PROGRESS' section for more details)
+Usage:
+<focus_chain>
+<task_progress>Checklist here (optional)</task_progress>
+</focus_chain>
 
 ## triggerNordicAction
 Description: Execute commands in the nRF Connect terminal (correct NCS SDK environment), OR capture live logs from connected nRF devices. BUILT-IN tool of this agent — call it directly like read_file; NEVER route it through use_mcp_tool (it is not an MCP tool and no MCP server hosts it).
@@ -421,6 +434,35 @@ Usage:
 <sbom>compliance/sbom/app.spdx</sbom>
 <build>build</build>
 </triggerCveScan>
+
+## update_project_memory
+Description: Records durable project memory in this workspace's `.adsum/` folder — the small set of facts that must survive context compaction, a new task, or a new session. You write one named thing per call.
+
+TARGETS:
+- `goal` — the project's objective, in one sentence ("Ship the BWG840 gateway with the BLE-to-UART bridge"). Goals change RARELY. Setting a new one never deletes the old: the previous goal is kept automatically as prior-goal history. If what you are recording is this bug rather than what the project is for, it is a defect, not a goal.
+- `hw-asserted` — a bench fact only the developer can know and no probe can see: a jumper, a DIP or slide switch position, a board mode, what is wired to what. Pass the board's serial or port as `id` when the fact belongs to one board.
+- `note` — a topic write-up saved to `.adsum/notes/<id>.md`. Notes are NOT injected into your context; you read them back with read_file when you work in that area, so this is where long explanations belong.
+- `defect` — one bug you are working on. Defects are CHEAP: open one as soon as you have a symptom and update it every time you learn something — a ruled-out hypothesis is worth recording. Every defect write must cite at least one piece of evidence as `path:line` or `path:line-line`.
+
+WHEN: record findings and decisions as you make them, not at the end. Assume this session can be compacted or ended at any moment — anything you have not written here is lost. Write after each Build → Flash → Capture → Analyze cycle, when you find a root cause or rule one out, and whenever the developer tells you something about the bench.
+
+NEVER PASTE LOG CONTENTS, terminal transcripts, or code dumps. Memory holds the CONCLUSION plus a citation: record the log PATH and LINE RANGE (`logs/rtt/cap_1012.log:2211-2247`, `src/gw_uart.c:214`) and what it proved. Writes containing runs of log-shaped lines, or a fenced code block over 400 characters, are rejected.
+
+NOT YOURS TO WRITE: apps, detected hardware, toolchain and the workspace map are filled in automatically from live detection on this machine. If one of them is wrong or missing, say so in your reply and it will be re-probed. You also may never mark a defect `verified` — that is host-stamped after a real build/flash/capture confirms your fix. Use `state: under-test` to say you believe it is fixed and are waiting on hardware.
+Parameters:
+- target: (required) What you are recording. Exactly one of: 'goal' (the project's objective — rare to change, and the previous goal is preserved as history), 'hw-asserted' (a bench fact only the developer knows: jumper, switch position, board mode, wiring), 'note' (a topic write-up saved to .adsum/notes/<id>.md and read back on demand), 'defect' (a bug you are working on). 'apps', 'hw-detected', 'toolchain' and 'map' are host-owned and will be rejected.
+- op: (required) What to do: 'set' to create or replace, 'append' to add to what is already there, 'close' to mark a defect resolved (defect only, no content needed), 'delete' to remove. target=goal accepts only 'set' — the goal is append-only history with the current goal on top, so the previous one is kept automatically.
+- id: (optional) REQUIRED for target=note (a short slug naming the topic, e.g. 'uart-ringbuffer' — it becomes .adsum/notes/uart-ringbuffer.md) and for target=defect (a short stable id for the bug, e.g. 'uart-drop' — reuse the SAME id every time you learn something more about it). Optional for target=hw-asserted: pass the board's serial or port so the fact is attached to that board. Not used by target=goal.
+- content: (optional) What to record. Required for every op except 'close' and 'delete'. For target=defect you may use key lines the host understands — 'title: ...', 'state: open' or 'state: under-test', 'evidence: path:line' (one or more, and at least ONE is required: 'src/gw_uart.c:214' or 'logs/rtt/cap_1012.log:2211-2247'), 'next: ...', 'tried: ...' — or plain prose, as long as it contains at least one path:line citation. Never paste log output, terminal transcripts, or code blocks over 400 characters: write the conclusion and cite the path and line range instead.
+- task_progress: (optional) A checklist showing task progress after this tool use is completed. The task_progress parameter must be included as a separate parameter inside of the parent tool call, it must be separate from other parameters such as content, arguments, etc. (See 'UPDATING TASK PROGRESS' section for more details)
+Usage:
+<update_project_memory>
+<target>defect</target>
+<op>set</op>
+<id>uart-drop</id>
+<content>title: UART frames dropped after Wi-Fi reconnect; state: open; evidence: logs/rtt/cap_1012.log:2211-2247; next: log the ring-buffer high-water mark</content>
+<task_progress>Checklist here (optional)</task_progress>
+</update_project_memory>
 
 # Tool Use Examples
 
@@ -686,8 +728,8 @@ You have access to two tools for working with files: **write_to_file** and **rep
   - Adding/removing trailing commas in objects and arrays
   - Enforcing consistent brace style (e.g. same-line vs new-line)
   - Standardizing semicolon usage (adding or removing based on style)
-- The write_to_file and replace_in_file tool responses will include the final state of the file after any auto-formatting
-- Use this final state as your reference point for any subsequent edits. This is ESPECIALLY important when crafting SEARCH blocks for replace_in_file which require the content to match what's in the file exactly.
+- The write_to_file and replace_in_file tool responses confirm what was actually saved: a unified diff of the applied change, the surrounding lines of the saved file with line numbers, and any auto-formatting the editor applied. The full file is NOT echoed back for an existing file (only a newly created file is, and only if small)
+- Use that confirmation as your reference point for any subsequent edits. This is ESPECIALLY important when crafting SEARCH blocks for replace_in_file which require the content to match what's in the file exactly. If you need to edit a region the confirmation does not show, read that part of the file first.
 
 # Workflow Tips
 
@@ -695,7 +737,7 @@ You have access to two tools for working with files: **write_to_file** and **rep
 2. For targeted edits, apply replace_in_file with carefully crafted SEARCH/REPLACE blocks. If you need multiple changes, you can stack multiple SEARCH/REPLACE blocks within a single replace_in_file call.
 3. IMPORTANT: When you determine that you need to make several changes to the same file, prefer to use a single replace_in_file call with multiple SEARCH/REPLACE blocks. DO NOT prefer to make multiple successive replace_in_file calls for the same file. For example, if you were to add a component to a file, you would use a single replace_in_file call with a SEARCH/REPLACE block to add the import statement and another SEARCH/REPLACE block to add the component usage, rather than making one replace_in_file call for the import statement and then another separate replace_in_file call for the component usage.
 4. For major overhauls or initial file creation, rely on write_to_file.
-5. Once the file has been edited with either write_to_file or replace_in_file, the system will provide you with the final state of the modified file. Use this updated content as the reference point for any subsequent SEARCH/REPLACE operations, since it reflects any auto-formatting or user-applied changes.
+5. Once the file has been edited with either write_to_file or replace_in_file, the system confirms the change with a diff plus the surrounding lines of the saved file, reflecting any auto-formatting or user-applied changes. Trust that confirmation — the edit landed exactly as shown — and use it as the reference point for subsequent SEARCH/REPLACE operations. Only re-read the file when you need a region the confirmation does not cover.
 By thoughtfully selecting between write_to_file and replace_in_file, you can make your file editing process smoother, safer, and more efficient.
 
 ====

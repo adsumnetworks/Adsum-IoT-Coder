@@ -59,7 +59,7 @@
     "type": "function",
     "function": {
       "name": "read_file",
-      "description": "Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, or extract information from configuration files. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string. Do NOT use this tool to list the contents of a directory. Only use this tool on files.",
+      "description": "Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, or extract information from configuration files. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string. Do NOT use this tool to list the contents of a directory. Only use this tool on files. Supports partial reads: pass the optional start_line/end_line parameters to read only a window of the file — prefer a range over a whole-file read once search_files has located the region you care about, and for large configuration or build artifacts.",
       "strict": false,
       "parameters": {
         "type": "object",
@@ -67,6 +67,14 @@
           "path": {
             "type": "string",
             "description": "The path of the file to read (relative to the current working directory {{CWD}}){{MULTI_ROOT_HINT}}"
+          },
+          "start_line": {
+            "type": "integer",
+            "description": "(optional) First line to read, 1-based and inclusive. Use a line range whenever you already know roughly where the answer is — most importantly right after search_files reported a match at a line number (read a window around it instead of the whole file), and for large configuration or build artifacts (sdkconfig, .config, build_info.yml, generated headers, map files, logs) where reading everything would flood your context. Omit both start_line and end_line to read the whole file."
+          },
+          "end_line": {
+            "type": "integer",
+            "description": "(optional) Last line to read, 1-based and inclusive. Values past the end of the file are clamped, so asking for a generous window is safe. The response is annotated with the exact range returned and the file's total line count, so you can request a further window if the region you need extends beyond it. Omit both start_line and end_line to read the whole file."
           },
           "task_progress": {
             "type": "string",
@@ -365,11 +373,16 @@
     "type": "function",
     "function": {
       "name": "focus_chain",
-      "description": "",
+      "description": "Records or revises the task progress checklist for the overall task. Use this when creating the checklist for the first time (for example, right after switching from PLAN MODE to ACT MODE) or when the scope has changed enough that the existing checklist is no longer accurate. For a routine progress update on a step you are already completing, prefer attaching the task_progress parameter directly to the tool call you are making instead of calling this tool on its own.",
       "strict": false,
       "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "task_progress": {
+            "type": "string",
+            "description": "A checklist showing task progress after this tool use is completed. The task_progress parameter must be included as a separate parameter inside of the parent tool call, it must be separate from other parameters such as content, arguments, etc. (See 'UPDATING TASK PROGRESS' section for more details)"
+          }
+        },
         "required": [],
         "additionalProperties": false
       }
@@ -559,6 +572,44 @@
         },
         "required": [
           "sbom"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "update_project_memory",
+      "description": "Records durable project memory in this workspace's `.adsum/` folder — the small set of facts that must survive context compaction, a new task, or a new session. You write one named thing per call.\n\nTARGETS:\n- `goal` — the project's objective, in one sentence (\"Ship the BWG840 gateway with the BLE-to-UART bridge\"). Goals change RARELY. Setting a new one never deletes the old: the previous goal is kept automatically as prior-goal history. If what you are recording is this bug rather than what the project is for, it is a defect, not a goal.\n- `hw-asserted` — a bench fact only the developer can know and no probe can see: a jumper, a DIP or slide switch position, a board mode, what is wired to what. Pass the board's serial or port as `id` when the fact belongs to one board.\n- `note` — a topic write-up saved to `.adsum/notes/<id>.md`. Notes are NOT injected into your context; you read them back with read_file when you work in that area, so this is where long explanations belong.\n- `defect` — one bug you are working on. Defects are CHEAP: open one as soon as you have a symptom and update it every time you learn something — a ruled-out hypothesis is worth recording. Every defect write must cite at least one piece of evidence as `path:line` or `path:line-line`.\n\nWHEN: record findings and decisions as you make them, not at the end. Assume this session can be compacted or ended at any moment — anything you have not written here is lost. Write after each Build → Flash → Capture → Analyze cycle, when you find a root cause or rule one out, and whenever the developer tells you something about the bench.\n\nNEVER PASTE LOG CONTENTS, terminal transcripts, or code dumps. Memory holds the CONCLUSION plus a citation: record the log PATH and LINE RANGE (`logs/rtt/cap_1012.log:2211-2247`, `src/gw_uart.c:214`) and what it proved. Writes containing runs of log-shaped lines, or a fenced code block over 400 characters, are rejected.\n\nNOT YOURS TO WRITE: apps, detected hardware, toolchain and the workspace map are filled in automatically from live detection on this machine. If one of them is wrong or missing, say so in your reply and it will be re-probed. You also may never mark a defect `verified` — that is host-stamped after a real build/flash/capture confirms your fix. Use `state: under-test` to say you believe it is fixed and are waiting on hardware.",
+      "strict": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "What you are recording. Exactly one of: 'goal' (the project's objective — rare to change, and the previous goal is preserved as history), 'hw-asserted' (a bench fact only the developer knows: jumper, switch position, board mode, wiring), 'note' (a topic write-up saved to .adsum/notes/<id>.md and read back on demand), 'defect' (a bug you are working on). 'apps', 'hw-detected', 'toolchain' and 'map' are host-owned and will be rejected."
+          },
+          "op": {
+            "type": "string",
+            "description": "What to do: 'set' to create or replace, 'append' to add to what is already there, 'close' to mark a defect resolved (defect only, no content needed), 'delete' to remove. target=goal accepts only 'set' — the goal is append-only history with the current goal on top, so the previous one is kept automatically."
+          },
+          "id": {
+            "type": "string",
+            "description": "REQUIRED for target=note (a short slug naming the topic, e.g. 'uart-ringbuffer' — it becomes .adsum/notes/uart-ringbuffer.md) and for target=defect (a short stable id for the bug, e.g. 'uart-drop' — reuse the SAME id every time you learn something more about it). Optional for target=hw-asserted: pass the board's serial or port so the fact is attached to that board. Not used by target=goal."
+          },
+          "content": {
+            "type": "string",
+            "description": "What to record. Required for every op except 'close' and 'delete'. For target=defect you may use key lines the host understands — 'title: ...', 'state: open' or 'state: under-test', 'evidence: path:line' (one or more, and at least ONE is required: 'src/gw_uart.c:214' or 'logs/rtt/cap_1012.log:2211-2247'), 'next: ...', 'tried: ...' — or plain prose, as long as it contains at least one path:line citation. Never paste log output, terminal transcripts, or code blocks over 400 characters: write the conclusion and cite the path and line range instead."
+          },
+          "task_progress": {
+            "type": "string",
+            "description": "A checklist showing task progress after this tool use is completed. The task_progress parameter must be included as a separate parameter inside of the parent tool call, it must be separate from other parameters such as content, arguments, etc. (See 'UPDATING TASK PROGRESS' section for more details)"
+          }
+        },
+        "required": [
+          "target",
+          "op"
         ],
         "additionalProperties": false
       }
