@@ -12,4 +12,5 @@ if [ ! -f "$PYTHON_SCRIPT" ]; then
 fi
 
 # Execute Python script with all arguments
-exec python3 "$PYTHON_SCRIPT" "$@"
+# PYTHONNOUSERSITE=1 isolates from user-site .pth conflicts (see CLAUDE.md, bug B1).
+exec env PYTHONNOUSERSITE=1 python3 "$PYTHON_SCRIPT" "$@"

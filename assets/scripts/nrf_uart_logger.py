@@ -66,6 +66,32 @@ active_processes = []
 # Cross-platform Process Cleanup
 # ============================================================================
 
+def explain_serial_error(port, err):
+    """Turn a raw pyserial exception into an actionable, agent- and human-readable diagnosis.
+
+    A raw "PermissionError(13, 'A device attached to the system is not functioning.', None, 31)"
+    tells nobody what to do. Windows error 31 (ERROR_GEN_FAILURE) on a port that Device Manager
+    reports as healthy is almost always a charge-only USB cable, a board that needs a replug, or
+    an unpowered board -- not a driver or code fault.
+    """
+    text = str(err)
+    low = text.lower()
+    if 'access is denied' in low or 'permissionerror(13' in low and 'not functioning' not in low:
+        cause = ("The port is already open in another program. Close any serial monitor "
+                 "(idf.py monitor, PuTTY, Tera Term, Arduino IDE, another Adsum capture) and retry.")
+    elif 'not functioning' in low or ', 31)' in text:
+        cause = ("The port enumerates but will not open. In order of likelihood: "
+                 "(1) the USB cable is charge-only -- swap for a DATA cable; "
+                 "(2) the board needs a physical replug (unplug, wait 3s, replug); "
+                 "(3) the board is unpowered or held in reset; "
+                 "(4) the USB-serial driver (CP210x / CH340 / FTDI) needs reinstalling.")
+    elif 'filenotfound' in low or 'could not find' in low:
+        cause = ("That port does not exist right now. Re-run with --list to see the current ports "
+                 "-- COM numbers change when a board is replugged into a different USB socket.")
+    else:
+        cause = "Check the cable, the power, and that no other program holds the port."
+    return f"Cannot open {port}: {text}" + "\n  DIAGNOSIS: " + cause
+
 def kill_jlink_processes():
     """Kill any existing J-Link/nrfjprog processes to prevent locks. Cross-platform."""
     is_windows = sys.platform == "win32"
@@ -221,7 +247,7 @@ def test_connection(port, baudrate=DEFAULT_BAUDRATE, duration=2):
             stopbits=serial.STOPBITS_ONE
         )
     except serial.SerialException as e:
-        print(f"[ERROR] Cannot open {port}: {e}")
+        print(f"[ERROR] {explain_serial_error(port, e)}")
         return False, ""
     
     output_lines = []
@@ -390,7 +416,7 @@ class DeviceLogger(threading.Thread):
             ser.dtr = True
             ser.rts = True
         except serial.SerialException as e:
-            self.error = f"Cannot open {self.port}: {e}"
+            self.error = explain_serial_error(self.port, e)
             return
         
         start_time = time.time()

@@ -7,4 +7,5 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Execute the Python script with all arguments passed through
-exec python3 "${SCRIPT_DIR}/nrf_uart_logger.py" "$@"
+# PYTHONNOUSERSITE=1 isolates from user-site .pth conflicts (see CLAUDE.md, bug B1).
+exec env PYTHONNOUSERSITE=1 python3 "${SCRIPT_DIR}/nrf_uart_logger.py" "$@"
