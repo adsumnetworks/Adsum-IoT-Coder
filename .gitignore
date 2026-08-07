@@ -72,3 +72,7 @@ Adsum-Backend/
 
 # Tooling/agent artifact (holds local prod context) — never commit
 .embedder/
+
+# Python bytecode from running the wrapper scripts / their tests locally
+__pycache__/
+*.pyc
