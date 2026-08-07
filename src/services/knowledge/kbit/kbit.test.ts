@@ -277,15 +277,18 @@ describe("lintBitContent", () => {
 // ---------------------------------------------------------------- regression (real corpus)
 
 describe("regression: live corpus", () => {
-	// 17 bits: the post-un-bundle core/demo bits (delivery: bundled, open). The 10 CRA "SBOM & Fix" bits
+	// 20 bits: the post-un-bundle core/demo bits (delivery: bundled, open). Wave 3 added three:
+	// `rules/skill-loading.md` (the shared Scope/Command-gate framework, factored out of the two
+	// near-duplicate per-platform copies) and an `analyze-logs.md` for each platform (the
+	// search-before-read log doctrine). The 10 CRA "SBOM & Fix" bits
 	// (delivery: downloaded, LicenseRef-Adsum-Proprietary) were migrated OUT of this repo to
 	// `Adsum-Backend/kbits/` (their single home, per Omar's K-bit dev workflow — "where the file lives = its
 	// delivery"). They are no longer bundled in the VSIX: served from the registry in prod, and from the
 	// `ADSUM_KBIT_LOCAL` dev override in F5. So the open corpus here holds only bundled bits.
-	test("corpus is fully migrated and lint-clean: 17 bits, 0 errors, 0 unmigrated", () => {
+	test("corpus is fully migrated and lint-clean: 20 bits, 0 errors, 0 unmigrated", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
-		assert.equal(files.length, 17)
-		assert.equal(migrated, 17)
+		assert.equal(files.length, 20)
+		assert.equal(migrated, 20)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
 		assert.equal(unmigrated.length, 0)

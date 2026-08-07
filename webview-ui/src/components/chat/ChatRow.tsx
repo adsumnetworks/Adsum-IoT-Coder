@@ -739,6 +739,22 @@ export const ChatRowContent = memo(
 							</div>
 						</div>
 					)
+				case "update_project_memory":
+					return (
+						<div>
+							<div className={HEADER_CLASSNAMES}>
+								{toolIcon("book")}
+								<span className="font-bold">
+									{message.type === "ask"
+										? "Adsum IoT Coder wants to update project memory:"
+										: "Adsum IoT Coder updated project memory:"}
+								</span>
+							</div>
+							<div className="bg-code border border-editor-group-border overflow-hidden rounded-xs py-[9px] px-2.5">
+								<span className="ph-no-capture font-medium">{tool.path}</span>
+							</div>
+						</div>
+					)
 				default:
 					return <InvisibleSpacer />
 			}

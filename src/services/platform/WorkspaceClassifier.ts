@@ -137,8 +137,8 @@ function fileUsesEspWifi(path: string, fs: FsAdapter): boolean {
 	return ESP_WIFI_SRC_RE.test(fs.readFile(path))
 }
 
-/** Folders to never descend into. */
-const SKIP_DIRS = new Set([
+/** Folders to never descend into. Exported so the workspace map walker shares ONE list (no drift). */
+export const SKIP_DIRS = new Set([
 	"managed_components",
 	"node_modules",
 	".git",
