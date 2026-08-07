@@ -1,7 +1,14 @@
 import { describe, it } from "mocha"
 import "should"
 import type { ApiProviderInfo } from "@core/api"
-import { getToolCallReliabilityTier, isClaude4PlusModelFamily, shouldSkipReasoningForModel } from "../model-utils"
+import {
+	getToolCallReliabilityTier,
+	isClaude4PlusModelFamily,
+	isGLMModelFamily,
+	isNativeToolCallingConfig,
+	isNextGenModelFamily,
+	shouldSkipReasoningForModel,
+} from "../model-utils"
 
 function fakeProviderInfo(providerId: string, modelId: string): ApiProviderInfo {
 	return {
@@ -106,5 +113,40 @@ describe("getToolCallReliabilityTier", () => {
 		getToolCallReliabilityTier(fakeProviderInfo("anthropic", "claude-3-haiku")).should.equal("low")
 		getToolCallReliabilityTier(fakeProviderInfo("openrouter", "some-random/unknown-model-7b")).should.equal("low")
 		getToolCallReliabilityTier(fakeProviderInfo("ollama", "llama-3-8b")).should.equal("low")
+	})
+
+	it("returns medium for the GLM 5.x coding-plan models (regression: they fell to low)", () => {
+		getToolCallReliabilityTier(fakeProviderInfo("zai-coding-plan", "glm-5.2")).should.equal("medium")
+		getToolCallReliabilityTier(fakeProviderInfo("zai-coding-plan", "glm-5-turbo")).should.equal("medium")
+		getToolCallReliabilityTier(fakeProviderInfo("zai", "glm-4.7")).should.equal("medium")
+	})
+})
+
+describe("isGLMModelFamily — version-aware (GLM 4.5+)", () => {
+	it("matches 4.5/4.6/4.7 and all 5.x ids across vendor spellings", () => {
+		isGLMModelFamily("glm-4.5").should.be.true()
+		isGLMModelFamily("glm-4.6").should.be.true()
+		isGLMModelFamily("glm-4.7").should.be.true()
+		isGLMModelFamily("glm-5.2").should.be.true()
+		isGLMModelFamily("glm-5-turbo").should.be.true()
+		isGLMModelFamily("z-ai/glm-4.6:exacto").should.be.true()
+		isGLMModelFamily("zai-glm-4.7").should.be.true()
+	})
+	it("rejects pre-4.5 GLMs and non-GLM ids", () => {
+		isGLMModelFamily("glm-4").should.be.false()
+		isGLMModelFamily("glm-3-turbo").should.be.false()
+		isGLMModelFamily("gpt-5").should.be.false()
+	})
+})
+
+describe("GLM next-gen membership — condense on, native tools gated off", () => {
+	it("GLM 5.x is next-gen (unlocks auto-condense)", () => {
+		isNextGenModelFamily("glm-5.2").should.be.true()
+		isNextGenModelFamily("glm-5-turbo").should.be.true()
+	})
+	it("native tool calling stays OFF for GLM until validated, even where the provider allows it", () => {
+		isNativeToolCallingConfig(fakeProviderInfo("openrouter", "z-ai/glm-5.2"), true).should.be.false()
+		// sanity: the same provider+flag still enables native tools for a validated family
+		isNativeToolCallingConfig(fakeProviderInfo("openrouter", "anthropic/claude-sonnet-4-5"), true).should.be.true()
 	})
 })

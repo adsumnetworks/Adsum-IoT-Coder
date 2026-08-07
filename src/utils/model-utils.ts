@@ -101,12 +101,16 @@ export function isGPT52Model(id: string): boolean {
 
 export function isGLMModelFamily(id: string): boolean {
 	const modelId = normalize(id)
-	return (
-		modelId.includes("glm-4.6") ||
-		modelId.includes("glm-4.5") ||
-		modelId.includes("z-ai/glm") ||
-		modelId.includes("zai-org/glm")
-	)
+	// Version-aware: GLM 4.5+ (4.5/4.6/4.7, 5.x incl. glm-5-turbo, and future majors).
+	// A hardcoded version list silently dropped glm-5.2/glm-5-turbo/glm-4.7 off the GLM
+	// prompt variant and reliability tier when the coding-plan models shipped.
+	const m = modelId.match(/glm-(\d+)(?:\.(\d+))?/)
+	if (!m) {
+		return false
+	}
+	const major = Number(m[1])
+	const minor = Number(m[2] ?? 0)
+	return major > 4 || (major === 4 && minor >= 5)
 }
 
 export function isMinimaxModelFamily(id: string): boolean {
@@ -166,7 +170,8 @@ export function isNextGenModelFamily(id: string): boolean {
 		isMinimaxModelFamily(modelId) ||
 		isGemini3ModelFamily(modelId) ||
 		isNextGenOpenSourceModelFamily(modelId) ||
-		isDeepSeekNativeToolsModelFamily(modelId)
+		isDeepSeekNativeToolsModelFamily(modelId) ||
+		isGLMModelFamily(modelId)
 	)
 }
 
@@ -239,6 +244,11 @@ export function getToolCallReliabilityTier(providerInfo: ApiProviderInfo): ToolC
 	return "low"
 }
 
+// GLM joined isNextGenModelFamily for auto-condense and the GLM prompt variant, but its
+// native tool_calls conformance has not been validated on the live z.ai endpoints yet.
+// Flip to true only after A/B-ing a real gateway build on glm-5.2/glm-5-turbo.
+const ENABLE_GLM_NATIVE_TOOL_CALLS = false
+
 export function isNativeToolCallingConfig(providerInfo: ApiProviderInfo, enableNativeToolCalls: boolean): boolean {
 	if (!enableNativeToolCalls) {
 		return false
@@ -247,6 +257,9 @@ export function isNativeToolCallingConfig(providerInfo: ApiProviderInfo, enableN
 		return false
 	}
 	const modelId = providerInfo.model.id.toLowerCase()
+	if (isGLMModelFamily(modelId) && !ENABLE_GLM_NATIVE_TOOL_CALLS) {
+		return false
+	}
 	return isNextGenModelFamily(modelId)
 }
 
