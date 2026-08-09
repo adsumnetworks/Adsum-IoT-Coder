@@ -2,7 +2,7 @@
 id: adsum/rules/core
 title: "Universal Embedded Rules"
 type: knowledge
-version: 1.1.0
+version: 1.2.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -101,10 +101,28 @@ Some prerequisites are beyond your reach: they need admin/elevated rights (an ad
 
 ## 12. Memory Checkpoints
 
-Call `update_project_memory` to persist state at these points — do not wait until the task ends:
-- **After every Build → Flash → Capture → Analyze cycle:** checkpoint what changed and what the logs showed to `session.md`.
-- **After any significant decision:** an observation method chosen (RTT vs UART), a root cause identified, or a config changed — checkpoint the "why" to `session.md`, or to `project.md` if it's an architecture decision that outlives this session.
-- **After confirming board/port/serial facts** (device role, serial number, COM/tty port, SoC/board target) — checkpoint them to `devices.md` so they never need re-discovery.
-- **Before `attempt_completion`:** checkpoint the final state of the session so a fresh chat can resume without re-deriving it.
+Call `update_project_memory` to persist state as you go — do not wait until the task ends. Assume this
+session can be compacted or ended at any moment.
+
+**NEVER write memory with shell commands.** Do not use `Set-Content`, `echo >`, `cat >`, or `write_to_file`
+on anything under `.adsum/`. Those files are managed; a shell write races the host, bypasses the size caps
+and validation, and shows the developer noise they did not ask for. `update_project_memory` is the only
+supported path, and it writes silently.
+
+The tool is section-scoped. Pick a `target`:
+
+| target | what belongs there | when |
+|---|---|---|
+| `defect` | a bug you are working: symptom, what you tried, next step | freely, after every Build → Flash → Capture → Analyze cycle and whenever a hypothesis changes — these are cheap |
+| `goal` | the project's objective | rarely, and only when the developer states or changes it |
+| `hw-asserted` | bench facts only the developer knows: jumper positions, switch/board mode, a wiring change | when they tell you |
+| `note` | a topic write-up worth keeping (a protocol decision, a tuning rationale) | when a finding outlives the current bug |
+
+Rules the tool enforces, so write to fit them:
+- Every `defect` write needs at least one evidence citation as `path:line` or `logpath:line-range`.
+- **Never paste log or build output into memory.** Record the conclusion plus the log path and line range.
+- Board, ports, serials, SDK versions, the file map and the app list are detected and written
+  automatically — do not record them yourself. If one looks wrong, say so and it will be re-probed.
+- You cannot mark a defect verified; that is stamped only after a real build → flash → capture.
 
 Keep each write focused on what changed — do not re-dump the whole file's history on every call.

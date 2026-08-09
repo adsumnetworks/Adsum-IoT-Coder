@@ -6,7 +6,7 @@
 			"id": "adsum/agent",
 			"title": "Identity & Persona",
 			"type": "knowledge",
-			"version": "1.0.2",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -15,7 +15,7 @@
 			"domain": "embedded-iot",
 			"platform": "universal",
 			"path": "AGENT.md",
-			"content_hash": "b51e31fb28797869f3911eaba4d5225d7643ed2425612e45f78fc37b1a1ed21b"
+			"content_hash": "169f5988c89edcc9d66a8f51af7911407a9b5863f280a06c1a716aaf655a5be3"
 		},
 		{
 			"id": "adsum/esp/actions/analyze-logs",
@@ -216,7 +216,7 @@
 			"id": "adsum/nrf/rules/skill-loading",
 			"title": "nRF Platform Rule: Skill Loading",
 			"type": "knowledge",
-			"version": "1.4.0",
+			"version": "1.5.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -228,7 +228,7 @@
 				"flash"
 			],
 			"path": "platforms/nrf/rules/skill-loading.md",
-			"content_hash": "1caa59d58f94c9f8da0319eabd7c09b8aaa3706033d07de980860b0fe42bf9bb"
+			"content_hash": "e06f2419313979b71b99baf410f2e31b232924988a23d86ac710d6edba7a881a"
 		},
 		{
 			"id": "adsum/nrf/sdks/ncs/protocols/ble",
@@ -283,7 +283,7 @@
 			"id": "adsum/rules/core",
 			"title": "Universal Embedded Rules",
 			"type": "knowledge",
-			"version": "1.1.0",
+			"version": "1.2.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -292,7 +292,7 @@
 			"domain": "embedded-iot",
 			"platform": "universal",
 			"path": "rules/core.md",
-			"content_hash": "f27e61a6b5da56fbd8fa529b516c5fa9d8e76b0faa19487c1122df189cb3744e"
+			"content_hash": "22a3bddd8d483d8b0e6f3ecc54fee46aaf77ecf6f427b71e02abdd84225dea29"
 		},
 		{
 			"id": "adsum/rules/skill-loading",

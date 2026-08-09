@@ -416,6 +416,7 @@
 		"test:resting-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/restingWorkflowGate.test.ts",
 		"test:esp-fold": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/commandOutputFold.test.ts",
 		"test:read-range": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/readFileRange.test.ts",
+		"test:parse-paths": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/assistant-message/__tests__/windowsPathParsing.node-test.ts",
 		"test:workspace": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/platform/WorkspaceClassifier.node-test.ts",
 		"test:cve": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/cra/all.node-test.ts",
 		"test:cve:network": "RUN_OSV_NETWORK=1 ts-node --transpile-only -P tsconfig.unit-test.json src/services/cra/osvFetcher.integration.node-test.ts",
@@ -469,7 +470,9 @@
 		"test:usage-split": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/api/transform/openai-usage.test.ts",
 		"test:ledger": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/CompactionLedger.test.ts",
 		"test:memory-tiering": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/tiering.test.ts",
-		"test:memory-write": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/updateProjectMemory.test.ts"
+		"test:memory-write": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/updateProjectMemory.test.ts",
+		"test:output-reservation": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/output-reservation.test.ts",
+		"test:command-guards": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/commandGuards.test.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [

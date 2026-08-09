@@ -138,6 +138,25 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 			)
 		}
 
+		// A bare drive letter is a mangled Windows path, not a file.
+		//
+		// Seen twice in one real session: `c:\Users\...\nrf52840dk_nrf52840.overlay` arrived as just "c",
+		// everything from the drive-letter colon onward gone. The edit then "succeeded" against an empty
+		// phantom file and the SEARCH block silently failed to match, which reads to the model as a
+		// content problem rather than a path problem. Our parser is provably not the culprit (it has no
+		// colon handling at all), so this comes off the wire — most likely a malformed emission from a
+		// small model. Either way, refuse it loudly and name the real cause so the next attempt is right.
+		if (/^[a-zA-Z]$/.test(rawRelPath.trim())) {
+			config.taskState.consecutiveMistakeCount++
+			await config.services.diffViewProvider.reset()
+			return formatResponse.toolError(
+				`"${rawRelPath}" is a drive letter, not a file path — the path was truncated at the colon ` +
+					`somewhere between you and the tool. Re-issue the call with the COMPLETE path, and prefer ` +
+					`a workspace-relative one (for example "boards/nrf52840dk_nrf52840.overlay") over an ` +
+					`absolute "c:\\..." path, which is what gets mangled.`,
+			)
+		}
+
 		// Guard: reject a degenerate path that resolves to the filesystem root ("/").
 		// This happens when the agent emits "/" or an empty path while no project folder
 		// is open yet (e.g. ESP prototype-from-scratch). Opening a diff editor on "/" produces

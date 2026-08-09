@@ -7,6 +7,7 @@ import { fetch } from "@/shared/net"
 import { ApiHandler, CommonApiHandlerOptions } from "../index"
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
+import { effectiveMaxOutputTokens } from "@core/context/context-management/output-reservation"
 import { splitOpenAiUsage } from "../transform/openai-usage"
 import { convertToR1Format } from "../transform/r1-format"
 import { ApiStream } from "../transform/stream"
@@ -110,7 +111,9 @@ export class OpenAiHandler implements ApiHandler {
 		let maxTokens: number | undefined
 
 		if (this.options.openAiModelInfo?.maxTokens && this.options.openAiModelInfo.maxTokens > 0) {
-			maxTokens = Number(this.options.openAiModelInfo.maxTokens)
+			// Capped: prompt + requested output both count against the window, and some
+			// openai-compatible models declare an output limit that consumes most of it.
+			maxTokens = effectiveMaxOutputTokens(this.options.openAiModelInfo)
 		} else {
 			maxTokens = undefined
 		}
