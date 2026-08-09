@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.2.1-dev.4",
+	"version": "0.2.1-dev.5",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -472,7 +472,8 @@
 		"test:memory-tiering": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/tiering.test.ts",
 		"test:memory-write": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/updateProjectMemory.test.ts",
 		"test:output-reservation": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/output-reservation.test.ts",
-		"test:command-guards": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/commandGuards.test.ts"
+		"test:command-guards": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/commandGuards.test.ts",
+		"test:welcome-coverage": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/__tests__/welcomeButtonCoverage.node-test.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [

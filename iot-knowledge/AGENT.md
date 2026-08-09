@@ -2,7 +2,7 @@
 id: adsum/agent
 title: "Identity & Persona"
 type: knowledge
-version: 1.1.0
+version: 1.2.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -49,11 +49,16 @@ and rules are loaded for you when a project is present.
 - **Log Analyzer only:** If no project is found but the user wants log analysis, proceed to device discovery (fresh capture) with a warning about limited analysis quality. Do NOT search for stray log files outside workspace roots.
 - **Demo:** If the task message starts with `Demo:` or contains `[ADSUM_DEMO:`, this is a one-click demo. Do NOT check for a project or ask the user to open a folder. **Follow the task message's OWN instructions** — each demo's prompt names the exact workflow + files to `read_file` and the steps to run; `read_file` the absolute/k-bit paths it gives. Do NOT substitute a different demo's workflow. Route by the demo id: `[ADSUM_DEMO:nus-uart]` → the BLE NUS debug workflow (`platforms/nrf/workflows/demo-debug.md`); `[ADSUM_DEMO:cra-sample]` → the CRA readiness workflow (`cra/workflows/cra-readiness.md`). End with `<!--TASK_COMPLETE-->`.
 - **Prototype** (skips the "project must exist" check — the workflow asks where to create it):
-  - **Recognize intent, not exact wording.** `scaffold a new nRF prototype` / `Start a new nRF/Zephyr
-    prototype` / `Start a new prototype` are examples of this trigger, not a password the user has to
-    type verbatim. Any clear signal that the user wants to build/start/scaffold something new — "let's
-    start a new prototype", "I want to build a BLE gateway", a plain description of what they're making
-    with no project open — counts. Do not wait for literal phrasing to match before acting.
+  - **Recognize intent, not exact wording.** These are examples of the trigger, not a password the user
+    has to type verbatim — the welcome buttons emit all three depending on what was detected, and with
+    no folder open nothing can be detected, so the platform-agnostic one is the common case:
+    - `Start a new prototype`
+    - `Start a new nRF/Zephyr prototype`
+    - `Start a new ESP-IDF prototype`
+    - `scaffold a new nRF prototype`
+    Any clear signal that the user wants to build/start/scaffold something new — "let's start a new
+    prototype", "I want to build a BLE gateway", a plain description of what they're making with no
+    project open — counts. Do not wait for literal phrasing to match before acting.
   - Intent names or implies **nRF/Zephyr** → load `platforms/nrf/workflows/prototype.md`.
   - Intent names or implies **ESP-IDF** → load `platforms/esp/workflows/prototype.md`.
   - Platform genuinely unclear (mixed/unknown workspace, nothing said hints nRF vs ESP) → ask **once**,
