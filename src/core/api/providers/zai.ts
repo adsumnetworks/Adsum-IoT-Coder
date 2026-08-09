@@ -18,6 +18,7 @@ import { fetch } from "@/shared/net"
 import { version as extensionVersion } from "../../../../package.json"
 import { ApiHandler, CommonApiHandlerOptions } from ".."
 import { withRetry } from "../retry"
+import { effectiveMaxOutputTokens } from "@core/context/context-management/output-reservation"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { splitOpenAiUsage } from "../transform/openai-usage"
 import { ApiStream } from "../transform/stream"
@@ -113,7 +114,11 @@ export class ZAiHandler implements ApiHandler {
 		const thinkingBudget = this.options.thinkingBudgetTokens
 		const stream = await client.chat.completions.create({
 			model: model.id,
-			max_completion_tokens: model.info.maxTokens,
+			// Cap the reply. The provider counts prompt + requested output against the window, and GLM
+			// models declare 131_072 output tokens against a 200_000 window — asking for all of it leaves
+			// ~69K for the conversation and produces 400 "Prompt exceeds max length". An agent turn never
+			// needs that much. See output-reservation.ts.
+			max_completion_tokens: effectiveMaxOutputTokens(model.info),
 			messages: openAiMessages,
 			stream: true,
 			stream_options: { include_usage: true },

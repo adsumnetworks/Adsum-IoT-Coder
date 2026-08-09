@@ -1,4 +1,5 @@
 import { ApiHandler } from "@core/api"
+import { outputReservation } from "./output-reservation"
 
 /**
  * Gets context window information for the given API handler
@@ -14,26 +15,33 @@ export function getContextWindowInfo(api: ApiHandler) {
 	const reportedContextWindow = api.getModel().info.contextWindow
 	const contextWindow = reportedContextWindow && reportedContextWindow > 0 ? reportedContextWindow : 128_000
 
-	let maxAllowedSize: number
+	let buffer: number
 	switch (contextWindow) {
 		case 64_000: // deepseek v2-era models
-			maxAllowedSize = contextWindow - 27_000
+			buffer = 27_000
 			break
 		case 128_000: // most models
-			maxAllowedSize = contextWindow - 30_000
+			buffer = 30_000
 			break
 		case 200_000: // claude models
-			maxAllowedSize = contextWindow - 40_000
+			buffer = 40_000
 			break
-		default: {
+		default:
 			// Proportional buffer for everything else, including very large windows (DeepSeek V4 Pro's 1M).
 			// A flat 40_000 buffer is fine at 128K-200K but is only a ~4% margin at 1M — far too thin. Scale
 			// it to 10% of the window, floored at the same 40_000 the known cases use, so small unlisted
 			// windows keep at least that much headroom.
-			const buffer = Math.max(40_000, contextWindow * 0.1)
-			maxAllowedSize = contextWindow - buffer
-		}
+			buffer = Math.max(40_000, contextWindow * 0.1)
+			break
 	}
+
+	// The provider charges `prompt + requested output` against the window, so the reply has to be
+	// held back too. Without this, glm-5-turbo (200K window, 131_072 declared output) was given a
+	// 160_000 prompt budget against a real input ceiling near 69_000 and returned
+	// 400 "Prompt exceeds max length" — which no amount of compaction could fix, because the target
+	// being compacted toward was itself impossible. Take whichever hold-back is larger.
+	const reserve = Math.max(buffer, outputReservation(api.getModel().info))
+	const maxAllowedSize = Math.max(Math.floor(contextWindow * 0.2), contextWindow - reserve)
 
 	return { contextWindow, maxAllowedSize }
 }

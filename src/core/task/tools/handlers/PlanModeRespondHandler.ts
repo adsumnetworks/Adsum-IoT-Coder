@@ -58,6 +58,22 @@ export class PlanModeRespondHandler implements IToolHandler, IPartialBlockHandle
 			return formatResponse.toolResult(`[Go ahead and execute.]`)
 		}
 
+		// plan_mode_respond is only valid in PLAN MODE (mirrors the check ActModeRespondHandler already
+		// does for act_mode_respond in the other direction). Without this, a model that calls this tool
+		// while ACT MODE is active falls straight through to the blocking "ask" flow below and renders a
+		// plan-style prompt turn after turn — presenting plans and asking questions instead of acting —
+		// even though environment_details correctly reports ACT MODE the whole time. Reject immediately
+		// and point the model back to real tools instead of silently honoring the mistake.
+		if (config.mode === "act") {
+			config.taskState.consecutiveMistakeCount++
+			return formatResponse.toolError(
+				`The plan_mode_respond tool is only available in PLAN MODE. You are currently in ACT MODE. ` +
+					`Do not present a plan or ask an open-ended question with this tool — take direct action with ` +
+					`the appropriate tool instead (read_file, write_to_file, execute_command, etc.), use ` +
+					`ask_followup_question only for a single blocking question, or attempt_completion once the task is done.`,
+			)
+		}
+
 		// Store the number of options for telemetry
 		const options = parsePartialArrayString(optionsRaw || "[]")
 

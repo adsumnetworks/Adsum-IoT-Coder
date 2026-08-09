@@ -2,7 +2,7 @@
 id: adsum/nrf/rules/skill-loading
 title: "nRF Platform Rule: Skill Loading"
 type: knowledge
-version: 1.4.0
+version: 1.5.0
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -30,7 +30,7 @@ This table is organized by what you, the agent, are about to *do* — not by wha
 | About to do (the operation) | Workflow to load first |
 |---|---|
 | **One-click demo** — task starts with `Demo:` or contains `[ADSUM_DEMO:` | Load `platforms/nrf/workflows/demo-debug.md` and follow it. The task message provides real file paths — use `read_file` on each. Do not connect to devices. |
-| **Scaffold a new nRF prototype** — task contains `scaffold a new nRF prototype` or `Start a new nRF/Zephyr prototype` | `platforms/nrf/workflows/prototype.md` |
+| **Scaffold a new nRF prototype** — the user wants to start/build/scaffold a new nRF/Zephyr app or prototype (recognize the intent — `scaffold a new nRF prototype` is an example phrasing, not a required exact match) | `platforms/nrf/workflows/prototype.md` — see `AGENT.md` Scope Gate's Prototype exception for the ask-once / act-on-go-ahead / default-board rules that apply the moment this row fires |
 | **Add a feature to an existing project** — task contains `add a feature` or `Add a feature to` | `platforms/nrf/workflows/add-feature.md` |
 | **Test or validate firmware** — task contains `test and validate` or `Prove` + `works` | `platforms/nrf/workflows/test-validate.md` |
 | Build firmware · Flash firmware · run the Build → Flash → Capture → Analyze → Fix iteration cycle | `platforms/nrf/workflows/debug-loop.md` |

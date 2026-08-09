@@ -6,6 +6,7 @@ import { COMMAND_REQ_APP_STRING } from "@shared/combineCommandSequences"
 import { ClineAsk } from "@shared/ExtensionMessage"
 import { arePathsEqual } from "@utils/path"
 import { telemetryService } from "@/services/telemetry"
+import { checkCommandGuards } from "./commandGuards"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import { showNotificationForApproval } from "../../utils"
@@ -65,6 +66,15 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 		if (!command) {
 			config.taskState.consecutiveMistakeCount++
 			return await config.callbacks.sayAndCreateMissingParamError(this.name, "command")
+		}
+
+		// Route-and-safety guards: writing project memory by shell, or running an SDK tool outside the
+		// nRF terminal. Both were observed in real sessions and both dead-end; reject with the correct
+		// tool named so the model can retry immediately instead of asking the developer.
+		const guardRejection = checkCommandGuards(command)
+		if (guardRejection) {
+			config.taskState.consecutiveMistakeCount++
+			return formatResponse.toolError(guardRejection)
 		}
 
 		if (!requiresApprovalRaw) {
