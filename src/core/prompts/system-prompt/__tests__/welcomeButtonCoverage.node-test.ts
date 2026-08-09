@@ -25,7 +25,11 @@ import { describe, test } from "node:test"
  * Run: npx ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/__tests__/welcomeButtonCoverage.node-test.ts
  */
 
-const REPO = path.resolve(__dirname, "../../../../..")
+// Resolve from the working directory, not __dirname: this file lives under a `__tests__/` folder that
+// mocha also globs, and mocha loads it through the ESM loader where __dirname does not exist — using it
+// took down the whole unit suite with "ReferenceError: __dirname is not defined in ES module scope".
+// Both runners (npm run test:unit and the standalone ts-node script) execute from the repo root.
+const REPO = process.cwd()
 const INTENTS = path.join(REPO, "webview-ui/src/components/chat/welcome/welcomeIntents.ts")
 const AGENT_MD = path.join(REPO, "iot-knowledge/AGENT.md")
 
