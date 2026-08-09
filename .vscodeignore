@@ -103,6 +103,11 @@ qa/**
 # local tooling artifacts.
 Adsum-Planning/**
 Adsum-Backend/**
+# adsum-studio is our SECOND extension (K-bit authoring/visualisation), cloned here for
+# convenience. It is gitignored, but .gitignore does not govern packaging — without this
+# line vsce swallowed all 49 of its files (+1.6 MB, including its own SQLite store) into
+# the VSIX. Caught on inspection before shipping 0.2.1-dev.4.
+adsum-studio/**
 .mcp.json
 .vscode/mcp.json
 .embedder/**
