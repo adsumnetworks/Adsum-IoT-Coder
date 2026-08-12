@@ -422,6 +422,22 @@ export class ContextManager {
 	/**
 	 * external interface to support old calls
 	 */
+	/**
+	 * Estimate the size of the conversation currently being sent, for the observed-window learner.
+	 * Same estimator the budget uses, applied to the post-truncation view so it reflects what actually
+	 * went to the provider.
+	 */
+	public estimateCurrentPromptTokens(
+		apiMessages: Anthropic.Messages.MessageParam[],
+		deletedRange: [number, number] | undefined,
+	): number {
+		try {
+			return estimateTotalTokens(this.getTruncatedMessages(apiMessages, deletedRange))
+		} catch {
+			return 0
+		}
+	}
+
 	public getTruncatedMessages(
 		messages: Anthropic.Messages.MessageParam[],
 		deletedRange: [number, number] | undefined,

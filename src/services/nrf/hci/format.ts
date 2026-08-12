@@ -64,7 +64,9 @@ export function formatHci(result: HciParseResult): string {
 				lines.push(`         ${f.isError ? "✗ " : "  "}${f.name}: ${f.value}`)
 			}
 		}
-		// payloadHex is already capped to 16 bytes + "…" by the parser (payloadToHex); full bytes live in .btmon.
+		// payloadHex is already capped to MAX_PAYLOAD_HEX_BYTES (255B — a full extended-advertising payload)
+		// by the parser (payloadToHex); only a corrupt/oversized length field truncates further, and that
+		// case reports how many bytes were omitted rather than a bare "…". Full bytes always live in .btmon.
 		if (e.payloadHex) {
 			lines.push(`           payload: ${e.payloadHex}`)
 		}
