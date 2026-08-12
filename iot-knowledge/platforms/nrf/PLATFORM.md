@@ -2,7 +2,7 @@
 id: adsum/nrf/platform
 title: "Nordic nRF — Platform Index"
 type: knowledge
-version: 1.3.0
+version: 1.4.0
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -32,7 +32,8 @@ platforms/nrf/
 │   ├── nrf52832.md          ← nRF52832 hardware specs & constraints
 │   ├── nrf52840.md          ← nRF52840 hardware specs & constraints
 │   ├── nrf52840dongle.md    ← nRF52840 USB dongle (PCA10059) — the BLE sniffer hardware (DFU, flashing)
-│   └── nrf5340.md           ← nRF5340 dual-core specs & constraints
+│   ├── nrf5340.md           ← nRF5340 dual-core specs & constraints
+│   └── xiao-nrf54lm20a.md   ← Seeed XIAO nRF54LM20A — not in NCS by default, needs board root + overlay (bundled)
 ├── sdks/
 │   └── ncs/
 │       ├── SDK.md           ← NCS project structure, Kconfig, west build reference
@@ -86,6 +87,7 @@ Load the board file when the project targets a specific SoC. Each file documents
 | `nrf52dk/nrf52832` | nRF52832 | `boards/nrf52832.md` |
 | `nrf5340dk/nrf5340/cpuapp` | nRF5340 | `boards/nrf5340.md` |
 | `nrf52840dongle/nrf52840` | nRF52840 (USB dongle, BLE sniffer) | `boards/nrf52840dongle.md` |
+| `xiao_nrf54lm20a/nrf54lm20a/cpuapp` | nRF54LM20A (Seeed XIAO — not in NCS by default) | `boards/xiao-nrf54lm20a.md` *(bundled)* |
 
 Board targets use the Zephyr format: `<board>/<soc>` (e.g., `nrf52840dk/nrf52840`).
 

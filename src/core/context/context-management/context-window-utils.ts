@@ -1,4 +1,5 @@
 import { ApiHandler } from "@core/api"
+import { observedWindowCeiling } from "./observed-window"
 import { outputReservation } from "./output-reservation"
 
 /**
@@ -41,7 +42,16 @@ export function getContextWindowInfo(api: ApiHandler) {
 	// 400 "Prompt exceeds max length" — which no amount of compaction could fix, because the target
 	// being compacted toward was itself impossible. Take whichever hold-back is larger.
 	const reserve = Math.max(buffer, outputReservation(api.getModel().info))
-	const maxAllowedSize = Math.max(Math.floor(contextWindow * 0.2), contextWindow - reserve)
+	let maxAllowedSize = Math.max(Math.floor(contextWindow * 0.2), contextWindow - reserve)
+
+	// If this model has ever refused a prompt, believe the refusal over the configuration. Our size
+	// figure is an estimate and tokenizes optimistically for hex/log/source content, so a model can
+	// refuse well below the configured window; one observed refusal is harder evidence than the number
+	// we were given.
+	const learned = observedWindowCeiling(api.getModel().id)
+	if (learned !== undefined && learned < maxAllowedSize) {
+		maxAllowedSize = learned
+	}
 
 	return { contextWindow, maxAllowedSize }
 }

@@ -7,8 +7,48 @@ export function checkContextWindowExceededError(error: unknown): boolean {
 		checkIsAnthropicContextWindowError(error) ||
 		checkIsCerebrasContextWindowError(error) ||
 		checkIsBedrockContextWindowError(error) ||
-		checkIsVercelContextWindowError(error)
+		checkIsVercelContextWindowError(error) ||
+		checkIsZaiContextWindowError(error)
 	)
+}
+
+/**
+ * z.ai / GLM (`zai-coding-plan`) overflow.
+ *
+ * WHY THIS EXISTS. Recognising an overflow is what triggers the recovery path in Task —
+ * `handleContextWindowExceededError()` truncates the conversation and retries. z.ai's overflow does not
+ * look like anyone else's:
+ *
+ *   {"message":"400 Prompt exceeds max length","status":400,"code":"1261",
+ *    "modelId":"glm-5-turbo","providerId":"zai-coding-plan","details":{"code":"1261",...}}
+ *
+ * `code` is "1261" rather than "400", and the message says "exceeds max length" — which matches none of
+ * the "context length" / "maximum context" / "too many tokens" phrasings the other checks look for. So the
+ * error was classified as a generic failure: the extension re-sent the SAME oversized prompt three times
+ * with backoff and then gave up, never once compacting. A real session died exactly that way with 5 of
+ * these errors and 0 compactions.
+ *
+ * This is the model-independent safety net: if a window size is ever configured wrongly for any model, the
+ * recovery path still fires and the session survives.
+ */
+function checkIsZaiContextWindowError(error: any): boolean {
+	try {
+		const message = String(error?.message || error?.error?.message || error?.details?.message || "")
+		const code = String(error?.code ?? error?.error?.code ?? error?.details?.code ?? "")
+
+		// z.ai's documented code for this condition. Sufficient on its own.
+		if (code === "1261") {
+			return true
+		}
+
+		// Phrasing-based fallback, deliberately narrow: only "…exceeds max length" and "prompt too long",
+		// both of which are unambiguously about input size. Broader wording risks truncating a
+		// conversation over an unrelated 400.
+		return /\b(?:prompt|input|request)\b[^.]{0,40}\bexceeds?\s+max(?:imum)?\s+length\b/i.test(message) ||
+			/\bprompt\s+(?:is\s+)?too\s+long\b/i.test(message)
+	} catch {
+		return false
+	}
 }
 
 function checkIsOpenRouterContextWindowError(error: any): boolean {

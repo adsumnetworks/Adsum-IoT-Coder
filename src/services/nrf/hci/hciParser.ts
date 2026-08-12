@@ -207,11 +207,21 @@ function statusField(name: string, code: number): HciDecodedField {
 	return field(name, text, code !== 0)
 }
 
-function payloadToHex(buf: Buffer, offset: number, len: number): string {
-	const end = Math.min(offset + 16, offset + len)
+// Real BLE advertising payloads run up to 31 bytes (legacy) or 255 bytes (extended advertising — the BT
+// Core spec's AdvData length field is 8 bits wide, so 255 is the true protocol ceiling). Manufacturer-
+// specific data (e.g. Minew/iBeacon-style asset tags) lives inside that payload, so capping below 255
+// hides bytes the agent is asked to decode. We still cap AT 255 — rather than going unbounded — so a
+// corrupt/mis-synced capture with a garbage length field can't dump an unbounded amount of hex into the
+// agent's context; no legitimate BLE frame is ever truncated by this cap.
+export const MAX_PAYLOAD_HEX_BYTES = 255
+
+export function payloadToHex(buf: Buffer, offset: number, len: number): string {
+	const cap = Math.min(len, MAX_PAYLOAD_HEX_BYTES)
+	const end = Math.min(offset + cap, offset + len, buf.length)
 	const parts: string[] = []
 	for (let i = offset; i < end; i++) parts.push(buf[i].toString(16).padStart(2, "0"))
-	if (len > 16) parts.push("…")
+	const omitted = len - (end - offset)
+	if (omitted > 0) parts.push(`… +${omitted} bytes`)
 	return parts.join(" ")
 }
 

@@ -4,6 +4,7 @@ import { QuotaExhaustedError } from "@core/api/providers/adsum-free"
 import { ApiStream } from "@core/api/transform/stream"
 import { AssistantMessageContent, parseAssistantMessageV2, ToolUse } from "@core/assistant-message"
 import { buildCompactionLedger } from "@core/context/context-management/CompactionLedger"
+import { recordWindowRefusal } from "@core/context/context-management/observed-window"
 import { ContextManager } from "@core/context/context-management/ContextManager"
 import { checkContextWindowExceededError } from "@core/context/context-management/context-error-handling"
 import { getContextWindowInfo } from "@core/context/context-management/context-window-utils"
@@ -1943,6 +1944,18 @@ export class Task {
 
 			// Capture provider failure telemetry using clineError
 			ErrorService.get().logMessage(clineError.message)
+
+			if (isContextWindowExceededError) {
+				// Learn the real ceiling from the refusal. Our size figure is an estimate that tokenizes
+				// optimistically for the hex dumps, captures and source this extension handles, so a model
+				// can refuse a prompt we scored as comfortably inside its window. Recording it means the
+				// next request aims lower instead of repeating the same refusal.
+				const refusedAt = this.contextManager.estimateCurrentPromptTokens(
+					this.messageStateHandler.getApiConversationHistory(),
+					this.taskState.conversationHistoryDeletedRange,
+				)
+				recordWindowRefusal(model.id, refusedAt)
+			}
 
 			if (isContextWindowExceededError && !this.taskState.didAutomaticallyRetryFailedApiRequest) {
 				await this.handleContextWindowExceededError()

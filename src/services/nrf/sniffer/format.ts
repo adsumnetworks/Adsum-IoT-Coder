@@ -100,6 +100,8 @@ export function formatSniffer(result: SnifferParseResult): string {
 				lines.push(`           ${f.isError ? "✗ " : "  "}${f.name}: ${f.value}`)
 			}
 		}
+		// payloadHex is already capped to MAX_PAYLOAD_HEX_BYTES (255B) by the parser (hexCapped); only a
+		// corrupt/oversized length field truncates further, and that case reports the omitted byte count.
 		if (e.payloadHex) {
 			lines.push(`           payload: ${e.payloadHex}`)
 		}

@@ -425,6 +425,7 @@
 		"test:edit-results": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/edit-result.test.ts",
 		"test:memory": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/memory.test.ts",
 		"test:memory-migrate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/migrate.test.ts",
+		"test:sniffer-payload": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/nrf/payloadHex.node-test.ts",
 		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:workspace test:cve",
 		"kbit": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit.ts",
 		"qa": "bash qa/regression/run.sh",
@@ -473,7 +474,9 @@
 		"test:memory-write": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/updateProjectMemory.test.ts",
 		"test:output-reservation": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/output-reservation.test.ts",
 		"test:command-guards": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/commandGuards.test.ts",
-		"test:welcome-coverage": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/__tests__/welcomeButtonCoverage.node-test.ts"
+		"test:welcome-coverage": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/__tests__/welcomeButtonCoverage.node-test.ts",
+		"test:context-errors": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/contextErrorDetection.test.ts",
+		"test:observed-window": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/observedWindow.test.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [

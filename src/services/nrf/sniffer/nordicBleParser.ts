@@ -87,14 +87,20 @@ function macLE(buf: Buffer, off: number): string {
 	return b.join(":")
 }
 
-function hexCapped(buf: Buffer, off: number, len: number, cap = 16): string {
+// Same 255-byte ceiling as hci/hciParser.ts's MAX_PAYLOAD_HEX_BYTES — BLE extended-advertising AdvData is
+// an 8-bit length field, so 255 bytes is the true protocol ceiling (see that file for the full reasoning).
+// Kept as its own constant here because this parser decodes the over-the-air PDU, not the HCI transport.
+export const MAX_PAYLOAD_HEX_BYTES = 255
+
+export function hexCapped(buf: Buffer, off: number, len: number, cap = MAX_PAYLOAD_HEX_BYTES): string {
 	const end = Math.min(off + cap, off + len, buf.length)
 	const parts: string[] = []
 	for (let i = off; i < end; i++) {
 		parts.push(buf[i].toString(16).padStart(2, "0"))
 	}
-	if (len > cap) {
-		parts.push("…")
+	const omitted = len - (end - off)
+	if (omitted > 0) {
+		parts.push(`… +${omitted} bytes`)
 	}
 	return parts.join(" ")
 }

@@ -351,12 +351,22 @@ describe("hciParser", () => {
 			expect(entries[0].payloadHex).to.equal("03 0c 00")
 		})
 
-		it("truncates hex dump at 16 bytes with ellipsis", () => {
+		it("does NOT truncate a 20-byte payload (well under the 255-byte cap)", () => {
 			const payload = Buffer.alloc(20).fill(0xaa)
 			const frame = makeFrame(0x0002, 100, Buffer.concat([Buffer.from([0x03, 0x0c, 17]), payload]))
 			const { entries } = parseHci(frame)
-			expect(entries[0].payloadHex).to.include("…")
-			expect(entries[0].payloadHex.split(" ").length).to.equal(17) // 16 bytes + "…"
+			expect(entries[0].payloadHex).to.not.include("…")
+			expect(entries[0].payloadHex.split(" ").length).to.equal(23) // 3-byte CMD header + 20-byte payload
+		})
+
+		it("truncates hex dump at the 255-byte cap and reports the omitted byte count", () => {
+			const payload = Buffer.alloc(300).fill(0xaa)
+			const frame = makeFrame(0x0002, 100, Buffer.concat([Buffer.from([0x03, 0x0c, 17]), payload]))
+			const { entries } = parseHci(frame)
+			const hex = entries[0].payloadHex
+			expect(hex).to.include("… +48 bytes") // 303-byte payload, 255 shown, 48 omitted
+			const hexBytesOnly = hex.split("…")[0].trim()
+			expect(hexBytesOnly.split(" ")).to.have.lengthOf(255)
 		})
 	})
 })

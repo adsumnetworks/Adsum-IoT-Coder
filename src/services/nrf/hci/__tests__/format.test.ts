@@ -59,12 +59,20 @@ describe("formatHci", () => {
 		expect(text).to.match(/no HCI frames decoded/)
 	})
 
-	it("shows the parser's capped payload hex (16 bytes + ellipsis) for a long payload", () => {
+	it("does not truncate an 80-byte payload (well under the 255-byte cap)", () => {
 		const big = Buffer.alloc(80)
 		big.writeUInt16LE(0x2008, 0) // LE Set Adv Data, long payload
 		const text = formatHci(parseHci(makeFrame(0x0002, 0, big)))
 		expect(text).to.contain("payload:")
-		expect(text).to.contain("…") // parser truncates >16 bytes with an ellipsis
+		expect(text).to.not.contain("…")
+	})
+
+	it("shows the parser's capped payload hex (255 bytes + omitted-count ellipsis) for an oversized payload", () => {
+		const big = Buffer.alloc(300)
+		big.writeUInt16LE(0x2008, 0) // LE Set Adv Data, oversized payload
+		const text = formatHci(parseHci(makeFrame(0x0002, 0, big)))
+		expect(text).to.contain("payload:")
+		expect(text).to.contain("… +45 bytes") // 300-byte payload, 255 shown, 45 omitted
 	})
 
 	it("appends a suggested mermaid sequence diagram footer when frames decoded", () => {
