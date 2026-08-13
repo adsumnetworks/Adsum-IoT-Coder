@@ -4,6 +4,7 @@ import { getCachedWorkspaceClassification } from "@/services/platform/WorkspaceC
 import { envFromDetectors } from "./hostFacts"
 import { buildWorkspaceMap } from "./mapBuilder"
 import { MAP_CAP_CHARS, renderMap } from "./mapDrop"
+import { memoryAnchors } from "./projectAnchor"
 import { ensureAdsumScaffold, readEnv, writeEnv, writeMapMd } from "./store"
 
 /**
@@ -38,20 +39,40 @@ export function refreshToolchainMemory(cwd: string | undefined, nowIso: string):
 	}
 }
 
-/** Rebuild the workspace file map. Called on activation and after config saves. */
+/** Application folders the classifier found under this workspace. */
+function detectedAppRoots(): string[] {
+	const classification = getCachedWorkspaceClassification?.()
+	return Array.isArray((classification as { apps?: Array<{ path: string }> })?.apps)
+		? ((classification as { apps: Array<{ path: string }> }).apps.map((a) => a.path) ?? [])
+		: []
+}
+
+/**
+ * Rebuild the workspace file map. Called on activation and after config saves.
+ *
+ * The map is written to EVERY anchor that should carry memory, not just the workspace root: a
+ * multi-app repo gets a shared map alongside one per app, so each app's memory describes that app.
+ * Anchors that cannot hold memory (no project there, or a personal folder) are skipped entirely.
+ */
 export async function refreshWorkspaceMapMemory(cwd: string | undefined): Promise<void> {
 	try {
 		if (!cwd) {
 			return
 		}
-		ensureAdsumScaffold(cwd)
-		const classification = getCachedWorkspaceClassification?.()
-		const appRoots: string[] = Array.isArray((classification as { apps?: Array<{ path: string }> })?.apps)
-			? ((classification as { apps: Array<{ path: string }> }).apps.map((a) => a.path) ?? [])
-			: []
-		const map = await buildWorkspaceMap(cwd)
-		const rendered = renderMap(map, MAP_CAP_CHARS, appRoots, map.truncation)
-		writeMapMd(cwd, rendered)
+		const appRoots = detectedAppRoots()
+		const anchors = memoryAnchors(cwd, appRoots)
+		if (!anchors.length) {
+			return
+		}
+		for (const anchor of anchors) {
+			if (!ensureAdsumScaffold(anchor)) {
+				continue
+			}
+			// Map each anchor's OWN subtree — an app's map should describe that app, not its siblings.
+			const map = await buildWorkspaceMap(anchor)
+			const rendered = renderMap(map, MAP_CAP_CHARS, appRoots, map.truncation)
+			writeMapMd(anchor, rendered)
+		}
 	} catch {
 		// never surface
 	}
@@ -59,6 +80,8 @@ export async function refreshWorkspaceMapMemory(cwd: string | undefined): Promis
 
 /** Everything the host can record without touching hardware. Safe to call on activation. */
 export async function refreshHostMemory(cwd: string | undefined, nowIso: string): Promise<void> {
-	refreshToolchainMemory(cwd, nowIso)
+	for (const anchor of memoryAnchors(cwd, detectedAppRoots())) {
+		refreshToolchainMemory(anchor, nowIso)
+	}
 	await refreshWorkspaceMapMemory(cwd)
 }

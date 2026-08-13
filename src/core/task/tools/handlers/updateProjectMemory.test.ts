@@ -29,7 +29,11 @@ import {
 const NOW = "2026-08-07T10:00:00Z"
 
 function tmpWorkspace(): string {
-	return fs.mkdtempSync(path.join(os.tmpdir(), "adsum-write-"))
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), "adsum-write-"))
+	// Memory is only ever written inside a real project — a bare temp dir is refused by design, the
+	// same guard that stops a prototype scaffolding .adsum onto someone's Desktop.
+	fs.writeFileSync(path.join(root, "prj.conf"), "")
+	return root
 }
 
 /** Validate + apply in one step, asserting the validation passed. */

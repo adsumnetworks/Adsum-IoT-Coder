@@ -16,7 +16,10 @@ import { resolveAdsumPaths } from "./paths"
  */
 
 function makeWorkspace(): string {
-	return fs.mkdtempSync(path.join(os.tmpdir(), "adsum-ws-"))
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), "adsum-ws-"))
+	// Must look like a real project: memory is refused outside one (see projectAnchor.ts).
+	fs.writeFileSync(path.join(root, "prj.conf"), "")
+	return root
 }
 
 function makeLegacyDir(): string {
