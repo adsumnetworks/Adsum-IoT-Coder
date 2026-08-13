@@ -1619,7 +1619,10 @@ export const azureOpenAiDefaultApiVersion = "2024-08-01-preview"
 // DeepSeek
 // https://api-docs.deepseek.com/quick_start/pricing
 export type DeepSeekModelId = keyof typeof deepSeekModels
-export const deepSeekDefaultModelId: DeepSeekModelId = "deepseek-chat"
+// deepseek-chat and deepseek-reasoner are retired — DeepSeek's pricing page no longer lists either (checked
+// 2026-08-13), so a new user defaulting onto deepseek-chat would land on a model that no longer exists. They
+// stay in the catalogue so an existing saved configuration keeps resolving, but the default is now V4.
+export const deepSeekDefaultModelId: DeepSeekModelId = "deepseek-v4-pro"
 export const deepSeekModels = {
 	"deepseek-chat": {
 		maxTokens: 8_000,
@@ -1641,11 +1644,21 @@ export const deepSeekModels = {
 		cacheWritesPrice: 0.55,
 		cacheReadsPrice: 0.14,
 	},
-	// DeepSeek V4 (2026): thinking toggled via thinking.type (enabled/disabled), like GLM. flash defaults thinking on;
-	// pro supports both modes, 1M context. The old deepseek-chat/deepseek-reasoner ids deprecate 2026-07-24.
-	// Prices are DeepSeek list pricing (approx); input billed via cache hit/miss, so inputPrice stays 0.
+	// DeepSeek V4 (2026): thinking toggled via thinking.type (enabled/disabled), like GLM. flash defaults thinking
+	// on; pro supports both modes, 1M context.
+	//
+	// Figures below are taken from DeepSeek's own pricing page (api-docs.deepseek.com/quick_start/pricing,
+	// checked 2026-08-13), not estimated. Input is billed as cache hit/miss, so inputPrice stays 0 and the real
+	// input cost lives in cacheReadsPrice (hit) / cacheWritesPrice (miss).
+	//
+	// Two corrections made when these were checked against the source:
+	//   - maxTokens was 8_000, i.e. ~2% of the 384_000 these models actually support. The request is still
+	//     capped far below this by effectiveMaxOutputTokens() — no agent turn needs 384K — but declaring the
+	//     true figure keeps the budget arithmetic honest.
+	//   - cacheReadsPrice was 0.028 / 0.086, which overstated cache reads by 10x and 24x. In an agentic loop
+	//     nearly all repeated context is a cache read, so this was the dominant term in the cost shown.
 	"deepseek-v4-flash": {
-		maxTokens: 8_000,
+		maxTokens: 384_000,
 		contextWindow: 1_000_000,
 		supportsImages: false,
 		supportsPromptCache: true,
@@ -1653,18 +1666,18 @@ export const deepSeekModels = {
 		inputPrice: 0,
 		outputPrice: 0.28,
 		cacheWritesPrice: 0.14,
-		cacheReadsPrice: 0.028,
+		cacheReadsPrice: 0.0028,
 	},
 	"deepseek-v4-pro": {
-		maxTokens: 8_000,
+		maxTokens: 384_000,
 		contextWindow: 1_000_000,
 		supportsImages: false,
 		supportsPromptCache: true,
 		supportsReasoning: true,
 		inputPrice: 0,
 		outputPrice: 0.87,
-		cacheWritesPrice: 0.43,
-		cacheReadsPrice: 0.086,
+		cacheWritesPrice: 0.435,
+		cacheReadsPrice: 0.003625,
 	},
 } as const satisfies Record<string, ModelInfo>
 
