@@ -153,13 +153,19 @@ const ModelPickerModal: React.FC<ModelPickerModalProps> = ({ isOpen, onOpenChang
 			: getConfiguredProviders(apiConfiguration)
 
 		// GLM / provider ladder (design/03): also allow anthropic (Claude / GLM Coding Plan) + zai (metered GLM).
+		// deepseek is here because leaving it out was the whole of the "DeepSeek is manual" problem: it is a
+		// fully working provider that getConfiguredProviders() already detects, but the filter dropped it, so
+		// switching to it meant leaving chat for full Settings every time. The path of least resistance became
+		// pointing the generic OpenAI-compatible provider at api.deepseek.com and hand-typing the base URL,
+		// model id, context window and prices that the native provider already knows.
 		return allProviders.filter(
 			(p) =>
 				p === "openai" ||
 				p === "openrouter" ||
 				p === "anthropic" ||
 				p === "anthropic-compatible" ||
-				p === "zai-coding-plan",
+				p === "zai-coding-plan" ||
+				p === "deepseek",
 		)
 	}, [apiConfiguration, remoteConfigSettings?.remoteConfiguredProviders])
 

@@ -476,7 +476,8 @@
 		"test:command-guards": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/commandGuards.test.ts",
 		"test:welcome-coverage": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/__tests__/welcomeButtonCoverage.node-test.ts",
 		"test:context-errors": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/contextErrorDetection.test.ts",
-		"test:observed-window": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/observedWindow.test.ts"
+		"test:observed-window": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/observedWindow.test.ts",
+		"test:deepseek": "ts-node --transpile-only -P tsconfig.unit-test.json src/utils/__tests__/deepseekSupport.node-test.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [

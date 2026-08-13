@@ -20,6 +20,14 @@ export function isNextGenModelProvider(providerInfo: ApiProviderInfo): boolean {
 		"baseten",
 		"vercel-ai-gateway",
 		"oca",
+		// The native DeepSeek provider. Without this, isNativeToolCallingConfig() rejected it on the
+		// provider check alone, so a DeepSeek V4 model could never use native tool calls even though
+		// DeepSeekHandler already sends OpenAI-style tool_calls and isDeepSeekNativeToolsModelFamily()
+		// correctly identifies V4/3.2 as capable — both halves built, never connected. The perverse
+		// result was that pointing the GENERIC openai provider at api.deepseek.com DID get native tool
+		// calls (that provider is listed here, and the family check only reads the model id), so the
+		// manual workaround behaved better than the first-class provider.
+		"deepseek",
 	].some((id) => providerId === id)
 }
 
