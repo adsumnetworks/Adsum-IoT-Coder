@@ -23,6 +23,7 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { type BlockResult, upsertManagedBlock } from "@utils/managedBlock"
+import { canHoldMemory } from "./projectAnchor"
 import { type AdsumPaths, resolveAdsumPaths } from "./paths"
 import {
 	type DevicesJson,
@@ -75,6 +76,13 @@ function pathsFor(cwd: string | undefined): AdsumPaths | undefined {
  * Returns the resolved paths, or undefined if the scaffold could not be created at all.
  */
 export function ensureAdsumScaffold(cwd: string | undefined): AdsumPaths | undefined {
+	// The single gate that stops memory being created outside a project. A prototype starts with no
+	// folder open, so cwd is the developer's Desktop; without this check the agent scaffolds a full
+	// .adsum/ there and writes real project knowledge into a personal folder. If this directory
+	// cannot hold memory we create NOTHING and the caller does without — an honest no-op beats litter.
+	if (!canHoldMemory(cwd)) {
+		return undefined
+	}
 	const p = pathsFor(cwd)
 	if (!p) {
 		return undefined
