@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 21,
+	"count": 20,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -161,28 +161,10 @@
 			"content_hash": "479e571523ef5a5d1b1adf06b241306b4ba162f98434720f7439202b4ffb03ee"
 		},
 		{
-			"id": "adsum/nrf/boards/xiao-nrf54lm20a",
-			"title": "Seeed XIAO nRF54LM20A — Board Knowledge",
-			"type": "knowledge",
-			"version": "1.0.0",
-			"owner": "adsum-core",
-			"author": "Omar Morceli",
-			"license": "CC-BY-SA-4.0",
-			"tier": "certified",
-			"delivery": "bundled",
-			"domain": "embedded-iot",
-			"platform": "nrf",
-			"safety": [
-				"flash"
-			],
-			"path": "platforms/nrf/boards/xiao-nrf54lm20a.md",
-			"content_hash": "ee4915886cc13575ffb58c8e37a09c716ec42527a663914e8949fc49a797e049"
-		},
-		{
 			"id": "adsum/nrf/platform",
 			"title": "Nordic nRF — Platform Index",
 			"type": "knowledge",
-			"version": "1.4.0",
+			"version": "1.6.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -194,7 +176,7 @@
 				"flash"
 			],
 			"path": "platforms/nrf/PLATFORM.md",
-			"content_hash": "3782f0bffc8be4056e2bc9db2828d60c6ebeb05e516c67e8537eb95054aa29dc"
+			"content_hash": "ccc14e192595f1d2830850114aa6a023bbb4b5731306addb4b27ff3d0a95929a"
 		},
 		{
 			"id": "adsum/nrf/rules/device-identity",

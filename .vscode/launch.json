@@ -30,9 +30,11 @@
 				"CLINE_ENVIRONMENT": "production",
 				// Dev override: resolve DOWNLOADED (proprietary) bits — incl. the 10 CRA bits — from the
 				// Adsum-Backend/kbits/ tree on disk, so F5 has the same edit-and-run loop as bundled bits.
-				// Gated on IS_DEV; esbuild dead-codes it out of any shipped VSIX. Adjust the path if the
-				// Adsum-Backend checkout lives elsewhere relative to this repo.
-				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/../Adsum-Backend/kbits"
+				// Gated on IS_DEV; esbuild dead-codes it out of any shipped VSIX. The checkout is NESTED in this
+				// repo (and gitignored), not a sibling — a wrong path here fails SILENTLY: the override just
+				// finds nothing and every downloaded bit falls back to the registry, which looks like the
+				// override working until an edit does not show up.
+				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/Adsum-Backend/kbits"
 			}
 		},
 		{
@@ -90,7 +92,7 @@
 				// Dev override: resolve DOWNLOADED (proprietary) bits — incl. the 10 CRA bits — from the
 				// Adsum-Backend/kbits/ tree on disk (see the nRF config above). Gated on IS_DEV; dead-coded
 				// out of any shipped VSIX by esbuild.
-				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/../Adsum-Backend/kbits"
+				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/Adsum-Backend/kbits"
 			}
 		},
 		{
@@ -118,7 +120,7 @@
 				"IS_DEV": "true",
 				"DEV_WORKSPACE_FOLDER": "${workspaceFolder}",
 				"CLINE_ENVIRONMENT": "production",
-				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/../Adsum-Backend/kbits"
+				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/Adsum-Backend/kbits"
 			}
 		},
 		{
@@ -143,7 +145,7 @@
 				"IS_DEV": "true",
 				"DEV_WORKSPACE_FOLDER": "${workspaceFolder}",
 				"CLINE_ENVIRONMENT": "staging",
-				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/../Adsum-Backend/kbits"
+				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/Adsum-Backend/kbits"
 			}
 		},
 		{
@@ -168,7 +170,7 @@
 				"IS_DEV": "true",
 				"DEV_WORKSPACE_FOLDER": "${workspaceFolder}",
 				"CLINE_ENVIRONMENT": "local",
-				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/../Adsum-Backend/kbits"
+				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/Adsum-Backend/kbits"
 			}
 		},
 		{
@@ -202,7 +204,7 @@
 				"TEMP_PROFILE": "true",
 				"DEV_WORKSPACE_FOLDER": "${workspaceFolder}",
 				"CLINE_ENVIRONMENT": "production",
-				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/../Adsum-Backend/kbits"
+				"ADSUM_KBIT_LOCAL": "${workspaceFolder}/Adsum-Backend/kbits"
 			}
 		},
 		{
