@@ -16,7 +16,11 @@ export const CheckpointError: React.FC<CheckpointErrorProps> = ({
 			checkpointManagerErrorMessage?.endsWith("disabling checkpoints.") ||
 			checkpointManagerErrorMessage?.includes("multi-root workspaces")
 		const showGitInstructions = checkpointManagerErrorMessage?.includes("Git must be installed to use checkpoints.")
-		return { message, showDisableButton, showGitInstructions }
+		// Running in the Desktop/home folder means checkpoints do not APPLY — nothing failed, and the
+		// developer has nothing to fix. A red danger banner for that reads as a broken extension during
+		// the prototype flow, where having no folder open is the expected starting state.
+		const isNotApplicable = checkpointManagerErrorMessage?.includes("checkpoints turn on by themselves")
+		return { message, showDisableButton, showGitInstructions, isNotApplicable }
 	}, [checkpointManagerErrorMessage])
 
 	if (!checkpointManagerErrorMessage) {
@@ -25,7 +29,7 @@ export const CheckpointError: React.FC<CheckpointErrorProps> = ({
 
 	return (
 		<div className="flex items-center justify-center w-full">
-			<Alert title={messages.message} variant="danger">
+			<Alert title={messages.message} variant={messages.isNotApplicable ? "default" : "danger"}>
 				<AlertDescription className="flex gap-2 justify-end">
 					{messages.showDisableButton && (
 						<Button aria-label="Disable Checkpoints" onClick={handleCheckpointSettingsClick} variant="ghost">

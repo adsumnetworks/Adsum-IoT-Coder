@@ -58,14 +58,39 @@ export async function validateWorkspacePath(workspacePath: string): Promise<void
 
 	switch (workspacePath) {
 		case homedir:
-			throw new Error("Cannot use checkpoints in home directory")
+			throw new ProtectedDirectoryError("home directory")
 		case desktopPath:
-			throw new Error("Cannot use checkpoints in Desktop directory")
+			throw new ProtectedDirectoryError("Desktop")
 		case documentsPath:
-			throw new Error("Cannot use checkpoints in Documents directory")
+			throw new ProtectedDirectoryError("Documents")
 		case downloadsPath:
-			throw new Error("Cannot use checkpoints in Downloads directory")
+			throw new ProtectedDirectoryError("Downloads")
 	}
+}
+
+/**
+ * "Checkpoints don't apply here", which is NOT the same thing as "checkpoints broke".
+ *
+ * Refusing to snapshot someone's entire Desktop is correct behaviour, and it is the normal state
+ * during a prototype: the developer has no folder open yet, so the workspace IS the Desktop. Raising
+ * it as a failed initialization put a red error toast and a persistent banner in front of a developer
+ * who had done nothing wrong and could take no action (reported 2026-08-13). Callers should treat
+ * this as a quiet unavailability and say so once, plainly, or not at all.
+ */
+export class ProtectedDirectoryError extends Error {
+	readonly isProtectedDirectory = true
+	constructor(readonly directoryLabel: string) {
+		super(
+			`Checkpoints are off because this task is running in your ${directoryLabel}, which is too broad to snapshot safely. ` +
+				`Open a project folder and checkpoints turn on by themselves.`,
+		)
+		this.name = "ProtectedDirectoryError"
+	}
+}
+
+/** True for the "no project open, so checkpoints don't apply" case — never for a real failure. */
+export function isProtectedDirectoryError(e: unknown): boolean {
+	return !!e && typeof e === "object" && (e as { isProtectedDirectory?: boolean }).isProtectedDirectory === true
 }
 
 /**

@@ -4,10 +4,10 @@ import { QuotaExhaustedError } from "@core/api/providers/adsum-free"
 import { ApiStream } from "@core/api/transform/stream"
 import { AssistantMessageContent, parseAssistantMessageV2, ToolUse } from "@core/assistant-message"
 import { buildCompactionLedger } from "@core/context/context-management/CompactionLedger"
-import { recordWindowRefusal } from "@core/context/context-management/observed-window"
 import { ContextManager } from "@core/context/context-management/ContextManager"
 import { checkContextWindowExceededError } from "@core/context/context-management/context-error-handling"
 import { getContextWindowInfo } from "@core/context/context-management/context-window-utils"
+import { recordWindowRefusal } from "@core/context/context-management/observed-window"
 import { EnvironmentContextTracker } from "@core/context/context-tracking/EnvironmentContextTracker"
 import { FileContextTracker } from "@core/context/context-tracking/FileContextTracker"
 import { ModelContextTracker } from "@core/context/context-tracking/ModelContextTracker"
@@ -41,6 +41,7 @@ import {
 import { releaseTaskLock } from "@core/task/TaskLockUtils"
 import { isMultiRootEnabled } from "@core/workspace/multi-root-utils"
 import { WorkspaceRootManager } from "@core/workspace/WorkspaceRootManager"
+import { isProtectedDirectoryError } from "@integrations/checkpoints/CheckpointUtils"
 import { buildCheckpointManager, shouldUseMultiRoot } from "@integrations/checkpoints/factory"
 import { ensureCheckpointInitialized } from "@integrations/checkpoints/initializer"
 import { ICheckpointManager } from "@integrations/checkpoints/types"
@@ -418,13 +419,19 @@ export class Task {
 					})
 				}
 			} catch (error) {
-				console.error("Failed to initialize checkpoint manager:", error)
-				if (this.stateManager.getGlobalSettingsKey("enableCheckpointsSetting")) {
-					const errorMessage = error instanceof Error ? error.message : "Unknown error"
-					HostProvider.window.showMessage({
-						type: ShowMessageType.ERROR,
-						message: `Failed to initialize checkpoint manager: ${errorMessage}`,
-					})
+				// See the note at the other initialization site: a personal folder means checkpoints do
+				// not apply, not that anything failed.
+				if (isProtectedDirectoryError(error)) {
+					this.taskState.checkpointManagerErrorMessage = error instanceof Error ? error.message : undefined
+				} else {
+					console.error("Failed to initialize checkpoint manager:", error)
+					if (this.stateManager.getGlobalSettingsKey("enableCheckpointsSetting")) {
+						const errorMessage = error instanceof Error ? error.message : "Unknown error"
+						HostProvider.window.showMessage({
+							type: ShowMessageType.ERROR,
+							message: `Failed to initialize checkpoint manager: ${errorMessage}`,
+						})
+					}
 				}
 			}
 		}
@@ -2389,12 +2396,20 @@ export class Task {
 				await ensureCheckpointInitialized({ checkpointManager: this.checkpointManager })
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : "Unknown error"
-				console.error("Failed to initialize checkpoint manager:", errorMessage)
-				this.taskState.checkpointManagerErrorMessage = errorMessage // will be displayed right away since we saveClineMessages next which posts state to webview
-				HostProvider.window.showMessage({
-					type: ShowMessageType.ERROR,
-					message: `Checkpoint initialization timed out: ${errorMessage}`,
-				})
+				// Running in a personal folder (the normal state during a prototype, before any project
+				// folder is open) is not a failure — checkpoints simply do not apply. Record the reason so
+				// the header can explain it, but do not raise an error toast for something the developer
+				// did not do wrong and cannot act on.
+				if (isProtectedDirectoryError(error)) {
+					this.taskState.checkpointManagerErrorMessage = errorMessage
+				} else {
+					console.error("Failed to initialize checkpoint manager:", errorMessage)
+					this.taskState.checkpointManagerErrorMessage = errorMessage // will be displayed right away since we saveClineMessages next which posts state to webview
+					HostProvider.window.showMessage({
+						type: ShowMessageType.ERROR,
+						message: `Checkpoint initialization timed out: ${errorMessage}`,
+					})
+				}
 			}
 		}
 
