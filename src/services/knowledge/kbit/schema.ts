@@ -88,6 +88,13 @@ export const kbitMetaSchema = z
 		// app version, so a host-dependent bump never reaches an app that can't run it. See the kbit-handbook
 		// "safe publishing & backward-compat" section.
 		min_ext: semver.optional(),
+		// The MINIMUM nRF Connect SDK version this bit's content is valid for. Distinct from `min_ext`,
+		// which gates on the EXTENSION version: a bit can be perfectly servable to this app yet describe a
+		// board target or feature that does not exist in the developer's installed SDK. Set it on board and
+		// SoC bits (e.g. the XIAO nRF54LM20A needs NCS >= 3.3.0); leave it absent for prose that is version
+		// independent. The host compares it against the detected toolchain and warns BEFORE the agent spends
+		// a build cycle discovering the board does not resolve.
+		min_ncs: semver.optional(),
 		content_hash: z.string().optional(),
 		// Credibility roles (R5.x). `author` above stays the primary author (back-compat).
 		co_authors: z.array(creditEntry).optional(),

@@ -162,6 +162,56 @@ export async function creditForKbPath(absPath: string): Promise<KbitCredit | nul
 	return null
 }
 
+/**
+ * The SDK version a bit declares it needs, plus its title.
+ *
+ * Exposed so the prompt builder can warn when the installed toolchain is older than a board bit
+ * requires — the bit itself is still loaded, this only decides whether to say something about it.
+ *
+ * Checks the bundled manifest FIRST, then the downloaded catalog. Both tiers are required: board bits
+ * are `delivery: downloaded`, so reading only the bundled manifest would return null for every board
+ * that actually declares `min_ncs` — the version gate would go quiet exactly where it matters, and
+ * look like it was working because a missing warning is indistinguishable from "no warning needed".
+ * The publisher strips frontmatter before hashing, so for a downloaded bit the fields live in the
+ * catalog's `meta`, never in the blob (see `downloadedMeta`).
+ */
+export async function bitSdkRequirement(id: string): Promise<{ minNcs?: string; title?: string } | null> {
+	try {
+		const entry = (await manifest()).get(id)
+		if (entry) {
+			return { minNcs: (entry as { min_ncs?: string }).min_ncs, title: entry.title }
+		}
+	} catch {
+		// fall through to the downloaded tier
+	}
+	// Dev override (F5): the bit is a real file on disk with its frontmatter intact, and the registry
+	// may hold nothing for it yet — an unpublished or just-edited bit is the whole point of the
+	// override. Without this branch, F5-testing a downloaded board bit shows the knowledge but never
+	// the version warning, and a silent gate is indistinguishable from a gate that decided not to fire.
+	try {
+		const local = localKbits()?.get(id)
+		if (local) {
+			const fm = extractFrontmatter(readFileSync(local, "utf8"))
+			if (fm.found && fm.closed) {
+				const minNcs = fm.yaml.match(/^\s*min_ncs:\s*["']?([^"'\s#]+)/m)?.[1]
+				const title = fm.yaml.match(/^\s*title:\s*["']?([^"'\n]+?)["']?\s*$/m)?.[1]
+				return { minNcs, title }
+			}
+		}
+	} catch {
+		// fall through to the registry catalog
+	}
+	try {
+		const meta = await downloadedMeta(id)
+		if (!meta) {
+			return null
+		}
+		return { minNcs: meta.min_ncs as string | undefined, title: meta.title as string | undefined }
+	} catch {
+		return null
+	}
+}
+
 // ── Downloaded tier (P2): registry + on-machine cache ───────────────────────────
 
 let injectedCache: BitCache | null = null

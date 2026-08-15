@@ -277,14 +277,18 @@ describe("lintBitContent", () => {
 // ---------------------------------------------------------------- regression (real corpus)
 
 describe("regression: live corpus", () => {
-	// 20 bits: the post-un-bundle core/demo bits (delivery: bundled, open). Wave 3 added three:
-	// `rules/skill-loading.md` (the shared Scope/Command-gate framework, factored out of the two
-	// near-duplicate per-platform copies) and an `analyze-logs.md` for each platform (the
-	// search-before-read log doctrine). The 10 CRA "SBOM & Fix" bits
-	// (delivery: downloaded, LicenseRef-Adsum-Proprietary) were migrated OUT of this repo to
-	// `Adsum-Backend/kbits/` (their single home, per Omar's K-bit dev workflow — "where the file lives = its
-	// delivery"). They are no longer bundled in the VSIX: served from the registry in prod, and from the
-	// `ADSUM_KBIT_LOCAL` dev override in F5. So the open corpus here holds only bundled bits.
+	// 20 bits: the post-un-bundle core/demo bits (delivery: bundled, open). Wave 3 added three
+	// (`rules/skill-loading.md` — the shared Scope/Command-gate framework factored out of two
+	// near-duplicate per-platform copies — plus an `analyze-logs.md` per platform for the
+	// search-before-read log doctrine).
+	//
+	// PROPRIETARY BITS DO NOT LIVE HERE. The 10 CRA "SBOM & Fix" bits and every BOARD bit are
+	// `delivery: downloaded` + LicenseRef-Adsum-Proprietary, so their single home is
+	// `Adsum-Backend/kbits/` (per Omar's K-bit workflow — "where the file lives = its delivery").
+	// They are not in the VSIX: served from the registry in prod, and from the `ADSUM_KBIT_LOCAL`
+	// dev override in F5. The four nRF54 bits (XIAO nRF54LM20A, the nRF54L15 and nRF54LM20 DKs, and
+	// the nRF52840→nRF54L migration guide) were briefly authored here and moved out 2026-08-14 to
+	// join the other board bits; this count going UP again means a proprietary bit leaked back in.
 	test("corpus is fully migrated and lint-clean: 20 bits, 0 errors, 0 unmigrated", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
 		assert.equal(files.length, 20)
