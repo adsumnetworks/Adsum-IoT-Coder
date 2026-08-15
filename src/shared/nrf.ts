@@ -5,6 +5,18 @@ export interface NrfBoard {
 	deviceVersion?: string
 	/** Nordic DK board number, e.g. "PCA10056" — the label developers recognize. */
 	boardVersion?: string
+	/**
+	 * The USB product string, e.g. "Seeed Studio XIAO nRF54LM20A CMSIS-DAP".
+	 *
+	 * For a Nordic DK this is redundant with `boardVersion`. For a THIRD-PARTY module it is the only
+	 * identity there is: a XIAO carries an on-board CMSIS-DAP rather than a SEGGER J-Link, so
+	 * `nrfutil device list` reports no `devkit` and no `jlink` object for it, and every Nordic-identity
+	 * field is empty. The product string still names the chip, and it is what distinguishes a XIAO
+	 * from the DK carrying the same silicon — which is a different board target with different pins.
+	 */
+	productName?: string
+	/** USB vendor name, e.g. "Seeed Studio". Present for third-party modules. */
+	usbManufacturer?: string
 }
 
 /**

@@ -2,7 +2,7 @@
 id: adsum/nrf/platform
 title: "Nordic nRF — Platform Index"
 type: knowledge
-version: 1.4.0
+version: 1.6.0
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -33,10 +33,13 @@ platforms/nrf/
 │   ├── nrf52840.md          ← nRF52840 hardware specs & constraints
 │   ├── nrf52840dongle.md    ← nRF52840 USB dongle (PCA10059) — the BLE sniffer hardware (DFU, flashing)
 │   ├── nrf5340.md           ← nRF5340 dual-core specs & constraints
+│   ├── nrf54l15dk.md        ← nRF54L15 DK (PCA10156) — M33 + FLPR RISC-V core, min NCS 2.8.0
+│   ├── nrf54lm20dk.md       ← nRF54LM20 DK (PCA10184) — ships B silicon, "a" target is an NPU-less emulation, min NCS 3.3.0
 │   └── xiao-nrf54lm20a.md   ← Seeed XIAO nRF54LM20A — not in NCS by default, needs board root + overlay (bundled)
 ├── sdks/
 │   └── ncs/
 │       ├── SDK.md           ← NCS project structure, Kconfig, west build reference
+│       ├── nrf52840-to-nrf54l-migration.md ← nRF52840→nRF54L porting: what breaks the build vs. what silently misbehaves
 │       └── protocols/
 │           ├── BLE.md       ← BLE stack concepts, log modules, buffer tuning (+ map of the sub-bits below)
 │           └── BLE/         ← BLE deep-dive bits (downloaded — fetched on demand)
@@ -87,6 +90,8 @@ Load the board file when the project targets a specific SoC. Each file documents
 | `nrf52dk/nrf52832` | nRF52832 | `boards/nrf52832.md` |
 | `nrf5340dk/nrf5340/cpuapp` | nRF5340 | `boards/nrf5340.md` |
 | `nrf52840dongle/nrf52840` | nRF52840 (USB dongle, BLE sniffer) | `boards/nrf52840dongle.md` |
+| `nrf54l15dk/nrf54l15/cpuapp` (+ cpuflpr, L10/L05 emulation) | nRF54L15 | `boards/nrf54l15dk.md` — min NCS 2.8.0 |
+| `nrf54lm20dk/nrf54lm20a/cpuapp` (emulation) / `nrf54lm20dk/nrf54lm20b/cpuapp` (native) | nRF54LM20 | `boards/nrf54lm20dk.md` — min NCS 3.3.0 |
 | `xiao_nrf54lm20a/nrf54lm20a/cpuapp` | nRF54LM20A (Seeed XIAO — not in NCS by default) | `boards/xiao-nrf54lm20a.md` *(bundled)* |
 
 Board targets use the Zephyr format: `<board>/<soc>` (e.g., `nrf52840dk/nrf52840`).
@@ -98,6 +103,7 @@ Board targets use the Zephyr format: `<board>/<soc>` (e.g., `nrf52840dk/nrf52840
 | SDK | File | When to Load |
 |---|---|---|
 | Nordic Connect SDK (NCS) + Zephyr RTOS | `sdks/ncs/SDK.md` | Load on first NCS project task. Contains project structure, Kconfig reference, west commands. |
+| nRF52840 → nRF54L Migration | `sdks/ncs/nrf52840-to-nrf54l-migration.md` | Load when porting a project from nRF52840 to nRF54L, or when nRF54L hardware shows a symptom with no build error. |
 | BLE Stack | `sdks/ncs/protocols/BLE.md` | Load when the project uses BLE (`CONFIG_BT=y`) or when debugging BLE-related issues. Also maps the BLE deep-dive bits below. |
 | BLE → HCI Monitor (interpret) | `sdks/ncs/protocols/BLE/hci-monitor.md` *(downloaded)* | Load before interpreting a decoded HCI trace (`logs/hci/*.hci.log`). Driven by the `hci-trace` workflow. |
 | BLE → OTA Sniffer (interpret) | `sdks/ncs/protocols/BLE/ota-sniffer.md` *(downloaded)* | Load before interpreting an over-the-air capture (`logs/sniffer/*`). Driven by the `ble-sniffer` workflow. |
