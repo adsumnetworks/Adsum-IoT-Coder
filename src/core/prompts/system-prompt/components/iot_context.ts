@@ -2,8 +2,9 @@ import fs from "fs/promises"
 import path from "path"
 import { HostProvider } from "@/hosts/host-provider"
 import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
-import { deriveIdFromRel, loadBit } from "@/services/knowledge/KnowledgeResolver"
+import { bitSdkRequirement, deriveIdFromRel, loadBit } from "@/services/knowledge/KnowledgeResolver"
 import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
+import { ncsGateNotice } from "@/services/knowledge/kbit/ncsGate"
 import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { routePlatform } from "@/services/platform/platformRouting"
 import { getCachedWorkspaceSummary, NRF_BLE_RE } from "@/services/platform/WorkspaceClassifier"
@@ -140,8 +141,34 @@ async function detectProjectFeatures(
  * Map an nRF board target string to its board knowledge file (relPath), or null.
  * Mirrors getEspBoardKnowledgeFile so both platforms load boards via the TrackedLoad relPath path.
  */
-function getBoardKnowledgeFile(boardTarget: string): string | null {
-	const lower = boardTarget.toLowerCase()
+export function getBoardKnowledgeFile(boardTarget: string): string | null {
+	// Separators are stripped so ONE router serves every shape this string arrives in: a Zephyr board
+	// target ("xiao_nrf54lm20a/nrf54lm20a/cpuapp"), an overlay filename ("xiao-nrf54lm20a.overlay"),
+	// and a USB product string ("Seeed Studio XIAO nRF54LM20A CMSIS-DAP"). The last one is why this
+	// exists: a spaced product string matched none of the underscore/hyphen tests, so a connected XIAO
+	// routed to the DK bit — the same silicon on a different board, with different pins.
+	const lower = boardTarget.toLowerCase().replace(/[\s_-]+/g, "")
+
+	// ORDER MATTERS — these are substring tests over strings that nest inside one another:
+	//   "xiaonrf54lm20a/nrf54lm20a/cpuapp" contains "nrf54lm20a", so the XIAO must be matched BEFORE the
+	//   nRF54LM20 DK or a XIAO project silently loads DK knowledge (wrong pins, wrong flashing route).
+	//   "nrf54lm20" also contains "nrf54l", so any broad "nrf54l" test must come last.
+	// Most specific first, always.
+
+	// nRF54 — Seeed XIAO module. Not a Nordic DK; needs an out-of-tree board definition.
+	if (lower.includes("xiaonrf54lm20")) {
+		return "platforms/nrf/boards/xiao-nrf54lm20a.md"
+	}
+	// nRF54LM20 DK. Covers both SoC variants: the DK carries B silicon and emulates A.
+	if (lower.includes("nrf54lm20")) {
+		return "platforms/nrf/boards/nrf54lm20dk.md"
+	}
+	// nRF54L15 DK. Also serves the nRF54L10 and nRF54L05 emulation targets, which only exist ON this DK.
+	if (lower.includes("nrf54l15") || lower.includes("nrf54l10") || lower.includes("nrf54l05")) {
+		return "platforms/nrf/boards/nrf54l15dk.md"
+	}
+
+	// nRF53 / nRF52.
 	if (lower.includes("nrf52840")) {
 		return "platforms/nrf/boards/nrf52840.md"
 	}
@@ -173,6 +200,119 @@ export function getEspBoardKnowledgeFile(target: string): string | null {
 		return "platforms/esp/boards/esp32-devkitc-v4.md"
 	}
 	return null
+}
+
+/** A board the workspace points at, and the evidence that says so. */
+interface BoardSignal {
+	/** Whatever names the board: a Zephyr target, an overlay filename, or a USB product string. */
+	target: string
+	/** Shown to the agent so it can weigh the claim instead of treating a guess as a fact. */
+	origin: string
+}
+
+/**
+ * Board targets a project points at BEFORE it has ever been built.
+ *
+ * THE BUG THIS FIXES (2026-08-14): board knowledge was loaded only from `build_info.yml`, which does
+ * not exist until a successful build. So on a fresh project — exactly when the agent is choosing a
+ * board target and setting up a build — no board bit was loaded at all, and the model answered from
+ * its training instead. With a XIAO nRF54LM20A on the desk it kept asserting an nRF54L15 DK, because
+ * that is the only nRF54 board its training knows. The knowledge existed; nothing ever asked for it.
+ *
+ * Both signals here are things a developer writes down before the first build: a board-specific
+ * overlay under `boards/`, or a BOARD pin in CMakeLists.txt.
+ */
+export async function detectPinnedBoards(cwd: string): Promise<BoardSignal[]> {
+	const out: BoardSignal[] = []
+
+	// boards/<board>.overlay|.conf — the Zephyr convention for per-board configuration.
+	try {
+		for (const entry of await fs.readdir(path.join(cwd, "boards"), { withFileTypes: true })) {
+			if (entry.isFile() && /\.(overlay|conf)$/i.test(entry.name)) {
+				out.push({ target: entry.name.replace(/\.(overlay|conf)$/i, ""), origin: `boards/${entry.name}` })
+			}
+		}
+	} catch {
+		// No boards/ directory — normal for a single-board app.
+	}
+
+	// set(BOARD x) / -DBOARD=x / BOARD ?= x in the app's CMakeLists.txt.
+	try {
+		const cmake = await fs.readFile(path.join(cwd, "CMakeLists.txt"), "utf-8")
+		for (const m of cmake.matchAll(/(?:set\s*\(\s*BOARD\s+|-DBOARD=|BOARD\s*\?=\s*)["']?([\w./-]+)/gi)) {
+			out.push({ target: m[1], origin: "CMakeLists.txt (BOARD)" })
+		}
+	} catch {
+		// No CMakeLists.txt, or unreadable.
+	}
+
+	return out
+}
+
+/**
+ * Boards physically connected right now, as the nRF probe sees them.
+ *
+ * Weakest evidence of the three and deliberately last: a board on the bench is not necessarily the
+ * board this project targets. It is still far better than silence — it is the difference between
+ * "an nRF54LM20A is plugged in" and the model guessing which nRF54 exists.
+ */
+function connectedBoardSignals(): BoardSignal[] {
+	const out: BoardSignal[] = []
+	for (const b of getCachedNrfEnvironment().boards ?? []) {
+		// The product string is the more specific of the two — it distinguishes a XIAO from the DK
+		// carrying the same chip. Fall back to the chip name when there is no product string.
+		const target = b.productName || b.deviceName || b.deviceFamily
+		if (target) {
+			out.push({ target, origin: `connected board ${b.serialNumber}` })
+		}
+	}
+	return out
+}
+
+/**
+ * Which platforms the HARDWARE on the bench is evidence for, used only when the workspace itself
+ * names no platform. Pure, so the rule is testable without the detector caches.
+ *
+ * Kept deliberately narrow: this decides whether to load a platform's knowledge for a workspace that
+ * has none of its own (the prototype case). In a workspace that IS classified, an unrelated board
+ * plugged into the same machine must not drag in a second platform and break the scope gate.
+ */
+export function platformsFromConnectedHardware(
+	nrfBoardCount: number,
+	espDeviceCount: number,
+): {
+	nrf: boolean
+	esp: boolean
+} {
+	return { nrf: nrfBoardCount > 0, esp: espDeviceCount > 0 }
+}
+
+/**
+ * Advisory when a board bit needs a newer nRF Connect SDK than this machine has.
+ *
+ * Advisory, never blocking: Nordic's support matrix has three levels (unsupported / experimental /
+ * supported), and a developer may legitimately be ahead of what a bit was written against. The bit is
+ * always loaded — this only adds the sentence that saves a wasted build cycle.
+ */
+async function boardSdkNotice(boardRelPath: string): Promise<string | null> {
+	try {
+		const bitId = deriveIdFromRel(boardRelPath)
+		const req = await bitSdkRequirement(bitId)
+		if (!req?.minNcs) {
+			return null
+		}
+		const nrf = getCachedNrfEnvironment()
+		return ncsGateNotice({
+			bitId,
+			title: req.title,
+			minNcs: req.minNcs,
+			installed: nrf.installedSdkVersions ?? [],
+			projectPin: nrf.projectSdk?.version,
+		})
+	} catch {
+		// Advisory only — it must never be able to break prompt assembly.
+		return null
+	}
 }
 
 /** A knowledge loader that also records every file it actually loads (for the
@@ -329,6 +469,31 @@ async function getEspPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 			: "- The device tool sources the project's pinned install automatically; if several IDF versions are installed with no pin, it will ask which to use.\n\n"
 	}
 
+	// Connected devices the host ALREADY identified, in the background, before the task started.
+	//
+	// THE BUG THIS FIXES (2026-08-13): the agent ran `esptool.py -p COMx flash_id` in the developer's
+	// terminal to work out which chip was attached — noisy, slow, and it resets the board. The host had
+	// already run exactly that probe silently and cached the answer per USB serial; nothing ever told
+	// the agent, and the device tool's own instructions still pointed at `flash_id`. Stating the answer
+	// here is what makes the "don't probe" rule in the tool description followable.
+	const espDevices = getCachedEspEnvironment().espDevices ?? []
+	if (espDevices.length > 0) {
+		ctx += "#### Connected ESP Devices (already identified — do NOT re-probe)\n"
+		for (const d of espDevices) {
+			const bits = [
+				d.chip ? `chip ${d.chip}` : "chip not yet resolved",
+				d.chipRevision ? `revision ${d.chipRevision}` : undefined,
+				d.mac ? `MAC ${d.mac}` : undefined,
+			].filter(Boolean)
+			ctx += `- \`${d.port}\` — ${bits.join(", ")}\n`
+		}
+		ctx +=
+			"\nThe host probed these in the background and cached the result per board. Do NOT run " +
+			"`esptool.py flash_id` (or any other identification command) to rediscover what is listed above: " +
+			"it resets the board, takes over the developer's terminal, and tells you what you already know. " +
+			"Pass the `port` shown here to build/flash/monitor.\n\n"
+	}
+
 	// On-demand: protocols, loaded only when config/usage shows them (no hardcoding).
 	const { hasBle, hasWifi, sdkTarget } = await detectEspFeatures(cwd)
 	if (hasWifi) {
@@ -340,10 +505,15 @@ async function getEspPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 		ctx += (await load("platforms/esp/sdks/esp-idf/protocols/BLE.md")) + "\n\n"
 	}
 
-	// Board: prefer the build artifact target(s); fall back to sdkconfig target.
+	// Board: prefer the build artifact target(s), then the sdkconfig target, then — when the workspace
+	// says nothing at all (a prototype with no project yet) — the chip actually plugged in. Mirrors the
+	// nRF side: before the first build there is no artifact to read, and that is exactly when the agent
+	// is choosing a target and most needs the board's constraints.
 	const builds = await findEspBuilds(cwd)
 	const buildTargets = builds.map((b) => b.target).filter((t): t is string => !!t)
-	const targets = buildTargets.length > 0 ? buildTargets : sdkTarget ? [sdkTarget] : []
+	const connectedChips = (getCachedEspEnvironment().espDevices ?? []).map((d) => d.chip).filter((c): c is string => !!c)
+	const targets =
+		buildTargets.length > 0 ? buildTargets : sdkTarget ? [sdkTarget] : connectedChips.length > 0 ? connectedChips : []
 
 	if (builds.length > 0) {
 		const summary = builds
@@ -413,24 +583,53 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 		ctx += (await load("platforms/nrf/sdks/ncs/protocols/BLE.md")) + "\n\n"
 	}
 
-	// Load board-specific knowledge for all detected builds (deduplicated)
 	if (builds.length > 0) {
-		const loadedBoardFiles = new Set<string>()
-
-		// Build summary for the agent
 		const buildSummary = builds
 			.map((b) => `${b.dir}/ → board: ${b.boardTarget ?? "unknown"} (from build_info.yml)`)
 			.join(", ")
 		ctx += `#### Existing Build Folders: ${buildSummary}\n\n`
+	}
 
-		for (const build of builds) {
-			if (!build.boardTarget) continue
-			const boardFile = getBoardKnowledgeFile(build.boardTarget)
-			if (boardFile && !loadedBoardFiles.has(boardFile)) {
-				loadedBoardFiles.add(boardFile)
-				ctx += (await load(boardFile)) + "\n\n"
+	// Board knowledge, from the strongest available evidence.
+	//
+	// Ordered by how much the signal can be trusted: what was actually built > what the project pins
+	// in source > what happens to be plugged in. Everything is loaded (a bit is small and being wrong
+	// about which board is on the bench is cheap), but the ORDER decides which bit wins the dedupe,
+	// and the provenance line tells the agent how much weight the claim carries.
+	const boardSignals: BoardSignal[] = [
+		...builds
+			.filter((b) => b.boardTarget)
+			.map((b) => ({ target: b.boardTarget as string, origin: `${b.dir}/build_info.yml` })),
+		...(await detectPinnedBoards(cwd)),
+		...connectedBoardSignals(),
+	]
+
+	if (boardSignals.length > 0) {
+		const loadedBoardFiles = new Set<string>()
+		const evidence: string[] = []
+		for (const signal of boardSignals) {
+			const boardFile = getBoardKnowledgeFile(signal.target)
+			evidence.push(`- \`${signal.target}\` — from ${signal.origin}${boardFile ? "" : " (no board knowledge yet)"}`)
+			if (!boardFile || loadedBoardFiles.has(boardFile)) {
+				continue
+			}
+			loadedBoardFiles.add(boardFile)
+			ctx += (await load(boardFile)) + "\n\n"
+			// A board bit can be correct knowledge and still describe a target the installed SDK does
+			// not have. Say so here, beside the knowledge, rather than letting a build failure teach it.
+			const sdkNotice = await boardSdkNotice(boardFile)
+			if (sdkNotice) {
+				ctx += sdkNotice + "\n\n"
 			}
 		}
+		// Stated AFTER the bits so the agent reads the evidence with the knowledge in hand, and so a
+		// board with no bit yet is still visible rather than silently absent.
+		ctx += `#### Board Evidence\n${evidence.join("\n")}\n\n`
+		ctx +=
+			"Board knowledge above comes from these signals. A `build_info.yml` target is what was actually " +
+			"built; a source pin is what the project intends; a connected board is only what is on the bench " +
+			"right now and may not be this project's target. Do NOT assert a board the evidence does not name — " +
+			"if none is listed, ask the developer or read the hardware, never assume the most common part.\n\n"
 	}
 
 	// Workflows/Actions are NOT pre-loaded — listed in PLATFORM.md for on-demand use.
@@ -515,6 +714,43 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	}
 
 	// Future platforms (Mbed, Zephyr-on-other-vendors, etc.) can be added here.
+
+	// Nothing in the workspace names a platform — so fall back to what is PHYSICALLY PLUGGED IN.
+	//
+	// THE FAILURE THIS FIXES (2026-08-13 bench session): a prototype was started with no folder open,
+	// so cwd was the Desktop, both detects returned false, and the agent got NO platform knowledge for
+	// the entire session — no SDK reference, no board bits. It still had the device tools (they are
+	// advertised for an empty workspace precisely because prototyping starts before any project
+	// exists), used them, and read back "Seeed Studio XIAO nRF54LM20A CMSIS-DAP" — then designed the
+	// whole system from base-model training, insisting on an nRF54L15 DK the developer does not own.
+	// Advertising a device tool while withholding the knowledge to interpret what it returns is the
+	// worst of both worlds.
+	//
+	// Scoped deliberately to the case where the workspace claims NO platform of its own: in a
+	// classified workspace an unrelated board on the bench must not drag in a second platform's
+	// knowledge and break the scope gate.
+	if (!isPlatformDetected) {
+		const nrfConnected = connectedBoardSignals()
+		const espConnected = getCachedEspEnvironment().espDevices ?? []
+		const fromHardware = platformsFromConnectedHardware(nrfConnected.length, espConnected.length)
+
+		if (fromHardware.nrf) {
+			isPlatformDetected = true
+			iotContext +=
+				"> **No project is open, but Nordic hardware is connected.** The knowledge below is loaded on the " +
+				"strength of what is plugged in, not a project. Confirm the target board with the developer before " +
+				"scaffolding.\n\n"
+			iotContext += await getNrfPlatformContext(cwd, load)
+		}
+		if (fromHardware.esp) {
+			isPlatformDetected = true
+			iotContext +=
+				"> **No project is open, but Espressif hardware is connected.** The knowledge below is loaded on the " +
+				"strength of what is plugged in, not a project. Confirm the target chip with the developer before " +
+				"scaffolding.\n\n"
+			iotContext += await getEspPlatformContext(cwd, load)
+		}
+	}
 
 	if (!isPlatformDetected) {
 		iotContext += "No specific IoT platform detected in the workspace. Using universal embedded rules.\n"
@@ -660,8 +896,36 @@ async function computeIotContextFingerprint(cwd: string): Promise<string | null>
 		parts.push(
 			`nrf=${(nrf.installedSdkVersions ?? []).join("|")}@${nrf.projectSdk?.version ?? ""}#${nrf.projectSdk?.source ?? ""}`,
 		)
+		// Connected boards now select board knowledge (connectedBoardSignals), so plugging a board in
+		// must invalidate. Identity only — never `lastSeenAt`, or a re-probe would rebuild every turn.
+		parts.push(
+			`boards=${(nrf.boards ?? [])
+				.map((b) => `${b.serialNumber}:${b.productName ?? b.deviceName ?? b.deviceFamily ?? ""}`)
+				.sort()
+				.join("|")}`,
+		)
+
+		// boards/<board>.overlay|.conf names pin a board before any build exists. Only the NAMES matter,
+		// so list them rather than stat'ing contents.
+		try {
+			const overlays = (await fs.readdir(path.join(cwd, "boards"), { withFileTypes: true }))
+				.filter((e) => e.isFile() && /\.(overlay|conf)$/i.test(e.name))
+				.map((e) => e.name)
+				.sort()
+			parts.push(`boardsdir=${overlays.join(",")}`)
+		} catch {
+			parts.push("boardsdir=-")
+		}
 		const esp = getCachedEspEnvironment()
 		parts.push(`esp=${esp.idfVersion ?? ""}#${esp.projectIdfVersion ?? ""}`)
+		// Connected ESP devices can now switch the whole ESP platform block on (hardware fallback for a
+		// workspace with no project), so their presence has to invalidate too.
+		parts.push(
+			`espdev=${(esp.espDevices ?? [])
+				.map((d) => `${d.port ?? ""}:${d.chip ?? ""}`)
+				.sort()
+				.join("|")}`,
+		)
 
 		for (const rel of FINGERPRINT_FILES) {
 			parts.push(`${rel}=${await statSignature(path.join(cwd, rel))}`)

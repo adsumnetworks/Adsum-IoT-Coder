@@ -6,6 +6,8 @@ import "should"
 import {
 	collectBuildNcsVersions,
 	isNordicBoard,
+	nordicChipFromProduct,
+	parseDeviceListFull,
 	parseSdkInstallPaths,
 	resolveNrfutilCommands,
 	summarizeProjectBuilds,
@@ -230,6 +232,68 @@ describe("isNordicBoard — filter out non-Nordic enumerated serial ports (e.g. 
 
 	it("drops a bare-serial device with no chip identity", () => {
 		isNordicBoard({ serialNumber: "0001" }).should.be.false()
+	})
+
+	// 2026-08-14: a XIAO nRF54LM20A on the bench was dropped here and the agent, seeing no board at
+	// all, kept asserting the developer had an nRF54L15 DK — the only nRF54 board in its training.
+	// Third-party modules carry CMSIS-DAP, not J-Link, so nrfutil reports no devkit/jlink identity
+	// and every field this filter used to read is empty. The USB product string is what they publish.
+	it("keeps a third-party module whose only identity is its USB product string", () => {
+		isNordicBoard({
+			serialNumber: "E06AA36C",
+			productName: "Seeed Studio XIAO nRF54LM20A CMSIS-DAP",
+		}).should.be.true()
+	})
+
+	it("still drops an ESP32 on the same bus — its product string names no Nordic part", () => {
+		isNordicBoard({
+			serialNumber: "14:C1:9F:E5:42:9C",
+			productName: "USB JTAG/serial debug unit",
+		}).should.be.false()
+	})
+})
+
+describe("nordicChipFromProduct — the identity a CMSIS-DAP module publishes", () => {
+	it("reads the chip out of a real XIAO product string", () => {
+		nordicChipFromProduct("Seeed Studio XIAO nRF54LM20A CMSIS-DAP")!.should.equal("nRF54LM20A")
+	})
+
+	it("handles the other nRF families and separators", () => {
+		nordicChipFromProduct("some nRF52840 dongle")!.should.equal("nRF52840")
+		nordicChipFromProduct("nRF-5340 board")!.should.equal("nRF5340")
+	})
+
+	it("names nothing for a non-Nordic product", () => {
+		;(nordicChipFromProduct("USB JTAG/serial debug unit") === undefined).should.be.true()
+		;(nordicChipFromProduct(undefined) === undefined).should.be.true()
+	})
+})
+
+describe("parseDeviceListFull — carries the USB product string through", () => {
+	// The real event shape: `nrfutil device list --json` emits NDJSON, and the devices array arrives
+	// on the trailing `info` event (task_begin/task_end carry no device list this parser reads).
+	// Captured from an actual run with the XIAO plugged in.
+	const stdout = [
+		JSON.stringify({ type: "task_begin", data: { task: { id: "abc", name: "list_devices" } } }),
+		JSON.stringify({
+			type: "info",
+			data: {
+				devices: [
+					{
+						serialNumber: "E06AA36C",
+						traits: { jlink: false, devkit: false, serialPorts: true },
+						usb: { product: "Seeed Studio XIAO nRF54LM20A CMSIS-DAP", manufacturer: "Seeed Studio" },
+					},
+				],
+			},
+		}),
+	].join("\n")
+
+	it("exposes usbProduct so a module with no devkit/jlink object can still be identified", () => {
+		const entries = parseDeviceListFull(stdout)
+		entries.should.have.length(1)
+		entries[0].usbProduct!.should.equal("Seeed Studio XIAO nRF54LM20A CMSIS-DAP")
+		nordicChipFromProduct(entries[0].usbProduct)!.should.equal("nRF54LM20A")
 	})
 })
 

@@ -280,6 +280,33 @@ interface DeviceListEntry {
 	deviceFamily?: string
 	boardVersion?: string
 	traits?: Record<string, boolean>
+	/** USB product description, e.g. "Seeed Studio XIAO nRF54LM20A CMSIS-DAP". */
+	usbProduct?: string
+	usbManufacturer?: string
+}
+
+/**
+ * Extract a Nordic chip name from a USB product string, or undefined when it names none.
+ *
+ * THE BUG THIS FIXES (2026-08-14, observed on the bench): a Seeed XIAO nRF54LM20A was plugged in and
+ * the agent kept insisting the developer had an nRF54L15 DK. It was not a knowledge problem — the
+ * board never reached the agent at all. Third-party nRF modules carry an on-board CMSIS-DAP instead
+ * of a SEGGER J-Link, so `nrfutil device list` reports `traits.jlink=false`, `traits.devkit=false`,
+ * and no `devkit`/`jlink` objects. Every field `isNordicBoard()` looks at is empty, so the module was
+ * dropped as "not a Nordic device" — and with no board in evidence the model fell back to its
+ * training, where the only nRF54 board that exists is Nordic's DK.
+ *
+ * The product string is the identity these boards DO publish. Requiring the token to start with
+ * "nrf" and be followed by digits keeps the ESP32-C6 on the same bus out: its product string is
+ * "USB JTAG/serial debug unit", which names no Nordic part.
+ */
+export function nordicChipFromProduct(product: string | undefined): string | undefined {
+	if (!product) {
+		return undefined
+	}
+	// nRF54LM20A, nRF52840, nRF5340, nRF9160 — chip, optional variant letters/digits.
+	const m = product.match(/\bnrf[\s_-]?(\d{2}[a-z0-9]*)\b/i)
+	return m ? `nRF${m[1].toUpperCase()}` : undefined
 }
 
 /**
@@ -303,6 +330,9 @@ export function parseDeviceListFull(stdout: string): DeviceListEntry[] {
 					deviceFamily: d.devkit?.deviceFamily as string | undefined,
 					boardVersion: d.devkit?.boardVersion as string | undefined,
 					traits: d.traits as Record<string, boolean> | undefined,
+					// The only identity a third-party module (XIAO, custom CMSIS-DAP board) publishes.
+					usbProduct: d.usb?.product as string | undefined,
+					usbManufacturer: d.usb?.manufacturer as string | undefined,
 				}))
 			if (entries.length > best.length) {
 				best = entries
@@ -424,15 +454,15 @@ async function probeSdks(sdkManagerPrefix: string): Promise<SdkProbeResult> {
 }
 
 /**
- * A board is a genuine Nordic device only if `device-info` resolved a Nordic chip
- * identity for it (deviceName like "nRF52840", or a deviceFamily). `nrfutil device list`
- * also enumerates non-Nordic USB-serial devices (e.g. an ESP32 dev board), but those
- * never get a Nordic chip identity — they fall through to a bare serial number. Showing
- * those as "boards" leaked ESP devices into the nRF strip, so we drop them here. Exported
- * for unit tests.
+ * A board is a genuine Nordic device only if something resolved a Nordic chip identity for it:
+ * a `deviceName` like "nRF52840", a `deviceFamily`, a DK `boardVersion` — or a USB product string
+ * that names an nRF part, which is the only identity a third-party CMSIS-DAP module publishes
+ * (see `nordicChipFromProduct`). `nrfutil device list` also enumerates non-Nordic USB-serial
+ * devices (an ESP32 dev board announces "USB JTAG/serial debug unit"), and those still name no
+ * Nordic part, so they are still dropped. Exported for unit tests.
  */
 export function isNordicBoard(board: Partial<NrfBoard>): boolean {
-	return !!(board.deviceName || board.deviceFamily || board.boardVersion)
+	return !!(board.deviceName || board.deviceFamily || board.boardVersion || nordicChipFromProduct(board.productName))
 }
 
 async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: boolean; boards: NrfBoard[] }> {
@@ -455,10 +485,17 @@ async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: bool
 				serialNumber: entry.serialNumber,
 				deviceFamily: entry.deviceFamily,
 				boardVersion: entry.boardVersion,
+				productName: entry.usbProduct,
+				usbManufacturer: entry.usbManufacturer,
+			}
+			// A third-party module has no devkit/jlink identity at all, so name the chip from its USB
+			// product string — otherwise the board is invisible and the model invents one.
+			if (!board.deviceName && !board.deviceFamily) {
+				board.deviceName = nordicChipFromProduct(entry.usbProduct)
 			}
 			const kept = isNordicBoard(board)
 			console.info(
-				`[adsum][nrf] list entry ${entry.serialNumber} → family=${entry.deviceFamily ?? "?"} board=${entry.boardVersion ?? "?"} traits.jlink=${entry.traits?.jlink ?? "?"} ${kept ? "(kept)" : "(DROPPED: no Nordic identity)"}`,
+				`[adsum][nrf] list entry ${entry.serialNumber} → family=${entry.deviceFamily ?? "?"} board=${entry.boardVersion ?? "?"} product=${entry.usbProduct ?? "?"} traits.jlink=${entry.traits?.jlink ?? "?"} ${kept ? "(kept)" : "(DROPPED: no Nordic identity)"}`,
 			)
 			if (kept) {
 				boards.push(board)
