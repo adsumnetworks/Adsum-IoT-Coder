@@ -462,16 +462,10 @@ const GENERAL_READ_FOLD: CommandOutputFoldOptions = {
 
 function capFileContentForContext(text: string, absolutePath: string): string {
 	const opts = isLikelyCapturedLogPath(absolutePath) ? LOG_READ_FOLD : GENERAL_READ_FOLD
-	const folded = foldCommandOutputText(text, { ...opts, outputPath: absolutePath })
-	if (folded === text) {
-		return text
-	}
-	return (
-		folded +
-		`\n[The full file is on disk at the path above. To inspect the folded middle, use search_files with a ` +
-		`targeted regex (e.g. "error|panic|assert|LOG_ERR" or your symptom) on the file's directory instead of ` +
-		`re-reading the whole file.]`
-	)
+	// The "search it, don't re-read it" instruction is emitted by foldCommandOutputText itself whenever
+	// an outputPath is set, so it reaches EVERY folded capture — the moment after a capture, not only a
+	// read. Appending a second copy here would double it on every folded read.
+	return foldCommandOutputText(text, { ...opts, outputPath: absolutePath })
 }
 
 function isLikelyCapturedLogPath(absolutePath: string): boolean {
