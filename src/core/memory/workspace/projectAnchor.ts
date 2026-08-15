@@ -69,7 +69,10 @@ function forbiddenRoots(): string[] {
 
 function normalize(p: string): string {
 	try {
-		return path.resolve(p).replace(/[\\/]+$/, "").toLowerCase()
+		return path
+			.resolve(p)
+			.replace(/[\\/]+$/, "")
+			.toLowerCase()
 	} catch {
 		return p.toLowerCase()
 	}
@@ -148,15 +151,50 @@ export function resolveMemoryAnchor(cwd: string | undefined, appPaths: string[] 
 export function memoryAnchors(cwd: string | undefined, appPaths: string[] = []): string[] {
 	const out: string[] = []
 	const apps = appPaths.filter((p) => canHoldMemory(p)).sort()
-	// The shared layer only earns its own memory when it is a project in its own right AND there is
-	// more than one app under it — otherwise it would duplicate the single app's memory.
-	if (canHoldMemory(cwd) && (apps.length > 1 || apps.length === 0)) {
+
+	if (apps.length > 1) {
+		// Several apps: the shared layer is their COMMON PARENT, not the open folder.
+		//
+		// A container that groups apps usually has no marker of its own — a real prototype
+		// (`asset_tag/` holding `tag/` and `locator/`) is just a folder with two Zephyr apps inside.
+		// Requiring a marker there left cross-app knowledge with nowhere to go, and a note about both
+		// apps ended up on the Desktop. Grouping two real apps is itself the evidence that the parent
+		// is a project.
+		//
+		// Using the common parent rather than `cwd` is what keeps the Desktop out: with the Desktop
+		// open and one app below it, the parent is the app's own folder, never the Desktop.
+		const shared = commonParent(apps)
+		if (shared && !isForbiddenMemoryRoot(shared) && !apps.includes(shared)) {
+			out.push(shared)
+		}
+	} else if (apps.length === 0 && canHoldMemory(cwd)) {
+		// No apps detected, but the open folder is itself a project — a single-app repo opened directly.
 		out.push(cwd as string)
 	}
+
 	for (const a of apps) {
 		if (!out.includes(a)) {
 			out.push(a)
 		}
 	}
 	return out
+}
+
+/** Deepest directory containing all the given paths, or undefined when they share no useful ancestor. */
+function commonParent(dirs: string[]): string | undefined {
+	if (dirs.length === 0) {
+		return undefined
+	}
+	const split = dirs.map((d) => path.resolve(d).split(/[\\/]/))
+	const first = split[0]
+	const shared: string[] = []
+	for (let i = 0; i < first.length; i++) {
+		if (split.every((parts) => parts[i]?.toLowerCase() === first[i]?.toLowerCase())) {
+			shared.push(first[i])
+		} else {
+			break
+		}
+	}
+	// A single segment is a drive root ("e:") or the filesystem root — not a project.
+	return shared.length > 1 ? shared.join(path.sep) : undefined
 }
