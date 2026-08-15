@@ -125,6 +125,33 @@ describe("anchoring: memory follows the code", () => {
 		}
 	})
 
+	test("a container with 2 apps and NO marker of its own still gets the shared layer", () => {
+		// The real shape that stranded a note on the Desktop: `asset_tag/` is just a folder holding
+		// `tag/` and `locator/`. It has no prj.conf of its own, so a marker-only rule gave cross-app
+		// knowledge nowhere to live. Grouping two real apps is itself the evidence.
+		const parent = fs.mkdtempSync(path.join(os.tmpdir(), "container-"))
+		const a = path.join(parent, "tag")
+		const b = path.join(parent, "locator")
+		for (const d of [a, b]) {
+			fs.mkdirSync(d)
+			fs.writeFileSync(path.join(d, "prj.conf"), "")
+		}
+		try {
+			assert.equal(fs.existsSync(path.join(parent, "prj.conf")), false, "precondition: parent has no marker")
+			const anchors = memoryAnchors(parent, [a, b])
+			assert.equal(anchors[0], parent, "the shared layer is the apps' common parent")
+			assert.equal(anchors.length, 3)
+		} finally {
+			fs.rmSync(parent, { recursive: true, force: true })
+		}
+	})
+
+	test("apps in unrelated trees get NO shared layer — their common parent is a personal folder", () => {
+		const home = os.homedir()
+		const anchors = memoryAnchors(home, [path.join(home, "Desktop", "p1"), path.join(home, "Desktop", "p2")])
+		assert.ok(!anchors.includes(path.join(home, "Desktop")), "the Desktop must never become a shared anchor")
+	})
+
 	test("no project anywhere: no anchors, nothing written", () => {
 		const desktop = path.join(os.homedir(), "Desktop")
 		assert.deepEqual(memoryAnchors(desktop, []), [])

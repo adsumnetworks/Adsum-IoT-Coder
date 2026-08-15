@@ -29,7 +29,7 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { checkSectionWriteSize } from "../memoryLimits"
-import { type AdsumPaths, resolveAdsumPaths } from "./paths"
+import type { AdsumPaths } from "./paths"
 import {
 	ensureAdsumScaffold,
 	readDevices,
@@ -90,9 +90,20 @@ function sectionResultMessage(result: string, sectionId: string, projectMd: stri
 }
 
 export function applyMemoryWrite(cwd: string | undefined, w: WriteAccepted, nowIso: string): ApplyResult {
-	const paths = ensureAdsumScaffold(cwd) ?? safePaths(cwd)
+	// ensureAdsumScaffold refuses any directory that is not a real project — a personal folder, or one
+	// with no project marker. That refusal is the whole point and must not be softened: this used to read
+	// `ensureAdsumScaffold(cwd) ?? safePaths(cwd)`, so a refusal silently fell through and wrote anyway.
+	// Observed 2026-08-14: a note landed in the developer's Desktop because this write path bypassed the
+	// guard the scaffold path enforced.
+	const paths = ensureAdsumScaffold(cwd)
 	if (!paths) {
-		return fail("Not written: no workspace folder is open, so there is nowhere to persist project memory.")
+		return fail(
+			"Not written: project memory only lives inside a real project, and the current folder is not one " +
+				"(no prj.conf / CMakeLists.txt / sdkconfig / .git, or it is a personal folder such as the Desktop " +
+				"or home directory).\n\n" +
+				"If you have just scaffolded a project, ask the developer to OPEN that project folder and record " +
+				"this again — it will then live with the code it describes. Do not write it anywhere else instead.",
+		)
 	}
 	switch (w.target) {
 		case "goal":
@@ -103,14 +114,6 @@ export function applyMemoryWrite(cwd: string | undefined, w: WriteAccepted, nowI
 			return applyAssertedWrite(cwd, paths, w, nowIso)
 		case "note":
 			return applyNoteWrite(cwd, paths, w)
-	}
-}
-
-function safePaths(cwd: string | undefined): AdsumPaths | undefined {
-	try {
-		return resolveAdsumPaths(cwd)
-	} catch {
-		return undefined
 	}
 }
 
