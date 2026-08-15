@@ -15,6 +15,7 @@ import { execFileSync, spawnSync } from "node:child_process"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
+import { resolveNrfutilCommands } from "../src/services/nrf/EnvironmentDetector"
 import { decodeSnifferPcap } from "../src/services/nrf/sniffer/format"
 
 function skip(reason: string): never {
@@ -22,18 +23,35 @@ function skip(reason: string): never {
 	process.exit(0)
 }
 
-function hasNrfutil(): boolean {
+/**
+ * Find nrfutil the way the PRODUCT finds it, not the way a shell would.
+ *
+ * A bare `execFileSync("nrfutil", …)` only sees PATH. On Windows — where ~95% of users are — the
+ * standalone installer puts the launcher in `%USERPROFILE%\.nrfutil\bin` and does NOT add it to PATH,
+ * and the nRF Connect extension ships its own copy elsewhere entirely. So this harness reported
+ * "no hardware configured" and exited 0 on a machine with a board plugged in and nrfutil installed —
+ * a green run that had tested nothing. Reuse the resolver the extension itself uses, so the harness
+ * skips only when nrfutil is genuinely absent.
+ */
+function findNrfutil(): string | undefined {
+	const { devicePrefix } = resolveNrfutilCommands({})
+	// devicePrefix is shell-quoted and ends in the subcommand word ("… device"); strip both.
+	const m = devicePrefix.match(/^"?(.+?)"?\s+device$/)
+	const bin = m ? m[1] : devicePrefix.replace(/^"|"$/g, "")
 	try {
-		execFileSync("nrfutil", ["--version"], { stdio: "ignore" })
-		return true
+		execFileSync(bin, ["--version"], { stdio: "ignore" })
+		return bin
 	} catch {
-		return false
+		return undefined
 	}
 }
 
 function main() {
-	if (!hasNrfutil()) {
-		skip("nrfutil not found on PATH — install it or run on a box with the sniffer dongle attached.")
+	if (!findNrfutil()) {
+		skip(
+			"nrfutil not found (checked PATH, ~/.nrfutil/bin, and the nRF Connect extension's bundled " +
+				"copy) — install it or run on a box with the sniffer dongle attached.",
+		)
 	}
 
 	const port = process.env.HIL_SNIFFER_PORT
