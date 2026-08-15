@@ -134,7 +134,19 @@ export function foldCommandOutputText(text: string, options: CommandOutputFoldOp
 			: "kept the start and the end of the output"
 	const notice = `… [${options.label ?? "LONG COMMAND OUTPUT"} FOLDED — ${what.join(", ")}; ${kept}.${where}] …`
 
-	return `${clamped.text}\n${notice}`
+	// When the full text is on disk, say what to do about it — here, at the moment the model is
+	// deciding its next move. The search-before-read doctrine lives in `actions/analyze-logs.md`, but
+	// that is loaded on demand: right after a capture the model has a path, a truncated body, and no
+	// instruction, so it reaches for read_file and pulls a whole RTT/UART/HCI/monitor log back into
+	// context (measured: one such read reached 333,192 tokens, and the same log was re-read 12×).
+	// Naming the path without naming the tool is what made re-reading the obvious move.
+	const searchFirst = options.outputPath
+		? `\n[Do NOT read that file whole. Search it: search_files on its DIRECTORY with a targeted regex ` +
+			`(e.g. "error|panic|assert|fault|LOG_ERR" or your symptom), then read only the lines around a hit ` +
+			`with read_file's start_line/end_line.]`
+		: ""
+
+	return `${clamped.text}\n${notice}${searchFirst}`
 }
 
 /**

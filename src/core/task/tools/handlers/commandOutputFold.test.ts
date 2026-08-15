@@ -168,3 +168,45 @@ describe("commandOutputFold — label option (read_file ingest caps reuse the fo
 		assert.ok(folded.includes("FOLDED"), "notice present")
 	})
 })
+
+describe("commandOutputFold — search-before-read is stated where the decision is made", () => {
+	// Omar, 2026-08-14: "for log files, uart rtt hci or sniffer, i didnt see it really use search
+	// pattern to not read the full file, especially when it big". The doctrine existed in
+	// actions/analyze-logs.md, but that is an on-demand skill: right after a capture the model holds a
+	// path, a truncated body, and no instruction — so it reached for read_file. Naming the file without
+	// naming the tool is what made re-reading the obvious move.
+	const bigLog = Array.from({ length: 900 }, (_, i) => `[00:0${i % 10}.123] <inf> bt_hci: rx ${i}`).join("\n")
+
+	test("a folded capture with an on-disk path tells the model to SEARCH it, not read it", () => {
+		const folded = foldCommandOutputText(bigLog, {
+			label: "LONG LOG FILE",
+			maxLines: 400,
+			headLines: 60,
+			tailLines: 200,
+			outputPath: "C:\proj\logs\rtt\gw_683335182.log",
+		})
+		assert.ok(/Do NOT read that file whole/.test(folded), "states the prohibition")
+		assert.ok(folded.includes("search_files"), "names the tool to use instead")
+		assert.ok(/start_line/.test(folded), "says how to read only the lines around a hit")
+	})
+
+	test("the instruction appears EXACTLY once — the read handler must not append a second copy", () => {
+		const folded = foldCommandOutputText(bigLog, {
+			maxLines: 400,
+			headLines: 60,
+			tailLines: 200,
+			outputPath: "/proj/logs/uart/esp_COM4.log",
+		})
+		assert.equal(folded.match(/Do NOT read that file whole/g)?.length, 1)
+	})
+
+	test("no on-disk path (terminal-only output) → no file-search instruction", () => {
+		const folded = foldCommandOutputText(bigLog, { maxLines: 400, headLines: 60, tailLines: 200 })
+		assert.ok(!/Do NOT read that file whole/.test(folded), "nothing to search when nothing was saved")
+	})
+
+	test("output short enough not to fold is returned untouched — no instruction bolted on", () => {
+		const small = "boot ok\nready"
+		assert.equal(foldCommandOutputText(small, { maxLines: 400, outputPath: "/proj/logs/uart/x.log" }), small)
+	})
+})
