@@ -35,11 +35,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 	const { inputValue, selectedImages, selectedFiles, setSendingDisabled } = chatState
 	const [isProcessing, setIsProcessing] = useState(false)
 
-	// Memoize last messages to avoid unnecessary recalculations
-	const [lastMessage, secondLastMessage] = useMemo(() => {
-		const len = messages.length
-		return len > 0 ? [messages[len - 1], messages[len - 2]] : [undefined, undefined]
-	}, [messages])
+	// Memoize last message to avoid unnecessary recalculations
+	const lastMessage = useMemo(() => messages.at(-1), [messages])
 
 	// Memoize button configuration to avoid recalculation on every render
 	const buttonConfig = useMemo(() => {
@@ -52,15 +49,17 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 		setIsProcessing(false)
 	}, [buttonConfig, setSendingDisabled])
 
-	// Clear input when transitioning from command_output to api_req
-	// This happens when user provides feedback during command execution
-	useEffect(() => {
-		if (lastMessage?.type === "say" && lastMessage.say === "api_req_started" && secondLastMessage?.ask === "command_output") {
-			chatState.setInputValue("")
-			chatState.setSelectedImages([])
-			chatState.setSelectedFiles([])
-		}
-	}, [lastMessage?.type, lastMessage?.say, secondLastMessage?.ask, chatState])
+	// DELIBERATELY NOT CLEARING THE INPUT HERE.
+	//
+	// This used to wipe inputValue/images/files whenever the message list went
+	// command_output(ask) → api_req_started(say). That transition says the AGENT moved on; it says
+	// nothing about whether the DEVELOPER sent anything. Reported 2026-08-13: typing a message while a
+	// command was running, then having an approval arrive, silently erased the half-written message.
+	// Losing someone's typing is unrecoverable — there is no undo for a cleared textarea.
+	//
+	// Every path that actually sends already clears the box itself: handleSendMessage clears on
+	// `messageSent` (command_output is one of the ask types it handles), and every button action ends
+	// in clearInputState(). So this effect could only ever fire when nothing had been sent.
 
 	const handleActionClick = useCallback(
 		(action: ButtonActionType, text?: string, images?: string[], files?: string[]) => {
