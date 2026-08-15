@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.2.1-dev.7",
+	"version": "0.2.1-dev.9",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -441,6 +441,7 @@
 		"test:nordic": "cross-env TS_NODE_PROJECT=./tsconfig.unit-test.json mocha --config mocha-nordic.json",
 		"test:nordic:scripts": "bash scripts/test-nordic-scripts.sh",
 		"test:hil": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-test.ts",
+		"test:hil-identity": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-device-identity.ts",
 		"dev:decode": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/decode-capture.ts",
 		"test:coverage": "vscode-test --coverage",
 		"test:sca-server": "npx tsx watch scripts/test-standalone-core-api-server.ts",
@@ -478,7 +479,9 @@
 		"test:context-errors": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/contextErrorDetection.test.ts",
 		"test:observed-window": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/observedWindow.test.ts",
 		"test:deepseek": "ts-node --transpile-only -P tsconfig.unit-test.json src/utils/__tests__/deepseekSupport.node-test.ts",
-		"test:project-anchor": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/projectAnchor.test.ts"
+		"test:project-anchor": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/projectAnchor.test.ts",
+		"test:ncs-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/ncsGate.test.ts",
+		"test:board-routing": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/boardRouting.node-test.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [
