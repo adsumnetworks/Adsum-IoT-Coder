@@ -88,3 +88,62 @@ describe("every checkpoint message is classifiable by the banner", () => {
 		assert.deepEqual(dangling, [], `message ends mid-clause:\n${dangling.join("\n")}`)
 	})
 })
+
+describe("checkpoint status is never stale", () => {
+	const taskSrc = fs.readFileSync(path.join(process.cwd(), "src", "core", "task", "index.ts"), "utf8")
+	const mgrSrc = fs.readFileSync(path.join(ROOT, "index.ts"), "utf8")
+
+	test("a saved task does NOT restore its old checkpoint status", () => {
+		// Reported twice on 2026-08-16, both after the condition had been resolved: a prototype kept
+		// saying "checkpoints are off because this task is running in your Desktop" after the project was
+		// opened, and an old task kept showing a previous build's wording after the extension was updated.
+		// Status describes the machine and folder right now, so it must be re-derived, never replayed.
+		assert.equal(
+			/this\.taskState\.checkpointManagerErrorMessage\s*=\s*historyItem\.checkpointManagerErrorMessage/.test(taskSrc),
+			false,
+			"checkpoint status must not be restored from the history item",
+		)
+	})
+
+	test("a successful initialization retracts the slow-start notice", () => {
+		// The timer fires at 7s; the tracker can still arrive at 9s. Without an explicit retraction the
+		// notice is permanent, and a working feature keeps explaining itself as though it were stuck.
+		const success = mgrSrc.slice(mgrSrc.indexOf("this.state.checkpointTracker = tracker"))
+		assert.ok(
+			/checkpointsWarningShown[\s\S]{0,200}setcheckpointManagerErrorMessage\(undefined\)/.test(success),
+			"success path must clear the message when the warning was shown",
+		)
+	})
+
+	test("the timeout path does not string-match a phrase the message no longer contains", () => {
+		assert.equal(
+			mgrSrc.includes('errorMessage.includes("Checkpoints taking too long to initialize")'),
+			false,
+			"dead branch: pTimeout's message is already the developer-facing sentence",
+		)
+	})
+})
+
+describe("control flow never depends on message wording", () => {
+	const mgrSrc = fs.readFileSync(path.join(ROOT, "index.ts"), "utf8")
+
+	test("no branch tests the CONTENT of the status message", () => {
+		// Rewording a sentence must never change behaviour. Two guards used to gate on the message
+		// containing "Checkpoints initialization timed out."; rewording it in this same release turned
+		// both into dead code, which would have left the extension re-attempting a 15s initialization on
+		// exactly the large repositories where it had already timed out.
+		const offenders = [...mgrSrc.matchAll(/checkpointManagerErrorMessage\?\.includes\("([^"]*)"\)/g)].map((m) => m[1])
+		assert.deepEqual(offenders, [], `control flow keyed on prose:\n${offenders.join("\n")}`)
+	})
+
+	test("failed initialization sets the flag that stops further attempts", () => {
+		assert.ok(
+			/checkpointsUnavailableForTask = true/.test(mgrSrc),
+			"the catch path must record that checkpoints are unavailable for this task",
+		)
+		assert.ok(
+			/!this\.config\.enableCheckpoints \|\| this\.state\.checkpointsUnavailableForTask/.test(mgrSrc),
+			"saveCheckpoint must gate on the flag",
+		)
+	})
+})
