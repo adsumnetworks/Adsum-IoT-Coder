@@ -2,7 +2,7 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
-## [0.2.1] - 2026-08-17
+## [0.2.1] - 2026-08-16
 
 Long sessions that stay sharp, a project the agent remembers, and knowledge that knows your board.
 
@@ -45,13 +45,18 @@ Thinking is yours to control. Turn extended thinking on or off, and when it is o
 - Typing while the agent works no longer costs you the draft when an approval request arrives.
 - Espressif boards are no longer re-probed in your terminal. The chip, revision and port are already detected in the background; `esptool.py flash_id` now runs only when a board genuinely is not there.
 - Starting a prototype no longer opens with a warning. Beginning with no folder open is how the prototype flow is meant to start, so the extension no longer explains that checkpoints are off there — nothing is wrong, and there was nothing to do about it.
-- After scaffolding a new project, the agent offers to **open it for you**. Until a project is open its memory and checkpoints have nowhere to live, so the next session would start over — this is one click instead of a paragraph of instructions. (VS Code reloads when a folder opens; the conversation is saved and reopens from History.)
+- A prototype run now **ends on an "Open project folder" button** instead of trailing off. Until the new project is open it has nowhere to keep its memory or checkpoints, so the next session would start over — one click instead of a paragraph of instructions. VS Code reloads when the folder opens; the conversation is saved and comes back from History.
 - Checkpoint messages say what is actually happening. A slow first snapshot on a large firmware repo now reads as work in progress rather than a failure, says so once, and takes itself down when it finishes.
 
 ### Also
 
 - Export a session as a single redacted file, and hand a running task to your own coding agent.
 - GLM 4.7 and 5.x are recognised, so they are no longer scored as unreliable models.
+
+### Known in this release
+
+- **Opening a scaffolded project is still a manual step.** The prototype run ends on an "Open project folder" button, but the folder does not open by itself, and until it does the new project has no memory or checkpoints. It works; it is more friction than it should be.
+- **nRF54 support is new and not yet smooth.** Building and flashing a XIAO nRF54LM20A works, but expect rough edges around board-root setup and runner selection. The nRF52 and nRF53 paths are unaffected.
 
 ## [0.2.0] - 2026-07-21
 
