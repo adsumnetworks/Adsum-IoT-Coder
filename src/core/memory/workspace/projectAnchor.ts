@@ -181,7 +181,7 @@ export function memoryAnchors(cwd: string | undefined, appPaths: string[] = []):
 }
 
 /** Deepest directory containing all the given paths, or undefined when they share no useful ancestor. */
-function commonParent(dirs: string[]): string | undefined {
+export function commonParent(dirs: string[]): string | undefined {
 	if (dirs.length === 0) {
 		return undefined
 	}

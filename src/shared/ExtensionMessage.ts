@@ -178,6 +178,10 @@ export type ClineAsk =
 	| "condense"
 	| "summarize_task"
 	| "report_bug"
+	// Scaffolding finished in a folder the developer does not have open. The run ENDS here: memory and
+	// checkpoints cannot follow the project until it is opened, so continuing would silently build a
+	// session whose knowledge is discarded. Rendered as a bottom-row button, not a toast.
+	| "open_project"
 
 export type ClineSay =
 	| "task"
