@@ -17,6 +17,7 @@ import { HostProvider } from "@/hosts/host-provider"
 import { ShowMessageType } from "@/shared/proto/host/window"
 import { MessageStateHandler } from "../../core/task/message-state"
 import { TaskState } from "../../core/task/TaskState"
+import { isCheckpointsNotApplicableMessage } from "./CheckpointUtils"
 import { ICheckpointManager } from "./types"
 
 // Type definitions for better code organization
@@ -860,6 +861,14 @@ export class TaskCheckpointManager implements ICheckpointManager {
 	 * Updates the checkpoint tracker error message and posts to webview
 	 */
 	async setcheckpointManagerErrorMessage(errorMessage: string | undefined): Promise<void> {
+		// "Checkpoints do not apply here" is not a status worth showing — see
+		// isCheckpointsNotApplicableMessage. Suppressed HERE rather than at each caller because there are
+		// seven writers and the one that kept firing was this class's own init catch, which turns a
+		// ProtectedDirectoryError into a plain message indistinguishable from a real failure.
+		if (isCheckpointsNotApplicableMessage(errorMessage)) {
+			console.info("[checkpoints] not applicable here — not surfacing a banner")
+			return
+		}
 		this.state.checkpointManagerErrorMessage = errorMessage
 		this.taskState.checkpointManagerErrorMessage = errorMessage
 		// Post state to webview so users can see the error message immediately

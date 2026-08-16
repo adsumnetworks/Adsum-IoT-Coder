@@ -176,3 +176,28 @@ describe("checkpoints not applying is not an event", () => {
 		)
 	})
 })
+
+describe("the not-applicable notice cannot reach the banner from ANY writer", () => {
+	const mgrSrc = fs.readFileSync(path.join(ROOT, "index.ts"), "utf8")
+	const controllerSrc = fs.readFileSync(path.join(process.cwd(), "src", "core", "controller", "index.ts"), "utf8")
+	const utilsSrc = fs.readFileSync(path.join(ROOT, "CheckpointUtils.ts"), "utf8")
+
+	test("the predicate is anchored on the clause, not the folder name", () => {
+		// The label varies — Desktop, home directory, Documents, Downloads — so matching the folder would
+		// suppress one and let three through.
+		assert.ok(/checkpoints turn on by themselves/.test(utilsSrc))
+		assert.ok(/export function isCheckpointsNotApplicableMessage/.test(utilsSrc))
+	})
+
+	test("the WRITE choke point drops it", () => {
+		// Patching individual callers is what let this survive three fixes: the writer that kept firing
+		// was this class's own init catch, which turns a ProtectedDirectoryError into a plain string.
+		const setter = mgrSrc.slice(mgrSrc.indexOf("async setcheckpointManagerErrorMessage"))
+		assert.ok(/isCheckpointsNotApplicableMessage\(errorMessage\)/.test(setter.slice(0, 700)))
+	})
+
+	test("the READ choke point drops it too", () => {
+		// Several places assign taskState.checkpointManagerErrorMessage directly, bypassing the setter.
+		assert.ok(/isCheckpointsNotApplicableMessage\(rawCheckpointMessage\)/.test(controllerSrc))
+	})
+})

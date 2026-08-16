@@ -6,6 +6,7 @@ import { detectWorkspaceRoots } from "@core/workspace/detection"
 import { setupWorkspaceManager } from "@core/workspace/setup"
 import type { WorkspaceRootManager } from "@core/workspace/WorkspaceRootManager"
 import { cleanupLegacyCheckpoints } from "@integrations/checkpoints/CheckpointMigration"
+import { isCheckpointsNotApplicableMessage } from "@integrations/checkpoints/CheckpointUtils"
 import { ClineAccountService } from "@services/account/ClineAccountService"
 import { McpHub } from "@services/mcp/McpHub"
 import type { ApiProvider, ModelInfo } from "@shared/api"
@@ -891,7 +892,13 @@ export class Controller {
 
 		const currentTaskItem = this.task?.taskId ? (taskHistory || []).find((item) => item.id === this.task?.taskId) : undefined
 		const clineMessages = this.task?.messageStateHandler.getClineMessages() || []
-		const checkpointManagerErrorMessage = this.task?.taskState.checkpointManagerErrorMessage
+		// Final gate before the banner reaches the webview. The setter already drops the not-applicable
+		// notice, but several places assign taskState.checkpointManagerErrorMessage directly, so the only
+		// way to be sure this never shows again is to filter where it is READ for display.
+		const rawCheckpointMessage = this.task?.taskState.checkpointManagerErrorMessage
+		const checkpointManagerErrorMessage = isCheckpointsNotApplicableMessage(rawCheckpointMessage)
+			? undefined
+			: rawCheckpointMessage
 
 		const processedTaskHistory = (taskHistory || [])
 			.filter((item) => item.ts && item.task)
