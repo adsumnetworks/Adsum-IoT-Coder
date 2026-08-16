@@ -80,3 +80,6 @@ adsum-studio/
 # Python bytecode from running the wrapper scripts / their tests locally
 __pycache__/
 *.pyc
+
+# Claude Code local settings (machine-specific permissions; the shared variant is .claude/settings.json)
+.claude/settings.local.json
