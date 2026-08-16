@@ -1,5 +1,5 @@
 /**
- * Offer to OPEN a project the agent just scaffolded outside the open workspace.
+ * Offer to OPEN a project the agent just scaffolded, once the scaffolding is FINISHED.
  *
  * THE PROBLEM THIS SOLVES (reported 2026-08-15/16). The prototype flow starts with no folder open, so
  * the agent scaffolds into e.g. `Desktop\ble_relay\` while the workspace is still the Desktop. The code
@@ -10,12 +10,15 @@
  *   - and the next session opens with none of it, so a "fresh" debug run re-probes every port and board
  *     it had already identified.
  *
- * The workflow already asks the developer to open the folder. Asking is where it stopped: a sentence in
- * the chat competes with whatever the developer is doing, and the one action that makes the difference
- * needs a file dialog and a window reload. So it was skipped, and the session paid for it.
+ * WHEN it is offered matters as much as whether. The first version asked the moment a project marker
+ * was written — and CMakeLists.txt is written near the START of scaffolding, so the dialog interrupted
+ * the agent mid-run, while more files were still being created. Reported: "it should ask to open the
+ * project after he finished the scaffolding … not randomly when he's writing some files." So writes
+ * only RECORD the directory; the offer is made once, at task completion, when there is nothing left to
+ * interrupt.
  *
- * Opening a folder RELOADS the window and ends the running task, which is why this asks first and says
- * plainly where the conversation goes. The task is already persisted — it reopens from history.
+ * Opening a folder RELOADS the window and ends the running task, which is why the developer is told —
+ * plainly, before choosing — that the conversation continues from History.
  */
 import * as path from "node:path"
 import { ShowMessageType } from "@shared/proto/host/window"
@@ -27,6 +30,9 @@ const SCAFFOLD_MARKERS = new Set(["prj.conf", "CMakeLists.txt", "sdkconfig", "sd
 
 /** Directories already offered this session — the offer must never become a second interruption. */
 const offered = new Set<string>()
+
+/** Scaffolded this task, awaiting the end of the run. Keyed by task so two tasks cannot cross wires. */
+const pendingByTask = new Map<string, string>()
 
 /** Normalised key so `C:\X` and `c:/x/` are one directory. */
 function key(dir: string): string {
@@ -73,13 +79,38 @@ export function isScaffoldOutsideWorkspace(filePath: string, cwd: string | undef
 }
 
 /**
- * Ask, once per directory, whether to open the scaffolded project now.
+ * Record that a project was scaffolded here. Called on every marker write; deliberately does nothing
+ * visible, because the run is still in progress.
  *
- * Returns a sentence for the model when the developer declines or the offer is skipped, so the agent
- * knows the folder was NOT opened and can keep working with that constraint rather than assuming
- * memory will persist. Returns null when the window is about to reload (nothing left to say).
+ * The DEEPEST directory wins. A scaffold writes several markers (a west.yml at the top, a CMakeLists
+ * and prj.conf in the app), and the app folder is the one that should be opened — it is where memory
+ * and the build actually belong.
  */
-export async function offerToOpenScaffoldedProject(projectDir: string): Promise<string | null> {
+export function notePendingScaffold(taskId: string, projectDir: string): void {
+	const current = pendingByTask.get(taskId)
+	if (!current || projectDir.length > current.length) {
+		pendingByTask.set(taskId, projectDir)
+	}
+}
+
+/** Whatever was scaffolded this task and not yet offered, or undefined. Exported for tests. */
+export function pendingScaffold(taskId: string): string | undefined {
+	return pendingByTask.get(taskId)
+}
+
+/**
+ * Offer to open the scaffolded project. Called ONCE, at the end of the run.
+ *
+ * Returns a sentence for the model when the developer declines, so the agent knows the folder was NOT
+ * opened and does not assume memory will persist. Returns null when nothing was scaffolded, when the
+ * offer was already made, or when the window is about to reload.
+ */
+export async function offerPendingScaffoldHandover(taskId: string): Promise<string | null> {
+	const projectDir = pendingByTask.get(taskId)
+	if (!projectDir) {
+		return null
+	}
+	pendingByTask.delete(taskId)
 	if (offered.has(key(projectDir))) {
 		return null
 	}
@@ -93,10 +124,11 @@ export async function offerToOpenScaffoldedProject(projectDir: string): Promise<
 			options: {
 				modal: false,
 				detail:
-					`The project was created at ${projectDir}, outside the folder you have open. Opening it lets ` +
-					`this project keep its own memory and checkpoints, so your next session starts knowing the ` +
-					`board and ports instead of finding them again.\n\n` +
-					`VS Code reloads when a folder opens. This conversation is saved — reopen it from History.`,
+					`Your project is ready at ${projectDir}, but it is not the folder you have open.\n\n` +
+					`Opening it lets this project keep its own memory and checkpoints, so the next session starts ` +
+					`knowing your board and ports instead of finding them again.\n\n` +
+					`WHAT HAPPENS NEXT: VS Code reloads when the folder opens, which closes this chat. It is saved — ` +
+					`reopen it from the History button at the top of the Adsum panel, and carry on where you left off.`,
 				items: ["Open project", "Not now"],
 			},
 		})
@@ -120,4 +152,5 @@ export async function offerToOpenScaffoldedProject(projectDir: string): Promise<
 /** Test seam — the offer is once-per-directory for the life of the extension host. */
 export function _resetOfferedForTest(): void {
 	offered.clear()
+	pendingByTask.clear()
 }
