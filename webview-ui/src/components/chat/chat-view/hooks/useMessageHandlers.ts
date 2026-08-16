@@ -3,7 +3,7 @@ import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
 import { AskResponseRequest, NewTaskRequest } from "@shared/proto/cline/task"
 import { useCallback } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
-import { SlashServiceClient, TaskServiceClient } from "@/services/grpc-client"
+import { FileServiceClient, SlashServiceClient, TaskServiceClient } from "@/services/grpc-client"
 import type { ButtonActionType } from "../shared/buttonConfig"
 import type { ChatState, MessageHandlers } from "../types/chatTypes"
 
@@ -277,6 +277,13 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 						case "report_bug":
 							await SlashServiceClient.reportBug(StringRequest.create({ value: lastMessage?.text })).catch((err) =>
 								console.error(err),
+							)
+							break
+						case "open_project":
+							// The ask carries the absolute path. Opening reloads the window, which ends this
+							// chat — it is already saved and reopens from History, which the message says.
+							await FileServiceClient.openFolder(StringRequest.create({ value: lastMessage?.text ?? "" })).catch(
+								(err) => console.error(err),
 							)
 							break
 					}

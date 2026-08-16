@@ -30,6 +30,18 @@ export interface ButtonConfig {
  * This is the single source of truth for both button display and actions
  */
 export const BUTTON_CONFIGS: Record<string, ButtonConfig> = {
+	// Scaffolding handover — the scaffold task's natural end.
+	//
+	// A primary button and no secondary, because there is one correct next step and a second button
+	// would only invite the wrong one. Input stays ENABLED: this is a strong default, not a trap, so a
+	// developer with a reason to continue here can still type. (Design call, 2026-08-16.)
+	open_project: {
+		sendingDisabled: false,
+		enableButtons: true,
+		primaryText: "Open project folder",
+		primaryAction: "utility",
+	},
+
 	// Error recovery states - user must take action
 	api_req_failed: {
 		sendingDisabled: true,
