@@ -94,6 +94,24 @@ export function isProtectedDirectoryError(e: unknown): boolean {
 }
 
 /**
+ * True when a status STRING is the not-applicable notice rather than a fault.
+ *
+ * The typed check above only works where the Error object is still in hand. By the time a status
+ * reaches the banner it is a plain string, and it can be set from seven different places — including
+ * `initializeCheckpointTracker`'s own catch, which swallows the ProtectedDirectoryError thrown by
+ * `getWorkspacePath()` and stores its message like any other failure. Fixing the two call sites in
+ * Task did not cover that one, which is why this banner survived three separate fixes
+ * (2026-08-13, 08-16, 08-16).
+ *
+ * So the suppression lives at the choke points every writer passes through, keyed on the message
+ * itself. Anchored on the distinctive clause, not the folder name, since the label varies (Desktop,
+ * home directory, Documents, Downloads).
+ */
+export function isCheckpointsNotApplicableMessage(message: string | undefined): boolean {
+	return !!message && message.includes("checkpoints turn on by themselves")
+}
+
+/**
  * Gets the current working directory from the VS Code workspace.
  * Validates that checkpoints are not being used in protected directories
  * like home, Desktop, Documents, or Downloads. Checks to confirm that the workspace
