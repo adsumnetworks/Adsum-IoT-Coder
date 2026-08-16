@@ -24,6 +24,8 @@ Tool results are bounded too. Editing a file returns a diff and a window of surr
 
 Captured RTT, UART, HCI and sniffer logs are now searched with a pattern and read by line range. One real capture that used to cost 333,000 tokens — more than an entire context window — now costs a few thousand, with the failure lines still in front of you.
 
+A search that finds nothing is also handled. Previously "no matches" was a dead end and the agent fell back to reading the whole file; now it knows to look at the log's shape and the firmware's own vocabulary instead, and to ask you rather than read thousands of lines on a hunch.
+
 ### Knowledge that knows your board
 
 Added the Seeed XIAO nRF54LM20A, the nRF54L15 DK, the nRF54LM20 DK, and a guide for moving an nRF52840 design to nRF54L.
@@ -34,13 +36,17 @@ Board knowledge can also state the nRF Connect SDK version it needs, and you are
 
 ### DeepSeek, properly
 
-DeepSeek is now a provider in its own right, with correct context length, pricing and cache rates, rather than something configured through a generic endpoint.
+DeepSeek is a provider in its own right — pick it in Settings, paste a key, and go. Correct context length, pricing and cache rates come with it, instead of being hand-typed into a generic endpoint.
+
+Thinking is yours to control. Turn extended thinking on or off, and when it is on choose the depth DeepSeek supports: **Low**, **High** (its own default) or **Max**. Reasoning is billed as output tokens on every turn it runs, so turning it off for routine steps — a build, a flash, a log capture — and up for diagnosing a fault is a real difference in both speed and cost.
 
 ### Fewer interruptions
 
 - Typing while the agent works no longer costs you the draft when an approval request arrives.
 - Espressif boards are no longer re-probed in your terminal. The chip, revision and port are already detected in the background; `esptool.py flash_id` now runs only when a board genuinely is not there.
-- Starting from an empty window no longer warns about checkpoints in the Desktop folder before a project exists. After scaffolding, the agent asks you to open the new project so its memory, checkpoints and context work from the first task.
+- Starting a prototype no longer opens with a warning. Beginning with no folder open is how the prototype flow is meant to start, so the extension no longer explains that checkpoints are off there — nothing is wrong, and there was nothing to do about it.
+- After scaffolding a new project, the agent offers to **open it for you**. Until a project is open its memory and checkpoints have nowhere to live, so the next session would start over — this is one click instead of a paragraph of instructions. (VS Code reloads when a folder opens; the conversation is saved and reopens from History.)
+- Checkpoint messages say what is actually happening. A slow first snapshot on a large firmware repo now reads as work in progress rather than a failure, says so once, and takes itself down when it finishes.
 
 ### Also
 
