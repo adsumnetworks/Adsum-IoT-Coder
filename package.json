@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.2.1-dev.14",
+	"version": "0.2.1-dev.15",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -481,6 +481,7 @@
 		"test:deepseek": "ts-node --transpile-only -P tsconfig.unit-test.json src/utils/__tests__/deepseekSupport.node-test.ts",
 		"test:project-anchor": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/projectAnchor.test.ts",
 		"test:ncs-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/ncsGate.test.ts",
+		"test:deepseek-thinking": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/api/providers/__tests__/deepseekThinking.node-test.ts",
 		"test:board-routing": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/boardRouting.node-test.ts"
 	},
 	"lint-staged": {
