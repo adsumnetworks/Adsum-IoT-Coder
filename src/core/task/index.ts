@@ -340,9 +340,19 @@ export class Task {
 			this.ulid = historyItem.ulid ?? ulid()
 			this.taskIsFavorited = historyItem.isFavorited
 			this.taskState.conversationHistoryDeletedRange = historyItem.conversationHistoryDeletedRange
-			if (historyItem.checkpointManagerErrorMessage) {
-				this.taskState.checkpointManagerErrorMessage = historyItem.checkpointManagerErrorMessage
-			}
+			// Checkpoint status is DELIBERATELY not restored from history.
+			//
+			// It describes the machine and folder as they were when the task last ran, and it is re-derived
+			// on every resume — so restoring it can only ever replay something already known to be stale.
+			// Reported twice on 2026-08-16: a prototype started with no folder open kept insisting
+			// "checkpoints are off because this task is running in your Desktop" long after the project had
+			// been opened, and a task from an older build kept showing that build's wording ("Consider
+			// re-opening Cline…") after the extension had been updated and the text fixed. Both were
+			// warnings the developer could not act on, about conditions that no longer held, surviving the
+			// very actions that resolved them.
+			//
+			// The field stays on HistoryItem for backward compatibility with saved tasks; it is simply
+			// never read back. Initialization below sets the current status, or leaves it clear.
 		} else if (task || images || files) {
 			this.ulid = ulid()
 		} else {

@@ -53,6 +53,16 @@ interface CheckpointManagerInternalState {
 	checkpointTracker?: CheckpointTracker
 	checkpointManagerErrorMessage?: string
 	checkpointTrackerInitPromise?: Promise<CheckpointTracker | undefined>
+	/**
+	 * Set once initialization has failed for this task, so no further checkpoint work is attempted.
+	 *
+	 * This used to be inferred by testing whether the status message CONTAINED "Checkpoints
+	 * initialization timed out." — a control decision made by matching developer-facing prose, which
+	 * silently became false the moment that sentence was reworded, leaving the extension retrying a
+	 * 15-second initialization on exactly the large repositories where it had already timed out.
+	 * A flag cannot drift from the wording.
+	 */
+	checkpointsUnavailableForTask?: boolean
 }
 
 interface CheckpointRestoreStateUpdate {
@@ -117,10 +127,7 @@ export class TaskCheckpointManager implements ICheckpointManager {
 	async saveCheckpoint(isAttemptCompletionMessage: boolean = false, completionMessageTs?: number): Promise<void> {
 		try {
 			// If checkpoints are disabled or previously encountered a timeout error, return early
-			if (
-				!this.config.enableCheckpoints ||
-				this.state.checkpointManagerErrorMessage?.includes("Checkpoints initialization timed out.")
-			) {
+			if (!this.config.enableCheckpoints || this.state.checkpointsUnavailableForTask) {
 				return
 			}
 
@@ -136,12 +143,9 @@ export class TaskCheckpointManager implements ICheckpointManager {
 			if (!this.state.checkpointTracker && !isAttemptCompletionMessage && !this.state.checkpointManagerErrorMessage) {
 				await this.checkpointTrackerCheckAndInit()
 			}
-			// attempt completion messages give it one last chance. Skip if there was a previous checkpoints initialization timeout error.
-			else if (
-				!this.state.checkpointTracker &&
-				isAttemptCompletionMessage &&
-				!this.state.checkpointManagerErrorMessage?.includes("Checkpoints initialization timed out.")
-			) {
+			// attempt completion messages give it one last chance — unless initialization already failed
+			// for this task (flag, not prose: see checkpointsUnavailableForTask).
+			else if (!this.state.checkpointTracker && isAttemptCompletionMessage && !this.state.checkpointsUnavailableForTask) {
 				await this.checkpointTrackerCheckAndInit()
 			}
 
@@ -815,21 +819,26 @@ export class TaskCheckpointManager implements ICheckpointManager {
 
 			// Update the state with the created tracker
 			this.state.checkpointTracker = tracker
+
+			// Initialization SUCCEEDED — retract the "still initializing" notice if it was shown.
+			//
+			// Without this the notice is permanent: the timer fires at 7s, the tracker arrives at 9s, and
+			// nothing ever takes the message down, so a working feature keeps explaining itself as though
+			// it were stuck. Reported 2026-08-16 as a banner that would not go away.
+			if (checkpointsWarningShown) {
+				await this.setcheckpointManagerErrorMessage(undefined)
+			}
 			return tracker
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : "Unknown error"
 			console.error("Failed to initialize checkpoint tracker:", errorMessage)
-
-			// If the error was a timeout, we disable all checkpoint operations for the rest of the task
-			if (errorMessage.includes("Checkpoints taking too long to initialize")) {
-				await this.setcheckpointManagerErrorMessage(
-					"Checkpoints could not finish initializing for this project, so they are off for this task. Everything else " +
-						"works normally. This is usually a very large working tree (build/ output is the common cause) — a " +
-						".gitignore for build artifacts fixes it.",
-				)
-			} else {
-				await this.setcheckpointManagerErrorMessage(errorMessage)
-			}
+			// Initialization failed — stop attempting checkpoint work for this task. Recorded as a flag,
+			// not inferred from the message text (see checkpointsUnavailableForTask).
+			this.state.checkpointsUnavailableForTask = true
+			// pTimeout's own message is already the developer-facing sentence for the timeout case, so
+			// this needs no special branch — a previous one matched a phrase that no longer exists in it
+			// and had quietly become dead.
+			await this.setcheckpointManagerErrorMessage(errorMessage)
 			return undefined
 		} finally {
 			// Always clean up the timer to prevent memory leaks
