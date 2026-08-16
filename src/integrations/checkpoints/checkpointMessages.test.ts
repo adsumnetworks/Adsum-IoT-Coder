@@ -147,3 +147,32 @@ describe("control flow never depends on message wording", () => {
 		)
 	})
 })
+
+describe("checkpoints not applying is not an event", () => {
+	const taskSrc = fs.readFileSync(path.join(process.cwd(), "src", "core", "task", "index.ts"), "utf8")
+
+	test("a personal folder sets NO user-facing message", () => {
+		// Reported twice. The first fix downgraded the banner from red to neutral, which missed the point:
+		// at the start of a prototype no folder is open by design, the developer has done nothing wrong,
+		// and "Open a project folder" is not actionable because the project does not exist yet. The message
+		// was self-resolving and impossible to act on — so it should not appear at all.
+		const branches = [
+			...taskSrc.matchAll(/if \(isProtectedDirectoryError\([^)]*\)\) \{([\s\S]{0,1200}?)\n\t*\} else \{/g),
+		].map((m) => m[1])
+		assert.ok(branches.length >= 2, `expected both call sites, found ${branches.length}`)
+		for (const body of branches) {
+			assert.equal(
+				/checkpointManagerErrorMessage\s*=/.test(body),
+				false,
+				`the not-applicable branch must not set a banner message:\n${body.trim()}`,
+			)
+		}
+	})
+
+	test("a genuine failure still sets one — silence is only for the non-event", () => {
+		assert.ok(
+			/console\.error\("Failed to initialize checkpoint manager:/.test(taskSrc),
+			"real failures must still be reported",
+		)
+	})
+})
