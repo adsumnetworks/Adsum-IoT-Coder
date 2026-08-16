@@ -792,7 +792,10 @@ export class TaskCheckpointManager implements ICheckpointManager {
 				if (!checkpointsWarningShown) {
 					checkpointsWarningShown = true
 					await this.setcheckpointManagerErrorMessage(
-						"Checkpoints are taking longer than expected to initialize. Working in a large repository? Consider re-opening Cline in a project that uses git, or disabling checkpoints.",
+						"Checkpoints are still initializing. This project is large, so the first snapshot is taking a while — " +
+							"a firmware repo with build/ output can be tens of thousands of files. Your work is not blocked, and " +
+							"nothing is wrong. Adding a .gitignore for build output makes this fast; you can also turn checkpoints " +
+							"off in settings if you do not want them.",
 					)
 				}
 			}, 7_000)
@@ -804,7 +807,9 @@ export class TaskCheckpointManager implements ICheckpointManager {
 				{
 					milliseconds: 15_000,
 					message:
-						"Checkpoints taking too long to initialize. Consider re-opening Cline in a project that uses git, or disabling checkpoints.",
+						"Checkpoints could not finish initializing for this project, so they are off for this task. Everything else " +
+						"works normally. This is usually a very large working tree (build/ output is the common cause) — a " +
+						".gitignore for build artifacts fixes it.",
 				},
 			)
 
@@ -818,7 +823,9 @@ export class TaskCheckpointManager implements ICheckpointManager {
 			// If the error was a timeout, we disable all checkpoint operations for the rest of the task
 			if (errorMessage.includes("Checkpoints taking too long to initialize")) {
 				await this.setcheckpointManagerErrorMessage(
-					"Checkpoints initialization timed out. Consider re-opening Cline in a project that uses git, or disabling checkpoints.",
+					"Checkpoints could not finish initializing for this project, so they are off for this task. Everything else " +
+						"works normally. This is usually a very large working tree (build/ output is the common cause) — a " +
+						".gitignore for build artifacts fixes it.",
 				)
 			} else {
 				await this.setcheckpointManagerErrorMessage(errorMessage)

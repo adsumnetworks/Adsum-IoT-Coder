@@ -221,7 +221,7 @@ class CheckpointTracker {
 			// Locking failed due to conflicting lock
 			if (!lockResult.acquired && !lockResult.skipped) {
 				throw new Error(
-					"Failed to acquire checkpoint folder lock - another Cline instance may be performing checkpoint operations",
+					"Failed to acquire checkpoint folder lock - another window may be performing checkpoint operations",
 				)
 			}
 
@@ -344,7 +344,7 @@ class CheckpointTracker {
 			// Locking failed due to conflicting lock
 			if (!lockResult.acquired && !lockResult.skipped) {
 				throw new Error(
-					"Failed to acquire checkpoint folder lock - another Cline instance may be performing checkpoint operations",
+					"Failed to acquire checkpoint folder lock - another window may be performing checkpoint operations",
 				)
 			}
 

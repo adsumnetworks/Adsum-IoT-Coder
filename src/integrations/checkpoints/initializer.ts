@@ -9,7 +9,8 @@ import pTimeout from "p-timeout"
 export async function ensureCheckpointInitialized({
 	checkpointManager,
 	timeoutMs = 15_000,
-	timeoutMessage = "Checkpoints taking too long to initialize. Consider re-opening Cline in a project that uses git, or disabling checkpoints.",
+	timeoutMessage = "Checkpoints could not finish initializing for this project, so they are off for this task. " +
+		"Everything else works normally. This is usually a very large working tree (build/ output is the common cause).",
 }: {
 	checkpointManager: ICheckpointManager | undefined
 	timeoutMs?: number
