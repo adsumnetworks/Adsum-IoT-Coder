@@ -2,6 +2,51 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
+## [0.2.1] - 2026-08-17
+
+Long sessions that stay sharp, a project the agent remembers, and knowledge that knows your board.
+
+### It remembers your project
+
+Every project now keeps an `.adsum/` folder beside its code: the board, the transport, the goal you set, open defects, and notes the agent researched. It is written when something is learned and read at the start of every task, so a new chat opens already knowing your hardware instead of asking again. Notes live on disk and are searched when relevant rather than carried in every message, so the memory can be generous without crowding the conversation.
+
+Memory follows the code. A multi-app repo gets one memory per app plus a shared one above them, so a gateway's BLE scanner and Wi-Fi forwarder each keep their own board and transport while the shared layer holds the contract between them.
+
+### Long sessions stop degrading
+
+The context gauge was wrong in three separate ways, and each one cost you working room. Cached tokens were counted twice. The window ignored the space a model reserves for its own reply, which is what produced `Prompt exceeds max length` on models that declare a large output budget. And when a provider did refuse an oversized request, the error went unrecognised, so the recovery that already existed never ran and the request simply retried into the same wall.
+
+Compaction is no longer silent: you are told before it happens and told what it kept. The goal, the board, the bug being chased and the file in hand now survive it.
+
+Tool results are bounded too. Editing a file returns a diff and a window of surrounding lines instead of echoing the file back, and long command output is folded with every error and warning kept.
+
+### It searches logs instead of swallowing them
+
+Captured RTT, UART, HCI and sniffer logs are now searched with a pattern and read by line range. One real capture that used to cost 333,000 tokens — more than an entire context window — now costs a few thousand, with the failure lines still in front of you.
+
+### Knowledge that knows your board
+
+Added the Seeed XIAO nRF54LM20A, the nRF54L15 DK, the nRF54LM20 DK, and a guide for moving an nRF52840 design to nRF54L.
+
+The board is identified before anything is built. It used to be read from build output, which does not exist yet on a new project, so the agent guessed — and for nRF54 it guessed the DK it had read the most about. It now reads the connected hardware and your project's own board settings.
+
+Board knowledge can also state the nRF Connect SDK version it needs, and you are told when yours is older, at the point the knowledge is used rather than when a build fails.
+
+### DeepSeek, properly
+
+DeepSeek is now a provider in its own right, with correct context length, pricing and cache rates, rather than something configured through a generic endpoint.
+
+### Fewer interruptions
+
+- Typing while the agent works no longer costs you the draft when an approval request arrives.
+- Espressif boards are no longer re-probed in your terminal. The chip, revision and port are already detected in the background; `esptool.py flash_id` now runs only when a board genuinely is not there.
+- Starting from an empty window no longer warns about checkpoints in the Desktop folder before a project exists. After scaffolding, the agent asks you to open the new project so its memory, checkpoints and context work from the first task.
+
+### Also
+
+- Export a session as a single redacted file, and hand a running task to your own coding agent.
+- GLM 4.7 and 5.x are recognised, so they are no longer scored as unreliable models.
+
 ## [0.2.0] - 2026-07-21
 
 A full end-to-end gateway build, your model or your key, credited expertise, and a second marketplace.
