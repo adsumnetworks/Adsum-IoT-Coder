@@ -21,6 +21,7 @@ import type { IPartialBlockHandler, IToolHandler } from "../ToolExecutorCoordina
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
+import { offerPendingScaffoldHandover } from "./scaffoldHandover"
 
 /** Count a successful task completion toward the "leave a review" nudge. Fires the eligibility signal the first
  *  time the count crosses the threshold. Never throws: review accounting must never interrupt a completion.
@@ -386,12 +387,24 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 		// At this point we know: task is complete, checkpoint saved, result shown to user
 		await this.runTaskCompleteHook(config, block)
 
+		// If this run scaffolded a project the developer does not have open, offer to open it NOW — the
+		// scaffolding is finished, the result has been presented, and there is nothing left to interrupt.
+		// (Writes only record the directory; offering at write time landed mid-run, right after
+		// CMakeLists.txt, while more files were still being created.)
+		const scaffoldDeclined = await offerPendingScaffoldHandover(config.ulid)
+
 		const { response, text, images, files: completionFiles } = await config.callbacks.ask("completion_result", "", false)
 		// No-ending sessions: tell the MODEL the session stays open, so post-handoff messages are treated as a
 		// continuation of this same conversation (all knowledge/tools stay available), never as "task is over".
 		const prefix =
 			"[attempt_completion] Result: Handoff presented. The session remains open — the developer may continue " +
-			"in this same conversation at any time; treat any further messages as continuation, not a new task."
+			"in this same conversation at any time; treat any further messages as continuation, not a new task." +
+			// Only present when a scaffolded project was NOT opened, so the model does not assume memory persists.
+			(scaffoldDeclined
+				? `
+
+${scaffoldDeclined}`
+				: "")
 		if (response === "yesButtonClicked") {
 			return prefix // signals to recursive loop to stop (for now this never happens since yesButtonClicked will trigger a new task)
 		}
