@@ -386,6 +386,8 @@
 		"watch:esbuild": "node esbuild.mjs --watch",
 		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
 		"package": "npm run check-types && npm run build:webview && npm run lint && node esbuild.mjs --production",
+		"//vsix": "Build the installable VSIX. It ALWAYS lands in dist/ — never the repo root, which holds a decade of old builds and made the current one impossible to find.",
+		"vsix": "npm run package && npx vsce package --no-dependencies --allow-star-activation --out dist/",
 		"protos": "node scripts/build-proto.mjs",
 		"protos-go": "node scripts/build-go-proto.mjs",
 		"protos-python": "node scripts/build-python-proto.mjs",
