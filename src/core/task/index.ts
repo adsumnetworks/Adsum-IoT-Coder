@@ -432,7 +432,15 @@ export class Task {
 				// See the note at the other initialization site: a personal folder means checkpoints do
 				// not apply, not that anything failed.
 				if (isProtectedDirectoryError(error)) {
-					this.taskState.checkpointManagerErrorMessage = error instanceof Error ? error.message : undefined
+					// SAY NOTHING. Checkpoints do not apply here, which is the normal, expected state at the
+					// start of a prototype: no folder is open yet, so the workspace is the Desktop. The banner
+					// said "Open a project folder and checkpoints turn on by themselves" — true, self-resolving,
+					// and impossible to act on at that moment, because the project does not exist yet. It was
+					// the first thing a developer saw on a brand-new prototype, and it reads as a fault.
+					// (Reported 2026-08-13, again 2026-08-16 after being downgraded to a non-danger banner —
+					// the problem was never the styling, it was showing anything at all.)
+					// Once the project is scaffolded and opened, checkpoints initialise silently.
+					console.info("[checkpoints] not applicable here (personal folder) — nothing to report")
 				} else {
 					console.error("Failed to initialize checkpoint manager:", error)
 					if (this.stateManager.getGlobalSettingsKey("enableCheckpointsSetting")) {
@@ -2407,11 +2415,10 @@ export class Task {
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : "Unknown error"
 				// Running in a personal folder (the normal state during a prototype, before any project
-				// folder is open) is not a failure — checkpoints simply do not apply. Record the reason so
-				// the header can explain it, but do not raise an error toast for something the developer
-				// did not do wrong and cannot act on.
+				// folder is open) is not a failure — checkpoints simply do not apply, and there is nothing
+				// for the developer to do about it. Surface nothing; see the note at the other call site.
 				if (isProtectedDirectoryError(error)) {
-					this.taskState.checkpointManagerErrorMessage = errorMessage
+					console.info("[checkpoints] not applicable here (personal folder) — nothing to report")
 				} else {
 					console.error("Failed to initialize checkpoint manager:", errorMessage)
 					this.taskState.checkpointManagerErrorMessage = errorMessage // will be displayed right away since we saveClineMessages next which posts state to webview
