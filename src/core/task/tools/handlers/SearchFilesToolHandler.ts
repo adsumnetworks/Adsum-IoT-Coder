@@ -16,6 +16,7 @@ import type { ToolValidator } from "../ToolValidator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
+import { emptyLogSearchGuidance } from "./emptySearchGuidance"
 
 export class SearchFilesToolHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.SEARCH
@@ -277,7 +278,14 @@ export class SearchFilesToolHandler implements IFullyManagedTool {
 		const searchDurationMs = performance.now() - searchStartTime
 
 		// Format and combine results
-		const results = this.formatSearchResults(config, searchResults, searchPaths)
+		let results = this.formatSearchResults(config, searchResults, searchPaths)
+
+		// A log search that matched nothing is where search-before-read gets abandoned: "Found 0 results."
+		// is true and offers no next move, so the model falls back to reading the whole capture. Say what
+		// to do instead, at the only moment it is actionable.
+		if (/^Found 0 results\.?$/m.test(results.trim())) {
+			results += emptyLogSearchGuidance(relDirPath, regex)
+		}
 
 		// Capture workspace search pattern telemetry
 		if (config.isMultiRootEnabled && config.workspaceManager) {

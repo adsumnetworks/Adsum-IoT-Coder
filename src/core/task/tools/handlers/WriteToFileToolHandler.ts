@@ -27,6 +27,7 @@ import { applyModelContentFixes, stripFullFileCodeFenceWrapper } from "../utils/
 import { ToolDisplayUtils } from "../utils/ToolDisplayUtils"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 import { emitCraMilestoneForWrite } from "./craFunnel"
+import { isScaffoldOutsideWorkspace, offerToOpenScaffoldedProject } from "./scaffoldHandover"
 
 /**
  * True if `absolutePath` is inside the Adsum extension install (read-only on a published build) or any
@@ -448,11 +449,24 @@ export class WriteToFileToolHandler implements IFullyManagedTool {
 					{ originalContent: preEditContent, absolutePath, fileExisted: fileExists },
 				)
 			} else {
-				return formatResponse.fileEditWithoutUserChanges(relPath, autoFormattingEdits, finalContent, newProblemsMessage, {
-					originalContent: preEditContent,
-					absolutePath,
-					fileExisted: fileExists,
-				})
+				const written = formatResponse.fileEditWithoutUserChanges(
+					relPath,
+					autoFormattingEdits,
+					finalContent,
+					newProblemsMessage,
+					{ originalContent: preEditContent, absolutePath, fileExisted: fileExists },
+				)
+				// A project marker written outside the open workspace means a scaffold just landed somewhere
+				// the developer is not working. Offer to open it now, while it is the obvious next step —
+				// asking in prose was not enough, because acting on it needs a dialog and a window reload.
+				const scaffolded = fileExists ? null : isScaffoldOutsideWorkspace(absolutePath, config.cwd)
+				if (scaffolded) {
+					const declined = await offerToOpenScaffoldedProject(scaffolded)
+					if (declined) {
+						return `${written}\n\n${declined}`
+					}
+				}
+				return written
 			}
 		} catch (error) {
 			// Reset diff view on error
