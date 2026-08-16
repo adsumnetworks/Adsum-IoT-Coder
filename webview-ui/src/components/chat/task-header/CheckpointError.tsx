@@ -6,44 +6,80 @@ interface CheckpointErrorProps {
 	checkpointManagerErrorMessage?: string
 	handleCheckpointSettingsClick: () => void
 }
+
+/**
+ * Checkpoint status banner.
+ *
+ * Three different situations used to share one red danger banner and one button, and the banner was
+ * assembled by string-surgery on the message: the trailing sentence "…or disabling checkpoints." was
+ * regex-stripped and replaced by a Disable button. Reported 2026-08-16, that produced a sentence which
+ * ended mid-clause — "Consider re-opening Cline in a project that uses git, or" — followed by a button
+ * the developer had no reason to trust, on a project where nothing was actually wrong.
+ *
+ * The three cases are now distinguished explicitly, because they call for different things:
+ *
+ *   working   — checkpoints are still initializing. Transient, self-resolving, nothing to do. Not an
+ *               error, so not a danger banner and no action offered.
+ *   inactive  — checkpoints are off for this task (timed out, or not applicable here). Worth stating
+ *               once, calmly, with a route to settings for anyone who wants them off for good.
+ *   error     — something genuinely failed (git missing). Danger banner, and the fix.
+ */
+type CheckpointState = "working" | "inactive" | "error"
+
+function classify(message: string): CheckpointState {
+	if (message.includes("Git must be installed")) {
+		return "error"
+	}
+	// Still going: the 7s "be patient" notice. Says nothing is wrong, so it must not look like it is.
+	if (message.includes("still initializing")) {
+		return "working"
+	}
+	// Off for this task — timed out, unsupported layout, or a folder where checkpoints do not apply.
+	if (
+		message.includes("could not finish initializing") ||
+		message.includes("checkpoints turn on by themselves") ||
+		message.includes("multi-root workspaces") ||
+		message.includes("off for this task")
+	) {
+		return "inactive"
+	}
+	return "error"
+}
+
 export const CheckpointError: React.FC<CheckpointErrorProps> = ({
 	checkpointManagerErrorMessage,
 	handleCheckpointSettingsClick,
 }) => {
-	const messages = useMemo(() => {
-		const message = checkpointManagerErrorMessage?.replace(/disabling checkpoints\.$/, "")
-		const showDisableButton =
-			checkpointManagerErrorMessage?.endsWith("disabling checkpoints.") ||
-			checkpointManagerErrorMessage?.includes("multi-root workspaces")
-		const showGitInstructions = checkpointManagerErrorMessage?.includes("Git must be installed to use checkpoints.")
-		// Running in the Desktop/home folder means checkpoints do not APPLY — nothing failed, and the
-		// developer has nothing to fix. A red danger banner for that reads as a broken extension during
-		// the prototype flow, where having no folder open is the expected starting state.
-		const isNotApplicable = checkpointManagerErrorMessage?.includes("checkpoints turn on by themselves")
-		return { message, showDisableButton, showGitInstructions, isNotApplicable }
-	}, [checkpointManagerErrorMessage])
+	const state = useMemo<CheckpointState | null>(
+		() => (checkpointManagerErrorMessage ? classify(checkpointManagerErrorMessage) : null),
+		[checkpointManagerErrorMessage],
+	)
 
-	if (!checkpointManagerErrorMessage) {
+	if (!checkpointManagerErrorMessage || !state) {
 		return null
 	}
 
 	return (
 		<div className="flex items-center justify-center w-full">
-			<Alert title={messages.message} variant={messages.isNotApplicable ? "default" : "danger"}>
-				<AlertDescription className="flex gap-2 justify-end">
-					{messages.showDisableButton && (
-						<Button aria-label="Disable Checkpoints" onClick={handleCheckpointSettingsClick} variant="ghost">
-							Disable Checkpoints
-						</Button>
-					)}
-					{messages.showGitInstructions && (
-						<a
-							className="text-link underline"
-							href="https://github.com/cline/cline/wiki/Installing-Git-for-Checkpoints">
-							See instructions
-						</a>
-					)}
-				</AlertDescription>
+			{/* The message is shown WHOLE. Nothing is trimmed to make room for a control — that is what
+			    produced a sentence ending in "or". */}
+			<Alert title={checkpointManagerErrorMessage} variant={state === "error" ? "danger" : "default"}>
+				{state !== "working" && (
+					<AlertDescription className="flex gap-2 justify-end">
+						{state === "inactive" && (
+							<Button aria-label="Checkpoint settings" onClick={handleCheckpointSettingsClick} variant="ghost">
+								Checkpoint settings
+							</Button>
+						)}
+						{state === "error" && (
+							<a
+								className="text-link underline"
+								href="https://github.com/cline/cline/wiki/Installing-Git-for-Checkpoints">
+								See instructions
+							</a>
+						)}
+					</AlertDescription>
+				)}
 			</Alert>
 		</div>
 	)

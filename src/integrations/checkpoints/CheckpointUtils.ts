@@ -112,7 +112,7 @@ export function isProtectedDirectoryError(e: unknown): boolean {
 export async function getWorkingDirectory(): Promise<string> {
 	const cwd = await getCwd()
 	if (!cwd) {
-		throw new Error("No workspace detected. Please open Cline in a workspace to use checkpoints.")
+		throw new Error("No workspace detected. Open your project folder to use checkpoints.")
 	}
 
 	await validateWorkspacePath(cwd)
