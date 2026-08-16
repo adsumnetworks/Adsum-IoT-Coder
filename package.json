@@ -386,8 +386,6 @@
 		"watch:esbuild": "node esbuild.mjs --watch",
 		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
 		"package": "npm run check-types && npm run build:webview && npm run lint && node esbuild.mjs --production",
-		"vsix": "npx vsce package --no-dependencies --allow-star-activation && node scripts/vsix-latest.mjs",
-		"vsix:latest": "node scripts/vsix-latest.mjs",
 		"protos": "node scripts/build-proto.mjs",
 		"protos-go": "node scripts/build-go-proto.mjs",
 		"protos-python": "node scripts/build-python-proto.mjs",
