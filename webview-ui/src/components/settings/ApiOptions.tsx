@@ -136,14 +136,23 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 	const dropdownListRef = useRef<HTMLDivElement>(null)
 
 	const providerOptions = useMemo(() => {
-		// Provider ladder (design/03): curated, priority-ordered. Free → GLM Coding Plan → Anthropic → OpenRouter
-		// → OpenAI-compatible. General metered "Z AI" is intentionally omitted (OpenRouter covers metered GLM; the
-		// GLM Coding Plan is the branded path). The order of this array IS the display order.
+		// Provider ladder (design/03): curated, priority-ordered. Free → GLM Coding Plan → Anthropic → DeepSeek
+		// → OpenRouter → OpenAI-compatible. General metered "Z AI" is intentionally omitted (OpenRouter covers
+		// metered GLM; the GLM Coding Plan is the branded path). The order of this array IS the display order.
+		//
+		// deepseek belongs here, and its absence was the last piece of "DeepSeek is manual". The provider is
+		// complete — handler, streaming, reasoning content, prompt caching, native tool calls, settings panel,
+		// correct 384K context and cache pricing — and the in-chat picker lists it. But this dropdown is the
+		// ONLY way to enter the API key that makes it appear anywhere else, so leaving it out meant a
+		// first-class provider no one could reach: the shipped path was to pick "OpenAI Compatible" and
+		// hand-type api.deepseek.com, the model id, the context window and the prices the native provider
+		// already knows. Fixing the plumbing in 0.2.1 changed nothing user-visible while this list omitted it.
 		const allowedProviders = [
 			"adsum-free",
 			"external-agent",
 			"zai-coding-plan",
 			"anthropic",
+			"deepseek",
 			"openrouter",
 			"openai",
 			"anthropic-compatible",
