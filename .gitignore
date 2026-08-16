@@ -83,6 +83,3 @@ __pycache__/
 
 # Claude Code local settings (machine-specific permissions; the shared variant is .claude/settings.json)
 .claude/settings.local.json
-
-# Stable-name copy of the newest dev build (see the package script) — never committed.
-adsum-LATEST.vsix
