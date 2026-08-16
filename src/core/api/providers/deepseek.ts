@@ -16,6 +16,9 @@ interface DeepSeekHandlerOptions extends CommonApiHandlerOptions {
 	apiModelId?: string
 	// DeepSeek V4 toggles thinking via thinking.type; we reuse thinkingBudgetTokens as the on/off signal (>0 = on).
 	thinkingBudgetTokens?: number
+	// Depth once thinking is on: "low" | "high" | "max". Meaningless with thinking off, so it is only sent
+	// alongside thinking: enabled.
+	reasoningEffort?: string
 }
 
 export class DeepSeekHandler implements ApiHandler {
@@ -90,6 +93,12 @@ export class DeepSeekHandler implements ApiHandler {
 		const v4Thinking: Record<string, unknown> =
 			isV4 && budget !== undefined ? { thinking: { type: budget > 0 ? "enabled" : "disabled" } } : {}
 		const v4ThinkingOn = isV4 && (budget ?? 0) > 0
+		// reasoning_effort tunes HOW DEEPLY it thinks: "low" | "high" | "max" (api-docs.deepseek.com,
+		// guides/thinking_mode, checked 2026-08-16). Both v4-flash and v4-pro support all three. It only has
+		// meaning with thinking on, and DeepSeek's own default is enabled at "high" — so send it only when the
+		// developer has chosen, and never alongside thinking disabled.
+		const v4Effort: Record<string, unknown> =
+			v4ThinkingOn && this.options.reasoningEffort ? { reasoning_effort: this.options.reasoningEffort } : {}
 
 		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
 			{ role: "system", content: systemPrompt },
@@ -106,9 +115,11 @@ export class DeepSeekHandler implements ApiHandler {
 			messages: openAiMessages,
 			stream: true,
 			stream_options: { include_usage: true },
-			// Reasoner (R1) and V4-with-thinking reject a custom temperature; everything else uses 0.
+			// Thinking mode ignores temperature/top_p/penalties (documented as accepted-but-inert), and R1
+			// rejects a custom temperature outright — so omit it in both cases and use 0 everywhere else.
 			...(model.id === "deepseek-reasoner" || v4ThinkingOn ? {} : { temperature: 0 }),
 			...v4Thinking,
+			...v4Effort,
 			...getOpenAIToolParams(tools),
 		})
 

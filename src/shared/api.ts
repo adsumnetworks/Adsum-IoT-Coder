@@ -1622,6 +1622,16 @@ export type DeepSeekModelId = keyof typeof deepSeekModels
 // deepseek-chat and deepseek-reasoner are retired — DeepSeek's pricing page no longer lists either (checked
 // 2026-08-13), so a new user defaulting onto deepseek-chat would land on a model that no longer exists. They
 // stay in the catalogue so an existing saved configuration keeps resolving, but the default is now V4.
+/**
+ * Thinking-depth levels DeepSeek V4 accepts for `reasoning_effort`, in increasing order.
+ *
+ * Source: api-docs.deepseek.com/guides/thinking_mode (checked 2026-08-16). Both v4-flash and v4-pro
+ * support all three; DeepSeek's own default is thinking ENABLED at "high". "low" for routine steps,
+ * "high" for day-to-day agent work, "max" for hard reasoning.
+ */
+export const DEEPSEEK_EFFORT_LEVELS = ["low", "high", "max"] as const
+export type DeepSeekEffortLevel = (typeof DEEPSEEK_EFFORT_LEVELS)[number]
+
 export const deepSeekDefaultModelId: DeepSeekModelId = "deepseek-v4-pro"
 export const deepSeekModels = {
 	"deepseek-chat": {
