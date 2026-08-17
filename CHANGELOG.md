@@ -4,59 +4,28 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 
 ## [0.2.1] - 2026-08-16
 
-Long sessions that stay sharp, a project the agent remembers, and knowledge that knows your board.
+### Added
+- Project memory: an `.adsum/` folder per project holding the board, transport, goal, open defects, and researched notes, written when something is learned and read at the start of every task. Multi-app repositories get one memory per app plus a shared one above them.
+- Log search: captured RTT, UART, HCI, and sniffer logs are searched by pattern and read by line range instead of loaded whole. A real capture that cost 333,000 tokens now costs a few thousand. A search with no matches falls back to the log's structure and the firmware's own vocabulary, or asks, instead of reading thousands of lines.
+- nRF54 board knowledge: the nRF54L15 DK, the nRF54LM20 DK, and the nRF54LM20A, plus a migration guide from nRF52840 to nRF54L.
+- The board is identified from connected hardware and the project's own board settings before the first build, instead of guessed from build output that does not exist yet.
+- Board knowledge can state the nRF Connect SDK version it needs; you are warned when yours is older, at the point the knowledge is used.
+- DeepSeek as a native provider: correct context length, pricing, and cache rates. Extended thinking can be turned off for routine steps, or set to Low, High, or Max.
+- Export a session as a single redacted file, and hand a running task to your own coding agent (beta).
 
-### It remembers your project
-
-Every project now keeps an `.adsum/` folder beside its code: the board, the transport, the goal you set, open defects, and notes the agent researched. It is written when something is learned and read at the start of every task, so a new chat opens already knowing your hardware instead of asking again. Notes live on disk and are searched when relevant rather than carried in every message, so the memory can be generous without crowding the conversation.
-
-Memory follows the code. A multi-app repo gets one memory per app plus a shared one above them, so a gateway's BLE scanner and Wi-Fi forwarder each keep their own board and transport while the shared layer holds the contract between them.
-
-### Long sessions stop degrading
-
-The context gauge was wrong in three separate ways, and each one cost you working room. Cached tokens were counted twice. The window ignored the space a model reserves for its own reply, which is what produced `Prompt exceeds max length` on models that declare a large output budget. And when a provider did refuse an oversized request, the error went unrecognised, so the recovery that already existed never ran and the request simply retried into the same wall.
-
-Compaction is no longer silent: you are told before it happens and told what it kept. The goal, the board, the bug being chased and the file in hand now survive it.
-
-Tool results are bounded too. Editing a file returns a diff and a window of surrounding lines instead of echoing the file back, and long command output is folded with every error and warning kept.
-
-### It searches logs instead of swallowing them
-
-Captured RTT, UART, HCI and sniffer logs are now searched with a pattern and read by line range. One real capture that used to cost 333,000 tokens — more than an entire context window — now costs a few thousand, with the failure lines still in front of you.
-
-A search that finds nothing is also handled. Previously "no matches" was a dead end and the agent fell back to reading the whole file; now it knows to look at the log's shape and the firmware's own vocabulary instead, and to ask you rather than read thousands of lines on a hunch.
-
-### Knowledge that knows your board
-
-Added the Seeed XIAO nRF54LM20A, the nRF54L15 DK, the nRF54LM20 DK, and a guide for moving an nRF52840 design to nRF54L.
-
-The board is identified before anything is built. It used to be read from build output, which does not exist yet on a new project, so the agent guessed — and for nRF54 it guessed the DK it had read the most about. It now reads the connected hardware and your project's own board settings.
-
-Board knowledge can also state the nRF Connect SDK version it needs, and you are told when yours is older, at the point the knowledge is used rather than when a build fails.
-
-### DeepSeek, properly
-
-DeepSeek is a provider in its own right — pick it in Settings, paste a key, and go. Correct context length, pricing and cache rates come with it, instead of being hand-typed into a generic endpoint.
-
-Thinking is yours to control. Turn extended thinking on or off, and when it is on choose the depth DeepSeek supports: **Low**, **High** (its own default) or **Max**. Reasoning is billed as output tokens on every turn it runs, so turning it off for routine steps — a build, a flash, a log capture — and up for diagnosing a fault is a real difference in both speed and cost.
-
-### Fewer interruptions
-
-- Typing while the agent works no longer costs you the draft when an approval request arrives.
-- Espressif boards are no longer re-probed in your terminal. The chip, revision and port are already detected in the background; `esptool.py flash_id` now runs only when a board genuinely is not there.
-- Starting a prototype no longer opens with a warning. Beginning with no folder open is how the prototype flow is meant to start, so the extension no longer explains that checkpoints are off there — nothing is wrong, and there was nothing to do about it.
-- A prototype run now **ends on an "Open project folder" button** instead of trailing off. Until the new project is open it has nowhere to keep its memory or checkpoints, so the next session would start over — one click instead of a paragraph of instructions. VS Code reloads when the folder opens; the conversation is saved and comes back from History.
-- Checkpoint messages say what is actually happening. A slow first snapshot on a large firmware repo now reads as work in progress rather than a failure, says so once, and takes itself down when it finishes.
-
-### Also
-
-- Export a session as a single redacted file, and hand a running task to your own coding agent.
+### Fixed
+- Three context-window accounting bugs: cached tokens were counted twice; the window ignored the space a model reserves for its reply, which caused `Prompt exceeds max length`; and an oversized-request refusal went unrecognised, so the existing recovery never ran.
+- Compaction is announced before it happens, reports what it kept, and preserves the goal, the board, the bug being chased, and the file in hand.
+- Tool results are bounded: file edits return a diff with surrounding lines instead of echoing the file, and long command output is folded with every error and warning kept.
+- Typing while the agent works no longer loses your draft when an approval request arrives.
+- Espressif boards are no longer re-probed in the terminal when the chip, revision, and port are already detected.
+- Checkpoint messages say what is happening: a slow first snapshot on a large repo reads as work in progress, says so once, and takes itself down; nothing is shown where checkpoints simply do not apply.
+- A prototype run ends on an "Open project folder" button instead of a paragraph of instructions; the conversation is saved and returns from History after the reload.
 - GLM 4.7 and 5.x are recognised, so they are no longer scored as unreliable models.
 
-### Known in this release
-
-- **Opening a scaffolded project is still a manual step.** The prototype run ends on an "Open project folder" button, but the folder does not open by itself, and until it does the new project has no memory or checkpoints. It works; it is more friction than it should be.
-- **nRF54 support is new and not yet smooth.** Building and flashing a XIAO nRF54LM20A works, but expect rough edges around board-root setup and runner selection. The nRF52 and nRF53 paths are unaffected.
+### Known issues
+- Opening a scaffolded project is still a manual step; until the folder is open, the new project has no memory or checkpoints.
+- nRF54 support is new. Building and flashing works, with rough edges around board-root setup and runner selection. nRF52 and nRF53 paths are unaffected.
 
 ## [0.2.0] - 2026-07-21
 
