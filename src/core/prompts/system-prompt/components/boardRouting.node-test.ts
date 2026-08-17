@@ -60,27 +60,40 @@ describe("existing routing is unchanged", () => {
 })
 
 describe("every routed file actually exists", () => {
+	const TARGETS = [
+		"nrf52840dk/nrf52840",
+		"nrf52dk/nrf52832",
+		"nrf5340dk/nrf5340/cpuapp",
+		"nrf54l15dk/nrf54l15/cpuapp",
+		"nrf54lm20dk/nrf54lm20b/cpuapp",
+		"xiao_nrf54lm20a/nrf54lm20a/cpuapp",
+	]
+
+	// Always checkable: routing is pure string work, so a board that falls through to `null` is a bug here
+	// and nowhere else. This half needs no corpus and therefore holds in a bare checkout too.
+	test("every supported board routes somewhere", () => {
+		const unrouted = TARGETS.filter((t) => !getBoardKnowledgeFile(t))
+		assert.deepEqual(unrouted, [], `boards with no route: ${unrouted.join(", ")}`)
+	})
+
 	// A route pointing at a missing file loads nothing and says nothing — the worst failure mode, because
-	// the agent proceeds with no board knowledge and no indication that any was expected.
+	// the agent proceeds with no board knowledge and no indication that any was expected. Board bits are
+	// registry-delivered, so their home is the SIBLING Adsum-Backend/kbits, not a subdirectory of this repo;
+	// when that sibling is absent (a bare clone, public CI) there is nothing to resolve against and the
+	// check above is the whole test.
 	test("no route is a dead link", () => {
-		const targets = [
-			"nrf52840dk/nrf52840",
-			"nrf52dk/nrf52832",
-			"nrf5340dk/nrf5340/cpuapp",
-			"nrf54l15dk/nrf54l15/cpuapp",
-			"nrf54lm20dk/nrf54lm20b/cpuapp",
-			"xiao_nrf54lm20a/nrf54lm20a/cpuapp",
-		]
-		const roots = [path.join(process.cwd(), "iot-knowledge"), path.join(process.cwd(), "Adsum-Backend", "kbits")]
+		const roots = [
+			path.join(process.cwd(), "iot-knowledge"),
+			path.join(process.cwd(), "..", "Adsum-Backend", "kbits"),
+		].filter((r) => fs.existsSync(r))
+		if (!roots.some((r) => r.includes("Adsum-Backend"))) {
+			return // sibling registry folder absent — file existence is unknowable from here
+		}
 		const missing: string[] = []
-		for (const t of targets) {
+		for (const t of TARGETS) {
 			const rel = getBoardKnowledgeFile(t)
-			if (!rel) {
-				missing.push(`${t} → no route`)
-				continue
-			}
-			if (!roots.some((r) => fs.existsSync(path.join(r, rel)))) {
-				missing.push(`${t} → ${rel} (file not found in iot-knowledge/ or Adsum-Backend/kbits/)`)
+			if (rel && !roots.some((r) => fs.existsSync(path.join(r, rel)))) {
+				missing.push(`${t} → ${rel} (not in iot-knowledge/ nor ../Adsum-Backend/kbits/)`)
 			}
 		}
 		assert.deepEqual(missing, [], `routes pointing at files that do not exist:\n${missing.join("\n")}`)
