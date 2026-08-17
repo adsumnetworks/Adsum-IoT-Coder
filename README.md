@@ -46,7 +46,7 @@
 
 <img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Deeper nRF54 support.** Board knowledge for the nRF54L15 DK, the nRF54LM20 DK, and the nRF54LM20A, plus a migration guide from nRF52840 to nRF54L. The board is identified from connected hardware before the first build, and you are warned when a board needs a newer nRF Connect SDK than you have.
 
-<img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**DeepSeek, natively.** Previously available only through a generic BYOK endpoint; now a provider in Settings with correct context length and pricing. Extended thinking can be switched off for routine steps to save tokens, or set to Low, High, or Max for debugging.
+<img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**DeepSeek, natively.** Previously available only through a generic BYOK endpoint; now a provider in Settings with correct context length and pricing, and an extended-thinking dial from off to Max. Field-tested on our own gateway builds: the budget tiers handle most routine tasks with thinking kept on, and the full models can switch it off, which is where the token saving lives. [Exact models and settings](https://docs.adsumnetworks.com/models).
 
 **Recently, in `v0.2.0`:** a complete two-chip industrial gateway, an nRF52840 BLE scanner and an ESP32 Wi-Fi/MQTT uplink, built, debugged, and CRA-checked from one spec **in under 30 minutes**, plus the curated model picker and credited expertise. **[Watch the playlist](https://www.youtube.com/playlist?list=PLYh65pF22Elk)** · **[read the walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway)**
 
