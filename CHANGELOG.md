@@ -2,7 +2,7 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
-## [0.2.1] - 2026-08-16
+## [0.2.1] - 2026-08-17
 
 ### Added
 - Project memory: an `.adsum/` folder per project holding the board, transport, goal, open defects, and researched notes, written when something is learned and read at the start of every task. Multi-app repositories get one memory per app plus a shared one above them.
@@ -25,7 +25,7 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 
 ### Known issues
 - Opening a scaffolded project is still a manual step; until the folder is open, the new project has no memory or checkpoints.
-- nRF54 support is new. Building and flashing works, with rough edges around board-root setup and runner selection. nRF52 and nRF53 paths are unaffected.
+- nRF54L support is still maturing. Building and flashing works, with rough edges around board-root setup and runner selection. nRF52 and nRF53 paths are unaffected.
 
 ## [0.2.0] - 2026-07-21
 
