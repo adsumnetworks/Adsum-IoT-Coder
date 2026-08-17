@@ -11,6 +11,10 @@ interface UpgradeCardProps {
  * "what's new" notice — dismiss is the only action. No CTA button: the only demo it could launch (the CRA
  * sample) duplicates the demo already on the welcome screen, and no one click can show the model picker
  * (a setting, not a run). The user acts on their own; the sample stays one click away in the picker below.
+ *
+ * This is the ONLY "what's new" surface that reaches a user in the panel — `WhatsNewModal` is unreachable
+ * (its sole parent, WelcomeSection, is imported by nothing and neither appears in the built bundle). So this
+ * copy and the `whatsNewToastMessage` one-liner are what must be refreshed every release.
  */
 const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
 	return (
@@ -58,7 +62,7 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
 				}}>
 				{/* Coral rocket = identity/"what's new" framing on this coral nudge (on-palette). */}
 				<i className="codicon codicon-rocket" style={{ fontSize: "14px", color: BRAND_CORAL, flexShrink: 0 }} />
-				What's new in v{version} — your GLM plan or model key, and who wrote the knowledge
+				What's new in v{version} — project memory, longer sessions, and cheaper logs
 			</div>
 
 			<div
@@ -68,8 +72,9 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
 					marginBottom: 0,
 					lineHeight: 1.5,
 				}}>
-				A curated model picker — the free tier, the GLM Coding Plan, Claude, DeepSeek, or your own key — switchable on a
-				live task. Curated knowledge now credits the engineer who wrote it, and long sessions hold their context.
+				An <code>.adsum/</code> folder remembers your board, goal and open bugs between chats. Context bugs are fixed and
+				compaction warns you first. Captures are searched by pattern instead of read whole — one went from 333,000 tokens
+				to a few thousand. Plus deeper nRF54L knowledge and native DeepSeek.
 			</div>
 		</div>
 	)

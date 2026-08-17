@@ -5,7 +5,6 @@ import { TrackWorktreeViewOpenedRequest } from "@shared/proto/cline/worktree"
 import { GitBranch } from "lucide-react"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import BannerCarousel from "@/components/common/BannerCarousel"
-import WhatsNewModal from "@/components/common/WhatsNewModal"
 import HistoryPreview from "@/components/history/HistoryPreview"
 import { useApiConfigurationHandlers } from "@/components/settings/utils/useApiConfigurationHandlers"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -32,10 +31,6 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
 	shouldShowQuickWins,
 }) => {
 	const { lastDismissedInfoBannerVersion, lastDismissedCliBannerVersion, lastDismissedModelBannerVersion } = useExtensionState()
-
-	// Track if we've shown the "What's New" modal this session
-	const [hasShownWhatsNewModal, setHasShownWhatsNewModal] = useState(false)
-	const [showWhatsNewModal, setShowWhatsNewModal] = useState(false)
 
 	// Quick launch worktree modal
 	const [showCreateWorktreeModal, setShowCreateWorktreeModal] = useState(false)
@@ -67,20 +62,6 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
 		banners,
 	} = useExtensionState()
 	const { handleFieldsChange } = useApiConfigurationHandlers()
-
-	// Show modal when there's a new announcement and we haven't shown it this session
-	useEffect(() => {
-		if (showAnnouncement && !hasShownWhatsNewModal) {
-			setShowWhatsNewModal(true)
-			setHasShownWhatsNewModal(true)
-		}
-	}, [showAnnouncement, hasShownWhatsNewModal])
-
-	const handleCloseWhatsNewModal = useCallback(() => {
-		setShowWhatsNewModal(false)
-		// Call hideAnnouncement to persist dismissal (same as old banner behavior)
-		hideAnnouncement()
-	}, [hideAnnouncement])
 
 	// Handle click on home page worktree element with telemetry
 	const handleWorktreeClick = useCallback(() => {
@@ -231,17 +212,14 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
 
 	return (
 		<div className="flex flex-col flex-1 w-full h-full p-0 m-0">
-			<WhatsNewModal onClose={handleCloseWhatsNewModal} open={showWhatsNewModal} version={version} />
 			<div className="overflow-y-auto flex flex-col pb-2.5">
 				<HomeHeader shouldShowQuickWins={shouldShowQuickWins} />
-				{!showWhatsNewModal && (
-					<>
-						<BannerCarousel banners={activeBanners} />
-						{!shouldShowQuickWins && taskHistory.length > 0 && <HistoryPreview showHistoryView={showHistoryView} />}
-						{/* Quick launch worktree button */}
-						{isGitRepo && worktreesEnabled?.featureFlag && worktreesEnabled?.user && (
-							<div className="flex flex-col items-center gap-3 mt-2 mb-4 px-5">
-								{/* TODO: Re-enable once worktree creation is stable
+				<BannerCarousel banners={activeBanners} />
+				{!shouldShowQuickWins && taskHistory.length > 0 && <HistoryPreview showHistoryView={showHistoryView} />}
+				{/* Quick launch worktree button */}
+				{isGitRepo && worktreesEnabled?.featureFlag && worktreesEnabled?.user && (
+					<div className="flex flex-col items-center gap-3 mt-2 mb-4 px-5">
+						{/* TODO: Re-enable once worktree creation is stable
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<button
@@ -258,33 +236,29 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
 									</TooltipContent>
 								</Tooltip>
 								*/}
-								{currentWorktree && (
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<button
-												className="flex flex-col items-center gap-0.5 text-xs text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] cursor-pointer bg-transparent border-none p-1 rounded"
-												onClick={handleWorktreeClick}
-												type="button">
-												<div className="flex items-center gap-1.5 text-xs">
-													<GitBranch className="w-3 h-3 stroke-[2.5] flex-shrink-0" />
-													<span className="break-all text-center">
-														<span className="font-semibold">Current:</span>{" "}
-														{currentWorktree.branch || "detached HEAD"}
-													</span>
-												</div>
-												<span className="break-all text-center max-w-[300px]">
-													{currentWorktree.path}
-												</span>
-											</button>
-										</TooltipTrigger>
-										<TooltipContent side="bottom">
-											View and manage git worktrees. Great for running parallel debugging tasks.
-										</TooltipContent>
-									</Tooltip>
-								)}
-							</div>
+						{currentWorktree && (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										className="flex flex-col items-center gap-0.5 text-xs text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] cursor-pointer bg-transparent border-none p-1 rounded"
+										onClick={handleWorktreeClick}
+										type="button">
+										<div className="flex items-center gap-1.5 text-xs">
+											<GitBranch className="w-3 h-3 stroke-[2.5] flex-shrink-0" />
+											<span className="break-all text-center">
+												<span className="font-semibold">Current:</span>{" "}
+												{currentWorktree.branch || "detached HEAD"}
+											</span>
+										</div>
+										<span className="break-all text-center max-w-[300px]">{currentWorktree.path}</span>
+									</button>
+								</TooltipTrigger>
+								<TooltipContent side="bottom">
+									View and manage git worktrees. Great for running parallel debugging tasks.
+								</TooltipContent>
+							</Tooltip>
 						)}
-					</>
+					</div>
 				)}
 			</div>
 			<SuggestedTasks shouldShowQuickWins={shouldShowQuickWins} />
