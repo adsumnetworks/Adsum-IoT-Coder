@@ -22,9 +22,9 @@
 
 **[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[CRA readiness →](#cra-readiness-sbom-cve-and-secure-by-design)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
 
-<a href="https://youtu.be/WrRYutpmHi8" target="_blank" rel="noopener noreferrer"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder building and debugging ESP32 and nRF firmware in VS Code" /></a>
+<a href="https://www.youtube.com/playlist?list=PLYh65pF22Elk" target="_blank" rel="noopener noreferrer"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder building and debugging ESP32 and nRF firmware in VS Code" /></a>
 
-**[▶ See it build a two-chip BLE-to-WiFi gateway from one spec →](https://youtu.be/WrRYutpmHi8)** · **[Read the walkthrough →](https://docs.adsumnetworks.com/ble-wifi-gateway)**
+**[▶ Watch an industrial dual-chip gateway (BLE + Wi-Fi) built, debugged, and CRA-checked in under 30 minutes →](https://www.youtube.com/playlist?list=PLYh65pF22Elk)** · **[Read the walkthrough →](https://docs.adsumnetworks.com/ble-wifi-gateway)**
 
 **No key, no account, no card.** The free tier is on by default: install and see it work on a real bug in your first minute.
 
@@ -36,27 +36,27 @@
 
 <p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
 
-## What's New <sup>`v0.2.0`</sup>
+## What's New <sup>`v0.2.1`</sup>
 
-<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Build a whole product, not just a fix.** Expanded curated firmware knowledge now carries a full, long-horizon build end to end. The launch build: a complete two-chip BLE-to-WiFi gateway, an nRF52840 BLE scanner on Zephyr and an ESP32 Wi-Fi and MQTT uplink on ESP-IDF, for the Fanstel board, from one spec in one working session with you approving each step. It holds the thread across both toolchains without losing context. **[See the build](https://youtu.be/WrRYutpmHi8)** or **[read the walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway)**.
+<img src="assets/icons/whatsnew-knowledge.png" width="18" valign="middle" alt="" /> &nbsp;**Project memory.** Each project gets an `.adsum/` folder holding the board, the transport, the goal, and open defects. A new chat starts with that context instead of asking again. Multi-app repositories get one memory per app plus a shared one.
 
-<img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Run it on your model, or your key.** A curated model picker: the free tier, the GLM Coding Plan, Claude (Sonnet 5, Opus 4.8, Haiku 4.5), DeepSeek V4, and any OpenAI or Anthropic-compatible endpoint, cloud or local. Switch on a live task, no restart.
+<img src="assets/icons/whatsnew-wave.png" width="18" valign="middle" alt="" /> &nbsp;**Long sessions.** Fixed three context-window accounting bugs, including the cause of `Prompt exceeds max length`. Compaction now tells you before it runs and keeps the goal, the board, the current bug, and the open file.
 
-<img src="assets/icons/whatsnew-knowledge.png" width="18" valign="middle" alt="" /> &nbsp;**Credited expertise.** When the agent uses a piece of curated knowledge, it names the engineer who wrote it, right in the conversation, linked. Human-curated, never anonymous AI output.
+<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Log search.** RTT, UART, HCI, and sniffer captures are searched by pattern and read by line range instead of loaded whole. A real capture that cost 333,000 tokens now costs a few thousand.
 
-And every task rests on a clear next step instead of a dead-end "done". *[Full changelog](./CHANGELOG.md).*
+<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Deeper nRF54 support.** Board knowledge for the nRF54L15 DK, the nRF54LM20 DK, and the nRF54LM20A, plus a migration guide from nRF52840 to nRF54L. The board is identified from connected hardware before the first build, and you are warned when a board needs a newer nRF Connect SDK than you have.
 
-<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Now on Open VSX.** Cursor, Windsurf, VSCodium, and other VS Code-compatible editors can [install it](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) too.
+<img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**DeepSeek, natively.** Previously available only through a generic BYOK endpoint; now a provider in Settings with correct context length and pricing. Extended thinking can be switched off for routine steps to save tokens, or set to Low, High, or Max for debugging.
 
-**Recently, in `v0.1.8`:**
-
-<img src="assets/icons/whatsnew-wave.png" width="18" valign="middle" alt="" /> &nbsp;**See a bug at every layer.** The 3-layer BLE debug across the app log, the HCI bus, and the over-the-air radio.
+**Recently, in `v0.2.0`:** a complete two-chip industrial gateway, an nRF52840 BLE scanner and an ESP32 Wi-Fi/MQTT uplink, built, debugged, and CRA-checked from one spec **in under 30 minutes**, plus the curated model picker and credited expertise. **[Watch the playlist](https://www.youtube.com/playlist?list=PLYh65pF22Elk)** · **[read the walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway)**
 
 **And in `v0.1.7`, the flagship:** one-click CRA readiness, an SBOM (SPDX), a secure-by-design posture check, and a CVE fix loop, covered in full [below](#cra-readiness-sbom-cve-and-secure-by-design). *Full history in the [changelog](./CHANGELOG.md).*
 
 ## CRA Readiness: SBOM, CVE, and secure-by-design
 
 One click runs a build-time readiness check for the **EU Cyber Resilience Act (CRA)**, on both nRF and ESP. A readiness snapshot to help you prepare, **not a conformity assessment and not legal advice.**
+
+**[▶ Watch the CRA check run on a real gateway build →](https://www.youtube.com/watch?v=uwl76c6FuY0)**
 
 - **SBOM from your real build.** A machine-readable software bill of materials (SPDX), the CRA's named artifact, generated from your actual build with the vendor-native tools.
 - **Known-CVE scan across your SBOM.** Matches your build's identifiable components (CPE/PURL) against public advisory databases (the EU's EUVD, NVD, and OSV) and lists what's found, with coverage stated honestly. Never a pass/fail verdict.
@@ -86,12 +86,13 @@ It is also the direction frontier research points to: equip a general model with
 ## What it does: debug, build, and prototype ESP and nRF firmware
 
 - **Automatic platform detection.** nRF, ESP, both, or a fresh start, with the right tools for each.
-- **Carry a full product build.** From one spec to a working two-chip BLE-to-WiFi gateway (nRF52840 + ESP32), across both toolchains, in one working session, with you approving each step. [See the walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway).
+- **Carry a full product build.** From one spec to a working two-chip BLE-to-WiFi industrial gateway (nRF52840 + ESP32), across both toolchains, built, debugged, and CRA-checked in under 30 minutes, with you approving each step. [Watch the playlist](https://www.youtube.com/playlist?list=PLYh65pF22Elk) · [walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway).
 - **Build, flash & debug.** The full loop on real hardware: build, flash, capture live logs (RTT/UART on nRF, serial monitor on ESP), analyze, fix, repeat.
 - **Capture & analyze device logs.** Correlated with your source, across one board or two.
 - **Debug across all three layers.** The agent correlates the app log, the HCI bus, and the over-the-air radio, so you see where a BLE flow actually breaks, not just what the app logged. A guided sample run makes it easy to try, no hardware required.
 - **Start a prototype, add a feature.** Scaffold a new nRF or ESP-IDF project; wire a BLE service, sensor, shell, or storage into your real project.
 - **Test & validate.** Host tests and on-hardware checks.
+- **Hand a session to your own agent (beta).** Export a session as one redacted file, or hand a running task to your own coding agent: Adsum brings the embedded expertise and drives the toolchain while your agent does the work.
 - **Check CRA readiness.** One click: an SBOM (SPDX) plus a secure-by-design posture snapshot from your real build, on nRF and ESP. See [CRA Readiness](#cra-readiness-sbom-cve-and-secure-by-design).
 
 <p align="center">
@@ -105,9 +106,9 @@ It is also the direction frontier research points to: equip a general model with
 
 | Platform | Chips (today) | SDK | Protocols (today) |
 |:---|:---|:---|:---|
-| **Nordic** | nRF52, nRF53, nRF54 | nRF Connect SDK (Zephyr) | BLE |
+| **Nordic** | nRF52, nRF53, nRF54 (L15, LM20) | nRF Connect SDK (Zephyr) | BLE |
 | **Espressif** | ESP32, ESP32-S3, ESP32-C6 | ESP-IDF | Wi-Fi, BLE |
-| **Roadmap** | nRF7x (Wi-Fi), nRF9x (cellular) | | Thread, Matter, LTE-M |
+| **Roadmap** | nRF7x (Wi-Fi), nRF9x (LTE-M, NB-IoT), Linux devices (NVIDIA Jetson, Raspberry Pi) | | DECT NR+, NTN, 5G / 5G RedCap via hats |
 
 CRA readiness (SBOM + secure-by-design posture) runs on both Nordic and Espressif builds.
 
@@ -130,11 +131,11 @@ Full methodology, per-task results, and honest limitations are in the [benchmark
 
 Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) or [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) (for Cursor, Windsurf, and VSCodium) directly. No key, no account: the free tier is on by default.
 
-**Prerequisites:** the [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) for nRF work, or an ESP-IDF installation for ESP, plus Python 3.8+. Full requirements are in the [docs](https://docs.adsumnetworks.com/getting-started).
+**Prerequisites:** the [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) for nRF work, or an ESP-IDF installation for ESP. The nRF54LM20 boards need nRF Connect SDK 3.3.0 or newer. Full requirements are in the [docs](https://docs.adsumnetworks.com/getting-started).
 
-1. Run the built-in **30-second demo** (no board needed) to see the capture, analyze, fix loop on a real BLE bug.
-2. Open your **nRF or ESP project**; the home reads it, detects your boards and toolchain, and offers the right one-click workflows.
-3. Run the **one-click CRA readiness check** on a bundled sample (nothing open) or your own build, and see the SBOM and secure-by-design posture in under a minute.
+1. Start with a **sample run**, no board needed: the 30-second BLE debug demo, or the CRA readiness check on a bundled sample.
+2. Open your **nRF or ESP project**; the home reads it and detects your boards and toolchain.
+3. Pick one of the proposed **workflow cards**: *Build/flash & debug*, *Add a feature*, *Test & validate*, or *CRA SBOM & Fix*. For example: capture and analyze live logs from your board, add a BLE service to your project, or generate an SBOM from your real build.
 4. Bring your own model whenever you want; the running task continues, no restart.
 
 ## Free tier: put it to work in your first minute, on us
@@ -152,11 +153,11 @@ When you want your own model or heavier usage, drop in a key for the GLM Coding 
 | **Model** | Managed by Adsum | GLM, Claude, DeepSeek, or any compatible model |
 | **Best for** | First run, evaluation, quick fixes | Daily driver, long sessions, model choice |
 
-Adsum ships a curated picker: the **GLM Coding Plan**, **Claude** (Sonnet 5, Opus 4.8, Haiku 4.5), **DeepSeek V4**, and any **OpenAI or Anthropic-compatible** endpoint, cloud or local. Recommended: **Claude Sonnet 5** for the strongest results, **Claude Haiku 4.5** (the benchmark model) for speed, the **GLM Coding Plan** or **DeepSeek V4** for cost-effective long sessions, or a **local model** to keep everything on your machine. Full setup and tested models in the [docs](https://docs.adsumnetworks.com/models).
+Adsum ships a curated picker: the **GLM Coding Plan**, **Claude**, **DeepSeek**, and any **OpenAI or Anthropic-compatible** endpoint, cloud or local. Recommended: **Claude Sonnet** for the strongest results, **Claude Haiku** (the benchmark model) for speed, the **GLM Coding Plan** or **DeepSeek** for cost-effective long sessions, or a **local model** to keep everything on your machine. Full setup and tested models in the [docs](https://docs.adsumnetworks.com/models).
 
 ## Roadmap
 
-**Next:** more chips (nRF7x Wi-Fi, nRF9x cellular, more ESP32 variants), more protocols (Thread, Matter, LTE-M), 3-layer decoding beyond BLE, power profiling, a growing community knowledge base, and, in beta, handing a running task to your own coding agent, so Adsum brings the embedded expertise and drives the toolchain while your agent does the work. The roadmap is shaped by what the community asks for and contributes.
+**Next:** full nRF9x and nRF7x support: cellular (LTE-M, NB-IoT), DECT NR+, and non-terrestrial networks (NTN). Linux-based devices, including NVIDIA Jetson and Raspberry Pi, with cellular hats (5G, 5G RedCap, NTN) alongside nRF and ESP radios. Modular, composable IoT gateways as first-class targets. And Adsum working inside your own coding agent, so you stay in the agent you prefer. The roadmap is shaped by what the community asks for and contributes.
 
 ## Contributing
 
@@ -172,7 +173,7 @@ We publish what is true today. **Adsum is an AI-based coding agent and can make 
 
 ## Privacy & Security
 
-The runtime runs entirely on your machine. Only the log snippets and code context a task needs go to the AI provider you configure. BYOK: you control which model and endpoint you trust. Pseudonymous product analytics only (installs, activations, feature usage, errors), keyed to a random install ID; never your source code, chat content, or device logs. Opt out anytime with `telemetry.telemetryLevel: off`. Source is fully open and auditable.
+The runtime runs entirely on your machine, and so is your project memory: the `.adsum/` folder lives in your repo and is never uploaded. Only the log snippets and code context a task needs go to the AI provider you configure. BYOK: you control which model and endpoint you trust. Pseudonymous product analytics only (installs, activations, feature usage, errors), keyed to a random install ID; never your source code, chat content, or device logs. Opt out anytime with `telemetry.telemetryLevel: off`. Source is fully open and auditable.
 
 ## About
 
