@@ -16,7 +16,7 @@ import type { ToolValidator } from "../ToolValidator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
-import { emptyLogSearchGuidance } from "./emptySearchGuidance"
+import { emptyLogSearchGuidance, isLogSearchPath } from "./emptySearchGuidance"
 
 export class SearchFilesToolHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.SEARCH
@@ -283,8 +283,19 @@ export class SearchFilesToolHandler implements IFullyManagedTool {
 		// A log search that matched nothing is where search-before-read gets abandoned: "Found 0 results."
 		// is true and offers no next move, so the model falls back to reading the whole capture. Say what
 		// to do instead, at the only moment it is actionable.
-		if (/^Found 0 results\.?$/m.test(results.trim())) {
+		const foundNothing = /^Found 0 results\.?$/m.test(results.trim())
+		if (foundNothing) {
 			results += emptyLogSearchGuidance(relDirPath, regex)
+		}
+
+		// 0.2.1 log search: only for searches inside a capture directory — that is the doctrine we shipped and
+		// the token claim we made. Counts only; the regex, the path and the matched lines never leave.
+		if (isLogSearchPath(relDirPath)) {
+			telemetryService.captureLogSearched({
+				matches: searchResults.reduce((n, r) => n + (r.resultCount || 0), 0),
+				linesReturned: results.split("\n").length,
+				fellBackToFullRead: foundNothing,
+			})
 		}
 
 		// Capture workspace search pattern telemetry

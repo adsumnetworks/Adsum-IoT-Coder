@@ -25,6 +25,8 @@ import {
 import { sendPartialMessageEvent } from "@core/controller/ui/subscribeToPartialMessage"
 import { executePreCompactHookWithCleanup, HookCancellationError, HookExecution } from "@core/hooks/precompact-executor"
 import { ClineIgnoreController } from "@core/ignore/ClineIgnoreController"
+import { shouldInjectMap } from "@core/memory/workspace/mapGate"
+import { readMapMd, readProjectMd } from "@core/memory/workspace/store"
 import { withProjectStateTail } from "@core/memory/workspace/tailBlock"
 import { parseMentions } from "@core/mentions"
 import { CommandPermissionController } from "@core/permissions"
@@ -538,6 +540,21 @@ export class Task {
 		} else {
 			// New task started
 			telemetryService.captureTaskCreated(this.ulid, currentProvider, openAiCompatibleDomain, currentModelId)
+		}
+
+		// 0.2.1 project memory: the payoff event — did this task open already knowing the project? Emitted
+		// here, once per task, rather than from the prompt builder that reruns every request. Fired on both
+		// outcomes: "no memory yet" is the adoption denominator. Counts and enums only, never the content.
+		try {
+			const projectMd = readProjectMd(this.cwd)
+			const mapMd = shouldInjectMap(this.cwd) ? readMapMd(this.cwd) : ""
+			telemetryService.captureMemoryRead({
+				hadMemory: !!(projectMd || mapMd),
+				scope: mapMd ? (projectMd ? "project+map" : "map") : projectMd ? "project" : "none",
+				fieldCount: projectMd ? projectMd.split("\n").filter((l) => l.trim().startsWith("-")).length : 0,
+			})
+		} catch {
+			// Telemetry must never be able to stop a task from starting.
 		}
 
 		// Initialize command executor with config and callbacks

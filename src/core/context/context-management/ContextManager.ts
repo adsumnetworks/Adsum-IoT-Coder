@@ -7,6 +7,7 @@ import { fileExistsAtPath } from "@utils/fs"
 import cloneDeep from "clone-deep"
 import fs from "fs/promises"
 import * as path from "path"
+import { telemetryService } from "@/services/telemetry"
 import { buildCompactionLedger } from "./CompactionLedger"
 import { buildCompactionState, isCompactionStateValid, loadCompactionState, saveCompactionState } from "./CompactionState"
 import { estimateTotalTokens, planTokenAwareTruncation, projectContextBudget } from "./ContextBudget"
@@ -303,11 +304,9 @@ export class ContextManager {
 							// go ahead with truncation — carry a deterministic task-state ledger into the
 							// notice so the model keeps the load-bearing facts (progress, last error,
 							// capture paths, edited files, user guidance) across the wipe.
+							const ledger = buildCompactionLedger(clineMessages)
 							anyContextUpdates =
-								this.applyStandardContextTruncationNoticeChange(
-									timestamp,
-									buildCompactionLedger(clineMessages),
-								) || anyContextUpdates
+								this.applyStandardContextTruncationNoticeChange(timestamp, ledger) || anyContextUpdates
 
 							// Prefer the TOKEN-AWARE plan: drop the oldest material actually responsible for the
 							// overflow while protecting the opening pair and the recent tail. Count-based
@@ -332,6 +331,13 @@ export class ContextManager {
 
 							updatedConversationHistoryDeletedRange = true
 
+							// Measured once and shared: getAndAlterTruncatedMessages re-runs the tool-pairing repair
+							// over the whole history, so a second call just for telemetry would pay that cost — and
+							// run that mutation — twice per compaction.
+							const tokensAfter = estimateTotalTokens(
+								this.getAndAlterTruncatedMessages(apiConversationHistory, conversationHistoryDeletedRange),
+							)
+
 							// Record WHAT was compacted, fingerprinted, so a resume can tell whether this still
 							// describes the history on disk. The canonical transcript is never rewritten.
 							await saveCompactionState(
@@ -340,16 +346,22 @@ export class ContextManager {
 									messages: apiConversationHistory,
 									compactedThroughIndex: conversationHistoryDeletedRange[1],
 									tokensBefore,
-									tokensAfter: estimateTotalTokens(
-										this.getAndAlterTruncatedMessages(
-											apiConversationHistory,
-											conversationHistoryDeletedRange,
-										),
-									),
+									tokensAfter,
 									strategy: planned ? "token-aware" : "count-based",
 									modelId: api.getModel().id,
 								}),
 							)
+
+							// 0.2.1 "long sessions hold up": measure the compaction rather than assert it. Tokens
+							// either side, how many ledger facts survived the wipe, and which strategy won. No
+							// message content, no paths.
+							telemetryService.captureContextCompacted({
+								tokensBefore,
+								tokensAfter,
+								keptCount: ledger.split("\n").filter((l) => l.trim()).length,
+								strategy: planned ? "token-aware" : "count-based",
+								trigger: budget.state,
+							})
 						}
 
 						// if we alter the context history, save the updated version to disk

@@ -4,6 +4,7 @@ import { type MemoryTarget, validateMemoryWrite } from "@core/memory/workspace/w
 import { formatResponse } from "@core/prompts/responses"
 import path from "path"
 import { ADSUM_DIR } from "@/core/memory/workspace/paths"
+import { telemetryService } from "@/services/telemetry"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
@@ -117,6 +118,11 @@ export class UpdateProjectMemoryHandler implements IFullyManagedTool {
 		// unexpected throw comes back as a tool error the model can act on.
 		try {
 			const result = applyMemoryWrite(config.cwd, decision, new Date().toISOString())
+			if (result.ok) {
+				// 0.2.1 project memory: adoption signal. `target` is the enum the tool already validated
+				// (status/note/project/dir) — never the note body, the id, or the path.
+				telemetryService.captureMemoryWritten({ scope: decision.target })
+			}
 			return result.ok ? result.message : formatResponse.toolError(result.message)
 		} catch (error) {
 			return formatResponse.toolError(`Failed to save project memory: ${error instanceof Error ? error.message : error}`)
