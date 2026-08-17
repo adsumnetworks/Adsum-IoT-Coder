@@ -125,6 +125,9 @@ export async function updateSettings(controller: Controller, request: UpdateSett
 			}
 
 			controller.stateManager.setGlobalState("openaiReasoningEffort", reasoningEffort)
+			// 0.2.1 efficiency dial: the developer changed the thinking level. The enum only — this is the
+			// evidence for "turning reasoning off on routine steps is a real saving", which we claim publicly.
+			telemetryService.captureThinkingChanged({ level: reasoningEffort })
 		}
 
 		if (request.preferredLanguage !== undefined) {

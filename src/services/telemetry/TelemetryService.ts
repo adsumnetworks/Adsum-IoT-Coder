@@ -353,6 +353,14 @@ export class TelemetryService {
 			MENTION_USED: "task.mention_used",
 			MENTION_FAILED: "task.mention_failed",
 			MENTION_SEARCH_RESULTS: "task.mention_search_results",
+			// 0.2.1 efficiency + memory telemetry: does the release's headline work get used, and does the
+			// token saving actually land in the field? Counts and enums only — never a log line, a note body,
+			// or a path.
+			LOG_SEARCHED: "task.log_searched",
+			CONTEXT_COMPACTED: "task.context_compacted",
+			MEMORY_WRITTEN: "task.memory_written",
+			MEMORY_READ: "task.memory_read",
+			THINKING_CHANGED: "task.thinking_changed",
 			// Multi-workspace search pattern tracking
 			WORKSPACE_SEARCH_PATTERN: "task.workspace_search_pattern",
 			// CLI Subagents telemetry events
@@ -2501,6 +2509,50 @@ export class TelemetryService {
 	 *  "verdict-leak","package-count","missing-readiness-disclaimer"); NEVER report content. Honesty-moat health. */
 	public captureCraReportRejected(props: { iot_platform?: string; issueCount?: number; kinds?: string[] } = {}) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.CRA_REPORT_REJECTED, properties: { ...props } })
+	}
+
+	/** 0.2.1 log search: the search-before-read doctrine ran. `matches`/`linesReturned` measure whether the
+	 *  token saving lands in the field; `fellBackToFullRead` is the honest failure signal (search found nothing
+	 *  and the agent read the file anyway). Never sends the regex, the path, or any log line. */
+	public captureLogSearched(props: {
+		iot_platform?: string
+		transport?: string
+		matches?: number
+		linesReturned?: number
+		fellBackToFullRead?: boolean
+	}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.LOG_SEARCHED, properties: { ...props } })
+	}
+
+	/** 0.2.1 compaction: a context compaction ran. Token counts either side + how many pinned facts survived,
+	 *  so "long sessions hold up" is measurable rather than asserted. No message content. */
+	public captureContextCompacted(props: {
+		iot_platform?: string
+		tokensBefore?: number
+		tokensAfter?: number
+		keptCount?: number
+		strategy?: string
+		trigger?: string
+	}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.CONTEXT_COMPACTED, properties: { ...props } })
+	}
+
+	/** 0.2.1 project memory: the `.adsum/` folder was written. `scope` = app|shared, `fieldCount` = how many
+	 *  facts the memory now holds. Never the note bodies, the board name, or the folder path. */
+	public captureMemoryWritten(props: { iot_platform?: string; scope?: string; fieldCount?: number }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.MEMORY_WRITTEN, properties: { ...props } })
+	}
+
+	/** 0.2.1 project memory: memory was read at task start — the payoff event ("a new chat already knows your
+	 *  hardware"). `hadMemory` false means the project had none yet, which is the adoption denominator. */
+	public captureMemoryRead(props: { iot_platform?: string; hadMemory?: boolean; scope?: string; fieldCount?: number }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.MEMORY_READ, properties: { ...props } })
+	}
+
+	/** 0.2.1 DeepSeek thinking control: the developer changed the extended-thinking level. `level` is the enum
+	 *  (off|low|high|max) — the efficiency dial's real usage, and the evidence for the token-cost claim. */
+	public captureThinkingChanged(props: { level?: string; provider?: string; model?: string }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.THINKING_CHANGED, properties: { ...props } })
 	}
 
 	/** A built-in tool was mis-called via use_mcp_tool and the host intercepted it (free-tier confusion signal). */

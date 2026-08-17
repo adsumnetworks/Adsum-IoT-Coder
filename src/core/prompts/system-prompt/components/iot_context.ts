@@ -804,6 +804,9 @@ function buildProjectMemorySection(cwd: string): string {
 	migrateLegacyMemory(cwd)
 	const projectMd = readProjectMd(cwd)
 	const mapMd = shouldInjectMap(cwd) ? readMapMd(cwd) : ""
+	// Deliberately NOT the telemetry site: this runs on every API request, so a capture here would fire
+	// dozens of times per task and weight adoption by session length. `task.memory_read` is emitted once
+	// per task from Task's start path instead.
 	if (!projectMd && !mapMd) {
 		return ""
 	}
