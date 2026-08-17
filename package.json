@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.2.1",
+	"version": "0.2.1-a",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -443,6 +443,8 @@
 		"test:nordic": "cross-env TS_NODE_PROJECT=./tsconfig.unit-test.json mocha --config mocha-nordic.json",
 		"test:nordic:scripts": "bash scripts/test-nordic-scripts.sh",
 		"test:hil": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-test.ts",
+		"test:cellular": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/__tests__/cellularDetect.node-test.ts",
+		"test:hil-cellular": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-cellular.ts",
 		"test:hil-identity": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-device-identity.ts",
 		"dev:decode": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/decode-capture.ts",
 		"test:coverage": "vscode-test --coverage",

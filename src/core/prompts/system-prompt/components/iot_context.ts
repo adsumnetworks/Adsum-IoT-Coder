@@ -7,7 +7,7 @@ import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 import { ncsGateNotice } from "@/services/knowledge/kbit/ncsGate"
 import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { routePlatform } from "@/services/platform/platformRouting"
-import { getCachedWorkspaceSummary, NRF_BLE_RE } from "@/services/platform/WorkspaceClassifier"
+import { getCachedWorkspaceSummary, NRF_BLE_RE, NRF_CELLULAR_RE, NRF91_BOARD_RE } from "@/services/platform/WorkspaceClassifier"
 import { fileExistsAtPath } from "@/utils/fs"
 import { shouldInjectMap } from "../../../memory/workspace/mapGate"
 import { migrateLegacyMemory } from "../../../memory/workspace/migrate"
@@ -116,9 +116,10 @@ async function findAllBuildInfos(cwd: string): Promise<Array<{ dir: string; boar
  */
 async function detectProjectFeatures(
 	cwd: string,
-): Promise<{ hasBle: boolean; builds: Array<{ dir: string; boardTarget: string | null }> }> {
+): Promise<{ hasBle: boolean; hasCellular: boolean; builds: Array<{ dir: string; boardTarget: string | null }> }> {
 	const prjConfPath = path.join(cwd, "prj.conf")
 	let hasBle = false
+	let hasCellular = false
 
 	try {
 		if (await fileExistsAtPath(prjConfPath)) {
@@ -126,6 +127,7 @@ async function detectProjectFeatures(
 			// Shared anchored test with the welcome-screen probe (WorkspaceClassifier) so the two BLE detectors
 			// agree — rejects commented / `=yes` / `CONFIG_BT_*` lines a bare substring would mis-match.
 			hasBle = NRF_BLE_RE.test(content)
+			hasCellular = NRF_CELLULAR_RE.test(content)
 		}
 	} catch {
 		// Silent fail
@@ -134,7 +136,14 @@ async function detectProjectFeatures(
 	// Scan for all build dirs (supports custom names: build_52840, build_central, etc.)
 	const builds = await findAllBuildInfos(cwd)
 
-	return { hasBle, builds }
+	// An nRF91 board target is proof on its own. A project can be built for a cellular DK before its
+	// prj.conf enables the modem library (a bring-up skeleton, a hello-world on the DK), and it is still
+	// a cellular project the moment the developer picks that board.
+	if (!hasCellular && builds.some((b) => b.boardTarget && NRF91_BOARD_RE.test(b.boardTarget))) {
+		hasCellular = true
+	}
+
+	return { hasBle, hasCellular, builds }
 }
 
 /**
@@ -166,6 +175,19 @@ export function getBoardKnowledgeFile(boardTarget: string): string | null {
 	// nRF54L15 DK. Also serves the nRF54L10 and nRF54L05 emulation targets, which only exist ON this DK.
 	if (lower.includes("nrf54l15") || lower.includes("nrf54l10") || lower.includes("nrf54l05")) {
 		return "platforms/nrf/boards/nrf54l15dk.md"
+	}
+
+	// nRF91 cellular kits. Same platform as every other nRF board: same vendor, same SDK, same west/nrfutil
+	// toolchain, same workflows and actions. Only the boards and the radio knowledge differ, so they live in
+	// platforms/nrf like everything else rather than in a platform of their own.
+	if (lower.includes("nrf9151")) {
+		return "platforms/nrf/boards/nrf9151dk.md"
+	}
+	if (lower.includes("nrf9161")) {
+		return "platforms/nrf/boards/nrf9161dk.md"
+	}
+	if (lower.includes("nrf9160")) {
+		return "platforms/nrf/boards/nrf9160dk.md"
 	}
 
 	// nRF53 / nRF52.
@@ -575,12 +597,19 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	}
 
 	// On-demand: Feature-based loading
-	const { hasBle, builds } = await detectProjectFeatures(cwd)
+	const { hasBle, hasCellular, builds } = await detectProjectFeatures(cwd)
 
 	// Load BLE protocol knowledge if BLE is enabled
 	if (hasBle) {
 		ctx += "#### Protocol: BLE Detected\n\n"
 		ctx += (await load("platforms/nrf/sdks/ncs/protocols/BLE.md")) + "\n\n"
+	}
+
+	// Load cellular knowledge for an nRF91 project. NOT exclusive with BLE: an nRF9161 app can run both
+	// — BLE for local sensors, LTE for the uplink — which is exactly the gateway shape this product is for.
+	if (hasCellular) {
+		ctx += "#### Cellular / LTE Detected (nRF91)\n\n"
+		ctx += (await load("platforms/nrf/sdks/ncs/protocols/LTE.md")) + "\n\n"
 	}
 
 	if (builds.length > 0) {
