@@ -108,7 +108,7 @@ It is also the direction frontier research points to: equip a general model with
 |:---|:---|:---|:---|
 | **Nordic** | nRF52, nRF53, nRF54 (L15, LM20) | nRF Connect SDK (Zephyr) | BLE |
 | **Espressif** | ESP32, ESP32-S3, ESP32-C6 | ESP-IDF | Wi-Fi, BLE |
-| **Roadmap** | nRF7x (Wi-Fi), nRF9x (LTE-M, NB-IoT), Linux devices (NVIDIA Jetson, Raspberry Pi) | | DECT NR+, NTN, 5G / 5G RedCap via hats |
+| **Roadmap** | nRF7x (Wi-Fi), nRF9x (LTE-M, NB-IoT), on-device AI on nRF54 / ESP32, Linux devices (NVIDIA Jetson, Raspberry Pi) | | DECT NR+, NTN, 5G / 5G RedCap via hats |
 
 CRA readiness (SBOM + secure-by-design posture) runs on both Nordic and Espressif builds.
 
@@ -157,7 +157,7 @@ Adsum ships a curated picker: the **GLM Coding Plan**, **Claude**, **DeepSeek**,
 
 ## Roadmap
 
-**Next:** full nRF9x and nRF7x support: cellular (LTE-M, NB-IoT), DECT NR+, and non-terrestrial networks (NTN). Linux-based devices, including NVIDIA Jetson and Raspberry Pi, with cellular hats (5G, 5G RedCap, NTN) alongside nRF and ESP radios. Modular, composable IoT gateways as first-class targets. And Adsum working inside your own coding agent, so you stay in the agent you prefer. The roadmap is shaped by what the community asks for and contributes.
+**Next:** full nRF9x and nRF7x support: cellular (LTE-M, NB-IoT), DECT NR+, and non-terrestrial networks (NTN). Deeper integration of the on-device AI features of nRF54 and ESP32, so edge inference gets the same build, flash, observe, and fix loop as the rest of your firmware. Linux-based devices, including NVIDIA Jetson and Raspberry Pi, with cellular hats (5G, 5G RedCap, NTN) alongside nRF and ESP radios. Modular, composable IoT gateways as first-class targets. And Adsum working inside your own coding agent, so you stay in the agent you prefer. The roadmap is shaped by what the community asks for and contributes.
 
 ## Contributing
 
