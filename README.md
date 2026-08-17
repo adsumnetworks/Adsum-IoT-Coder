@@ -165,7 +165,7 @@ That result comes from the expertise the agent runs on, not the model: curated f
 
 **Contribute knowledge (embedded experts and specialists).** This is the part that makes the agent good, and it is written by engineers, not the model: the hard-won fixes and idioms you only get from shipping nRF and ESP firmware. We are building a dedicated studio for authoring this expertise and will open it to outside specialists once it has earned its keep in-house. If you have lived inside these failure modes and want to shape it as a founding contributor, get credited for your work, and keep the rights to it, [start a discussion](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions).
 
-**Contribute code (open-source developers).** The extension is open source (Apache-2.0, built on [Cline](https://github.com/cline/cline)). Improve the tool itself, or add a benchmark task in [`evals/`](./evals/). [Open an issue or PR](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues).
+**Contribute code (open-source developers).** The extension is open source (Apache-2.0, built on [Cline](https://github.com/cline/cline)). [Open an issue or PR](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues).
 
 ## Limitations
 
