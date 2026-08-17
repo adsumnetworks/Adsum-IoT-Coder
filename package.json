@@ -484,7 +484,8 @@
 		"test:project-anchor": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/projectAnchor.test.ts",
 		"test:ncs-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/ncsGate.test.ts",
 		"test:deepseek-thinking": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/api/providers/__tests__/deepseekThinking.node-test.ts",
-		"test:board-routing": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/boardRouting.node-test.ts"
+		"test:board-routing": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/boardRouting.node-test.ts",
+		"test:announcements": "ts-node --transpile-only -P tsconfig.unit-test.json src/utils/__tests__/announcementSurfaces.node-test.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [
