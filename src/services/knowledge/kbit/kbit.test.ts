@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { execSync } from "node:child_process"
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, test } from "node:test"
 import { indexManifest } from "../KnowledgeResolver"
@@ -298,6 +298,49 @@ describe("regression: live corpus", () => {
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
 		assert.equal(unmigrated.length, 0)
+	})
+
+	// THE durable delivery invariant: an id whose file lives in `Adsum-Backend/kbits/` is a registry bit,
+	// so it must NOT also exist in the bundled tree. "Bundled wins" at resolution time, so a collision
+	// silently shadows the registry version — the proprietary bit is paid for, published, and never served.
+	//
+	// This replaces trusting a hardcoded list: the CRA_MIGRATED allowlist below could only catch ids someone
+	// remembered to add, which is exactly how `analyze-logs` re-entered the bundled tree in 0.2.1 (Wave 3)
+	// and shipped past a green suite. Reading the sibling folder is self-maintaining — a new registry bit is
+	// protected the moment it is authored, with no list to update.
+	//
+	// Skips (does not fail) when the Backend repo is not checked out beside this one: contributors and CI
+	// clone the extension alone, and the registry-side truth simply is not present to compare against.
+	test("no bundled bit shadows a registry bit (sibling Adsum-Backend/kbits is the delivery source of truth)", () => {
+		const registryRoot = join(REPO_ROOT, "..", "Adsum-Backend", "kbits")
+		if (!existsSync(registryRoot)) {
+			return // sibling repo absent — nothing to compare
+		}
+		const registryIds = new Set<string>()
+		const walk = (dir: string) => {
+			for (const e of readdirSync(dir, { withFileTypes: true })) {
+				const p = join(dir, e.name)
+				if (e.isDirectory()) {
+					walk(p)
+				} else if (e.name.endsWith(".md")) {
+					const id = /^id:\s*(.+)$/m.exec(extractFrontmatter(readFileSync(p, "utf8")).yaml)?.[1]?.trim()
+					if (id) {
+						registryIds.add(id)
+					}
+				}
+			}
+		}
+		walk(registryRoot)
+		assert.ok(registryIds.size > 0, "sibling registry folder present but no ids parsed — check the walk")
+
+		const bundled = JSON.parse(readFileSync(join(KNOWLEDGE_ROOT, "manifest.json"), "utf8")).bits as Array<{ id: string }>
+		const shadows = bundled.map((b) => b.id).filter((id) => registryIds.has(id))
+		assert.deepEqual(
+			shadows,
+			[],
+			`bundled bits shadow registry ids: ${shadows.join(", ")} — remove the bundled copy, or move the bit's single home. ` +
+				"Run `npm run kbit:check-drift` in Adsum-Backend for the full report.",
+		)
 	})
 
 	test("migration only added frontmatter — device-identity body unchanged since v0.1.5 (fb3a178f)", () => {
