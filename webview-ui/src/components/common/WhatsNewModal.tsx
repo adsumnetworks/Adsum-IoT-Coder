@@ -24,16 +24,20 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ open, onClose, ver
 
 					<ul className="text-sm pl-3 list-disc" style={{ color: "var(--vscode-descriptionForeground)" }}>
 						<li className="mb-2">
-							<strong>Real-workspace demo</strong> — one click runs the agent on a real NCS central + peripheral
-							project, with actual RTT logs from nRF hardware. No setup needed.
+							<strong>Project memory</strong> — an <code>.adsum/</code> folder keeps your board, goal and open bugs,
+							so a new chat starts already briefed.
 						</li>
 						<li className="mb-2">
-							<strong>Free tier</strong> — start debugging without an API key. Inference is provided by Adsum
-							Networks.
+							<strong>Longer sessions</strong> — context bugs fixed, and compaction warns you first and keeps the
+							goal, the board and the open file.
 						</li>
 						<li className="mb-2">
-							<strong>Context-aware guidance</strong> — the welcome screen now detects whether a project is open and
-							adapts its suggestions.
+							<strong>Log search</strong> — captures are searched by pattern instead of read whole: 333,000 tokens
+							down to a few thousand.
+						</li>
+						<li className="mb-2">
+							<strong>nRF54 and DeepSeek</strong> — deeper board knowledge for the nRF54L15 and nRF54LM20, and
+							DeepSeek with thinking you can turn off.
 						</li>
 					</ul>
 				</div>
