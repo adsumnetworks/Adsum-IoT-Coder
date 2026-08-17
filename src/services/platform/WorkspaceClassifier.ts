@@ -96,6 +96,26 @@ export const NRF_BLE_RE = /^\s*CONFIG_BT\s*=\s*y\s*(#.*)?$/im
 /** ESP-IDF Bluetooth enable: `CONFIG_BT_ENABLED=y` in sdkconfig / sdkconfig.defaults / build config. */
 const ESP_BLE_RE = /^\s*CONFIG_BT_ENABLED\s*=\s*y\s*(#.*)?$/im
 
+/**
+ * nRF91 CELLULAR master switch.
+ *
+ * An nRF91 app is a Zephyr app built with the same NCS toolchain as an nRF52 app, so nothing in the
+ * project shape distinguishes them — the modem library IS the distinguishing signal. `CONFIG_NRF_MODEM_LIB`
+ * is the one every cellular app must enable to talk to the modem at all; `CONFIG_LTE_LINK_CONTROL` is the
+ * link-management layer nearly all of them add on top. Either is proof.
+ *
+ * Anchored exactly like NRF_BLE_RE so a commented-out line or `=n` does not false-match.
+ */
+export const NRF_CELLULAR_RE = /^\s*CONFIG_(NRF_MODEM_LIB|LTE_LINK_CONTROL)\s*=\s*y\s*(#.*)?$/im
+
+/**
+ * An nRF91 board target, e.g. `nrf9161dk/nrf9161/ns`. Matches the DK names Nordic ships.
+ *
+ * `/ns` (non-secure) is the normal target for these parts because they run TF-M, so the suffix is
+ * optional here and must not be required.
+ */
+export const NRF91_BOARD_RE = /nrf91(51|60|61)dk/i
+
 /** A folder entry whose CONTENT we read for a BLE stack signal: any *.conf / *.overlay fragment plus the
  *  two unsuffixed ESP configs. Globbing (not a fixed list) catches overlay-bt.conf, prj_<variant>.conf,
  *  boards/<board>.conf-style fragments, sysbuild.conf, etc. — where BLE is very commonly enabled. */

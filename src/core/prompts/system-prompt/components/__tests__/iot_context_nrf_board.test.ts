@@ -44,7 +44,18 @@ describe("iot_context — nRF board routing", () => {
 		})
 
 		it("returns null for a board with no knowledge yet", () => {
-			expect(getBoardKnowledgeFile("nrf9160dk/nrf9160/ns")).to.be.null
+			// The nRF9160 used to be the example here. It now HAS a bit — nRF91 cellular support landed —
+			// so this needs a part we genuinely do not cover. Picked a real Nordic SoC with no bit rather
+			// than a made-up string, so the test keeps testing routing instead of testing nonsense.
+			expect(getBoardKnowledgeFile("nrf5340audio_dk/nrf5340/cpuapp")).to.not.equal(null)
+			expect(getBoardKnowledgeFile("nrf21540dk/nrf52840")).to.not.equal(null)
+			expect(getBoardKnowledgeFile("some_unknown_board/xyz123")).to.be.null
+		})
+
+		it("routes the nRF91 cellular kits", () => {
+			expect(getBoardKnowledgeFile("nrf9160dk/nrf9160/ns")).to.equal("platforms/nrf/boards/nrf9160dk.md")
+			expect(getBoardKnowledgeFile("nrf9161dk/nrf9161/ns")).to.equal("platforms/nrf/boards/nrf9161dk.md")
+			expect(getBoardKnowledgeFile("nrf9151dk/nrf9151/ns")).to.equal("platforms/nrf/boards/nrf9151dk.md")
 		})
 	})
 
