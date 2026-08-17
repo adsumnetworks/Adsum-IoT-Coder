@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 20,
+	"count": 18,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -16,21 +16,6 @@
 			"platform": "universal",
 			"path": "AGENT.md",
 			"content_hash": "a0056e88c79d6f85cd072f41a508dae64fa5506242403a0e19cb7da53e2b3120"
-		},
-		{
-			"id": "adsum/esp/actions/analyze-logs",
-			"title": "Action: Analyze Device Logs",
-			"type": "action",
-			"version": "1.0.0",
-			"owner": "adsum-core",
-			"author": "Omar Morceli",
-			"license": "CC-BY-SA-4.0",
-			"tier": "certified",
-			"delivery": "bundled",
-			"domain": "embedded-iot",
-			"platform": "esp",
-			"path": "platforms/esp/actions/analyze-logs.md",
-			"content_hash": "55b777c52e689e7d194373420a3fe799f2f7b8f967b893b8df08b35333fc88a4"
 		},
 		{
 			"id": "adsum/esp/platform",
@@ -106,21 +91,6 @@
 			"platform": "esp",
 			"path": "platforms/esp/sdks/esp-idf/SDK.md",
 			"content_hash": "a2a1d422fd5cef8164f26e7a35f20099156a705934ba16b65d6618131d44d558"
-		},
-		{
-			"id": "adsum/nrf/actions/analyze-logs",
-			"title": "Action: Analyze Device Logs",
-			"type": "action",
-			"version": "1.0.0",
-			"owner": "adsum-core",
-			"author": "Omar Morceli",
-			"license": "CC-BY-SA-4.0",
-			"tier": "certified",
-			"delivery": "bundled",
-			"domain": "embedded-iot",
-			"platform": "nrf",
-			"path": "platforms/nrf/actions/analyze-logs.md",
-			"content_hash": "a601efee942877b890d3fb25960c2dc422dbfdfb26fa7749a0ab99e8ac3ff112"
 		},
 		{
 			"id": "adsum/nrf/actions/capture-logs",

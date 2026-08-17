@@ -277,10 +277,12 @@ describe("lintBitContent", () => {
 // ---------------------------------------------------------------- regression (real corpus)
 
 describe("regression: live corpus", () => {
-	// 20 bits: the post-un-bundle core/demo bits (delivery: bundled, open). Wave 3 added three
-	// (`rules/skill-loading.md` — the shared Scope/Command-gate framework factored out of two
-	// near-duplicate per-platform copies — plus an `analyze-logs.md` per platform for the
-	// search-before-read log doctrine).
+	// 18 bits: the post-un-bundle core/demo bits (delivery: bundled, open). Wave 3 added
+	// `rules/skill-loading.md` — the shared Scope/Command-gate framework factored out of two
+	// near-duplicate per-platform copies. Wave 3 also briefly re-added an `analyze-logs.md` per
+	// platform, which collided with the proprietary registry ids of the same name; the doctrine
+	// was ported into the registry versions (esp 1.0.2 / nrf 1.1.2, min_ext 0.2.1) on 2026-08-17
+	// and the bundled copies removed.
 	//
 	// PROPRIETARY BITS DO NOT LIVE HERE. The 10 CRA "SBOM & Fix" bits and every BOARD bit are
 	// `delivery: downloaded` + LicenseRef-Adsum-Proprietary, so their single home is
@@ -289,10 +291,10 @@ describe("regression: live corpus", () => {
 	// dev override in F5. The four nRF54 bits (XIAO nRF54LM20A, the nRF54L15 and nRF54LM20 DKs, and
 	// the nRF52840→nRF54L migration guide) were briefly authored here and moved out 2026-08-14 to
 	// join the other board bits; this count going UP again means a proprietary bit leaked back in.
-	test("corpus is fully migrated and lint-clean: 20 bits, 0 errors, 0 unmigrated", () => {
+	test("corpus is fully migrated and lint-clean: 18 bits, 0 errors, 0 unmigrated", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
-		assert.equal(files.length, 20)
-		assert.equal(migrated, 20)
+		assert.equal(files.length, 18)
+		assert.equal(migrated, 18)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
 		assert.equal(unmigrated.length, 0)
