@@ -144,4 +144,45 @@ describe("getButtonConfig", () => {
 		const configPlan = getButtonConfig(message, "plan")
 		expect(configAct).toEqual(configPlan)
 	})
+
+	// THE SCAFFOLD HANDOVER. Reported 2026-08-19: the handover rendered "Approve"/"Reject" and clicking did
+	// nothing, so the developer opened the folder by hand every time. BUTTON_CONFIGS.open_project was
+	// correct; the switch simply had no case for it, so it fell through to `default` (tool_approve).
+	//
+	// An earlier test asserted the CONFIG OBJECT existed by reading the source as text. It passed for
+	// months while the button was dead, because existing and being reachable are different things. These
+	// call the real function.
+	describe("open_project — the scaffold handover", () => {
+		const handover: ClineMessage = {
+			type: "ask",
+			ask: "open_project",
+			text: "C:\Users\omarm\Desktop\cellular_mqtt",
+			ts: Date.now(),
+		}
+
+		it("is reachable from getButtonConfig at all", () => {
+			expect(getButtonConfig(handover)).toEqual(BUTTON_CONFIGS.open_project)
+		})
+
+		it("does NOT fall through to Approve/Reject", () => {
+			const config = getButtonConfig(handover)
+			expect(config).not.toEqual(BUTTON_CONFIGS.tool_approve)
+			expect(config.primaryText).toBe("Open project folder")
+		})
+
+		it("dispatches the utility action, which is what actually opens the folder", () => {
+			// "approve" resolves the ask and lets the run continue with the folder still closed — the exact
+			// bug. Only "utility" reaches FileServiceClient.openFolder in useMessageHandlers.
+			expect(getButtonConfig(handover).primaryAction).toBe("utility")
+		})
+
+		it("offers no second button to get wrong", () => {
+			expect(getButtonConfig(handover).secondaryText).toBeUndefined()
+		})
+
+		it("leaves typing enabled — a strong default, not a trap", () => {
+			expect(getButtonConfig(handover).sendingDisabled).toBe(false)
+			expect(getButtonConfig(handover).enableButtons).toBe(true)
+		})
+	})
 })

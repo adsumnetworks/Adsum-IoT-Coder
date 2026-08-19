@@ -594,6 +594,22 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	// All three rules under platforms/nrf/rules/ are listed as MANDATORY/Always
 	// in PLATFORM.md, so they MUST all be loaded here.
 	ctx += (await load("platforms/nrf/PLATFORM.md")) + "\n\n"
+
+	// Where the shipped device tools actually live.
+	//
+	// Without this the agent cannot use them: the wrappers sit inside the installed extension, a path it
+	// has no way to guess. That gap is why an agent hand-rolled a Windows-only System.IO.Ports script to
+	// ask the modem a question (2026-08-19) -- the tool it needed existed and was unreachable.
+	//
+	// Emit the form that runs on THIS host: .bat on Windows, the bash wrapper elsewhere. A generic
+	// "use the .bat on Windows" note gets ignored or half-applied.
+	const toolDir = path.join(HostProvider.get().extensionFsPath, "assets", "scripts").replace(/\\/g, "/")
+	const ext = process.platform === "win32" ? ".bat" : ""
+	ctx += "#### Device tools (shipped with Adsum, run with `execute_command`)\n\n"
+	ctx += `- \`"${toolDir}/board-shell${ext}" --port <PORT> --cmd "<COMMAND>"\` — send commands to a board's shell or AT firmware and read the answers. Batches several \`--cmd\` in one session; add \`--at\` for the nRF91 modem shell.\n`
+	ctx += `- \`"${toolDir}/modem-trace${ext}" --decode <trace.bin> --out <dir>\` — decode an nRF91 modem trace and explain it in English.\n\n`
+	ctx += "Prefer these over hand-written serial code. They handle port contention, prompt detection and "
+	ctx += "timeouts, and they behave identically on Windows, Linux and macOS.\n\n"
 	ctx += (await load("platforms/nrf/rules/nrf-terminal.md")) + "\n\n"
 	ctx += (await load("platforms/nrf/rules/skill-loading.md")) + "\n\n"
 	ctx += (await load("platforms/nrf/rules/device-identity.md")) + "\n\n"

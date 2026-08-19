@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.2.2-dev4",
+	"version": "0.2.2-dev5",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -444,7 +444,8 @@
 		"test:nordic:scripts": "bash scripts/test-nordic-scripts.sh",
 		"test:hil": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-test.ts",
 		"test:search-failure": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/ripgrep/__tests__/searchFailure.node-test.ts",
-		"modem-trace": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/modem-trace.ts",
+		"modem-trace": "python assets/scripts/modem_trace.py",
+		"board-shell": "python assets/scripts/board_shell.py",
 		"test:cellular": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/__tests__/cellularDetect.node-test.ts",
 		"test:hil-cellular": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-cellular.ts",
 		"clean-install": "node scripts/clean-install.mjs",
