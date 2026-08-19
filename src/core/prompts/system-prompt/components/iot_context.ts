@@ -88,7 +88,9 @@ async function findAllBuildInfos(cwd: string): Promise<Array<{ dir: string; boar
 	try {
 		const entries = await fs.readdir(cwd, { withFileTypes: true })
 		for (const entry of entries) {
-			if (!entry.isDirectory()) continue
+			if (!entry.isDirectory()) {
+				continue
+			}
 
 			const buildInfoPath = path.join(cwd, entry.name, "build_info.yml")
 			try {
@@ -605,13 +607,6 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 		ctx += (await load("platforms/nrf/sdks/ncs/protocols/BLE.md")) + "\n\n"
 	}
 
-	// Load cellular knowledge for an nRF91 project. NOT exclusive with BLE: an nRF9161 app can run both
-	// — BLE for local sensors, LTE for the uplink — which is exactly the gateway shape this product is for.
-	if (hasCellular) {
-		ctx += "#### Cellular / LTE Detected (nRF91)\n\n"
-		ctx += (await load("platforms/nrf/sdks/ncs/protocols/LTE.md")) + "\n\n"
-	}
-
 	if (builds.length > 0) {
 		const buildSummary = builds
 			.map((b) => `${b.dir}/ → board: ${b.boardTarget ?? "unknown"} (from build_info.yml)`)
@@ -632,6 +627,20 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 		...(await detectPinnedBoards(cwd)),
 		...connectedBoardSignals(),
 	]
+
+	// Cellular knowledge follows the same evidence as the board, INCLUDING what is plugged in.
+	//
+	// Reading only prj.conf and build_info.yml was wrong for the case that matters most: a prototype has
+	// no project yet when the prompt is built, so a developer starting "an NB-IoT app" on an nRF9161 DK
+	// got the board bit (which DOES read connected hardware) and no cellular knowledge at all. Observed
+	// 2026-08-18 — the agent then derived +CEREG semantics from training and read 90 as "no network"
+	// when it means a SIM/UICC failure. Not exclusive with BLE: an nRF9161 can run both.
+	const cellularBoard = boardSignals.find((b) => NRF91_BOARD_RE.test(b.target))
+	if (hasCellular || cellularBoard) {
+		const why = hasCellular ? "project configuration" : `connected hardware (${cellularBoard?.origin})`
+		ctx += `#### Cellular / LTE Detected (nRF91) — from ${why}` + "\n\n"
+		ctx += (await load("platforms/nrf/sdks/ncs/protocols/LTE.md")) + "\n\n"
+	}
 
 	if (boardSignals.length > 0) {
 		const loadedBoardFiles = new Set<string>()
