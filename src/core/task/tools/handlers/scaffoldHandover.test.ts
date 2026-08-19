@@ -7,8 +7,10 @@ import {
 	_resetOfferedForTest,
 	isScaffoldOutsideWorkspace,
 	notePendingScaffold,
+	outstandingScaffold,
 	pendingScaffold,
 	scaffoldHandoverMessage,
+	scaffoldReminderMessage,
 } from "./scaffoldHandover"
 
 /**
@@ -210,5 +212,42 @@ describe("which folder the button opens", () => {
 	test("nothing scaffolded means nothing pending", () => {
 		_resetOfferedForTest()
 		assert.equal(pendingScaffold("never-scaffolded"), undefined)
+	})
+})
+
+describe("the handover guarantees the OUTCOME, not the asking", () => {
+	// Reported 2026-08-18 from a real Channel Sounding run on 0.2.1: the button appeared, Omar typed
+	// "ok continue" instead of clicking, the ask resolved, and the run carried on with the project still
+	// unopened — memory and checkpoints dead for the rest of the session. Asking once is not a guarantee.
+	const completion = fs.readFileSync(path.join(__dirname, "AttemptCompletionHandler.ts"), "utf8")
+
+	test("an unopened project is remembered ACROSS the window reload", () => {
+		// Opening a folder restarts the extension host, so an in-memory flag cannot verify the outcome.
+		assert.ok(/setGlobalState\("pendingScaffoldProject"/.test(completion), "must persist, not hold in memory")
+		assert.ok(/getGlobalStateKey\("pendingScaffoldProject"\)/.test(completion), "must re-read it on a later run")
+	})
+
+	test("it is cleared ONLY when the workspace really is the project", () => {
+		assert.ok(
+			/!stillOutstanding && recorded[\s\S]{0,160}setGlobalState\("pendingScaffoldProject", ""\)/.test(completion),
+			"clearing on any other signal is how typing past the prompt bypassed it",
+		)
+	})
+
+	test("outstandingScaffold compares folders, not strings", () => {
+		const proj = path.join(os.tmpdir(), "cs_distance")
+		assert.equal(outstandingScaffold(proj, proj), undefined, "same folder → done")
+		assert.equal(outstandingScaffold(proj, `${proj}${path.sep}`), undefined, "trailing separator is the same folder")
+		assert.equal(outstandingScaffold(proj, proj.toUpperCase()), undefined, "Windows paths are case-insensitive")
+		assert.equal(outstandingScaffold(proj, os.homedir()), proj, "different folder → still outstanding")
+		assert.equal(outstandingScaffold(undefined, proj), undefined, "nothing recorded → nothing to do")
+	})
+
+	test("the reminder is a different message from the first offer", () => {
+		const first = scaffoldHandoverMessage("C:\proj")
+		const again = scaffoldReminderMessage("C:\proj")
+		assert.notEqual(first, again, "repeating the identical text reads as a bug, not a reminder")
+		assert.ok(/still not running inside your project/.test(again))
+		assert.ok(/History/.test(again), "the reminder must also say where the conversation went")
 	})
 })

@@ -81,16 +81,37 @@ async function execRipgrep(args: string[]): Promise<string> {
 			}
 		})
 
+		// stderr is a WARNING channel for ripgrep, not a failure channel.
+		//
+		// On Windows it routinely writes "permission denied", unreadable-file and broken-symlink notices
+		// while still searching everything else perfectly — very common under a big SDK tree.
+		// This used to `reject` on ANY stderr byte, so one skipped file threw the whole search away. The
+		// caller then reported "Found 0 results", which reads as "nothing matched" rather than "the search
+		// did not run" — and the model, told the file was clean, read the entire file instead.
+		// Measured on real sessions: 326 of 377 searches came back empty this way.
+		//
+		// Exit codes are the real signal: 0 = matches, 1 = no matches (not an error), 2 = genuine failure.
 		let errorOutput = ""
+		let exitCode: number | null = null
 		rgProcess.stderr.on("data", (data) => {
 			errorOutput += data.toString()
 		})
+		rgProcess.on("close", (code) => {
+			exitCode = code
+		})
 		rl.on("close", () => {
-			if (errorOutput) {
-				reject(new Error(`ripgrep process error: ${errorOutput}`))
-			} else {
+			// rl closes before the process may have reported its code; give it a tick to arrive.
+			setImmediate(() => {
+				if (exitCode !== null && exitCode >= 2) {
+					reject(new Error(`ripgrep failed (exit ${exitCode}): ${errorOutput.trim() || "no detail"}`))
+					return
+				}
+				if (errorOutput.trim()) {
+					// Kept out of the model's way, but not silent for us.
+					console.warn(`[search_files] ripgrep warnings (search still valid): ${errorOutput.trim().slice(0, 300)}`)
+				}
 				resolve(output)
-			}
+			})
 		})
 		rgProcess.on("error", (error) => {
 			reject(new Error(`ripgrep process error: ${error.message}`))

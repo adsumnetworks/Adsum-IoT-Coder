@@ -134,6 +134,47 @@ export function scaffoldHandoverMessage(projectDir: string): string {
 	)
 }
 
+/** Normalised comparison so `C:\X` and `c:/x/` are one folder. */
+function sameDir(a: string | undefined, b: string | undefined): boolean {
+	return !!a && !!b && key(a) === key(b)
+}
+
+/**
+ * Is there a scaffolded project the developer still has not opened, given the folder open right now?
+ *
+ * Persisted across the window reload on purpose. Opening a folder restarts the extension host, so an
+ * in-memory flag cannot verify the outcome — and the outcome is the only thing that matters. Returns
+ * the project path when the handover is still outstanding, or undefined when the workspace IS that
+ * project (the developer complied) or nothing is pending.
+ */
+export function outstandingScaffold(recorded: string | undefined, cwd: string | undefined): string | undefined {
+	if (!recorded) {
+		return undefined
+	}
+	return sameDir(recorded, cwd) ? undefined : recorded
+}
+
+/**
+ * The message shown when the developer got here WITHOUT opening the folder — they typed past the
+ * prompt, or reopened the task from History with the old workspace still open.
+ *
+ * Deliberately not a scolding: it repeats the two facts and the one action, because a developer who
+ * typed "continue" was not being careless, they were answering the thing in front of them.
+ */
+export function scaffoldReminderMessage(projectDir: string): string {
+	return (
+		`This conversation is still not running inside your project.
+
+` +
+		`The project is at ${projectDir}, but the open folder is something else — so anything learned ` +
+		`here still has nowhere to be saved.
+
+` +
+		`Use the button below to open it. VS Code reloads, then reopen this conversation from the ` +
+		`History button at the top of the Adsum panel and carry on.`
+	)
+}
+
 /** Test seam. */
 export function _resetOfferedForTest(): void {
 	offered.clear()

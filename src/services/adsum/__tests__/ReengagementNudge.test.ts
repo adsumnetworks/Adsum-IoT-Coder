@@ -85,11 +85,17 @@ describe("buildReengagementMessage", () => {
 	})
 
 	it("not CRA-relevant → the shared what's-new pitch (never a false per-project CRA claim)", () => {
-		// A re-engagement nudge goes to a RETURNING user, so it gets the returning line (BYOK + attribution +
-		// long-horizon), never the fresh-install welcome. Copy refreshed for 0.2.0.
+		// A re-engagement nudge goes to a RETURNING user, so it gets the returning line, never the
+		// fresh-install welcome.
+		//
+		// This asserted the 0.2.0 phrase "see who wrote the knowledge" until 0.2.1 rewrote the toast — and
+		// the failure stayed invisible because the same release also broke the suite's ability to run at
+		// all. Pin the SHAPE (versioned what's-new line, not the welcome) rather than one release's
+		// wording, so refreshing the copy never fails here again; announcementSurfaces.node-test.ts is
+		// what checks the copy actually matches the shipping release.
 		const c = buildReengagementMessage({ craRelevant: false, version: "0.2.0" })
 		expect(c.message).to.contain("What's new in Adsum IoT Coder v0.2.0")
-		expect(c.message).to.contain("see who wrote the knowledge")
+		expect(c.message).to.not.contain("no key needed")
 		expect(c.cta).to.equal("See what's new")
 	})
 

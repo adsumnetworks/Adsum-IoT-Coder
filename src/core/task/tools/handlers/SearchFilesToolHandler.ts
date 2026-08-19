@@ -105,11 +105,26 @@ export class SearchFilesToolHandler implements IFullyManagedTool {
 				success: true,
 			}
 		} catch (error) {
-			// If search fails in one workspace, return error info
+			// A FAILED search must never be reported as an empty one.
+			//
+			// This returned resultCount 0 with the error only on console.error, so the model was told
+			// "Found 0 results" — indistinguishable from "nothing matched". Reading that as "the file is
+			// clean", it then read the whole file, which is the behaviour Omar reported as the agent never
+			// using search. Say plainly that the search did not run.
+			const detail = error instanceof Error ? error.message : String(error)
 			console.error(`Search failed in ${absolutePath}:`, error)
 			return {
 				workspaceName,
-				workspaceResults: "",
+				workspaceResults:
+					`SEARCH FAILED — this is NOT "no matches". The search could not run against ${absolutePath}, ` +
+					`so nothing was examined and nothing can be concluded about the contents.
+
+` +
+					`Reason: ${detail}
+
+` +
+					`Do NOT treat this as a clean result and do NOT fall back to reading the whole file. ` +
+					`Check the path exists, then retry the search; if it fails again, say so instead of guessing.`,
 				resultCount: 0,
 				success: false,
 			}
@@ -133,7 +148,14 @@ export class SearchFilesToolHandler implements IFullyManagedTool {
 		let totalResultCount = 0
 
 		for (const { workspaceName, workspaceResults, resultCount, success } of searchResults) {
-			if (!success || !workspaceResults) {
+			// A FAILED search is not an empty one. Skipping it here left `allResults` empty, and the
+			// fallback at the end printed "Found 0 results." — so a search that never ran was reported as
+			// a search that found nothing. That is how a broken ripgrep lookup looked like clean logs.
+			if (!success) {
+				allResults.push(workspaceResults || "SEARCH FAILED — the search could not run. This is NOT 'no matches'.")
+				continue
+			}
+			if (!workspaceResults) {
 				continue
 			}
 

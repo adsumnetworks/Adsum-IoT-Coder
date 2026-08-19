@@ -21,7 +21,13 @@ import type { IPartialBlockHandler, IToolHandler } from "../ToolExecutorCoordina
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
-import { clearPendingScaffold, pendingScaffold, scaffoldHandoverMessage } from "./scaffoldHandover"
+import {
+	clearPendingScaffold,
+	outstandingScaffold,
+	pendingScaffold,
+	scaffoldHandoverMessage,
+	scaffoldReminderMessage,
+} from "./scaffoldHandover"
 
 /** Count a successful task completion toward the "leave a review" nudge. Fires the eligibility signal the first
  *  time the count crosses the threshold. Never throws: review accounting must never interrupt a completion.
@@ -396,13 +402,35 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 		// where the developer is already looking — an earlier version used a VS Code toast, which floats
 		// outside the chat, is dismissed by accident, and let the task carry on as if nothing had happened.
 		// The ask text is the absolute path: the button handler opens exactly what the message names.
-		const scaffoldedProject = pendingScaffold(config.ulid)
-		if (scaffoldedProject) {
+		// Two sources: a scaffold from THIS run, or one recorded earlier and still not opened. The second
+		// is what makes this survive the developer typing past the prompt, or reopening from History with
+		// the old workspace still active — the guarantee is the OUTCOME (that folder is open), never the
+		// fact that we asked once.
+		const { StateManager: SM } = await import("@core/storage/StateManager")
+		const sm = SM.get()
+		const scaffoldedNow = pendingScaffold(config.ulid)
+		if (scaffoldedNow) {
 			clearPendingScaffold(config.ulid)
-			await config.callbacks.say("text", scaffoldHandoverMessage(scaffoldedProject))
-			// Blocks. Opening the folder reloads the window, so this never resolves in the normal case —
-			// the task is already saved and reopens from History, which the message above states.
-			await config.callbacks.ask("open_project", scaffoldedProject, false)
+			sm.setGlobalState("pendingScaffoldProject", scaffoldedNow)
+		}
+		const recorded = sm.getGlobalStateKey("pendingScaffoldProject")
+		const stillOutstanding = outstandingScaffold(recorded || undefined, config.cwd)
+
+		if (!stillOutstanding && recorded) {
+			// The workspace IS the project now — the handover is done. Clear it so we never nag again.
+			sm.setGlobalState("pendingScaffoldProject", "")
+		}
+
+		if (stillOutstanding) {
+			await config.callbacks.say(
+				"text",
+				scaffoldedNow ? scaffoldHandoverMessage(stillOutstanding) : scaffoldReminderMessage(stillOutstanding),
+			)
+			// Blocks on a bottom-row "Open project folder" button. Opening reloads the window, so in the
+			// normal case this never resolves — the task is saved and reopens from History. If the
+			// developer answers by typing instead, the state above survives and the next completion asks
+			// again, because nothing about their project actually got fixed.
+			await config.callbacks.ask("open_project", stillOutstanding, false)
 		}
 
 		const { response, text, images, files: completionFiles } = await config.callbacks.ask("completion_result", "", false)

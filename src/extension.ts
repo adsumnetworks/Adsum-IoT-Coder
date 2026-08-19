@@ -891,25 +891,51 @@ async function getBinaryLocation(name: string): Promise<string> {
 		throw new Error(`Binary '${name}' is not supported`)
 	}
 
-	const checkPath = async (pkgFolder: string) => {
+	const checkPath = async (pkgFolder: string, fileName: string) => {
 		const fullPathResult = workspaceResolver.resolveWorkspacePath(
 			vscode.env.appRoot,
-			path.join(pkgFolder, name),
+			path.join(pkgFolder, fileName),
 			"Services.ripgrep.getBinPath",
 		)
 		const fullPath = typeof fullPathResult === "string" ? fullPathResult : fullPathResult.absolutePath
 		return (await fileExistsAtPath(fullPath)) ? fullPath : undefined
 	}
 
-	const binPath =
-		(await checkPath("node_modules/@vscode/ripgrep/bin/")) ||
-		(await checkPath("node_modules/vscode-ripgrep/bin")) ||
-		(await checkPath("node_modules.asar.unpacked/vscode-ripgrep/bin/")) ||
-		(await checkPath("node_modules.asar.unpacked/@vscode/ripgrep/bin/"))
-	if (!binPath) {
-		throw new Error("Could not find ripgrep binary")
+	// VS Code has MOVED and RENAMED this binary, and when the lookup misses, every search_files call
+	// fails — which the tool then reported as "Found 0 results", indistinguishable from a clean search.
+	// Measured on a real bench (2026-08-18, VS Code with `@vscode/ripgrep-universal`): 9 of 9 searches in
+	// one session returned nothing, including one over a log holding 299 matching lines that proved the
+	// feature under test had worked.
+	//
+	// Two things changed upstream: the package is now `@vscode/ripgrep-universal`, and the binary sits in
+	// a per-platform subfolder (`bin/win32-x64/`) rather than `bin/`. On Windows the file is `rg.exe`,
+	// so a bare "rg" never matches either. Every known layout is tried, newest first.
+	const exe = process.platform === "win32" && !name.endsWith(".exe") ? `${name}.exe` : name
+	const platformDir = `${process.platform}-${process.arch}`
+	const candidates = [
+		// current: renamed package, per-platform subfolder
+		`node_modules.asar.unpacked/@vscode/ripgrep-universal/bin/${platformDir}/`,
+		`node_modules/@vscode/ripgrep-universal/bin/${platformDir}/`,
+		"node_modules.asar.unpacked/@vscode/ripgrep-universal/bin/",
+		"node_modules/@vscode/ripgrep-universal/bin/",
+		// previous layouts, still present on older VS Code
+		"node_modules/@vscode/ripgrep/bin/",
+		"node_modules/vscode-ripgrep/bin",
+		"node_modules.asar.unpacked/vscode-ripgrep/bin/",
+		"node_modules.asar.unpacked/@vscode/ripgrep/bin/",
+	]
+
+	for (const folder of candidates) {
+		// Try the platform-correct filename first, then the bare name (macOS/Linux, and any future layout).
+		const hit = (await checkPath(folder, exe)) || (exe !== name ? await checkPath(folder, name) : undefined)
+		if (hit) {
+			return hit
+		}
 	}
-	return binPath
+	throw new Error(
+		`Could not find ripgrep binary. Looked for '${exe}' under ${vscode.env.appRoot} in: ${candidates.join(", ")}. ` +
+			"Without it, search_files cannot run at all.",
+	)
 }
 
 // This method is called when your extension is deactivated

@@ -19,7 +19,11 @@ import { describe, test } from "node:test"
  * Run: npx ts-node --transpile-only -P tsconfig.unit-test.json src/utils/__tests__/announcementSurfaces.node-test.ts
  */
 
-const REPO_ROOT = path.join(__dirname, "..", "..", "..")
+// process.cwd(), not __dirname: mocha loads this file as an ES module, where __dirname does not exist.
+// Referencing it throws at load time and takes down the WHOLE suite, not just this file — the run reports
+// "Exception during run" and zero tests, which reads like a broken toolchain rather than one bad import.
+// (Same trap hit on 2026-08-13 in a different test; both entry points run from the repo root.)
+const REPO_ROOT = process.cwd()
 const WEBVIEW_SRC = path.join(REPO_ROOT, "webview-ui", "src")
 const APP_ROOT = path.join(WEBVIEW_SRC, "App.tsx")
 
