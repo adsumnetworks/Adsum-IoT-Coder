@@ -104,6 +104,12 @@ const GLOBAL_STATE_FIELDS = {
 	// cancelled — so the nudge greets a win, never a cold reopen after a loop/force-quit. Orthogonal to the
 	// count (eligibility) and the feature flag (launch); all three must hold to show the card.
 	reviewNudgeArmed: { default: false as boolean },
+	// Absolute path of a project the agent scaffolded that the developer has NOT opened yet.
+	//
+	// Persisted (not task state) because the whole point is to survive the window reload that opening a
+	// folder causes. Cleared only when that folder is genuinely the open workspace — never by the
+	// developer answering the prompt, which is how the guarantee used to be bypassed by typing.
+	pendingScaffoldProject: { default: "" as string },
 } satisfies FieldDefinitions
 
 // Fields that map directly to ApiHandlerOptions in @shared/api.ts
