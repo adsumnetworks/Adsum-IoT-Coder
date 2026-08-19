@@ -77,6 +77,9 @@ export class TaskState {
 	// context. Complements the "already loaded" manifest in the system prompt.
 	loadedKnowledgeFiles: Set<string> = new Set()
 
+	/** Bit ids already credited in this task, so the always-on bits are announced once, not every request. */
+	creditedKbits: Set<string> = new Set()
+
 	// Error tracking
 	consecutiveMistakeCount: number = 0
 	didAutomaticallyRetryFailedApiRequest = false

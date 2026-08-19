@@ -17,6 +17,31 @@ import { SystemPromptSection } from "../templates/placeholders"
 import { TemplateEngine } from "../templates/TemplateEngine"
 import type { PromptVariant, SystemPromptContext } from "../types"
 
+/**
+ * Relative paths of the bits injected into the system prompt on the most recent build.
+ *
+ * The prompt is rebuilt every request, so this is overwritten every request; the ONE-credit-per-task rule
+ * is enforced by the caller against task state, not here. Kept module-level rather than threaded through
+ * the return type because `getSystemPrompt` is shared with non-IoT variants that have no concept of a bit.
+ */
+let lastInjectedBits: string[] = []
+
+/** Read the bits injected by the last prompt build. Non-destructive — the caller dedupes per task. */
+export function injectedBitPaths(): string[] {
+	return lastInjectedBits
+}
+
+/** True when the project itself asks for NTN -- CONFIG_NTN in prj.conf. A prototype has no prj.conf yet,
+ *  which is why the board signal above is the primary gate and this is the secondary one. */
+async function hasNtnIntent(cwd: string): Promise<boolean> {
+	try {
+		const prj = path.join(cwd, "prj.conf")
+		return (await fileExistsAtPath(prj)) && /^\s*CONFIG_NTN\s*=\s*y/im.test(await fs.readFile(prj, "utf-8"))
+	} catch {
+		return false
+	}
+}
+
 async function readKnowledgeFile(relativePath: string): Promise<string> {
 	try {
 		const extPath = HostProvider.get().extensionFsPath
@@ -640,6 +665,16 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 		const why = hasCellular ? "project configuration" : `connected hardware (${cellularBoard?.origin})`
 		ctx += `#### Cellular / LTE Detected (nRF91) — from ${why}` + "\n\n"
 		ctx += (await load("platforms/nrf/sdks/ncs/protocols/LTE.md")) + "\n\n"
+
+		// NTN rides with the nRF9151 and nowhere else. Loading it for every nRF91 would break the rule that a
+		// project gets only the knowledge it needs; loading it for none was worse. Observed 2026-08-19: on a
+		// task explicitly about satellite, the agent invented two modem firmware names that do not exist and
+		// read "nRF9161 LACA ADA" as the NTN-capable variant. The nRF9161/9160 case needs no NTN bit -- their
+		// board bits carry the "this part cannot" verdict, which is the whole answer for them.
+		if (boardSignals.some((b) => /nrf9151/i.test(b.target)) || (await hasNtnIntent(cwd))) {
+			ctx += (await load("platforms/nrf/sdks/ncs/protocols/NTN.md")) + "\n\n"
+			ctx += (await load("platforms/nrf/sdks/ncs/protocols/GNSS.md")) + "\n\n"
+		}
 	}
 
 	if (boardSignals.length > 0) {
@@ -797,6 +832,12 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	// No-double-load manifest: list exactly what is already in context so the agent
 	// never wastes tokens re-reading these. Use read_file only for a skill file NOT
 	// in this list (a workflow/action a rule points you to).
+	// Hand the injected bits to the credit line. Until now a bit only earned attribution when the agent
+	// READ it (ReadFileToolHandler), so workflows and actions were credited and the always-on bits —
+	// boards, protocols, platform rules — loaded invisibly. Those are the bits a developer most needs to
+	// see, and the downloaded ones they may be paying for. Reported 2026-08-19.
+	lastInjectedBits = [...loaded]
+
 	if (loaded.length > 0) {
 		iotContext += "\n### Knowledge Already Loaded — do NOT read these again\n\n"
 		iotContext +=
