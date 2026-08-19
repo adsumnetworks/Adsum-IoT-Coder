@@ -83,6 +83,7 @@ import * as path from "path"
 import { ulid } from "ulid"
 import type { SystemPromptContext } from "@/core/prompts/system-prompt"
 import { getSystemPrompt } from "@/core/prompts/system-prompt"
+import { injectedBitPaths } from "@/core/prompts/system-prompt/components/iot_context"
 import { HostProvider } from "@/hosts/host-provider"
 import { getWorkspacePaths } from "@/hosts/vscode/hostbridge/workspace/getWorkspacePaths"
 import { FileEditProvider } from "@/integrations/editor/FileEditProvider"
@@ -94,6 +95,7 @@ import {
 } from "@/integrations/terminal"
 import { consumeQuotaExhausted } from "@/services/adsum/FreeTierState"
 import { ClineError, ClineErrorType, ErrorService } from "@/services/error"
+import { creditFor, deriveIdFromRel, hasBit } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import {
 	ClineAssistantContent,
@@ -767,6 +769,59 @@ export class Task {
 		this.taskState.askResponseText = text
 		this.taskState.askResponseImages = images
 		this.taskState.askResponseFiles = files
+	}
+
+	/**
+	 * Credit the bits that were injected into the system prompt.
+	 *
+	 * A bit used to earn a credit line only when the agent READ it with `read_file`, so workflows and
+	 * actions were attributed and the always-on bits — boards, protocols, platform rules — loaded in
+	 * total silence. Those are the bits that shape most of the agent's behaviour, and the downloaded
+	 * ones are the bits a developer may be paying for; both were invisible. Reported 2026-08-19.
+	 *
+	 * Emitted once per task, not per request: the prompt is rebuilt on every API call, so crediting on
+	 * each build would repeat the same line all session. Consecutive says are merged by the webview into
+	 * ONE grouped credit line, which is what the credit law asks for.
+	 *
+	 * Fail-open throughout — attribution must never be able to stop a request.
+	 */
+	private async creditInjectedKbits(): Promise<void> {
+		try {
+			for (const rel of injectedBitPaths()) {
+				const id = deriveIdFromRel(rel.replace(/\\/g, "/"))
+				if (!id || this.taskState.creditedKbits.has(id)) {
+					continue
+				}
+				const credit = creditFor(id)
+				if (!credit) {
+					// No manifest entry means no attribution facts to show. Saying nothing beats inventing a
+					// credit for a bit whose curator we cannot name.
+					continue
+				}
+				this.taskState.creditedKbits.add(id)
+				await this.say(
+					"kbit_loaded",
+					JSON.stringify({
+						id: credit.id,
+						title: credit.title,
+						kind: credit.kind,
+						author: credit.author,
+						attributed: credit.attributed,
+						coAuthors: credit.coAuthors.length ? credit.coAuthors : undefined,
+						version: credit.version,
+						license: credit.license,
+						platform: credit.platform,
+						steward: credit.steward,
+						source: (await hasBit(id)) ? "bundled" : "registry",
+						witness: credit.witness
+							? [credit.witness.board, credit.witness.toolchain, credit.witness.on].filter(Boolean).join(" · ")
+							: undefined,
+					}),
+				)
+			}
+		} catch (e) {
+			console.error("kbit credit for injected bits failed", e)
+		}
 	}
 
 	async say(
@@ -1922,6 +1977,8 @@ export class Task {
 
 		const { systemPrompt, tools } = await getSystemPrompt(promptContext) // =o=> (0)
 		this.useNativeToolCalls = !!tools?.length
+
+		await this.creditInjectedKbits()
 
 		const contextManagementMetadata = await this.contextManager.getNewContextMessagesAndMetadata(
 			this.messageStateHandler.getApiConversationHistory(),
