@@ -291,6 +291,13 @@ export function getButtonConfig(message: ClineMessage | undefined, _mode: Mode =
 				return BUTTON_CONFIGS.new_task
 
 			// Utility
+			// open_project MUST be listed here. Its config existed from the start but nothing routed to it,
+			// so every scaffold handover fell through to `default` and rendered Approve/Reject. Clicking
+			// Approve dispatched "approve", which never reaches the "utility" branch that calls
+			// FileServiceClient.openFolder — so the button did nothing and the folder was opened by hand.
+			// Reported 2026-08-19, present in every version that has shipped the handover.
+			case "open_project":
+				return BUTTON_CONFIGS.open_project
 			case "condense":
 				return BUTTON_CONFIGS.condense
 			case "report_bug":
