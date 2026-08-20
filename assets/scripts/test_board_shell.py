@@ -17,6 +17,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import serial
 import board_shell as bs
 import modem_trace as mt
 
@@ -105,6 +106,45 @@ class CompletionDetection(unittest.TestCase):
         out, why, _ = bs.read_until_prompt(ser, bs.compile_prompt(r"mosh:~\$"), hard_timeout=5, idle_timeout=2)
         self.assertEqual(why, "at-ok")
         self.assertIn("more output", out)
+
+
+class WrongDevice(unittest.TestCase):
+    """A port can open and still be the wrong thing. That must read as a sentence, not a stack trace."""
+
+    class Deaf:
+        """Opens fine, refuses data -- a USB serial adapter with nothing listening behind it."""
+        port = "COM4"
+
+        def write(self, _d):
+            raise serial.SerialTimeoutException("Write timeout")
+
+        def flush(self):
+            pass
+
+        def reset_input_buffer(self):
+            pass
+
+        def read(self, _n):
+            return b""
+
+    def test_a_write_timeout_does_not_raise(self):
+        # Found 2026-08-20 on a real mistyped port: pyserial's SerialTimeoutException came straight out
+        # as a traceback with no explanation of what to do about it.
+        self.assertFalse(bs.send(self.Deaf(), b"x", "COM4"))
+
+    def test_prompt_detection_gives_up_cleanly(self):
+        self.assertEqual(bs.detect_prompt(self.Deaf()), (None, None))
+
+    def test_the_message_names_the_likely_cause(self):
+        import io as _io
+        import contextlib
+
+        err = _io.StringIO()
+        with contextlib.redirect_stderr(err):
+            bs.send(self.Deaf(), b"x", "COM4")
+        text = err.getvalue()
+        self.assertIn("WRONG DEVICE", text)
+        self.assertIn("JLink CDC UART Port", text, "must say what the right one looks like")
 
 
 class PromptDetection(unittest.TestCase):

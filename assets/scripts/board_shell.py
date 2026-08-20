@@ -205,6 +205,33 @@ def strip_echo(output, command):
     return "\n".join(lines).strip()
 
 
+def send(ser, data, port):
+    """
+    Write to the port, or explain what went wrong instead of raising.
+
+    Found 2026-08-20 by pointing the tool at the wrong device: a plain USB serial adapter with nothing
+    listening behind it accepted the open and then timed out on the first write, and pyserial's
+    SerialTimeoutException came straight out as a Python traceback. A developer who mistyped a port
+    number deserves a sentence, not a stack trace.
+    """
+    try:
+        ser.write(data)
+        ser.flush()
+        return True
+    except serial.SerialTimeoutException:
+        sys.stderr.write(
+            f"{port} accepted the connection but will not accept data.\n\n"
+            "The port exists, so this is usually the WRONG DEVICE rather than a broken one: something is\n"
+            "there, but nothing is listening. On a Nordic DK the console is normally the lowest-numbered\n"
+            "J-Link port -- run --list-ports and look for 'JLink CDC UART Port' in the description.\n"
+            "A plain 'USB Serial Device' with nothing running behind it behaves exactly like this.\n"
+        )
+        return False
+    except (OSError, serial.SerialException) as e:
+        sys.stderr.write(f"Lost {port} while writing: {e}\n")
+        return False
+
+
 def detect_prompt(ser):
     """
     Ask the board what its prompt looks like by sending a bare newline.
@@ -213,8 +240,8 @@ def detect_prompt(ser):
     Falls back to the known-prompt union when the board says nothing useful.
     """
     ser.reset_input_buffer()
-    ser.write(b"\r\n")
-    ser.flush()
+    if not send(ser, b"\r\n", getattr(ser, "port", "the port")):
+        return None, None
     out, _, _ = read_until_prompt(ser, compile_prompt(DEFAULT_PROMPT), hard_timeout=2.0, idle_timeout=0.4)
     for line in reversed(clean(out).split("\n")):
         line = line.strip()
@@ -261,8 +288,8 @@ def run(args):
         for command in commands:
             wire = f"at {command}" if args.at and not command.startswith("at ") else command
             ser.reset_input_buffer()
-            ser.write((wire + "\r\n").encode("utf-8"))
-            ser.flush()
+            if not send(ser, (wire + "\r\n").encode("utf-8"), args.port):
+                return 2
             raw, why, elapsed = read_until_prompt(ser, prompt_re, args.timeout, args.idle)
             output = strip_echo(raw, wire)
 
