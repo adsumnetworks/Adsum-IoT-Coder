@@ -2,6 +2,30 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
+## [0.2.2] - 2026-08-20
+
+Cellular: nRF9161, nRF9151, and nRF9160 boards, the four nRF91 protocols, and two tools for talking to a modem instead of guessing at it.
+
+### Added
+- nRF91 cellular support: NB-IoT and LTE-M, NTN (satellite), DECT NR+, and GNSS, each with its own knowledge and each loaded only for the project that needs it. Board knowledge for the nRF9161 DK, nRF9151 DK, and nRF9160 DK.
+- **Board shell** — send commands to a board and read the answers: AT commands on an nRF91, Zephyr shell commands, anything with a console. It reads until the board finishes rather than sleeping for a fixed time, so a command that answers in 40 ms costs 40 ms, and a network scan that takes three minutes is not cut off at three seconds. Several commands run in one session. Works the same on Windows, Linux, and macOS.
+- **Modem trace** — capture a trace, decode it, and explain it in plain English: registration state, the network's own reason for a refusal, radio mode, and the modem's search events. It also reads the radio layer, which answers a question the AT commands cannot: whether the modem found real cells and never joined them, or saw nothing at all. Those two look identical in an application log and have completely different fixes.
+- Knowledge is named when it loads, not only when the agent reads a file. Board, protocol, and platform knowledge used to load silently; the credit line now covers it.
+
+### Fixed
+- An empty answer from a device is no longer reported as a finding. A network scan that returned nothing in under a second was being read as "no coverage here" — it had not started. Commands that come back with nothing conclusive now say so.
+- The "Open project folder" button did nothing. It rendered as Approve/Reject and never opened anything, in every version that has shipped it.
+- The same button could point at the wrong project when more than one was scaffolded, and never appeared at all when a project was created by copying a sample rather than writing its files.
+- A scaffolded project you never opened stopped following you into unrelated tasks weeks later.
+- Refusing to write project memory now says plainly that it is a blocker, rather than something to work around.
+- Log and code search: the search program was not being found at all, so nearly every search returned "0 results" — a failed search now says it failed instead of looking like a clean one.
+- Mermaid diagrams render more reliably.
+
+### Known issues
+- NTN needs an nRF9151 with the LACA A1A variant and its own modem firmware; no other nRF91 part can do it.
+- DECT NR+ needs a separate modem firmware image, available from Nordic sales rather than as a download. The nRF9161 and nRF9151 are both capable once it is flashed.
+- Two sessions using one development kit at the same time can interfere with each other.
+
 ## [0.2.1] - 2026-08-17
 
 ### Added
