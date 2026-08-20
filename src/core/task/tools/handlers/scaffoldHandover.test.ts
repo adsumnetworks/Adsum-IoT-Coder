@@ -192,6 +192,27 @@ describe("which folder the button opens", () => {
 		assert.equal(pendingScaffold("t"), path.resolve(gw))
 	})
 
+	test("the LATEST scaffold wins when two prototypes are unrelated", () => {
+		// Reported 2026-08-20: the agent scaffolded `nbiot_test`, the developer redirected it to
+		// `modem_shell_test`, and the button opened `nbiot_test` — the abandoned one — because the
+		// fallback sorted by path length. VS Code reloaded into the wrong project.
+		_resetOfferedForTest()
+		notePendingScaffold("t", path.join(DESKTOP, "nbiot_test"))
+		notePendingScaffold("t", path.join(DESKTOP, "modem_shell_test"))
+		assert.equal(pendingScaffold("t"), path.resolve(path.join(DESKTOP, "modem_shell_test")))
+	})
+
+	test("the shorter name does not win just for being shorter", () => {
+		_resetOfferedForTest()
+		notePendingScaffold("t", path.join(DESKTOP, "a_very_long_project_name"))
+		notePendingScaffold("t", path.join(DESKTOP, "tiny"))
+		assert.ok(pendingScaffold("t")?.endsWith("tiny"))
+		_resetOfferedForTest()
+		notePendingScaffold("t", path.join(DESKTOP, "tiny"))
+		notePendingScaffold("t", path.join(DESKTOP, "a_very_long_project_name"))
+		assert.ok(pendingScaffold("t")?.endsWith("a_very_long_project_name"))
+	})
+
 	test("two unrelated prototypes never resolve to a personal folder", () => {
 		_resetOfferedForTest()
 		notePendingScaffold("t", path.join(DESKTOP, "proto-a"))

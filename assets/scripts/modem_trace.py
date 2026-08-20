@@ -120,6 +120,92 @@ def ensure_trace_command():
     return True
 
 
+def tshark():
+    """
+    Find tshark, which turns a pcapng into readable text.
+
+    Wireshark installs it but does NOT put it on PATH on Windows, so `which tshark` finds nothing on a
+    machine that has it. Checking the real install locations is the difference between the agent seeing
+    the radio layer and never knowing it existed.
+    """
+    if sys.platform == "win32":
+        candidates = [
+            r"C:\\Program Files\\Wireshark\\tshark.exe",
+            r"C:\\Program Files (x86)\\Wireshark\\tshark.exe",
+        ]
+    else:
+        candidates = ["/usr/bin/tshark", "/usr/local/bin/tshark", "/opt/homebrew/bin/tshark"]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    # Last resort: PATH. Works on Linux/macOS where packaging does put it there.
+    return "tshark" if run(["tshark", "-v"], timeout=20).returncode == 0 else None
+
+
+def packet_timeline(pcap):
+    """
+    The decoded packet list, with direction and timestamps, as text.
+
+    The AT scrape alone hides the radio layer. On a real bench trace (2026-08-19) the AT view showed 13
+    lines and "started searching", while the full decode also held 21 MasterInformationBlocks -- proof the
+    modem had found real cells and read their broadcasts. That single fact moves the diagnosis from
+    "no coverage" to "cells found, attach never completed", which points at the SIM instead of the sky.
+    """
+    ts = tshark()
+    if not ts:
+        return None, []
+    r = run([ts, "-r", pcap], timeout=120)
+    if r.returncode != 0 or not r.stdout.strip():
+        return None, []
+    lines = [l.rstrip() for l in r.stdout.splitlines() if l.strip()]
+    kinds = {}
+    for l in lines:
+        # Strip the leading "  N   0.000000  ->  " columns and any trailing parenthetical detail.
+        body = re.sub(r"^\s*\d+\s+[\d.]+\s*", "", l)
+        body = re.sub(r"^[^A-Za-z]*", "", body)
+        body = re.sub(r"\([^)]*\)", "", body).strip()
+        # Group by KIND, not by exact text. Otherwise every distinct AT command becomes its own bucket
+        # with a count of 1 and buries the radio events, which are what carry the diagnosis.
+        m = re.match(r"\w[\w-]*\s+\d+\s+(Sent|Rcvd) AT Command", body)
+        if m:
+            body = "AT command (%s)" % ("sent" if m.group(1) == "Sent" else "received")
+        else:
+            body = re.sub(r"\s+\d+\s+", " ", body).strip()  # drop tshark's length column
+        if body:
+            kinds[body] = kinds.get(body, 0) + 1
+    return lines, sorted(kinds.items(), key=lambda kv: -kv[1])
+
+
+def explain_radio(kinds):
+    """What the radio layer proves, in the developer's language."""
+    notes = []
+    total = dict(kinds)
+    mib = sum(n for k, n in total.items() if "MasterInformationBlock" in k)
+    sib = sum(n for k, n in total.items() if "SystemInformation" in k)
+    attach = sum(n for k, n in total.items() if "Attach" in k or "Tracking area" in k)
+    reject = sum(n for k, n in total.items() if "Reject" in k or "reject" in k)
+
+    if mib or sib:
+        notes.append(
+            f"The modem RECEIVED {mib + sib} cell broadcast(s) (MasterInformationBlock/SystemInformation). "
+            "That is hard proof it found real LTE cells and was reading them."
+        )
+        if not attach and not reject:
+            notes.append(
+                "  But there is NO attach attempt in this capture. Cells were visible and the modem never "
+                "tried to join, or the capture ended first. That points at the SIM, the subscription or the "
+                "selected mode -- NOT at coverage. Do not tell the developer they have no signal."
+            )
+    elif total:
+        notes.append(
+            "No cell broadcasts in this capture: the modem saw no LTE cell at all. This one IS a coverage, "
+            "antenna or band question."
+        )
+    if reject:
+        notes.append(f"  {reject} reject message(s) present - read the EMM cause, the network gave a reason.")
+    return notes
+
+
 def extract_at(data):
     """
     Pull the AT dialogue out of a trace file.
@@ -169,12 +255,26 @@ def explain(at):
         # AT+CEREG=5 is the SUBSCRIBE; +CEREG: is the answer. Saying "never subscribed" when the
         # subscribe is right there in the timeline is the kind of wrong that destroys trust in a tool.
         subscribed = any(l.startswith("AT+CEREG=") for l in at)
-        notes.append(
-            "Subscribed to registration status (AT+CEREG=), but NO +CEREG answer arrived in this capture - "
-            "the modem never reported a registration state. Usually the capture ended during the search."
-            if subscribed
-            else "No +CEREG traffic at all - the app never subscribed with AT+CEREG=5, so registration is invisible."
-        )
+        if subscribed:
+            notes.append(
+                "Subscribed to registration status (AT+CEREG=), but NO +CEREG answer arrived in this "
+                "capture - the modem never reported a registration state. Usually the capture ended "
+                "during the search."
+            )
+        elif any(l.startswith(("AT%XSYSTEMMODE", "AT+CFUN", "AT%MDMEV")) for l in at):
+            # The app is clearly driving the modem, so it is using lte_lc / nrf_modem_lib, which subscribes
+            # through the library rather than a literal AT+CEREG=5. Claiming it "never subscribed" is a
+            # tool defect, and a confident wrong note is worse than no note at all.
+            notes.append(
+                "No +CEREG lines in this capture. The app configures the modem through the modem library "
+                "(lte_lc), which does not emit a literal AT+CEREG=5, so this is expected - registration "
+                "state lives in the application log, not here."
+            )
+        else:
+            notes.append(
+                "No +CEREG traffic at all, and nothing else driving the modem either - this capture may "
+                "have missed the attach entirely."
+            )
 
     # Why a refusal happened.
     for l in at:
@@ -238,7 +338,10 @@ def decode(bin_path, out_dir, mfw=None):
         print(f"Wireshark file: {pcap}" if ok else "pcapng decode failed (readable output below is unaffected)")
 
     # Second pass: an AT-ONLY pcapng. Small, and the only reliable source of readable AT text.
-    at_pcap = os.path.join(out_dir, "modem-at.pcapng")
+    # Name every artefact after the trace it came from. Fixed names meant a second decode destroyed the
+    # first, and the agent went on quoting a file that no longer held what it thought (2026-08-20).
+    stem = os.path.splitext(os.path.basename(bin_path))[0]
+    at_pcap = os.path.join(out_dir, stem + "-at.pcapng")
     r = run(
         [nrfutil(), "trace", "lte", "--input-file", bin_path, "--output-pcapng", at_pcap,
          "--pcapng-dissector-filter", "at"]
@@ -250,7 +353,7 @@ def decode(bin_path, out_dir, mfw=None):
         print("could not produce the AT-filtered view; falling back to the raw trace (results may be noisy)")
         at = extract_at(data)
 
-    at_file = os.path.join(out_dir, "modem-at-timeline.txt")
+    at_file = os.path.join(out_dir, stem + "-at-timeline.txt")
     with open(at_file, "w", encoding="utf-8") as f:
         f.write("\n".join(at) + "\n")
 
@@ -265,14 +368,37 @@ def decode(bin_path, out_dir, mfw=None):
     if len(at) > 40:
         print(f"  ... {len(at) - 40} more in the file above")
 
+    # The radio layer, when tshark can read it for us. This is the half the AT scrape cannot see.
+    lines, kinds = packet_timeline(pcap) if os.path.exists(pcap) else (None, [])
+    if lines:
+        tl_file = os.path.join(out_dir, stem + "-packets.txt")
+        with open(tl_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        print()
+        print("=" * 72)
+        print("WHAT THE RADIO DID")
+        print("=" * 72)
+        print(f"{len(lines)} decoded packets -> {tl_file}")
+        print()
+        for kind, count in kinds[:12]:
+            print(f"  {count:>4}  {kind}")
+        if len(kinds) > 12:
+            print(f"  ... {len(kinds) - 12} more kinds in the file above")
+
     print()
     print("=" * 72)
     print("WHAT IT MEANS")
     print("=" * 72)
-    for n in explain(at):
+    for n in explain(at) + explain_radio(kinds):
         print(f"  {n}")
     print()
-    print("  Open the .pcapng in Wireshark for the full NAS/RRC packet detail.")
+    if lines:
+        print("  Open the .pcapng in Wireshark for per-packet detail.")
+    else:
+        # Never fail silently into a thinner answer -- say what is missing and how to get it.
+        print("  NOTE: Wireshark/tshark was not found, so the radio layer above could not be decoded.")
+        print("  The AT view alone cannot tell 'no coverage' from 'cells found but never joined'.")
+        print("  Install Wireshark (winget install WiresharkFoundation.Wireshark) and decode again.")
     return 0
 
 

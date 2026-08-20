@@ -193,9 +193,18 @@ class ModemTraceExplanation(unittest.TestCase):
         self.assertTrue(any("Subscribed" in n for n in notes))
         self.assertFalse(any("never subscribed" in n for n in notes))
 
-    def test_no_cereg_traffic_at_all_says_so(self):
-        notes = mt.explain(["AT+CFUN=1"])
-        self.assertTrue(any("never subscribed" in n for n in notes))
+    def test_an_lte_lc_app_is_not_accused_of_never_subscribing(self):
+        # Reported 2026-08-20: BOTH traces in a session got "the app never subscribed with AT+CEREG=5".
+        # MoSh and any lte_lc app subscribe through the modem library, not a literal AT command, so the
+        # note was simply wrong -- and the agent talked itself out of trusting the tool rather than
+        # reporting the defect. A confident wrong note is worse than no note.
+        notes = mt.explain(["AT%XSYSTEMMODE=1,0,0,0", "AT+CFUN=1"])
+        self.assertFalse(any("never subscribed" in n for n in notes))
+        self.assertTrue(any("lte_lc" in n for n in notes))
+
+    def test_a_capture_with_nothing_in_it_still_says_so(self):
+        notes = mt.explain(["%XICCID: 894"])
+        self.assertTrue(any("missed the attach" in n for n in notes))
 
     def test_emm_cause_is_translated(self):
         notes = mt.explain(["+CEER: cause 13"])

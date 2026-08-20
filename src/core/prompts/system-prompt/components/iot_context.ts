@@ -42,6 +42,27 @@ async function hasNtnIntent(cwd: string): Promise<boolean> {
 	}
 }
 
+/**
+ * True when the project asks for DECT NR+.
+ *
+ * DECT NR+ is not cellular: no SIM, no EMM, no `+CEREG`. It is a separate radio standard that runs on
+ * a SEPARATE modem firmware, and that firmware gives up LTE and GNSS entirely. `DECT-NR.md` has said so
+ * since it was written — and until now nothing loaded it. Observed 2026-08-20: a DECT scaffold on an
+ * nRF9161 hit `Modem fault: reason=4095` (the signature of a DECT binary on cellular firmware), and the
+ * agent, reasoning from an NTN line about the nRF9161, told the developer to buy different hardware.
+ * The part was never the problem.
+ */
+async function hasDectIntent(cwd: string): Promise<boolean> {
+	try {
+		const prj = path.join(cwd, "prj.conf")
+		// CONFIG_DECT_PHY, CONFIG_DECT_PHY_MAC, … — anything DECT. Deliberately not matched on a generic
+		// modem-lib option, which every cellular project sets too.
+		return (await fileExistsAtPath(prj)) && /^\s*CONFIG_DECT\w*\s*=\s*y/im.test(await fs.readFile(prj, "utf-8"))
+	} catch {
+		return false
+	}
+}
+
 async function readKnowledgeFile(relativePath: string): Promise<string> {
 	try {
 		const extPath = HostProvider.get().extensionFsPath
@@ -691,6 +712,15 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 			ctx += (await load("platforms/nrf/sdks/ncs/protocols/NTN.md")) + "\n\n"
 			ctx += (await load("platforms/nrf/sdks/ncs/protocols/GNSS.md")) + "\n\n"
 		}
+	}
+
+	// DECT NR+ is NOT cellular, so it hangs off its own gate rather than the LTE block above: a DECT
+	// project has no SIM and may never set a cellular Kconfig at all, and gating it behind `hasCellular`
+	// would have kept it invisible exactly where it is needed. Every nRF91x1 part can do DECT NR+ — what
+	// it needs is the separate DECT PHY modem firmware, which is the fact the agent lacked on 2026-08-20.
+	if (await hasDectIntent(cwd)) {
+		ctx += "#### DECT NR+ Detected — from project configuration\n\n"
+		ctx += (await load("platforms/nrf/sdks/ncs/protocols/DECT-NR.md")) + "\n\n"
 	}
 
 	if (boardSignals.length > 0) {

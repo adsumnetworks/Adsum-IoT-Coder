@@ -104,11 +104,17 @@ export function pendingScaffold(taskId: string): string | undefined {
 	}
 	const shared = commonParent(dirs)
 	// A common parent that is a personal folder (two prototypes both under the Desktop) is not a
-	// container — fall back to the shallowest real project rather than offering to open the Desktop.
+	// container — these are unrelated projects, not one multi-app scaffold.
 	if (shared && !isForbiddenMemoryRoot(shared)) {
 		return shared
 	}
-	return dirs.sort((a, b) => a.length - b.length)[0]
+	// So offer the MOST RECENT one. Sorting by path length picked whichever name happened to be
+	// shortest, which on 2026-08-20 meant offering an abandoned first attempt: the agent scaffolded
+	// `nbiot_test`, then `modem_shell_test`, and the button opened `nbiot_test`. The developer clicked,
+	// VS Code reloaded into the wrong project, and the run had to recover from it.
+	//
+	// Insertion order is exactly "when was it scaffolded", and a JS Set preserves it.
+	return dirs[dirs.length - 1]
 }
 
 /** Forget this task's pending scaffold — called once the handover has been raised. */
