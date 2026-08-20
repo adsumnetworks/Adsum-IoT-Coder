@@ -110,6 +110,8 @@ const GLOBAL_STATE_FIELDS = {
 	// folder causes. Cleared only when that folder is genuinely the open workspace — never by the
 	// developer answering the prompt, which is how the guarantee used to be bypassed by typing.
 	pendingScaffoldProject: { default: "" as string },
+	/** Task that scaffolded `pendingScaffoldProject`. Without it the reminder leaks into every later task. */
+	pendingScaffoldTaskId: { default: "" as string },
 } satisfies FieldDefinitions
 
 // Fields that map directly to ApiHandlerOptions in @shared/api.ts

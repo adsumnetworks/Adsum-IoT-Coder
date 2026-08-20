@@ -191,3 +191,154 @@ describe("the bits carry today's corrections", () => {
 		assert.ok(/LTE\/at-commands\.md/.test(read("sdks/ncs/protocols/LTE.md")), "the core must point at the reference")
 	})
 })
+
+describe("protocol knowledge arrives before the guessing starts", () => {
+	const ctx = fs.readFileSync(CTX, "utf8")
+
+	test("a router exists at all", () => {
+		// Every other gate reads prj.conf or the attached board. A PROTOTYPE has neither, and the prompt
+		// builder cannot see the developer's message — SystemPromptContext carries no user text. So the
+		// router is the only thing that can load a protocol bit at message one.
+		assert.ok(/Protocol knowledge — load it BEFORE you design or debug/.test(ctx))
+	})
+
+	test("all four protocols route, plus both device tools", () => {
+		const block = ctx.slice(ctx.indexOf("Protocol knowledge —"), ctx.indexOf("Device tools (shipped"))
+		for (const bit of ["LTE.md", "NTN.md", "DECT-NR.md", "GNSS.md", "board-shell.md", "modem-trace.md"]) {
+			assert.ok(block.includes(bit), `router does not point at ${bit}`)
+		}
+	})
+
+	test("the words a developer actually types are the triggers", () => {
+		const block = ctx.slice(ctx.indexOf("Protocol knowledge —"), ctx.indexOf("Device tools (shipped"))
+		for (const word of ["NB-IoT", "LTE-M", "satellite", "DECT", "GNSS", "AT commands"]) {
+			assert.ok(block.includes(word), `"${word}" is not a trigger`)
+		}
+	})
+
+	test("it says read FIRST, not eventually", () => {
+		const block = ctx.slice(ctx.indexOf("Protocol knowledge —"), ctx.indexOf("Device tools (shipped"))
+		assert.ok(/FIRST/.test(block))
+		assert.ok(/from memory/.test(block), "must forbid answering a capability question from training")
+	})
+
+	test("it does not tell the agent to re-read what is already in context", () => {
+		const block = ctx.slice(ctx.indexOf("Protocol knowledge —"), ctx.indexOf("Device tools (shipped"))
+		assert.ok(/Knowledge Already Loaded/.test(block), "would otherwise double-load every injected bit")
+	})
+})
+
+describe("the DECT bit refutes what was actually said", () => {
+	const kb = path.join(process.cwd(), "Adsum-Backend", "kbits", "platforms", "nrf")
+	const dect = fs.readFileSync(path.join(kb, "sdks", "ncs", "protocols", "DECT-NR.md"), "utf8")
+
+	test("the REV3 silicon claim is named and refuted", () => {
+		assert.ok(/REV3/.test(dect), "the exact wrong sentence must be quoted to be refuted")
+		assert.ok(/nRF91x1/.test(dect), "the reason it is wrong: nRF9161 IS nRF91x1")
+	})
+
+	test("'buy different hardware' is forbidden outright", () => {
+		assert.ok(/Never say this/.test(dect))
+	})
+
+	test("the NTN limit must not be carried across", () => {
+		assert.ok(/NTN is nRF9151-only; DECT NR\+ is not/.test(dect))
+	})
+
+	test("reason=4095 is decoded", () => {
+		// Markdown wraps, so a phrase can straddle a line break. Match against collapsed whitespace rather
+		// than reflowing the prose to suit the test.
+		const flat = dect.replace(/\s+/g, " ")
+		assert.ok(/4095/.test(flat))
+		assert.ok(/not\S{0,4} a code defect/i.test(flat), "must say plainly it is not the app's fault")
+		assert.ok(/DECT PHY firmware is simply not on the modem core/.test(flat), "and name the real cause")
+	})
+
+	test("AT+CGMR is required before calling hardware incapable", () => {
+		assert.ok(/AT\+CGMR/.test(dect))
+	})
+})
+
+describe("the DECT gate matches the sample that is actually used", () => {
+	const ctx = fs.readFileSync(CTX, "utf8")
+	const fn = ctx.slice(ctx.indexOf("async function hasDectIntent"), ctx.indexOf("async function readKnowledgeFile"))
+	// The gate under test, kept in step with the source by the assertion below rather than by hand.
+	const GATE = /^\s*CONFIG_\w*DECT\w*\s*=\s*y/im
+
+	test("the test is checking the same pattern the source uses", () => {
+		assert.ok(fn.includes(String(GATE)), `iot_context.ts no longer uses ${GATE} — update this test`)
+	})
+
+	test("CONFIG_NRF_MODEM_LINK_BINARY_DECT_PHY=y triggers it", () => {
+		// dect_phy/hello_dect on NCS 3.3.1 — the sample an agent actually scaffolded on 2026-08-20 —
+		// sets NO CONFIG_DECT* symbol at all. A prefix-only gate is dead on the exact project that needs it.
+		assert.ok(
+			GATE.test(`CONFIG_NRF_MODEM_LIB=y
+CONFIG_NRF_MODEM_LINK_BINARY_DECT_PHY=y
+`),
+		)
+	})
+
+	test("the older CONFIG_DECT=y form still triggers it", () => {
+		assert.ok(
+			GATE.test(`CONFIG_DECT=y
+CONFIG_NRF_MODEM_LIB=y
+`),
+		)
+	})
+
+	test("a cellular-only project does NOT trigger it", () => {
+		assert.equal(
+			GATE.test(`CONFIG_NRF_MODEM_LIB=y
+CONFIG_LTE_LINK_CONTROL=y
+CONFIG_MQTT_LIB=y
+`),
+			false,
+		)
+	})
+
+	test("a disabled DECT symbol does not trigger it", () => {
+		assert.equal(
+			GATE.test(`CONFIG_DECT_PHY=n
+`),
+			false,
+		)
+	})
+})
+
+describe("a named bit survives being diverted", () => {
+	const ctx = fs.readFileSync(CTX, "utf8")
+
+	test("the router forbids concluding without the protocol bit", () => {
+		// The exact 2026-08-20 failure: the agent named DECT-NR.md, said "Let me load that", was diverted
+		// to decode-fault.md by the Command Gate, never returned, and spent ~85 messages inventing silicon
+		// revisions before telling the developer "nRF9161 REV3 silicon does not support DECT NR+".
+		//
+		// The prompt is assembled literal by literal, so a sentence is split across seams in the source —
+		// both `" + "` concatenations and separate `ctx += "…"` statements. Join them before matching, or
+		// the test only ever sees fragments and fails on prose that is actually present.
+		const joined = ctx.replace(/"\s*\+\s*"/g, "").replace(/"\s*\n\s*ctx \+= "/g, "")
+		assert.ok(/come back to it before you conclude anything/.test(joined))
+		assert.ok(/Never state what a part can or cannot do from memory/.test(joined))
+	})
+})
+
+describe("a refused memory write cannot be shrugged off", () => {
+	// Same seam problem as the router: the message is built from concatenated literals.
+	const apply = fs
+		.readFileSync(path.join(process.cwd(), "src", "core", "memory", "workspace", "writeApply.ts"), "utf8")
+		.replace(/"\s*\+\s*"/g, "")
+
+	test("it is stated as a blocker", () => {
+		assert.ok(/THIS IS A BLOCKER, NOT A COSMETIC DETAIL/.test(apply))
+	})
+
+	test("the workaround the agent actually used is forbidden by name", () => {
+		// It bound the whole session to the Desktop and drove the build with absolute paths instead.
+		assert.ok(/Do not work around this with absolute paths/.test(apply))
+	})
+
+	test("it points at the handover that produces the button", () => {
+		assert.ok(/attempt_completion/.test(apply) && /Open project folder/.test(apply))
+	})
+})

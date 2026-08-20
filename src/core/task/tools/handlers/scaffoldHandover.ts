@@ -40,6 +40,40 @@ function key(dir: string): string {
 		.toLowerCase()
 }
 
+/** How far above a written file to look for the project it belongs to. `app/src/main.c` is 2. */
+const PROJECT_SEARCH_DEPTH = 3
+
+/**
+ * The project directory a written file belongs to, or null if it is not in one.
+ *
+ * Matching only on the marker filename was too narrow, and it cost a real handover. On 2026-08-20 a DECT
+ * prototype was scaffolded by copying a Nordic sample with `robocopy`, so `prj.conf` and `CMakeLists.txt`
+ * arrived without `write_to_file` ever seeing them. The agent then edited `src/main.c` through the write
+ * tool — but `main.c` is not a marker, nothing was recorded, and the developer was never offered the
+ * folder. Copy-then-edit is how the prototype workflow actually works, so it has to count.
+ *
+ * Walking up is bounded: a marker three levels above a file is a monorepo root, not this file's project,
+ * and the caller's guards handle that case anyway.
+ */
+function enclosingProject(filePath: string): string | null {
+	const abs = path.resolve(filePath)
+	if (SCAFFOLD_MARKERS.has(path.basename(abs))) {
+		return path.dirname(abs)
+	}
+	let dir = path.dirname(abs)
+	for (let i = 0; i < PROJECT_SEARCH_DEPTH; i++) {
+		if (hasProjectMarker(dir)) {
+			return dir
+		}
+		const parent = path.dirname(dir)
+		if (parent === dir) {
+			break // filesystem root
+		}
+		dir = parent
+	}
+	return null
+}
+
 /**
  * True when writing `filePath` means a project was just scaffolded somewhere that leaves memory and
  * checkpoints broken, returning the directory to offer.
@@ -55,10 +89,10 @@ function key(dir: string): string {
  * second condition — `gw/` is a real project, so memory already works per-app and nothing is broken.
  */
 export function isScaffoldOutsideWorkspace(filePath: string, cwd: string | undefined): string | null {
-	if (!SCAFFOLD_MARKERS.has(path.basename(filePath))) {
+	const projectDir = enclosingProject(filePath)
+	if (!projectDir) {
 		return null
 	}
-	const projectDir = path.dirname(path.resolve(filePath))
 
 	// Already the open folder → memory and checkpoints work; there is nothing to hand over.
 	if (cwd && key(cwd) === key(projectDir)) {

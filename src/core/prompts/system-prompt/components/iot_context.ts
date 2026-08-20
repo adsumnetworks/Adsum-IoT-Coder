@@ -55,9 +55,16 @@ async function hasNtnIntent(cwd: string): Promise<boolean> {
 async function hasDectIntent(cwd: string): Promise<boolean> {
 	try {
 		const prj = path.join(cwd, "prj.conf")
-		// CONFIG_DECT_PHY, CONFIG_DECT_PHY_MAC, … — anything DECT. Deliberately not matched on a generic
-		// modem-lib option, which every cellular project sets too.
-		return (await fileExistsAtPath(prj)) && /^\s*CONFIG_DECT\w*\s*=\s*y/im.test(await fs.readFile(prj, "utf-8"))
+		// DECT anywhere in the symbol NAME, not only as a prefix.
+		//
+		// Checked against the real NCS 3.3.1 samples rather than assumed, which is the only reason this
+		// works: `dect/hello_dect` sets `CONFIG_DECT=y`, but `dect_phy/hello_dect` — the sample an agent
+		// actually used on 2026-08-20 — sets no CONFIG_DECT* at all. Its only DECT signal is
+		// `CONFIG_NRF_MODEM_LINK_BINARY_DECT_PHY=y`. A prefix match would have left this gate dead on
+		// exactly the project that needed it.
+		//
+		// Still specific: the symbol must contain DECT, so no cellular-only config can trigger it.
+		return (await fileExistsAtPath(prj)) && /^\s*CONFIG_\w*DECT\w*\s*=\s*y/im.test(await fs.readFile(prj, "utf-8"))
 	} catch {
 		return false
 	}
@@ -626,6 +633,42 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	// "use the .bat on Windows" note gets ignored or half-applied.
 	const toolDir = path.join(HostProvider.get().extensionFsPath, "assets", "scripts").replace(/\\/g, "/")
 	const ext = process.platform === "win32" ? ".bat" : ""
+	// Protocol router — the cheapest fix for knowledge arriving too late.
+	//
+	// Every protocol gate below reads prj.conf or the attached board. A PROTOTYPE has neither: no project
+	// exists when the prompt is built, so `hasDectIntent()` reads a file that is not there and returns
+	// false. The developer's intent lives in their first message, which the prompt builder cannot see at
+	// all — SystemPromptContext carries no user text.
+	//
+	// So route on what the agent CAN see. Eight lines, always on, and the bit is read the moment the
+	// developer names a protocol — before any guessing. Observed 2026-08-20: with DECT-NR.md unloaded the
+	// agent asserted "nRF9161 REV3 silicon does not support DECT NR+" and told the developer to buy other
+	// hardware. It is a firmware gap, not silicon, and the bit says so plainly.
+	ctx += "#### Protocol knowledge — load it BEFORE you design or debug\n\n"
+	ctx += "The moment the developer names one of these, `read_file` that bit FIRST. Do not scaffold, "
+	ctx += "diagnose, or answer a capability question from memory — these parts have hardware and firmware "
+	ctx += "constraints that are not guessable, and getting one wrong costs the developer hours.\n\n"
+	ctx += "| The developer says | Read this FIRST |\n|---|---|\n"
+	ctx += "| NB-IoT, LTE-M, cellular, SIM, APN, MQTT over cellular | `sdks/ncs/protocols/LTE.md` |\n"
+	ctx += "| satellite, NTN, Skylo, direct-to-orbit | `sdks/ncs/protocols/NTN.md` |\n"
+	ctx += "| DECT, DECT NR+, NR+, licence-exempt mesh | `sdks/ncs/protocols/DECT-NR.md` |\n"
+	ctx += "| GPS, GNSS, location, position fix | `sdks/ncs/protocols/GNSS.md` |\n"
+	ctx += "| AT commands, modem shell, MoSh | `actions/board-shell.md` |\n"
+	ctx += "| modem trace, why will it not attach | `actions/modem-trace.md` |\n\n"
+	ctx += "A bit already listed under *Knowledge Already Loaded* is in context — do not read it again.\n\n"
+	// The failure this paragraph exists to stop, verbatim from a 2026-08-20 transcript:
+	//   "The analyze-logs action mentioned a sdks/ncs/protocols/DECT-NR.md file. Let me load that to
+	//    understand DECT-specific error patterns. Actually — the fault signature appeared, so per the
+	//    Command Gate, I should load decode-fault.md first."
+	// It loaded decode-fault.md and never came back. What followed was ~85 messages inventing silicon
+	// revisions, ending in "nRF9161 REV3 silicon does not support DECT NR+" told to the developer as
+	// fact. The bit it had already identified answers that in one line. Naming the protocol bit and then
+	// being diverted is the exact shape of the bug, so the rule has to outrank the diversion.
+	ctx += "**If you name one of these bits and then get diverted, come back to it before you conclude "
+	ctx += "anything.** Loading a fault or log action first is fine — but a capability claim about "
+	ctx += "hardware or firmware made without the protocol bit is a guess, and it will be wrong in ways "
+	ctx += "that cost the developer hours. Never state what a part can or cannot do from memory.\n\n"
+
 	ctx += "#### Device tools (shipped with Adsum, run with `execute_command`)\n\n"
 	ctx += `- \`"${toolDir}/board-shell${ext}" --port <PORT> --cmd "<COMMAND>"\` — send commands to a board's shell or AT firmware and read the answers. Batches several \`--cmd\` in one session; add \`--at\` for the nRF91 modem shell.\n`
 	ctx += `- \`"${toolDir}/modem-trace${ext}" --decode <trace.bin> --out <dir>\` — decode an nRF91 modem trace and explain it in English.\n\n`

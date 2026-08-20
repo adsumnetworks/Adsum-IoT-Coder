@@ -2,7 +2,7 @@
 id: adsum/rules/core
 title: "Universal Embedded Rules"
 type: knowledge
-version: 1.2.0
+version: 1.3.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -53,6 +53,8 @@ This pattern applies to ALL platforms for actions such as:
 - **Code blocks** are fine and encouraged for commands, config, and log excerpts.
 - **Bold key terms** to make summaries scannable.
 - **Diagrams (Mermaid):** When a relationship is clearer drawn than written, render a Mermaid diagram fenced as ```mermaid — it renders live in the chat. Reach for it for a **multi-device / connection timeline** (sequence diagram — e.g. a BLE central ↔ peripheral connect + GATT notify), a **project component map** (flowchart — e.g. BLE + sensor + storage modules), or a **state machine** (state diagram). When the diagram represents a design decision (new-app architecture, protocol flow), **show it and get the user's confirmation BEFORE implementing**. Keep diagrams focused — a few nodes, not exhaustive.
+  - **One statement per line.** Mermaid is newline-delimited: a whole `flowchart LR subgraph … end` written on a single line does not parse and renders as nothing. Put every node, edge, `subgraph` and `end` on its own line.
+  - **Keep labels plain.** Quote any label containing spaces or punctuation, and avoid em-dashes, slashes and parentheses in `subgraph` titles — they are the usual cause of a diagram that silently fails to draw.
   - **Mermaid syntax trap:** never put a literal `\n` inside a node label or message — Mermaid renders it as the two characters `\n`, not a line break. Keep labels single-line (preferred) or use `<br/>` for an intentional break.
 
 ## 7. Tool Usage Priority (Embedded Development)
