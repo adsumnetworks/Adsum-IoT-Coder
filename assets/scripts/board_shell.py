@@ -264,14 +264,30 @@ def run(args):
             ser.write((wire + "\r\n").encode("utf-8"))
             ser.flush()
             raw, why, elapsed = read_until_prompt(ser, prompt_re, args.timeout, args.idle)
+            output = strip_echo(raw, wire)
+
+            # An "idle" that produced nothing but the command echo has told us NOTHING, and must never be
+            # handed back as an answer.
+            #
+            # Field report 2026-08-20: `AT+COPS=?` (a network scan that takes 2-5 MINUTES) returned after
+            # 0.82 s with "[IDLE] (no output)". The agent tabulated that as "No NB-IoT network visible
+            # here" and told the developer their location had no coverage. The scan had not even started.
+            #
+            # So: keep waiting for the real answer until the hard timeout, then say plainly that nothing
+            # conclusive arrived.
+            deadline = time.time() + max(0.0, args.timeout - elapsed)
+            while why == "idle" and not output.strip() and time.time() < deadline:
+                more, why, extra = read_until_prompt(ser, prompt_re, deadline - time.time(), args.idle)
+                if not more:
+                    break
+                raw += more
+                elapsed += extra
+                output = strip_echo(raw, wire)
+            if not output.strip() and why != "at-ok":
+                why = "inconclusive"
+
             results.append(
-                {
-                    "command": command,
-                    "sent": wire,
-                    "output": strip_echo(raw, wire),
-                    "exit": why,
-                    "seconds": round(elapsed, 3),
-                }
+                {"command": command, "sent": wire, "output": output, "exit": why, "seconds": round(elapsed, 3)}
             )
     finally:
         try:
@@ -287,11 +303,18 @@ def run(args):
             # so those two are the only ones worth putting in front of a reader.
             note = "" if r["exit"] in ("prompt", "at-ok") else f"  [{r['exit'].upper()}]"
             print(f"=== {r['command']} ===  ({r['seconds']}s){note}")
-            print(r["output"] if r["output"] else "(no output)")
+            if r["output"]:
+                print(r["output"])
+            elif r["exit"] in ("inconclusive", "timeout"):
+                print("(NO ANSWER -- this is NOT a result. The command did not complete in "
+                      f"{r['seconds']}s. Do NOT conclude anything from it; raise --timeout and retry. "
+                      "A network scan such as AT+COPS=? needs --timeout 300.)")
+            else:
+                print("(no output)")
             print()
 
     # A timeout is a real failure: the caller must not read an empty answer as "the board said nothing".
-    return 1 if any(r["exit"] == "timeout" for r in results) else 0
+    return 1 if any(r["exit"] in ("timeout", "inconclusive") for r in results) else 0
 
 
 def main():
@@ -306,7 +329,7 @@ def main():
     p.add_argument("--script", help="File of commands, one per line. # comments and blanks ignored.")
     p.add_argument("--at", action="store_true", help="Prefix each command with 'at ' for the nRF91 modem shell")
     p.add_argument("--prompt", help="Prompt regex. Auto-detected when omitted.")
-    p.add_argument("--timeout", type=float, default=10.0, help="Hard limit per command, seconds (default: 10)")
+    p.add_argument("--timeout", type=float, default=10.0, help="Hard limit per command, seconds (default: 10). AT+COPS=? needs 300")
     p.add_argument("--idle", type=float, default=0.6, help="Treat output as finished after this quiet gap (default: 0.6)")
     p.add_argument("--settle", type=float, default=0.3, help="Pause after opening before sending (default: 0.3)")
     p.add_argument("--json", action="store_true", help="Machine-readable output")
