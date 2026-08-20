@@ -67,6 +67,34 @@ describe("offer to open a scaffolded project — when it fires", () => {
 		}
 	})
 
+	test("THE COPY-THEN-EDIT CASE: markers arrive by robocopy, only sources go through the write tool", () => {
+		// Reported 2026-08-20: a DECT prototype was scaffolded by copying a Nordic sample with robocopy, so
+		// prj.conf and CMakeLists.txt never passed through write_to_file. The agent then edited src/main.c —
+		// not a marker — nothing was recorded, and the developer was never offered the folder at all.
+		// This is how the prototype workflow actually works, so it has to count.
+		const proj = tmpProject("dect_sensor_node")
+		const src = path.join(proj, "src")
+		fs.mkdirSync(src)
+		try {
+			assert.equal(isScaffoldOutsideWorkspace(path.join(src, "main.c"), DESKTOP), proj)
+			assert.equal(isScaffoldOutsideWorkspace(path.join(proj, "README.md"), DESKTOP), proj)
+		} finally {
+			fs.rmSync(path.dirname(proj), { recursive: true, force: true })
+		}
+	})
+
+	test("the walk-up is bounded — a distant marker is not this file's project", () => {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), "deep-"))
+		fs.writeFileSync(path.join(root, "CMakeLists.txt"), "")
+		const deep = path.join(root, "a", "b", "c", "d")
+		fs.mkdirSync(deep, { recursive: true })
+		try {
+			assert.equal(isScaffoldOutsideWorkspace(path.join(deep, "main.c"), DESKTOP), null)
+		} finally {
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+
 	test("every scaffold marker counts, not just prj.conf", () => {
 		for (const marker of ["CMakeLists.txt", "sdkconfig", "west.yml"]) {
 			const proj = tmpProject("app")
@@ -105,14 +133,15 @@ describe("offer to open a scaffolded project — when it must NOT fire", () => {
 		}
 	})
 
-	test("an ordinary source file never triggers it", () => {
-		const proj = tmpProject("app")
+	test("a source file OUTSIDE any project never triggers it", () => {
+		// The guard is "is this file inside a real project", not "is this filename special".
+		const bare = fs.mkdtempSync(path.join(os.tmpdir(), "bare-"))
 		try {
 			for (const f of ["main.c", "README.md", "overlay.dts"]) {
-				assert.equal(isScaffoldOutsideWorkspace(path.join(proj, f), DESKTOP), null, f)
+				assert.equal(isScaffoldOutsideWorkspace(path.join(bare, f), DESKTOP), null, f)
 			}
 		} finally {
-			fs.rmSync(path.dirname(proj), { recursive: true, force: true })
+			fs.rmSync(bare, { recursive: true, force: true })
 		}
 	})
 
@@ -262,6 +291,26 @@ describe("the handover guarantees the OUTCOME, not the asking", () => {
 		assert.equal(outstandingScaffold(proj, proj.toUpperCase()), undefined, "Windows paths are case-insensitive")
 		assert.equal(outstandingScaffold(proj, os.homedir()), proj, "different folder → still outstanding")
 		assert.equal(outstandingScaffold(undefined, proj), undefined, "nothing recorded → nothing to do")
+	})
+
+	test("the record belongs to ONE task and cannot leak into another", () => {
+		// Reported 2026-08-20 and the worst of the handover bugs: `pendingScaffoldProject` was global with
+		// no owner and no expiry. A scaffold that was never opened kept surfacing forever — the developer
+		// was working INSIDE dect_sensor_node, asked only for a code walkthrough, and was told to go open a
+		// project left over from an earlier session.
+		const completion = fs.readFileSync(path.join(__dirname, "AttemptCompletionHandler.ts"), "utf8")
+		assert.ok(/setGlobalState\("pendingScaffoldTaskId", config\.ulid\)/.test(completion), "must record the owner")
+		assert.ok(/recordedTaskId === config\.ulid/.test(completion), "must only nag inside the owning task")
+	})
+
+	test("a record with no owner is discarded, not obeyed", () => {
+		// Every machine that already ran an older build has one of these stored. Honouring it would keep
+		// the bug alive after the fix shipped.
+		const completion = fs.readFileSync(path.join(__dirname, "AttemptCompletionHandler.ts"), "utf8")
+		assert.ok(
+			/if \(recorded && !recordedTaskId\) \{[\s\S]{0,160}setGlobalState\("pendingScaffoldProject", ""\)/.test(completion),
+			"a legacy record must be cleared on sight",
+		)
 	})
 
 	test("the reminder is a different message from the first offer", () => {

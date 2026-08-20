@@ -101,8 +101,14 @@ export function applyMemoryWrite(cwd: string | undefined, w: WriteAccepted, nowI
 			"Not written: project memory only lives inside a real project, and the current folder is not one " +
 				"(no prj.conf / CMakeLists.txt / sdkconfig / .git, or it is a personal folder such as the Desktop " +
 				"or home directory).\n\n" +
-				"If you have just scaffolded a project, ask the developer to OPEN that project folder and record " +
-				"this again — it will then live with the code it describes. Do not write it anywhere else instead.",
+				"THIS IS A BLOCKER, NOT A COSMETIC DETAIL. Nothing learned in this session will survive it: no " +
+				"project memory, no checkpoints. Everything discovered here — the board, the ports, the working " +
+				"build flags — is lost the moment the session ends, and the next one starts from zero.\n\n" +
+				"If you have just scaffolded a project, STOP and hand the folder over: end your turn with " +
+				"attempt_completion so the developer gets the 'Open project folder' button. Do not work around " +
+				"this with absolute paths, do not write the memory elsewhere, and do not carry on as though it " +
+				"succeeded. Observed 2026-08-20: an agent hit this twice, called it 'a host-side binding detail, " +
+				"not a blocker', kept going, and the whole session's findings were discarded.",
 		)
 	}
 	switch (w.target) {

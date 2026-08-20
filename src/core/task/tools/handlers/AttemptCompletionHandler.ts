@@ -412,13 +412,28 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 		if (scaffoldedNow) {
 			clearPendingScaffold(config.ulid)
 			sm.setGlobalState("pendingScaffoldProject", scaffoldedNow)
+			sm.setGlobalState("pendingScaffoldTaskId", config.ulid)
 		}
 		const recorded = sm.getGlobalStateKey("pendingScaffoldProject")
-		const stillOutstanding = outstandingScaffold(recorded || undefined, config.cwd)
+		const recordedTaskId = sm.getGlobalStateKey("pendingScaffoldTaskId")
 
-		if (!stillOutstanding && recorded) {
+		// The record belongs to ONE task. It was global with no owner and no expiry, so a scaffold that
+		// was never opened kept surfacing in every unrelated task afterwards: on 2026-08-20 a developer
+		// working *inside* `dect_sensor_node`, asking only for a code walkthrough, was told to go open a
+		// project from a previous session. Reopening the original task from History keeps the same ulid,
+		// so the legitimate "did they actually open it?" follow-up still works.
+		// A record with no owner predates this fix. Honouring it would keep the exact bug being fixed
+		// alive on every machine that already has one stored, so drop it instead.
+		if (recorded && !recordedTaskId) {
+			sm.setGlobalState("pendingScaffoldProject", "")
+		}
+		const ownsRecord = !!recorded && recordedTaskId === config.ulid
+		const stillOutstanding = ownsRecord ? outstandingScaffold(recorded || undefined, config.cwd) : undefined
+
+		if (!stillOutstanding && recorded && ownsRecord) {
 			// The workspace IS the project now — the handover is done. Clear it so we never nag again.
 			sm.setGlobalState("pendingScaffoldProject", "")
+			sm.setGlobalState("pendingScaffoldTaskId", "")
 		}
 
 		if (stillOutstanding) {
