@@ -123,3 +123,71 @@ describe("the bits themselves carry the facts that were got wrong", () => {
 		assert.ok(/MDMEV/.test(s), "the modem's own search commentary explains the long silences")
 	})
 })
+
+describe("DECT NR+ knowledge reaches a DECT project", () => {
+	const ctx = fs.readFileSync(CTX, "utf8")
+
+	test("the bit is loaded at all", () => {
+		// It existed, was correct, and NOTHING loaded it. An agent then read `Modem fault: reason=4095`
+		// as incapable silicon and told the developer to buy different hardware (2026-08-20).
+		assert.ok(/protocols\/DECT-NR\.md/.test(ctx), "DECT-NR.md was injected by nothing")
+		assert.ok(/hasDectIntent/.test(ctx))
+	})
+
+	test("it does NOT hang off the cellular gate", () => {
+		// A DECT project has no SIM and may set no cellular Kconfig at all, so gating it behind
+		// `hasCellular` would keep it invisible exactly where it is needed.
+		const cellularBlock = ctx.slice(ctx.indexOf("if (hasCellular || cellularBoard)"), ctx.indexOf("hasDectIntent(cwd)"))
+		assert.equal(/protocols\/DECT-NR\.md/.test(cellularBlock), false, "DECT must not sit inside the LTE block")
+	})
+
+	test("the trigger is a DECT Kconfig, not a generic modem one", () => {
+		const fn = ctx.slice(ctx.indexOf("async function hasDectIntent"), ctx.indexOf("async function readKnowledgeFile"))
+		assert.ok(/CONFIG_DECT/.test(fn))
+		assert.equal(/NRF_MODEM_LIB/.test(fn), false, "every cellular project sets that too — it would misfire")
+	})
+})
+
+describe("the bits carry today's corrections", () => {
+	const kb = path.join(process.cwd(), "Adsum-Backend", "kbits", "platforms", "nrf")
+	const read = (p: string) => (fs.existsSync(path.join(kb, p)) ? fs.readFileSync(path.join(kb, p), "utf8") : "")
+
+	test("DECT: the firmware is not a public download, and that is said up front", () => {
+		const s = read("sdks/ncs/protocols/DECT-NR.md")
+		assert.ok(/sales/i.test(s), "a developer without the binary cannot do DECT at all")
+		assert.ok(/4095/.test(s), "the fault code that was misread as wrong silicon")
+		assert.ok(/buy different hardware/i.test(s), "must forbid the advice that was actually given")
+	})
+
+	test("DECT: an NTN limit must never be generalised to DECT", () => {
+		const s = read("sdks/ncs/protocols/DECT-NR.md")
+		assert.ok(/NTN is nRF9151-only; DECT NR\+ is not/.test(s))
+	})
+
+	test("board-shell: an empty answer is not a finding", () => {
+		const s = read("actions/board-shell.md")
+		assert.ok(/INCONCLUSIVE/.test(s))
+		assert.ok(/COPS=\?/.test(s) && /300/.test(s), "the slow command that was truncated needs its timeout named")
+	})
+
+	test("both action bits demand the output be translated for the developer", () => {
+		for (const f of ["actions/board-shell.md", "actions/modem-trace.md"]) {
+			assert.ok(/ALWAYS TRANSLATE FOR THE DEVELOPER/.test(read(f)), `${f} must carry the translation rule`)
+		}
+	})
+
+	test("modem-trace: cells-seen must not be reported as no-signal", () => {
+		const s = read("actions/modem-trace.md")
+		assert.ok(/MasterInformationBlock/.test(s))
+		assert.ok(/Never say "no signal"/.test(s))
+	})
+
+	test("the LTE bit was split rather than left over length", () => {
+		const core = read("sdks/ncs/protocols/LTE.md").split("\n").length
+		const ref = read("sdks/ncs/protocols/LTE/at-commands.md").split("\n").length
+		assert.ok(core > 0 && ref > 0, "both halves must exist")
+		assert.ok(core < 130, `LTE.md is ${core} lines — the corpus rule is small, focused bits`)
+		assert.ok(ref < 140, `at-commands.md is ${ref} lines`)
+		assert.ok(/LTE\/at-commands\.md/.test(read("sdks/ncs/protocols/LTE.md")), "the core must point at the reference")
+	})
+})
