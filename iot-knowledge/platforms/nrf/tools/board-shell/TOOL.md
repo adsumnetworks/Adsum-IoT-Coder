@@ -22,9 +22,9 @@ artifacts:
   - path: board-shell.bat
     sha256: c118ee175773f7e59b2094891b65a7432fb831415430ed72737b337df9db7352
   - path: board_shell.py
-    sha256: d0dbd79f8dba538b0ea082fcd0463257206644d0afc2ef604b7cea5a1bd3cc43
+    sha256: c58b776de2a8d37886db1d4ce339e14d0c450b6b2023db74ff152360ddbba20c
   - path: test_board_shell.py
     sha256: 21fa1bf0c2a027ce573eb984dbf1ede484ab48ce70af3a1f9575a71382c1154c
 ---
 
-Send commands to a board's shell or AT firmware and read the answers. Batches several --cmd in one session; add --at for the nRF91 modem shell. Handles port contention, prompt detection and timeouts, and behaves identically on Windows, Linux and macOS.
+Open an interactive serial session with a board and send it a command, returning what it replies. Use this to talk to a device — AT commands, a shell prompt, a bootloader — rather than only listening to what it emits.
