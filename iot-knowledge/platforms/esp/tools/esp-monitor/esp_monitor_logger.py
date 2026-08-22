@@ -412,10 +412,24 @@ def summarize(log_path: str) -> str:
             content = f.read()
     except OSError:
         return "no output captured"
-    for marker in CAPTURE_FAILURE_MARKERS:
-        if marker in content:
-            first = next((ln.strip() for ln in content.splitlines() if ln.strip()), "")
-            return f"CAPTURE FAILED — nothing was recorded, so this says NOTHING about the device ({first[:120]})"
+    # A capture can fail three ways, and they mean different things to the developer:
+    #   - it never started            → the log says nothing about the device
+    #   - it ran, then broke          → what WAS recorded is real, but the log is truncated
+    #   - it completed                → the ordinary summary
+    # Reporting the middle case as "nothing was recorded" is as misleading as reporting a crashed
+    # capture as a clean run; both hide what actually happened.
+    failure = next((m for m in CAPTURE_FAILURE_MARKERS if m in content), None)
+    if failure:
+        before = content.split(failure, 1)[0]
+        recorded = [ln for ln in before.splitlines() if ln.strip()]
+        if recorded:
+            return (
+                f"PARTIAL CAPTURE — {len(recorded)} lines recorded before the capture broke ({failure}); "
+                "what is here is real device output, but the log is TRUNCATED and silence after this "
+                "point means nothing"
+            )
+        first = next((ln.strip() for ln in content.splitlines() if ln.strip()), "")
+        return f"CAPTURE FAILED — nothing was recorded, so this says NOTHING about the device ({first[:120]})"
     lines = content.count("\n")
     hits = [label for marker, label in CRASH_MARKERS if marker in content]
     # De-duplicate while preserving order.

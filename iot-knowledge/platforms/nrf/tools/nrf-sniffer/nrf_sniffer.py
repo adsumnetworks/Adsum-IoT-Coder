@@ -26,6 +26,9 @@ from pathlib import Path
 
 IS_WINDOWS = os.name == "nt"
 
+# A PCAP global header alone; anything this size or smaller holds zero packets.
+PCAP_HEADER_BYTES = 24
+
 
 def build_command(args):
     timeout_ms = max(1000, int(args.duration * 1000))
@@ -141,7 +144,20 @@ def main():
 
     rc = proc.poll()
     if args.output.exists() and args.output.stat().st_size > 0:
-        print(f"[sniffer] wrote {args.output} ({args.output.stat().st_size} bytes)", flush=True)
+        size = args.output.stat().st_size
+        # A PCAP global header is 24 bytes. A file that size captured NOTHING, and reporting only
+        # "wrote N bytes" reads as success — the developer (or the agent) then reasons about a
+        # capture that contains no packets at all. Say it plainly, and say what usually causes it.
+        if size <= PCAP_HEADER_BYTES:
+            print(
+                f"[sniffer] NO PACKETS CAPTURED — {args.output} is {size} bytes, a PCAP header and nothing else.\n"
+                "[sniffer] This says NOTHING about the air: the usual causes are the wrong serial port "
+                "(a DK exposes several VCOMs; the sniffer answers on only one) or firmware that is not "
+                "the nRF Sniffer build.",
+                flush=True,
+            )
+        else:
+            print(f"[sniffer] wrote {args.output} ({size} bytes)", flush=True)
         return 0
 
     print(

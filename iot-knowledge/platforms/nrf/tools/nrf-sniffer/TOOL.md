@@ -22,7 +22,7 @@ artifacts:
   - path: nrf-sniffer.bat
     sha256: febe7e741799520b64da464454411d3ef922741281cb1f9b03dbc790deb48bce
   - path: nrf_sniffer.py
-    sha256: 8c1b25b72ae20fedc083a984f3f0c0bc88b68f2c1ba5bc9eed40549034f2d10e
+    sha256: aa63291e1363b525897fbe4598955cf05aff03b5a9f5d6a2a7a442a955ae9546
 ---
 
 Capture Bluetooth LE traffic with an nRF52840 dongle running sniffer firmware, to a .pcap.
