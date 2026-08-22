@@ -15,6 +15,32 @@ import shutil
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
+def _add_user_site_packages() -> None:
+    """Make a `pip install --user` visible despite PYTHONNOUSERSITE=1.
+
+    The wrappers set PYTHONNOUSERSITE=1 to stop .pth files in the user site directory executing at
+    interpreter startup (bug B1). But that flag also removes the user site from sys.path entirely —
+    and on a stock macOS the system Python is read-only, so `pip install --user` is the ONLY way a
+    developer can install pyserial. The tool was therefore printing install advice that its own
+    wrapper guaranteed would not work.
+
+    Adding the directory here, AFTER startup, keeps the isolation that matters (no .pth executes)
+    while still finding the package.
+    """
+    try:
+        import site
+
+        user_site = site.getusersitepackages()
+    except Exception:
+        return
+    if isinstance(user_site, str) and os.path.isdir(user_site) and user_site not in sys.path:
+        sys.path.append(user_site)
+
+try:
+    import serial.tools.list_ports
+    HAS_PYSERIAL = True
+except ImportError:
+    _add_user_site_packages()
 try:
     import serial.tools.list_ports
     HAS_PYSERIAL = True

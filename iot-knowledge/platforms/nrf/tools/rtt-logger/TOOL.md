@@ -18,7 +18,7 @@ safety: [shell]
 readonly: false
 artifacts:
   - path: nrf_rtt_logger.py
-    sha256: fe9be514b139d1ccb85da8ae496f95238df6456581f2ca401f7eda79a26b1c82
+    sha256: 6bc68db36229b8a0aa874c376769badc291652544cdefb705ccf131bb5d2d445
   - path: rtt-logger
     sha256: 4f167f33a7e523e59f7ecf28abd2373298cf1b82f5771fe59463d5148f304b0b
   - path: rtt-logger.bat
