@@ -73,3 +73,47 @@ export function shouldCreditTool(taskId: string, toolId: string): boolean {
 export function resetToolCredits(): void {
 	creditedByTask.clear()
 }
+
+/**
+ * Credit a tool bit the NATIVE handlers run.
+ *
+ * `triggerNordicAction` and `triggerEspAction` resolve their logger through `ToolResolver.pathOf()`
+ * and spawn it themselves — they never go through `execute_command`, so the credit hook there never
+ * fires. Without this a bundled tool run by a handler is silently uncredited, which is exactly the
+ * failure the credit line exists to prevent, and it was invisible until a real ESP capture went
+ * through the handler path rather than the shell.
+ *
+ * Same once-per-task rule and the same fail-open contract: attribution must never break a capture.
+ */
+// `config` is the handler's TaskConfig; typed loosely for the same reason sayKbitCredit is — the
+// credit path only ever needs `ulid` and `callbacks.say`, and pinning the full type here would couple
+// attribution to the task-config shape.
+// biome-ignore lint/suspicious/noExplicitAny: only ulid + callbacks.say are used
+export async function creditToolById(config: any, toolId: string): Promise<void> {
+	try {
+		const { loadBundledTools } = await import("./ToolResolver")
+		const tool = loadBundledTools().find((t) => t.id === toolId)
+		if (!tool || !shouldCreditTool(config.ulid, tool.id)) {
+			return
+		}
+		const credit = creditForTool(tool)
+		await config.callbacks.say(
+			"kbit_loaded",
+			JSON.stringify({
+				id: credit.id,
+				title: credit.title,
+				kind: credit.kind,
+				author: credit.author,
+				attributed: credit.attributed,
+				coAuthors: credit.coAuthors.length ? credit.coAuthors : undefined,
+				version: credit.version,
+				license: credit.license,
+				platform: credit.platform,
+				steward: credit.steward,
+				source: "bundled",
+			}),
+		)
+	} catch {
+		// additive — never surface as a tool failure
+	}
+}

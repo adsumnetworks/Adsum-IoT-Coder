@@ -5,6 +5,7 @@ import * as vscode from "vscode"
 import { markEspTerminalSourced, prepareEspTerminal, wrapEspCommand } from "@/hosts/vscode/hostbridge/workspace/executeEspCommand"
 import { telemetryService } from "@/services/telemetry"
 import { pathOf } from "@/services/tools/ToolResolver"
+import { creditToolById } from "@/services/tools/toolCredit"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
@@ -82,6 +83,10 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 			sayPath = body
 		} else if (action === "monitor") {
 			body = this.buildMonitorCommand(projectDir, block)
+			// The monitor IS a tool bit; the handler spawns it directly rather than through
+			// execute_command, so the credit hook there never sees it. Credit it here or its author
+			// goes unnamed for every capture the handler drives.
+			await creditToolById(config, "adsum/esp/tools/esp-monitor")
 			sayPath = "Capture serial logs (idf.py monitor)"
 		} else {
 			// build / flash

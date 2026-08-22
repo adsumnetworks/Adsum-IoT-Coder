@@ -11,6 +11,7 @@ import { parseHci } from "@/services/nrf/hci/hciParser"
 import { decodeSnifferPcap } from "@/services/nrf/sniffer/format"
 import { telemetryService } from "@/services/telemetry"
 import { pathOf } from "@/services/tools/ToolResolver"
+import { creditToolById } from "@/services/tools/toolCredit"
 import { ClineDefaultTool } from "@/shared/tools"
 import { openWithApp } from "@/utils/env"
 import type { ToolResponse } from "../../index"
@@ -237,6 +238,9 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		if (!resolvedToolPath) {
 			throw new Error(`${toolId} is not available in this installation — the tool bundle is missing.`)
 		}
+		// Credit the logger here: this handler spawns it directly, so the execute_command credit hook
+		// never sees it and the author would go unnamed for every capture the handler drives.
+		await creditToolById(config, toolId)
 
 		// A. Script Path: Use relative path for cleaner terminal output
 		const absoluteWrapperPath = resolvedToolPath
@@ -549,6 +553,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		if (!resolvedToolPath2) {
 			throw new Error("adsum/nrf/tools/nrf-sniffer is not available in this installation — the tool bundle is missing.")
 		}
+		await creditToolById(config, "adsum/nrf/tools/nrf-sniffer")
 		const absoluteWrapperPath = resolvedToolPath2
 		let wrapperPath = absoluteWrapperPath
 		if (config.cwd) {
