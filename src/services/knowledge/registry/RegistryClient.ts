@@ -72,6 +72,13 @@ export interface DownloadedManifest {
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 
+/**
+ * Why a tool artifact did or did not arrive. `locked` and `absent` are both 4xx but mean opposite
+ * things to the caller: one is a paywall to surface, the other is "this registry does not have it"
+ * (a rolled-back backend, say) which must stay silent.
+ */
+export type ArtifactFetch = { kind: "ok"; bytes: Buffer } | { kind: "locked" } | { kind: "absent" } | { kind: "unreachable" }
+
 export class RegistryClient {
 	constructor(
 		private readonly baseUrl: string = ClineEnv.config().adsumApiBaseUrl,
@@ -183,5 +190,48 @@ export class RegistryClient {
 			}
 		}
 		return null
+	}
+
+	/**
+	 * Fetch one tool artifact by hash, as BYTES.
+	 *
+	 * Deliberately not routed through `get()`: that returns text, and running `res.text()` over a
+	 * binary would silently corrupt it (invalid sequences become U+FFFD, and the sha256 check would
+	 * then fail on bytes that arrived intact). It also collapses every 4xx into null, which for an
+	 * artifact loses the distinction that matters — 402 means "you need Pro", 404 means "not served
+	 * here", and only the second is a reason to stop asking.
+	 */
+	async fetchArtifact(sha256: string): Promise<ArtifactFetch> {
+		const url = `${this.baseUrl}/v1/kbits/artifact/${sha256}`
+		for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
+			const controller = new AbortController()
+			// Artifacts are larger than bit bodies; give them a longer ceiling than a text GET.
+			const timer = setTimeout(() => controller.abort(), Math.max(this.timeoutMs, 60_000))
+			try {
+				const headers: Record<string, string> = { Accept: "application/octet-stream", ...this.identityHeaders() }
+				if (this.authorToken) {
+					headers.Authorization = `Bearer ${this.authorToken}`
+				}
+				const res = await this.fetchImpl(url, { method: "GET", headers, signal: controller.signal })
+				if (res.ok) {
+					const buf = Buffer.from(await res.arrayBuffer())
+					return { kind: "ok", bytes: buf }
+				}
+				if (res.status === 402) {
+					return { kind: "locked" }
+				}
+				if (res.status < 500) {
+					return { kind: "absent" }
+				}
+			} catch {
+				// transient → retry
+			} finally {
+				clearTimeout(timer)
+			}
+			if (attempt < this.maxAttempts) {
+				await new Promise((resolve) => setTimeout(resolve, this.retryBackoffMs * attempt))
+			}
+		}
+		return { kind: "unreachable" }
 	}
 }

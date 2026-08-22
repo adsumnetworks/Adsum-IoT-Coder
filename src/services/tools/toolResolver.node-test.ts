@@ -198,3 +198,81 @@ test("one credit line per tool per task, and different tasks credit independentl
 	assert.equal(shouldCreditTool("task-a", "adsum/t/y"), true, "a different tool still credits")
 	assert.equal(shouldCreditTool("task-b", "adsum/t/x"), true, "a new task credits again")
 })
+
+// ── cache: hash-verified, atomic, all-or-nothing ─────────────────────────────
+import { existsSync as fsExists, readdirSync as fsReaddir, writeFileSync as fsWrite, mkdtempSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { bytesHash as cacheHash, safeSegment, ToolCache } from "./ToolCache"
+
+const tmpRoot = () => mkdtempSync(path.join(tmpdir(), "toolcache-"))
+const member = (p: string, s: string) => ({ path: p, bytes: Buffer.from(s), sha256: cacheHash(Buffer.from(s)) })
+
+test("a bundle materialises and then verifies", () => {
+	const c = new ToolCache(tmpRoot())
+	const files = [member("t.py", "print(1)"), member("lib/h.py", "x=1")]
+	assert.equal(c.materialise("adsum/nrf/tools/t", "1.0.0", files), true)
+	assert.equal(
+		c.verify(
+			"adsum/nrf/tools/t",
+			"1.0.0",
+			files.map((f) => ({ path: f.path, sha256: f.sha256 })),
+		),
+		true,
+	)
+})
+
+test("one bad member publishes nothing — a bundle missing a file breaks mid-capture", () => {
+	const root = tmpRoot()
+	const c = new ToolCache(root)
+	const good = member("t.py", "print(1)")
+	const bad = { path: "b.py", bytes: Buffer.from("real"), sha256: cacheHash(Buffer.from("claimed")) }
+	assert.equal(c.materialise("adsum/t/x", "1.0.0", [good, bad]), false)
+	assert.equal(fsExists(c.dirFor("adsum/t/x", "1.0.0")), false, "no half-written bundle left behind")
+	// The (empty) id directory may remain — harmless. What must not survive is a staging directory,
+	// because reconcile treats those as collectable and nothing must ever execute out of one.
+	const leftover = fsReaddir(root, { withFileTypes: true }).flatMap((d) =>
+		d.isDirectory() ? fsReaddir(path.join(root, d.name)) : [],
+	)
+	assert.deepEqual(leftover, [], "no staging directory left behind")
+})
+
+test("a member path that escapes the bundle is refused even though the server also checks", () => {
+	const c = new ToolCache(tmpRoot())
+	assert.equal(
+		c.materialise("adsum/t/x", "1.0.0", [
+			{ path: "../evil.py", bytes: Buffer.from("x"), sha256: cacheHash(Buffer.from("x")) },
+		]),
+		false,
+	)
+})
+
+test("a tampered file fails verification — the check is on read, not only on download", () => {
+	const c = new ToolCache(tmpRoot())
+	const files = [member("t.py", "print(1)")]
+	c.materialise("adsum/t/x", "1.0.0", files)
+	fsWrite(path.join(c.dirFor("adsum/t/x", "1.0.0"), "t.py"), "print('evil')")
+	assert.equal(
+		c.verify(
+			"adsum/t/x",
+			"1.0.0",
+			files.map((f) => ({ path: f.path, sha256: f.sha256 })),
+		),
+		false,
+	)
+})
+
+test("reconcile keeps live versions, drops superseded ones and abandoned staging dirs", () => {
+	const c = new ToolCache(tmpRoot())
+	c.materialise("adsum/t/x", "1.0.0", [member("t.py", "a")])
+	c.materialise("adsum/t/x", "1.1.0", [member("t.py", "b")])
+	const removed = c.reconcile([{ id: "adsum/t/x", version: "1.1.0" }])
+	assert.deepEqual(removed, [`${safeSegment("adsum/t/x")}/1.0.0`])
+	assert.equal(fsExists(c.dirFor("adsum/t/x", "1.1.0")), true)
+})
+
+test("re-materialising the same version replaces it cleanly", () => {
+	const c = new ToolCache(tmpRoot())
+	c.materialise("adsum/t/x", "1.0.0", [member("old.py", "a")])
+	assert.equal(c.materialise("adsum/t/x", "1.0.0", [member("new.py", "b")]), true)
+	assert.equal(fsExists(path.join(c.dirFor("adsum/t/x", "1.0.0"), "old.py")), false, "stale member gone")
+})
