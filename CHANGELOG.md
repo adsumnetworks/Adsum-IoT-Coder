@@ -2,17 +2,24 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
-## [0.2.2] - 2026-08-20
+## [0.3.0] - 2026-08-22
 
-Cellular: nRF9161, nRF9151, and nRF9160 boards, the four nRF91 protocols, and two tools for talking to a modem instead of guessing at it.
+Cellular, and the tools that talk to your hardware. nRF9161, nRF9151, and nRF9160 boards with the four nRF91 protocols; and every device tool the extension ships is now a **tool bit** — versioned, credited to the engineer who wrote it, and updatable without waiting for a release.
+
+*(0.2.2 was never released; its work ships here.)*
 
 ### Added
+- **Device tools are tool bits now.** Board shell, modem trace, the RTT and UART loggers, the BLE sniffer and the ESP monitor each carry their own descriptor — version, licence, what it does, what it needs — and the agent is told about them from that descriptor rather than from a path compiled into the extension. Each one credits its author the first time it runs, the same way curated knowledge does.
+- **Tools can arrive without an update.** A tool bit can be delivered from the registry, verified against its published hash before anything runs, and cached; a tampered or unverifiable tool is simply never offered.
+- **log-shape** — describe the structure of a log in one call instead of searching it three times: distinct message kinds with counts and line ranges, then `--kind <n>` to see any of them in context. It says so plainly when a log has too little repetition to be worth shaping.
 - nRF91 cellular support: NB-IoT and LTE-M, NTN (satellite), DECT NR+, and GNSS, each with its own knowledge and each loaded only for the project that needs it. Board knowledge for the nRF9161 DK, nRF9151 DK, and nRF9160 DK.
 - **Board shell** — send commands to a board and read the answers: AT commands on an nRF91, Zephyr shell commands, anything with a console. It reads until the board finishes rather than sleeping for a fixed time, so a command that answers in 40 ms costs 40 ms, and a network scan that takes three minutes is not cut off at three seconds. Several commands run in one session. Works the same on Windows, Linux, and macOS.
 - **Modem trace** — capture a trace, decode it, and explain it in plain English: registration state, the network's own reason for a refusal, radio mode, and the modem's search events. It also reads the radio layer, which answers a question the AT commands cannot: whether the modem found real cells and never joined them, or saw nothing at all. Those two look identical in an application log and have completely different fixes.
 - Knowledge is named when it loads, not only when the agent reads a file. Board, protocol, and platform knowledge used to load silently; the credit line now covers it.
 
 ### Fixed
+- A tool that could not run no longer reports as though it had. The ESP monitor announced "no crash markers detected" over a capture that had failed outright, and the BLE sniffer reported a written file for a capture containing no packets at all. Both now say what actually happened, and a capture that broke partway says how much of it is real.
+- Device tools no longer try to install Python packages on your machine. They tell you the one command to run instead — and that command now works, which it did not before: the wrappers were hiding the very install location `pip install --user` writes to, so on a stock macOS the tools could never find pyserial at all.
 - An empty answer from a device is no longer reported as a finding. A network scan that returned nothing in under a second was being read as "no coverage here" — it had not started. Commands that come back with nothing conclusive now say so.
 - The "Open project folder" button did nothing. It rendered as Approve/Reject and never opened anything, in every version that has shipped it.
 - The same button could point at the wrong project when more than one was scaffolded, and never appeared at all when a project was created by copying a sample rather than writing its files.
