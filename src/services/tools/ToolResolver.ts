@@ -4,9 +4,11 @@ import path from "node:path"
 import { load as yamlLoad } from "js-yaml"
 import { HostProvider } from "@/hosts/host-provider"
 import { extractFrontmatter } from "@/services/knowledge/kbit/frontmatter"
+import type { ArtifactFetch } from "@/services/knowledge/registry/RegistryClient"
 import { espToolActive, nrfToolActive } from "@/services/platform/platformRouting"
 import type { WorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { commandPrefix, launcherName, renderCommand, type ToolRuntime } from "./launchers"
+import type { ToolCache } from "./ToolCache"
 
 /**
  * Resolve TOOL bits to something runnable, and advertise only what is actually on disk.
@@ -279,4 +281,70 @@ export function pathOf(id: string, cwd?: string): string | null {
 	}
 	const launcher = path.join(tool.dir, launcherName(tool.name))
 	return existsSync(launcher) ? launcher : tool.entryPath
+}
+
+// ── downloaded tools ─────────────────────────────────────────────────────────
+
+/**
+ * Turn a manifest entry for a `type: tool` bit into a runnable tool, materialising its bundle if the
+ * cache does not already hold a verified copy.
+ *
+ * Order matches knowledge bits: bundled wins, then a verified cache hit, then the registry. A tool is
+ * returned ONLY when its bundle is verified on disk — a locked or unreachable artifact yields null,
+ * so nothing half-available is ever advertised.
+ */
+export async function materialiseDownloadedTool(args: {
+	entry: Record<string, unknown>
+	cache: ToolCache
+	fetchArtifact: (sha256: string) => Promise<ArtifactFetch>
+	cwd?: string
+	interpreter?: string | null
+	haveExec?: (name: string) => boolean
+}): Promise<ResolvedTool | null> {
+	const { entry, cache } = args
+	const id = typeof entry.id === "string" ? entry.id : null
+	const version = typeof entry.version === "string" ? entry.version : null
+	const declared = Array.isArray(entry.artifacts) ? (entry.artifacts as Array<Record<string, unknown>>) : []
+	if (!id || !version || declared.length === 0) {
+		return null
+	}
+	const members = declared
+		.map((a) => ({ path: String(a.path ?? ""), sha256: String(a.sha256 ?? "") }))
+		.filter((m) => m.path && m.sha256)
+	if (members.length !== declared.length) {
+		return null // a descriptor missing a hash cannot be verified, so it is not usable
+	}
+
+	if (!cache.verify(id, version, members)) {
+		const fetched: Array<{ path: string; bytes: Buffer; sha256: string }> = []
+		for (const m of members) {
+			const r = await args.fetchArtifact(m.sha256)
+			if (r.kind !== "ok") {
+				// locked / absent / unreachable are all "not runnable now". The locked case is surfaced by
+				// the caller as a paywall; here it simply means do not advertise.
+				return null
+			}
+			fetched.push({ path: m.path, bytes: r.bytes, sha256: m.sha256 })
+		}
+		if (!cache.materialise(id, version, fetched)) {
+			return null
+		}
+	}
+
+	return buildResolvedTool({
+		id,
+		dir: cache.dirFor(id, version),
+		meta: entry,
+		body: typeof entry.summary === "string" ? entry.summary : "",
+		delivery: "downloaded",
+		fileExists: existsSync,
+		interpreter: args.interpreter ?? probePython(),
+		haveExecutable: args.haveExec ?? haveExecutable,
+		cwd: args.cwd,
+	})
+}
+
+/** Manifest rows that are tool bits. Kept pure so it is testable without a registry. */
+export function toolEntriesFromDownloadedManifest(bits: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+	return bits.filter((b) => b?.type === "tool" && Array.isArray(b.artifacts) && b.artifacts.length > 0)
 }

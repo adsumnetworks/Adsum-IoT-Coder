@@ -276,3 +276,102 @@ test("re-materialising the same version replaces it cleanly", () => {
 	assert.equal(c.materialise("adsum/t/x", "1.0.0", [member("new.py", "b")]), true)
 	assert.equal(fsExists(path.join(c.dirFor("adsum/t/x", "1.0.0"), "old.py")), false, "stale member gone")
 })
+
+import type { ArtifactFetch } from "@/services/knowledge/registry/RegistryClient"
+// ── downloaded tools: manifest → cache → registry ────────────────────────────
+import { materialiseDownloadedTool, toolEntriesFromDownloadedManifest } from "./ToolResolver"
+
+const CODE = Buffer.from("print('decode')\n")
+const CODE_SHA = cacheHash(CODE)
+const dlEntry = (over: Record<string, unknown> = {}) => ({
+	id: "adsum/nrf9x/tools/modem-trace",
+	version: "1.0.0",
+	type: "tool",
+	runtime: "python3",
+	entry: "modem_trace.py",
+	usage: "--decode <trace.bin>",
+	artifacts: [{ path: "modem_trace.py", sha256: CODE_SHA }],
+	...over,
+})
+const okFetch = async (): Promise<ArtifactFetch> => ({ kind: "ok", bytes: CODE })
+
+test("a downloaded tool is fetched, verified and materialised on first use", async () => {
+	const cache = new ToolCache(tmpRoot())
+	let calls = 0
+	const t = await materialiseDownloadedTool({
+		entry: dlEntry(),
+		cache,
+		interpreter: "python3",
+		haveExec: () => true,
+		fetchArtifact: async () => {
+			calls++
+			return { kind: "ok", bytes: CODE }
+		},
+	})
+	assert.ok(t, "resolves")
+	assert.equal(t!.delivery, "downloaded")
+	assert.equal(calls, 1)
+	// Second resolution is served from the verified cache — no refetch.
+	const again = await materialiseDownloadedTool({
+		entry: dlEntry(),
+		cache,
+		interpreter: "python3",
+		haveExec: () => true,
+		fetchArtifact: async () => {
+			calls++
+			return { kind: "ok", bytes: CODE }
+		},
+	})
+	assert.ok(again)
+	assert.equal(calls, 1, "cache hit, no second fetch")
+})
+
+test("a locked artifact is not advertised — a paywall must not look like a broken tool", async () => {
+	const t = await materialiseDownloadedTool({
+		entry: dlEntry(),
+		cache: new ToolCache(tmpRoot()),
+		interpreter: "python3",
+		fetchArtifact: async () => ({ kind: "locked" }),
+	})
+	assert.equal(t, null)
+})
+
+test("an unreachable or absent registry yields nothing, silently", async () => {
+	for (const kind of ["absent", "unreachable"] as const) {
+		const t = await materialiseDownloadedTool({
+			entry: dlEntry(),
+			cache: new ToolCache(tmpRoot()),
+			interpreter: "python3",
+			fetchArtifact: async () => ({ kind }),
+		})
+		assert.equal(t, null, kind)
+	}
+})
+
+test("bytes that do not match the declared hash are refused — a tampered registry ships nothing", async () => {
+	const t = await materialiseDownloadedTool({
+		entry: dlEntry(),
+		cache: new ToolCache(tmpRoot()),
+		interpreter: "python3",
+		fetchArtifact: async () => ({ kind: "ok", bytes: Buffer.from("evil()") }),
+	})
+	assert.equal(t, null)
+})
+
+test("a descriptor whose artifact lacks a hash is unusable", async () => {
+	const t = await materialiseDownloadedTool({
+		entry: dlEntry({ artifacts: [{ path: "modem_trace.py" }] }),
+		cache: new ToolCache(tmpRoot()),
+		interpreter: "python3",
+		fetchArtifact: okFetch,
+	})
+	assert.equal(t, null)
+})
+
+test("only tool rows with artifacts are treated as tools in a downloaded manifest", () => {
+	const rows = [dlEntry(), { id: "adsum/nrf/knowledges/lte", type: "knowledge" }, { id: "x", type: "tool" }]
+	assert.deepEqual(
+		toolEntriesFromDownloadedManifest(rows).map((r) => r.id),
+		["adsum/nrf9x/tools/modem-trace"],
+	)
+})
