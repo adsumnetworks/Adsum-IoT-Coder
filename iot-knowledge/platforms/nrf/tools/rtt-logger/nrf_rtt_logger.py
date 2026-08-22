@@ -32,20 +32,21 @@ except ImportError:
     HAS_PYLINK = False
 
 def ensure_pylink() -> bool:
-    """Auto-install pylink-square if not present. Returns True if available."""
-    global HAS_PYLINK
+    """Report whether pylink-square is available. Never installs it.
+
+    This used to pip-install pylink-square on demand. Installing a package into the developer's
+    Python without asking is not ours to do — it needs the network, it can fail halfway, and on a
+    stock macOS the system Python is read-only so it fails anyway. The caller already degrades to
+    single-channel capture when this returns False, so reporting is strictly better than a surprise
+    install that may not work.
+    """
     if HAS_PYLINK:
         return True
-    print("INFO: pylink-square not installed. Attempting to install automatically...")
-    try:
-        subprocess.run([sys.executable, "-m", "pip", "install", "pylink-square", "--quiet"], check=True)
-        import pylink  # noqa: F401 — adds to sys.modules cache
-        HAS_PYLINK = True
-        print("Successfully installed pylink-square.")
-        return True
-    except Exception as e:
-        print(f"WARNING: Failed to install pylink-square automatically: {e}")
-        return False
+    print(
+        "INFO: pylink-square is not installed for this interpreter, so .btmon capture is unavailable.\n"
+        f"      Install it with:  {sys.executable} -m pip install --user pylink-square",
+    )
+    return False
 
 
 # ============================================================================

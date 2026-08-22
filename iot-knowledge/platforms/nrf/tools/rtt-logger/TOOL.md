@@ -4,7 +4,7 @@ title: "rtt-logger"
 type: tool
 version: 1.0.0
 owner: adsum-core
-author: Adsum authoring team
+author: Omar Morceli
 license: Apache-2.0
 tier: certified
 delivery: bundled
@@ -18,7 +18,7 @@ safety: [shell]
 readonly: false
 artifacts:
   - path: nrf_rtt_logger.py
-    sha256: 035320cf33de449abfac2ef95937dbf1795359999904ba449896593847776623
+    sha256: fe9be514b139d1ccb85da8ae496f95238df6456581f2ca401f7eda79a26b1c82
   - path: rtt-logger
     sha256: 4f167f33a7e523e59f7ecf28abd2373298cf1b82f5771fe59463d5148f304b0b
   - path: rtt-logger.bat
