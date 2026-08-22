@@ -244,6 +244,50 @@ class ClineOAuthClientProvider implements OAuthClientProvider {
 	}
 
 	/**
+	 * Throw away credentials the SERVER has rejected, so the SDK can re-register and start a fresh flow.
+	 *
+	 * This is the escape hatch from a stale token, and it was the one method of the provider interface we
+	 * had not implemented. `tokens()` judges validity only against the local clock — `tokens_saved_at +
+	 * expires_in` — so a token the server has revoked still looks perfectly good to us and is handed over
+	 * on every attempt. When the server answers 401 the SDK calls THIS to clear the bad credentials before
+	 * retrying; with no implementation the call did nothing, the same dead token went back out, and the
+	 * client sat in an `initialize` retry loop indefinitely.
+	 *
+	 * Field report (Nordic MCP, 0.2.1, macOS): *"the provided bearer token is invalid, expired, or no
+	 * longer recognized by the server"* — a server-side revocation, repeating every five seconds forever.
+	 * It looked like a Mac-only fault but was not: tokens live in the OS credential store (Keychain /
+	 * Credential Manager) and never sync, so only the machine holding the old token was affected. The only
+	 * cure was deleting and re-adding the server, because that is the sole path that reaches
+	 * `clearServerAuth`.
+	 *
+	 * Scopes come from the SDK: `tokens` after a 401, `client` when the registration itself is rejected,
+	 * `verifier` for a spent PKCE verifier, `all` to reset. Anything we clear is re-obtained by the flow.
+	 */
+	async invalidateCredentials(scope: "all" | "client" | "tokens" | "verifier"): Promise<void> {
+		const secrets = getMcpOAuthSecrets()
+		const serverData = secrets[this.serverHash]
+		if (!serverData) {
+			return
+		}
+		if (scope === "all") {
+			delete secrets[this.serverHash]
+		} else if (scope === "tokens") {
+			serverData.tokens = undefined
+			serverData.tokens_saved_at = undefined
+		} else if (scope === "client") {
+			// The registration is gone server-side. Tokens issued under it cannot survive it, so they go
+			// too — keeping them would put us straight back into the same 401 loop on the next attempt.
+			serverData.client_info = undefined
+			serverData.tokens = undefined
+			serverData.tokens_saved_at = undefined
+		} else {
+			serverData.code_verifier = undefined
+		}
+		saveMcpOAuthSecrets(secrets)
+		console.log(`[McpOAuth] Cleared ${scope} credentials for ${this.serverName} after the server rejected them`)
+	}
+
+	/**
 	 * Get the server hash for this provider
 	 */
 	getServerHash(): string {
