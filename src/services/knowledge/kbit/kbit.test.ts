@@ -291,10 +291,17 @@ describe("regression: live corpus", () => {
 	// dev override in F5. The four nRF54 bits (XIAO nRF54LM20A, the nRF54L15 and nRF54LM20 DKs, and
 	// the nRF52840→nRF54L migration guide) were briefly authored here and moved out 2026-08-14 to
 	// join the other board bits; this count going UP again means a proprietary bit leaked back in.
-	test("corpus is fully migrated and lint-clean: 18 bits, 0 errors, 0 unmigrated", () => {
+	//
+	// The count is split by kind on purpose. 18 content bits + 4 TOOL bundles (the RTT/UART loggers,
+	// the BLE sniffer and the ESP monitor, which moved out of the flat assets/scripts directory and
+	// became `type: tool` bits). Counting them separately keeps the leak guard sharp: a proprietary
+	// content bit sneaking back in still moves the 18, where a single total would have absorbed it.
+	test("corpus is fully migrated and lint-clean: 18 content bits + 4 tool bits, 0 errors", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
-		assert.equal(files.length, 18)
-		assert.equal(migrated, 18)
+		const toolFiles = files.filter((f) => f.replace(/\\/g, "/").endsWith("/TOOL.md"))
+		assert.equal(toolFiles.length, 4, "bundled tool bits")
+		assert.equal(files.length - toolFiles.length, 18, "bundled content bits — a rise here means a proprietary bit leaked in")
+		assert.equal(migrated, files.length)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
 		assert.equal(unmigrated.length, 0)

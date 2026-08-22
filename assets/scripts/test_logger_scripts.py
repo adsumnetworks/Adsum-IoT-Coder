@@ -19,12 +19,40 @@ YELLOW = '\033[93m'
 BLUE = '\033[94m'
 RESET = '\033[0m'
 
+class _ToolTree:
+    """Locate a tool file by name across the bundled tool tree.
+
+    Tools used to be a flat `assets/scripts/` directory. They are now tool-bit bundles —
+    `iot-knowledge/platforms/<plat>/tools/<name>/` — each holding its wrapper, its .bat and its
+    Python entry point together (the wrappers resolve their script via SCRIPT_DIR, so they moved
+    unchanged). Every call site here asks for a bare filename, so resolving by search keeps them all
+    working without touching twenty paths.
+    """
+
+    def __init__(self):
+        here = Path(__file__).resolve()
+        self.repo_root = here.parent.parent.parent
+        self.roots = sorted((self.repo_root / "iot-knowledge" / "platforms").glob("*/tools"))
+
+    def __truediv__(self, name: str) -> Path:
+        for root in self.roots:
+            for candidate in root.glob(f"*/{name}"):
+                return candidate
+        # Return a non-existent path in the first root so callers' .exists() assertions fail with a
+        # readable message rather than a TypeError.
+        base = self.roots[0] if self.roots else self.repo_root
+        return base / name
+
+    def __str__(self) -> str:
+        return str(self.roots[0] if self.roots else self.repo_root)
+
+
 class LoggerTest:
     def __init__(self):
         self.passed = 0
         self.failed = 0
         self.tests = []
-        self.script_dir = Path(__file__).parent.absolute()
+        self.script_dir = _ToolTree()
         
     def log(self, level, message):
         """Print formatted log message"""
@@ -150,8 +178,7 @@ class LoggerTest:
     def test_project_detector_module(self):
         """Test RTT/UART project detector exists and compiles"""
         # Path should be relative to project root, not assets
-        scripts_dir = Path(__file__).parent
-        repo_root = scripts_dir.parent.parent  # Go up from assets/scripts to repo root
+        repo_root = _ToolTree().repo_root
         detector_path = repo_root / "src" / "platform" / "nordicProjectDetector.ts"
         
         if detector_path.exists():
@@ -169,8 +196,7 @@ class LoggerTest:
         # Just verify the detection heuristic: 9-digit = RTT, COM/tty = UART
         
         # Check handler source code for detection logic
-        scripts_dir = Path(__file__).parent
-        repo_root = scripts_dir.parent.parent
+        repo_root = _ToolTree().repo_root
         handler_path = repo_root / "src" / "core" / "task" / "tools" / "handlers" / "TriggerNordicActionHandler.ts"
         if handler_path.exists():
             content = handler_path.read_text()
