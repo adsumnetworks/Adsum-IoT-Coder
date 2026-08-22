@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 22,
+	"count": 23,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -98,7 +98,7 @@
 			"type": "tool",
 			"version": "1.0.0",
 			"owner": "adsum-core",
-			"author": "Adsum authoring team",
+			"author": "Omar Morceli",
 			"license": "Apache-2.0",
 			"tier": "certified",
 			"delivery": "bundled",
@@ -268,12 +268,49 @@
 			"content_hash": "99f9933f1bc13be7aaed40baba4a7802fa105b8cfe252fa87413e227c2aaeabd"
 		},
 		{
+			"id": "adsum/nrf/tools/board-shell",
+			"title": "board-shell",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [
+				"shell"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "python3",
+			"entry": "board_shell.py",
+			"usage": "--port <PORT> --cmd \"<COMMAND>\"",
+			"artifacts": [
+				{
+					"path": "board-shell",
+					"sha256": "37ba78b0c20b365eeb01a858234aaaaad67c91ad7d250cd22b283667914efcc8"
+				},
+				{
+					"path": "board-shell.bat",
+					"sha256": "c118ee175773f7e59b2094891b65a7432fb831415430ed72737b337df9db7352"
+				},
+				{
+					"path": "board_shell.py",
+					"sha256": "d0dbd79f8dba538b0ea082fcd0463257206644d0afc2ef604b7cea5a1bd3cc43"
+				}
+			],
+			"readonly": false,
+			"path": "platforms/nrf/tools/board-shell/TOOL.md",
+			"content_hash": "f689aeb7ab8f6a47fa9aafcc46bfd875b4f5475ed12ec4fd67f3c04ea2280ac3"
+		},
+		{
 			"id": "adsum/nrf/tools/nrf-sniffer",
 			"title": "nrf-sniffer",
 			"type": "tool",
 			"version": "1.0.0",
 			"owner": "adsum-core",
-			"author": "Adsum authoring team",
+			"author": "Omar Morceli",
 			"license": "Apache-2.0",
 			"tier": "certified",
 			"delivery": "bundled",
@@ -310,7 +347,7 @@
 			"type": "tool",
 			"version": "1.0.0",
 			"owner": "adsum-core",
-			"author": "Adsum authoring team",
+			"author": "Omar Morceli",
 			"license": "Apache-2.0",
 			"tier": "certified",
 			"delivery": "bundled",
@@ -326,7 +363,7 @@
 			"artifacts": [
 				{
 					"path": "nrf_rtt_logger.py",
-					"sha256": "dfb6fdd1566c98729ce1aca3a0b83c9f2d9fc6d9f66b7b34f2d3c957f619a6b4"
+					"sha256": "6bc68db36229b8a0aa874c376769badc291652544cdefb705ccf131bb5d2d445"
 				},
 				{
 					"path": "rtt-logger",
@@ -347,7 +384,7 @@
 			"type": "tool",
 			"version": "1.0.0",
 			"owner": "adsum-core",
-			"author": "Adsum authoring team",
+			"author": "Omar Morceli",
 			"license": "Apache-2.0",
 			"tier": "certified",
 			"delivery": "bundled",
@@ -363,7 +400,7 @@
 			"artifacts": [
 				{
 					"path": "nrf_uart_logger.py",
-					"sha256": "8317bbc54dac8c352e21e161efbe783e5799dd410ff2f95a2de6ce1f22ca19b2"
+					"sha256": "dcc05c45378dccee3cfaf785be669ada3d6a3c22acf762d48103b2341c34d065"
 				},
 				{
 					"path": "uart-logger",

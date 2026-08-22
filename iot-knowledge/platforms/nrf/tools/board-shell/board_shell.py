@@ -40,16 +40,41 @@ import re
 import sys
 import time
 
+def _add_user_site_packages() -> None:
+    """Make a `pip install --user` visible despite PYTHONNOUSERSITE=1.
+
+    The wrapper sets PYTHONNOUSERSITE=1 to stop .pth files in the user site directory executing at
+    interpreter startup (bug B1). That flag also drops the user site from sys.path — and on a stock
+    macOS the system Python is read-only, so `pip install --user` is the only install a developer
+    can perform. Without this the advice printed below is advice the wrapper guarantees will fail.
+    """
+    import os
+
+    try:
+        import site
+
+        user_site = site.getusersitepackages()
+    except Exception:
+        return
+    if isinstance(user_site, str) and os.path.isdir(user_site) and user_site not in sys.path:
+        sys.path.append(user_site)
+
+
 try:
     import serial
     import serial.tools.list_ports
 except ImportError:
-    sys.stderr.write(
-        "pyserial is not installed.\n"
-        "  Windows: python -m pip install pyserial\n"
-        "  Linux/macOS: python3 -m pip install pyserial\n"
-    )
-    sys.exit(3)
+    _add_user_site_packages()
+    try:
+        import serial
+        import serial.tools.list_ports
+    except ImportError:
+        sys.stderr.write(
+            "pyserial is not installed for this interpreter.\n"
+            "  Windows: python -m pip install --user pyserial\n"
+            "  Linux/macOS: python3 -m pip install --user pyserial\n"
+        )
+        sys.exit(3)
 
 
 # Prompts we recognise without being told. Zephyr's shell uses "uart:~$"; the nRF91 modem shell
