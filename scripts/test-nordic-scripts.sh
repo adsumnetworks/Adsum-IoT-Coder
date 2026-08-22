@@ -5,7 +5,12 @@
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ASSETS_DIR="$SCRIPT_DIR/assets/scripts"
+# Tools are tool-bit bundles now: iot-knowledge/platforms/<plat>/tools/<name>/{wrapper,.bat,entry.py}.
+# Collect the files by search rather than by flat glob.
+TOOLS_ROOT="$SCRIPT_DIR/iot-knowledge/platforms/nrf/tools"
+py_files() { find "$TOOLS_ROOT" -name '*.py' -not -name 'test_*' | sort; }
+bat_files() { find "$TOOLS_ROOT" -name '*.bat' | sort; }
+tool_file() { find "$TOOLS_ROOT" -name "$1" | head -1; }
 
 PASS=0
 FAIL=0
@@ -50,7 +55,7 @@ echo ""
 echo "Test 1: Python Syntax Validation"
 echo "─────────────────────────────────"
 
-for py_file in "$ASSETS_DIR"/*.py; do
+while IFS= read -r py_file; do
     if [ -f "$py_file" ]; then
         filename=$(basename "$py_file")
         if "$PY" -m py_compile "$py_file" 2>/dev/null; then
@@ -62,7 +67,7 @@ for py_file in "$ASSETS_DIR"/*.py; do
             ((FAIL++))
         fi
     fi
-done
+done < <(py_files)
 echo ""
 
 # ============================================================================
@@ -72,7 +77,7 @@ echo ""
 echo "Test 2: Python Import Validation"
 echo "─────────────────────────────────"
 
-for py_file in "$ASSETS_DIR"/*.py; do
+while IFS= read -r py_file; do
     if [ -f "$py_file" ]; then
         filename=$(basename "$py_file")
         
@@ -93,7 +98,7 @@ for py_file in "$ASSETS_DIR"/*.py; do
             ((FAIL++))
         fi
     fi
-done
+done < <(py_files)
 echo ""
 
 # ============================================================================
@@ -103,7 +108,7 @@ echo ""
 echo "Test 3: Shell Script Validation"
 echo "───────────────────────────────"
 
-for sh_file in "$ASSETS_DIR"/{rtt,uart}-logger; do
+for sh_file in "$(tool_file rtt-logger)" "$(tool_file uart-logger)"; do
     if [ -f "$sh_file" ]; then
         filename=$(basename "$sh_file")
         if bash -n "$sh_file" 2>/dev/null; then
@@ -125,7 +130,7 @@ echo ""
 echo "Test 4: Batch Script Validation (Windows)"
 echo "──────────────────────────────────────────"
 
-for bat_file in "$ASSETS_DIR"/*.bat; do
+while IFS= read -r bat_file; do
     if [ -f "$bat_file" ]; then
         filename=$(basename "$bat_file")
         
@@ -156,7 +161,7 @@ for bat_file in "$ASSETS_DIR"/*.bat; do
             ((WARN++))
         fi
     fi
-done
+done < <(bat_files)
 echo ""
 
 # ============================================================================
@@ -176,7 +181,7 @@ REQUIRED_FILES=(
 )
 
 for file in "${REQUIRED_FILES[@]}"; do
-    if [ -f "$ASSETS_DIR/$file" ]; then
+    if [ -n "$(tool_file "$file")" ]; then
         echo -e "${GREEN}✓${NC} $file: Exists"
         ((PASS++))
     else
@@ -193,7 +198,7 @@ echo ""
 echo "Test 6: Python Cross-Platform Logic"
 echo "────────────────────────────────────"
 
-for py_file in "$ASSETS_DIR"/*.py; do
+while IFS= read -r py_file; do
     if [ -f "$py_file" ]; then
         filename=$(basename "$py_file")
         
@@ -213,7 +218,7 @@ for py_file in "$ASSETS_DIR"/*.py; do
             ((WARN++))
         fi
     fi
-done
+done < <(py_files)
 echo ""
 
 # ============================================================================

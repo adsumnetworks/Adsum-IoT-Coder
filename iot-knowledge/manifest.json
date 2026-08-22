@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 18,
+	"count": 22,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -91,6 +91,43 @@
 			"platform": "esp",
 			"path": "platforms/esp/sdks/esp-idf/SDK.md",
 			"content_hash": "a2a1d422fd5cef8164f26e7a35f20099156a705934ba16b65d6618131d44d558"
+		},
+		{
+			"id": "adsum/esp/tools/esp-monitor",
+			"title": "esp-monitor",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Adsum authoring team",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "esp",
+			"safety": [
+				"shell"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "python3",
+			"entry": "esp_monitor_logger.py",
+			"usage": "--port <PORT> --duration <SECONDS> --out <FILE>",
+			"artifacts": [
+				{
+					"path": "esp-monitor",
+					"sha256": "4c775e0ff2698f38dbdb3ccf7ab13b9a959537f87d940e350d8c73ff4f663fda"
+				},
+				{
+					"path": "esp-monitor.bat",
+					"sha256": "78a3e52cdec40d9f4b3a1616bf9b5b8218a5a53440f142ddc34d085aa4bb1ffc"
+				},
+				{
+					"path": "esp_monitor_logger.py",
+					"sha256": "04631e0f244f564fac01fc761478bd27f87162c115f5cc1fd5d318afe9619e9f"
+				}
+			],
+			"readonly": false,
+			"path": "platforms/esp/tools/esp-monitor/TOOL.md",
+			"content_hash": "ddc45af59c661611753c1cd54dad2691baa4427410de3513fde67e90d0fdf6a3"
 		},
 		{
 			"id": "adsum/nrf/actions/capture-logs",
@@ -229,6 +266,117 @@
 			"platform": "nrf",
 			"path": "platforms/nrf/sdks/ncs/SDK.md",
 			"content_hash": "99f9933f1bc13be7aaed40baba4a7802fa105b8cfe252fa87413e227c2aaeabd"
+		},
+		{
+			"id": "adsum/nrf/tools/nrf-sniffer",
+			"title": "nrf-sniffer",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Adsum authoring team",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [
+				"shell"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "python3",
+			"entry": "nrf_sniffer.py",
+			"usage": "--capture --duration <SECONDS> --out <FILE.pcap>",
+			"artifacts": [
+				{
+					"path": "nrf-sniffer",
+					"sha256": "8b42d1f946df4a1b2294ce1e5fb0cbc064f2feb35f37e43bd0e6e205e10c352b"
+				},
+				{
+					"path": "nrf-sniffer.bat",
+					"sha256": "febe7e741799520b64da464454411d3ef922741281cb1f9b03dbc790deb48bce"
+				},
+				{
+					"path": "nrf_sniffer.py",
+					"sha256": "8c1b25b72ae20fedc083a984f3f0c0bc88b68f2c1ba5bc9eed40549034f2d10e"
+				}
+			],
+			"readonly": false,
+			"path": "platforms/nrf/tools/nrf-sniffer/TOOL.md",
+			"content_hash": "49795d822ab3eef4aaefb5595d6c5bda49a124567ab7bf77fef0bc4963f4f968"
+		},
+		{
+			"id": "adsum/nrf/tools/rtt-logger",
+			"title": "rtt-logger",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Adsum authoring team",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [
+				"shell"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "python3",
+			"entry": "nrf_rtt_logger.py",
+			"usage": "--capture --port <PORT> --duration <SECONDS> --out <FILE>",
+			"artifacts": [
+				{
+					"path": "nrf_rtt_logger.py",
+					"sha256": "dfb6fdd1566c98729ce1aca3a0b83c9f2d9fc6d9f66b7b34f2d3c957f619a6b4"
+				},
+				{
+					"path": "rtt-logger",
+					"sha256": "4f167f33a7e523e59f7ecf28abd2373298cf1b82f5771fe59463d5148f304b0b"
+				},
+				{
+					"path": "rtt-logger.bat",
+					"sha256": "9b5024b44be1a2b48faa41b4187f22d3fc876bf22dc11a58433caa3c780816a3"
+				}
+			],
+			"readonly": false,
+			"path": "platforms/nrf/tools/rtt-logger/TOOL.md",
+			"content_hash": "78826dddeb1b9d96781b38dff3f6b4dafff686f5af02533992787eea69ba08bd"
+		},
+		{
+			"id": "adsum/nrf/tools/uart-logger",
+			"title": "uart-logger",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Adsum authoring team",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [
+				"shell"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "python3",
+			"entry": "nrf_uart_logger.py",
+			"usage": "--capture --port <PORT> --duration <SECONDS> --out <FILE>",
+			"artifacts": [
+				{
+					"path": "nrf_uart_logger.py",
+					"sha256": "8317bbc54dac8c352e21e161efbe783e5799dd410ff2f95a2de6ce1f22ca19b2"
+				},
+				{
+					"path": "uart-logger",
+					"sha256": "48f06b49fd995e62ec6aa284b66abb4add031dff0bffa376be9aa85e223859ca"
+				},
+				{
+					"path": "uart-logger.bat",
+					"sha256": "41ab965e6af7aa2f5fc7ab4f88024bd248690a446c48acd3cad2db34174718c4"
+				}
+			],
+			"readonly": false,
+			"path": "platforms/nrf/tools/uart-logger/TOOL.md",
+			"content_hash": "e2f7f023d05e3c204d095a3a7b0180ce33454beb9fe396ff3e50d61e33cf25bd"
 		},
 		{
 			"id": "adsum/nrf/workflows/demo-debug",

@@ -4,6 +4,7 @@ import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
 import { markEspTerminalSourced, prepareEspTerminal, wrapEspCommand } from "@/hosts/vscode/hostbridge/workspace/executeEspCommand"
 import { telemetryService } from "@/services/telemetry"
+import { pathOf } from "@/services/tools/ToolResolver"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
@@ -157,8 +158,11 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 		const { port, duration, name, reset, devices } = block.params as Record<string, string | undefined>
 
 		const isWindows = process.platform === "win32"
-		const wrapperName = isWindows ? "esp-monitor.bat" : "esp-monitor"
-		const absoluteWrapperPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", wrapperName)
+		// Resolved from the tool bit rather than a hard-coded assets/scripts path.
+		const absoluteWrapperPath = pathOf("adsum/esp/tools/esp-monitor")
+		if (!absoluteWrapperPath) {
+			throw new Error("adsum/esp/tools/esp-monitor is not available in this installation — the tool bundle is missing.")
+		}
 
 		// Prefer a short, workspace-relative path for cleaner terminal output.
 		let wrapperPath = absoluteWrapperPath

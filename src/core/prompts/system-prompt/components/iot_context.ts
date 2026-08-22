@@ -8,6 +8,7 @@ import { ncsGateNotice } from "@/services/knowledge/kbit/ncsGate"
 import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { routePlatform } from "@/services/platform/platformRouting"
 import { getCachedWorkspaceSummary, NRF_BLE_RE, NRF_CELLULAR_RE, NRF91_BOARD_RE } from "@/services/platform/WorkspaceClassifier"
+import { type ResolvedTool, resolveTools } from "@/services/tools/ToolResolver"
 import { fileExistsAtPath } from "@/utils/fs"
 import { shouldInjectMap } from "../../../memory/workspace/mapGate"
 import { migrateLegacyMemory } from "../../../memory/workspace/migrate"
@@ -631,8 +632,6 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	//
 	// Emit the form that runs on THIS host: .bat on Windows, the bash wrapper elsewhere. A generic
 	// "use the .bat on Windows" note gets ignored or half-applied.
-	const toolDir = path.join(HostProvider.get().extensionFsPath, "assets", "scripts").replace(/\\/g, "/")
-	const ext = process.platform === "win32" ? ".bat" : ""
 	// Protocol router — the cheapest fix for knowledge arriving too late.
 	//
 	// Every protocol gate below reads prj.conf or the attached board. A PROTOTYPE has neither: no project
@@ -669,11 +668,10 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	ctx += "hardware or firmware made without the protocol bit is a guess, and it will be wrong in ways "
 	ctx += "that cost the developer hours. Never state what a part can or cannot do from memory.\n\n"
 
-	ctx += "#### Device tools (shipped with Adsum, run with `execute_command`)\n\n"
-	ctx += `- \`"${toolDir}/board-shell${ext}" --port <PORT> --cmd "<COMMAND>"\` — send commands to a board's shell or AT firmware and read the answers. Batches several \`--cmd\` in one session; add \`--at\` for the nRF91 modem shell.\n`
-	ctx += `- \`"${toolDir}/modem-trace${ext}" --decode <trace.bin> --out <dir>\` — decode an nRF91 modem trace and explain it in English.\n\n`
-	ctx += "Prefer these over hand-written serial code. They handle port contention, prompt detection and "
-	ctx += "timeouts, and they behave identically on Windows, Linux and macOS.\n\n"
+	// The device-tool advertisement is rendered from tool-bit descriptors by renderDeviceTools(), which
+	// runs once for the whole prompt — board-shell and modem-trace are tool bundles now, so listing them
+	// here as well would advertise the same tools twice. The reasoning above still holds: the agent
+	// cannot guess a path it was never given, which is why the advertisement exists at all.
 	ctx += (await load("platforms/nrf/rules/nrf-terminal.md")) + "\n\n"
 	ctx += (await load("platforms/nrf/rules/skill-loading.md")) + "\n\n"
 	ctx += (await load("platforms/nrf/rules/device-identity.md")) + "\n\n"
@@ -814,6 +812,37 @@ const MULTI_PLATFORM_NOTE = `> **MULTI-PLATFORM WORKSPACE.** This workspace cont
  * model is asking. Keep it that way; if this ever needs another field off
  * `SystemPromptContext`, that field must join the fingerprint too.
  */
+/**
+ * Advertise the tool bits this workspace can actually run.
+ *
+ * The advertisement is a promise: the agent will run exactly the path it is given. So this renders
+ * only tools the resolver verified on disk, and where a prerequisite is missing it says so in the
+ * line rather than hiding the tool — an agent that knows "modem-trace needs nrfutil, not found"
+ * tells the developer, whereas an agent that sees nothing improvises its own script. That failure is
+ * why device tools are advertised at all.
+ */
+function renderDeviceTools(tools: ResolvedTool[]): string {
+	if (tools.length === 0) {
+		return ""
+	}
+	let out = "#### Device tools (shipped with Adsum, run with `execute_command`)\n\n"
+	for (const t of tools) {
+		const usage = t.usage ? ` ${t.usage}` : ""
+		out += `- \`${t.command}${usage}\``
+		if (t.summary) {
+			out += ` — ${t.summary}`
+		}
+		if (t.unavailable) {
+			out += `  ⚠ ${t.unavailable} — tell the developer instead of writing your own script.`
+		}
+		out += "\n"
+	}
+	out +=
+		"\nRun these with `execute_command`. Do not reimplement them: a hand-rolled serial or capture " +
+		"script is platform-specific and loses the handling these already carry.\n\n"
+	return out
+}
+
 async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	const kbPath = path.join(HostProvider.get().extensionFsPath, "iot-knowledge").replace(/\\/g, "/")
 
@@ -856,6 +885,10 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	// Shared skill-loading framework (Scope Gate / Command Gate / MANDATORY SKILL LOAD) — factored
 	// out of the two per-platform copies (−3.1K chars each); the platform stubs reference it.
 	iotContext += (await load("rules/skill-loading.md")) + "\n\n"
+
+	// 1b. Device tools — resolved from tool-bit descriptors, never a hard-coded path. `cwd` lets the
+	//     resolver shorten each command to a workspace-relative path for readable terminal output.
+	iotContext += renderDeviceTools(resolveTools(summary, `prompt:${cwd}`, cwd))
 
 	// 2. Platform knowledge — load each platform the classification allows AND the
 	//    cwd confirms as a real project. A single-platform workspace loads exactly

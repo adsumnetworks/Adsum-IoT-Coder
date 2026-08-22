@@ -10,6 +10,7 @@ import { formatHci } from "@/services/nrf/hci/format"
 import { parseHci } from "@/services/nrf/hci/hciParser"
 import { decodeSnifferPcap } from "@/services/nrf/sniffer/format"
 import { telemetryService } from "@/services/telemetry"
+import { pathOf } from "@/services/tools/ToolResolver"
 import { ClineDefaultTool } from "@/shared/tools"
 import { openWithApp } from "@/utils/env"
 import type { ToolResponse } from "../../index"
@@ -228,17 +229,17 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 
 		// 2. Resolve paths for "capture" / "test" / "monitor"
 
-		// Determine which wrapper script to use based on transport
-		let wrapperName = transport === "rtt" ? "rtt-logger" : "uart-logger"
-
-		// Add .bat extension on Windows, use as-is on Unix
+		// The logger is a tool bit now, so its location comes from the resolver rather than a
+		// hard-coded assets/scripts path — bundled and (later) downloaded tools resolve the same way.
+		const toolId = transport === "rtt" ? "adsum/nrf/tools/rtt-logger" : "adsum/nrf/tools/uart-logger"
 		const isWindows = process.platform === "win32"
-		if (isWindows) {
-			wrapperName = wrapperName + ".bat"
+		const resolvedToolPath = pathOf(toolId)
+		if (!resolvedToolPath) {
+			throw new Error(`${toolId} is not available in this installation — the tool bundle is missing.`)
 		}
 
 		// A. Script Path: Use relative path for cleaner terminal output
-		const absoluteWrapperPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", wrapperName)
+		const absoluteWrapperPath = resolvedToolPath
 		let wrapperPath = absoluteWrapperPath
 
 		// Try to make it relative to the current working directory (workspace root)
@@ -544,8 +545,11 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		const quoteIfNeeded = (s: string): string => (s.includes(" ") ? `"${s}"` : s)
 
 		// Wrapper script (relative to workspace for clean output; `.bat` on Windows).
-		const wrapperName = isWindows ? "nrf-sniffer.bat" : "nrf-sniffer"
-		const absoluteWrapperPath = path.join(this.context.extensionUri.fsPath, "assets", "scripts", wrapperName)
+		const resolvedToolPath2 = pathOf("adsum/nrf/tools/nrf-sniffer")
+		if (!resolvedToolPath2) {
+			throw new Error("adsum/nrf/tools/nrf-sniffer is not available in this installation — the tool bundle is missing.")
+		}
+		const absoluteWrapperPath = resolvedToolPath2
 		let wrapperPath = absoluteWrapperPath
 		if (config.cwd) {
 			try {

@@ -11,6 +11,7 @@ Usage:
 import argparse
 import subprocess
 import sys
+from pathlib import Path
 import time
 
 def main():
@@ -27,7 +28,9 @@ def main():
     print(f"\n[STRESS TEST] Starting {args.iterations} iterations (duration={args.duration}s)...")
     print("-" * 60)
 
-    logger_script = "nrf_rtt_logger.py"
+    logger_script = str(next(
+        (Path(__file__).resolve().parent.parent.parent / "iot-knowledge" / "platforms" / "nrf" / "tools").glob("*/nrf_rtt_logger.py")
+    ))
     # Ensure we run the script from the same directory
     import os
     script_dir = os.path.dirname(os.path.abspath(__file__))
