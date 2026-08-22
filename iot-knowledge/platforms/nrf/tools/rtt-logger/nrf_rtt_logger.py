@@ -19,15 +19,11 @@ try:
     import serial.tools.list_ports
     HAS_PYSERIAL = True
 except ImportError:
-    print("WARNING: pyserial not installed. Attempting to install automatically...")
-    try:
-        subprocess.run([sys.executable, "-m", "pip", "install", "pyserial", "--quiet"], check=True)
-        import serial.tools.list_ports
-        HAS_PYSERIAL = True
-        print("Successfully installed pyserial.")
-    except Exception as e:
-        print(f"WARNING: Failed to install pyserial automatically: {e}")
-        HAS_PYSERIAL = False
+    # Deliberately NOT auto-installed. Writing to the developer's Python environment at import time
+    # needs the network, mutates their machine without asking, and fails outright on a stock macOS
+    # where the system Python is read-only. The port-listing paths below already degrade on
+    # HAS_PYSERIAL, and the tool tells the developer what to install when it matters.
+    HAS_PYSERIAL = False
 
 try:
     import pylink as _pylink_check
