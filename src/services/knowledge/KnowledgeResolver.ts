@@ -627,7 +627,7 @@ export async function suggestNearMissBits(requestedRelOrAbs: string): Promise<st
  * Top-level dirs under `iot-knowledge/` whose files are bits. Used to recognise a bundled-tree
  * RELATIVE path (no `iot-knowledge/` prefix) so ordinary missing project files fall through.
  */
-const BIT_ROOTS = ["platforms/", "cra/", "rules/"]
+const BIT_ROOTS = ["platforms/", "cra/", "rules/", "tools/"]
 
 /** True if `rel` looks like a bundled-tree relative path to a bit (e.g. `platforms/nrf/…/x.md`). */
 export function isBareBitPath(rel: string | undefined | null): boolean {

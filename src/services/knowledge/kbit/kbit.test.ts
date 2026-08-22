@@ -693,3 +693,171 @@ describe("lint R4.3 — license follows delivery", () => {
 		assert.ok(!issues.some((i) => /bundled bit must be open|downloaded bit is open/i.test(i.msg)), JSON.stringify(issues))
 	})
 })
+
+// ---------------------------------------------------------------- tool bits
+
+const HASH_A = "a".repeat(64)
+const HASH_B = "b".repeat(64)
+const validTool: Record<string, unknown> = {
+	id: "adsum/nrf9x/tools/modem-trace",
+	title: "Modem trace",
+	type: "tool",
+	version: "1.0.0",
+	owner: "adsum-core",
+	author: "Omar Morceli",
+	license: "LicenseRef-Adsum-Proprietary",
+	tier: "certified",
+	delivery: "downloaded",
+	domain: "embedded-iot",
+	platform: "nrf",
+	min_ext: "0.3.0",
+	runtime: "python3",
+	entry: "modem_trace.py",
+	usage: "--decode <trace.bin> --out <dir>",
+	artifacts: [{ path: "modem_trace.py", sha256: HASH_A }],
+	requires_tools: ["nrfutil"],
+	readonly: false,
+}
+
+describe("kbit schema — tool bits", () => {
+	test("a complete tool descriptor is valid", () => {
+		assert.equal(ok(validTool), true)
+	})
+
+	test("a tool needs a runtime, an entry and at least one artifact", () => {
+		assert.equal(ok(omit(validTool, "runtime")), false)
+		assert.equal(ok(omit(validTool, "entry")), false)
+		assert.equal(ok(omit(validTool, "artifacts")), false)
+		assert.equal(ok({ ...validTool, artifacts: [] }), false)
+	})
+
+	test("the entry must be one of the artifacts — otherwise the launcher points at nothing", () => {
+		assert.equal(ok({ ...validTool, entry: "not_shipped.py" }), false)
+		assert.equal(
+			ok({
+				...validTool,
+				entry: "b.py",
+				artifacts: [
+					{ path: "a.py", sha256: HASH_A },
+					{ path: "b.py", sha256: HASH_B },
+				],
+			}),
+			true,
+		)
+	})
+
+	test("artifact paths cannot traverse, be absolute, or use backslashes", () => {
+		for (const bad of ["../evil.py", "/etc/passwd", "sub\\win.py", "a/../../b.py"]) {
+			assert.equal(ok({ ...validTool, entry: bad, artifacts: [{ path: bad, sha256: HASH_A }] }), false, bad)
+		}
+		assert.equal(ok({ ...validTool, entry: "sub/dir/x.py", artifacts: [{ path: "sub/dir/x.py", sha256: HASH_A }] }), true)
+	})
+
+	test("artifact hashes must be 64 lowercase hex", () => {
+		assert.equal(ok({ ...validTool, artifacts: [{ path: "modem_trace.py", sha256: "abc" }] }), false)
+		assert.equal(ok({ ...validTool, artifacts: [{ path: "modem_trace.py", sha256: HASH_A.toUpperCase() }] }), false)
+	})
+
+	test("executable fields are rejected on prose — `type` stays honest", () => {
+		assert.equal(ok({ ...validAction, runtime: "node" }), false)
+		assert.equal(ok({ ...validAction, entry: "x.py" }), false)
+		assert.equal(ok({ ...validAction, usage: "--help" }), false)
+		assert.equal(ok({ ...validAction, artifacts: [{ path: "x.py", sha256: HASH_A }] }), false)
+	})
+
+	test("a native tool must tag every artifact with its platform", () => {
+		assert.equal(ok({ ...validTool, runtime: "native", entry: "t", artifacts: [{ path: "t", sha256: HASH_A }] }), false)
+		assert.equal(
+			ok({
+				...validTool,
+				runtime: "native",
+				entry: "t",
+				artifacts: [{ path: "t", sha256: HASH_A, platform: "darwin-arm64" }],
+			}),
+			true,
+		)
+	})
+
+	test("R1 — a tool bit must floor min_ext at the first tool-aware release", () => {
+		assert.equal(ok(omit(validTool, "min_ext")), false)
+		assert.equal(ok({ ...validTool, min_ext: "0.2.2" }), false)
+		assert.equal(ok({ ...validTool, min_ext: "0.3.0" }), true)
+		assert.equal(ok({ ...validTool, min_ext: "1.0.0" }), true)
+	})
+
+	test("R2 — a pro bit must floor min_ext at the first 402-aware release", () => {
+		const proKnowledge = {
+			...validAction,
+			type: "knowledge",
+			delivery: "downloaded",
+			license: "LicenseRef-Adsum-Proprietary",
+			access: "pro",
+		}
+		assert.equal(ok(proKnowledge), false)
+		assert.equal(ok({ ...proKnowledge, min_ext: "0.3.0" }), false)
+		assert.equal(ok({ ...proKnowledge, min_ext: "0.4.0" }), true)
+	})
+
+	test("a pro TOOL must clear the higher of the two floors", () => {
+		assert.equal(ok({ ...validTool, access: "pro", min_ext: "0.3.0" }), false)
+		assert.equal(ok({ ...validTool, access: "pro", min_ext: "0.4.0" }), true)
+	})
+
+	test("a bundled pro bit is a contradiction — it already shipped in the VSIX", () => {
+		assert.equal(ok({ ...validAction, access: "pro", delivery: "bundled", min_ext: "0.4.0" }), false)
+	})
+
+	test("access absent means free — every bit published before the field existed stays free", () => {
+		assert.equal(ok(validAction), true)
+		assert.equal(ok({ ...validAction, access: "free" }), true)
+	})
+
+	test("a tool may not declare triggers (only workflows are intent-routed)", () => {
+		assert.equal(ok({ ...validTool, triggers: ["decode a trace"] }), false)
+	})
+})
+
+describe("deriveId — tool bundles", () => {
+	test("TOOL.md names the bundle, so the directory is the id", () => {
+		assert.equal(deriveId("platforms/nrf9x/tools/modem-trace/TOOL.md"), "adsum/nrf9x/tools/modem-trace")
+		assert.equal(deriveId("tools/log-shape/TOOL.md"), "adsum/tools/log-shape")
+	})
+	test("every other bit still keeps its filename", () => {
+		assert.equal(deriveId("platforms/nrf/workflows/add-feature.md"), "adsum/nrf/workflows/add-feature")
+		assert.equal(deriveId("platforms/nrf/PLATFORM.md"), "adsum/nrf/platform")
+	})
+})
+
+describe("lint — licence follows delivery AND type", () => {
+	const lintOne = (meta: Record<string, unknown>, body = "# t\n") => {
+		const fm = Object.entries(meta)
+			.map(([k, v]) => `${k}: ${typeof v === "string" ? JSON.stringify(v) : JSON.stringify(v)}`)
+			.join("\n")
+		return lintBitContent("x.md", `---\n${fm}\n---\n${body}`, new Set([String(meta.id)]))
+	}
+	const hasR43 = (issues: Issue[]) => issues.some((i) => /must be open|is open \(/.test(i.msg))
+
+	test("a bundled TOOL must be Apache-2.0, not the content licence", () => {
+		assert.equal(hasR43(lintOne({ ...validTool, delivery: "bundled", license: "CC-BY-SA-4.0" })), true)
+		assert.equal(hasR43(lintOne({ ...validTool, delivery: "bundled", license: "Apache-2.0" })), false)
+	})
+	test("a bundled knowledge bit still must be CC-BY-SA-4.0", () => {
+		assert.equal(hasR43(lintOne({ ...validAction, license: "Apache-2.0" })), true)
+		assert.equal(hasR43(lintOne({ ...validAction, license: "CC-BY-SA-4.0" })), false)
+	})
+	test("an open downloaded bit is warned about either way", () => {
+		assert.equal(hasR43(lintOne({ ...validTool, license: "Apache-2.0" })), true)
+		assert.equal(hasR43(lintOne(validTool)), false)
+	})
+	test("a bit body may not hard-code the extension's script directory", () => {
+		const issues = lintOne(validAction, "Run `assets/scripts/board-shell --port X`\n")
+		assert.equal(
+			issues.some((i) => i.level === "error" && /hard-codes/.test(i.msg)),
+			true,
+		)
+		assert.equal(
+			lintOne(validAction, "Run the board-shell tool\n").some((i) => /hard-codes/.test(i.msg)),
+			false,
+		)
+	})
+})

@@ -18,11 +18,18 @@ export type Issue = { level: "error" | "warn"; file: string; msg: string }
 /** Files that live under iot-knowledge/ but are not themselves bits. */
 export const NON_BIT_FILES = new Set(["KBIT-SPEC.md"])
 
-/** Path (relative to iot-knowledge/) → canonical bit id. Must match a migrated bit's `id`. */
+/**
+ * Path (relative to iot-knowledge/) → canonical bit id. Must match a migrated bit's `id`.
+ *
+ * A TOOL bit is a DIRECTORY (its descriptor plus the files it ships), so `TOOL.md` names the bundle
+ * rather than the bit: `platforms/nrf9x/tools/modem-trace/TOOL.md` → `adsum/nrf9x/tools/modem-trace`.
+ * Every other bit is a single file and keeps its filename.
+ */
 export function deriveId(relPath: string): string {
 	const p = relPath
 		.replace(/\\/g, "/")
 		.replace(/^platforms\//, "")
+		.replace(/\/TOOL\.md$/i, "")
 		.replace(/\.md$/i, "")
 		.toLowerCase()
 	return `adsum/${p}`
@@ -130,18 +137,31 @@ export function lintBitContent(relPath: string, text: string, knownIds: Set<stri
 	// Apache VSIX as plaintext, so it MUST be open (CC-BY-SA-4.0) — proprietary content must never ship
 	// bundled; make it `delivery: downloaded` (registry-served, copyright). `downloaded` bits default to
 	// proprietary; an open downloaded bit is allowed but flagged to confirm intent.
-	if (meta.delivery === "bundled" && meta.license !== "CC-BY-SA-4.0") {
+	// Tool bits ship CODE, so the open licence that fits them is a code licence, not a content one.
+	const bundledOpen = meta.type === "tool" ? "Apache-2.0" : "CC-BY-SA-4.0"
+	if (meta.delivery === "bundled" && meta.license !== bundledOpen) {
 		issues.push({
 			level: "error",
 			file: relPath,
-			msg: `bundled bit must be open (CC-BY-SA-4.0) — found "${meta.license}". A bundled bit ships in the Apache VSIX as plaintext; proprietary content must be \`delivery: downloaded\` (registry-served). License follows delivery.`,
+			msg: `bundled ${meta.type === "tool" ? "tool" : "bit"} must be open (${bundledOpen}) — found "${meta.license}". A bundled bit ships in the Apache VSIX as plaintext; proprietary content must be \`delivery: downloaded\` (registry-served). License follows delivery.`,
 		})
 	}
-	if (meta.delivery === "downloaded" && meta.license === "CC-BY-SA-4.0") {
+	if (meta.delivery === "downloaded" && (meta.license === "CC-BY-SA-4.0" || meta.license === "Apache-2.0")) {
 		issues.push({
 			level: "warn",
 			file: relPath,
-			msg: `downloaded bit is open (CC-BY-SA-4.0) — downloaded bits default to LicenseRef-Adsum-Proprietary; confirm this open licence is intentional.`,
+			msg: `downloaded bit is open (${meta.license}) — downloaded bits default to LicenseRef-Adsum-Proprietary; confirm this open licence is intentional.`,
+		})
+	}
+
+	// A bit body must never name the extension's internal script directory. Tool paths are resolved and
+	// advertised by the host at runtime; a hard-coded `assets/scripts/...` in prose breaks the moment a
+	// tool becomes downloadable, and it survives in the registry long after the code has moved on.
+	if (/assets[/\\]scripts[/\\]/i.test(fm.body)) {
+		issues.push({
+			level: "error",
+			file: relPath,
+			msg: "bit body hard-codes an `assets/scripts/…` path — tool paths are resolved by the host at runtime; reference the tool by its id instead",
 		})
 	}
 
