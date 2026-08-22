@@ -4,7 +4,7 @@ title: "uart-logger"
 type: tool
 version: 1.0.0
 owner: adsum-core
-author: Adsum authoring team
+author: Omar Morceli
 license: Apache-2.0
 tier: certified
 delivery: bundled
