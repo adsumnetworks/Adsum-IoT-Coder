@@ -42,6 +42,24 @@ import { DEFAULT_REQUEST_TIMEOUT_MS } from "./constants"
 import { McpOAuthManager } from "./McpOAuthManager"
 import { BaseConfigSchema, McpSettingsSchema, ServerConfigSchema } from "./schemas"
 import { McpConnection, McpServerConfig, Transport } from "./types"
+/**
+ * Did the SERVER reject credentials we already hold? Distinct from "this server needs authentication":
+ * the transport raises `UnauthorizedError` for the latter, but a revoked-yet-unexpired token produces a
+ * bare 401 that the SDK cannot resolve, and it surfaces as StreamableHTTPError 401 — often with the
+ * telling "Server returned 401 after successful authentication".
+ */
+export function isServerRejectedAuth(error: unknown): boolean {
+	if (error instanceof UnauthorizedError) {
+		return false // a clean "please authenticate" — the existing path handles it
+	}
+	const code = (error as { code?: unknown })?.code
+	if (code === 401) {
+		return true
+	}
+	const message = error instanceof Error ? error.message : String(error ?? "")
+	return /\b401\b/.test(message) || /invalid_token|no longer recognized/i.test(message)
+}
+
 export class McpHub {
 	getMcpServersPath: () => Promise<string>
 	private getSettingsDirectoryPath: () => Promise<string>
@@ -260,6 +278,9 @@ export class McpHub {
 		name: string,
 		config: z.infer<typeof ServerConfigSchema>,
 		source: "rpc" | "internal",
+		/** Set on the single retry after clearing credentials the server rejected — the guard that keeps a
+		 *  permanently-401ing server from becoming an infinite reconnect loop of our own making. */
+		retriedAfterAuthReset = false,
 	): Promise<void> {
 		// Remove existing connection if it exists (should never happen, the connection should be deleted beforehand)
 		this.connections = this.connections.filter((conn) => conn.server.name !== name)
@@ -524,6 +545,34 @@ export class McpHub {
 			try {
 				await client.connect(transport)
 			} catch (error) {
+				// A 401 from the MCP endpoint ITSELF — the server no longer recognises a token we still
+				// believe is good. This is not the same as "needs auth", and until now it had no recovery.
+				//
+				// The dead end, precisely: the transport answers a 401 by calling the SDK's `auth()`, which
+				// asks our provider for tokens. `tokens()` judges validity only against the local clock
+				// (`tokens_saved_at + expires_in`), so a REVOKED-but-unexpired token still looks valid, and
+				// `auth()` returns AUTHORIZED without ever contacting the token endpoint. The transport
+				// then flags `_hasCompletedAuthFlow` and retries with the very same dead token. No OAuth
+				// error is ever raised, so `invalidateCredentials` is never reached either.
+				//
+				// Field report (Nordic MCP, 0.2.1): "the provided bearer token is invalid, expired, or no
+				// longer recognized by the server", repeating every five seconds indefinitely. It presented
+				// as macOS-only, but is not — tokens live in the OS credential store and never sync, so
+				// only the machine holding the stale token is affected. The only cure was deleting and
+				// re-adding the server, the sole path that reached `clearServerAuth`.
+				//
+				// So: clear what the server rejected and try ONCE more. That turns a permanent loop into a
+				// normal authentication prompt.
+				// `config.url` is optional — stdio servers have none, and they cannot 401 in the first place.
+				if (isServerRejectedAuth(error) && authProvider && config.url && !retriedAfterAuthReset) {
+					console.log(`Server "${name}" rejected our stored credentials — clearing them and reconnecting once`)
+					await this.mcpOAuthManager.clearServerAuth(name, config.url)
+					this.connections = this.connections.filter((conn) => conn.server.name !== name)
+					try {
+						await transport.close()
+					} catch {}
+					return await this.connectToServer(name, config, source, true)
+				}
 				if (error instanceof UnauthorizedError) {
 					// Server requires OAuth authentication
 					console.log(`Server "${name}" requires OAuth authentication`)
