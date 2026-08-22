@@ -292,14 +292,16 @@ describe("regression: live corpus", () => {
 	// the nRF52840→nRF54L migration guide) were briefly authored here and moved out 2026-08-14 to
 	// join the other board bits; this count going UP again means a proprietary bit leaked back in.
 	//
-	// The count is split by kind on purpose. the content bits + 6 TOOL bundles (the RTT/UART loggers,
-	// the BLE sniffer, the ESP monitor, and Omar's board-shell and modem-trace, which all moved out of
-	// the flat assets/scripts directory and became `type: tool` bits). Counting them separately keeps the leak guard sharp: a proprietary
+	// The count is split by kind on purpose. the content bits + 4 TOOL bundles (the RTT/UART loggers,
+	// the BLE sniffer and the ESP monitor, which moved out of the flat assets/scripts directory and
+	// became `type: tool` bits. board-shell and modem-trace are NOT here: they are `delivery:
+	// downloaded` and proprietary, so their home is Adsum-Backend/kbits/ and they reach the developer
+	// from the registry). Counting them separately keeps the leak guard sharp: a proprietary
 	// content bit sneaking back in still moves the 18, where a single total would have absorbed it.
-	test("corpus is fully migrated and lint-clean: content bits + 6 tool bits, 0 errors", () => {
+	test("corpus is fully migrated and lint-clean: content bits + 4 tool bits, 0 errors", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
 		const toolFiles = files.filter((f) => f.replace(/\\/g, "/").endsWith("/TOOL.md"))
-		assert.equal(toolFiles.length, 6, "bundled tool bits")
+		assert.equal(toolFiles.length, 4, "bundled tool bits")
 		assert.equal(files.length - toolFiles.length, 18, "bundled content bits — a rise here means a proprietary bit leaked in")
 		assert.equal(migrated, files.length)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
