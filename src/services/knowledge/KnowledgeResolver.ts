@@ -105,6 +105,12 @@ export async function downloadedMeta(id: string): Promise<Record<string, unknown
 	return ((await downloadedManifest()).get(id) as Record<string, unknown> | undefined) ?? null
 }
 
+/** Every entry of the downloaded catalog. The tool resolver needs the `type: tool` rows, which carry
+ *  their bundle's artifact hashes — the same catalog-not-blob reason `downloadedMeta` exists. */
+export async function downloadedEntries(): Promise<Array<Record<string, unknown>>> {
+	return [...(await downloadedManifest()).values()] as Array<Record<string, unknown>>
+}
+
 /** Absolute path for a bit id, or null if the id is unknown. */
 export async function resolveBitPath(id: string): Promise<string | null> {
 	const rel = (await manifest()).get(id)?.path
