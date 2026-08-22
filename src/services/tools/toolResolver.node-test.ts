@@ -151,3 +151,50 @@ test("only TOOL.md entries are treated as tools, and junk never throws", () => {
 	)
 	assert.deepEqual(toolEntriesFromManifest("not json"), [])
 })
+
+// ── credit: tool bits are credited exactly like knowledge bits ────────────────
+import { creditForTool, resetToolCredits, shouldCreditTool, toolForCommand } from "./toolCredit"
+
+const tool = (id: string, command: string, extra: Partial<ResolvedTool> = {}): ResolvedTool => ({
+	...mk(id),
+	command,
+	...extra,
+})
+
+test("a tool's credit carries the tool kind, so the UI renders the ⚙ mark", () => {
+	const c = creditForTool(tool("adsum/nrf/tools/modem-trace", "x", { author: "Omar Morceli" }))
+	assert.equal(c.kind, "tool")
+	assert.equal(c.author, "Omar Morceli")
+	assert.equal(c.attributed, true)
+})
+
+test("co-authors ride with the lead, as they do for a knowledge bit", () => {
+	const c = creditForTool(tool("adsum/nrf/tools/t", "x", { author: "Ismail Hamdad", coAuthors: ["Omar Morceli"] }))
+	assert.ok(c.coAuthors.includes("Omar Morceli"))
+})
+
+test("an unattributed tool falls back rather than inventing an author", () => {
+	const c = creditForTool(tool("adsum/nrf/tools/t", "x", { author: undefined }))
+	assert.equal(c.attributed, false)
+})
+
+test("a command is matched to the tool that produced it, quotes and all", () => {
+	const tools = [tool("adsum/nrf/tools/rtt-logger", "./tools/rtt-logger")]
+	assert.equal(toolForCommand("./tools/rtt-logger --capture --port /dev/ttyACM0", tools)?.id, "adsum/nrf/tools/rtt-logger")
+	assert.equal(toolForCommand('"./tools/rtt-logger" --capture', tools)?.id, "adsum/nrf/tools/rtt-logger")
+	assert.equal(toolForCommand("./tools/rtt-logger", tools)?.id, "adsum/nrf/tools/rtt-logger")
+	assert.equal(toolForCommand("git status", tools), null)
+})
+
+test("a tool whose name prefixes another's cannot steal the credit", () => {
+	const tools = [tool("adsum/t/log", "./log"), tool("adsum/t/log-shape", "./log-shape")]
+	assert.equal(toolForCommand("./log-shape --kinds x.log", tools)?.id, "adsum/t/log-shape")
+})
+
+test("one credit line per tool per task, and different tasks credit independently", () => {
+	resetToolCredits()
+	assert.equal(shouldCreditTool("task-a", "adsum/t/x"), true)
+	assert.equal(shouldCreditTool("task-a", "adsum/t/x"), false, "second run in the same task stays quiet")
+	assert.equal(shouldCreditTool("task-a", "adsum/t/y"), true, "a different tool still credits")
+	assert.equal(shouldCreditTool("task-b", "adsum/t/x"), true, "a new task credits again")
+})

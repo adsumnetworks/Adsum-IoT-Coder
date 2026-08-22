@@ -5,8 +5,10 @@ import { showSystemNotification } from "@integrations/notifications"
 import { COMMAND_REQ_APP_STRING } from "@shared/combineCommandSequences"
 import { ClineAsk } from "@shared/ExtensionMessage"
 import { arePathsEqual } from "@utils/path"
+import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { telemetryService } from "@/services/telemetry"
-import { checkCommandGuards } from "./commandGuards"
+import { resolveTools } from "@/services/tools/ToolResolver"
+import { creditForTool, shouldCreditTool, toolForCommand } from "@/services/tools/toolCredit"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import { showNotificationForApproval } from "../../utils"
@@ -16,12 +18,50 @@ import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { applyModelContentFixes } from "../utils/ModelContentProcessor"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
+import { checkCommandGuards } from "./commandGuards"
 import { foldCommandOutput } from "./commandOutputFold"
 import { commandWritesCraReport } from "./craArtifact"
 import { emitCraMilestoneForCommand } from "./craFunnel"
 
 // Default timeout for commands in yolo mode and background exec mode
 const DEFAULT_COMMAND_TIMEOUT_SECONDS = 30
+
+/**
+ * A tool bit invoked through `execute_command` gets the same credit line a knowledge bit gets when it
+ * is loaded — once per tool per task, with the ⚙ mark the UI already renders for `kind: "tool"`.
+ * Tool bits are authored and co-authored like any other bit, so the author reaches the developer the
+ * same way. Fail-open: attribution must never break a command.
+ */
+async function creditToolIfInvoked(config: any, command: string): Promise<void> {
+	try {
+		const cwd = config.cwd as string | undefined
+		const tools = resolveTools(getCachedWorkspaceSummary(), `task:${config.ulid}`, cwd)
+		const tool = toolForCommand(command, tools)
+		if (!tool || !shouldCreditTool(config.ulid, tool.id)) {
+			return
+		}
+		const credit = creditForTool(tool)
+		await config.callbacks.say(
+			"kbit_loaded",
+			JSON.stringify({
+				id: credit.id,
+				title: credit.title,
+				kind: credit.kind,
+				author: credit.author,
+				attributed: credit.attributed,
+				coAuthors: credit.coAuthors.length ? credit.coAuthors : undefined,
+				version: credit.version,
+				license: credit.license,
+				platform: credit.platform,
+				steward: credit.steward,
+				source: tool.delivery === "bundled" ? "bundled" : "registry",
+			}),
+		)
+		telemetryService.captureToolBitInvoked(config.ulid, tool.id, tool.delivery)
+	} catch {
+		// additive — never surface as a tool failure
+	}
+}
 
 export class ExecuteCommandToolHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.BASH
@@ -191,6 +231,7 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 			// Auto-approve flow
 			await config.callbacks.removeLastPartialMessageIfExistsWithType("ask", "command")
 			await config.callbacks.say("command", actualCommand, undefined, undefined, false)
+			await creditToolIfInvoked(config, actualCommand)
 			didAutoApprove = true
 			telemetryService.captureToolUsage(
 				config.ulid,
