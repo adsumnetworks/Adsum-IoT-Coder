@@ -93,6 +93,63 @@ describe("espChipProbe — resolveIdfPython", () => {
 		...extra,
 	})
 
+	// Espressif keeps moving the python env, and each move has broken the chip probe silently — the board
+	// just degrades to "model unknown" with nothing telling the user why. These are the layouts actually
+	// seen in the wild; the resolver searches by SHAPE so a future reshuffle fails HERE, not on a bench.
+	describe("every ESP-IDF layout seen in the wild resolves", () => {
+		/** Build deps from one real python path: every ancestor exists, listDir walks it.
+		 *  Separator-agnostic on purpose — `join` emits the HOST's separator, so a win32 case authored on
+		 *  macOS is forward-slashed. Splitting on a hardcoded "\\" made the Windows rows fail for a reason
+		 *  that had nothing to do with the code under test. */
+		const fromPath = (platform: IdfPythonDeps["platform"], home: string, py: string): IdfPythonDeps => {
+			const isSep = (c: string) => c === "/" || c === "\\"
+			const ancestors: string[] = []
+			for (let i = 1; i < py.length; i++) {
+				if (isSep(py[i])) {
+					ancestors.push(py.slice(0, i))
+				}
+			}
+			ancestors.push(py)
+			return {
+				platform,
+				env: {},
+				home,
+				exists: (q) => ancestors.includes(q),
+				listDir: (q) => {
+					const child = ancestors.find((a) => a.length > q.length && a.startsWith(q) && isSep(a[q.length]))
+					if (!child) {
+						throw new Error("ENOENT")
+					}
+					return [child.slice(q.length + 1).split(/[\\/]/)[0]]
+				},
+			}
+		}
+
+		const layouts: Record<string, string[]> = {
+			"A classic install.sh": ["python_env", "idf6.0_py3.12_env"],
+			"B eim tools/python/<ver>/venv": ["tools", "python", "v6.0.1", "venv"],
+			"C eim tools/python_env (0.18 docs)": ["tools", "python_env", "idf6.0_py3.12_env"],
+			"D eim <idf-ver>/python_env": ["v5.5", "python_env", "idf5.5_py3.12_env"],
+			"E eim 0.1.x <idf-ver>/tools/python_env": ["v6.0.2", "tools", "python_env", "idf6.0_py3.12_env"],
+		}
+
+		for (const [name, parts] of Object.entries(layouts)) {
+			it(`resolves ${name} on POSIX`, () => {
+				const py = join("/home/dev", ".espressif", ...parts, "bin", "python")
+				resolveIdfPython(fromPath("linux", "/home/dev", py))!.should.equal(py)
+			})
+			it(`resolves ${name} on Windows`, () => {
+				const py = join("C:\\Users\\dev", ".espressif", ...parts, "Scripts", "python.exe")
+				resolveIdfPython(fromPath("win32", "C:\\Users\\dev", py))!.should.equal(py)
+			})
+		}
+
+		it("returns undefined when no python exists — never guesses a path", () => {
+			const junk = join("/home/dev", ".espressif", "dist", "archive.tar.gz")
+			;(resolveIdfPython(fromPath("linux", "/home/dev", junk)) === undefined).should.equal(true)
+		})
+	})
+
 	it("finds bin/python on Linux", () => {
 		const root = join("/home/dev", ".espressif", "python_env")
 		const py = join(root, "idf5.3_py3.11_env", "bin", "python")
