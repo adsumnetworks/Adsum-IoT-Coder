@@ -17,7 +17,8 @@
 					"enum": [
 						"workflow",
 						"action",
-						"knowledge"
+						"knowledge",
+						"tool"
 					]
 				},
 				"version": {
@@ -140,8 +141,86 @@
 					"type": "string",
 					"pattern": "^[a-z0-9]+(?:[/-][a-z0-9]+)*$"
 				},
+				"min_ext": {
+					"type": "string",
+					"pattern": "^\\d+\\.\\d+\\.\\d+$"
+				},
+				"min_ncs": {
+					"type": "string",
+					"pattern": "^\\d+\\.\\d+\\.\\d+$"
+				},
 				"content_hash": {
 					"type": "string"
+				},
+				"access": {
+					"type": "string",
+					"enum": [
+						"free",
+						"pro"
+					]
+				},
+				"runtime": {
+					"type": "string",
+					"enum": [
+						"python3",
+						"node",
+						"wasm",
+						"native"
+					]
+				},
+				"entry": {
+					"type": "string",
+					"minLength": 1
+				},
+				"usage": {
+					"type": "string",
+					"minLength": 1
+				},
+				"artifacts": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"pattern": "^[A-Za-z0-9._-]+(?:\\/[A-Za-z0-9._-]+)*$"
+							},
+							"sha256": {
+								"type": "string",
+								"pattern": "^[0-9a-f]{64}$"
+							},
+							"platform": {
+								"type": "string",
+								"enum": [
+									"darwin-arm64",
+									"darwin-x64",
+									"linux-x64",
+									"linux-arm64",
+									"win32-x64"
+								]
+							}
+						},
+						"required": [
+							"path",
+							"sha256"
+						],
+						"additionalProperties": false
+					}
+				},
+				"requires_tools": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"readonly": {
+					"type": "boolean"
+				},
+				"timeout_s": {
+					"type": "integer",
+					"exclusiveMinimum": 0,
+					"maximum": 3600
 				},
 				"co_authors": {
 					"type": "array",
