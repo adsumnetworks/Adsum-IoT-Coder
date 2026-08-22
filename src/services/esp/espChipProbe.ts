@@ -142,27 +142,76 @@ export function resolveIdfPython(deps: IdfPythonDeps): string | undefined {
 		add(join(deps.home, ".espressif")) // macOS / Linux manual install
 	}
 	const rel = deps.platform === "win32" ? join("Scripts", "python.exe") : join("bin", "python")
-	// Classic layout: <base>/python_env/<env>/{bin/python | Scripts/python.exe}.
-	for (const base of bases) {
-		const pythonEnvRoot = join(base, "python_env")
-		if (!deps.exists(pythonEnvRoot)) continue
-		const envDirs = deps.listDir(pythonEnvRoot).sort()
-		// Prefer the last (highest version when names sort lexically, e.g. idf5.3_…).
-		for (let i = envDirs.length - 1; i >= 0; i--) {
-			const candidate = join(pythonEnvRoot, envDirs[i], rel)
-			if (deps.exists(candidate)) return candidate
+
+	// Search by SHAPE, not by a list of known layouts.
+	//
+	// Espressif keeps moving the python env, and chasing each move with another hardcoded branch has
+	// already failed twice. Observed in the wild, all with the same IDF version:
+	//   A  <base>/python_env/<env>/                     classic install.sh
+	//   B  <base>/tools/python/<ver>/venv/              the eim this function was last patched for
+	//   C  <base>/tools/python_env/<env>/               eim 0.18 per Espressif's own config docs
+	//   D  <base>/<idf-ver>/python_env/<env>/           eim variant
+	//   E  <base>/<idf-ver>/tools/python_env/<env>/     eim 0.1.x (seen on the Adsum bench)
+	// Only A and B resolved; C, D and E all degraded the board to "model unknown" with no way for the
+	// user to tell why. So: expand each base one directory level (that covers the <idf-ver> nesting in
+	// D and E), then look for either python-env shape under it. Two shapes × two levels beats five
+	// literal paths, and it survives the next reshuffle.
+	const roots: string[] = []
+	const addRoot = (p: string) => {
+		if (!roots.includes(p)) {
+			roots.push(p)
 		}
 	}
-	// EIM installer layout (the new official one): <base>/tools/python/<ver>/venv/{bin/python | Scripts/python.exe}.
-	// EIM does NOT create python_env (verified on macOS: ~/.espressif/tools/python/v6.0.1/venv/bin/python) — without
-	// this the chip probe finds no python and the board degrades to the generic "ESP32-family".
 	for (const base of bases) {
-		const eimPythonRoot = join(base, "tools", "python")
-		if (!deps.exists(eimPythonRoot)) continue
-		const verDirs = deps.listDir(eimPythonRoot).sort()
-		for (let i = verDirs.length - 1; i >= 0; i--) {
-			const candidate = join(eimPythonRoot, verDirs[i], "venv", rel)
-			if (deps.exists(candidate)) return candidate
+		addRoot(base)
+		addRoot(join(base, "tools"))
+		// One level of version nesting: <base>/<idf-ver>[/tools]. Descending order so a newer IDF wins.
+		let children: string[] = []
+		try {
+			children = deps.listDir(base).sort().reverse()
+		} catch {
+			children = []
+		}
+		for (const child of children) {
+			addRoot(join(base, child))
+			addRoot(join(base, child, "tools"))
+		}
+	}
+
+	/** `<root>/python_env/<env>/…` — the classic and current-eim shape. */
+	const fromPythonEnv = (root: string): string | undefined => {
+		const dir = join(root, "python_env")
+		if (!deps.exists(dir)) {
+			return undefined
+		}
+		for (const env of deps.listDir(dir).sort().reverse()) {
+			const candidate = join(dir, env, rel)
+			if (deps.exists(candidate)) {
+				return candidate
+			}
+		}
+		return undefined
+	}
+
+	/** `<root>/python/<ver>/venv/…` — the eim shape this function was previously patched for. */
+	const fromToolsPython = (root: string): string | undefined => {
+		const dir = join(root, "python")
+		if (!deps.exists(dir)) {
+			return undefined
+		}
+		for (const ver of deps.listDir(dir).sort().reverse()) {
+			const candidate = join(dir, ver, "venv", rel)
+			if (deps.exists(candidate)) {
+				return candidate
+			}
+		}
+		return undefined
+	}
+
+	for (const root of roots) {
+		const hit = fromPythonEnv(root) ?? fromToolsPython(root)
+		if (hit) {
+			return hit
 		}
 	}
 	return undefined
