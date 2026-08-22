@@ -4,13 +4,13 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 
 ## [0.3.0] - 2026-08-22
 
-Cellular, and the tools that talk to your hardware. nRF9161, nRF9151, and nRF9160 boards with the four nRF91 protocols; and every device tool the extension ships is now a **tool bit** — versioned, credited to the engineer who wrote it, and updatable without waiting for a release.
+Cellular, and the tools that talk to your hardware. nRF9161, nRF9151, and nRF9160 boards with the four nRF91 protocols; and every device tool the extension ships is now a **Tool bit** — versioned, credited to the engineer who wrote it, and updatable without waiting for a release.
 
 *(0.2.2 was never released; its work ships here.)*
 
 ### Added
-- **Device tools are tool bits now.** Board shell, modem trace, the RTT and UART loggers, the BLE sniffer and the ESP monitor each carry their own descriptor — version, licence, what it does, what it needs — and the agent is told about them from that descriptor rather than from a path compiled into the extension. Each one credits its author the first time it runs, the same way curated knowledge does.
-- **Tools can arrive without an update.** A tool bit can be delivered from the registry, verified against its published hash before anything runs, and cached; a tampered or unverifiable tool is simply never offered.
+- **Device tools are Tool bits now.** Board shell, modem trace, the RTT and UART loggers, the BLE sniffer and the ESP monitor each carry their own descriptor — version, licence, what it does, what it needs — and the agent is told about them from that descriptor rather than from a path compiled into the extension. Each one credits its author the first time it runs, the same way curated knowledge does.
+- **Tools can arrive without an update.** A Tool bit can be delivered from the registry, verified against its published hash before anything runs, and cached; a tampered or unverifiable tool is simply never offered.
 - **log-shape** — describe the structure of a log in one call instead of searching it three times: distinct message kinds with counts and line ranges, then `--kind <n>` to see any of them in context. It says so plainly when a log has too little repetition to be worth shaping.
 - nRF91 cellular support: NB-IoT and LTE-M, NTN (satellite), DECT NR+, and GNSS, each with its own knowledge and each loaded only for the project that needs it. Board knowledge for the nRF9161 DK, nRF9151 DK, and nRF9160 DK.
 - **Board shell** — send commands to a board and read the answers: AT commands on an nRF91, Zephyr shell commands, anything with a console. It reads until the board finishes rather than sleeping for a fixed time, so a command that answers in 40 ms costs 40 ms, and a network scan that takes three minutes is not cut off at three seconds. Several commands run in one session. Works the same on Windows, Linux, and macOS.
