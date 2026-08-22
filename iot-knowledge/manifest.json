@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 23,
+	"count": 24,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -122,7 +122,7 @@
 				},
 				{
 					"path": "esp_monitor_logger.py",
-					"sha256": "04631e0f244f564fac01fc761478bd27f87162c115f5cc1fd5d318afe9619e9f"
+					"sha256": "a3fbbcc009c6639ab4ae845a9335b62665ccc85e4e05deeffb531b76c10cb855"
 				}
 			],
 			"readonly": false,
@@ -297,12 +297,53 @@
 				},
 				{
 					"path": "board_shell.py",
-					"sha256": "d0dbd79f8dba538b0ea082fcd0463257206644d0afc2ef604b7cea5a1bd3cc43"
+					"sha256": "c58b776de2a8d37886db1d4ce339e14d0c450b6b2023db74ff152360ddbba20c"
+				},
+				{
+					"path": "test_board_shell.py",
+					"sha256": "21fa1bf0c2a027ce573eb984dbf1ede484ab48ce70af3a1f9575a71382c1154c"
 				}
 			],
 			"readonly": false,
 			"path": "platforms/nrf/tools/board-shell/TOOL.md",
 			"content_hash": "f689aeb7ab8f6a47fa9aafcc46bfd875b4f5475ed12ec4fd67f3c04ea2280ac3"
+		},
+		{
+			"id": "adsum/nrf/tools/modem-trace",
+			"title": "modem-trace",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [
+				"shell"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "python3",
+			"entry": "modem_trace.py",
+			"usage": "--decode <trace.bin> --out <dir>",
+			"artifacts": [
+				{
+					"path": "modem-trace",
+					"sha256": "ec328de2d3ebf3f874d2fcd723486795046afb2fd7a4c656b2ca2b0f8c9c6732"
+				},
+				{
+					"path": "modem-trace.bat",
+					"sha256": "95e0bcf1eaab0b77d383f1456b1bf00802621c41af428019a7f38fc046132291"
+				},
+				{
+					"path": "modem_trace.py",
+					"sha256": "e79ed79c98fd2768ecce91f3d92d97ac6d3511ed49f0b256ddc718315dc61298"
+				}
+			],
+			"readonly": false,
+			"path": "platforms/nrf/tools/modem-trace/TOOL.md",
+			"content_hash": "7b5cf4776c650fa20b269108722bed5916018202b481aa71848e3d386990a5e9"
 		},
 		{
 			"id": "adsum/nrf/tools/nrf-sniffer",
@@ -334,7 +375,7 @@
 				},
 				{
 					"path": "nrf_sniffer.py",
-					"sha256": "8c1b25b72ae20fedc083a984f3f0c0bc88b68f2c1ba5bc9eed40549034f2d10e"
+					"sha256": "aa63291e1363b525897fbe4598955cf05aff03b5a9f5d6a2a7a442a955ae9546"
 				}
 			],
 			"readonly": false,
