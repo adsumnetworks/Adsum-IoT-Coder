@@ -35,19 +35,35 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
 
+# pyserial is optional at IMPORT time on purpose.
+#
+# This used to pip-install it automatically the moment the module loaded. That did three unwanted
+# things: it wrote to the developer's Python environment without asking (and on a stock macOS the
+# system Python is not writable, so it just failed), it needed the network, and because it ran at
+# import time it exited 1 before argparse — so even `--help` was broken. A tool that cannot answer
+# `--help` cannot be smoke-tested at publish, which is how this was found.
+#
+# Now: import if present, and report clearly at the point a serial port is actually needed.
 try:
     import serial
     import serial.tools.list_ports
-except ImportError:
-    print("WARNING: pyserial not installed. Attempting to install automatically...")
-    try:
-        subprocess.run([sys.executable, "-m", "pip", "install", "pyserial", "--quiet"], check=True)
-        import serial
-        import serial.tools.list_ports
-        print("Successfully installed pyserial.")
-    except Exception as e:
-        print(f"ERROR: Failed to install pyserial automatically: {e}")
-        print("Please run: pip install pyserial")
+
+    SERIAL_IMPORT_ERROR = None
+except ImportError as _e:  # pragma: no cover - environment-dependent
+    serial = None
+    SERIAL_IMPORT_ERROR = _e
+
+
+def require_serial() -> None:
+    """Call before touching a serial port. Explains the fix; never installs anything."""
+    if serial is None:
+        print(
+            "ERROR: this tool needs pyserial, which is not installed for "
+            f"{sys.executable}.\n"
+            "       Install it with:  python3 -m pip install --user pyserial\n"
+            f"       (import failed with: {SERIAL_IMPORT_ERROR})",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 
@@ -670,6 +686,9 @@ Usage:
     parser.add_argument("--analyze", action="store_true", help="Analyze logs after recording")
     
     args = parser.parse_args()
+
+    # --help and --version are handled by argparse above; only real work needs the dependency.
+    require_serial()
     
     # List ports
     if args.list:

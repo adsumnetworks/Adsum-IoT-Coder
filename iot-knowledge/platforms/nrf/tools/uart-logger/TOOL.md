@@ -18,7 +18,7 @@ safety: [shell]
 readonly: false
 artifacts:
   - path: nrf_uart_logger.py
-    sha256: 8317bbc54dac8c352e21e161efbe783e5799dd410ff2f95a2de6ce1f22ca19b2
+    sha256: 2d9b6fac9d5479195f3ca7f2a1c6889b69806201bb2e6ebd389c6168c5bae322
   - path: uart-logger
     sha256: 48f06b49fd995e62ec6aa284b66abb4add031dff0bffa376be9aa85e223859ca
   - path: uart-logger.bat
