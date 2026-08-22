@@ -7,7 +7,7 @@ import { ClineAsk } from "@shared/ExtensionMessage"
 import { arePathsEqual } from "@utils/path"
 import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { telemetryService } from "@/services/telemetry"
-import { resolveTools } from "@/services/tools/ToolResolver"
+import { resolveToolsAsync } from "@/services/tools/ToolResolver"
 import { creditForTool, shouldCreditTool, toolForCommand } from "@/services/tools/toolCredit"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
@@ -35,7 +35,10 @@ const DEFAULT_COMMAND_TIMEOUT_SECONDS = 30
 async function creditToolIfInvoked(config: any, command: string): Promise<void> {
 	try {
 		const cwd = config.cwd as string | undefined
-		const tools = resolveTools(getCachedWorkspaceSummary(), `task:${config.ulid}`, cwd)
+		// The ASYNC resolver, so a DOWNLOADED tool is credited too. Using the sync one here credited
+		// only bundled tools: log-shape ran correctly but its author went unnamed, which is precisely
+		// the failure the credit line exists to prevent.
+		const tools = await resolveToolsAsync(getCachedWorkspaceSummary(), `task:${config.ulid}`, cwd)
 		const tool = toolForCommand(command, tools)
 		if (!tool || !shouldCreditTool(config.ulid, tool.id)) {
 			return

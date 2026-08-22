@@ -269,6 +269,60 @@ export function resolveTools(summary: WorkspaceSummary, taskKey: string, cwd?: s
 	return tools
 }
 
+/**
+ * The async entry point: bundled tools PLUS any downloaded ones the registry serves and the cache can
+ * verify. Prompt assembly is already async, so this is what it calls; `resolveTools` stays for the
+ * synchronous callers (the native handlers) that only ever want a bundled path.
+ *
+ * Bundled wins on a duplicate id, exactly as it does for knowledge bits.
+ */
+export async function resolveToolsAsync(summary: WorkspaceSummary, taskKey: string, cwd?: string): Promise<ResolvedTool[]> {
+	const key = `async::${taskKey}::${summary}::${cwd ?? ""}`
+	if (snapshot?.key === key) {
+		return snapshot.tools
+	}
+	const bundled = loadBundledTools(cwd)
+	const byId = new Map(bundled.map((t) => [t.id, t]))
+	try {
+		const { downloadedEntries } = await import("@/services/knowledge/KnowledgeResolver")
+		const { RegistryClient } = await import("@/services/knowledge/registry/RegistryClient")
+		const { ToolCache } = await import("./ToolCache")
+		const entries = toolEntriesFromDownloadedManifest(await downloadedEntries())
+		if (entries.length) {
+			const client = new RegistryClient()
+			const cache = new ToolCache(toolCacheRoot())
+			for (const entry of entries) {
+				const id = String(entry.id ?? "")
+				if (!id || byId.has(id)) {
+					continue // a bundled tool of the same id wins
+				}
+				const tool = await materialiseDownloadedTool({
+					entry,
+					cache,
+					fetchArtifact: (sha) => client.fetchArtifact(sha),
+					cwd,
+				})
+				if (tool) {
+					byId.set(id, tool)
+				}
+			}
+		}
+	} catch {
+		// The registry being unreachable must never cost the developer their bundled tools.
+	}
+	const tools = toolsForWorkspace(
+		[...byId.values()].sort((a, b) => a.id.localeCompare(b.id)),
+		summary,
+	)
+	snapshot = { key, tools }
+	return tools
+}
+
+/** Where downloaded bundles are materialised — beside the k-bit cache, never mixed into it. */
+export function toolCacheRoot(): string {
+	return path.join(HostProvider.get().globalStorageFsPath ?? HostProvider.get().extensionFsPath, "tbit-cache")
+}
+
 /** Test seam: drop the per-task snapshot. */
 export function resetToolSnapshot(): void {
 	snapshot = null

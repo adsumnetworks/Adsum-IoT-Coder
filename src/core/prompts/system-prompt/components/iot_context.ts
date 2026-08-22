@@ -8,7 +8,7 @@ import { ncsGateNotice } from "@/services/knowledge/kbit/ncsGate"
 import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { routePlatform } from "@/services/platform/platformRouting"
 import { getCachedWorkspaceSummary, NRF_BLE_RE, NRF_CELLULAR_RE, NRF91_BOARD_RE } from "@/services/platform/WorkspaceClassifier"
-import { type ResolvedTool, resolveTools } from "@/services/tools/ToolResolver"
+import { type ResolvedTool, resolveToolsAsync } from "@/services/tools/ToolResolver"
 import { fileExistsAtPath } from "@/utils/fs"
 import { shouldInjectMap } from "../../../memory/workspace/mapGate"
 import { migrateLegacyMemory } from "../../../memory/workspace/migrate"
@@ -888,7 +888,7 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 
 	// 1b. Device tools — resolved from tool-bit descriptors, never a hard-coded path. `cwd` lets the
 	//     resolver shorten each command to a workspace-relative path for readable terminal output.
-	iotContext += renderDeviceTools(resolveTools(summary, `prompt:${cwd}`, cwd))
+	iotContext += renderDeviceTools(await resolveToolsAsync(summary, `prompt:${cwd}`, cwd))
 
 	// 2. Platform knowledge — load each platform the classification allows AND the
 	//    cwd confirms as a real project. A single-platform workspace loads exactly
