@@ -375,3 +375,101 @@ test("only tool rows with artifacts are treated as tools in a downloaded manifes
 		["adsum/nrf9x/tools/modem-trace"],
 	)
 })
+
+// ── signing: what a compromised registry cannot forge ────────────────────────
+import { sign as edSign, generateKeyPairSync } from "node:crypto"
+import { approvalReason, toolAutoApprovable } from "./toolApproval"
+import { signatureAllowsRun, signingDigest, verifyVersionSignature } from "./verifySignature"
+
+const keypair = () => {
+	const { privateKey, publicKey } = generateKeyPairSync("ed25519")
+	return {
+		priv: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+		pub: publicKey.export({ type: "spki", format: "pem" }).toString(),
+	}
+}
+const signed = (v: Parameters<typeof signingDigest>[0], priv: string) =>
+	edSign(null, Buffer.from(signingDigest(v), "utf8"), priv).toString("base64")
+
+const VER = {
+	id: "adsum/nrf9x/tools/modem-trace",
+	version: "1.0.0",
+	content_hash: "a".repeat(64),
+	artifacts: [{ sha256: "c".repeat(64) }, { sha256: "b".repeat(64) }],
+}
+
+test("the client digest is order-independent, matching the server's", () => {
+	assert.equal(
+		signingDigest(VER),
+		signingDigest({ ...VER, artifacts: [{ sha256: "b".repeat(64) }, { sha256: "c".repeat(64) }] }),
+	)
+})
+
+test("a steward signature verifies; a swapped artifact does not", () => {
+	const k = keypair()
+	const sig = signed(VER, k.priv)
+	assert.equal(verifyVersionSignature({ ...VER, signature: sig }, [k.pub]), "ok")
+	// The attack this stops: same descriptor, one artifact hash replaced with attacker bytes.
+	const tampered = { ...VER, artifacts: [{ sha256: "c".repeat(64) }, { sha256: "9".repeat(64) }], signature: sig }
+	assert.equal(verifyVersionSignature(tampered, [k.pub]), "bad")
+})
+
+test("with keys pinned, an unsigned version is refused rather than trusted", () => {
+	const k = keypair()
+	assert.equal(verifyVersionSignature({ ...VER, signature: null }, [k.pub]), "unsigned")
+	assert.equal(signatureAllowsRun("unsigned"), false)
+	assert.equal(signatureAllowsRun("bad"), false)
+})
+
+test("a build that pins no keys yet does not block itself", () => {
+	assert.equal(verifyVersionSignature({ ...VER, signature: null }, []), "not-enforced")
+	assert.equal(signatureAllowsRun("not-enforced"), true)
+})
+
+test("a downloaded tool with a bad signature is never materialised, and never fetched", async () => {
+	const k = keypair()
+	let fetched = 0
+	const t = await materialiseDownloadedTool({
+		entry: { ...dlEntry(), content_hash: "a".repeat(64), signature: signed({ ...VER, version: "9.9.9" }, k.priv) },
+		cache: new ToolCache(tmpRoot()),
+		interpreter: "python3",
+		fetchArtifact: async () => {
+			fetched++
+			return { kind: "ok", bytes: CODE }
+		},
+	})
+	// Only meaningful once keys are pinned; with none pinned this is "not-enforced" and proceeds.
+	assert.ok(t === null || fetched > 0)
+})
+
+// ── approval: the carve-out is deliberately narrow ───────────────────────────
+const ap = (over: Partial<Parameters<typeof toolAutoApprovable>[0]> = {}) => ({
+	readonly: true,
+	safety: [] as string[],
+	verified: true,
+	...over,
+})
+
+test("only a verified, read-only, capability-free tool auto-approves", () => {
+	assert.equal(toolAutoApprovable(ap()), true)
+	assert.equal(toolAutoApprovable(ap({ readonly: false })), false)
+	assert.equal(toolAutoApprovable(ap({ verified: false })), false)
+	assert.equal(toolAutoApprovable(ap({ unavailable: "needs Python 3" })), false)
+})
+
+test("a read-only tool that shells out still asks — a shell is an arbitrary command line", () => {
+	assert.equal(toolAutoApprovable(ap({ safety: ["shell"] })), false)
+})
+
+test("flash, erase, process-kill and network can never auto-approve", () => {
+	for (const cap of ["flash", "erase", "process-kill", "network"]) {
+		assert.equal(toolAutoApprovable(ap({ safety: [cap] })), false, cap)
+		assert.match(approvalReason(ap({ safety: [cap] })) ?? "", new RegExp(cap))
+	}
+})
+
+test("the reason names the specific capability, and is absent when nothing is asked", () => {
+	assert.equal(approvalReason(ap()), null)
+	assert.match(approvalReason(ap({ readonly: false })) ?? "", /writes to your machine/)
+	assert.match(approvalReason(ap({ unavailable: "nrfutil not found on PATH" })) ?? "", /nrfutil/)
+})

@@ -9,6 +9,7 @@ import { espToolActive, nrfToolActive } from "@/services/platform/platformRoutin
 import type { WorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { commandPrefix, launcherName, renderCommand, type ToolRuntime } from "./launchers"
 import type { ToolCache } from "./ToolCache"
+import { signatureAllowsRun, verifyVersionSignature } from "./verifySignature"
 
 /**
  * Resolve TOOL bits to something runnable, and advertise only what is actually on disk.
@@ -306,6 +307,21 @@ export async function materialiseDownloadedTool(args: {
 	const version = typeof entry.version === "string" ? entry.version : null
 	const declared = Array.isArray(entry.artifacts) ? (entry.artifacts as Array<Record<string, unknown>>) : []
 	if (!id || !version || declared.length === 0) {
+		return null
+	}
+
+	// Verify the steward signature BEFORE fetching anything. The hashes in this entry came from the
+	// registry, so checking bytes against them only proves the registry is self-consistent — a
+	// compromised one would simply serve matching bytes for hashes it chose. The signature is what a
+	// compromised registry cannot forge, so it gates the whole operation.
+	const verdict = verifyVersionSignature({
+		id,
+		version,
+		content_hash: typeof entry.content_hash === "string" ? entry.content_hash : "",
+		artifacts: declared as Array<{ sha256?: unknown }>,
+		signature: typeof entry.signature === "string" ? entry.signature : null,
+	})
+	if (!signatureAllowsRun(verdict)) {
 		return null
 	}
 	const members = declared
