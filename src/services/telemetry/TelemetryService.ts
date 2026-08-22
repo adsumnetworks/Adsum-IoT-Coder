@@ -388,6 +388,8 @@ export class TelemetryService {
 			// "not_in_registry" (unknown id / wrong path), "registry_unreachable". `afterRetry` = the outer 3s
 			// retry already ran. Reason enum + bit id only — never file/user paths.
 			KBIT_LOAD_FAILED: "kbit.load_failed",
+			/** A tool bit was invoked through execute_command. Id and delivery only — never arguments or paths. */
+			TOOL_BIT_INVOKED: "task.tool_bit_invoked",
 			// CRA: a CVE scan completed (findings volume + SBOM coverage; never CVE ids or component names)
 			CVE_SCAN_COMPLETED: "task.cve_scan_completed",
 			// CRA: the readiness-report integrity guard rejected a write (honesty-moat health — how often the model
@@ -2573,6 +2575,12 @@ export class TelemetryService {
 		afterRetry?: boolean
 	}) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.KBIT_LOAD_FAILED, properties: { ...props } })
+	}
+
+	/** Tool bit: invoked via execute_command. Records the catalog id and how it was delivered — never
+	 *  the arguments, the target port or any output, which would carry workspace detail. */
+	public captureToolBitInvoked(ulid: string, bitId: string, delivery: "bundled" | "downloaded") {
+		this.capture({ event: TelemetryService.EVENTS.TASK.TOOL_BIT_INVOKED, properties: { ulid, bitId, delivery } })
 	}
 
 	/** CRA: the bridge routed into a core feature (debug/addFeature). Fired host-side at the routed task's start. */
