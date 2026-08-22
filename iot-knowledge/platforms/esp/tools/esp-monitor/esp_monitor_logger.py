@@ -380,11 +380,30 @@ def capture_raw_serial(port: str | None, duration: int, no_reset: bool, log_path
         return False
     cmd = [idf_python_interpreter(), "-c", _RAW_CAPTURE_SRC, port, str(duration), "1" if no_reset else "0", str(baud)]
     print(f"{prefix}raw serial capture on {port} (no panic decode)")
-    ok = _run_capture_subprocess(cmd, duration + 5, log_path, prefix, None)
+    # The wrapper sets PYTHONNOUSERSITE=1 to keep .pth files from executing at startup (bug B1), and
+    # this CHILD inherits it — which hides a `pip install --user pyserial`, the only install possible
+    # on a stock macOS with its read-only system Python. The child then died with ModuleNotFoundError
+    # and the capture silently produced a traceback instead of device output. The child needs the user
+    # site; the parent's .pth isolation is unaffected.
+    child_env = {k: v for k, v in os.environ.items() if k != "PYTHONNOUSERSITE"}
+    ok = _run_capture_subprocess(cmd, duration + 5, log_path, prefix, child_env)
     if not ok:
         with open(log_path, "w", encoding="utf-8") as f:
             f.write(f"ERROR: raw serial capture could not start on {port}\n")
     return ok
+
+
+# A log that is really a crashed capture must never be summarised as a clean run. Reporting
+# "no crash markers detected" over a Python traceback tells the developer their board is healthy when
+# in fact nothing was ever recorded — the worst failure mode a debugging tool has.
+CAPTURE_FAILURE_MARKERS = (
+    "Traceback (most recent call last)",
+    "ModuleNotFoundError",
+    "ERROR: raw serial capture could not start",
+    "ERROR: no serial port resolved",
+    "could not open port",
+    "SerialException",
+)
 
 
 def summarize(log_path: str) -> str:
@@ -393,6 +412,10 @@ def summarize(log_path: str) -> str:
             content = f.read()
     except OSError:
         return "no output captured"
+    for marker in CAPTURE_FAILURE_MARKERS:
+        if marker in content:
+            first = next((ln.strip() for ln in content.splitlines() if ln.strip()), "")
+            return f"CAPTURE FAILED — nothing was recorded, so this says NOTHING about the device ({first[:120]})"
     lines = content.count("\n")
     hits = [label for marker, label in CRASH_MARKERS if marker in content]
     # De-duplicate while preserving order.
