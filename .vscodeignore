@@ -5,7 +5,27 @@
 CLAUDE.local.md
 NRF_TERMINAL_ARCHITECTURE.md
 out/
-dist-standalone/
+# The headless engine SHIPS (0.3.2). It is the same agent as the UI build — one core, two entry points —
+# and headless is a product capability: external agents drive it over MCP, and the Studio benchmarks the
+# very code a developer runs. Ship the runnable subset only: everything under dist-standalone is excluded
+# and the pieces the engine needs are re-included below. Order matters — vsce applies these in sequence.
+dist-standalone/**
+!dist-standalone/cline-core.js
+!dist-standalone/build-info.json
+!dist-standalone/proto/descriptor_set.pb
+# NOT dist-standalone/*.wasm — identical to dist/*.wasm, and the engine reads those (see languageParser.ts).
+# node_modules here is already pruned by package-standalone.mjs to the engine's runtime closure (the esbuild
+# externals and their dependencies) — the vscode stub, @grpc/reflection, grpc-health-check, protobufjs.
+!dist-standalone/node_modules/**
+# better-sqlite3 per platform: the core opens a locks db at boot, so this is not optional. The .node addon
+# plus the package's own JS — never `deps/` (9.6 MB of sqlite C sources) or `src/`.
+!dist-standalone/binaries/*/node_modules/better-sqlite3/package.json
+!dist-standalone/binaries/*/node_modules/better-sqlite3/lib/**
+!dist-standalone/binaries/*/node_modules/better-sqlite3/build/Release/*.node
+# Never: the 40 MB dev zip, the 25 MB source map, the unpacked vsce-extension staging copy.
+dist-standalone/standalone.zip
+dist-standalone/cline-core.js.map
+dist-standalone/vsce-extension/**
 node_modules/
 src/**
 standalone/**
