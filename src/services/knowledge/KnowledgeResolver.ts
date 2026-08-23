@@ -568,6 +568,33 @@ export async function loadBit(id: string): Promise<string> {
 	return bundledBody(id, bundled, decision.copy === "bundled" ? decision.reason : "no-registry-row")
 }
 
+/**
+ * True when the registry holds a copy of a BUNDLED bit that this extension should prefer.
+ *
+ * Exists for `read_file`: reading a bundled bit straight off disk is the fast path and stays that
+ * way, but for an overridden bit those bytes are the old text — one task would then quote two
+ * different versions of the same bit, one from the prompt and one from the file. Cheap: the catalog
+ * is already in memory by the time any bit has been read.
+ */
+export async function isOverridden(id: string): Promise<boolean> {
+	try {
+		const bundled = (await manifest()).get(id) ?? null
+		if (!bundled) {
+			return false
+		}
+		const row = await catalogRow(id)
+		const decision = choose(id, bundled, row as Record<string, unknown> | null, {
+			...precedenceEnv,
+			localPath: localKbits()?.get(id),
+			exempt: SYNC_EXEMPT_IDS,
+			kind: "bit",
+		})
+		return decision.copy !== "bundled"
+	} catch {
+		return false
+	}
+}
+
 /** True if a bit id exists in the bundled manifest (sync-safe; does not hit the registry). */
 export async function hasBit(id: string): Promise<boolean> {
 	return (await manifest()).has(id)
