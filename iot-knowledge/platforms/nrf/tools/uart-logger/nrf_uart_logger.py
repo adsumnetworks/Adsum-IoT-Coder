@@ -27,6 +27,7 @@ Usage:
 import argparse
 import atexit
 import os
+import re
 import sys
 import signal
 import subprocess
@@ -409,6 +410,18 @@ def reset_device(serial_number):
         return False
 
 
+
+def safe_filename_part(value) -> str:
+    """Make one path segment safe on every platform we ship to.
+
+    A board's identity becomes part of the log filename, and an ESP board's identity is its MAC —
+    `AC:EB:E6:0C:F8:C0`. Colons are legal on Linux and macOS and RESERVED on Windows, so the same
+    capture that works on the bench raises OSError [Errno 22] on a Windows developer's machine and
+    the log is simply lost. Windows also rejects <>:"/\\|?* and trailing dots and spaces.
+    """
+    cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', "_", str(value)).strip(" .")
+    return cleaned or "device"
+
 class DeviceLogger(threading.Thread):
     """Thread to log from a single device."""
     
@@ -431,15 +444,17 @@ class DeviceLogger(threading.Thread):
         
         # Create structured filename: {role}_{SN}_{DT}.log OR {name}_{DT}.log
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        serial_num = get_device_serial(port) or "unknown"
-        
+        # Every part that comes from the outside world is sanitised: the role and the name are given
+        # by the caller, and the serial is whatever the board reports — a MAC, on an ESP part.
+        serial_num = safe_filename_part(get_device_serial(port) or "unknown")
+
         if self.role:
             # e.g. central_683007782_20260209_120000.log
-            clean_role = self.role.lower().replace(" ", "_")
+            clean_role = safe_filename_part(self.role.lower().replace(" ", "_"))
             self.filename = os.path.join(self.log_dir, f"{clean_role}_{serial_num}_{timestamp}.log")
         else:
             # Legacy fallback: device_20260209_120000.log
-            self.filename = os.path.join(self.log_dir, f"{name}_{timestamp}.log")
+            self.filename = os.path.join(self.log_dir, f"{safe_filename_part(name)}_{timestamp}.log")
     
     def stop(self):
         self.running = False

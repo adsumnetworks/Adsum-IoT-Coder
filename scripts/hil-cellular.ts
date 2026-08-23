@@ -203,7 +203,19 @@ function main(): number {
 	}
 
 	const boards = listBoards()
-	const cellular = boards.filter(isNrf91)
+	let cellular = boards.filter(isNrf91)
+	const wanted = process.env.HIL_SERIAL?.trim()
+	if (wanted) {
+		const picked = cellular.filter((b) => b.serial === wanted || b.serial.endsWith(wanted))
+		if (picked.length === 0) {
+			line(
+				`HIL_SERIAL=${wanted} matches no attached nRF91 board. Attached: ${cellular.map((b) => b.serial).join(", ") || "none"}`,
+			)
+			line("FAILING — a named board that is not there is a mistake, not a skip.")
+			return 1
+		}
+		cellular = picked
+	}
 
 	if (boards.length === 0) {
 		line("No boards found (nrfutil saw nothing). SKIPPING — nothing to test.")
@@ -219,9 +231,18 @@ function main(): number {
 		return 0
 	}
 
-	const b = cellular[0]
-	line(`Board:  ${b.serial}  ${b.product ?? ""}`)
-	line(`Port:   ${b.port ?? "unknown"}`)
+	// Report EVERY cellular board, not just the first. The bench runs two nRF9161 DKs and they report
+	// the same boardVersion, so `cellular[0]` picked one and said nothing about the other — a silent
+	// choice between identical-looking boards is exactly how the wrong one ends up under test.
+	line(`Cellular board(s): ${cellular.length}`)
+	for (const b of cellular) {
+		line(`  ${b.serial}  ${b.boardVersion ?? b.deviceFamily ?? b.product ?? ""}  port ${b.port ?? "unknown"}`)
+	}
+	if (cellular.length > 1) {
+		line()
+		line("More than one — name the board you mean with HIL_SERIAL=<serial>, or the answers below")
+		line("will be judged without any record of which modem produced them.")
+	}
 	line()
 	line("This harness does NOT send AT commands by itself — the modem must be reachable")
 	line("through a firmware that exposes them (the `at_client` sample, or an app with the")
