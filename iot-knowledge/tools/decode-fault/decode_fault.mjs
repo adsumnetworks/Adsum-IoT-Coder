@@ -22,7 +22,7 @@
  */
 
 import { execFileSync } from "node:child_process"
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync, statSync, writeSync } from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 
@@ -53,16 +53,23 @@ if (flag("help") || flag("h")) {
 /** Exit 2 is "bad input or missing prerequisite" — distinct from 1, which would be a crash. */
 function fail(status, reason, extra = {}) {
 	const payload = { status, reason, ...extra }
+	// writeSync, not console.log + process.exit: on a pipe stdout is asynchronous, and exiting before
+	// it drains truncates the output. Small payloads usually survive; "usually" is not a contract.
 	if (flag("json")) {
-		console.log(JSON.stringify(payload, null, 2))
+		writeSync(1, `${JSON.stringify(payload, null, 2)}\n`)
 	} else {
-		console.error(`decode-fault: ${reason}`)
+		let out = `decode-fault: ${reason}\n`
 		for (const [k, v] of Object.entries(extra)) {
-			console.error(`  ${k}: ${Array.isArray(v) ? v.join("\n    ") : v}`)
+			out += `  ${k}: ${Array.isArray(v) ? v.join("\n    ") : v}\n`
 		}
+		writeSync(2, out)
 	}
-	process.exit(2)
+	process.exitCode = 2
+	throw new ExitSignal()
 }
+
+/** Thrown by `fail` so the caller stops without process.exit tearing down an unflushed stdout. */
+class ExitSignal extends Error {}
 
 // ── fault signatures ─────────────────────────────────────────────────────────
 
@@ -313,24 +320,19 @@ function main() {
 
 	const refusal = refusalFor(log)
 	if (refusal) {
-		const payload = { status: "not-an-address-fault", reason: refusal }
-		if (flag("json")) {
-			console.log(JSON.stringify(payload, null, 2))
-		} else {
-			console.log(`Not decoding: ${refusal}`)
-		}
-		process.exit(0)
+		writeSync(1, flag("json") ? `${JSON.stringify({ status: "not-an-address-fault", reason: refusal }, null, 2)}\n` : `Not decoding: ${refusal}\n`)
+		return
 	}
 
 	const platform = opt("platform") ?? detectPlatform(log)
 	if (!platform) {
-		const payload = { status: "no-fault-found", reason: "no fault signature in this log" }
-		if (flag("json")) {
-			console.log(JSON.stringify(payload, null, 2))
-		} else {
-			console.log("No fault signature in this log — there is nothing to decode.")
-		}
-		process.exit(0)
+		writeSync(
+			1,
+			flag("json")
+				? `${JSON.stringify({ status: "no-fault-found", reason: "no fault signature in this log" }, null, 2)}\n`
+				: "No fault signature in this log — there is nothing to decode.\n",
+		)
+		return
 	}
 
 	const chip = platform === "esp" ? (opt("chip") ?? chipFromLog(log)) : null
@@ -382,5 +384,11 @@ function main() {
 // `file://` template: every real Adsum checkout lives under "Adsum IoT Coder", and an unencoded
 // space makes the comparison silently false — the CLI then exits 0 having done nothing.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-	main()
+	try {
+		main()
+	} catch (e) {
+		if (!(e instanceof ExitSignal)) {
+			throw e
+		}
+	}
 }
