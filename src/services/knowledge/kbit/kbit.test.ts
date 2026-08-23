@@ -297,12 +297,19 @@ describe("regression: live corpus", () => {
 	// became `type: tool` bits. board-shell and modem-trace are NOT here: they are `delivery:
 	// downloaded` and proprietary, so their home is Adsum-Backend/kbits/ and they reach the developer
 	// from the registry). Counting them separately keeps the leak guard sharp: a proprietary
-	// content bit sneaking back in still moves the 18, where a single total would have absorbed it.
-	test("corpus is fully migrated and lint-clean: content bits + 4 tool bits, 0 errors", () => {
+	// content bit sneaking back in still moves the count, where a single total would have absorbed it.
+	// 7 → 10 in 0.3.0: esp-action, nrf-action and cra-action, the three built-in doors. They are
+	// `runtime: host` descriptors with no artifacts — they exist so the ~20 procedures that drive those
+	// doors can declare a dependency, and so their authors are credited like any other tool's.
+	// 18 → 20 in 0.3.0: esp/knowledge/chip-identity and nrf/knowledge/board-identity, OPEN catalogues
+	// of ESP32 targets and Nordic PCA numbers. Both bundled
+	// so the mapping works offline, and published as a registry copy so a new Espressif part reaches
+	// developers without a reinstall — the leak guard still holds, because it is CC-BY-SA-4.0.
+	test("corpus is fully migrated and lint-clean: content bits + 10 tool bits, 0 errors", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
 		const toolFiles = files.filter((f) => f.replace(/\\/g, "/").endsWith("/TOOL.md"))
-		assert.equal(toolFiles.length, 4, "bundled tool bits")
-		assert.equal(files.length - toolFiles.length, 18, "bundled content bits — a rise here means a proprietary bit leaked in")
+		assert.equal(toolFiles.length, 10, "bundled tool bits")
+		assert.equal(files.length - toolFiles.length, 20, "bundled content bits — a rise here means a proprietary bit leaked in")
 		assert.equal(migrated, files.length)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
@@ -857,6 +864,26 @@ describe("lint — licence follows delivery AND type", () => {
 	test("an open downloaded bit is warned about either way", () => {
 		assert.equal(hasR43(lintOne({ ...validTool, license: "Apache-2.0" })), true)
 		assert.equal(hasR43(lintOne(validTool)), false)
+	})
+	test("U3 — a body naming a host tool by a name the model does not have fails", () => {
+		for (const wrong of ["nrf_device_tool", "trigger_nordic_action", "trigger_esp_action", "trigger_cve_scan"]) {
+			const issues = lintOne(validAction, `Call \`${wrong}\` with action="execute".\n`)
+			assert.equal(
+				issues.some((i) => i.level === "error" && /the tool the model actually has is/.test(i.msg)),
+				true,
+				`${wrong} should fail lint`,
+			)
+		}
+		// The registered names are what the model is given, so they must pass untouched.
+		for (const right of ["triggerNordicAction", "triggerEspAction", "triggerCveScan"]) {
+			assert.equal(
+				lintOne(validAction, `Call \`${right}\` with action="execute".\n`).some((i) =>
+					/the tool the model actually has is/.test(i.msg),
+				),
+				false,
+				`${right} should pass lint`,
+			)
+		}
 	})
 	test("a bit body may not hard-code the extension's script directory", () => {
 		const issues = lintOne(validAction, "Run `assets/scripts/board-shell --port X`\n")

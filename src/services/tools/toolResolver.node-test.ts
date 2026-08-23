@@ -4,9 +4,16 @@
  */
 import assert from "node:assert/strict"
 import path from "node:path"
-import { test } from "node:test"
+import { describe, test } from "node:test"
 import { commandPrefix, launcherName, renderCommand } from "./launchers"
-import { buildResolvedTool, type ResolvedTool, toolEntriesFromManifest, toolsForWorkspace } from "./ToolResolver"
+import {
+	buildResolvedTool,
+	bundleHasPlatformLauncher,
+	noWiderThan,
+	type ResolvedTool,
+	toolEntriesFromManifest,
+	toolsForWorkspace,
+} from "./ToolResolver"
 
 const DIR = "/ext/iot-knowledge/platforms/nrf/tools/rtt-logger"
 const META = {
@@ -111,6 +118,7 @@ const mk = (id: string, platform?: string): ResolvedTool => ({
 	requiresTools: [],
 	platform,
 	delivery: "bundled",
+	provenance: "bundled",
 	command: "",
 })
 
@@ -472,4 +480,112 @@ test("the reason names the specific capability, and is absent when nothing is as
 	assert.equal(approvalReason(ap()), null)
 	assert.match(approvalReason(ap({ readonly: false })) ?? "", /writes to your machine/)
 	assert.match(approvalReason(ap({ unavailable: "nrfutil not found on PATH" })) ?? "", /nrfutil/)
+})
+
+
+// ── U9: the override rule as the tool resolver applies it ────────────────────
+
+describe("U9 — an override may never widen what the developer already agreed to", () => {
+	const shipped = mk("adsum/nrf/tools/x")
+
+	test("a registry copy that drops a safety tag keeps the shipped one", () => {
+		const override = { ...mk("adsum/nrf/tools/x"), safety: [], readonly: true, provenance: "override" as const }
+		const merged = noWiderThan(override, { ...shipped, safety: ["flash"], readonly: false })
+		assert.deepEqual(merged.safety, ["flash"])
+		assert.equal(merged.readonly, false)
+	})
+
+	test("a registry copy that ADDS a safety tag is honoured — narrowing is always allowed", () => {
+		const override = { ...mk("adsum/nrf/tools/x"), safety: ["erase"], readonly: false, provenance: "override" as const }
+		const merged = noWiderThan(override, { ...shipped, safety: [], readonly: true })
+		assert.deepEqual(merged.safety, ["erase"])
+		assert.equal(merged.readonly, false)
+	})
+
+	test("everything else about the override survives the merge", () => {
+		const override = { ...mk("adsum/nrf/tools/x"), version: "2.0.0", provenance: "override" as const }
+		const merged = noWiderThan(override, shipped)
+		assert.equal(merged.version, "2.0.0")
+		assert.equal(merged.provenance, "override")
+	})
+})
+
+describe("U9 — a python override must carry the launcher for the platform it will run on", () => {
+	const row = (paths: string[], runtime = "python3") => ({
+		runtime,
+		artifacts: paths.map((p) => ({ path: p, sha256: "a" })),
+	})
+
+	test("posix: the bare launcher name is required", () => {
+		assert.equal(bundleHasPlatformLauncher("adsum/nrf/tools/board-shell", row(["board_shell.py", "board-shell"]), "darwin"), true)
+		assert.equal(bundleHasPlatformLauncher("adsum/nrf/tools/board-shell", row(["board_shell.py"]), "darwin"), false)
+	})
+
+	test("win32: the .bat is required, and the posix launcher does not substitute", () => {
+		assert.equal(
+			bundleHasPlatformLauncher("adsum/nrf/tools/board-shell", row(["board_shell.py", "board-shell.bat"]), "win32"),
+			true,
+		)
+		assert.equal(
+			bundleHasPlatformLauncher("adsum/nrf/tools/board-shell", row(["board_shell.py", "board-shell"]), "win32"),
+			false,
+		)
+	})
+
+	test("a node tool needs no launcher at all — it runs under the editor's own binary", () => {
+		assert.equal(bundleHasPlatformLauncher("adsum/tools/log-shape", row(["log_shape.mjs"], "node"), "win32"), true)
+	})
+})
+
+describe("U9 — provenance is separate from delivery", () => {
+	test("delivery describes the canonical home; provenance describes this resolution", () => {
+		const t = mk("adsum/nrf/tools/x")
+		assert.equal(t.delivery, "bundled")
+		assert.equal(t.provenance, "bundled")
+		// A registry copy of a bundled tool legitimately carries delivery: bundled in its descriptor.
+		const overridden = { ...t, provenance: "override" as const }
+		assert.equal(overridden.delivery, "bundled")
+		assert.equal(overridden.provenance, "override")
+	})
+})
+
+
+// ── U4: the built-in doors are visible in the graph, never in the advertisement ──
+
+describe("U4 — a runtime: host tool resolves for credit but is never advertised", () => {
+	const host = (id: string, hostTool: string, platform?: string): ResolvedTool => ({
+		...mk(id, platform),
+		runtime: "host" as never,
+		hostTool,
+		usage: "",
+		command: "",
+	})
+
+	test("host tools are filtered out of every workspace", () => {
+		const tools = [
+			host("adsum/nrf/tools/nrf-action", "triggerNordicAction", "nrf"),
+			host("adsum/esp/tools/esp-action", "triggerEspAction", "esp"),
+			host("adsum/cra/tools/cra-action", "triggerCveScan"),
+			mk("adsum/nrf/tools/rtt-logger", "nrf"),
+		]
+		for (const summary of ["nrf", "esp", "both", "none"] as const) {
+			const advertised = toolsForWorkspace(tools, summary).map((t) => t.id)
+			assert.ok(
+				!advertised.some((id) => id.endsWith("-action")),
+				`${summary}: a host tool must never reach the Device tools block — got ${advertised.join(", ")}`,
+			)
+		}
+	})
+
+	test("the real programs are still advertised — the filter is about hostTool, not about the ids", () => {
+		const tools = [host("adsum/nrf/tools/nrf-action", "triggerNordicAction", "nrf"), mk("adsum/nrf/tools/rtt-logger", "nrf")]
+		assert.deepEqual(
+			toolsForWorkspace(tools, "nrf").map((t) => t.id),
+			["adsum/nrf/tools/rtt-logger"],
+		)
+	})
+
+	test("a host tool carries the registered name the model actually has", () => {
+		assert.equal(host("adsum/cra/tools/cra-action", "triggerCveScan").hostTool, "triggerCveScan")
+	})
 })

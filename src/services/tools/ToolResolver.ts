@@ -4,6 +4,7 @@ import path from "node:path"
 import { load as yamlLoad } from "js-yaml"
 import { HostProvider } from "@/hosts/host-provider"
 import { extractFrontmatter } from "@/services/knowledge/kbit/frontmatter"
+import { choose } from "@/services/knowledge/precedence"
 import type { ArtifactFetch } from "@/services/knowledge/registry/RegistryClient"
 import { espToolActive, nrfToolActive } from "@/services/platform/platformRouting"
 import type { WorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
@@ -30,6 +31,43 @@ import { signatureAllowsRun, verifyVersionSignature } from "./verifySignature"
 
 const KNOWLEDGE_DIR = "iot-knowledge"
 
+/** Launcher members a python bundle must carry for the platform it is about to run on. */
+export function bundleHasPlatformLauncher(id: string, row: Record<string, unknown>, platform: NodeJS.Platform = process.platform): boolean {
+	if (row.runtime !== "python3") {
+		return true // node tools run under the editor's own binary; there is no launcher to lose
+	}
+	const name = id.split("/").pop() ?? id
+	const want = launcherName(name, platform)
+	const artifacts = Array.isArray(row.artifacts) ? (row.artifacts as Array<Record<string, unknown>>) : []
+	return artifacts.some((a) => String(a.path ?? "") === want)
+}
+
+/** The signature verdict for a catalog row, in the shape verifyVersionSignature expects. */
+function verdictFor(row: Record<string, unknown>) {
+	return verifyVersionSignature({
+		id: String(row.id ?? ""),
+		version: String(row.version ?? ""),
+		content_hash: typeof row.content_hash === "string" ? row.content_hash : "",
+		artifacts: Array.isArray(row.artifacts) ? (row.artifacts as Array<{ sha256?: unknown }>) : [],
+		signature: typeof row.signature === "string" ? row.signature : null,
+	})
+}
+
+/**
+ * An override may not widen what the developer already agreed to.
+ *
+ * Auto-approval is computed from the resolved descriptor, so a registry copy that dropped a `safety`
+ * tag or flipped `readonly` would silently turn a tool that used to ask into one that just runs —
+ * a privilege change nobody was shown. Narrowing is fine; widening takes a new session.
+ */
+export function noWiderThan(override: ResolvedTool, shipped: ResolvedTool): ResolvedTool {
+	return {
+		...override,
+		readonly: override.readonly && shipped.readonly,
+		safety: [...new Set([...override.safety, ...shipped.safety])],
+	}
+}
+
 export interface ResolvedTool {
 	id: string
 	/** Last path segment of the id — the tool's user-facing name and its launcher's filename. */
@@ -46,12 +84,49 @@ export interface ResolvedTool {
 	author?: string
 	coAuthors?: string[]
 	license?: string
+	/**
+	 * Where this tool's CANONICAL home is, as the descriptor declares it. Distribution metadata, not a
+	 * statement about this resolution — the registry serves copies of bundled tools, so a row can say
+	 * `bundled` and still have arrived over the wire. Use `provenance` for what actually happened.
+	 */
 	delivery: "bundled" | "downloaded"
+	/** The version that actually resolved. Needed to credit the copy that ran, not the one on disk. */
+	version?: string
+	/** What actually served this tool: the VSIX, the registry, or the registry replacing the VSIX. */
+	provenance: "bundled" | "downloaded" | "override"
+	/**
+	 * The registered tool name, for a `runtime: host` descriptor — a door compiled into the extension.
+	 * Present ⇒ this is NOT a program to launch: it is never advertised in the Device tools block (the
+	 * model already has it as a native tool, and listing it twice would invite a shell invocation of
+	 * something that has no command line) and never materialised. It resolves for credit and relations.
+	 */
+	hostTool?: string
 	/** The shell-ready command prefix, already quoted and shortened where useful. */
 	command: string
 	/** Present when something the tool needs is missing; the advertisement says so plainly. */
 	unavailable?: string
 }
+
+/**
+ * Why a tool could not be resolved. The door that reports "tool unavailable" to the developer needs
+ * to know WHICH of these happened — "never fetched" and "the registry is down" and "your plan does
+ * not include it" are three different conversations, and a bare null could not tell them apart.
+ */
+export type ToolUnavailable =
+	/** No copy on this machine and the artifact was not in the registry. */
+	| "not-fetched"
+	/** The registry could not be reached. */
+	| "registry-unreachable"
+	/** The artifact exists but this account is not entitled to it. */
+	| "locked"
+	/** Signature enforcement is on and the published version does not verify. */
+	| "signature-refused"
+	/** The bundle materialised but its entry file is not on disk. */
+	| "entry-missing"
+	/** The descriptor is missing fields needed to run it. */
+	| "incomplete-descriptor"
+
+export type ToolResolution = { tool: ResolvedTool } | { unavailable: ToolUnavailable }
 
 interface ManifestEntry {
 	id: string
@@ -127,6 +202,8 @@ export function buildResolvedTool(args: {
 	meta: Record<string, unknown>
 	body: string
 	delivery: "bundled" | "downloaded"
+	/** What actually served it. Defaults to `delivery` for callers that predate the override rule. */
+	provenance?: "bundled" | "downloaded" | "override"
 	fileExists: (p: string) => boolean
 	interpreter: string | null
 	haveExecutable: (name: string) => boolean
@@ -184,6 +261,9 @@ export function buildResolvedTool(args: {
 			: undefined,
 		license: typeof meta.license === "string" ? meta.license : undefined,
 		delivery: args.delivery,
+		provenance: args.provenance ?? args.delivery,
+		hostTool: typeof args.meta.host_tool === "string" ? args.meta.host_tool : undefined,
+		version: typeof args.meta.version === "string" ? args.meta.version : undefined,
 		command: renderCommand(
 			commandPrefix({ runtime, launcherPath, entryPath, interpreter: args.interpreter ?? undefined }),
 			args.cwd,
@@ -195,6 +275,11 @@ export function buildResolvedTool(args: {
 /** Pure: which tools this workspace should see. Mirrors the native device-tool gating exactly. */
 export function toolsForWorkspace(tools: ResolvedTool[], summary: WorkspaceSummary): ResolvedTool[] {
 	return tools.filter((t) => {
+		// A host tool is already a native tool the model can call by name. Advertising it here would
+		// offer a second, shell-shaped way to reach something that has no command line.
+		if (t.hostTool) {
+			return false
+		}
 		if (t.platform === "nrf") {
 			return nrfToolActive(summary)
 		}
@@ -207,7 +292,29 @@ export function toolsForWorkspace(tools: ResolvedTool[], summary: WorkspaceSumma
 
 // ── the resolver ─────────────────────────────────────────────────────────────
 
-let snapshot: { key: string; tools: ResolvedTool[] } | null = null
+/**
+ * Resolution is snapshotted per key so a cache write midway through a task cannot change the tools the
+ * agent was told about. A MAP rather than one slot: prompt assembly resolves under `prompt:<cwd>` and
+ * the execute handler under `task:<ulid>`, and with a single slot those two thrashed each other — the
+ * agent could be advertised one set and credited from another. Bounded; oldest key evicted.
+ */
+const snapshots = new Map<string, ResolvedTool[]>()
+const SNAPSHOT_LIMIT = 8
+
+function snapshotGet(key: string): ResolvedTool[] | undefined {
+	return snapshots.get(key)
+}
+
+function snapshotSet(key: string, tools: ResolvedTool[]): ResolvedTool[] {
+	if (snapshots.size >= SNAPSHOT_LIMIT) {
+		const oldest = snapshots.keys().next().value
+		if (oldest !== undefined) {
+			snapshots.delete(oldest)
+		}
+	}
+	snapshots.set(key, tools)
+	return tools
+}
 
 /** Read every bundled tool descriptor from disk. Downloaded tools join this list in phase 3. */
 export function loadBundledTools(cwd?: string): ResolvedTool[] {
@@ -261,12 +368,11 @@ export function loadBundledTools(cwd?: string): ResolvedTool[] {
  */
 export function resolveTools(summary: WorkspaceSummary, taskKey: string, cwd?: string): ResolvedTool[] {
 	const key = `${taskKey}::${summary}::${cwd ?? ""}`
-	if (snapshot?.key === key) {
-		return snapshot.tools
+	const hit = snapshotGet(key)
+	if (hit) {
+		return hit
 	}
-	const tools = toolsForWorkspace(loadBundledTools(cwd), summary)
-	snapshot = { key, tools }
-	return tools
+	return snapshotSet(key, toolsForWorkspace(loadBundledTools(cwd), summary))
 }
 
 /**
@@ -274,48 +380,83 @@ export function resolveTools(summary: WorkspaceSummary, taskKey: string, cwd?: s
  * verify. Prompt assembly is already async, so this is what it calls; `resolveTools` stays for the
  * synchronous callers (the native handlers) that only ever want a bundled path.
  *
- * Bundled wins on a duplicate id, exactly as it does for knowledge bits.
+ * On a duplicate id the NEWER copy wins if this extension can run it, exactly as for knowledge bits
+ * (`services/knowledge/precedence.ts`). The bundled copy is the last resort and is always reachable.
  */
 export async function resolveToolsAsync(summary: WorkspaceSummary, taskKey: string, cwd?: string): Promise<ResolvedTool[]> {
 	const key = `async::${taskKey}::${summary}::${cwd ?? ""}`
-	if (snapshot?.key === key) {
-		return snapshot.tools
+	const hit = snapshotGet(key)
+	if (hit) {
+		return hit
 	}
 	const bundled = loadBundledTools(cwd)
 	const byId = new Map(bundled.map((t) => [t.id, t]))
 	try {
-		const { downloadedEntries } = await import("@/services/knowledge/KnowledgeResolver")
+		const { downloadedEntries, precedenceEnvFor } = await import("@/services/knowledge/KnowledgeResolver")
 		const { RegistryClient } = await import("@/services/knowledge/registry/RegistryClient")
 		const { ToolCache } = await import("./ToolCache")
 		const entries = toolEntriesFromDownloadedManifest(await downloadedEntries())
 		if (entries.length) {
 			const client = new RegistryClient()
 			const cache = new ToolCache(toolCacheRoot())
+			const live: Array<{ id: string; version: string }> = []
 			for (const entry of entries) {
 				const id = String(entry.id ?? "")
-				if (!id || byId.has(id)) {
-					continue // a bundled tool of the same id wins
+				if (!id) {
+					continue
 				}
-				const tool = await materialiseDownloadedTool({
+				const shipped = byId.get(id) ?? null
+				// The same rule the knowledge resolver uses. A newer registry copy replaces a bundled tool
+				// only when this extension can run it AND the descriptor is complete enough not to degrade
+				// the advertisement — a stale-but-complete tool beats a newer one that loses its safety
+				// tags or its platform launcher.
+				const decision = choose(id, shipped ? { version: shipped.version } : null, entry, {
+					...precedenceEnvFor(),
+					kind: "tool",
+					signatureOk: (row) => signatureAllowsRun(verdictFor(row)),
+					hasPlatformLauncher: (row) => bundleHasPlatformLauncher(id, row),
+				})
+				if (decision.copy !== "registry") {
+					continue // keep the bundled tool
+				}
+				const got = await materialiseDownloadedToolResult({
 					entry,
 					cache,
 					fetchArtifact: (sha) => client.fetchArtifact(sha),
 					cwd,
+					provenance: shipped ? "override" : "downloaded",
 				})
-				if (tool) {
-					byId.set(id, tool)
+				if ("tool" in got) {
+					// An override may never WIDEN what the developer already agreed to. If the shipped
+					// descriptor was stricter, the stricter answer is the one that stands for this session.
+					byId.set(id, shipped ? noWiderThan(got.tool, shipped) : got.tool)
+					live.push({ id, version: String(entry.version ?? "") })
 				}
+			}
+			// Versioned cache dirs are what makes bundled and registry copies coexist safely, but nothing
+			// swept them until now — with overrides, a new directory per publish is the normal case, not
+			// the exception. Bundled versions are named as live so a running copy is never removed.
+			try {
+				for (const b of bundled) {
+					if (b.version) {
+						live.push({ id: b.id, version: b.version })
+					}
+				}
+				cache.reconcile(live)
+			} catch {
+				// housekeeping must never cost the developer their tools
 			}
 		}
 	} catch {
 		// The registry being unreachable must never cost the developer their bundled tools.
 	}
-	const tools = toolsForWorkspace(
-		[...byId.values()].sort((a, b) => a.id.localeCompare(b.id)),
-		summary,
+	return snapshotSet(
+		key,
+		toolsForWorkspace(
+			[...byId.values()].sort((a, b) => a.id.localeCompare(b.id)),
+			summary,
+		),
 	)
-	snapshot = { key, tools }
-	return tools
 }
 
 /** Where downloaded bundles are materialised — beside the k-bit cache, never mixed into it. */
@@ -323,12 +464,83 @@ export function toolCacheRoot(): string {
 	return path.join(HostProvider.get().globalStorageFsPath ?? HostProvider.get().extensionFsPath, "tbit-cache")
 }
 
-/** Test seam: drop the per-task snapshot. */
+/** Test seam: drop every cached snapshot. */
 export function resetToolSnapshot(): void {
-	snapshot = null
+	snapshots.clear()
 }
 
-/** The absolute launcher/entry path for one tool id, for the native handlers. Null if unresolvable. */
+/**
+ * Resolve ONE tool by id, the way a handler about to run it needs: the winning copy, or the reason
+ * there isn't one.
+ *
+ * Unlike `pathOf`, this consults the registry, so a bundled tool that has been improved in the
+ * registry is the copy that actually runs. A registry problem is never allowed to become the
+ * developer's problem: any failure falls back to the bundled tool if there is one, and only an id
+ * with no bundled copy AND no usable registry copy comes back unavailable.
+ */
+export async function resolveToolAsync(id: string, cwd?: string): Promise<ToolResolution> {
+	const shipped = loadBundledTools(cwd).find((t) => t.id === id) ?? null
+	try {
+		const { downloadedEntries, precedenceEnvFor } = await import("@/services/knowledge/KnowledgeResolver")
+		const { RegistryClient } = await import("@/services/knowledge/registry/RegistryClient")
+		const { ToolCache } = await import("./ToolCache")
+		const entry = toolEntriesFromDownloadedManifest(await downloadedEntries()).find((e) => String(e.id ?? "") === id)
+		if (entry) {
+			const decision = choose(id, shipped ? { version: shipped.version } : null, entry, {
+				...precedenceEnvFor(),
+				kind: "tool",
+				signatureOk: (row) => signatureAllowsRun(verdictFor(row)),
+				hasPlatformLauncher: (row) => bundleHasPlatformLauncher(id, row),
+			})
+			if (decision.copy === "registry") {
+				const client = new RegistryClient()
+				const got = await materialiseDownloadedToolResult({
+					entry,
+					cache: new ToolCache(toolCacheRoot()),
+					fetchArtifact: (sha) => client.fetchArtifact(sha),
+					cwd,
+					provenance: shipped ? "override" : "downloaded",
+				})
+				if ("tool" in got) {
+					return { tool: shipped ? noWiderThan(got.tool, shipped) : got.tool }
+				}
+				if (!shipped) {
+					return got // nothing to fall back to — report why
+				}
+			}
+		} else if (!shipped) {
+			return { unavailable: "not-fetched" }
+		}
+	} catch {
+		if (!shipped) {
+			return { unavailable: "registry-unreachable" }
+		}
+	}
+	return shipped ? { tool: shipped } : { unavailable: "not-fetched" }
+}
+
+/**
+ * The absolute launcher/entry path for one tool id, honouring a registry override.
+ *
+ * The native handlers use this. It never throws for a registry reason — a capture must not fail
+ * because a fetch was slow — so the caller's "tool bundle is missing" error stays reserved for the
+ * case where there is genuinely no copy at all.
+ */
+export async function pathOfAsync(id: string, cwd?: string): Promise<{ tool: ResolvedTool; path: string } | null> {
+	const r = await resolveToolAsync(id, cwd)
+	if (!("tool" in r)) {
+		return null
+	}
+	const launcher = path.join(r.tool.dir, launcherName(r.tool.name))
+	return { tool: r.tool, path: existsSync(launcher) ? launcher : r.tool.entryPath }
+}
+
+/**
+ * The absolute launcher/entry path for one BUNDLED tool id. Never consults the registry.
+ *
+ * Kept for callers that genuinely cannot await. Anything that is about to EXECUTE a tool should use
+ * `pathOfAsync` instead, or it will run the VSIX copy while the prompt advertised the registry one.
+ */
 export function pathOf(id: string, cwd?: string): string | null {
 	const tool = loadBundledTools(cwd).find((t) => t.id === id)
 	if (!tool) {
@@ -356,12 +568,32 @@ export async function materialiseDownloadedTool(args: {
 	interpreter?: string | null
 	haveExec?: (name: string) => boolean
 }): Promise<ResolvedTool | null> {
+	const r = await materialiseDownloadedToolResult(args)
+	return "tool" in r ? r.tool : null
+}
+
+/**
+ * The same work, reporting WHY it failed.
+ *
+ * A door that has to tell the developer "this could not run" needs the difference between "it was
+ * never fetched", "the registry is down", "your plan does not include it" and "the signature did not
+ * verify". The `| null` form above stays for callers that only need a tool or nothing.
+ */
+export async function materialiseDownloadedToolResult(args: {
+	entry: Record<string, unknown>
+	cache: ToolCache
+	fetchArtifact: (sha256: string) => Promise<ArtifactFetch>
+	cwd?: string
+	interpreter?: string | null
+	haveExec?: (name: string) => boolean
+	provenance?: "downloaded" | "override"
+}): Promise<ToolResolution> {
 	const { entry, cache } = args
 	const id = typeof entry.id === "string" ? entry.id : null
 	const version = typeof entry.version === "string" ? entry.version : null
 	const declared = Array.isArray(entry.artifacts) ? (entry.artifacts as Array<Record<string, unknown>>) : []
 	if (!id || !version || declared.length === 0) {
-		return null
+		return { unavailable: "incomplete-descriptor" }
 	}
 
 	// Verify the steward signature BEFORE fetching anything. The hashes in this entry came from the
@@ -376,13 +608,14 @@ export async function materialiseDownloadedTool(args: {
 		signature: typeof entry.signature === "string" ? entry.signature : null,
 	})
 	if (!signatureAllowsRun(verdict)) {
-		return null
+		return { unavailable: "signature-refused" }
 	}
 	const members = declared
 		.map((a) => ({ path: String(a.path ?? ""), sha256: String(a.sha256 ?? "") }))
 		.filter((m) => m.path && m.sha256)
 	if (members.length !== declared.length) {
-		return null // a descriptor missing a hash cannot be verified, so it is not usable
+		// a descriptor missing a hash cannot be verified, so it is not usable
+		return { unavailable: "incomplete-descriptor" }
 	}
 
 	if (!cache.verify(id, version, members)) {
@@ -390,28 +623,33 @@ export async function materialiseDownloadedTool(args: {
 		for (const m of members) {
 			const r = await args.fetchArtifact(m.sha256)
 			if (r.kind !== "ok") {
-				// locked / absent / unreachable are all "not runnable now". The locked case is surfaced by
-				// the caller as a paywall; here it simply means do not advertise.
-				return null
+				// locked / absent / unreachable are all "not runnable now", but they are different
+				// conversations with the developer, so the reason travels with the refusal.
+				return {
+					unavailable:
+						r.kind === "locked" ? "locked" : r.kind === "unreachable" ? "registry-unreachable" : "not-fetched",
+				}
 			}
 			fetched.push({ path: m.path, bytes: r.bytes, sha256: m.sha256 })
 		}
 		if (!cache.materialise(id, version, fetched)) {
-			return null
+			return { unavailable: "not-fetched" }
 		}
 	}
 
-	return buildResolvedTool({
+	const tool = buildResolvedTool({
 		id,
 		dir: cache.dirFor(id, version),
 		meta: entry,
 		body: typeof entry.summary === "string" ? entry.summary : "",
 		delivery: "downloaded",
+		provenance: args.provenance ?? "downloaded",
 		fileExists: existsSync,
 		interpreter: args.interpreter ?? probePython(),
 		haveExecutable: args.haveExec ?? haveExecutable,
 		cwd: args.cwd,
 	})
+	return tool ? { tool } : { unavailable: "entry-missing" }
 }
 
 /** Manifest rows that are tool bits. Kept pure so it is testable without a registry. */

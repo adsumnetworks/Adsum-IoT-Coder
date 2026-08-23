@@ -10,6 +10,9 @@ tier: certified
 delivery: bundled
 domain: embedded-iot
 platform: universal
+requires:
+  - adsum/nrf/tools/nrf-action
+  - adsum/esp/tools/esp-action
 ---
 
 # Identity & Persona

@@ -29,7 +29,11 @@ export const KBIT_ACCESS = ["free", "pro"] as const
 // How a tool bit's entry point is executed. `node` runs under VS Code's own Node (process.execPath),
 // so it needs nothing installed — the default choice for new tools. `python3` needs a system
 // interpreter (probed at resolve time, and said so in the advertisement when missing).
-export const KBIT_RUNTIMES = ["python3", "node", "wasm", "native"] as const
+// `host` is the odd one: it describes a tool that is COMPILED INTO the extension — the three built-in
+// doors (triggerEspAction, triggerNordicAction, triggerCveScan). It has no artifacts and is never
+// downloadable. It exists so those doors are visible in the graph, creditable to their authors and
+// linkable from the ~20 procedures that drive them, which until now could point at nothing.
+export const KBIT_RUNTIMES = ["python3", "node", "wasm", "native", "host"] as const
 
 // The first extension release that can resolve a tool bit, and the first that tells a 402 from a 404.
 // A bit that needs either capability must floor `min_ext` at or above the matching constant, or the
@@ -149,6 +153,8 @@ export const kbitMetaSchema = z
 		runtime: z.enum(KBIT_RUNTIMES).optional(),
 		/** Entry file, which must be one of `artifacts[].path`. */
 		entry: z.string().min(1).optional(),
+		/** For `runtime: host` only: the registered ClineDefaultTool name the model actually sees. */
+		host_tool: z.string().min(1).optional(),
 		/** The argument line shown to the model, e.g. `--decode <trace.bin> --out <dir>`. */
 		usage: z.string().min(1).optional(),
 		artifacts: z.array(artifactEntry).optional(),
@@ -192,12 +198,32 @@ export const kbitMetaSchema = z
 	)
 	// A tool bit is a descriptor for something executable — without a runtime, an entry point and the
 	// bundle it lives in, there is nothing to run.
-	.refine((d) => d.type !== "tool" || (!!d.runtime && !!d.entry && !!d.artifacts?.length), {
+	.refine((d) => d.type !== "tool" || d.runtime === "host" || (!!d.runtime && !!d.entry && !!d.artifacts?.length), {
 		message: "a tool bit must declare runtime, entry and at least one artifact",
 		path: ["runtime"],
 	})
+	// A host tool is the extension's own code. Naming an entry or an artifact would promise a bundle
+	// that does not exist and cannot be fetched; naming the registered tool is the whole descriptor.
+	.refine((d) => d.runtime !== "host" || (!d.entry && !d.artifacts?.length), {
+		message: "a host tool has no entry and no artifacts — it is compiled into the extension",
+		path: ["runtime"],
+	})
+	.refine((d) => d.runtime !== "host" || !!d.host_tool, {
+		message: "a host tool must declare host_tool (the registered tool name the model is given)",
+		path: ["host_tool"],
+	})
+	// Bundled by construction: there is nothing to serve, so a downloadable host tool would be a
+	// descriptor promising code the registry does not have.
+	.refine((d) => d.runtime !== "host" || d.delivery === "bundled", {
+		message: "a host tool must be delivery: bundled — the registry has nothing to serve for it",
+		path: ["delivery"],
+	})
+	.refine((d) => !d.host_tool || d.runtime === "host", {
+		message: "host_tool is only valid on a runtime: host tool bit",
+		path: ["host_tool"],
+	})
 	// …and the entry must actually be in the bundle, or the launcher points at nothing.
-	.refine((d) => d.type !== "tool" || !d.entry || !!d.artifacts?.some((a) => a.path === d.entry), {
+	.refine((d) => d.type !== "tool" || d.runtime === "host" || !d.entry || !!d.artifacts?.some((a) => a.path === d.entry), {
 		message: "entry must be one of the artifacts[].path values",
 		path: ["entry"],
 	})
@@ -206,8 +232,12 @@ export const kbitMetaSchema = z
 	.refine(
 		(d) =>
 			d.type === "tool" ||
-			(d.runtime === undefined && d.entry === undefined && d.artifacts === undefined && d.usage === undefined),
-		{ message: "runtime/entry/usage/artifacts are only valid on a tool bit", path: ["type"] },
+			(d.runtime === undefined &&
+				d.entry === undefined &&
+				d.artifacts === undefined &&
+				d.usage === undefined &&
+				d.host_tool === undefined),
+		{ message: "runtime/entry/usage/artifacts/host_tool are only valid on a tool bit", path: ["type"] },
 	)
 	// `native` ships one build per platform, so every artifact must say which platform it is for.
 	.refine((d) => d.runtime !== "native" || !!d.artifacts?.every((a) => !!a.platform), {
