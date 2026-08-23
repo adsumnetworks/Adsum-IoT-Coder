@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 29,
+	"count": 30,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -234,7 +234,8 @@
 			"platform": "nrf",
 			"requires": [
 				"adsum/nrf/tools/rtt-logger",
-				"adsum/nrf/tools/uart-logger"
+				"adsum/nrf/tools/uart-logger",
+				"adsum/nrf/knowledge/board-identity"
 			],
 			"safety": [
 				"process-kill"
@@ -261,6 +262,28 @@
 			],
 			"path": "platforms/nrf/actions/flash.md",
 			"content_hash": "479e571523ef5a5d1b1adf06b241306b4ba162f98434720f7439202b4ffb03ee"
+		},
+		{
+			"id": "adsum/nrf/knowledge/board-identity",
+			"title": "Reference: Nordic Board Identity",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"min_ext": "0.3.0",
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "platforms/nrf/knowledge/board-identity.md",
+			"content_hash": "d14a27f5970e005d1340ad3fa1e25cf2c03642cb87889e804063875c3ecff5b1"
 		},
 		{
 			"id": "adsum/nrf/platform",

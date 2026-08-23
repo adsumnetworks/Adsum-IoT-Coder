@@ -301,14 +301,15 @@ describe("regression: live corpus", () => {
 	// 7 → 10 in 0.3.0: esp-action, nrf-action and cra-action, the three built-in doors. They are
 	// `runtime: host` descriptors with no artifacts — they exist so the ~20 procedures that drive those
 	// doors can declare a dependency, and so their authors are credited like any other tool's.
-	// 18 → 19 in 0.3.0: esp/knowledge/chip-identity, an OPEN catalogue of ESP32 targets. It is bundled
+	// 18 → 20 in 0.3.0: esp/knowledge/chip-identity and nrf/knowledge/board-identity, OPEN catalogues
+	// of ESP32 targets and Nordic PCA numbers. Both bundled
 	// so the mapping works offline, and published as a registry copy so a new Espressif part reaches
 	// developers without a reinstall — the leak guard still holds, because it is CC-BY-SA-4.0.
 	test("corpus is fully migrated and lint-clean: content bits + 10 tool bits, 0 errors", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
 		const toolFiles = files.filter((f) => f.replace(/\\/g, "/").endsWith("/TOOL.md"))
 		assert.equal(toolFiles.length, 10, "bundled tool bits")
-		assert.equal(files.length - toolFiles.length, 19, "bundled content bits — a rise here means a proprietary bit leaked in")
+		assert.equal(files.length - toolFiles.length, 20, "bundled content bits — a rise here means a proprietary bit leaked in")
 		assert.equal(migrated, files.length)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))

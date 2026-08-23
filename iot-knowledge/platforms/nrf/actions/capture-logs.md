@@ -14,6 +14,7 @@ safety: [process-kill]
 requires:
   - adsum/nrf/tools/rtt-logger
   - adsum/nrf/tools/uart-logger
+  - adsum/nrf/knowledge/board-identity
 ---
 
 # Action: Capture Device Logs (actions/capture-logs.md)
