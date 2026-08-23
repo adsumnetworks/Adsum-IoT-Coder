@@ -17,6 +17,7 @@ The agent, without an editor around it.
 
 ### Fixed
 - Two links pointed at a repository that had been renamed: "GitHub"/"Issues" in About, and the telemetry document referenced from Settings.
+- If you are a Knowledge bit author, your unpublished drafts were served to every session on your machine with no way to ask for the published set instead. Setting `ADSUM_AUTHOR_TOKEN` to an empty value now means "published only", so a comparison between your draft and what everyone else gets is actually possible.
 
 ## [0.3.0] - 2026-08-22
 
