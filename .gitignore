@@ -68,6 +68,14 @@ Adsum-Backend/
 # Adsum Knowledge Studio — our second extension (k-bit authoring/visualisation).
 # Cloned here for convenience; has its own remote. Never tracked by the code repo.
 adsum-studio/
+
+# Public demo program — firmware, prompts and evidence for the docs-site demo pages.
+# Cloned here for agent context; has its own remote. Never tracked by the code repo.
+adsum-demos/
+
+# Docs site source (Mintlify, docs.adsumnetworks.com) — its own remote.
+# Cloned here so demo pages can be written next to the firmware they describe.
+adsumcoder-docs/
 .clangd
 
 # Local MCP server config (Nordic MCP etc.) — per-developer, keep out of repo history
