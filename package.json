@@ -492,7 +492,8 @@
 		"test:deepseek-thinking": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/api/providers/__tests__/deepseekThinking.node-test.ts",
 		"test:board-routing": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/boardRouting.node-test.ts",
 		"test:announcements": "ts-node --transpile-only -P tsconfig.unit-test.json src/utils/__tests__/announcementSurfaces.node-test.ts",
-		"test:tools": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/tools/toolResolver.node-test.ts"
+		"test:tools": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/tools/toolResolver.node-test.ts",
+		"test:hil-tools": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-tools.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [
