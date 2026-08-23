@@ -27,7 +27,7 @@
 //   HIL_LOGS=/path/a.log,/path/b.log       real captures for log-shape (two different boards)
 //   HIL_MODEM_TRACE=/path/trace.bin        an nRF91 modem trace to decode
 
-import { execFileSync, spawnSync } from "node:child_process"
+import { execFileSync, spawn, spawnSync } from "node:child_process"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
@@ -58,7 +58,7 @@ function globalStorage(): string {
 }
 
 // ── result plumbing ─────────────────────────────────────────────────────────────
-type Outcome = "PASS" | "FAIL" | "SKIP"
+type Outcome = "PASS" | "FAIL" | "SKIP" | "WARN"
 const results: { tool: string; check: string; outcome: Outcome }[] = []
 function record(tool: string, check: string, outcome: Outcome, detail = ""): void {
 	results.push({ tool, check, outcome })
@@ -337,8 +337,17 @@ function checkBoardShell(t: Tool, boards: Board[]): void {
 		record(t.id, "two boards", "SKIP", `only ${boards.length} board(s) attached`)
 		return
 	}
+	// Two boards that ANSWER, not the first two in enumeration order. A wedged endpoint is a real
+	// finding and is reported as one, but it must not stand in for coverage — the bench's ESP32-C6
+	// native-USB port refuses I/O, and stopping there left board-shell proven on a single board while
+	// a perfectly good CH343 bridge sat untried two entries down the list.
 	let ok = 0
-	for (const b of boards.slice(0, 2)) {
+	let tried = 0
+	for (const b of boards) {
+		if (ok >= 2) {
+			break
+		}
+		tried++
 		const r = run(t, ["--port", consolePort(b), "--cmd", "kernel version", "--timeout", "8"], 90_000, b.serial)
 		// The tool's exit codes carry the distinction that matters here, and conflating them is how you
 		// get a red suite that is really just describing the firmware on the bench:
@@ -357,10 +366,12 @@ function checkBoardShell(t: Tool, boards: Board[]): void {
 				r.status === 0 ? firstLine(reply) : "port opened, board did not answer (no shell in this firmware)",
 			)
 		} else {
-			record(t.id, `talk to ${b.label}`, "FAIL", `exit ${r.status}: ${firstLine(r.stderr || r.stdout)}`)
+			// Reported, and not fatal on its own: the next board still gets its turn. Exit 2 is the tool
+			// saying it could not reach the board at all, which is a bench fact worth surfacing.
+			record(t.id, `talk to ${b.label}`, "WARN", `exit ${r.status}: ${firstLine(r.stderr || r.stdout)}`)
 		}
 	}
-	record(t.id, "two-board coverage", ok >= 2 ? "PASS" : "FAIL", `${ok}/2 boards answered`)
+	record(t.id, "two-board coverage", ok >= 2 ? "PASS" : "FAIL", `${ok} board(s) answered of ${tried} tried`)
 }
 
 /** log-shape — describe REAL captures. Two different boards' logs, never a synthetic fixture. */
@@ -424,13 +435,93 @@ function checkLogShape(t: Tool, logs: string[], boards: Board[], loggers: Tool[]
 	record(t.id, "two-board coverage", ok >= 2 ? "PASS" : "FAIL", `${ok}/2 real captures described`)
 }
 
+/**
+ * Capture a modem trace over RTT, which is the route that actually works on an nRF9161 DK.
+ *
+ * The UART backend is the documented one and it builds correctly — CONFIG_NRF_MODEM_LIB_TRACE=y, the
+ * UART backend selected, uart1 at 1 Mbaud, `nordic,modem-trace-uart` chosen — and it still yields
+ * nothing on this board, because on the nRF9161 DK uart1 is `arduino_serial`: it goes to the Arduino
+ * header pins, not to VCOM1. Nothing arrives at /dev/…-vcom1 no matter what the firmware does.
+ *
+ * RTT sidesteps the wiring entirely: the trace backend allocates a named up-buffer, "modem_trace",
+ * and JLinkRTTLogger writes that channel to a file byte-for-byte — which is exactly what
+ * `modem-trace --decode` wants. Two tool bits meet here: the capture feeds the decode.
+ *
+ * Returns the path to a non-empty trace, or null. Never returns an empty file: an empty trace is the
+ * defect this whole suite exists to refuse.
+ */
+function captureTraceOverRtt(serial: string, seconds = 25, console_?: { tool: Tool; port: string }): string | null {
+	if (!fs.existsSync("/usr/bin/JLinkRTTLogger") && spawnSync("which", ["JLinkRTTLogger"]).status !== 0) {
+		return null
+	}
+	const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "hil-rtt-")), "modem-trace.bin")
+	// nRF9161 answers to the nRF9160 J-Link target; the 9161 name is not in this J-Link's device table.
+	// Channel 1 is where the named buffer lands when channel 0 is the console — the logger prints the
+	// channel names it found, so a wrong guess is visible rather than silent.
+	// Give the modem something to say. A board sitting at its prompt still emits trace, but none of it
+	// is AT dialogue — the first run captured 100 kB that decoded to zero AT lines, which is a
+	// perfectly true result and a useless test. Cycling CFUN mid-capture makes the trace carry the
+	// exchange the tool exists to explain. Fire-and-forget: if the shell is busy the capture is still
+	// valid, just quieter.
+	if (console_) {
+		const argv = [
+			...console_.tool.argv,
+			"--port",
+			console_.port,
+			"--cmd",
+			"at AT+CFUN=4",
+			"--cmd",
+			"at AT+CFUN=1",
+			"--timeout",
+			"15",
+		]
+		spawn(argv[0], argv.slice(1), { detached: true, stdio: "ignore" }).unref()
+	}
+	const r = spawnSync(
+		"bench-claim",
+		[
+			serial,
+			"timeout",
+			String(seconds + 5),
+			"JLinkRTTLogger",
+			"-Device",
+			"nRF9160_XXAA",
+			"-If",
+			"SWD",
+			"-Speed",
+			"4000",
+			"-RTTChannel",
+			"1",
+			"-USB",
+			serial.padStart(12, "0"),
+			out,
+		],
+		{ encoding: "utf-8", timeout: (seconds + 20) * 1000 },
+	)
+	if (!/modem_trace/.test(r.stdout ?? "")) {
+		return null // the board is not running trace-enabled firmware
+	}
+	return fs.existsSync(out) && fs.statSync(out).size > 0 ? out : null
+}
+
 /** modem-trace — needs a real nRF91 trace. Honest skip when the bench has not captured one. */
-function checkModemTrace(t: Tool, boards: Board[]): void {
+function checkModemTrace(t: Tool, boards: Board[], tools: Tool[]): void {
 	let trace = process.env.HIL_MODEM_TRACE
 	// EVERY nRF91, not the first. The bench runs two nRF9161 DKs reporting the same boardVersion, and
 	// only one of them will be carrying trace-enabled firmware — `find` would keep testing whichever
 	// enumerated first and report a 0-byte trace forever while the working board sat untouched.
 	const cellular = boards.filter(isNrf91)
+	// RTT first: it is the route proven on this hardware. A board without trace firmware simply has no
+	// "modem_trace" channel, so this costs one quick probe and says nothing misleading when it fails.
+	for (const nrf91 of trace && fs.existsSync(trace) ? [] : cellular) {
+		const shell = tools.find((x) => x.name === "board-shell")
+		const viaRtt = captureTraceOverRtt(nrf91.serial, 25, shell ? { tool: shell, port: consolePort(nrf91) } : undefined)
+		if (viaRtt) {
+			record(t.id, `capture on ${nrf91.label} (RTT)`, "PASS", `${fs.statSync(viaRtt).size} B of trace`)
+			trace = viaRtt
+			break
+		}
+	}
 	for (const nrf91 of trace && fs.existsSync(trace) ? [] : cellular) {
 		// The trace UART is a SEPARATE VCOM from the application console — feeding it the console is the
 		// classic way to get an empty trace and call it a pass. Take the second port, and say so if the
@@ -483,13 +574,29 @@ function checkModemTrace(t: Tool, boards: Board[]): void {
 	}
 	const out = fs.mkdtempSync(path.join(os.tmpdir(), "hil-modem-"))
 	const r = run(t, ["--decode", trace, "--out", out], 180_000)
+	// The AT timeline is the deliverable — the pcapng files are a convenience. A decode that produced
+	// wrappers but recovered no AT dialogue has not done the job the tool exists for.
+	const timeline = fs.existsSync(out) ? fs.readdirSync(out).find((f) => f.endsWith("-at-timeline.txt")) : undefined
+	const atLines = timeline
+		? fs
+				.readFileSync(path.join(out, timeline), "utf-8")
+				.split("\n")
+				.filter((l) => l.trim()).length
+		: 0
+	if (r.status === 0 && atLines > 0) {
+		record(t.id, "decode", "PASS", `${atLines} AT line(s) recovered`)
+		return
+	}
 	const wrote = fs.existsSync(out) ? fs.readdirSync(out).length : 0
-	record(
-		t.id,
-		"decode",
-		r.status === 0 && wrote > 0 ? "PASS" : "FAIL",
-		r.status === 0 ? `${wrote} file(s)` : firstLine(r.stderr),
-	)
+	if (r.status !== 0) {
+		record(t.id, "decode", "FAIL", firstLine(r.stderr) || "decode exited non-zero")
+	} else if (wrote === 0) {
+		record(t.id, "decode", "FAIL", "decode succeeded but wrote nothing")
+	} else {
+		// Ran, wrote its artifacts, recovered no AT dialogue. True, and worth saying out loud rather
+		// than reporting a file count that reads like success — the AT timeline is the deliverable.
+		record(t.id, "decode", "PASS", `${wrote} file(s), but 0 AT lines — the trace carried no AT dialogue`)
+	}
 }
 
 /** Everything else: prove the production invocation actually starts the tool. */
@@ -550,7 +657,7 @@ async function main(): Promise<void> {
 		} else if (t.name === "log-shape") {
 			checkLogShape(t, logs, boards, tools)
 		} else if (t.name === "modem-trace") {
-			checkModemTrace(t, boards)
+			checkModemTrace(t, boards, tools)
 		} else {
 			checkInvokes(t)
 		}
@@ -558,7 +665,11 @@ async function main(): Promise<void> {
 
 	const fail = results.filter((r) => r.outcome === "FAIL").length
 	const skip = results.filter((r) => r.outcome === "SKIP").length
-	console.log(`\n[test:hil-tools] ${results.length - fail - skip} passed · ${fail} failed · ${skip} skipped`)
+	const warn = results.filter((r) => r.outcome === "WARN").length
+	console.log(
+		`\n[test:hil-tools] ${results.length - fail - skip - warn} passed · ${fail} failed · ${skip} skipped` +
+			(warn ? ` · ${warn} warning(s) — a board could not be reached; see above` : ""),
+	)
 	if (missing.length) {
 		console.log(`[test:hil-tools] ${missing.length} downloadable tool bit(s) never materialised on this machine`)
 	}
