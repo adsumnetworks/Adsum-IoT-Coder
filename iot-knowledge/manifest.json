@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 22,
+	"count": 23,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -448,6 +448,38 @@
 			"platform": "universal",
 			"path": "rules/tool-routing.md",
 			"content_hash": "25ad383b59d9eb959c3f5904bf8899641ae3b20513028a88ce03d3a93949faf2"
+		},
+		{
+			"id": "adsum/tools/decode-fault",
+			"title": "decode-fault",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"safety": [],
+			"min_ext": "0.3.0",
+			"runtime": "node",
+			"entry": "decode_fault.mjs",
+			"usage": "--elf <path> [--log <path>] [--platform nrf|esp] [--chip <target>] [--json]",
+			"artifacts": [
+				{
+					"path": "decode_fault.mjs",
+					"sha256": "565729729efac836b639a606c60d7912d829a256917444fb42469311e035a3d1"
+				}
+			],
+			"readonly": true,
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "tools/decode-fault/TOOL.md",
+			"content_hash": "36c079eb18f4d87dd5cc8d134d64846c236634c2465cc2aedc5c18b02c930ea8"
 		}
 	]
 }
