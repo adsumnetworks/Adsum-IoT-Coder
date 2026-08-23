@@ -54,6 +54,11 @@ export const COMMAND_OUTPUT_FOLD_DEFAULTS = {
  * false negative costs the diagnosis. Covers compilers/linkers (error/warning/fatal/undefined reference),
  * build drivers (FAILED, ninja: build stopped), Python (Traceback), runtime faults (assert/panic/exception),
  * and PowerShell error records (CategoryInfo / FullyQualifiedErrorId).
+ *
+ * NOT the same vocabulary as `ERR_RE` in `mcp/adsum-mcp.mjs` — and deliberately so. That one decides
+ * whether a build that exited 0 was actually masked, where a false positive calls a good build broken,
+ * so it is narrow and anchored. This one only decides which line survives folding. Keep them apart:
+ * one tuning cannot serve two opposite cost functions.
  */
 const ERROR_LINE =
 	/\b(errors?|warnings?|fatal|failed|failure|exception|assert(?:ion)?|panic|undefined reference|ninja: build stopped|CategoryInfo|FullyQualifiedErrorId)\b|Traceback \(most recent call last\)/i

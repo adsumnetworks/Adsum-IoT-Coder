@@ -4,7 +4,7 @@ import { formatResponse } from "@core/prompts/responses"
 import * as vscode from "vscode"
 import { markEspTerminalSourced, prepareEspTerminal, wrapEspCommand } from "@/hosts/vscode/hostbridge/workspace/executeEspCommand"
 import { telemetryService } from "@/services/telemetry"
-import { pathOf } from "@/services/tools/ToolResolver"
+import { pathOfAsync } from "@/services/tools/ToolResolver"
 import { creditToolById } from "@/services/tools/toolCredit"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
@@ -82,7 +82,7 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 			body = command.trim()
 			sayPath = body
 		} else if (action === "monitor") {
-			body = this.buildMonitorCommand(projectDir, block)
+			body = await this.buildMonitorCommand(projectDir, block)
 			// The monitor IS a tool bit; the handler spawns it directly rather than through
 			// execute_command, so the credit hook there never sees it. Credit it here or its author
 			// goes unnamed for every capture the handler drives.
@@ -159,15 +159,16 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 	 * `idf.py monitor` for `duration` seconds and tees to a correctly-named log
 	 * file; the panic-backtrace decoding is done by idf.py monitor itself.
 	 */
-	private buildMonitorCommand(projectDir: string, block: ToolUse): string {
+	private async buildMonitorCommand(projectDir: string, block: ToolUse): Promise<string> {
 		const { port, duration, name, reset, devices } = block.params as Record<string, string | undefined>
 
 		const isWindows = process.platform === "win32"
 		// Resolved from the tool bit rather than a hard-coded assets/scripts path.
-		const absoluteWrapperPath = pathOf("adsum/esp/tools/esp-monitor")
-		if (!absoluteWrapperPath) {
+		const resolvedMonitor = await pathOfAsync("adsum/esp/tools/esp-monitor")
+		if (!resolvedMonitor) {
 			throw new Error("adsum/esp/tools/esp-monitor is not available in this installation — the tool bundle is missing.")
 		}
+		const absoluteWrapperPath = resolvedMonitor.path
 
 		// Prefer a short, workspace-relative path for cleaner terminal output.
 		let wrapperPath = absoluteWrapperPath

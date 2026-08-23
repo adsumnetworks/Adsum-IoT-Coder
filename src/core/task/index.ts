@@ -95,7 +95,9 @@ import {
 } from "@/integrations/terminal"
 import { consumeQuotaExhausted } from "@/services/adsum/FreeTierState"
 import { ClineError, ClineErrorType, ErrorService } from "@/services/error"
-import { creditFor, deriveIdFromRel, hasBit } from "@/services/knowledge/KnowledgeResolver"
+import { creditFor, deriveIdFromRel, hasBit,
+	provenanceOf,
+} from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import {
 	ClineAssistantContent,
@@ -812,7 +814,10 @@ export class Task {
 						license: credit.license,
 						platform: credit.platform,
 						steward: credit.steward,
-						source: (await hasBit(id)) ? "bundled" : "registry",
+						// What ACTUALLY served this bit, recorded by the resolver. `hasBit()` cannot answer it:
+						// an overridden bit is in the bundled manifest and served from the registry, so asking
+						// the manifest would credit every override as shipped-in-the-VSIX.
+						source: provenanceOf(id) ?? ((await hasBit(id)) ? "bundled" : "registry"),
 						witness: credit.witness
 							? [credit.witness.board, credit.witness.toolchain, credit.witness.on].filter(Boolean).join(" · ")
 							: undefined,

@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 22,
+	"count": 30,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -14,14 +14,46 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "universal",
+			"requires": [
+				"adsum/nrf/tools/nrf-action",
+				"adsum/esp/tools/esp-action"
+			],
 			"path": "AGENT.md",
 			"content_hash": "a0056e88c79d6f85cd072f41a508dae64fa5506242403a0e19cb7da53e2b3120"
 		},
 		{
-			"id": "adsum/esp/platform",
-			"title": "ESP32 — Platform Index",
+			"id": "adsum/cra/tools/cra-action",
+			"title": "cra-action",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Redouane Elmagroud",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "cra",
+			"safety": [
+				"network"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "host",
+			"host_tool": "triggerCveScan",
+			"usage": "sbom=<path to the generated SBOM> [build=<dir>]",
+			"readonly": false,
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "cra/tools/cra-action/TOOL.md",
+			"content_hash": "6494bf544137dd20920ccfd84670f1eaa1d0a82b7c408ff6f66c2231d0ad975e"
+		},
+		{
+			"id": "adsum/esp/knowledge/chip-identity",
+			"title": "Reference: ESP32 Chip Identity",
 			"type": "knowledge",
-			"version": "1.1.0",
+			"version": "1.0.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -29,8 +61,33 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "esp",
+			"min_ext": "0.3.0",
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "platforms/esp/knowledge/chip-identity.md",
+			"content_hash": "b6af02d58b97e82436fea4c2b9ec07f8d5a9f89a113889c500023fa29219fa73"
+		},
+		{
+			"id": "adsum/esp/platform",
+			"title": "ESP32 — Platform Index",
+			"type": "knowledge",
+			"version": "1.2.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "esp",
+			"requires": [
+				"adsum/esp/tools/esp-action"
+			],
 			"path": "platforms/esp/PLATFORM.md",
-			"content_hash": "ea32b879d7d19a0b016402cffbdb55cf90989a0fccbdd9904208a49821062f82"
+			"content_hash": "0282e77e70255ba3404ed2057398462286ec691d9238cf42b0e8fda23c0f793e"
 		},
 		{
 			"id": "adsum/esp/rules/device-identity",
@@ -44,6 +101,9 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "esp",
+			"requires": [
+				"adsum/esp/tools/esp-action"
+			],
 			"path": "platforms/esp/rules/device-identity.md",
 			"content_hash": "b469d5972789f7f479e6a575e3d5c936c8b0ffc5b7c73f640d845eda1ebf6df5"
 		},
@@ -59,6 +119,9 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "esp",
+			"requires": [
+				"adsum/esp/tools/esp-action"
+			],
 			"path": "platforms/esp/rules/esp-terminal.md",
 			"content_hash": "b74abdc56c5f7f3772a8c5363142a2e270630fe463b55d66cb6ca108e85c199b"
 		},
@@ -89,8 +152,36 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "esp",
+			"requires": [
+				"adsum/esp/tools/esp-action"
+			],
 			"path": "platforms/esp/sdks/esp-idf/SDK.md",
 			"content_hash": "a2a1d422fd5cef8164f26e7a35f20099156a705934ba16b65d6618131d44d558"
+		},
+		{
+			"id": "adsum/esp/tools/esp-action",
+			"title": "esp-action",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "esp",
+			"safety": [
+				"flash",
+				"erase",
+				"process-kill"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "host",
+			"host_tool": "triggerEspAction",
+			"usage": "action=\"build|flash|monitor|clean|set_target|execute|capture_logs\" [...]",
+			"readonly": false,
+			"path": "platforms/esp/tools/esp-action/TOOL.md",
+			"content_hash": "ee65993eadddbf48a45ae600c889781e9c530774a479e3758ff0fcc37dc76221"
 		},
 		{
 			"id": "adsum/esp/tools/esp-monitor",
@@ -141,11 +232,16 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "nrf",
+			"requires": [
+				"adsum/nrf/tools/rtt-logger",
+				"adsum/nrf/tools/uart-logger",
+				"adsum/nrf/knowledge/board-identity"
+			],
 			"safety": [
 				"process-kill"
 			],
 			"path": "platforms/nrf/actions/capture-logs.md",
-			"content_hash": "ed01076abac0f0d70c68eff8b249fe574ec1560e5ab6057bf45ef1d300a54680"
+			"content_hash": "4d081d58b293155906cba96834b81064dd963c296f113c4b1a885954fdc027ff"
 		},
 		{
 			"id": "adsum/nrf/actions/flash",
@@ -168,10 +264,10 @@
 			"content_hash": "479e571523ef5a5d1b1adf06b241306b4ba162f98434720f7439202b4ffb03ee"
 		},
 		{
-			"id": "adsum/nrf/platform",
-			"title": "Nordic nRF — Platform Index",
+			"id": "adsum/nrf/knowledge/board-identity",
+			"title": "Reference: Nordic Board Identity",
 			"type": "knowledge",
-			"version": "1.6.0",
+			"version": "1.0.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -179,11 +275,36 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "nrf",
+			"min_ext": "0.3.0",
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "platforms/nrf/knowledge/board-identity.md",
+			"content_hash": "d14a27f5970e005d1340ad3fa1e25cf2c03642cb87889e804063875c3ecff5b1"
+		},
+		{
+			"id": "adsum/nrf/platform",
+			"title": "Nordic nRF — Platform Index",
+			"type": "knowledge",
+			"version": "1.7.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"requires": [
+				"adsum/nrf/tools/nrf-action"
+			],
 			"safety": [
 				"flash"
 			],
 			"path": "platforms/nrf/PLATFORM.md",
-			"content_hash": "ccc14e192595f1d2830850114aa6a023bbb4b5731306addb4b27ff3d0a95929a"
+			"content_hash": "5f8f304ebe30a80bd24bb92545d522a104bcf799f8b901d685d08fed66e064dd"
 		},
 		{
 			"id": "adsum/nrf/rules/device-identity",
@@ -212,12 +333,15 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "nrf",
+			"requires": [
+				"adsum/nrf/tools/nrf-action"
+			],
 			"safety": [
 				"flash",
 				"process-kill"
 			],
 			"path": "platforms/nrf/rules/nrf-terminal.md",
-			"content_hash": "d83d9611adbdbeb0131e277527a4e80232e6a475e57f4099d3d7d9a029403d66"
+			"content_hash": "ec14e4e56aee58eb45dc921651fd20cf387b9aef0401fdbde5eec228abc0e8d5"
 		},
 		{
 			"id": "adsum/nrf/rules/skill-loading",
@@ -266,6 +390,68 @@
 			"platform": "nrf",
 			"path": "platforms/nrf/sdks/ncs/SDK.md",
 			"content_hash": "99f9933f1bc13be7aaed40baba4a7802fa105b8cfe252fa87413e227c2aaeabd"
+		},
+		{
+			"id": "adsum/nrf/tools/hci-decode",
+			"title": "hci-decode",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [],
+			"min_ext": "0.3.0",
+			"runtime": "node",
+			"entry": "hci_decode.mjs",
+			"usage": "--in <capture.btmon> [--json]",
+			"artifacts": [
+				{
+					"path": "hci_decode.mjs",
+					"sha256": "13e86f598b9f954337fa9dc4905743734b42bc6ecbaae2234bae09b498633311"
+				},
+				{
+					"path": "NOTICE",
+					"sha256": "ed76bc9197767435d198e09bd4e3d66e1d28ca35fd044a444b7f0ac15fb6c9f0"
+				}
+			],
+			"readonly": true,
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "platforms/nrf/tools/hci-decode/TOOL.md",
+			"content_hash": "af5f6cf27a93bbe5e63560e1a0f22850a7212867551f300ace8f86d95031ab3c"
+		},
+		{
+			"id": "adsum/nrf/tools/nrf-action",
+			"title": "nrf-action",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [
+				"flash",
+				"erase",
+				"process-kill"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "host",
+			"host_tool": "triggerNordicAction",
+			"usage": "action=\"execute|log_device|sniff_capture|open_capture\" [...]",
+			"readonly": false,
+			"path": "platforms/nrf/tools/nrf-action/TOOL.md",
+			"content_hash": "79a7f8701158fa5e719b8b8aa62b1930d0d71aa440df1c35ee1e2c39bc6f1ef3"
 		},
 		{
 			"id": "adsum/nrf/tools/nrf-sniffer",
@@ -345,6 +531,39 @@
 			"content_hash": "78826dddeb1b9d96781b38dff3f6b4dafff686f5af02533992787eea69ba08bd"
 		},
 		{
+			"id": "adsum/nrf/tools/sniffer-decode",
+			"title": "sniffer-decode",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [],
+			"min_ext": "0.3.0",
+			"runtime": "node",
+			"entry": "sniffer_decode.mjs",
+			"usage": "--in <capture.pcap> [--json]",
+			"artifacts": [
+				{
+					"path": "sniffer_decode.mjs",
+					"sha256": "d8c2570e4ce8711e407a2a77c622e7a5f2e4f30b4e32b0f593c57cb0573441d5"
+				}
+			],
+			"readonly": true,
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "platforms/nrf/tools/sniffer-decode/TOOL.md",
+			"content_hash": "5b216a9344c13d347ed53655d0ded78ffaff033274029c6a9c7e7e11dc492929"
+		},
+		{
 			"id": "adsum/nrf/tools/uart-logger",
 			"title": "uart-logger",
 			"type": "tool",
@@ -366,7 +585,7 @@
 			"artifacts": [
 				{
 					"path": "nrf_uart_logger.py",
-					"sha256": "dcc05c45378dccee3cfaf785be669ada3d6a3c22acf762d48103b2341c34d065"
+					"sha256": "f5a88d007fb5e6dc36825fc14f192e21d61f9b93a0188ba7c80184f3e7ee923a"
 				},
 				{
 					"path": "uart-logger",
@@ -412,8 +631,11 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "universal",
+			"requires": [
+				"adsum/nrf/tools/nrf-action"
+			],
 			"path": "rules/core.md",
-			"content_hash": "13d86031e4092c55c0db2905d0afa1db9cd76cdbdf4a030a2c5638fc5109b9a0"
+			"content_hash": "81d7c1adcfddccafc0c9f8ad57d78a5e6a2a4e6ffc441ee2dff34c983186d6aa"
 		},
 		{
 			"id": "adsum/rules/skill-loading",
@@ -444,6 +666,38 @@
 			"platform": "universal",
 			"path": "rules/tool-routing.md",
 			"content_hash": "25ad383b59d9eb959c3f5904bf8899641ae3b20513028a88ce03d3a93949faf2"
+		},
+		{
+			"id": "adsum/tools/decode-fault",
+			"title": "decode-fault",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"safety": [],
+			"min_ext": "0.3.0",
+			"runtime": "node",
+			"entry": "decode_fault.mjs",
+			"usage": "--elf <path> [--log <path>] [--platform nrf|esp] [--chip <target>] [--json]",
+			"artifacts": [
+				{
+					"path": "decode_fault.mjs",
+					"sha256": "8e71ae91e3d751fc6267f4ea656b03ad2b49fb4d9a45bec73f2518db32bd6508"
+				}
+			],
+			"readonly": true,
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "tools/decode-fault/TOOL.md",
+			"content_hash": "36c079eb18f4d87dd5cc8d134d64846c236634c2465cc2aedc5c18b02c930ea8"
 		}
 	]
 }

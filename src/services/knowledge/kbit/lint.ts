@@ -42,6 +42,19 @@ const SAFETY_PATTERNS: { tag: KBitSafety; re: RegExp }[] = [
 	{ tag: "process-kill", re: /\bpkill\b|\btaskkill\b|\bkill\s+-9\b/i },
 ]
 
+/**
+ * Names that have appeared in bit bodies for host tools that are registered under a different name.
+ * Keys are the wrong names; values are the registered `ClineDefaultTool` the model is actually given
+ * (`src/shared/tools.ts`). Add a row whenever a rename lands, never remove one.
+ */
+const WRONG_TOOL_NAMES: Record<string, string> = {
+	nrf_device_tool: "triggerNordicAction",
+	trigger_nordic_action: "triggerNordicAction",
+	trigger_esp_action: "triggerEspAction",
+	esp_device_tool: "triggerEspAction",
+	trigger_cve_scan: "triggerCveScan",
+}
+
 /** The set of dangerous-op tags detected in a bit body. */
 export function detectSafety(body: string): Set<KBitSafety> {
 	const found = new Set<KBitSafety>()
@@ -152,6 +165,19 @@ export function lintBitContent(relPath: string, text: string, knownIds: Set<stri
 			file: relPath,
 			msg: `downloaded bit is open (${meta.license}) — downloaded bits default to LicenseRef-Adsum-Proprietary; confirm this open licence is intentional.`,
 		})
+	}
+
+	// One name for one tool. The model only ever sees the registered names in `src/shared/tools.ts`; a bit
+	// that says `nrf_device_tool` or `trigger_nordic_action` is telling it to call something that does not
+	// exist, and the failure surfaces as the model inventing a shell command instead.
+	for (const [wrong, right] of Object.entries(WRONG_TOOL_NAMES)) {
+		if (new RegExp(`\\b${wrong}\\b`).test(fm.body)) {
+			issues.push({
+				level: "error",
+				file: relPath,
+				msg: `body names "${wrong}" — the tool the model actually has is "${right}"`,
+			})
+		}
 	}
 
 	// A bit body must never name the extension's internal script directory. Tool paths are resolved and
