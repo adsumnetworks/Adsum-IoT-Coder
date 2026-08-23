@@ -65,6 +65,10 @@ interface Board {
 	serial: string
 	port?: string
 	product?: string
+	/** From `devkit` in the list JSON, e.g. "PCA10153" — the ONLY place the board identity appears. */
+	boardVersion?: string
+	/** From `devkit`, e.g. "NRF91_FAMILY" — what actually identifies a cellular part. */
+	deviceFamily?: string
 }
 
 function nrfutil(): string {
@@ -95,6 +99,9 @@ function listBoards(): Board[] {
 						serial: d.serialNumber,
 						port: d.serialPorts?.[0]?.comName,
 						product: d.usb?.product,
+						// `usb.product` is "J-Link" for EVERY Nordic DK — the board identity lives here.
+						boardVersion: d.devkit?.boardVersion,
+						deviceFamily: d.devkit?.deviceFamily,
 					})
 				}
 			} catch {
@@ -107,8 +114,28 @@ function listBoards(): Board[] {
 	}
 }
 
-/** True when this board is an nRF91 cellular part. */
+/** The nRF91 cellular DKs, by board code — `devkit.boardVersion` in the list JSON. */
+const NRF91_BOARDS = new Set(["PCA10090", "PCA10153", "PCA10171"]) // nRF9160 DK, nRF9161 DK, nRF9151 DK
+
+/**
+ * True when this board is an nRF91 cellular part.
+ *
+ * This used to match only on `usb.product` and the serial — but nrfutil reports `product: "J-Link"` for
+ * EVERY Nordic DK, and a serial carries no model. So the check could never fire on a real board: an
+ * nRF9161 DK sat plugged into the bench and this test reported "none of them nRF91" and skipped. The
+ * cellular HIL gate had therefore never once executed against hardware.
+ *
+ * `devkit.deviceFamily` ("NRF91_FAMILY") is in the same JSON the parser already reads, one key away.
+ * The board-code set is the belt-and-braces path for firmware that reports a version but no family, and
+ * the old string match is kept last so a future non-DK part named "nRF9151" still matches.
+ */
 function isNrf91(b: Board): boolean {
+	if (b.deviceFamily?.toUpperCase().includes("NRF91")) {
+		return true
+	}
+	if (b.boardVersion && NRF91_BOARDS.has(b.boardVersion.toUpperCase())) {
+		return true
+	}
 	return /nrf91|9160|9161|9151/i.test(`${b.product ?? ""} ${b.serial}`)
 }
 
