@@ -136,8 +136,26 @@ function main() {
 	if (!text.includes("Proto")) {
 		failures.push("decoded text is missing the expected column header (Proto)")
 	}
+	// A capture with ZERO frames must FAIL. This test previously passed on an empty pcap, because every
+	// remaining assertion was guarded by `totalFrames > 0` — so a run that captured nothing tripped
+	// nothing. Seen for real on the bench: nrfutil could not resolve the port, wrote a 24-byte
+	// header-only pcap, printed a loud warning, and this test still said PASS. A sniffer test that
+	// passes when it captured no packets cannot fail when the thing it tests is broken, which is the
+	// whole point of it. The wrapper's own warning text names the usual causes.
+	if (result.totalFrames === 0) {
+		failures.push(
+			"NO FRAMES CAPTURED — the pcap is header-only. Either nothing was on air, or the capture " +
+				"never started (wrong --port, a DK VCOM instead of the dongle, or firmware that is not the " +
+				"nRF Sniffer build). Note nrfutil resolves --port through its own enumeration and will NOT " +
+				"follow a udev symlink: pass the real node, e.g. $(readlink -f /dev/bench/nrf-sniffer-ble). " +
+				"Set HIL_ALLOW_EMPTY=1 only if a quiet-air run is genuinely what you meant to assert.",
+		)
+	}
 	if (result.totalFrames > 0 && !text.includes("sequenceDiagram")) {
 		failures.push("frames were decoded but no mermaid sequenceDiagram footer was emitted")
+	}
+	if (result.parseErrors > 0) {
+		failures.push(`${result.parseErrors} frame(s) failed to parse — the decode rail is not clean`)
 	}
 
 	console.log(
@@ -145,8 +163,14 @@ function main() {
 			`linkType=${result.linkType}`,
 	)
 
-	if (failures.length > 0) {
-		console.error(`[test:hil] FAIL —\n  - ${failures.join("\n  - ")}`)
+	// The one legitimate escape hatch: an operator deliberately asserting that the air was quiet.
+	const allowEmpty = process.env.HIL_ALLOW_EMPTY === "1"
+	const hard = allowEmpty ? failures.filter((f) => !f.startsWith("NO FRAMES CAPTURED")) : failures
+	if (allowEmpty && hard.length !== failures.length) {
+		console.log("[test:hil] note: empty capture tolerated because HIL_ALLOW_EMPTY=1")
+	}
+	if (hard.length > 0) {
+		console.error(`[test:hil] FAIL —\n  - ${hard.join("\n  - ")}`)
 		process.exit(1)
 	}
 
