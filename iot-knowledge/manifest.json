@@ -75,7 +75,7 @@
 			"id": "adsum/esp/platform",
 			"title": "ESP32 — Platform Index",
 			"type": "knowledge",
-			"version": "1.1.0",
+			"version": "1.2.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -87,7 +87,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "platforms/esp/PLATFORM.md",
-			"content_hash": "ea32b879d7d19a0b016402cffbdb55cf90989a0fccbdd9904208a49821062f82"
+			"content_hash": "0282e77e70255ba3404ed2057398462286ec691d9238cf42b0e8fda23c0f793e"
 		},
 		{
 			"id": "adsum/esp/rules/device-identity",
@@ -289,7 +289,7 @@
 			"id": "adsum/nrf/platform",
 			"title": "Nordic nRF — Platform Index",
 			"type": "knowledge",
-			"version": "1.6.0",
+			"version": "1.7.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -304,7 +304,7 @@
 				"flash"
 			],
 			"path": "platforms/nrf/PLATFORM.md",
-			"content_hash": "6abca363f1e20f9b9ac2745624dbf786864d4b467f35e6a1923e9bca3c80472b"
+			"content_hash": "5f8f304ebe30a80bd24bb92545d522a104bcf799f8b901d685d08fed66e064dd"
 		},
 		{
 			"id": "adsum/nrf/rules/device-identity",

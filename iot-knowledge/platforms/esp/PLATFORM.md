@@ -2,7 +2,7 @@
 id: adsum/esp/platform
 title: "ESP32 — Platform Index"
 type: knowledge
-version: 1.1.0
+version: 1.2.0
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -58,6 +58,12 @@ platforms/esp/
 | `rules/esp-terminal.md` | ALL idf.py/esptool commands go through `triggerEspAction`, never `execute_command`. |
 | `rules/skill-loading.md` | Workflows are entry points; Actions load only when a Workflow says so. |
 | `rules/device-identity.md` | Identify the connected chip, flash size and PSRAM before building. Never guess the target. |
+
+## Reference (`knowledge/`)
+
+| Bit | Load when |
+|---|---|
+| `knowledge/chip-identity.md` | You need what a `CONFIG_IDF_TARGET` value means — the part name, its CPU architecture, and therefore which `addr2line` decodes its addresses. Also states which memory-protection symbol to read rather than inferring one from the part number. |
 
 ---
 
