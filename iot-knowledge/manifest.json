@@ -560,7 +560,7 @@
 			"artifacts": [
 				{
 					"path": "decode_fault.mjs",
-					"sha256": "799801e5351fa36ac300c6fc89693ff4bde92d3f9136d49aee623871a995b27d"
+					"sha256": "8e71ae91e3d751fc6267f4ea656b03ad2b49fb4d9a45bec73f2518db32bd6508"
 				}
 			],
 			"readonly": true,
