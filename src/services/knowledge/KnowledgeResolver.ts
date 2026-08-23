@@ -285,6 +285,11 @@ export function setPrecedenceEnv(env: { extVersion: string; enforcement: "ok" | 
 	precedenceEnv = env
 }
 
+/** The injected environment, for the tool resolver — one rule needs one context. */
+export function precedenceEnvFor(): { extVersion: string; enforcement: "ok" | "not-enforced" } {
+	return precedenceEnv
+}
+
 /** Which copy actually served a bit this session. The credit line reads this, never `hasBit()`. */
 export type BitProvenance = "bundled" | "downloaded" | "override" | "local"
 const provenanceById = new Map<string, BitProvenance>()

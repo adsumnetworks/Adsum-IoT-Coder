@@ -14,6 +14,7 @@ export function creditForTool(tool: ResolvedTool): KbitCredit {
 		title: tool.name,
 		type: "tool",
 		author: tool.author,
+		version: tool.version,
 		license: tool.license,
 		platform: tool.platform,
 		co_authors: tool.coAuthors?.map((name) => ({ name })),
@@ -89,10 +90,16 @@ export function resetToolCredits(): void {
 // credit path only ever needs `ulid` and `callbacks.say`, and pinning the full type here would couple
 // attribution to the task-config shape.
 // biome-ignore lint/suspicious/noExplicitAny: only ulid + callbacks.say are used
-export async function creditToolById(config: any, toolId: string): Promise<void> {
+export async function creditToolById(config: any, toolId: string, resolved?: ResolvedTool): Promise<void> {
 	try {
-		const { loadBundledTools } = await import("./ToolResolver")
-		const tool = loadBundledTools().find((t) => t.id === toolId)
+		// Credit the copy that ACTUALLY ran. Re-resolving from the bundled tree would name the VSIX
+		// author, licence and version even when the registry copy is what executed — and after a
+		// co-author or licence change, that is not a cosmetic difference.
+		let tool = resolved
+		if (!tool) {
+			const { loadBundledTools } = await import("./ToolResolver")
+			tool = loadBundledTools().find((t) => t.id === toolId)
+		}
 		if (!tool || !shouldCreditTool(config.ulid, tool.id)) {
 			return
 		}
@@ -110,7 +117,7 @@ export async function creditToolById(config: any, toolId: string): Promise<void>
 				license: credit.license,
 				platform: credit.platform,
 				steward: credit.steward,
-				source: "bundled",
+				source: tool.provenance,
 			}),
 		)
 	} catch {

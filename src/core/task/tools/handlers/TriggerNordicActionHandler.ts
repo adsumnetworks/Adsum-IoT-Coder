@@ -10,7 +10,7 @@ import { formatHci } from "@/services/nrf/hci/format"
 import { parseHci } from "@/services/nrf/hci/hciParser"
 import { decodeSnifferPcap } from "@/services/nrf/sniffer/format"
 import { telemetryService } from "@/services/telemetry"
-import { pathOf } from "@/services/tools/ToolResolver"
+import { pathOfAsync } from "@/services/tools/ToolResolver"
 import { creditToolById } from "@/services/tools/toolCredit"
 import { ClineDefaultTool } from "@/shared/tools"
 import { openWithApp } from "@/utils/env"
@@ -234,13 +234,17 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		// hard-coded assets/scripts path — bundled and (later) downloaded tools resolve the same way.
 		const toolId = transport === "rtt" ? "adsum/nrf/tools/rtt-logger" : "adsum/nrf/tools/uart-logger"
 		const isWindows = process.platform === "win32"
-		const resolvedToolPath = pathOf(toolId)
-		if (!resolvedToolPath) {
+		// Through the async resolver so a registry copy that is newer than the VSIX one is what runs.
+		// It falls back to the bundled tool on any registry trouble, so this throw still means what it
+		// says: there is no copy of this tool at all, not that a fetch was slow.
+		const resolved = await pathOfAsync(toolId)
+		if (!resolved) {
 			throw new Error(`${toolId} is not available in this installation — the tool bundle is missing.`)
 		}
+		const resolvedToolPath = resolved.path
 		// Credit the logger here: this handler spawns it directly, so the execute_command credit hook
 		// never sees it and the author would go unnamed for every capture the handler drives.
-		await creditToolById(config, toolId)
+		await creditToolById(config, toolId, resolved.tool)
 
 		// A. Script Path: Use relative path for cleaner terminal output
 		const absoluteWrapperPath = resolvedToolPath
@@ -549,12 +553,12 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		const quoteIfNeeded = (s: string): string => (s.includes(" ") ? `"${s}"` : s)
 
 		// Wrapper script (relative to workspace for clean output; `.bat` on Windows).
-		const resolvedToolPath2 = pathOf("adsum/nrf/tools/nrf-sniffer")
-		if (!resolvedToolPath2) {
+		const resolvedSniffer = await pathOfAsync("adsum/nrf/tools/nrf-sniffer")
+		if (!resolvedSniffer) {
 			throw new Error("adsum/nrf/tools/nrf-sniffer is not available in this installation — the tool bundle is missing.")
 		}
-		await creditToolById(config, "adsum/nrf/tools/nrf-sniffer")
-		const absoluteWrapperPath = resolvedToolPath2
+		await creditToolById(config, "adsum/nrf/tools/nrf-sniffer", resolvedSniffer.tool)
+		const absoluteWrapperPath = resolvedSniffer.path
 		let wrapperPath = absoluteWrapperPath
 		if (config.cwd) {
 			try {
