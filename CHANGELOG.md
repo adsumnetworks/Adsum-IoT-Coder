@@ -4,20 +4,34 @@ All notable changes to the **Adsum IoT Coder** extension will be documented in t
 
 ## [0.3.1] - 2026-08-23
 
-The agent, without an editor around it.
+Tools that improve without waiting for a release — and the agent, without an editor around it.
 
 ### Added
+- **Every device tool is now a Tool bit that can be improved from the registry.** The HCI and sniffer decoders, the crash decoder, and the CRA scan engine used to be compiled into the extension, so correcting one meant shipping a new version. They are delivered and updated the same way curated knowledge is: versioned, credited to their author, and checked against a published hash before anything runs.
+- **The CRA engine's CVE tables travel with the tool.** Advisory hints and package mappings change weekly; releases do not. Correcting them no longer waits for one.
+- **A crash-address decoder you can point at an ELF.** It picks the right `addr2line` for the chip's architecture, finds the toolchain by absolute path instead of hoping the terminal pre-loaded it, and says where it looked when it cannot — rather than going quiet, which reads like "no fault".
+- **Board and chip names come from knowledge, not from a table inside the app.** Nordic DK names, and a catalogue of all ten shipping ESP32 targets with each one's CPU architecture. A part released after your extension can now be named without an update.
+- **Fanstel LEW840X boards route to their own product knowledge.**
 - **The extension now carries a headless engine.** The same agent that runs behind the chat panel — the same task loop, the same context management and compaction, the same tools and Knowledge bits — can now be started with no editor window at all, and it ships inside the extension rather than being built separately. This is the groundwork for driving Adsum from your own coding agent, and for running a task on a machine you only have a terminal on.
 - **"Adsum: Export engine configuration…"** hands a headless run the provider you already set up here — provider, model, thinking budget and key — after a prompt that names the folder it will be written to and how many keys that means. Keys are written readable by your user account only; the record kept alongside them lists key *names*, never values.
 - **"Adsum: Headless engine info"** answers where that engine is and which build it is, so whatever drives it can record the exact agent it drove.
 
 ### Changed
+- **A newer copy from the registry now wins over the one shipped inside the extension** — for knowledge and for tools alike, with the bundled copy as the fallback whenever the newer one cannot be fetched or checked. An improved tool reaches you without an update; a slow network never costs you a capture. An update may not quietly widen what a tool is allowed to do on its own: the stricter of the two rules stands.
+- Whatever actually served a bit is what gets credited — its author, its licence, its version — instead of always reporting the copy inside the extension.
 - **About** now describes what the extension actually is — two platforms and a CRA readiness check, not a Nordic log assistant — and links to the docs, not to a chip vendor.
 - Building the extension no longer depends on the Node version installed on the build machine.
 
 ### Fixed
+- **A CVE scan that could not run no longer reads as a clean one.** An unresolvable scanner used to leave nothing behind, and "no known CVEs" then stood by having nothing to contradict it. A scan that did not happen now says so, and any claim about vulnerabilities standing beside that is caught.
+- **A large capture no longer comes back truncated.** The decoders exited before their output had finished writing, so a 1,877-frame capture returned well-formed-looking JSON that stopped mid-string — with a success status. Found by a test that compares the shipped tool against the source it was built from.
+- A tool improved in the registry could still be read back from the older copy on disk, so one task could quote two versions of the same thing.
+- Third-party code bundled into a tool must now be named in its notice file; one tool was shipping a library without the attribution its licence requires.
 - Two links pointed at a repository that had been renamed: "GitHub"/"Issues" in About, and the telemetry document referenced from Settings.
-- If you are a Knowledge bit author, your unpublished drafts were served to every session on your machine with no way to ask for the published set instead. Setting `ADSUM_AUTHOR_TOKEN` to an empty value now means "published only", so a comparison between your draft and what everyone else gets is actually possible.
+- If you author Knowledge bits, your unpublished drafts were served to every session on your machine with no way to ask for the published set instead. Setting `ADSUM_AUTHOR_TOKEN` to an empty value now means "published only", so a comparison between your draft and what everyone else gets is possible at all.
+
+### Known issues
+- Modem trace needs firmware built with tracing enabled, and a SIM to be interesting; without both, a capture is empty and says so.
 
 ## [0.3.0] - 2026-08-22
 
