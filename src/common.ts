@@ -26,7 +26,8 @@ import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
 import { ErrorService } from "./services/error"
 import { featureFlagsService } from "./services/feature-flags"
-import { __setKbitTelemetry } from "./services/knowledge/KnowledgeResolver"
+import { __setKbitTelemetry, setPrecedenceEnv } from "./services/knowledge/KnowledgeResolver"
+import { signatureEnforcementState } from "./services/tools/verifySignature"
 import { getDistinctId, initializeDistinctId, setDistinctId } from "./services/logging/distinctId"
 import { getCachedWorkspaceFeatures, getCachedWorkspaceSummary } from "./services/platform/WorkspaceClassifier"
 import { telemetryService } from "./services/telemetry"
@@ -74,6 +75,16 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 
 	// Route K-bit resolution telemetry through the host telemetry client (registry/cache health +
 	// downloaded-bit usage). KnowledgeResolver stays import-light; the extension wires the sink here.
+	// The precedence rule needs the installed extension version to honour a registry copy's `min_ext`.
+	// KnowledgeResolver must not import src/registry.ts (it would pull package.json and the command
+	// tables into the resolver), so the version is injected here. Signature enforcement ships as a
+	// feature but stays OFF until the steward keys are pinned; while it is off an override is trusted on
+	// hash verification plus the steward-approved publish, the same trust every downloaded bit carries.
+	setPrecedenceEnv({
+		extVersion: ExtensionRegistryInfo.version,
+		enforcement: signatureEnforcementState(),
+	})
+
 	__setKbitTelemetry({
 		downloadedResolved: (p) => telemetryService.captureKbitDownloadedResolved(p),
 		registryUnreachable: (p) => telemetryService.captureKbitRegistryUnreachable(p),

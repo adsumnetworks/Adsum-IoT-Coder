@@ -221,12 +221,12 @@
 			},
 			{
 				"command": "adsum-iot-coder.exportSession",
-				"title": "Export this session…",
+				"title": "Export this session\u2026",
 				"category": "Adsum"
 			},
 			{
 				"command": "adsum-iot-coder.exportEngineConfig",
-				"title": "Export engine configuration…",
+				"title": "Export engine configuration\u2026",
 				"category": "Adsum"
 			}
 		],
@@ -350,7 +350,7 @@
 				"adsum-iot-coder.telemetry.enabled": {
 					"type": "boolean",
 					"default": true,
-					"markdownDescription": "Send anonymous usage telemetry to help improve Adsum IoT Coder. Telemetry is also gated by VS Code's global `#telemetry.telemetryLevel#` setting — disabling either one stops all data collection. See [TELEMETRY.md](https://github.com/adsumnetworks/SoC-AI-Debugger/blob/main/TELEMETRY.md) for full details on what is and isn't collected.",
+					"markdownDescription": "Send anonymous usage telemetry to help improve Adsum IoT Coder. Telemetry is also gated by VS Code's global `#telemetry.telemetryLevel#` setting \u2014 disabling either one stops all data collection. See [TELEMETRY.md](https://github.com/adsumnetworks/SoC-AI-Debugger/blob/main/TELEMETRY.md) for full details on what is and isn't collected.",
 					"tags": [
 						"telemetry",
 						"usesOnlineServices"
@@ -369,7 +369,7 @@
 						"off"
 					],
 					"default": "auto",
-					"markdownDescription": "How Adsum behaves when no inference model is configured. `auto`: if no provider/key is set, card execution defaults to handing over to your own coding agent (Adsum conducts: knowledge, toolchain commands, tracking, snapshots — zero Adsum tokens). `always`: conductor mode even when a provider is configured. `off`: never suggest conductor mode."
+					"markdownDescription": "How Adsum behaves when no inference model is configured. `auto`: if no provider/key is set, card execution defaults to handing over to your own coding agent (Adsum conducts: knowledge, toolchain commands, tracking, snapshots \u2014 zero Adsum tokens). `always`: conductor mode even when a provider is configured. `off`: never suggest conductor mode."
 				}
 			}
 		}
@@ -391,7 +391,7 @@
 		"watch:esbuild": "node esbuild.mjs --watch",
 		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
 		"package": "npm run check-types && npm run build:webview && npm run lint && node esbuild.mjs --production",
-		"//vsix": "Build the installable VSIX. It ALWAYS lands in dist/ — never the repo root, which holds a decade of old builds and made the current one impossible to find.",
+		"//vsix": "Build the installable VSIX. It ALWAYS lands in dist/ \u2014 never the repo root, which holds a decade of old builds and made the current one impossible to find.",
 		"vsix": "npm run package && npx vsce package --no-dependencies --allow-star-activation --out dist/",
 		"protos": "node scripts/build-proto.mjs",
 		"protos-go": "node scripts/build-go-proto.mjs",
@@ -411,11 +411,17 @@
 		"gen:kbit-schema": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/gen-kbit-schema.ts",
 		"migrate:kbits": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit-migrate.ts",
 		"gen:kbit-manifest": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/gen-kbit-manifest.ts",
+		"build:tool-bundles": "node scripts/build-tool-bundles.mjs",
+		"check:tool-bundles": "node scripts/build-tool-bundles.mjs --check",
 		"test:kbits": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/kbit.test.ts",
 		"test:context": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/context/context-management/__tests__/context-budget.test.ts",
 		"test:attribution": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/attribution.test.ts",
 		"test:review-nudge": "ts-node --transpile-only -P tsconfig.unit-test.json src/shared/reviewNudge.test.ts",
 		"test:registry": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/registry/registry.test.ts",
+		"test:precedence": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/precedence.node-test.ts",
+		"test:cve-tool": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/cra/cveScanTool.node-test.ts",
+		"test:databits": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/dataBits.node-test.ts",
+		"test:bundle-parity": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/nrf/toolBundleParity.node-test.ts",
 		"test:cra-honesty": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/verdictScan.test.ts",
 		"test:cra-structure": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/structureScan.node-test.ts",
 		"test:cra-artifact": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/handlers/craArtifact.test.ts",
@@ -449,8 +455,6 @@
 		"test:nordic:scripts": "bash scripts/test-nordic-scripts.sh",
 		"test:hil": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-test.ts",
 		"test:search-failure": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/ripgrep/__tests__/searchFailure.node-test.ts",
-		"modem-trace": "python assets/scripts/modem_trace.py",
-		"board-shell": "python assets/scripts/board_shell.py",
 		"test:cellular": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/__tests__/cellularDetect.node-test.ts",
 		"test:hil-cellular": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-cellular.ts",
 		"clean-install": "node scripts/clean-install.mjs",

@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import type { ToolUse } from "@core/assistant-message"
@@ -6,11 +7,8 @@ import * as vscode from "vscode"
 import { prepareNordicExecution } from "@/hosts/vscode/hostbridge/workspace/executeNordicCommand"
 import { resolveWiresharkBinary, type SupportedPlatform } from "@/hosts/vscode/hostbridge/workspace/wiresharkResolver"
 import { getCachedCapabilities } from "@/platform/nordicProjectDetector"
-import { formatHci } from "@/services/nrf/hci/format"
-import { parseHci } from "@/services/nrf/hci/hciParser"
-import { decodeSnifferPcap } from "@/services/nrf/sniffer/format"
 import { telemetryService } from "@/services/telemetry"
-import { pathOf } from "@/services/tools/ToolResolver"
+import { pathOfAsync } from "@/services/tools/ToolResolver"
 import { creditToolById } from "@/services/tools/toolCredit"
 import { ClineDefaultTool } from "@/shared/tools"
 import { openWithApp } from "@/utils/env"
@@ -26,7 +24,7 @@ import { foldCommandOutput } from "./commandOutputFold"
  *
  * It supports two modes:
  * 1. "execute": Runs generic commands in the nRF terminal (ensures correct SDK environment).
- * 2. "log_device": Runs the embedded nrf_logger.py script using internal path resolution.
+ * 2. "log_device": Runs the rtt-logger / uart-logger Tool bit, resolved through ToolResolver.
  *
  * IMPORTANT: This handler bypasses the CommandExecutor pipeline entirely.
  * The nRF terminal is a 3rd-party terminal managed by the Nordic extension,
@@ -37,6 +35,54 @@ import { foldCommandOutput } from "./commandOutputFold"
  */
 /** Workspace-scoped key remembering the NCS version the user chose for this project (ask-once). */
 const NCS_VERSION_STATE_KEY = "adsum.nrf.ncsVersion"
+
+/**
+ * Run a decoder Tool bit and return its JSON.
+ *
+ * The two decoders used to be linked into the extension. They are Tool bits now, so they can be
+ * improved from the registry without a release — which means a child process, and two things that
+ * a child process makes easy to get wrong:
+ *
+ *   maxBuffer — a real sniffer capture decodes to hundreds of KB and Node's default is 1 MB. The
+ *   64 MB here is not caution, it is the difference between a decode and a truncated one.
+ *
+ *   provenance — the tool that ran may be the registry copy, so the credit must come from the
+ *   resolved object rather than from the bundled tree.
+ *
+ * Returns null when the tool cannot be resolved at all; the caller says so plainly rather than
+ * pretending the capture was empty.
+ */
+async function runDecoder(
+	config: TaskConfig,
+	toolId: string,
+	inputPath: string,
+): Promise<{ ok: true; json: Record<string, unknown> } | { ok: false; reason: string }> {
+	const resolved = await pathOfAsync(toolId)
+	if (!resolved) {
+		return { ok: false, reason: `${toolId} is not available in this installation — the tool bundle is missing.` }
+	}
+	await creditToolById(config, toolId, resolved.tool)
+	try {
+		const out = execFileSync(process.execPath, [resolved.tool.entryPath, "--in", inputPath, "--json"], {
+			encoding: "utf8",
+			timeout: 120_000,
+			maxBuffer: 64 * 1024 * 1024,
+			env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+		})
+		return { ok: true, json: JSON.parse(out) as Record<string, unknown> }
+	} catch (e) {
+		// A non-zero exit still carries JSON on stdout — the tool's whole contract is that it says why.
+		const err = e as { stdout?: string; message?: string }
+		if (err.stdout) {
+			try {
+				return { ok: true, json: JSON.parse(err.stdout) as Record<string, unknown> }
+			} catch {
+				// fall through to the opaque-failure path
+			}
+		}
+		return { ok: false, reason: err.message ?? String(e) }
+	}
+}
 
 export class TriggerNordicActionHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.NORDIC_ACTION
@@ -234,13 +280,17 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		// hard-coded assets/scripts path — bundled and (later) downloaded tools resolve the same way.
 		const toolId = transport === "rtt" ? "adsum/nrf/tools/rtt-logger" : "adsum/nrf/tools/uart-logger"
 		const isWindows = process.platform === "win32"
-		const resolvedToolPath = pathOf(toolId)
-		if (!resolvedToolPath) {
+		// Through the async resolver so a registry copy that is newer than the VSIX one is what runs.
+		// It falls back to the bundled tool on any registry trouble, so this throw still means what it
+		// says: there is no copy of this tool at all, not that a fetch was slow.
+		const resolved = await pathOfAsync(toolId)
+		if (!resolved) {
 			throw new Error(`${toolId} is not available in this installation — the tool bundle is missing.`)
 		}
+		const resolvedToolPath = resolved.path
 		// Credit the logger here: this handler spawns it directly, so the execute_command credit hook
 		// never sees it and the author would go unnamed for every capture the handler drives.
-		await creditToolById(config, toolId)
+		await creditToolById(config, toolId, resolved.tool)
 
 		// A. Script Path: Use relative path for cleaner terminal output
 		const absoluteWrapperPath = resolvedToolPath
@@ -384,7 +434,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		// human- AND agent-readable .hci.log under logs/hci/, and tell the agent to read it. The capture
 		// command has already finished (executeCommandTool blocks), so the .btmon files exist on disk.
 		if (monitorOn && resolvedOutput && config.cwd) {
-			const note = this.decodeMonitorCaptures(resolvedOutput, config.cwd)
+			const note = await this.decodeMonitorCaptures(config, resolvedOutput, config.cwd)
 			if (note) {
 				return typeof captureResult === "string" ? `${captureResult}\n\n${note}` : captureResult
 			}
@@ -469,7 +519,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 	 * decoded files so the agent reads + correlates them with the app log. Best-effort: a bad/empty
 	 * capture is reported, never thrown.
 	 */
-	private decodeMonitorCaptures(captureDir: string, cwd: string): string | undefined {
+	private async decodeMonitorCaptures(config: TaskConfig, captureDir: string, cwd: string): Promise<string | undefined> {
 		let btmonFiles: string[]
 		try {
 			btmonFiles = fs
@@ -506,7 +556,16 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 				if (buf.length === 0) {
 					continue
 				}
-				fs.writeFileSync(target, formatHci(parseHci(buf)), "utf8")
+				const r = await runDecoder(config, "adsum/nrf/tools/hci-decode", btmon)
+				if (!r.ok) {
+					console.warn(`[Nordic HCI] ${r.reason}`)
+					continue
+				}
+				if (r.json.status !== "ok") {
+					console.warn(`[Nordic HCI] ${btmon}: ${r.json.reason ?? r.json.status}`)
+					continue
+				}
+				fs.writeFileSync(target, String(r.json.text ?? ""), "utf8")
 				decoded.push(target)
 			} catch (e) {
 				console.warn(`[Nordic HCI] decode failed for ${btmon}: ${e instanceof Error ? e.message : String(e)}`)
@@ -549,12 +608,12 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		const quoteIfNeeded = (s: string): string => (s.includes(" ") ? `"${s}"` : s)
 
 		// Wrapper script (relative to workspace for clean output; `.bat` on Windows).
-		const resolvedToolPath2 = pathOf("adsum/nrf/tools/nrf-sniffer")
-		if (!resolvedToolPath2) {
+		const resolvedSniffer = await pathOfAsync("adsum/nrf/tools/nrf-sniffer")
+		if (!resolvedSniffer) {
 			throw new Error("adsum/nrf/tools/nrf-sniffer is not available in this installation — the tool bundle is missing.")
 		}
-		await creditToolById(config, "adsum/nrf/tools/nrf-sniffer")
-		const absoluteWrapperPath = resolvedToolPath2
+		await creditToolById(config, "adsum/nrf/tools/nrf-sniffer", resolvedSniffer.tool)
+		const absoluteWrapperPath = resolvedSniffer.path
 		let wrapperPath = absoluteWrapperPath
 		if (config.cwd) {
 			try {
@@ -606,7 +665,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		})
 
 		// Decode the PCAP the capture just wrote (executeCommandTool blocks until the wrapper exits).
-		const note = this.decodeSnifferCapture(pcapPath, config.cwd)
+		const note = await this.decodeSnifferCapture(config, pcapPath, config.cwd)
 		if (note) {
 			return typeof captureResult === "string" ? `${captureResult}\n\n${note}` : captureResult
 		}
@@ -617,7 +676,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 	 * Decode a sniffer `.pcap` into a readable `<base>.sniffer.log` under `logs/sniffer/` and return an
 	 * agent-facing note. Best-effort: a missing/empty/unsupported PCAP is reported, never thrown.
 	 */
-	private decodeSnifferCapture(pcapPath: string, cwd?: string): string | undefined {
+	private async decodeSnifferCapture(config: TaskConfig, pcapPath: string, cwd?: string): Promise<string | undefined> {
 		let buf: Buffer
 		try {
 			buf = fs.readFileSync(pcapPath)
@@ -631,7 +690,15 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 			return `The sniffer PCAP at ${pcapPath} is empty — no packets were captured.`
 		}
 
-		const { text, result } = decodeSnifferPcap(buf)
+		const decodeResult = await runDecoder(config, "adsum/nrf/tools/sniffer-decode", pcapPath)
+		if (!decodeResult.ok) {
+			return `Could not decode ${pcapPath}: ${decodeResult.reason}`
+		}
+		if (decodeResult.json.status !== "ok") {
+			return `Could not decode ${pcapPath}: ${decodeResult.json.reason ?? decodeResult.json.status}`
+		}
+		const text = String(decodeResult.json.text ?? "")
+		const result = { totalFrames: Number(decodeResult.json.totalFrames ?? 0) }
 		const outDir = cwd ? path.join(cwd, "logs", "sniffer") : path.dirname(pcapPath)
 		try {
 			fs.mkdirSync(outDir, { recursive: true })

@@ -2,7 +2,7 @@
 id: adsum/nrf/platform
 title: "Nordic nRF — Platform Index"
 type: knowledge
-version: 1.6.0
+version: 1.7.0
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -11,6 +11,8 @@ delivery: bundled
 domain: embedded-iot
 platform: nrf
 safety: [flash]
+requires:
+  - adsum/nrf/tools/nrf-action
 ---
 
 # Nordic nRF — Platform Index (`platforms/nrf/`)
@@ -74,9 +76,15 @@ Rules are platform-specific constraints that override the agent's default behavi
 
 | File | When to Load | Purpose |
 |---|---|---|
-| `rules/nrf-terminal.md` | **Always.** | ALL NCS/SDK commands must use `nrf_device_tool`, never `execute_command`. |
+| `rules/nrf-terminal.md` | **Always.** | ALL NCS/SDK commands must use `triggerNordicAction`, never `execute_command`. |
 | `rules/skill-loading.md` | **Always.** | Skill hierarchy: Workflows are entry points, Actions are internal subroutines. |
 | `rules/device-identity.md` | **Always.** | NEVER guess device roles. Use `device1`/`device2` until confirmed by config or logs. |
+
+## Reference (`knowledge/`)
+
+| Bit | Load when |
+|---|---|
+| `knowledge/board-identity.md` | You need the board behind a PCA number — `nrfutil device list` reports `PCA10056`, nobody calls it that. Also says what to do with a third-party module that reports no PCA at all: name it by its USB product string, and remember it is a different board target from the DK with the same silicon. |
 
 ---
 

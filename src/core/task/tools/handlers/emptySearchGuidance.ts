@@ -42,7 +42,8 @@ export function emptyLogSearchGuidance(searchPath: string | undefined, regex: st
 			: "That term is absent from the capture. Before assuming it never happened, check you are searching " +
 				"the right capture and the right spelling — logs use the module's own wording.\n") +
 		"Next, in this order:\n" +
-		"1. Establish the log's SHAPE first: search for the module tag or level markers actually present " +
+		"1. Establish the log's SHAPE first. The `log-shape` Tool bit does this in one pass (tags, levels, " +
+		"counts) — run it if it is advertised; otherwise search for the markers actually present " +
 		'(e.g. "<err>|<wrn>|<inf>" or "<your_module>:") to see which message kinds exist and how often.\n' +
 		"2. Search for the DOMAIN event you care about in the log's own vocabulary — the words the firmware " +
 		'prints, not the words in the ticket (e.g. "SEEN|MATCH|Connected|Disconnected|adv|scan").\n' +

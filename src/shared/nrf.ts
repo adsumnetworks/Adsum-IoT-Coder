@@ -6,6 +6,15 @@ export interface NrfBoard {
 	/** Nordic DK board number, e.g. "PCA10056" — the label developers recognize. */
 	boardVersion?: string
 	/**
+	 * The board name for `boardVersion`, resolved HOST-side from the `board-identity` bit.
+	 *
+	 * The mapping used to be a constant in the webview, which meant a board Nordic shipped after our
+	 * last release showed as a bare PCA number until someone cut a VSIX — and one release did exactly
+	 * that. Resolving it here lets the registry correct the table instead. Absent when the table does
+	 * not know this PCA, and the UI then shows the raw number, as it always did.
+	 */
+	boardName?: string
+	/**
 	 * The USB product string, e.g. "Seeed Studio XIAO nRF54LM20A CMSIS-DAP".
 	 *
 	 * For a Nordic DK this is redundant with `boardVersion`. For a THIRD-PARTY module it is the only
