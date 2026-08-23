@@ -2,7 +2,7 @@
 id: adsum/nrf/tools/uart-logger
 title: "uart-logger"
 type: tool
-version: 1.0.0
+version: 1.0.1
 owner: adsum-core
 author: Omar Morceli
 license: Apache-2.0

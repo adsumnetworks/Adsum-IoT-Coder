@@ -256,12 +256,23 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 		devices = "no boards connected"
 		devicesMuted = true
 	} else {
-		devices = env.boards
-			.map((b: NrfBoard) => {
-				const friendly = b.boardVersion ? (PCA_NAMES[b.boardVersion] ?? b.boardVersion) : undefined
-				const name = b.deviceName ?? friendly ?? b.deviceFamily ?? b.serialNumber
-				return b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name
-			})
+		const labelled = env.boards.map((b: NrfBoard) => {
+			const friendly = b.boardVersion ? (PCA_NAMES[b.boardVersion] ?? b.boardVersion) : undefined
+			const name = b.deviceName ?? friendly ?? b.deviceFamily ?? b.serialNumber
+			return { board: b, label: b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name }
+		})
+		// Two boards of the same kind render identically — the bench has two nRF9161 DKs, both reporting
+		// PCA10153 — and the developer then has no way to tell from the strip which one a command will
+		// reach. Disambiguate with the tail of the serial, but ONLY where a label actually repeats: a
+		// suffix on every board would be noise on the common single-board setup.
+		const seen = new Map<string, number>()
+		for (const { label } of labelled) {
+			seen.set(label, (seen.get(label) ?? 0) + 1)
+		}
+		devices = labelled
+			.map(({ board, label }) =>
+				(seen.get(label) ?? 0) > 1 && board.serialNumber ? `${label} ·${board.serialNumber.slice(-4)}` : label,
+			)
 			.join(", ")
 	}
 
