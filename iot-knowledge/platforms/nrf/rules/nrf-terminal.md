@@ -15,17 +15,17 @@ safety: [flash, process-kill]
 
 # nRF Platform Rule: nRF Connect Terminal (rules/nrf-terminal.md)
 
-**ALL NCS SDK/toolchain commands MUST be run with `nrf_device_tool` (`action="execute"` for west/nrfutil/nrfjprog, `action="log_device"` for RTT/UART capture).** Never use `execute_command` for NCS tasks — it runs in a plain terminal with no toolchain.
+**ALL NCS SDK/toolchain commands MUST be run with `triggerNordicAction` (`action="execute"` for west/nrfutil/nrfjprog, `action="log_device"` for RTT/UART capture).** Never use `execute_command` for NCS tasks — it runs in a plain terminal with no toolchain.
 
 ## How it runs (you don't manage the terminal)
 
-`nrf_device_tool` runs your command in **its own terminal** and **sources the right NCS toolchain in the background**, so you only ever issue the clean dev command. You do **not** open the nRF Connect terminal, pick a version, or source any environment script — the tool does all of that for you.
+`triggerNordicAction` runs your command in **its own terminal** and **sources the right NCS toolchain in the background**, so you only ever issue the clean dev command. You do **not** open the nRF Connect terminal, pick a version, or source any environment script — the tool does all of that for you.
 
 ```xml
-<nrf_device_tool>
+<triggerNordicAction>
   <action>execute</action>
   <command>west build -b nrf52840dk/nrf52840 .</command>
-</nrf_device_tool>
+</triggerNordicAction>
 ```
 
 If the tool can't source the toolchain itself, it automatically falls back to the nRF Connect extension's terminal. You never trigger that fallback by hand.
@@ -48,7 +48,7 @@ Commands run in the user's own shell (PowerShell on Windows, bash/zsh on macOS/L
 - **One command per invocation on every OS.** You read each result before the next step, so chaining only hides which part failed.
 - **Don't probe the environment.** The toolchain is already sourced for you; running the actual command is the verification.
 
-## Use `nrf_device_tool` for
+## Use `triggerNordicAction` for
 - `west build`, `west flash`, `west debug`, `west boards`, `west build -t menuconfig`
 - Any `nrfutil` / `nrfjprog` command (`action="execute"`)
 - Device enumeration → `action="log_device"` `operation="list"` (never `nrfutil device list` via `execute_command`)

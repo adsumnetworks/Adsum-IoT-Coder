@@ -629,6 +629,9 @@ function runInEnv(id, brief, command, cwd, eventName) {
 	// shell still exits 0 — a loop body, a `;` chain, or a `|| true` all swallow the failure. On the softAP
 	// run `timeout` (absent on macOS) failed for all seven serial ports and exec answered exit 0, so the
 	// agent nearly concluded there was no board attached. An exit code is not proof of success.
+	// Deliberately narrow and anchored: this decides whether an exit-0 build was masked, so a false
+	// positive calls a good build broken. `isErrorLine` in commandOutputFold.ts is the broad twin —
+	// it only picks which line survives folding. Do not unify them.
 	const ERR_RE =
 		/(?:^|\s)(error:|fatal error:|undefined reference|No such file|multiple definition|region `?\w+'? overflowed|does not fit|ninja: build stopped|command not found|: not found|Exit code 127)/i
 	const errorLines = (s) => {

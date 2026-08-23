@@ -26,7 +26,7 @@ import { foldCommandOutput } from "./commandOutputFold"
  *
  * It supports two modes:
  * 1. "execute": Runs generic commands in the nRF terminal (ensures correct SDK environment).
- * 2. "log_device": Runs the embedded nrf_logger.py script using internal path resolution.
+ * 2. "log_device": Runs the rtt-logger / uart-logger Tool bit, resolved through ToolResolver.
  *
  * IMPORTANT: This handler bypasses the CommandExecutor pipeline entirely.
  * The nRF terminal is a 3rd-party terminal managed by the Nordic extension,

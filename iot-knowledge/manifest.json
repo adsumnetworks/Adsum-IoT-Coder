@@ -141,11 +141,15 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "nrf",
+			"requires": [
+				"adsum/nrf/tools/rtt-logger",
+				"adsum/nrf/tools/uart-logger"
+			],
 			"safety": [
 				"process-kill"
 			],
 			"path": "platforms/nrf/actions/capture-logs.md",
-			"content_hash": "ed01076abac0f0d70c68eff8b249fe574ec1560e5ab6057bf45ef1d300a54680"
+			"content_hash": "4d081d58b293155906cba96834b81064dd963c296f113c4b1a885954fdc027ff"
 		},
 		{
 			"id": "adsum/nrf/actions/flash",
@@ -183,7 +187,7 @@
 				"flash"
 			],
 			"path": "platforms/nrf/PLATFORM.md",
-			"content_hash": "ccc14e192595f1d2830850114aa6a023bbb4b5731306addb4b27ff3d0a95929a"
+			"content_hash": "6abca363f1e20f9b9ac2745624dbf786864d4b467f35e6a1923e9bca3c80472b"
 		},
 		{
 			"id": "adsum/nrf/rules/device-identity",
@@ -217,7 +221,7 @@
 				"process-kill"
 			],
 			"path": "platforms/nrf/rules/nrf-terminal.md",
-			"content_hash": "d83d9611adbdbeb0131e277527a4e80232e6a475e57f4099d3d7d9a029403d66"
+			"content_hash": "ec14e4e56aee58eb45dc921651fd20cf387b9aef0401fdbde5eec228abc0e8d5"
 		},
 		{
 			"id": "adsum/nrf/rules/skill-loading",
@@ -413,7 +417,7 @@
 			"domain": "embedded-iot",
 			"platform": "universal",
 			"path": "rules/core.md",
-			"content_hash": "13d86031e4092c55c0db2905d0afa1db9cd76cdbdf4a030a2c5638fc5109b9a0"
+			"content_hash": "81d7c1adcfddccafc0c9f8ad57d78a5e6a2a4e6ffc441ee2dff34c983186d6aa"
 		},
 		{
 			"id": "adsum/rules/skill-loading",

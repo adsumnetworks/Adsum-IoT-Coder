@@ -11,6 +11,9 @@ delivery: bundled
 domain: embedded-iot
 platform: nrf
 safety: [process-kill]
+requires:
+  - adsum/nrf/tools/rtt-logger
+  - adsum/nrf/tools/uart-logger
 ---
 
 # Action: Capture Device Logs (actions/capture-logs.md)
@@ -50,25 +53,25 @@ silent even after a board reset, the capture path is not asserting DTR — the f
 when a user reports a silent UART.
 
 ## Execution
-Use `nrf_device_tool` with `action="log_device"` and `operation="capture"`.
+Use `triggerNordicAction` with `action="log_device"` and `operation="capture"`.
 
-**Do NOT expose internal tool names to the user.** Say: *"Capturing RTT logs..."* not *"Running nrf_device_tool with transport=rtt"*.
+**Do NOT expose internal tool names to the user.** Say: *"Capturing RTT logs..."* not *"Running triggerNordicAction with transport=rtt"*.
 
 ### Single Device
 ```
-nrf_device_tool: action="log_device", operation="capture", transport="rtt", port="<serial_number>", duration="<seconds>"
+triggerNordicAction: action="log_device", operation="capture", transport="rtt", port="<serial_number>", duration="<seconds>"
 ```
 
 ### Multi-Device Simultaneous Capture
 ```
-nrf_device_tool: action="log_device", operation="capture", transport="rtt", devices="device1:<sn1>,device2:<sn2>", duration="<seconds>"
+triggerNordicAction: action="log_device", operation="capture", transport="rtt", devices="device1:<sn1>,device2:<sn2>", duration="<seconds>"
 ```
 **CRITICAL NOTE FOR MULTI-DEVICE:** When multiple devices are connected, you do NOT know which serial number runs which firmware. Do NOT arbitrarily assign `central` or `peripheral` to serial numbers based on project config. You **MUST** use `device1:<sn1>,device2:<sn2>` for the first capture. See `rules/device-identity.md`.
 
 ### Boot Log Capture (with pre-capture delay)
 To capture the full boot sequence, use `pre-capture-delay` so listeners start before device reset:
 ```
-nrf_device_tool: action="log_device", operation="capture", transport="rtt", port="<sn>", duration="15", pre-capture-delay="3", reset="true"
+triggerNordicAction: action="log_device", operation="capture", transport="rtt", port="<sn>", duration="15", pre-capture-delay="3", reset="true"
 ```
 
 ## Recommended Capture Parameters
