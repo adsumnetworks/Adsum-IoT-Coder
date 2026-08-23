@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs"
+import { existsSync, mkdirSync } from "node:fs"
 import os from "os"
 import path from "path"
 import type { Extension, ExtensionContext } from "vscode"
@@ -14,6 +14,33 @@ log(`CLINE_ENVIRONMENT: ${process.env.CLINE_ENVIRONMENT}`)
 // WE WILL HAVE TO MIGRATE THIS FROM DATA TO v1 LATER
 const SETTINGS_SUBFOLDER = "data"
 
+/**
+ * Where the extension's own files live — `package.json`, `iot-knowledge/`, `demo-scenarios/`.
+ *
+ * Two layouts, and the difference is where cline-core.js sits relative to them:
+ *
+ *   UNPACKED   <install>/cline-core.js  +  <install>/extension/{package.json,iot-knowledge}
+ *              the zip/tarball layout `runclinecore.sh` and the Studio's engine cache use.
+ *   SHIPPED    <ext>/dist-standalone/cline-core.js  +  <ext>/{package.json,iot-knowledge}
+ *              the engine packaged inside the installed VSIX: the extension root IS one level up,
+ *              and there is no `extension/` subdirectory to find.
+ *
+ * An explicit INSTALL_DIR always wins — callers that know better keep saying so. Otherwise prefer the
+ * unpacked layout when its `extension/package.json` exists, then the shipped layout, and finally fall
+ * back to the unpacked path so a missing install still fails naming the directory it wanted.
+ */
+function resolveExtensionDir(installDir: string): string {
+	const unpacked = path.join(installDir, "extension")
+	if (existsSync(path.join(unpacked, "package.json"))) {
+		return unpacked
+	}
+	const shipped = path.resolve(installDir, "..")
+	if (existsSync(path.join(shipped, "package.json")) && existsSync(path.join(shipped, "iot-knowledge"))) {
+		return shipped
+	}
+	return unpacked
+}
+
 export function initializeContext(clineDir?: string) {
 	const CLINE_DIR = clineDir || process.env.CLINE_DIR || `${os.homedir()}/.cline`
 	const DATA_DIR = path.join(CLINE_DIR, SETTINGS_SUBFOLDER)
@@ -24,7 +51,8 @@ export function initializeContext(clineDir?: string) {
 	mkdirSync(WORKSPACE_STORAGE_DIR, { recursive: true })
 	log("Using settings dir:", DATA_DIR)
 
-	const EXTENSION_DIR = path.join(INSTALL_DIR, "extension")
+	const EXTENSION_DIR = resolveExtensionDir(INSTALL_DIR)
+	log("Using extension dir:", EXTENSION_DIR)
 	const EXTENSION_MODE = process.env.IS_DEV === "true" ? ExtensionMode.Development : ExtensionMode.Production
 
 	const extension: Extension<void> = {

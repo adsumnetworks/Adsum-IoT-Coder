@@ -1,3 +1,4 @@
+import { existsSync } from "fs"
 import * as path from "path"
 import Parser from "web-tree-sitter"
 import {
@@ -23,8 +24,23 @@ export interface LanguageParser {
 	}
 }
 
+/**
+ * The language parsers sit beside the bundle that loads them — `dist/` for the extension, `dist-standalone/`
+ * for the headless engine. Since 0.3.1 both bundles ship in one VSIX, and packaging a second identical copy
+ * of 16 MB of wasm would be paying twice for the same bytes; the engine reads the extension build's copy
+ * instead. Order matters: a sibling copy wins, so the tarball and dev layouts are untouched.
+ */
+const WASM_DIRS = [__dirname, path.resolve(__dirname, "..", "dist")]
+
+function wasmPath(langName: string): string {
+	const file = `tree-sitter-${langName}.wasm`
+	const found = WASM_DIRS.map((d) => path.join(d, file)).find(existsSync)
+	// No copy anywhere: return the expected path so the loader's own error names a directory to look in.
+	return found ?? path.join(__dirname, file)
+}
+
 async function loadLanguage(langName: string) {
-	return await Parser.Language.load(path.join(__dirname, `tree-sitter-${langName}.wasm`))
+	return await Parser.Language.load(wasmPath(langName))
 }
 
 let isParserInitialized = false
