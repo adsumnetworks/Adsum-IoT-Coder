@@ -16,7 +16,7 @@ import {
 	relPathForId,
 } from "../KnowledgeResolver"
 import { BitCache, sha256 } from "./BitCache"
-import { RegistryClient } from "./RegistryClient"
+import { RegistryClient, resolveAuthorToken } from "./RegistryClient"
 
 const tmp = () => mkdtemp(join(tmpdir(), "kbit-cache-"))
 
@@ -581,5 +581,46 @@ describe("rankNearMissIds (wrong-guess rescue — F5 1907: cra/rules/core.md gue
 	test("relPathForId restores the platforms/ prefix for platform bits only", () => {
 		assert.equal(relPathForId("adsum/nrf/sdks/ncs/cra-advisories"), "platforms/nrf/sdks/ncs/cra-advisories.md")
 		assert.equal(relPathForId("adsum/cra/core"), "cra/core.md")
+	})
+})
+
+describe("resolveAuthorToken", () => {
+	/**
+	 * The draft channel is the ONLY way an installed author reaches their own unpublished bits, so this
+	 * resolution decides which corpus a run actually ran on. It has to be able to say "published" out loud:
+	 * on an author's machine the token file is always there, and a run that silently folded drafts in while
+	 * recording `registry@current` is evidence of nothing.
+	 */
+	const withEnv = (v: string | undefined, fn: () => void) => {
+		const had = Object.hasOwn(process.env, "ADSUM_AUTHOR_TOKEN")
+		const prev = process.env.ADSUM_AUTHOR_TOKEN
+		if (v === undefined) {
+			delete process.env.ADSUM_AUTHOR_TOKEN
+		} else {
+			process.env.ADSUM_AUTHOR_TOKEN = v
+		}
+		try {
+			fn()
+		} finally {
+			if (had) {
+				process.env.ADSUM_AUTHOR_TOKEN = prev as string
+			} else {
+				delete process.env.ADSUM_AUTHOR_TOKEN
+			}
+		}
+	}
+
+	test("a token in the environment wins", () => {
+		withEnv("  tok-abc  ", () => assert.equal(resolveAuthorToken(), "tok-abc"))
+	})
+
+	test("a DEFINED but empty value means explicitly none — the file does not fill in behind it", () => {
+		withEnv("", () => assert.equal(resolveAuthorToken(), null))
+		withEnv("   ", () => assert.equal(resolveAuthorToken(), null, "whitespace is still an explicit none"))
+	})
+
+	test("an UNSET variable falls through to the file, so an author is an author without ceremony", () => {
+		// Whatever this machine has: the contract is only that an unset variable does not short-circuit.
+		withEnv(undefined, () => assert.doesNotThrow(() => resolveAuthorToken()))
 	})
 })

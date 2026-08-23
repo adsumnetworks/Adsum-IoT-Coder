@@ -8,6 +8,9 @@ import Section from "../Section"
  * compliance workflow ago, and its links pointed at a repository that has since been renamed and at
  * Nordic's own site. An About page is where someone checks what they installed; it should describe the
  * product as it is and point at the project's own resources.
+ *
+ * The words are the site's own (docs.adsumnetworks.com), deliberately: the page someone reads before
+ * installing and the page they read after should not describe two different products.
  */
 
 const REPO = "https://github.com/adsumnetworks/Adsum-IoT-Coder"
@@ -25,14 +28,20 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 				<div className="flex px-4 flex-col gap-2">
 					<h2 className="text-lg font-semibold">Adsum IoT Coder v{version}</h2>
 					<p>
-						An open-source coding agent for embedded work. It builds, flashes and debugs firmware on real hardware,
-						reads the logs the board actually produced, and runs a Cyber Resilience Act readiness check over a project
-						— an SBOM, a secure-by-design review, and the CVEs that apply to what you are shipping.
+						An open-source AI coding agent for embedded IoT work. It automates the routine IoT firmware work you would
+						rather not do, and cracks the runtime bugs general agents cannot — because it reads your board, not just
+						your code. The whole firmware loop: scaffold, build, flash, test, observe, fix, and one-click CRA
+						readiness.
 					</p>
 					<p>
-						It works on Espressif ESP32 with ESP-IDF, and on Nordic nRF with the nRF Connect SDK and Zephyr. What it
-						knows about a board, a protocol or a tool comes from <b>Knowledge bits</b> and <b>Tool bits</b> —
-						versioned, credited to the engineer who wrote them, and updatable without waiting for a release.
+						What makes it different is real human expertise, not just the model. It is augmented with curated firmware
+						knowledge written by engineers who have shipped — <b>Knowledge bits</b> and <b>Tool bits</b>, loaded on
+						demand, credited to their author, and updatable without waiting for a release. Human-curated, not
+						AI-generated.
+					</p>
+					<p>
+						Shipping today: Nordic nRF52 / nRF53 / nRF54L on the nRF Connect SDK (Zephyr) and Espressif ESP32,
+						ESP32-S3 and ESP32-C6 on ESP-IDF, over BLE and Wi-Fi.
 					</p>
 
 					<h3 className="text-md font-semibold">Documentation</h3>
