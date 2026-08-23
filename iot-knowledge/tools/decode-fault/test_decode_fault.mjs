@@ -14,7 +14,8 @@ import { execFileSync } from "node:child_process"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, test } from "node:test"
-import { chipFromLog, detectPlatform, extractAddresses, refusalFor, resolveAddr2line } from "./decode_fault.mjs"
+import { readFileSync } from "node:fs"
+import { chipFromLog, detectPlatform, ESP_ARCH, extractAddresses, refusalFor, resolveAddr2line } from "./decode_fault.mjs"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const CLI = path.join(HERE, "decode_fault.mjs")
@@ -221,4 +222,56 @@ describe("U6 — a decode that actually runs", () => {
 			assert.ok(out.frames.every((f) => typeof f.resolved === "string"))
 		},
 	)
+})
+
+
+describe("U6 — the tool's chip table and the chip-identity K-bit must agree", () => {
+	// The tool carries its table inline because it must run with zero dependencies and no k-bit cache;
+	// the K-bit carries the same facts for the model to read. Two copies of one truth is exactly how a
+	// corpus starts lying, so the only acceptable arrangement is a test that fails when they diverge.
+	const BIT = new URL("../../platforms/esp/knowledge/chip-identity.md", import.meta.url)
+
+	const fromBit = () => {
+		const body = readFileSync(BIT, "utf8")
+		const yaml = /```yaml\n([\s\S]*?)```/.exec(body)
+		assert.ok(yaml, "chip-identity must carry a fenced yaml block")
+		const rows = []
+		for (const chunk of yaml[1].split(/\n\s*-\s+target:/).slice(1)) {
+			const target = chunk.split("\n")[0].trim()
+			const addr2line = /addr2line:\s*(\S+)/.exec(chunk)?.[1]
+			const arch = /arch:\s*(\S+)/.exec(chunk)?.[1]
+			rows.push({ target, addr2line, arch })
+		}
+		return rows
+	}
+
+	test("every target in the K-bit is in the tool's table, with the same toolchain", () => {
+		for (const row of fromBit()) {
+			assert.ok(ESP_ARCH[row.target], `${row.target} is in the K-bit but not in the tool's ESP_ARCH`)
+			assert.equal(`${ESP_ARCH[row.target]}-addr2line`, row.addr2line, `${row.target}: toolchain mismatch`)
+		}
+	})
+
+	test("the tool knows no target the K-bit has not documented", () => {
+		const documented = new Set(fromBit().map((r) => r.target))
+		for (const target of Object.keys(ESP_ARCH)) {
+			assert.ok(documented.has(target), `${target} is in the tool but undocumented in chip-identity`)
+		}
+	})
+
+	test("arch and toolchain family agree — every RISC-V part shares one toolchain", () => {
+		for (const row of fromBit()) {
+			const isRiscv = row.addr2line.startsWith("riscv32-esp-elf")
+			assert.equal(isRiscv, row.arch === "riscv32", `${row.target}: arch says ${row.arch}`)
+		}
+		const riscv = fromBit().filter((r) => r.arch === "riscv32")
+		assert.equal(new Set(riscv.map((r) => r.addr2line)).size, 1, "RISC-V targets must share one toolchain")
+	})
+
+	test("the catalogue covers every currently shipping target", () => {
+		const documented = new Set(fromBit().map((r) => r.target))
+		for (const t of ["esp32", "esp32s2", "esp32s3", "esp32c2", "esp32c3", "esp32c5", "esp32c6", "esp32c61", "esp32h2", "esp32p4"]) {
+			assert.ok(documented.has(t), `${t} missing from chip-identity`)
+		}
+	})
 })

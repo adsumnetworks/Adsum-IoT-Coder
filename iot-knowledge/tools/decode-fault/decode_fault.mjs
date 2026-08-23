@@ -154,7 +154,7 @@ export function extractAddresses(log, platform) {
 // ── toolchain ────────────────────────────────────────────────────────────────
 
 /** Chip → addr2line prefix, lifted verbatim from the ESP decode-fault procedure's table. */
-const ESP_ARCH = {
+export const ESP_ARCH = {
 	esp32: "xtensa-esp32-elf",
 	esp32s2: "xtensa-esp32s2-elf",
 	esp32s3: "xtensa-esp32s3-elf",

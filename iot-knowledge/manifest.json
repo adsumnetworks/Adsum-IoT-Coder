@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 23,
+	"count": 24,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -16,6 +16,28 @@
 			"platform": "universal",
 			"path": "AGENT.md",
 			"content_hash": "a0056e88c79d6f85cd072f41a508dae64fa5506242403a0e19cb7da53e2b3120"
+		},
+		{
+			"id": "adsum/esp/knowledge/chip-identity",
+			"title": "Reference: ESP32 Chip Identity",
+			"type": "knowledge",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "CC-BY-SA-4.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "esp",
+			"min_ext": "0.3.0",
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "platforms/esp/knowledge/chip-identity.md",
+			"content_hash": "b6af02d58b97e82436fea4c2b9ec07f8d5a9f89a113889c500023fa29219fa73"
 		},
 		{
 			"id": "adsum/esp/platform",
@@ -468,7 +490,7 @@
 			"artifacts": [
 				{
 					"path": "decode_fault.mjs",
-					"sha256": "565729729efac836b639a606c60d7912d829a256917444fb42469311e035a3d1"
+					"sha256": "799801e5351fa36ac300c6fc89693ff4bde92d3f9136d49aee623871a995b27d"
 				}
 			],
 			"readonly": true,

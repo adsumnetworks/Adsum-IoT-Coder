@@ -297,12 +297,15 @@ describe("regression: live corpus", () => {
 	// became `type: tool` bits. board-shell and modem-trace are NOT here: they are `delivery:
 	// downloaded` and proprietary, so their home is Adsum-Backend/kbits/ and they reach the developer
 	// from the registry). Counting them separately keeps the leak guard sharp: a proprietary
-	// content bit sneaking back in still moves the 18, where a single total would have absorbed it.
+	// content bit sneaking back in still moves the count, where a single total would have absorbed it.
+	// 18 → 19 in 0.3.0: esp/knowledge/chip-identity, an OPEN catalogue of ESP32 targets. It is bundled
+	// so the mapping works offline, and published as a registry copy so a new Espressif part reaches
+	// developers without a reinstall — the leak guard still holds, because it is CC-BY-SA-4.0.
 	test("corpus is fully migrated and lint-clean: content bits + 5 tool bits, 0 errors", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
 		const toolFiles = files.filter((f) => f.replace(/\\/g, "/").endsWith("/TOOL.md"))
 		assert.equal(toolFiles.length, 5, "bundled tool bits")
-		assert.equal(files.length - toolFiles.length, 18, "bundled content bits — a rise here means a proprietary bit leaked in")
+		assert.equal(files.length - toolFiles.length, 19, "bundled content bits — a rise here means a proprietary bit leaked in")
 		assert.equal(migrated, files.length)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
