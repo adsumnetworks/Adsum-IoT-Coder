@@ -3,7 +3,7 @@
  *
  * `src/extension.ts` and this file are two entry points over one core (`src/core/**`) — the same task loop,
  * the same context management and compaction, the same tools. What differs is the host: VS Code there, a
- * gRPC hostbridge here. From 0.3.2 the built engine SHIPS INSIDE THE VSIX (`dist-standalone/cline-core.js`),
+ * gRPC hostbridge here. From 0.3.1 the built engine SHIPS INSIDE THE VSIX (`dist-standalone/cline-core.js`),
  * so anything driving the extension headlessly — the Knowledge Studio, an external agent over MCP — runs the
  * agent the developer actually installed rather than a separately built approximation of it.
  *

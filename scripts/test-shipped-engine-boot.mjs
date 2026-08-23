@@ -2,7 +2,7 @@
 /**
  * Boot the engine exactly as an installed VSIX presents it.
  *
- * From 0.3.2 the engine ships inside the extension package, which means three things can break in ways no
+ * From 0.3.1 the engine ships inside the extension package, which means three things can break in ways no
  * unit test sees: `.vscodeignore` can drop a module the engine requires, the per-platform better-sqlite3
  * addon can fail to resolve from a read-only install, and the extension root can be looked for in the
  * unpacked layout that an installed VSIX does not have. All three only show up when the thing actually runs.
