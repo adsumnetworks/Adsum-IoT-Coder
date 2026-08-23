@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 24,
+	"count": 26,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -294,6 +294,43 @@
 			"content_hash": "99f9933f1bc13be7aaed40baba4a7802fa105b8cfe252fa87413e227c2aaeabd"
 		},
 		{
+			"id": "adsum/nrf/tools/hci-decode",
+			"title": "hci-decode",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [],
+			"min_ext": "0.3.0",
+			"runtime": "node",
+			"entry": "hci_decode.mjs",
+			"usage": "--in <capture.btmon> [--json]",
+			"artifacts": [
+				{
+					"path": "hci_decode.mjs",
+					"sha256": "13e86f598b9f954337fa9dc4905743734b42bc6ecbaae2234bae09b498633311"
+				},
+				{
+					"path": "NOTICE",
+					"sha256": "ed76bc9197767435d198e09bd4e3d66e1d28ca35fd044a444b7f0ac15fb6c9f0"
+				}
+			],
+			"readonly": true,
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "platforms/nrf/tools/hci-decode/TOOL.md",
+			"content_hash": "af5f6cf27a93bbe5e63560e1a0f22850a7212867551f300ace8f86d95031ab3c"
+		},
+		{
 			"id": "adsum/nrf/tools/nrf-sniffer",
 			"title": "nrf-sniffer",
 			"type": "tool",
@@ -369,6 +406,39 @@
 			"readonly": false,
 			"path": "platforms/nrf/tools/rtt-logger/TOOL.md",
 			"content_hash": "78826dddeb1b9d96781b38dff3f6b4dafff686f5af02533992787eea69ba08bd"
+		},
+		{
+			"id": "adsum/nrf/tools/sniffer-decode",
+			"title": "sniffer-decode",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [],
+			"min_ext": "0.3.0",
+			"runtime": "node",
+			"entry": "sniffer_decode.mjs",
+			"usage": "--in <capture.pcap> [--json]",
+			"artifacts": [
+				{
+					"path": "sniffer_decode.mjs",
+					"sha256": "d8c2570e4ce8711e407a2a77c622e7a5f2e4f30b4e32b0f593c57cb0573441d5"
+				}
+			],
+			"readonly": true,
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "platforms/nrf/tools/sniffer-decode/TOOL.md",
+			"content_hash": "5b216a9344c13d347ed53655d0ded78ffaff033274029c6a9c7e7e11dc492929"
 		},
 		{
 			"id": "adsum/nrf/tools/uart-logger",
