@@ -1,11 +1,11 @@
 /**
  * Where this installation's headless engine is, and what it was built from.
  *
- * From 0.3.2 the VSIX carries `dist-standalone/cline-core.js` — the SAME agent as the UI build, compiled
+ * From 0.3.1 the VSIX carries `dist-standalone/cline-core.js` — the SAME agent as the UI build, compiled
  * from a second entry point (`src/standalone/cline-core.ts`) over the same `src/core/**`. Anything that
  * drives the extension headlessly — the Knowledge Studio, an external agent over MCP — needs to find that
  * file and, more importantly, be able to SAY which build it drove. A run attributed to "the engine" and a
- * run attributed to `shipped 1aa09b4c v0.3.2` are not the same evidence.
+ * run attributed to `shipped 1aa09b4c v0.3.1` are not the same evidence.
  *
  * Pure: no `vscode` import, so it can be unit-tested and reused from the CLI side.
  */
@@ -13,7 +13,7 @@ import * as fs from "fs"
 import * as path from "path"
 
 export interface HeadlessEngineInfo {
-	/** Absolute path to cline-core.js, or null when this install has no engine (a pre-0.3.2 VSIX). */
+	/** Absolute path to cline-core.js, or null when this install has no engine (a pre-0.3.1 VSIX). */
 	corePath: string | null
 	/** Extension version the engine was built from — from build-info.json, not guessed. */
 	version: string | null
@@ -70,7 +70,7 @@ export function headlessEngineAt(extensionPath: string): HeadlessEngineInfo {
 	}
 }
 
-/** A short, honest stamp for a run row: `shipped 1aa09b4c v0.3.2`. */
+/** A short, honest stamp for a run row: `shipped 1aa09b4c v0.3.1`. */
 export function headlessEngineRef(info: HeadlessEngineInfo): string | null {
 	if (!info.corePath) {
 		return null

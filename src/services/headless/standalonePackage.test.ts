@@ -19,7 +19,7 @@ const DIST = path.join(REPO, "dist-standalone")
 /** Files the VSIX must carry for the engine to boot; the rest of dist-standalone is excluded. */
 const MUST_SHIP = ["cline-core.js", "build-info.json", "proto/descriptor_set.pb", "node_modules/vscode/package.json"]
 /**
- * A guard against accidental bloat, not a product target. Measured at 0.3.2: 13.3 MB before the engine, 24.3 MB
+ * A guard against accidental bloat, not a product target. Measured at 0.3.1: 13.3 MB before the engine, 24.3 MB
  * after — the engine bundle 5.3, the four per-platform better-sqlite3 addons 3.8, its runtime modules 1.6, all
  * compressed. The headroom is deliberately small: shipping standalone.zip, the source map, or an unpruned
  * node_modules each blows straight through it.
@@ -51,11 +51,11 @@ describe("headlessEngineAt", () => {
 		fs.writeFileSync(path.join(d, "dist-standalone", "cline-core.js"), "//")
 		fs.writeFileSync(
 			path.join(d, "dist-standalone", "build-info.json"),
-			JSON.stringify({ version: "0.3.2", sha: "1aa09b4c3d92ff60", dirty: false, minified: true, builtAt: "x" }),
+			JSON.stringify({ version: "0.3.1", sha: "1aa09b4c3d92ff60", dirty: false, minified: true, builtAt: "x" }),
 		)
 		const i = headlessEngineAt(d)
 		assert.equal(i.supportsFolderKbits, false, "IS_DEV is eliminated in production builds")
-		assert.equal(headlessEngineRef(i), "shipped 1aa09b4c v0.3.2")
+		assert.equal(headlessEngineRef(i), "shipped 1aa09b4c v0.3.1")
 	})
 
 	test("a dev build keeps the folder-bit seam", () => {

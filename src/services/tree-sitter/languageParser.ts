@@ -26,7 +26,7 @@ export interface LanguageParser {
 
 /**
  * The language parsers sit beside the bundle that loads them — `dist/` for the extension, `dist-standalone/`
- * for the headless engine. Since 0.3.2 both bundles ship in one VSIX, and packaging a second identical copy
+ * for the headless engine. Since 0.3.1 both bundles ship in one VSIX, and packaging a second identical copy
  * of 16 MB of wasm would be paying twice for the same bytes; the engine reads the extension build's copy
  * instead. Order matters: a sibling copy wins, so the tarball and dev layouts are untouched.
  */

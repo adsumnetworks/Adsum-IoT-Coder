@@ -2,11 +2,9 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
-## [0.3.2] - 2026-08-23
+## [0.3.1] - 2026-08-23
 
 The agent, without an editor around it.
-
-*(0.3.1 was never released; its work ships here.)*
 
 ### Added
 - **The extension now carries a headless engine.** The same agent that runs behind the chat panel — the same task loop, the same context management and compaction, the same tools and Knowledge bits — can now be started with no editor window at all, and it ships inside the extension rather than being built separately. This is the groundwork for driving Adsum from your own coding agent, and for running a task on a machine you only have a terminal on.
@@ -14,7 +12,11 @@ The agent, without an editor around it.
 - **"Adsum: Headless engine info"** answers where that engine is and which build it is, so whatever drives it can record the exact agent it drove.
 
 ### Changed
+- **About** now describes what the extension actually is — two platforms and a CRA readiness check, not a Nordic log assistant — and links to the docs, not to a chip vendor.
 - Building the extension no longer depends on the Node version installed on the build machine.
+
+### Fixed
+- Two links pointed at a repository that had been renamed: "GitHub"/"Issues" in About, and the telemetry document referenced from Settings.
 
 ## [0.3.0] - 2026-08-22
 

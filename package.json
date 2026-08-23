@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.3.2",
+	"version": "0.3.1",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -355,7 +355,7 @@
 				"adsum-iot-coder.telemetry.enabled": {
 					"type": "boolean",
 					"default": true,
-					"markdownDescription": "Send anonymous usage telemetry to help improve Adsum IoT Coder. Telemetry is also gated by VS Code's global `#telemetry.telemetryLevel#` setting — disabling either one stops all data collection. See [TELEMETRY.md](https://github.com/adsumnetworks/SoC-AI-Debugger/blob/main/TELEMETRY.md) for full details on what is and isn't collected.",
+					"markdownDescription": "Send anonymous usage telemetry to help improve Adsum IoT Coder. Telemetry is also gated by VS Code's global `#telemetry.telemetryLevel#` setting — disabling either one stops all data collection. See [TELEMETRY.md](https://github.com/adsumnetworks/Adsum-IoT-Coder/blob/main/TELEMETRY.md) for full details on what is and isn't collected.",
 					"tags": [
 						"telemetry",
 						"usesOnlineServices"
