@@ -172,6 +172,15 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 
 const withV = (v: string) => (v.startsWith("v") ? v : `v${v}`)
 
+/**
+ * Nordic board code → the name a developer recognises. An unmapped code falls through to the raw
+ * PCA number, which is honest but unhelpful — a bench showed "PCA10184" beside three named DKs.
+ *
+ * Source of truth: the board definitions in the NCS tree itself
+ * (`<ncs>/zephyr/boards/nordic/*` and `<ncs>/nrf/boards/nordic/*`), not memory — checking there also
+ * caught PCA10100, which was mapped to "nRF5340 DK" and is actually the nRF52833 DK.
+ * To extend: `grep -rhoiE "PCA[0-9]{5}" <ncs>/zephyr/boards/nordic/<board>/`.
+ */
 const PCA_NAMES: Record<string, string> = {
 	PCA10028: "nRF51 DK",
 	PCA10031: "nRF51 Dongle",
@@ -180,8 +189,15 @@ const PCA_NAMES: Record<string, string> = {
 	PCA10059: "nRF52840 Dongle",
 	PCA10090: "nRF9160 DK",
 	PCA10095: "nRF5340 DK",
-	PCA10100: "nRF5340 DK",
+	PCA10100: "nRF52833 DK",
+	PCA10112: "nRF21540 DK",
+	PCA10121: "nRF5340 Audio DK",
+	PCA10143: "nRF7002 DK",
 	PCA10153: "nRF9161 DK",
+	PCA10156: "nRF54L15 DK",
+	PCA10165: "nRF9131 EK",
+	PCA10171: "nRF9151 DK",
+	PCA10184: "nRF54LM20 DK",
 	PCA20020: "Thingy:52",
 	PCA20035: "Thingy:91",
 }
