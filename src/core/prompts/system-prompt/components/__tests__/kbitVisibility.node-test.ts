@@ -342,3 +342,31 @@ describe("a refused memory write cannot be shrugged off", () => {
 		assert.ok(/attempt_completion/.test(apply) && /Open project folder/.test(apply))
 	})
 })
+
+describe("product knowledge is reachable", () => {
+	const ctx = fs.readFileSync(CTX, "utf8")
+	const block = ctx.slice(ctx.indexOf("The developer says"), ctx.indexOf("Knowledge Already Loaded"))
+
+	test("the Fanstel gateway routes to its index", () => {
+		// The bits were authored correct and complete, and NOTHING referenced them — the same way
+		// DECT-NR.md sat unreachable for weeks. A bit nobody can reach is indistinguishable from a bit
+		// that does not exist.
+		assert.ok(/products\/fanstel\/lew840x\/PRODUCT\.md/.test(block))
+		for (const word of ["Fanstel", "LEW840X", "M.2"]) {
+			assert.ok(block.includes(word), `"${word}" is not a trigger`)
+		}
+	})
+
+	test("every router path is written from the knowledge root", () => {
+		// The prompt tells the agent to join kbPath with the path it is given. Rows that were relative to
+		// platforms/nrf/ produced a path that does not exist when followed literally, and products/ could
+		// never be reached from a platform-relative row at all.
+		// Match every quoted .md path in the block. A string split was too fragile here — the escaping
+		// silently collapsed to a single-element array, so the check passed while testing one row.
+		const paths = [...block.matchAll(/`([^`]+\.md)`/g)].map((m) => m[1])
+		assert.ok(paths.length >= 7, `expected every router row to carry a path, found ${paths.length}`)
+		for (const p of paths) {
+			assert.ok(/^(platforms|products|rules|actions|workflows)\//.test(p), `router path is not root-relative: ${p}`)
+		}
+	})
+})

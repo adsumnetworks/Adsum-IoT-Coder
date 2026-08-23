@@ -108,6 +108,13 @@ Adsum-Backend/**
 # line vsce swallowed all 49 of its files (+1.6 MB, including its own SQLite store) into
 # the VSIX. Caught on inspection before shipping 0.2.1-dev.4.
 adsum-studio/**
+# adsum-demos (public demo firmware + evidence) and adsumcoder-docs (the Mintlify docs
+# site) are separate repos cloned here for agent context. Both are gitignored, and as the
+# adsum-studio note above records, .gitignore does not govern packaging — without these
+# lines vsce would swallow the demo firmware, the SPDX evidence set and the whole docs
+# site into the VSIX.
+adsum-demos/**
+adsumcoder-docs/**
 .mcp.json
 .vscode/mcp.json
 .embedder/**
