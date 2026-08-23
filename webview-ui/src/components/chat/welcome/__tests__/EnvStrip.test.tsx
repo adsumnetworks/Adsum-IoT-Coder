@@ -89,6 +89,42 @@ describe("EnvStrip — compact / expand (A5)", () => {
 		expect(espUnresolvedDeviceLabel(undefined)).toBe("unidentified serial device")
 	})
 
+	// A bench with four DKs attached rendered "nRF9161 DK, nRF5340 DK, PCA10184, nRF52840 DK" — one
+	// board showing a raw code because PCA_NAMES stopped at the boards that existed when it was written.
+	// Codes verified against the NCS board definitions, not from memory; that also caught PCA10100,
+	// which was mapped to "nRF5340 DK" and is the nRF52833 DK.
+	it("names every Nordic DK the bench reports — no raw PCA codes leak to the strip", () => {
+		const expected: Record<string, string> = {
+			PCA10056: "nRF52840 DK",
+			PCA10095: "nRF5340 DK",
+			PCA10100: "nRF52833 DK", // was wrong: mapped to nRF5340 DK
+			PCA10153: "nRF9161 DK",
+			PCA10156: "nRF54L15 DK",
+			PCA10171: "nRF9151 DK",
+			PCA10184: "nRF54LM20 DK", // the one the bench surfaced
+		}
+		mockState({
+			nrfEnvironment: {
+				status: "ready",
+				extensionPresent: true,
+				nrfutilPresent: true,
+				// deviceName deliberately ABSENT — that is the real case. The strip renders
+				// `deviceName ?? PCA_NAMES[boardVersion] ?? …`, so the map is the fallback that was
+				// leaking raw codes. With a deviceName present the map is never consulted at all.
+				boards: Object.keys(expected).map((boardVersion, i) => ({
+					boardVersion,
+					serialNumber: String(i),
+				})),
+			},
+		})
+		render(<EnvStrip />)
+		fireEvent.click(screen.getByTestId("envstrip-summary"))
+		for (const [code, name] of Object.entries(expected)) {
+			expect(screen.queryByText(new RegExp(code))).toBeNull() // the raw code must never render
+			expect(screen.getByText(new RegExp(name))).toBeInTheDocument()
+		}
+	})
+
 	// a11y: the EnvStrip is a disclosure widget — its toggle must announce its state + control region to AT.
 	it("disclosure a11y: toggle has aria-expanded (false→true), aria-label, aria-controls → the region id", () => {
 		mockState()
