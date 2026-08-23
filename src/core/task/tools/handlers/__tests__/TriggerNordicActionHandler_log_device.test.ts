@@ -59,6 +59,23 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 			"@/hosts/vscode/hostbridge/workspace/wiresharkResolver": {
 				resolveWiresharkBinary: sandbox.stub().returns(undefined),
 			},
+			// Tool bits (2026-08-22) made the handler resolve launcher paths through ToolResolver, which
+			// reads HostProvider for the extension root — unavailable in a unit test, so all 11 cases here
+			// died on "HostProvider not setup".
+			//
+			// Return the path the bundled tool actually resolves to. `null` is NOT a usable stub: the
+			// handler now treats an unresolvable tool as fatal, which is correct behaviour and simply
+			// moves the failure. These tests assert on the command built AROUND the wrapper path, so the
+			// stub has to supply a realistic one.
+			"@/services/tools/ToolResolver": {
+				pathOf: sandbox
+					.stub()
+					.callsFake((id: string) =>
+						id.endsWith("rtt-logger")
+							? "/mock/extension/path/assets/scripts/rtt-logger"
+							: "/mock/extension/path/assets/scripts/uart-logger",
+					),
+			},
 			"@/utils/env": {
 				openWithApp: sandbox.stub().resolves(),
 			},
