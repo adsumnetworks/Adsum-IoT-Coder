@@ -18,6 +18,33 @@ import * as path from "node:path"
 import { resolveNrfutilCommands } from "../src/services/nrf/EnvironmentDetector"
 import { decodeSnifferPcap } from "../src/services/nrf/sniffer/format"
 
+/** The tool bit this test drives — the same id TriggerNordicActionHandler.handleSniff() resolves. */
+const TOOL_ID = "adsum/nrf/tools/nrf-sniffer"
+
+/**
+ * Mirror of ToolResolver.pathOf() for a standalone script: read the bundled manifest, find the tool by
+ * id, and return the launcher sitting beside its TOOL.md. Kept deliberately small — if this drifts from
+ * the resolver again, the failure is loud (wrapper not found) rather than a silently different rail.
+ */
+function resolveToolWrapper(id: string, launcher: string): string | null {
+	const root = path.join(__dirname, "..", "iot-knowledge")
+	const manifestPath = path.join(root, "manifest.json")
+	if (!fs.existsSync(manifestPath)) {
+		return null
+	}
+	try {
+		const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"))
+		const bits: Array<{ id?: string; path?: string }> = manifest.bits ?? manifest.entries ?? []
+		const entry = bits.find((b) => b.id === id)
+		if (!entry?.path) {
+			return null
+		}
+		return path.join(path.dirname(path.join(root, entry.path)), launcher)
+	} catch {
+		return null
+	}
+}
+
 function skip(reason: string): never {
 	console.log(`[test:hil] SKIP — ${reason}`)
 	process.exit(0)
@@ -66,9 +93,16 @@ function main() {
 	const followName = process.env.HIL_FOLLOW_NAME
 	const isWindows = process.platform === "win32"
 	const wrapperName = isWindows ? "nrf-sniffer.bat" : "nrf-sniffer"
-	const wrapperPath = path.join(__dirname, "..", "assets", "scripts", wrapperName)
-	if (!fs.existsSync(wrapperPath)) {
-		console.error(`[test:hil] FAIL — wrapper script not found: ${wrapperPath}`)
+	// Resolve the wrapper the way PRODUCTION does — through the tool-bit manifest, not a fixed path.
+	// This test's whole premise is that it drives the same rail handleSniff() drives; a hardcoded
+	// `assets/scripts/` path silently broke that when the tool-bits migration moved the wrappers into
+	// iot-knowledge/platforms/<plat>/tools/. The bench caught it: test:hil failed before capturing a
+	// single packet, with the header still claiming it drove the production wrapper.
+	// We cannot call ToolResolver.pathOf() here — it reaches HostProvider, which only exists inside the
+	// extension host — so mirror its lookup: manifest id → path → the launcher beside TOOL.md.
+	const wrapperPath = resolveToolWrapper(TOOL_ID, wrapperName)
+	if (!wrapperPath || !fs.existsSync(wrapperPath)) {
+		console.error(`[test:hil] FAIL — ${TOOL_ID} wrapper not found (looked via iot-knowledge/manifest.json)`)
 		process.exit(1)
 	}
 
