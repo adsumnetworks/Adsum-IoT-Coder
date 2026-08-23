@@ -647,13 +647,21 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	ctx += "The moment the developer names one of these, `read_file` that bit FIRST. Do not scaffold, "
 	ctx += "diagnose, or answer a capability question from memory — these parts have hardware and firmware "
 	ctx += "constraints that are not guessable, and getting one wrong costs the developer hours.\n\n"
+	// Paths are written from the KNOWLEDGE ROOT, matching the CRITICAL RULE above that tells the agent to
+	// join kbPath with a relative path. These rows used to be relative to `platforms/nrf/`, so an agent
+	// following the instruction literally built a path that does not exist. Product bits also live
+	// OUTSIDE platforms/, which a partial path could never have reached at all.
 	ctx += "| The developer says | Read this FIRST |\n|---|---|\n"
-	ctx += "| NB-IoT, LTE-M, cellular, SIM, APN, MQTT over cellular | `sdks/ncs/protocols/LTE.md` |\n"
-	ctx += "| satellite, NTN, Skylo, direct-to-orbit | `sdks/ncs/protocols/NTN.md` |\n"
-	ctx += "| DECT, DECT NR+, NR+, licence-exempt mesh | `sdks/ncs/protocols/DECT-NR.md` |\n"
-	ctx += "| GPS, GNSS, location, position fix | `sdks/ncs/protocols/GNSS.md` |\n"
-	ctx += "| AT commands, modem shell, MoSh | `actions/board-shell.md` |\n"
-	ctx += "| modem trace, why will it not attach | `actions/modem-trace.md` |\n\n"
+	ctx += "| NB-IoT, LTE-M, cellular, SIM, APN, MQTT over cellular | `platforms/nrf/sdks/ncs/protocols/LTE.md` |\n"
+	ctx += "| satellite, NTN, Skylo, direct-to-orbit | `platforms/nrf/sdks/ncs/protocols/NTN.md` |\n"
+	ctx += "| DECT, DECT NR+, NR+, licence-exempt mesh | `platforms/nrf/sdks/ncs/protocols/DECT-NR.md` |\n"
+	ctx += "| GPS, GNSS, location, position fix | `platforms/nrf/sdks/ncs/protocols/GNSS.md` |\n"
+	ctx += "| AT commands, modem shell, MoSh | `platforms/nrf/actions/board-shell.md` |\n"
+	ctx += "| modem trace, why will it not attach | `platforms/nrf/actions/modem-trace.md` |\n"
+	// A product is not a platform: the Fanstel gateway is an nRF52840 BLE card, an nRF9160 LTE card and
+	// an ESP32 Ethernet host in one enclosure. Its index names which sub-bit answers which question, so
+	// one row reaches the whole family.
+	ctx += "| Fanstel, LEW840X, composable gateway, M.2 card | `products/fanstel/lew840x/PRODUCT.md` |\n\n"
 	ctx += "A bit already listed under *Knowledge Already Loaded* is in context — do not read it again.\n\n"
 	// The failure this paragraph exists to stop, verbatim from a 2026-08-20 transcript:
 	//   "The analyze-logs action mentioned a sdks/ncs/protocols/DECT-NR.md file. Let me load that to
