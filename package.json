@@ -419,6 +419,7 @@
 		"test:review-nudge": "ts-node --transpile-only -P tsconfig.unit-test.json src/shared/reviewNudge.test.ts",
 		"test:registry": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/registry/registry.test.ts",
 		"test:precedence": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/precedence.node-test.ts",
+		"test:databits": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/dataBits.node-test.ts",
 		"test:bundle-parity": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/nrf/toolBundleParity.node-test.ts",
 		"test:cra-honesty": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/verdictScan.test.ts",
 		"test:cra-structure": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/structureScan.node-test.ts",

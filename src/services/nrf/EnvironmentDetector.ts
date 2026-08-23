@@ -1,4 +1,5 @@
 import type { NrfBoard, NrfEnvironment, ProjectSdk } from "@shared/nrf"
+import { boardNameFor } from "@/services/knowledge/dataBits"
 import { exec } from "child_process"
 import { existsSync, readdirSync, readFileSync, statSync } from "fs"
 import { homedir } from "os"
@@ -329,6 +330,7 @@ export function parseDeviceListFull(stdout: string): DeviceListEntry[] {
 					serialNumber: d.serialNumber as string,
 					deviceFamily: d.devkit?.deviceFamily as string | undefined,
 					boardVersion: d.devkit?.boardVersion as string | undefined,
+					boardName: boardNameFor(d.devkit?.boardVersion as string | undefined),
 					traits: d.traits as Record<string, boolean> | undefined,
 					// The only identity a third-party module (XIAO, custom CMSIS-DAP board) publishes.
 					usbProduct: d.usb?.product as string | undefined,
@@ -363,6 +365,7 @@ export function parseDeviceInfo(stdout: string): Partial<NrfBoard> {
 				deviceName: (jlink.deviceName ?? jlink.device_name) as string | undefined,
 				deviceVersion: (jlink.deviceVersion ?? jlink.device_version) as string | undefined,
 				boardVersion: (jlink.boardVersion ?? jlink.board_version) as string | undefined,
+				boardName: boardNameFor((jlink.boardVersion ?? jlink.board_version) as string | undefined),
 			}
 		}
 	}
