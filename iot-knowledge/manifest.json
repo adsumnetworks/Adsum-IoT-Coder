@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 26,
+	"count": 29,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -14,8 +14,40 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "universal",
+			"requires": [
+				"adsum/nrf/tools/nrf-action",
+				"adsum/esp/tools/esp-action"
+			],
 			"path": "AGENT.md",
 			"content_hash": "a0056e88c79d6f85cd072f41a508dae64fa5506242403a0e19cb7da53e2b3120"
+		},
+		{
+			"id": "adsum/cra/tools/cra-action",
+			"title": "cra-action",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Redouane Elmagroud",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "cra",
+			"safety": [
+				"network"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "host",
+			"host_tool": "triggerCveScan",
+			"usage": "sbom=<path to the generated SBOM> [build=<dir>]",
+			"readonly": false,
+			"co_authors": [
+				{
+					"handle": "ismail-hamdad",
+					"name": "Ismail Hamdad"
+				}
+			],
+			"path": "cra/tools/cra-action/TOOL.md",
+			"content_hash": "6494bf544137dd20920ccfd84670f1eaa1d0a82b7c408ff6f66c2231d0ad975e"
 		},
 		{
 			"id": "adsum/esp/knowledge/chip-identity",
@@ -51,6 +83,9 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "esp",
+			"requires": [
+				"adsum/esp/tools/esp-action"
+			],
 			"path": "platforms/esp/PLATFORM.md",
 			"content_hash": "ea32b879d7d19a0b016402cffbdb55cf90989a0fccbdd9904208a49821062f82"
 		},
@@ -66,6 +101,9 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "esp",
+			"requires": [
+				"adsum/esp/tools/esp-action"
+			],
 			"path": "platforms/esp/rules/device-identity.md",
 			"content_hash": "b469d5972789f7f479e6a575e3d5c936c8b0ffc5b7c73f640d845eda1ebf6df5"
 		},
@@ -81,6 +119,9 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "esp",
+			"requires": [
+				"adsum/esp/tools/esp-action"
+			],
 			"path": "platforms/esp/rules/esp-terminal.md",
 			"content_hash": "b74abdc56c5f7f3772a8c5363142a2e270630fe463b55d66cb6ca108e85c199b"
 		},
@@ -111,8 +152,36 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "esp",
+			"requires": [
+				"adsum/esp/tools/esp-action"
+			],
 			"path": "platforms/esp/sdks/esp-idf/SDK.md",
 			"content_hash": "a2a1d422fd5cef8164f26e7a35f20099156a705934ba16b65d6618131d44d558"
+		},
+		{
+			"id": "adsum/esp/tools/esp-action",
+			"title": "esp-action",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "esp",
+			"safety": [
+				"flash",
+				"erase",
+				"process-kill"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "host",
+			"host_tool": "triggerEspAction",
+			"usage": "action=\"build|flash|monitor|clean|set_target|execute|capture_logs\" [...]",
+			"readonly": false,
+			"path": "platforms/esp/tools/esp-action/TOOL.md",
+			"content_hash": "ee65993eadddbf48a45ae600c889781e9c530774a479e3758ff0fcc37dc76221"
 		},
 		{
 			"id": "adsum/esp/tools/esp-monitor",
@@ -205,6 +274,9 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "nrf",
+			"requires": [
+				"adsum/nrf/tools/nrf-action"
+			],
 			"safety": [
 				"flash"
 			],
@@ -238,6 +310,9 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "nrf",
+			"requires": [
+				"adsum/nrf/tools/nrf-action"
+			],
 			"safety": [
 				"flash",
 				"process-kill"
@@ -329,6 +404,31 @@
 			],
 			"path": "platforms/nrf/tools/hci-decode/TOOL.md",
 			"content_hash": "af5f6cf27a93bbe5e63560e1a0f22850a7212867551f300ace8f86d95031ab3c"
+		},
+		{
+			"id": "adsum/nrf/tools/nrf-action",
+			"title": "nrf-action",
+			"type": "tool",
+			"version": "1.0.0",
+			"owner": "adsum-core",
+			"author": "Omar Morceli",
+			"license": "Apache-2.0",
+			"tier": "certified",
+			"delivery": "bundled",
+			"domain": "embedded-iot",
+			"platform": "nrf",
+			"safety": [
+				"flash",
+				"erase",
+				"process-kill"
+			],
+			"min_ext": "0.3.0",
+			"runtime": "host",
+			"host_tool": "triggerNordicAction",
+			"usage": "action=\"execute|log_device|sniff_capture|open_capture\" [...]",
+			"readonly": false,
+			"path": "platforms/nrf/tools/nrf-action/TOOL.md",
+			"content_hash": "79a7f8701158fa5e719b8b8aa62b1930d0d71aa440df1c35ee1e2c39bc6f1ef3"
 		},
 		{
 			"id": "adsum/nrf/tools/nrf-sniffer",
@@ -508,6 +608,9 @@
 			"delivery": "bundled",
 			"domain": "embedded-iot",
 			"platform": "universal",
+			"requires": [
+				"adsum/nrf/tools/nrf-action"
+			],
 			"path": "rules/core.md",
 			"content_hash": "81d7c1adcfddccafc0c9f8ad57d78a5e6a2a4e6ffc441ee2dff34c983186d6aa"
 		},

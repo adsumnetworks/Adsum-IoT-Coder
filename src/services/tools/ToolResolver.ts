@@ -94,6 +94,13 @@ export interface ResolvedTool {
 	version?: string
 	/** What actually served this tool: the VSIX, the registry, or the registry replacing the VSIX. */
 	provenance: "bundled" | "downloaded" | "override"
+	/**
+	 * The registered tool name, for a `runtime: host` descriptor — a door compiled into the extension.
+	 * Present ⇒ this is NOT a program to launch: it is never advertised in the Device tools block (the
+	 * model already has it as a native tool, and listing it twice would invite a shell invocation of
+	 * something that has no command line) and never materialised. It resolves for credit and relations.
+	 */
+	hostTool?: string
 	/** The shell-ready command prefix, already quoted and shortened where useful. */
 	command: string
 	/** Present when something the tool needs is missing; the advertisement says so plainly. */
@@ -255,6 +262,7 @@ export function buildResolvedTool(args: {
 		license: typeof meta.license === "string" ? meta.license : undefined,
 		delivery: args.delivery,
 		provenance: args.provenance ?? args.delivery,
+		hostTool: typeof args.meta.host_tool === "string" ? args.meta.host_tool : undefined,
 		version: typeof args.meta.version === "string" ? args.meta.version : undefined,
 		command: renderCommand(
 			commandPrefix({ runtime, launcherPath, entryPath, interpreter: args.interpreter ?? undefined }),
@@ -267,6 +275,11 @@ export function buildResolvedTool(args: {
 /** Pure: which tools this workspace should see. Mirrors the native device-tool gating exactly. */
 export function toolsForWorkspace(tools: ResolvedTool[], summary: WorkspaceSummary): ResolvedTool[] {
 	return tools.filter((t) => {
+		// A host tool is already a native tool the model can call by name. Advertising it here would
+		// offer a second, shell-shaped way to reach something that has no command line.
+		if (t.hostTool) {
+			return false
+		}
 		if (t.platform === "nrf") {
 			return nrfToolActive(summary)
 		}

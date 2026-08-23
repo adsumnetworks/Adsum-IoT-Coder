@@ -548,3 +548,44 @@ describe("U9 — provenance is separate from delivery", () => {
 		assert.equal(overridden.provenance, "override")
 	})
 })
+
+
+// ── U4: the built-in doors are visible in the graph, never in the advertisement ──
+
+describe("U4 — a runtime: host tool resolves for credit but is never advertised", () => {
+	const host = (id: string, hostTool: string, platform?: string): ResolvedTool => ({
+		...mk(id, platform),
+		runtime: "host" as never,
+		hostTool,
+		usage: "",
+		command: "",
+	})
+
+	test("host tools are filtered out of every workspace", () => {
+		const tools = [
+			host("adsum/nrf/tools/nrf-action", "triggerNordicAction", "nrf"),
+			host("adsum/esp/tools/esp-action", "triggerEspAction", "esp"),
+			host("adsum/cra/tools/cra-action", "triggerCveScan"),
+			mk("adsum/nrf/tools/rtt-logger", "nrf"),
+		]
+		for (const summary of ["nrf", "esp", "both", "none"] as const) {
+			const advertised = toolsForWorkspace(tools, summary).map((t) => t.id)
+			assert.ok(
+				!advertised.some((id) => id.endsWith("-action")),
+				`${summary}: a host tool must never reach the Device tools block — got ${advertised.join(", ")}`,
+			)
+		}
+	})
+
+	test("the real programs are still advertised — the filter is about hostTool, not about the ids", () => {
+		const tools = [host("adsum/nrf/tools/nrf-action", "triggerNordicAction", "nrf"), mk("adsum/nrf/tools/rtt-logger", "nrf")]
+		assert.deepEqual(
+			toolsForWorkspace(tools, "nrf").map((t) => t.id),
+			["adsum/nrf/tools/rtt-logger"],
+		)
+	})
+
+	test("a host tool carries the registered name the model actually has", () => {
+		assert.equal(host("adsum/cra/tools/cra-action", "triggerCveScan").hostTool, "triggerCveScan")
+	})
+})

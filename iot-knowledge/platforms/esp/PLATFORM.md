@@ -10,6 +10,8 @@ tier: certified
 delivery: bundled
 domain: embedded-iot
 platform: esp
+requires:
+  - adsum/esp/tools/esp-action
 ---
 
 # ESP32 — Platform Index (`platforms/esp/`)
