@@ -286,7 +286,33 @@ function findSiblingSpdx(reportDir: string): string | null {
  * VERSION-MATCHED finding ids (`findings[].advisories[].id`, for the under-report check — distinct from the EUVD
  * discover-by-product *candidates*, which are capped leads). null if none/unreadable.
  */
-function findSiblingCve(reportDir: string): { queryable: number | null; cveIds: string[]; matchedIds: string[] } | null {
+/**
+ * Any sentence that asserts a vulnerability RESULT. Deliberately catches the clean claims too — "no
+ * known CVEs" is the dangerous one, and a pattern that only matched numbers would wave it through.
+ */
+const CVE_CLAIM_RE =
+	/\b(?:no (?:known )?(?:CVEs?|vulnerabilit\w+)|\d+\s+(?:known\s+)?(?:CVEs?|vulnerabilit\w+)|zero\s+(?:CVEs?|vulnerabilit\w+)|clean(?:\s+bill)?(?:\s+of\s+health)?)\b/i
+
+/**
+ * The report saying, itself, that no scan happened.
+ *
+ * A guard has to leave a way through, or it stops being a guard and becomes a trap. The first cut of
+ * this check flagged "no vulnerability statement can be made here" — the exact sentence we want —
+ * because it matched the claim pattern. The model would then have had no legal output at all: it
+ * could not report a result, and it could not report the absence of one either.
+ *
+ * So an explicit acknowledgement is checked FIRST and ends the matter. Saying plainly that the scan
+ * did not run is not a claim about vulnerabilities; it is the honest alternative to one.
+ */
+const CVE_NOT_RUN_ACKNOWLEDGED_RE =
+	/\b(?:scan (?:was )?not (?:performed|run)|not performed|could not be (?:run|reached|performed)|did not run|no scan (?:ran|was run))\b/i
+
+function findSiblingCve(reportDir: string): {
+	queryable: number | null
+	cveIds: string[]
+	matchedIds: string[]
+	notPerformed: string | null
+} | null {
 	try {
 		const f = fs.readdirSync(reportDir).find((n) => /^cve-scan.*\.json$/i.test(n))
 		if (!f) {
@@ -294,6 +320,13 @@ function findSiblingCve(reportDir: string): { queryable: number | null; cveIds: 
 		}
 		const raw = fs.readFileSync(path.join(reportDir, f), "utf8")
 		const j = JSON.parse(raw)
+		// The door writes this when the scan engine could not be reached. It exists so "no scan ran" is a
+		// FACT on disk rather than an absence — an absent artifact reads as "nothing to check", and a
+		// report claiming a clean bill of health then passes every check below by having nothing to
+		// contradict it.
+		if (j?.status === "not-performed") {
+			return { queryable: null, cveIds: [], matchedIds: [], notPerformed: typeof j.reason === "string" ? j.reason : "unknown" }
+		}
 		const q = j?.coverage?.queryable
 		const cveIds = [...new Set((raw.match(CVE_ID_RE) ?? []).map((s) => s.toUpperCase()))]
 		// Matched (to-review) ids only — the set the report must not drop. EUVD candidates are excluded by design.
@@ -307,7 +340,7 @@ function findSiblingCve(reportDir: string): { queryable: number | null; cveIds: 
 					.filter((id: string) => /^CVE-\d{4}-\d{4,7}$/.test(id)),
 			),
 		] as string[]
-		return { queryable: typeof q === "number" ? q : null, cveIds, matchedIds }
+		return { queryable: typeof q === "number" ? q : null, cveIds, matchedIds, notPerformed: null }
 	} catch {
 		return null
 	}
@@ -390,6 +423,23 @@ export function gatherAndCheckReadinessIntegrity(absolutePath: string, content: 
 		const dir = path.dirname(absolutePath)
 		const sbomText = findSiblingSpdx(dir)
 		const cve = findSiblingCve(dir)
+		if (cve?.notPerformed) {
+			// No scan ran, so no CVE statement in this report can be evidence — neither a count nor,
+			// especially, a clean one. "No known vulnerabilities" off a scan that never happened is the
+			// single most expensive sentence this product could emit.
+			const claims = CVE_NOT_RUN_ACKNOWLEDGED_RE.test(content) ? null : CVE_CLAIM_RE.exec(content)
+			if (claims) {
+				return [
+					{
+						kind: "cve-not-performed",
+						detail:
+							`The CVE scan did not run (${cve.notPerformed}), so this report cannot state "${claims[0].trim()}" ` +
+							`or any other vulnerability finding. Say plainly that the scan was not performed and why, ` +
+							`then stop — do not infer a result from the SBOM alone.`,
+					},
+				]
+			}
+		}
 		return checkReadinessReportIntegrity({
 			reportText: content,
 			sbom: sbomText ? normalizeSbom(sbomText) : null,

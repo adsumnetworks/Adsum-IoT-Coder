@@ -43,6 +43,17 @@ const TOOLS = [
 		entry: "src/services/nrf/sniffer/cli.ts",
 		out: "iot-knowledge/platforms/nrf/tools/sniffer-decode/sniffer_decode.mjs",
 	},
+	{
+		// The one PROPRIETARY tool built from this repo's TypeScript, so its bundle lands in the backend's
+		// kbits tree rather than iot-knowledge: a proprietary tool must never ship inside the VSIX, and the
+		// bundled tree is what the VSIX carries. Publishing it therefore needs both checkouts — the same
+		// coupling `--root` publishing already has, and the reason the path is configurable.
+		id: "adsum/cra/tools/cve-scan",
+		entry: "src/services/cra/cli.ts",
+		out: process.env.ADSUM_KBITS_ROOT
+			? `${process.env.ADSUM_KBITS_ROOT}/cra/tools/cve-scan/cve_scan.mjs`
+			: "../Adsum-Backend-tbit/kbits/cra/tools/cve-scan/cve_scan.mjs",
+	},
 ]
 
 async function bundle(tool, outFile) {
@@ -77,7 +88,7 @@ async function bundle(tool, outFile) {
 
 let failed = 0
 for (const tool of TOOLS) {
-	const committed = path.join(ROOT, tool.out)
+	const committed = path.resolve(ROOT, tool.out)
 	if (check) {
 		const tmp = mkdtempSync(path.join(tmpdir(), "adsum-tbit-"))
 		try {
