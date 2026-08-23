@@ -2,6 +2,20 @@
 
 All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
 
+## [0.3.2] - 2026-08-23
+
+The agent, without an editor around it.
+
+*(0.3.1 was never released; its work ships here.)*
+
+### Added
+- **The extension now carries a headless engine.** The same agent that runs behind the chat panel — the same task loop, the same context management and compaction, the same tools and Knowledge bits — can now be started with no editor window at all, and it ships inside the extension rather than being built separately. This is the groundwork for driving Adsum from your own coding agent, and for running a task on a machine you only have a terminal on.
+- **"Adsum: Export engine configuration…"** hands a headless run the provider you already set up here — provider, model, thinking budget and key — after a prompt that names the folder it will be written to and how many keys that means. Keys are written readable by your user account only; the record kept alongside them lists key *names*, never values.
+- **"Adsum: Headless engine info"** answers where that engine is and which build it is, so whatever drives it can record the exact agent it drove.
+
+### Changed
+- Building the extension no longer depends on the Node version installed on the build machine.
+
 ## [0.3.0] - 2026-08-22
 
 Cellular, and the tools that talk to your hardware. nRF9161, nRF9151, and nRF9160 boards with the four nRF91 protocols; and every device tool the extension ships is now a **Tool bit** — versioned, credited to the engineer who wrote it, and updatable without waiting for a release.

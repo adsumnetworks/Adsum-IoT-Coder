@@ -35,6 +35,7 @@ import { findMatchingNotebookCell, getContextForCommand, showWebview } from "./h
 import { abortCommitGeneration, generateCommitMsg } from "./hosts/vscode/commit-message-generator"
 import { VscodeHandoverService } from "./hosts/vscode/handover/VscodeHandoverService"
 import { exportEngineConfigCommand } from "./hosts/vscode/headless/exportEngineConfigCommand"
+import { headlessEngineInfoCommand } from "./hosts/vscode/headless/headlessEngineInfoCommand"
 import {
 	disposeVscodeCommentReviewController,
 	getVscodeCommentReviewController,
@@ -601,6 +602,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			"adsum-iot-coder.exportEngineConfig",
 			(a?: Parameters<typeof exportEngineConfigCommand>[1]) => exportEngineConfigCommand(context, a),
 		),
+		vscode.commands.registerCommand("adsum-iot-coder.headlessEngineInfo", () => headlessEngineInfoCommand(context)),
 		vscode.commands.registerCommand("adsum-iot-coder.handoverToAgent", () => handover.handOver()),
 		vscode.commands.registerCommand("adsum-iot-coder.watchHandover", () => handover.watch()),
 		vscode.commands.registerCommand("adsum-iot-coder.showHandoverWorklog", () => handover.showWorklog()),

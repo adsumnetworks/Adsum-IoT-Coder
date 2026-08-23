@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -228,6 +228,11 @@
 				"command": "adsum-iot-coder.exportEngineConfig",
 				"title": "Export engine configuration…",
 				"category": "Adsum"
+			},
+			{
+				"command": "adsum-iot-coder.headlessEngineInfo",
+				"title": "Headless engine info",
+				"category": "Adsum"
 			}
 		],
 		"keybindings": [
@@ -390,7 +395,7 @@
 		"watch": "npm-run-all -p watch:*",
 		"watch:esbuild": "node esbuild.mjs --watch",
 		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-		"package": "npm run check-types && npm run build:webview && npm run lint && node esbuild.mjs --production",
+		"package": "npm run check-types && npm run build:webview && npm run lint && node esbuild.mjs --production && npm run compile-standalone:prod",
 		"//vsix": "Build the installable VSIX. It ALWAYS lands in dist/ — never the repo root, which holds a decade of old builds and made the current one impossible to find.",
 		"vsix": "npm run package && npx vsce package --no-dependencies --allow-star-activation --out dist/",
 		"protos": "node scripts/build-proto.mjs",
@@ -433,7 +438,7 @@
 		"test:memory": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/memory.test.ts",
 		"test:memory-migrate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/migrate.test.ts",
 		"test:sniffer-payload": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/nrf/payloadHex.node-test.ts",
-		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:workspace test:cve test:engine-config",
+		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:workspace test:cve test:engine-config test:standalone-package",
 		"kbit": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit.ts",
 		"qa": "bash qa/regression/run.sh",
 		"format": "biome format --changed --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error",
@@ -499,7 +504,10 @@
 		"test:announcements": "ts-node --transpile-only -P tsconfig.unit-test.json src/utils/__tests__/announcementSurfaces.node-test.ts",
 		"test:tools": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/tools/toolResolver.node-test.ts",
 		"test:hil-tools": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-tools.ts",
-		"test:engine-config": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/headless/engineConfigExport.test.ts"
+		"test:engine-config": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/headless/engineConfigExport.test.ts",
+		"compile-standalone:prod": "node esbuild.mjs --standalone --production && node scripts/package-standalone.mjs --no-zip",
+		"test:standalone-package": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/headless/standalonePackage.test.ts",
+		"test:shipped-engine-boot": "node scripts/test-shipped-engine-boot.mjs"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [
