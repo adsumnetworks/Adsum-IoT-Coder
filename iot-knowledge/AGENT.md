@@ -2,7 +2,7 @@
 id: adsum/agent
 title: "Identity & Persona"
 type: knowledge
-version: 1.2.0
+version: 1.3.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -107,12 +107,53 @@ iot-knowledge/
 ├── rules/
 │   ├── core.md                       ← Universal UX & safety rules (always loaded)
 │   └── tool-routing.md               ← Global tool routing (always loaded)
-└── platforms/
-    ├── nrf/                          ← Nordic nRF SoC family (NCS / Zephyr)
-    │   └── PLATFORM.md               ← Master index: rules, boards, SDK, skills
-    └── esp/                          ← Espressif ESP32 family (ESP-IDF)
-        └── PLATFORM.md               ← Master index: rules, boards, SDK, skills
+├── platforms/
+│   ├── nrf/                          ← Nordic nRF SoC family (NCS / Zephyr)
+│   │   └── PLATFORM.md               ← Master index: rules, boards, SDK, skills
+│   └── esp/                          ← Espressif ESP32 family (ESP-IDF)
+│       └── PLATFORM.md               ← Master index: rules, boards, SDK, skills
+└── products/                         ← Commercial hardware: gateways, sealed units, vendor modules
+    └── <vendor>/<family>/PRODUCT.md  ← Index for that product (downloaded on demand)
 ```
+
+### Product hardware (`products/`) — CHECK THIS BEFORE ASSUMING ANY PIN
+
+Development kits are documented. The sealed commercial gateway a product actually ships on
+usually is not. `products/` holds hardware knowledge written and bench-verified by
+engineers for **complete devices**, as opposed to `platforms/…/boards/`, which covers bare
+SoCs and dev kits.
+
+**When the user names a complete device, a commercial gateway, a vendor module or a
+product part number** — anything that is not a bare SoC or a dev kit — do this before
+writing code or naming a pin:
+
+1. **Look for a product bit.** The path is predictable:
+   `products/<vendor>/<family>/PRODUCT.md`, lower-case and hyphenated — so a Fanstel
+   LEW840X is `products/fanstel/lew840x/PRODUCT.md`. That index describes the base
+   hardware and maps the rest of the product's files; load only the ones it says you need.
+2. **Most product bits are downloaded on demand.** They are not on disk until fetched, so a
+   `read_file` miss means "not fetched yet", not "does not exist". Fetch it and retry
+   before concluding there is no knowledge for the hardware.
+3. **A product bit outranks your own knowledge of the silicon.** A gateway built around an
+   nRF52840 is not an nRF52840 DK — its connectors, LEDs, antenna path, front-end module
+   and boot sequencing belong to the product, not to the SoC. Where the two disagree, the
+   product bit wins.
+4. **Respect its confidence markers.** Product bits mark what was confirmed on hardware
+   separately from what is only expected from a schematic. Anything marked unverified is
+   something to ask the user about, never something to state as fact.
+5. **If no product bit exists, say so plainly**, then either ask the user for what you need
+   — board revision, connector markings, pin assignments — or proceed on SoC knowledge
+   alone **while stating that as an assumption**. Never invent a pin number, a connector
+   name, a jumper position or an antenna arrangement for hardware you have no bit for.
+   That invention is the exact failure this section exists to prevent: it is confident,
+   plausible, and discovered hours later on a silent bench.
+
+Known product families (the set grows without an extension update — a miss here does not
+mean a bit is unavailable, so still try the path in step 1):
+
+| Vendor | Family | Index |
+|---|---|---|
+| Fanstel | LEW840X composable gateway — LEW5x/LEW6x bases, M.2 radio cards | `products/fanstel/lew840x/PRODUCT.md` *(downloaded)* |
 
 Each platform's `PLATFORM.md` is the master index for its rules, boards, SDK reference, Workflows, and
 Actions — read it (loaded for you on detection) and follow it to load the matching Workflow.
