@@ -67,14 +67,17 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 			// handler now treats an unresolvable tool as fatal, which is correct behaviour and simply
 			// moves the failure. These tests assert on the command built AROUND the wrapper path, so the
 			// stub has to supply a realistic one.
+			//
+			// "Realistic" has to mean the CURRENT layout. The first version of this stub returned the old
+			// `assets/scripts/<name>` path and the assertion below expected that same string — green, but a
+			// tautology: stub and expectation both described a layout that no longer exists, so no regression
+			// in the real one could fail here. Tool bits live in `iot-knowledge/platforms/<plat>/tools/<name>/`
+			// and `pathOf` returns the launcher inside that directory.
 			"@/services/tools/ToolResolver": {
-				pathOf: sandbox
-					.stub()
-					.callsFake((id: string) =>
-						id.endsWith("rtt-logger")
-							? "/mock/extension/path/assets/scripts/rtt-logger"
-							: "/mock/extension/path/assets/scripts/uart-logger",
-					),
+				pathOf: sandbox.stub().callsFake((id: string) => {
+					const name = id.split("/").pop()
+					return `/mock/extension/path/iot-knowledge/platforms/nrf/tools/${name}/${name}`
+				}),
 			},
 			"@/utils/env": {
 				openWithApp: sandbox.stub().resolves(),
@@ -200,7 +203,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 
 		// In this setup:
 		// CWD = /mock/workspace
-		// Wrapper = /mock/extension/path/assets/scripts/uart-logger
+		// Wrapper = /mock/extension/path/iot-knowledge/platforms/nrf/tools/uart-logger/uart-logger
 		// Relative path starts with ../.., so it should FALLBACK to absolute in our logic
 		// logic: if (!relativePath.startsWith("..") ...)
 
@@ -210,7 +213,7 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		const normalizedCmd = cmd.replace(/\\/g, "/")
 
 		// Since /mock/extension is NOT inside /mock/workspace, it uses absolute
-		expect(normalizedCmd).to.contain("/mock/extension/path/assets/scripts/uart-logger")
+		expect(normalizedCmd).to.contain("/mock/extension/path/iot-knowledge/platforms/nrf/tools/uart-logger/uart-logger")
 	})
 
 	// ============================================================================

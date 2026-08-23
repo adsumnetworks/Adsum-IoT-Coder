@@ -1,8 +1,17 @@
-# Workspace map — 25 file(s)
+# Workspace map — 32 file(s)
 
 A map, not a substitute for reading. Paths are workspace-relative. Use read_file (with
 start_line/end_line) or search_files on these paths instead of re-listing directories.
 
+.vscode/
+  extensions.json
+  launch.json
+  tasks.json
+cli/
+  .gitignore
+  go.mod
+  go.sum
+  package.json
 demo-scenarios/esp-wifi/
   CMakeLists.txt
   sdkconfig.defaults
@@ -37,17 +46,16 @@ testing-platform/
   package-lock.json
   package.json
   tsconfig.json
-(84 doc file(s) omitted)
+(92 doc file(s) omitted)
 assets/branding/ — 7 more file(s) (use list_files to enumerate)
 assets/docs/ — 10 more file(s) (use list_files to enumerate)
 assets/icons/ — 38 more file(s) (use list_files to enumerate)
-assets/scripts/ — 15 more file(s) (use list_files to enumerate)
 assets/social/ — 8 more file(s) (use list_files to enumerate)
 docs/features/ — 16 more file(s) (use list_files to enumerate)
 docs/mcp/ — 7 more file(s) (use list_files to enumerate)
 docs/provider-config/ — 22 more file(s) (use list_files to enumerate)
-./ — 31 more file(s) (use list_files to enumerate)
+./ — 30 more file(s) (use list_files to enumerate)
 scripts/ — 50 more file(s) (use list_files to enumerate)
 webview-ui/ — 11 more file(s) (use list_files to enumerate)
-(33 directories omitted)
+(32 directories omitted)
 (walk stopped early: entry cap reached — use list_files for anything not listed)
