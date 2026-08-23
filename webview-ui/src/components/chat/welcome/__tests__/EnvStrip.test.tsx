@@ -125,6 +125,49 @@ describe("EnvStrip — compact / expand (A5)", () => {
 		}
 	})
 
+	// The bench runs two nRF9161 DKs. Both report PCA10153, so both render as "nRF9161 DK" and the
+	// developer cannot tell from the strip which board a command will reach.
+	it("two boards of the same kind are disambiguated by the tail of the serial", () => {
+		mockState({
+			nrfEnvironment: {
+				status: "ready",
+				extensionPresent: true,
+				nrfutilPresent: true,
+				// No deviceName — same as the real nrfutil payload, so PCA_NAMES is what names them.
+				boards: [
+					{ boardVersion: "PCA10153", serialNumber: "001050992288" },
+					{ boardVersion: "PCA10153", serialNumber: "001050924638" },
+				],
+			},
+		})
+		render(<EnvStrip />)
+		fireEvent.click(screen.getByTestId("envstrip-summary"))
+		expect(screen.getByText(/nRF9161 DK ·2288/)).toBeInTheDocument()
+		expect(screen.getByText(/nRF9161 DK ·4638/)).toBeInTheDocument()
+	})
+
+	// …but the suffix is only worth its noise where it resolves an ambiguity. The overwhelmingly common
+	// case is one board of each kind, and those must stay clean.
+	it("distinct boards carry no serial suffix", () => {
+		mockState({
+			nrfEnvironment: {
+				status: "ready",
+				extensionPresent: true,
+				nrfutilPresent: true,
+				boards: [
+					{ boardVersion: "PCA10153", serialNumber: "001050992288" },
+					{ boardVersion: "PCA10056", serialNumber: "001050256273" },
+				],
+			},
+		})
+		render(<EnvStrip />)
+		fireEvent.click(screen.getByTestId("envstrip-summary"))
+		expect(screen.getByText(/nRF9161 DK/)).toBeInTheDocument()
+		expect(screen.getByText(/nRF52840 DK/)).toBeInTheDocument()
+		expect(screen.queryByText(/·2288/)).toBeNull()
+		expect(screen.queryByText(/·6273/)).toBeNull()
+	})
+
 	// a11y: the EnvStrip is a disclosure widget — its toggle must announce its state + control region to AT.
 	it("disclosure a11y: toggle has aria-expanded (false→true), aria-label, aria-controls → the region id", () => {
 		mockState()
