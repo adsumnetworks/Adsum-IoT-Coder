@@ -56,7 +56,10 @@ describe("bits injected into the prompt are credited too", () => {
 	})
 
 	test("the source tier is reported honestly, not assumed", () => {
-		assert.ok(/hasBit\(id\)\) \? "bundled" : "registry"/.test(task), "a downloaded bit must not look bundled")
+		// It must come from what the resolver actually served. `hasBit()` is manifest membership, and an
+		// overridden bit is BOTH in the manifest and served from the registry — asking the manifest would
+		// credit every registry override as shipped-in-the-VSIX, which is the opposite of honest.
+		assert.ok(/source: provenanceOf\(id\)/.test(task), "the credit source must be the resolver's provenance")
 	})
 })
 
