@@ -6,7 +6,7 @@
  * no host imports, so they can run as Tool bits and be improved from the registry without a release.
  * Rewriting ~1,300 lines of fixture-tested parser by hand to get there would be regression risk for
  * nothing, so instead: the TypeScript stays put and keeps its existing tests, and esbuild emits one
- * dependency-free `.mjs` per tool. ONE source, two consumers — the tests exercise exactly the code
+ * single `.mjs` per tool — dependency-free where it can be, and with a NOTICE where it cannot. ONE source, two consumers — the tests exercise exactly the code
  * that ships.
  *
  * Not minified, deliberately. The artifact is meant to be readable: the protection lever for a Tool
@@ -22,7 +22,7 @@
  */
 
 import { execFileSync } from "node:child_process"
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -82,6 +82,25 @@ async function bundle(tool, outFile) {
 	}
 	if (externalImports.size) {
 		throw new Error(`${tool.id}: bundle imports non-builtins: ${[...externalImports].join(", ")}`)
+	}
+
+	// The externals check above only catches what is left OUT of the bundle. A dependency that gets
+	// bundled IN passes it silently — which is how cve-scan shipped ~85 KB of js-yaml, 60% of its own
+	// size, with the MIT notice that library's licence requires nowhere in sight. So: any third-party
+	// code inside the artifact must be declared, and the tool must carry a NOTICE naming it.
+	const vendored = [...new Set([...readFileSync(outFile, "utf8").matchAll(/node_modules\/((?:@[^/\s]+\/)?[^/\s]+)/g)].map((m) => m[1]))]
+	if (vendored.length) {
+		const noticePath = path.join(path.dirname(outFile), "NOTICE")
+		const notice = existsSync(noticePath) ? readFileSync(noticePath, "utf8") : ""
+		const unnamed = vendored.filter((dep) => !notice.includes(dep))
+		if (unnamed.length) {
+			throw new Error(
+				`${tool.id}: bundles ${unnamed.join(", ")} but NOTICE does not name ${unnamed.length === 1 ? "it" : "them"}. ` +
+					`Third-party code carries licence obligations that travel with the bytes — add a NOTICE beside the ` +
+					`bundle, declare it in artifacts[], or remove the dependency.`,
+			)
+		}
+		console.log(`  ${tool.id}: bundles ${vendored.join(", ")} — named in NOTICE ✓`)
 	}
 	return readFileSync(outFile, "utf8")
 }
