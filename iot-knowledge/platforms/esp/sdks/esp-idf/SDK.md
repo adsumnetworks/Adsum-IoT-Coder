@@ -10,6 +10,8 @@ tier: certified
 delivery: bundled
 domain: embedded-iot
 platform: esp
+requires:
+  - adsum/esp/tools/esp-action
 ---
 
 # ESP-IDF — SDK Knowledge (sdks/esp-idf/SDK.md)

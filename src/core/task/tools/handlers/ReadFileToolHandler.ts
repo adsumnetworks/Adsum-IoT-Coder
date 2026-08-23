@@ -7,15 +7,18 @@ import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
 import {
+	type BitProvenance,
 	bitIdForKbPath,
 	creditFor,
 	creditForKbPath,
 	deriveIdFromRel,
 	downloadedBitKnown,
 	isBareBitPath,
+	isOverridden,
 	isRegistryReachable,
 	loadBitByKbPath,
 	loadBitByRel,
+	provenanceOf,
 	suggestNearMissBits,
 } from "@/services/knowledge/KnowledgeResolver"
 import type { KbitCredit } from "@/services/knowledge/kbit/credit"
@@ -38,7 +41,9 @@ import { formatRangeHeader, sliceLineRange } from "./readFileRange"
  * "first use only" — repeat loads pulse the header pill and add zero transcript DOM).
  * Fail-open: attribution must never break a file read.
  */
-async function sayKbitCredit(config: any, credit: KbitCredit | null, source: "bundled" | "registry"): Promise<void> {
+// `source` is the resolver's provenance, so it carries "override" and "local" too — the credit line
+// must be able to say a registry copy replaced the shipped one, not flatten that back to "bundled".
+async function sayKbitCredit(config: any, credit: KbitCredit | null, source: BitProvenance): Promise<void> {
 	if (!credit) {
 		return
 	}
@@ -281,7 +286,12 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		//       path (the "file not found then recover" loop). Self-guarded to bit roots, only when missing.
 		const isAbsKbPath = absolutePath.includes("iot-knowledge")
 		const isBarePath = !isAbsKbPath && isBareBitPath(relPath)
-		if ((isAbsKbPath || isBarePath) && !(await fileAccessible(absolutePath))) {
+		// An OVERRIDDEN bundled bit takes this path too, even though the file is right there on disk:
+		// those bytes are the superseded text, and serving them would let one task quote two different
+		// versions of the same bit — the prompt's and the file's.
+		const kbId = isAbsKbPath ? bitIdForKbPath(absolutePath) : isBarePath ? deriveIdFromRel(relPath!.replace(/\\/g, "/")) : null
+		const overridden = kbId ? await isOverridden(kbId) : false
+		if ((isAbsKbPath || isBarePath) && (overridden || !(await fileAccessible(absolutePath)))) {
 			let bitBody = isAbsKbPath ? await loadBitByKbPath(absolutePath) : await loadBitByRel(relPath!)
 			if (!bitBody) {
 				// Outer retry (field report: a CRA run on Windows hit a transient load failure at the FIRST
@@ -298,7 +308,9 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 					config.taskState.loadedKnowledgeFiles.add(absolutePath)
 				}
 				const dlId = isAbsKbPath ? bitIdForKbPath(absolutePath) : deriveIdFromRel(relPath!.replace(/\\/g, "/"))
-				await sayKbitCredit(config, dlId ? creditFor(dlId) : null, "registry")
+				// The resolver just served this one, so it knows whether it came from the registry outright
+				// or replaced a bundled copy — a distinction "registry" alone could not make.
+				await sayKbitCredit(config, dlId ? creditFor(dlId) : null, (dlId && provenanceOf(dlId)) || "downloaded")
 				await config.services.fileContextTracker.trackFileContext(relPath!, "read_tool")
 				// H9 (R3, 0607b): the UI labels this read with the requested bundled-tree path, which made a
 				// registry-served bit look BUNDLED in transcripts (it misled a delivery-path review into
@@ -403,7 +415,10 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		// Bundled/on-disk knowledge file: mark it loaded before the read so a re-read this task stubs out.
 		if (isKnowledgeFile) {
 			config.taskState.loadedKnowledgeFiles.add(absolutePath)
-			await sayKbitCredit(config, await creditForKbPath(absolutePath), "bundled")
+			// The provenance the resolver recorded, not the literal "bundled": this branch is reached for a
+			// file read off disk, which is bundled unless the resolver already served it from elsewhere.
+			const src = kbId ? (provenanceOf(kbId) ?? "bundled") : "bundled"
+			await sayKbitCredit(config, await creditForKbPath(absolutePath), src)
 		}
 
 		// Execute the actual file read operation

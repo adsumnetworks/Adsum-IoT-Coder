@@ -87,7 +87,7 @@ if (userWantsAnalysis) {
 - ❌ DON'T: `nrfutil device reset --serial-number 683007782`
 - ✅ DO: Use `trigger_nordic_action action="log_device"` (script handles reset)
 
-**Reset strategy (built into nrf_logger.py):**
+**Reset strategy (built into the rtt-logger / uart-logger Tool bits):**
 1. Try nrfutil (modern, primary) → `nrfutil device reset --serial-number <SN>`
 2. If nrfutil missing → Try nrfjprog (legacy, fallback) → `nrfjprog --reset -s <SN>`
 3. If both missing → WARN (not ERROR) and continue capturing anyway

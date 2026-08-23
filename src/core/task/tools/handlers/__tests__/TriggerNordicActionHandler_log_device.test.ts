@@ -73,10 +73,17 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 			// tautology: stub and expectation both described a layout that no longer exists, so no regression
 			// in the real one could fail here. Tool bits live in `iot-knowledge/platforms/<plat>/tools/<name>/`
 			// and `pathOf` returns the launcher inside that directory.
+			// `pathOfAsync`, not `pathOf`: the handler resolves through the registry-aware door so a tool
+			// improved in the registry is the copy that runs. It returns the resolved tool alongside the
+			// path, because the credit line must name the copy that actually executed.
 			"@/services/tools/ToolResolver": {
-				pathOf: sandbox.stub().callsFake((id: string) => {
+				pathOfAsync: sandbox.stub().callsFake(async (id: string) => {
 					const name = id.split("/").pop()
-					return `/mock/extension/path/iot-knowledge/platforms/nrf/tools/${name}/${name}`
+					const dir = `/mock/extension/path/iot-knowledge/platforms/nrf/tools/${name}`
+					return {
+						path: `${dir}/${name}`,
+						tool: { id, name, dir, provenance: "bundled", delivery: "bundled", version: "1.0.0" },
+					}
 				}),
 			},
 			"@/utils/env": {
