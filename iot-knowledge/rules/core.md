@@ -59,7 +59,7 @@ This pattern applies to ALL platforms for actions such as:
 
 ## 7. Tool Usage Priority (Embedded Development)
 - **Prefer reading tools over shell commands:** For file inspection, use `read_file`, `search_files`, `list_files` instead of running `cat`, `grep`, or `ls` in a terminal.
-- **Prefer platform tools for device commands:** Use platform-specific device tools (e.g., `nrf_device_tool`) instead of `execute_command` for any SDK-related task.
+- **Prefer platform tools for device commands:** Use platform-specific device tools (e.g., `triggerNordicAction`) instead of `execute_command` for any SDK-related task.
 - Reserve `execute_command` (standard terminal) only for operations that genuinely require it: `git`, `pip`, `apt`, general host OS tasks.
 
 ## 8. Skill Discovery Protocol (Architecture & Optimization)

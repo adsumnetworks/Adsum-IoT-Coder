@@ -74,7 +74,7 @@ Rules are platform-specific constraints that override the agent's default behavi
 
 | File | When to Load | Purpose |
 |---|---|---|
-| `rules/nrf-terminal.md` | **Always.** | ALL NCS/SDK commands must use `nrf_device_tool`, never `execute_command`. |
+| `rules/nrf-terminal.md` | **Always.** | ALL NCS/SDK commands must use `triggerNordicAction`, never `execute_command`. |
 | `rules/skill-loading.md` | **Always.** | Skill hierarchy: Workflows are entry points, Actions are internal subroutines. |
 | `rules/device-identity.md` | **Always.** | NEVER guess device roles. Use `device1`/`device2` until confirmed by config or logs. |
 

@@ -858,6 +858,26 @@ describe("lint — licence follows delivery AND type", () => {
 		assert.equal(hasR43(lintOne({ ...validTool, license: "Apache-2.0" })), true)
 		assert.equal(hasR43(lintOne(validTool)), false)
 	})
+	test("U3 — a body naming a host tool by a name the model does not have fails", () => {
+		for (const wrong of ["nrf_device_tool", "trigger_nordic_action", "trigger_esp_action", "trigger_cve_scan"]) {
+			const issues = lintOne(validAction, `Call \`${wrong}\` with action="execute".\n`)
+			assert.equal(
+				issues.some((i) => i.level === "error" && /the tool the model actually has is/.test(i.msg)),
+				true,
+				`${wrong} should fail lint`,
+			)
+		}
+		// The registered names are what the model is given, so they must pass untouched.
+		for (const right of ["triggerNordicAction", "triggerEspAction", "triggerCveScan"]) {
+			assert.equal(
+				lintOne(validAction, `Call \`${right}\` with action="execute".\n`).some((i) =>
+					/the tool the model actually has is/.test(i.msg),
+				),
+				false,
+				`${right} should pass lint`,
+			)
+		}
+	})
 	test("a bit body may not hard-code the extension's script directory", () => {
 		const issues = lintOne(validAction, "Run `assets/scripts/board-shell --port X`\n")
 		assert.equal(
