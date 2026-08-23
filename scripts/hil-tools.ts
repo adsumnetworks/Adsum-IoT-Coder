@@ -427,8 +427,11 @@ function checkLogShape(t: Tool, logs: string[], boards: Board[], loggers: Tool[]
 /** modem-trace — needs a real nRF91 trace. Honest skip when the bench has not captured one. */
 function checkModemTrace(t: Tool, boards: Board[]): void {
 	let trace = process.env.HIL_MODEM_TRACE
-	const nrf91 = boards.find(isNrf91)
-	if ((!trace || !fs.existsSync(trace)) && nrf91) {
+	// EVERY nRF91, not the first. The bench runs two nRF9161 DKs reporting the same boardVersion, and
+	// only one of them will be carrying trace-enabled firmware — `find` would keep testing whichever
+	// enumerated first and report a 0-byte trace forever while the working board sat untouched.
+	const cellular = boards.filter(isNrf91)
+	for (const nrf91 of trace && fs.existsSync(trace) ? [] : cellular) {
 		// The trace UART is a SEPARATE VCOM from the application console — feeding it the console is the
 		// classic way to get an empty trace and call it a pass. Take the second port, and say so if the
 		// board only exposes one.
@@ -461,7 +464,10 @@ function checkModemTrace(t: Tool, boards: Board[]): void {
 			} else {
 				record(t.id, `capture on ${nrf91.label}`, "PASS", `${fs.statSync(nonEmpty[0]).size} B of trace`)
 			}
-			trace = nonEmpty[0] ?? trace
+			if (nonEmpty[0]) {
+				trace = nonEmpty[0]
+				break // one board produced real trace; that is the evidence, no need to disturb the others
+			}
 		}
 	}
 	if (!trace || !fs.existsSync(trace)) {
@@ -469,7 +475,9 @@ function checkModemTrace(t: Tool, boards: Board[]): void {
 			t.id,
 			"decode",
 			"SKIP",
-			nrf91 ? "capture produced no trace binary to decode" : "no nRF91 attached and no HIL_MODEM_TRACE",
+			cellular.length
+				? `tried ${cellular.length} nRF91 board(s); none produced a trace binary to decode`
+				: "no nRF91 attached and no HIL_MODEM_TRACE",
 		)
 		return
 	}
