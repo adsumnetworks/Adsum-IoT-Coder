@@ -27,6 +27,11 @@ const SUPPORTED_BINARY_MODULES = ["better-sqlite3"]
 
 const UNIVERSAL_BUILD = !process.argv.includes("-s")
 const IS_VERBOSE = process.argv.includes("-v") || process.argv.includes("--verbose")
+// The VSIX ships the engine as loose files, not as standalone.zip — the zip is a dev convenience for
+// `runclinecore.sh` and the Studio's tarball path. `--no-zip` prepares dist-standalone (vscode stub +
+// per-platform binaries) and stops there, so the release build does not spend a minute writing 40 MB
+// nobody installs.
+const NO_ZIP = process.argv.includes("--no-zip")
 
 async function main() {
 	await installNodeDependencies()
@@ -36,7 +41,79 @@ async function main() {
 	} else {
 		console.log(`Building package for ${os.platform()}-${os.arch()}...`)
 	}
+	if (NO_ZIP) {
+		await pruneToRuntimeClosure()
+		console.log("Skipping standalone.zip (--no-zip): the VSIX ships dist-standalone as loose files.")
+		return
+	}
 	await zipDistribution()
+}
+
+/**
+ * Reduce dist-standalone/node_modules to what the engine actually requires at runtime.
+ *
+ * esbuild bundles everything except the modules listed as `external` for the standalone build; those few must be
+ * resolvable on disk, along with their transitive dependencies. Everything else in here is build-time machinery
+ * (prebuild-install and its tarball stack) that would otherwise ride into every user's VSIX. Computing the closure
+ * instead of listing it means a new external is picked up by adding one name to RUNTIME_EXTERNALS, and `.vscodeignore`
+ * can keep saying simply "ship node_modules".
+ *
+ * Only on the --no-zip (VSIX) path: standalone.zip is a developer artifact and keeps the full tree.
+ */
+async function pruneToRuntimeClosure() {
+	// better-sqlite3 is external too, but it ships from binaries/<platform>/ — never from here. Its own runtime
+	// dependency does live here though: `bindings` is what finds the .node addon, and better-sqlite3 resolves it
+	// through NODE_PATH (see the resolution banner in esbuild.mjs). Its other dependency, prebuild-install, runs
+	// at install time only and is deliberately left out.
+	const RUNTIME_EXTERNALS = ["vscode", "@grpc/reflection", "grpc-health-check", "bindings"]
+	// Declared as dependencies by packages that only consume their types. `require()` never asks for these.
+	const TYPES_ONLY = (name) => name.startsWith("@types/") || name === "undici-types"
+
+	const modulesDir = path.join(BUILD_DIR, "node_modules")
+	const keep = new Set()
+	const walk = (name) => {
+		if (keep.has(name) || TYPES_ONLY(name)) {
+			return
+		}
+		const pkgJson = path.join(modulesDir, name, "package.json")
+		if (!fs.existsSync(pkgJson)) {
+			throw new Error(`standalone runtime dependency '${name}' is missing from ${modulesDir} — the engine would not boot`)
+		}
+		keep.add(name)
+		const pkg = JSON.parse(fs.readFileSync(pkgJson, "utf8"))
+		// Peers count. @grpc/reflection declares @grpc/grpc-js as a peer, requires it at load, and a closure
+		// built from `dependencies` alone drops it — the engine then dies at boot on "Cannot find module".
+		// Optional peers do not: they are absent by design and the package handles that itself.
+		const optionalPeer = (n) => pkg.peerDependenciesMeta?.[n]?.optional === true
+		const deps = [
+			...Object.keys(pkg.dependencies ?? {}),
+			...Object.keys(pkg.peerDependencies ?? {}).filter((n) => !optionalPeer(n)),
+		]
+		for (const dep of deps) {
+			walk(dep)
+		}
+	}
+	RUNTIME_EXTERNALS.forEach(walk)
+
+	// Scoped packages live one level deeper; compare on the full "@scope/name".
+	const present = []
+	for (const entry of fs.readdirSync(modulesDir, { withFileTypes: true })) {
+		if (entry.name.startsWith("@")) {
+			for (const sub of fs.readdirSync(path.join(modulesDir, entry.name))) {
+				present.push(`${entry.name}/${sub}`)
+			}
+		} else if (entry.name !== ".package-lock.json") {
+			present.push(entry.name)
+		}
+	}
+	let dropped = 0
+	for (const name of present) {
+		if (!keep.has(name)) {
+			await rmrf(path.join(modulesDir, name))
+			dropped++
+		}
+	}
+	console.log(`Pruned node_modules to the runtime closure: kept ${keep.size}, dropped ${dropped}.`)
 }
 
 async function installNodeDependencies() {
@@ -46,8 +123,13 @@ async function installNodeDependencies() {
 
 	await cpr(RUNTIME_DEPS_DIR, BUILD_DIR)
 
+	// --ignore-scripts: nothing here is ever run on the build host. better-sqlite3 is the one native dep and
+	// packageAllBinaryDeps() downloads a PREBUILT binary for each of the four target platforms below; a host
+	// compile would produce a fifth binary for this machine's Node ABI that is then deleted. Skipping it also
+	// unties the release build from the host's Node version — node-gyp against Node 26 headers fails outright,
+	// which used to break `npm run package` on a developer machine that had simply upgraded Node.
 	console.log("Running npm install in distribution directory...")
-	execSync("npm install", { stdio: "inherit", cwd: BUILD_DIR })
+	execSync("npm install --ignore-scripts --no-audit --no-fund", { stdio: "inherit", cwd: BUILD_DIR })
 
 	// Move the vscode stub into node_modules (external:"vscode" in the bundle resolves it from there at
 	// runtime). It can't be installed via npm because that creates a symlink which unzips incorrectly on
@@ -79,10 +161,12 @@ async function installNodeDependencies() {
  * When cline-core is installed, the installer should use the correct module for the current platform.
  */
 async function packageAllBinaryDeps() {
-	// Check for native .node modules.
-	const allNativeModules = await glob("**/*.node", { cwd: path.join(BUILD_DIR, "node_modules"), nodir: true })
-	const isAllowed = (path) => SUPPORTED_BINARY_MODULES.some((allowed) => path.includes(allowed))
-	const blocked = allNativeModules.filter((x) => !isAllowed(x))
+	// Check for native modules. With --ignore-scripts nothing has been compiled yet, so look for the SOURCE of a
+	// native module (binding.gyp / a prebuilt .node that came down in the tarball) rather than for build output —
+	// otherwise this guard silently passes and a new native dependency reaches the distribution unpackaged.
+	const nativeMarkers = await glob(["**/binding.gyp", "**/*.node"], { cwd: path.join(BUILD_DIR, "node_modules"), nodir: true })
+	const isAllowed = (p) => SUPPORTED_BINARY_MODULES.some((allowed) => p.split("/").includes(allowed))
+	const blocked = nativeMarkers.filter((x) => !isAllowed(x))
 
 	if (blocked.length > 0) {
 		console.error(`Error: Native node modules cannot be included in the standalone distribution:\n\n${blocked.join("\n")}`)

@@ -1,3 +1,22 @@
+/**
+ * The headless entry point: the same agent as the extension, with no editor around it.
+ *
+ * `src/extension.ts` and this file are two entry points over one core (`src/core/**`) — the same task loop,
+ * the same context management and compaction, the same tools. What differs is the host: VS Code there, a
+ * gRPC hostbridge here. From 0.3.2 the built engine SHIPS INSIDE THE VSIX (`dist-standalone/cline-core.js`),
+ * so anything driving the extension headlessly — the Knowledge Studio, an external agent over MCP — runs the
+ * agent the developer actually installed rather than a separately built approximation of it.
+ *
+ * Boot inputs (all optional): `CLINE_DIR` (settings + secrets), `INSTALL_DIR` (the extension's own files;
+ * defaults to this file's directory, from which the extension root is resolved — see vscode-context.ts),
+ * `PROTOBUS_ADDRESS`, `HOST_BRIDGE_ADDRESS`, `WORKSPACE_STORAGE_DIR`.
+ *
+ * ONE CAVEAT worth knowing before you reach for it: the shipped engine is a production build, and a
+ * production build compiles `IS_DEV` away to `false`. `ADSUM_KBIT_LOCAL` — serving Knowledge bits from an
+ * authoring folder instead of the registry — is gated on `IS_DEV`, so the shipped engine serves registry and
+ * bundled bits only. Ablating an unpublished bit still needs an engine built from a checkout
+ * (`npm run compile-standalone`).
+ */
 import { ExternalCommentReviewController } from "@hosts/external/ExternalCommentReviewController"
 import { ExternalDiffViewProvider } from "@hosts/external/ExternalDiffviewProvider"
 import { ExternalWebviewProvider } from "@hosts/external/ExternalWebviewProvider"

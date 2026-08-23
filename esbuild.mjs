@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -209,6 +210,19 @@ const baseConfig = {
 	},
 }
 
+/** Where the standalone core may find its native modules, in BOTH layouts, resolved before any bundled
+ *  module runs. A dev build keeps better-sqlite3 at `dist-standalone/node_modules`; the engine shipped
+ *  inside a VSIX keeps a per-platform copy under `binaries/<os>-<arch>/node_modules`, and that install
+ *  directory is read-only, so nothing can be copied into place at boot. NODE_PATH + Module._initPaths()
+ *  is the only mechanism that works for both without writing anything. This must be a BANNER: esbuild
+ *  hoists bundled requires to the top, and cline-core.ts creates a SqliteLockManager while booting. */
+const NATIVE_RESOLUTION_BANNER = `;(()=>{try{const p=require('path'),f=require('fs'),M=require('module');
+const key=(process.platform==='win32'?'win':process.platform)+'-'+process.arch;
+const add=(d)=>{if(!f.existsSync(d))return;const cur=(process.env.NODE_PATH||'').split(p.delimiter).filter(Boolean);
+if(cur.includes(d))return;cur.push(d);process.env.NODE_PATH=cur.join(p.delimiter)};
+add(p.join(__dirname,'node_modules'));add(p.join(__dirname,'binaries',key,'node_modules'));
+M.Module._initPaths()}catch(e){}})();`
+
 // Extension-specific configuration
 const extensionConfig = {
 	...baseConfig,
@@ -222,6 +236,7 @@ const standaloneConfig = {
 	...baseConfig,
 	entryPoints: ["src/standalone/cline-core.ts"],
 	outfile: `${destDir}/cline-core.js`,
+	banner: { js: `${baseConfig.banner.js}\n${NATIVE_RESOLUTION_BANNER}` },
 	// These modules need to load files from the module directory at runtime,
 	// so they cannot be bundled.
 	external: ["vscode", "@grpc/reflection", "grpc-health-check", "better-sqlite3"],
@@ -245,7 +260,33 @@ async function main() {
 	} else {
 		await extensionCtx.rebuild()
 		await extensionCtx.dispose()
+		if (standalone) {
+			writeBuildInfo()
+		}
 	}
+}
+
+/** Stamp the engine so anything driving it can say WHICH engine it drove — the Studio records this on every
+ *  run, and an external agent can ask the extension for it. An unstamped engine is one nobody can attribute. */
+function writeBuildInfo() {
+	let sha = null
+	let dirty = false
+	try {
+		const git = (args) => execFileSync("git", args, { cwd: __dirname, encoding: "utf8", timeout: 4000 }).trim()
+		sha = git(["rev-parse", "HEAD"])
+		dirty = git(["status", "--porcelain", "--untracked-files=no"]) !== ""
+	} catch {
+		// A build from a tarball has no git; `null` is the honest answer, never a guess.
+	}
+	const info = {
+		version: JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8")).version,
+		sha,
+		dirty,
+		minified: production,
+		builtAt: new Date().toISOString(),
+	}
+	fs.writeFileSync(path.join(__dirname, destDir, "build-info.json"), JSON.stringify(info, null, 2) + "\n")
+	console.log(`build-info.json — v${info.version} ${String(sha).slice(0, 8)}${dirty ? "-dirty" : ""} minified=${production}`)
 }
 
 main().catch((e) => {
