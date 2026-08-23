@@ -11,6 +11,8 @@ delivery: bundled
 domain: embedded-iot
 platform: nrf
 safety: [flash, process-kill]
+requires:
+  - adsum/nrf/tools/nrf-action
 ---
 
 # nRF Platform Rule: nRF Connect Terminal (rules/nrf-terminal.md)

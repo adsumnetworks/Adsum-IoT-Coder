@@ -10,6 +10,8 @@ tier: certified
 delivery: bundled
 domain: embedded-iot
 platform: universal
+requires:
+  - adsum/nrf/tools/nrf-action
 ---
 
 # Universal Embedded Rules

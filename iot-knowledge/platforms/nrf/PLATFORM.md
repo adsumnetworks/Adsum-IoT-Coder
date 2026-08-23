@@ -11,6 +11,8 @@ delivery: bundled
 domain: embedded-iot
 platform: nrf
 safety: [flash]
+requires:
+  - adsum/nrf/tools/nrf-action
 ---
 
 # Nordic nRF — Platform Index (`platforms/nrf/`)

@@ -165,10 +165,15 @@
 						"python3",
 						"node",
 						"wasm",
-						"native"
+						"native",
+						"host"
 					]
 				},
 				"entry": {
+					"type": "string",
+					"minLength": 1
+				},
+				"host_tool": {
 					"type": "string",
 					"minLength": 1
 				},
