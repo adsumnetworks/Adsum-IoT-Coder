@@ -31,8 +31,10 @@ import { execFileSync, spawnSync } from "node:child_process"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
+import { RegistryClient } from "../src/services/knowledge/registry/RegistryClient"
 import { commandPrefix, launcherName, type ToolRuntime } from "../src/services/tools/launchers"
-import { safeSegment } from "../src/services/tools/ToolCache"
+import { safeSegment, ToolCache } from "../src/services/tools/ToolCache"
+import { materialiseDownloadedTool, toolEntriesFromDownloadedManifest } from "../src/services/tools/ToolResolver"
 
 const ROOT = path.join(__dirname, "..")
 const KNOWLEDGE = path.join(ROOT, "iot-knowledge")
@@ -157,42 +159,91 @@ function bundledTools(): Tool[] {
 }
 
 /**
- * Downloadable tool bits, and whether each is materialised. The k-bit cache's manifest is the
- * registry's own list; the T-bit cache beside it is where verified bundles land.
+ * Drive the DOWNLOAD RAIL, which is the half of the tool surface nothing else tests.
+ *
+ * This is the assertion worth having on a fresh machine. The editor fetches the catalog lazily —
+ * once per session, and only when something actually asks for a k-bit — so a bench that has never
+ * run a task has a cache that predates every tool bit ever published, and any test reading only that
+ * cache silently reports "nothing to test" instead of "the rail never ran".
+ *
+ * So: fetch the catalog, then materialise each tool through the SAME production function the
+ * extension uses — signature verified before a byte is fetched, hashes checked on arrival, atomic
+ * rename into the cache. Not a curl into place; the real thing, minus the editor.
  */
-function downloadableTools(): { advertised: { id: string; version: string }[]; tools: Tool[] } {
-	const gs = globalStorage()
-	const kmf = path.join(gs, "kbit-cache", "manifest.json")
-	const tcache = path.join(gs, "tbit-cache")
+async function materialiseDownloadables(): Promise<{ advertised: { id: string; version: string }[]; cacheRoot: string }> {
+	const cacheRoot = path.join(globalStorage(), "tbit-cache")
 	const advertised: { id: string; version: string }[] = []
-	const tools: Tool[] = []
-	if (!fs.existsSync(kmf)) {
-		return { advertised, tools }
+	if (process.env.HIL_NO_FETCH) {
+		record("download rail", "fetch", "SKIP", "HIL_NO_FETCH set")
+		return { advertised, cacheRoot }
 	}
-	let bits: Array<Record<string, unknown>> = []
+	const client = new RegistryClient(process.env.ADSUM_API_BASE ?? "https://api.adsumnetworks.com")
+	let manifest: { bits?: Array<Record<string, unknown>> } | null = null
 	try {
-		bits = JSON.parse(fs.readFileSync(kmf, "utf-8")).bits ?? []
-	} catch {
-		return { advertised, tools }
+		manifest = (await client.fetchManifest()) as { bits?: Array<Record<string, unknown>> } | null
+	} catch (e) {
+		record("download rail", "fetch catalog", "FAIL", String(e).slice(0, 88))
+		return { advertised, cacheRoot }
 	}
-	for (const b of bits) {
-		// Production's filter: a tool bit with declared artifacts is the downloadable shape.
-		if (b.type !== "tool" || !Array.isArray(b.artifacts) || b.artifacts.length === 0) {
-			continue
-		}
-		const id = String(b.id ?? "")
-		const version = String(b.version ?? "")
-		if (!id || !version) {
-			continue
-		}
+	if (!manifest) {
+		record("download rail", "fetch catalog", "FAIL", "registry returned no catalog")
+		return { advertised, cacheRoot }
+	}
+	const entries = toolEntriesFromDownloadedManifest(manifest.bits ?? [])
+	record("download rail", "fetch catalog", "PASS", `${manifest.bits?.length ?? 0} bits, ${entries.length} tool bit(s)`)
+
+	const cache = new ToolCache(cacheRoot)
+	for (const entry of entries) {
+		const id = String(entry.id ?? "")
+		const version = String(entry.version ?? "")
 		advertised.push({ id, version })
-		const dir = path.join(tcache, safeSegment(id), version)
-		const t = toolAt(id, dir, { runtime: String(b.runtime ?? ""), entry: String(b.entry ?? ""), version }, "downloaded")
+		try {
+			const tool = await materialiseDownloadedTool({
+				entry,
+				cache,
+				fetchArtifact: (sha: string) => client.fetchArtifact(sha),
+			})
+			// A null return is deliberately opaque in production — locked, unsigned and unreachable all
+			// mean "do not advertise". For a test that distinction matters, so say what is on disk.
+			const dir = cache.dirFor(id, version)
+			const landed = fs.existsSync(dir) ? fs.readdirSync(dir).length : 0
+			record(
+				"download rail",
+				`materialise ${id}@${version}`,
+				tool ? "PASS" : "FAIL",
+				tool
+					? `${landed} file(s)`
+					: landed > 0
+						? `${landed} file(s) on disk but not runnable`
+						: "nothing materialised (locked, unsigned or unreachable)",
+			)
+		} catch (e) {
+			record("download rail", `materialise ${id}@${version}`, "FAIL", String(e).slice(0, 88))
+		}
+	}
+	return { advertised, cacheRoot }
+}
+
+/** Read back what actually landed, resolving each the way production resolves a downloaded tool. */
+function downloadedTools(
+	advertised: { id: string; version: string }[],
+	cacheRoot: string,
+	catalog: Map<string, Record<string, unknown>>,
+): Tool[] {
+	const tools: Tool[] = []
+	for (const { id, version } of advertised) {
+		const meta = catalog.get(id) ?? {}
+		const t = toolAt(
+			id,
+			path.join(cacheRoot, safeSegment(id), version),
+			{ runtime: String(meta.runtime ?? ""), entry: String(meta.entry ?? ""), version },
+			"downloaded",
+		)
 		if (t) {
 			tools.push(t)
 		}
 	}
-	return { advertised, tools }
+	return tools
 }
 
 // ── hardware ────────────────────────────────────────────────────────────────────
@@ -288,14 +339,25 @@ function checkBoardShell(t: Tool, boards: Board[]): void {
 	}
 	let ok = 0
 	for (const b of boards.slice(0, 2)) {
-		// A Zephyr shell answers `kernel version`. A board with no shell simply returns nothing — which
-		// is a legitimate answer and still exercises the whole open/write/read/close path the tool owns.
 		const r = run(t, ["--port", consolePort(b), "--cmd", "kernel version", "--timeout", "8"], 90_000, b.serial)
-		if (r.status === 0) {
+		// The tool's exit codes carry the distinction that matters here, and conflating them is how you
+		// get a red suite that is really just describing the firmware on the bench:
+		//   0 — the board answered
+		//   1 — timeout/inconclusive: the port opened, the command went out, nothing came back. That is
+		//       the correct answer for a board running peripheral_uart rather than a Zephyr shell, and it
+		//       still exercises the whole open/write/read/close path the tool owns.
+		//   2+ — the tool could not do its job: port busy, no such port, no pyserial.
+		if (r.status === 0 || r.status === 1) {
 			ok++
-			record(t.id, `talk to ${b.label}`, "PASS", firstLine((r.stdout || "").split("\n").filter(Boolean).pop() ?? ""))
+			const reply = (r.stdout || "").split("\n").filter(Boolean).pop() ?? ""
+			record(
+				t.id,
+				`talk to ${b.label}`,
+				"PASS",
+				r.status === 0 ? firstLine(reply) : "port opened, board did not answer (no shell in this firmware)",
+			)
 		} else {
-			record(t.id, `talk to ${b.label}`, "FAIL", firstLine(r.stderr || r.stdout))
+			record(t.id, `talk to ${b.label}`, "FAIL", `exit ${r.status}: ${firstLine(r.stderr || r.stdout)}`)
 		}
 	}
 	record(t.id, "two-board coverage", ok >= 2 ? "PASS" : "FAIL", `${ok}/2 boards answered`)
@@ -376,19 +438,30 @@ function checkModemTrace(t: Tool, boards: Board[]): void {
 		} else {
 			const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hil-modem-cap-"))
 			const c = run(t, ["--capture", "--port", tracePort, "--seconds", "15", "--out", dir], 180_000, nrf91.serial)
-			const bins = fs.existsSync(dir)
+			// Judge the TRACE, not the file count. The tool writes its pcapng/timeline wrappers either
+			// way, so "some non-empty files appeared" reads as success even when the modem emitted
+			// nothing — precisely the empty-capture defect test:hil shipped for weeks. The raw .bin is
+			// the evidence: an empty one means the DUT produced no trace, which is a skip, not a pass.
+			const raw = fs.existsSync(dir)
 				? fs
 						.readdirSync(dir)
+						.filter((f) => f.endsWith(".bin"))
 						.map((f) => path.join(dir, f))
-						.filter((f) => fs.statSync(f).size > 0)
 				: []
-			record(
-				t.id,
-				`capture on ${nrf91.label}`,
-				bins.length ? "PASS" : "FAIL",
-				bins.length ? `${bins.length} file(s)` : firstLine(c.stderr || c.stdout),
-			)
-			trace = bins.find((f) => f.endsWith(".bin")) ?? trace
+			const nonEmpty = raw.filter((f) => fs.statSync(f).size > 0)
+			if (raw.length === 0) {
+				record(t.id, `capture on ${nrf91.label}`, "FAIL", firstLine(c.stderr || c.stdout) || "no .bin written at all")
+			} else if (nonEmpty.length === 0) {
+				record(
+					t.id,
+					`capture on ${nrf91.label}`,
+					"SKIP",
+					"0-byte trace: the modem emitted nothing — needs trace-enabled firmware (and a SIM to be interesting)",
+				)
+			} else {
+				record(t.id, `capture on ${nrf91.label}`, "PASS", `${fs.statSync(nonEmpty[0]).size} B of trace`)
+			}
+			trace = nonEmpty[0] ?? trace
 		}
 	}
 	if (!trace || !fs.existsSync(trace)) {
@@ -422,11 +495,21 @@ function checkInvokes(t: Tool): void {
 }
 
 // ── main ────────────────────────────────────────────────────────────────────────
-function main(): void {
+async function main(): Promise<void> {
 	console.log("[test:hil-tools] tool bits on real hardware\n")
 
 	const bundled = bundledTools()
-	const { advertised, tools: downloaded } = downloadableTools()
+	const client = new RegistryClient(process.env.ADSUM_API_BASE ?? "https://api.adsumnetworks.com")
+	const { advertised, cacheRoot } = await materialiseDownloadables()
+	const catalog = new Map<string, Record<string, unknown>>()
+	try {
+		for (const b of ((await client.fetchManifest()) as { bits?: Array<Record<string, unknown>> } | null)?.bits ?? []) {
+			catalog.set(String(b.id), b)
+		}
+	} catch {
+		/* already reported above */
+	}
+	const downloaded = downloadedTools(advertised, cacheRoot, catalog)
 	const tools = [...bundled, ...downloaded.filter((d) => !bundled.some((b) => b.id === d.id))]
 	const missing = advertised.filter((a) => !downloaded.some((d) => d.id === a.id))
 
@@ -442,7 +525,7 @@ function main(): void {
 		console.log(`   NOT MATERIALISED  ${m.id}@${m.version} — the download rail has not run for this bit`)
 	}
 	if (advertised.length === 0) {
-		console.log("   (no registry manifest cached — open the extension once so it syncs)")
+		console.log("   (the registry advertised no tool bits for this extension version)")
 	}
 
 	const boards = discoverBoards()
@@ -474,4 +557,7 @@ function main(): void {
 	process.exit(fail > 0 ? 1 : 0)
 }
 
-main()
+main().catch((e) => {
+	console.error("[test:hil-tools] harness error:", e)
+	process.exit(1)
+})
