@@ -73,3 +73,15 @@ export function verifyVersionSignature(v: SignedVersion, keys: string[] = PINNED
 
 /** True when a version is safe to materialise and run. */
 export const signatureAllowsRun = (verdict: SignatureVerdict): boolean => verdict === "ok" || verdict === "not-enforced"
+
+/**
+ * Whether this build enforces signatures at all — i.e. whether any key is pinned.
+ *
+ * Signing ships as a complete feature with enforcement OFF: the operator's call, until the
+ * implications for every author's publish flow are understood. The precedence rule consults this to
+ * decide whether replacing VSIX content additionally requires a valid signature. Turning enforcement
+ * on is one edit — pin a key in `PINNED_STEWARD_KEYS` — and nothing else in the client changes.
+ */
+export function signatureEnforcementState(): "ok" | "not-enforced" {
+	return PINNED_STEWARD_KEYS.length > 0 ? "ok" : "not-enforced"
+}

@@ -4,6 +4,7 @@ import path from "node:path"
 import { HostProvider } from "@/hosts/host-provider"
 import { creditFieldsFromYaml, creditFromMeta, type KbitCredit, type KbitMetaLike } from "@/services/knowledge/kbit/credit"
 import { extractFrontmatter, stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
+import { choose, type PrecedenceReason, reasonText } from "@/services/knowledge/precedence"
 import { BitCache, sha256 } from "@/services/knowledge/registry/BitCache"
 import {
 	type DownloadedManifest,
@@ -15,10 +16,14 @@ import { fileExistsAtPath } from "@/utils/fs"
 /**
  * KnowledgeResolver — resolves a K-bit by its stable `id` to its on-disk location/content.
  *
- * Resolve order (P2): **bundled → cache → fetch**.
+ * Resolve order: **local dev override → registry (when newer and runnable) → bundled**.
  *  - Bundled bits come from `iot-knowledge/manifest.json` (id → path), shipped in the signed VSIX.
  *  - Downloaded bits come from the registry (RegistryClient) into an on-machine cache (BitCache),
- *    content-addressed and **hash-verified before use**. Bundled always wins on an id clash.
+ *    content-addressed and **hash-verified before use**.
+ *  - On an id clash the NEWER copy wins, if this extension can run it — see `precedence.ts`. Bundled
+ *    is the last resort, and it is always reachable: no failure path returns "" for an id that is
+ *    bundled and readable. Before 0.3.0 bundled always won, which made a shipped bit unimprovable
+ *    without a release.
  *
  * Identity is the `id`, not the path (rename-safe). `loadBit()` strips frontmatter so a bit's YAML
  * metadata never enters the LLM prompt. Offline-safe: cache/fetch failures fall back, never throw.
@@ -182,13 +187,27 @@ export async function creditForKbPath(absPath: string): Promise<KbitCredit | nul
  * catalog's `meta`, never in the blob (see `downloadedMeta`).
  */
 export async function bitSdkRequirement(id: string): Promise<{ minNcs?: string; title?: string } | null> {
+	// Through the precedence rule, not "bundled first": a board bit is republished precisely when its
+	// SDK floor moves, so reading min_ncs off the bundled copy would gate on a number the developer is
+	// no longer being served — and a gate that quietly uses the wrong number looks exactly like a gate
+	// that decided not to fire.
 	try {
-		const entry = (await manifest()).get(id)
-		if (entry) {
-			return { minNcs: (entry as { min_ncs?: string }).min_ncs, title: entry.title }
+		const bundled = (await manifest()).get(id) ?? null
+		const row = await catalogRow(id)
+		const decision = choose(id, bundled, row as Record<string, unknown> | null, {
+			...precedenceEnv,
+			localPath: localKbits()?.get(id),
+			exempt: SYNC_EXEMPT_IDS,
+			kind: "bit",
+		})
+		if (decision.copy === "registry" && row) {
+			return { minNcs: row.min_ncs as string | undefined, title: row.title }
+		}
+		if (decision.copy === "bundled" && bundled) {
+			return { minNcs: (bundled as { min_ncs?: string }).min_ncs, title: bundled.title }
 		}
 	} catch {
-		// fall through to the downloaded tier
+		// fall through to the local override / downloaded tier
 	}
 	// Dev override (F5): the bit is a real file on disk with its frontmatter intact, and the registry
 	// may hold nothing for it yet — an unpublished or just-edited bit is the whole point of the
@@ -230,13 +249,51 @@ let manifestRevalidated = false
 /** Optional telemetry sink for K-bit resolution. Wired by the extension at activation; a no-op in the
  *  CLI / node:test so this low-level module never imports telemetryService/HostProvider. */
 type KbitTelemetry = {
-	downloadedResolved?(p: { id: string; source: "cache" | "registry" }): void
+	// `override` is orthogonal to cache-vs-fetch: an override served from the verified cache is both.
+	// Keeping them separate leaves cache-hit-rate dashboards comparable across this change.
+	downloadedResolved?(p: { id: string; source: "cache" | "registry"; override?: boolean; version?: string }): void
 	registryUnreachable?(p: { id?: string }): void
 	cacheReconciled?(p: { purged: number }): void
 	/** Fired when the CRA Readiness Check workflow loads — the H1 acquisition signal for the CRA feature. */
 	craCheckStarted?(): void
 }
 /** The CRA Readiness Check workflow id — loading it means a CRA check is running (telemetry signal). */
+/**
+ * Ids that must never be overridden because something reads them SYNCHRONOUSLY and cannot await a
+ * fetch (`resolveBitPathSync` → DemoManager). Overriding one would give a single install two
+ * different versions of the same bit depending on which caller asked. Guarded by kbit.test.ts.
+ */
+const SYNC_EXEMPT_IDS: ReadonlySet<string> = new Set([
+	"adsum/nrf/workflows/demo-debug",
+	"adsum/nrf/actions/flash",
+	"adsum/nrf/actions/capture-logs",
+	"adsum/nrf/sdks/ncs/protocols/ble",
+])
+
+/**
+ * The installed extension version and whether signature enforcement is on — INJECTED at activation.
+ *
+ * This module deliberately does not import `src/registry.ts` (it would pull package.json and the
+ * command tables into the resolver). The default is an empty version, which makes every override
+ * refuse: in node:test and in a CLI host with nothing wired, bundled wins, which is the safe answer.
+ */
+let precedenceEnv: { extVersion: string; enforcement: "ok" | "not-enforced" } = {
+	extVersion: "",
+	enforcement: "not-enforced",
+}
+export function setPrecedenceEnv(env: { extVersion: string; enforcement: "ok" | "not-enforced" }): void {
+	precedenceEnv = env
+}
+
+/** Which copy actually served a bit this session. The credit line reads this, never `hasBit()`. */
+export type BitProvenance = "bundled" | "downloaded" | "override" | "local"
+const provenanceById = new Map<string, BitProvenance>()
+
+/** How `id` was resolved, if it has been loaded this session. */
+export function provenanceOf(id: string): BitProvenance | undefined {
+	return provenanceById.get(id)
+}
+
 const CRA_WORKFLOW_ID = "adsum/cra/workflows/cra-readiness"
 
 /**
@@ -383,87 +440,127 @@ function localKbits(): Map<string, string> | null {
 	return map
 }
 
-/** Load a downloaded (non-bundled) bit: local override (dev) → verified cache → fetch (verify, cache if open) → "". */
-async function loadDownloadedBit(id: string): Promise<string> {
-	const localPath = localKbits()?.get(id)
-	if (localPath) {
-		try {
-			console.info(`[kbit] ${id} ← local override`)
-			const text = readFileSync(localPath, "utf-8")
-			recordCreditFromText(id, text)
-			return stripFrontmatter(text)
-		} catch (e) {
-			console.error(`KnowledgeResolver: failed to read local-override bit "${id}"`, e)
-		}
-	}
+/**
+ * The catalog row for an id, with the one retry that covers "the registry was down when the session
+ * started and is reachable now". Hoisted out of the loader so the precedence rule sees the same row
+ * whichever caller asks — a warm catalog is never invalidated mid-session, by design: a bit that
+ * changes underneath a running task would make one transcript cite two different versions.
+ */
+async function catalogRow(id: string): Promise<DownloadedManifestEntry | null> {
 	let entry = (await downloadedManifest()).get(id)
 	if (!entry && !manifestRevalidated) {
-		// Catalog wasn't successfully revalidated yet (registry down at session start) and the id is
-		// missing — drop the memo and retry, in case the registry is reachable now.
 		downloadedMap = null
 		entry = (await downloadedManifest()).get(id)
 	}
-	if (!entry) {
-		console.error(`KnowledgeResolver: unknown bit id "${id}" (not bundled, not in registry)`)
-		return ""
-	}
+	return entry ?? null
+}
+
+/**
+ * Fetch and verify a registry copy: verified cache hit, else fetch + hash check.
+ * Returns the body, or the reason it could not be trusted — never a half-answer.
+ */
+async function registryBody(
+	id: string,
+	entry: DownloadedManifestEntry,
+	override: boolean,
+): Promise<{ body: string } | { reason: PrecedenceReason }> {
 	const { content_hash: hash } = entry
 	const cached = await cache().readBlob(hash) // null if absent OR corrupt (hash mismatch)
 	if (cached !== null) {
-		kbitTelemetry.downloadedResolved?.({ id, source: "cache" })
-		console.info(`[kbit] ${id} ← registry (cache)`)
-		recordCredit(id, entry)
-		return stripFrontmatter(cached)
+		kbitTelemetry.downloadedResolved?.({ id, source: "cache", override, version: entry.version })
+		return { body: cached }
 	}
 	const fetched = await registry().fetchBlob(hash)
 	if (fetched === null) {
 		kbitTelemetry.registryUnreachable?.({ id })
-		console.error(`KnowledgeResolver: could not load downloaded bit "${id}" (registry unreachable)`)
+		// A proprietary bit is never written to disk, so offline it can never be served — a distinct
+		// and permanent condition, unlike an open bit that simply has not been cached yet.
+		return { reason: isOpenLicense(entry.license) ? "fetch-failed" : "offline-uncached" }
+	}
+	if (sha256(fetched) !== hash) {
+		return { reason: "hash-failed" }
+	}
+	// Only persist OPEN bits to disk as plaintext. Proprietary bits are served from this fetch but not
+	// cached (no on-disk plaintext) until encrypt-at-rest exists (P5).
+	if (isOpenLicense(entry.license)) {
+		await cache().writeBlob(hash, fetched)
+	}
+	kbitTelemetry.downloadedResolved?.({ id, source: "registry", override, version: entry.version })
+	return { body: fetched }
+}
+
+/**
+ * The last resort. For an id that is bundled and readable this ALWAYS returns its body: every caller
+ * treats "" as "no such bit", so returning "" on a fetch failure would turn a working shipped bit
+ * into a missing one — the single worst outcome this change could have.
+ */
+async function bundledBody(id: string, entry: ManifestEntry | null, reason: PrecedenceReason): Promise<string> {
+	if (!entry) {
+		console.error(`KnowledgeResolver: unknown bit id "${id}" (not bundled, not in registry)`)
 		return ""
 	}
-	if (sha256(fetched) === hash) {
-		// Only persist OPEN bits to disk as plaintext. Proprietary bits are served from this fetch but
-		// not cached (no on-disk plaintext) until encrypt-at-rest exists (P5).
-		const open = isOpenLicense(entry.license)
-		if (open) {
-			await cache().writeBlob(hash, fetched)
+	const why = reason === "no-registry-row" || reason === "exempt" ? "" : ` (${reasonText(reason)})`
+	try {
+		const full = path.join(knowledgeRoot(), entry.path)
+		if (await fileExistsAtPath(full)) {
+			console.info(`[kbit] ${id} ← bundled${why}`)
+			recordCredit(id, entry)
+			provenanceById.set(id, "bundled")
+			return stripFrontmatter(await fs.readFile(full, "utf-8"))
 		}
-		kbitTelemetry.downloadedResolved?.({ id, source: "registry" })
-		console.info(`[kbit] ${id} ← registry (fetched${open ? ", cached" : ", proprietary — not cached"})`)
-		recordCredit(id, entry)
-		return stripFrontmatter(fetched)
+	} catch (e) {
+		console.error(`KnowledgeResolver: failed to read bit "${id}"`, e)
 	}
-	console.error(`KnowledgeResolver: downloaded bit "${id}" failed hash verification`)
 	return ""
 }
 
 /**
- * Bit body (frontmatter stripped) for a bit id; "" if unknown/unreadable (logged).
- * Order: **bundled → cache → fetch**. Bundled ids resolve exactly as before (zero regression);
- * only non-bundled ids reach the downloaded tier.
+ * Bit body (frontmatter stripped) for a bit id; "" only if the id is genuinely unknown or the bundled
+ * file is unreadable. Order: local dev override → registry (newer + runnable) → bundled.
  */
 export async function loadBit(id: string): Promise<string> {
 	if (id === CRA_WORKFLOW_ID) {
 		kbitTelemetry.craCheckStarted?.()
 		craRanThisSession = true // arm the cross-task "core feature tried after CRA" signal (consumed at next task start)
 	}
-	const full = await resolveBitPath(id) // bundled manifest only
-	if (full) {
+
+	const bundled = (await manifest()).get(id) ?? null
+	const row = await catalogRow(id)
+	const decision = choose(id, bundled, row as Record<string, unknown> | null, {
+		...precedenceEnv,
+		localPath: localKbits()?.get(id),
+		exempt: SYNC_EXEMPT_IDS,
+		kind: "bit",
+	})
+
+	if (decision.copy === "local") {
 		try {
-			if (await fileExistsAtPath(full)) {
-				console.info(`[kbit] ${id} ← bundled`)
-				const entry = (await manifest()).get(id)
-				if (entry) {
-					recordCredit(id, entry)
-				}
-				return stripFrontmatter(await fs.readFile(full, "utf-8"))
-			}
+			console.info(`[kbit] ${id} ← local override`)
+			const text = readFileSync(decision.path, "utf-8")
+			recordCreditFromText(id, text)
+			provenanceById.set(id, "local")
+			return stripFrontmatter(text)
 		} catch (e) {
-			console.error(`KnowledgeResolver: failed to read bit "${id}"`, e)
+			console.error(`KnowledgeResolver: failed to read local-override bit "${id}"`, e)
+			return bundledBody(id, bundled, "unreadable")
 		}
-		return ""
 	}
-	return loadDownloadedBit(id)
+
+	if (decision.copy === "registry" && row) {
+		const got = await registryBody(id, row, bundled !== null)
+		if ("body" in got) {
+			// Metadata follows the bytes: the served copy's own author, licence and version are what
+			// gets credited. Reading them off the bundled manifest would credit the wrong version — and
+			// for a licence change, the wrong terms.
+			recordCredit(id, row)
+			provenanceById.set(id, bundled ? "override" : "downloaded")
+			console.info(`[kbit] ${id} ← registry${bundled ? " (override)" : ""}`)
+			return stripFrontmatter(got.body)
+		}
+		return bundledBody(id, bundled, got.reason)
+	}
+
+	return bundledBody(id, bundled, decision.copy === "bundled" ? decision.reason : "no-registry-row")
 }
 
 /** True if a bit id exists in the bundled manifest (sync-safe; does not hit the registry). */
@@ -491,18 +588,29 @@ export interface BitIndexEntry {
  */
 export async function listAllBits(): Promise<BitIndexEntry[]> {
 	const out = new Map<string, BitIndexEntry>()
+	const catalog = await downloadedManifest()
 	for (const [id, e] of await manifest()) {
+		// A `path` is a promise that a zero-dep reader can serve this body. When the registry copy wins
+		// that promise is false — the bundled file on disk is the OLD text — so the path is withheld and
+		// the row names the version that will actually serve.
+		const row = catalog.get(id) ?? null
+		const decision = choose(id, e, row as Record<string, unknown> | null, {
+			...precedenceEnv,
+			exempt: SYNC_EXEMPT_IDS,
+			kind: "bit",
+		})
+		const served = decision.copy === "registry" && row ? row : e
 		out.set(id, {
 			id,
-			title: e.title,
-			author: e.author,
-			version: e.version,
-			kind: e.type,
-			platform: e.platform,
-			path: path.join(knowledgeRoot(), e.path),
+			title: served.title,
+			author: served.author,
+			version: served.version,
+			kind: served.type,
+			platform: served.platform,
+			...(decision.copy === "registry" ? {} : { path: path.join(knowledgeRoot(), e.path) }),
 		})
 	}
-	for (const [id, e] of await downloadedManifest()) {
+	for (const [id, e] of catalog) {
 		if (!out.has(id)) {
 			out.set(id, {
 				id,

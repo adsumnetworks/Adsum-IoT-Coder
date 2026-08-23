@@ -2474,8 +2474,19 @@ export class TelemetryService {
 		})
 	}
 
-	/** K-bit: a DOWNLOADED bit resolved (bundled loads aren't tracked — they always resolve; would be noise). */
-	public captureKbitDownloadedResolved(props: { id: string; source: "cache" | "registry" }) {
+	/**
+	 * K-bit: a DOWNLOADED bit resolved (bundled loads aren't tracked — they always resolve; would be noise).
+	 *
+	 * `source` stays cache-vs-fetch so hit-rate dashboards remain comparable across the 0.3.0 precedence
+	 * change; `override` is the separate question of whether this copy REPLACED one that shipped in the
+	 * VSIX. An override served from the verified cache is both, which is why they are two fields.
+	 */
+	public captureKbitDownloadedResolved(props: {
+		id: string
+		source: "cache" | "registry"
+		override?: boolean
+		version?: string
+	}) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.KBIT_DOWNLOADED_RESOLVED, properties: { ...props } })
 	}
 
@@ -2579,7 +2590,7 @@ export class TelemetryService {
 
 	/** Tool bit: invoked via execute_command. Records the catalog id and how it was delivered — never
 	 *  the arguments, the target port or any output, which would carry workspace detail. */
-	public captureToolBitInvoked(ulid: string, bitId: string, delivery: "bundled" | "downloaded") {
+	public captureToolBitInvoked(ulid: string, bitId: string, delivery: "bundled" | "downloaded" | "override") {
 		this.capture({ event: TelemetryService.EVENTS.TASK.TOOL_BIT_INVOKED, properties: { ulid, bitId, delivery } })
 	}
 
