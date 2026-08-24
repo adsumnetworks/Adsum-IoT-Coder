@@ -2,7 +2,7 @@
 id: adsum/rules/tool-routing
 title: "Tool Routing Directives"
 type: knowledge
-version: 1.1.0
+version: 1.2.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -33,6 +33,19 @@ Standard shell terminals on embedded development machines often lack the cross-c
    Some operations require dedicated tools that go beyond simple CLI commands (e.g., live log capture with multi-device synchronization, reset coordination, transport auto-detection).
    - Refer to `platforms/<platform>/PLATFORM.md` for which dedicated tools are available and what they do.
    - These tools handle complexity that shell commands alone cannot (e.g., simultaneous multi-device RTT capture with file naming).
+
+   **A Device tool's NAME is not a command on your PATH.** The "Device tools" block lists each one as
+   **name** followed by the exact command to run — usually an absolute interpreter path and script path,
+   e.g. `- **posture-scan** — /usr/bin/node /…/tbit-cache/…/posture_scan.mjs --platform nrf|esp …`.
+   Knowledge bits refer to a tool by that NAME and write usage as `name --args`. That is shorthand for the
+   advertised line, not something you can type.
+   - **Find the tool by NAME in the block, then copy its command VERBATIM** and append your arguments.
+   - **Never conclude a tool is unavailable because its bare name failed.** `posture-scan` on its own is
+     "command not found" on every machine — that says nothing about whether the tool is there.
+   - Only a line carrying a ⚠ prerequisite is genuinely unavailable. Tell the developer what is missing;
+     do not write your own script in its place.
+   - A bit that offers a fallback "if the tool is not advertised" means *not present in the block at all* —
+     not "the name did not run".
 
 4. **Never Mix Terminals**
    A command that works in `execute_command` may NOT work in a platform terminal, and vice-versa. Do not assume cross-compatibility.
