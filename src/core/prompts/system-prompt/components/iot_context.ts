@@ -836,7 +836,18 @@ function renderDeviceTools(tools: ResolvedTool[]): string {
 	let out = "#### Device tools (shipped with Adsum, run with `execute_command`)\n\n"
 	for (const t of tools) {
 		const usage = t.usage ? ` ${t.usage}` : ""
-		out += `- \`${t.command}${usage}\``
+		// LEAD WITH THE NAME THE KNOWLEDGE BITS USE.
+		//
+		// Bits refer to a tool by its short name — cra-posture says "use the `posture-scan` Tool bit when it
+		// is advertised in the Device tools block", and offers a hand-rolled fallback when it is not. The
+		// line used to open with the resolved command, which for a node tool is an absolute interpreter path
+		// followed by `.../posture_scan.mjs`: the token `posture-scan` appears nowhere in it, and neither
+		// does a summary when the descriptor has none. An agent looking for what the bit named could not
+		// find it, took the fallback in good faith, and hand-rolled a twenty-symbol grep — which then
+		// stalled waiting for command approval because the path was outside the workspace.
+		//
+		// The name is what makes the advertisement answer the question the bit asks of it.
+		out += `- **${t.name}** — \`${t.command}${usage}\``
 		if (t.summary) {
 			out += ` — ${t.summary}`
 		}

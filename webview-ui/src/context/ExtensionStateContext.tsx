@@ -312,7 +312,10 @@ export const ExtensionStateContextProvider: React.FC<{
 		nativeToolCallSetting: false,
 		enableParallelToolCalling: false,
 	})
-	const [expandTaskHeader, setExpandTaskHeader] = useState(true)
+	// Collapsed to start. Expanded, the header opens on the full task text plus the session's Knowledge and
+	// Tool bit roster — fourteen rows on a CRA run — so the first thing a developer sees is provenance
+	// rather than their own conversation. The roster is worth having one click away, not in the way.
+	const [expandTaskHeader, setExpandTaskHeader] = useState(false)
 	const [didHydrateState, setDidHydrateState] = useState(false)
 
 	const [showWelcome, setShowWelcome] = useState(false)

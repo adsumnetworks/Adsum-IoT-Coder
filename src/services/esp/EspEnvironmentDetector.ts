@@ -363,8 +363,13 @@ async function resolveEspChips(devices: EspDevice[]): Promise<void> {
 
 	await Promise.all(
 		devices.map(async (d) => {
-			const key = d.serialNumber || d.port
-			const cached = _chipCache.get(key)
+			// A PORT PATH IS NOT AN IDENTITY. The cache is module-level and cleared only by an explicit
+			// refresh — deliberately, so an identified board is not re-probed every cycle — so keying on the
+			// port would hand the PREVIOUS board's chip, revision and MAC to whatever is plugged in next at
+			// the same path, indefinitely and with no sign of it. A board with no USB serial is therefore
+			// re-probed rather than remembered: slower, and never wrong about which silicon it is looking at.
+			const key = d.serialNumber || null
+			const cached = key ? _chipCache.get(key) : undefined
 			if (cached) {
 				d.chip = cached.chip
 				d.chipRevision = cached.chipRevision
@@ -373,7 +378,9 @@ async function resolveEspChips(devices: EspDevice[]): Promise<void> {
 			}
 			const result = await probeChip(idfPython, d.port)
 			if (result.chip) {
-				_chipCache.set(key, result)
+				if (key) {
+					_chipCache.set(key, result)
+				}
 				d.chip = result.chip
 				d.chipRevision = result.chipRevision
 				d.mac = result.mac

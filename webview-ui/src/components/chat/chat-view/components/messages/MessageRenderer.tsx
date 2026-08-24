@@ -66,7 +66,14 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
 	// Several bits loaded in one turn → ONE grouped credit line, never a stack (design/01 credit law).
 	if (isKbitGroup(messageOrGroup)) {
 		const bits = messageOrGroup.map((m) => parseKbitPayload(m.text)).filter((p): p is KbitLoadedPayload => p !== null)
-		return bits.length > 0 ? <KbitCredit bits={bits} /> : null
+		// ChatRow wraps every other row in a px-4 gutter. This path renders KbitCredit directly, so without
+		// the same padding the credit mark alone sits flush against the panel edge while everything above and
+		// below it is indented — which is exactly how it looked.
+		return bits.length > 0 ? (
+			<div className="px-4">
+				<KbitCredit bits={bits} />
+			</div>
+		) : null
 	}
 
 	if (isToolGroup(messageOrGroup)) {
