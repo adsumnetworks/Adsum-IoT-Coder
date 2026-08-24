@@ -134,25 +134,50 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 			const endSeen = new Promise<void>((resolve) => {
 				signalEnd = resolve
 			})
-			const startedAt = Date.now()
+			/**
+			 * SEQUENCE, don't match. The matching version of this listener failed in production with one log
+			 * line — "end event for a DIFFERENT execution — ignored" — and then silence. The event's
+			 * `execution` is not reference-equal to the object `executeCommand` returned (different wrappers
+			 * across the extension-host API), its commandLine did not equal our command string, and the
+			 * 500 ms anti-stale guard rejected any terminal-matched event that arrived quickly — which is
+			 * precisely when a fast command's GENUINE end event arrives. The rescue rejected the rescue.
+			 *
+			 * The property that is actually reliable: VS Code serialises shell executions per terminal, so a
+			 * previous command's end event always fires before our start event. Therefore: before our start
+			 * event is seen, an end event on this terminal is stale — ignore it; after our start event, the
+			 * next end event on this terminal is OURS, whatever object identity it carries. Reference and
+			 * commandLine stay as fast paths for when the start event itself is missed.
+			 */
+			let sawOurStart = false
 			// Reached through a narrow local shape rather than the ambient type: this extension's
-			// @types/vscode declares onDidStartTerminalShellExecution but not its End counterpart, and the
-			// optional call means an older VS Code simply never arms the backstop instead of throwing.
-			const windowWithEndEvent = vscode.window as unknown as {
+			// @types/vscode (1.84) predates both shell-execution events (1.93) — the optional calls mean an
+			// older VS Code simply never arms the backstop instead of throwing.
+			const windowWithShellEvents = vscode.window as unknown as {
+				onDidStartTerminalShellExecution?: (listener: (e: { execution: unknown; terminal?: unknown }) => void) => {
+					dispose: () => void
+				}
 				onDidEndTerminalShellExecution?: (listener: (e: { execution: unknown; terminal?: unknown }) => void) => {
 					dispose: () => void
 				}
 			}
-			const endListener = windowWithEndEvent.onDidEndTerminalShellExecution?.((e) => {
+			const startListener = windowWithShellEvents.onDidStartTerminalShellExecution?.((e) => {
+				if (e.terminal === terminal) {
+					sawOurStart = true
+					const line = (e.execution as { commandLine?: { value?: string } })?.commandLine?.value
+					Logger.info(`[TerminalProcess] start event on our terminal (cmd=${line?.slice(0, 60) ?? "?"})`)
+				}
+			})
+			const endListener = windowWithShellEvents.onDidEndTerminalShellExecution?.((e) => {
 				const byRef = e.execution === execution
 				const byCmd = (e.execution as { commandLine?: { value?: string } })?.commandLine?.value === command
-				const byTerm = e.terminal === terminal && Date.now() - startedAt > 500
-				if (byRef || byCmd || byTerm) {
-					Logger.info(`[TerminalProcess] end event received (ref=${byRef} cmd=${byCmd} term=${byTerm})`)
+				const bySequence = e.terminal === terminal && sawOurStart
+				if (byRef || byCmd || bySequence) {
+					Logger.info(`[TerminalProcess] end event accepted (ref=${byRef} cmd=${byCmd} seq=${bySequence})`)
 					executionEnded = true
 					signalEnd?.()
 				} else {
-					Logger.info("[TerminalProcess] end event for a DIFFERENT execution — ignored")
+					const line = (e.execution as { commandLine?: { value?: string } })?.commandLine?.value
+					Logger.info(`[TerminalProcess] end event ignored as stale (theirCmd=${line?.slice(0, 60) ?? "?"})`)
 				}
 			})
 			if (!endListener) {
@@ -321,6 +346,7 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 					}
 				}
 			} finally {
+				startListener?.dispose()
 				endListener?.dispose()
 			}
 
