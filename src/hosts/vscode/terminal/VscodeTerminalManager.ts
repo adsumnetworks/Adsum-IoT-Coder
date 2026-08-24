@@ -96,6 +96,29 @@ declare module "vscode" {
 	}
 }
 
+/**
+ * The command that moves a shell to `cwd`, in the dialect that shell speaks.
+ *
+ * `cd "path"` is not universal. On Windows `cmd.exe` it changes directory but NOT drive — from `C:\\src` a
+ * plain `cd "D:\\work"` silently leaves you on C:, and every relative path afterwards resolves in the wrong
+ * tree with no error to notice. `cd /d` is the fix there. PowerShell's `cd` is an alias for `Set-Location`,
+ * which does change drive, but `Set-Location -LiteralPath` is the honest form: a path containing `[` or `]`
+ * is a wildcard pattern to PowerShell otherwise, and Windows users do have folders with brackets in them.
+ *
+ * Exported so the cross-platform behaviour is testable without a terminal.
+ */
+export function cdCommandFor(shellPath: string | undefined, cwd: string): string {
+	const shell = (shellPath ?? "").toLowerCase()
+	if (shell.includes("powershell") || shell.includes("pwsh")) {
+		return `Set-Location -LiteralPath "${cwd}"`
+	}
+	if (shell.endsWith("cmd.exe") || shell.endsWith("cmd")) {
+		return `cd /d "${cwd}"`
+	}
+	// bash, zsh, fish, sh — and the sane default when the profile is unknown.
+	return `cd "${cwd}"`
+}
+
 export class VscodeTerminalManager implements ITerminalManager {
 	private terminalIds: Set<number> = new Set()
 	private processes: Map<number, VscodeTerminalProcess> = new Map()
@@ -235,6 +258,48 @@ export class VscodeTerminalManager implements ITerminalManager {
 		return mergePromise(process, promise)
 	}
 
+	/**
+	 * Put a terminal in `cwd`, whatever directory it is currently sitting in.
+	 *
+	 * One implementation, used by every path that hands back an existing terminal — the two name-matching
+	 * branches and the reuse-any-free-terminal branch. It was written inline in the last of those; the first
+	 * two simply did not do it, which is the whole defect.
+	 *
+	 * Returns quietly when the shell never reports its directory: shell integration is what supplies
+	 * `shellIntegration.cwd`, and a terminal without it cannot be verified — issuing the `cd` and carrying on
+	 * beats refusing to run.
+	 */
+	private async ensureTerminalCwd(info: TerminalInfo, cwd: string): Promise<void> {
+		const current = info.terminal.shellIntegration?.cwd
+		if (current && arePathsEqual(vscode.Uri.file(cwd).fsPath, current.fsPath)) {
+			return
+		}
+		console.log(`[TerminalManager] Terminal ${info.id} is in ${current?.fsPath ?? "an unknown directory"}, moving to ${cwd}`)
+		const cwdPromise = new Promise<void>((resolve, reject) => {
+			info.pendingCwdChange = cwd
+			info.cwdResolved = { resolve, reject }
+		})
+		await this.runCommand(info as unknown as ITerminalInfo, cdCommandFor(info.shellPath, cwd))
+		await new Promise((resolve) => setTimeout(resolve, 100))
+		if (this.isCwdMatchingExpected(info)) {
+			info.cwdResolved?.resolve()
+			info.pendingCwdChange = undefined
+			info.cwdResolved = undefined
+			return
+		}
+		try {
+			await Promise.race([
+				cwdPromise,
+				new Promise<void>((_, reject) =>
+					setTimeout(() => reject(new Error(`CWD timeout: Failed to update to ${cwd}`)), 1000),
+				),
+			])
+		} catch (_err) {
+			info.pendingCwdChange = undefined
+			info.cwdResolved = undefined
+		}
+	}
+
 	async getOrCreateTerminal(cwd: string, terminalName?: string): Promise<ITerminalInfo> {
 		const terminals = TerminalRegistry.getAllTerminals()
 		const expectedShellPath =
@@ -246,6 +311,14 @@ export class VscodeTerminalManager implements ITerminalManager {
 			const namedTerminal = terminals.find((t) => t.terminal.name.toLowerCase().includes(terminalName.toLowerCase()))
 			if (namedTerminal) {
 				console.log(`[TerminalManager] Found registered terminal matching name "${terminalName}"`)
+				// A NAME IS NOT A DIRECTORY. This branch used to return the terminal as found, skipping the
+				// cwd matching every other path performs — so a terminal left in some earlier task's folder
+				// was handed back and every command ran there. Observed 2026-08-24: the workspace was
+				// /tmp/nus-demo/central_uart and the adopted "Adsum IoT Coder" terminal sat in
+				// ~/ncs/v3.4.0/nrf/samples/bluetooth/central_uart, so a CRA run listed a compliance/ folder
+				// that existed in the workspace and not there, found nothing, and stalled on the emptiness.
+				// It looks like "it used to work": a fresh window has no stale named terminal to adopt.
+				await this.ensureTerminalCwd(namedTerminal, cwd)
 				this.terminalIds.add(namedTerminal.id)
 				return namedTerminal as unknown as ITerminalInfo
 			}
@@ -257,6 +330,8 @@ export class VscodeTerminalManager implements ITerminalManager {
 			if (externalTerminal) {
 				console.log(`[TerminalManager] Found external terminal matching name "${terminalName}", adopting it.`)
 				const newInfo = TerminalRegistry.registerTerminal(externalTerminal)
+				// Adopted from the window, so its directory is whatever the last person to use it left behind.
+				await this.ensureTerminalCwd(newInfo, cwd)
 				this.terminalIds.add(newInfo.id)
 				return newInfo as unknown as ITerminalInfo
 			}
@@ -295,44 +370,8 @@ export class VscodeTerminalManager implements ITerminalManager {
 		if (this.terminalReuseEnabled) {
 			const availableTerminal = terminals.find((t) => !t.busy && t.shellPath === expectedShellPath)
 			if (availableTerminal) {
-				// Set up promise and tracking for CWD change
-				const cwdPromise = new Promise<void>((resolve, reject) => {
-					availableTerminal.pendingCwdChange = cwd
-					availableTerminal.cwdResolved = { resolve, reject }
-				})
-
-				// Navigate back to the desired directory
-				// Cast to ITerminalInfo for interface compatibility
-				const cdProcess = this.runCommand(availableTerminal as unknown as ITerminalInfo, `cd "${cwd}"`)
-
-				// Wait for the cd command to complete before proceeding
-				await cdProcess
-
-				// Add a small delay to ensure terminal is ready after cd
-				await new Promise((resolve) => setTimeout(resolve, 100))
-
-				// Either resolve immediately if CWD already updated or wait for event/timeout
-				if (this.isCwdMatchingExpected(availableTerminal)) {
-					if (availableTerminal.cwdResolved) {
-						availableTerminal.cwdResolved.resolve()
-					}
-					availableTerminal.pendingCwdChange = undefined
-					availableTerminal.cwdResolved = undefined
-				} else {
-					try {
-						// Wait with a timeout for state change event to resolve
-						await Promise.race([
-							cwdPromise,
-							new Promise<void>((_, reject) =>
-								setTimeout(() => reject(new Error(`CWD timeout: Failed to update to ${cwd}`)), 1000),
-							),
-						])
-					} catch (_err) {
-						// Clear pending state on timeout
-						availableTerminal.pendingCwdChange = undefined
-						availableTerminal.cwdResolved = undefined
-					}
-				}
+				// Same navigation the named branches now perform — one implementation, not three.
+				await this.ensureTerminalCwd(availableTerminal, cwd)
 				this.terminalIds.add(availableTerminal.id)
 				// Cast to ITerminalInfo for interface compatibility
 				return availableTerminal as unknown as ITerminalInfo
