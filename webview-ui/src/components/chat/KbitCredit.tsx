@@ -69,6 +69,21 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 		return null
 	}
 	const authors = [...new Set(bits.map((b) => b.author))]
+	// "12 bits" is not what these are called. A reader sees Knowledge bits and Tool bits; the bare noun is
+	// house shorthand that leaked into the UI. Name the group by what is actually in it — and let the mark
+	// follow, so a group of Tool bits does not show the Knowledge diamond.
+	const kinds = new Set(bits.map((b) => b.kind))
+	const groupKind: KbitLoadedPayload["kind"] = kinds.size === 1 && kinds.has("tool") ? "tool" : "knowledge"
+	const groupNoun =
+		kinds.size > 1
+			? "Knowledge & Tool bits"
+			: kinds.has("tool")
+				? bits.length === 1
+					? "Tool bit"
+					: "Tool bits"
+				: bits.length === 1
+					? "Knowledge bit"
+					: "Knowledge bits"
 
 	return (
 		<div className="text-[11px] mt-[6px]" style={{ color: "var(--vscode-descriptionForeground)" }}>
@@ -91,13 +106,13 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 			) : (
 				<div className="flex flex-col gap-[4px]">
 					<div className="flex items-center gap-[7px] flex-wrap">
-						<KindChip kind="knowledge" />
+						<KindChip kind={groupKind} />
 						<span className="uppercase tracking-wide font-semibold text-[8.5px] opacity-70">credits</span>
 						<button
 							className="bg-transparent border-0 p-0 cursor-pointer"
 							onClick={() => setExpanded(!expanded)}
 							style={{ color: BRAND_CYAN_600 }}>
-							{bits.length} bits · by {authors.join(" + ")} {expanded ? "▴" : "▾"}
+							{bits.length} {groupNoun} · by {authors.join(" + ")} {expanded ? "▴" : "▾"}
 						</button>
 					</div>
 					{expanded &&
