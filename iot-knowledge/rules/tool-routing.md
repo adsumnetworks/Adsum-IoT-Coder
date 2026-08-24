@@ -2,7 +2,7 @@
 id: adsum/rules/tool-routing
 title: "Tool Routing Directives"
 type: knowledge
-version: 1.2.1
+version: 1.3.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -58,3 +58,23 @@ Standard shell terminals on embedded development machines often lack the cross-c
    - **Read a file:** `cat` → `Get-Content`. **List recursively:** `find`/`ls -R` → `Get-ChildItem -Recurse`. **Discard errors:** `2>/dev/null` → `2>$null`.
    - On PowerShell, **never** use `$_` / `ForEach-Object` in a one-liner passed to the terminal — the `$_` gets stripped and the command fails to parse; use `Select-Object -ExpandProperty <Prop>` instead. **Never** mix CMD syntax (`dir /s /b`, `2>nul`, `type`).
    - Keep commands **single-line and simple**. A multi-line `python3 -c "…"` / heredoc with nested quotes **hangs the terminal** (it waits at a continuation prompt) — use `read_file` + reason instead.
+
+6. **Every command must end by itself. A command that waits for a human is a wedged run.**
+   You are not at the keyboard. Nothing you type can answer a prompt, so a command that stops to ask one
+   never returns: no output, no error, no end — the run simply sits there while the terminal beside it
+   plainly shows the question. Seen on the bench: `JLinkExe -device NRF9161_XXAA … -CommanderScript` — the
+   device name was not recognised, J-Link opened its interactive selection prompt, and the run parked for
+   eight and a half minutes.
+   - **Give interactive tools their non-interactive flags.** J-Link Commander: `-NoGui 1 -ExitOnError 1
+     -AutoConnect 1` (and prefer `nrfutil device` / `west` for reset, erase, flash and recovery — they are
+     non-interactive by design). Package managers: `-y`. `git`: `GIT_TERMINAL_PROMPT=0`. `ssh`: `-o
+     BatchMode=yes`.
+   - **Close the stdin door anyway:** append `< /dev/null` (POSIX). A tool that still tries to read then
+     fails fast instead of waiting.
+   - **Put a wall clock on anything that reads a port or waits on a network** — `timeout 30 …` — so a quiet
+     radio or an unattached modem ends the command instead of the run.
+   - **No heredocs, no interactive REPLs, no pagers.** Write a file with a single-line `printf`/`echo` or
+     with `write_to_file`, never `cat > f <<'EOF'`. Pipe anything long through `| cat`, never `less`/`more`,
+     and never launch `python3`, `gdb` or a shell without a script to run.
+   - **If a command hangs, that is a defect in how you invoked it.** Do not report it as a tool being broken
+     or the hardware being unresponsive; re-issue it in a form that must terminate.
