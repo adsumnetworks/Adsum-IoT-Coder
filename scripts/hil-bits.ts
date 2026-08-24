@@ -57,7 +57,13 @@ function corpus(): Bit[] {
 	const bits = JSON.parse(fs.readFileSync(mf, "utf8")).bits ?? []
 	return bits
 		.filter((b: any) => typeof b.id === "string" && typeof b.path === "string")
-		.map((b: any) => ({ id: b.id, type: b.type, version: String(b.version), path: b.path, abs: path.join(KNOWLEDGE, b.path) }))
+		.map((b: any) => ({
+			id: b.id,
+			type: b.type,
+			version: String(b.version),
+			path: b.path,
+			abs: path.join(KNOWLEDGE, b.path),
+		}))
 }
 
 const frontmatterOf = (text: string): string => /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? ""
@@ -82,7 +88,12 @@ function requiresOf(fm: string): string[] {
 	}
 	return block
 		.split("\n")
-		.map((l) => l.replace(/^[ \t]*-[ \t]*/, "").trim().replace(/^["']|["']$/g, ""))
+		.map((l) =>
+			l
+				.replace(/^[ \t]*-[ \t]*/, "")
+				.trim()
+				.replace(/^["']|["']$/g, ""),
+		)
 		.filter(Boolean)
 }
 
@@ -127,7 +138,12 @@ async function main(): Promise<void> {
 
 		// REQUIRES — every declared dependency exists.
 		const dangling = requiresOf(fm).filter((r) => !ids.has(r))
-		record(bit.id, "REQUIRES", dangling.length ? "FAIL" : "PASS", dangling.length ? `unresolvable: ${dangling.join(", ")}` : "")
+		record(
+			bit.id,
+			"REQUIRES",
+			dangling.length ? "FAIL" : "PASS",
+			dangling.length ? `unresolvable: ${dangling.join(", ")}` : "",
+		)
 
 		// CREDIT — somebody is named.
 		const author = scalar(fm, "author")
@@ -141,10 +157,20 @@ async function main(): Promise<void> {
 		if (isHostTool) {
 			// HOST-SHAPE — nothing to spawn, so nothing may be declared as spawnable.
 			const bad = [entry ? "entry" : null, /^artifacts:/m.test(fm) ? "artifacts" : null].filter(Boolean)
-			record(bit.id, "HOST-SHAPE", bad.length ? "FAIL" : "PASS", bad.length ? `a host tool must declare no ${bad.join(" and no ")}` : "")
+			record(
+				bit.id,
+				"HOST-SHAPE",
+				bad.length ? "FAIL" : "PASS",
+				bad.length ? `a host tool must declare no ${bad.join(" and no ")}` : "",
+			)
 			continue
 		}
-		record(bit.id, "ENTRY", entry && fs.existsSync(path.join(dir, entry)) ? "PASS" : "FAIL", entry ? `${entry} is not on disk` : "no entry declared")
+		record(
+			bit.id,
+			"ENTRY",
+			entry && fs.existsSync(path.join(dir, entry)) ? "PASS" : "FAIL",
+			entry ? `${entry} is not on disk` : "no entry declared",
+		)
 
 		// HASH — the descriptor must not lie about its own bytes.
 		const declared = [...fm.matchAll(/^\s*-\s*path:\s*(\S+)\s*\n\s*sha256:\s*([0-9a-f]{64})/gm)]
@@ -168,6 +194,7 @@ async function main(): Promise<void> {
 	}
 
 	const registryCount = await registryChecks(ids)
+	const folderCount = folderChecks(ids)
 
 	const n = (o: Outcome) => results.filter((r) => r.outcome === o).length
 	const failed = results.filter((r) => r.outcome === "FAIL")
@@ -176,11 +203,80 @@ async function main(): Promise<void> {
 	}
 	console.log(
 		`\n[test:hil-bits] ${n("PASS")} passed · ${n("FAIL")} failed · ${n("SKIP")} skipped · ${n("WARN")} warning(s) ` +
-			`over ${bits.length} bundled bit(s)${registryCount ? ` + ${registryCount} advertised by the registry` : " (registry not reached)"}`,
+			`over ${bits.length} bundled bit(s)${registryCount ? ` + ${registryCount} advertised by the registry` : " (registry not reached)"}` +
+			`${folderCount ? ` + ${folderCount} in the authoring folder` : ""}`,
 	)
 	if (n("FAIL")) {
 		process.exit(1)
 	}
+}
+
+/**
+ * The bits nobody checks yet: the AUTHORING FOLDER.
+ *
+ * A bit is drafted in Adsum-Backend/kbits, then published, and only then does anything look at it — the
+ * bundled pass reads the VSIX manifest and the registry pass reads what the catalog advertises. So the one
+ * moment when a mistake is cheapest to fix, before it is served to anyone, is the one moment nothing is
+ * looking. That is backwards, and it matters more now that drafts deliberately sit unpublished waiting for
+ * an operator to approve them.
+ *
+ * This pass reads the folder directly and applies the checks that do not need a resolver: an id, a version,
+ * a named author, no dangling `requires:`, and a body that is more than its own frontmatter. It cannot
+ * check LOADS — an unpublished bit has no resolver entry, which is the point of it being unpublished — so
+ * it does not pretend to. Silent when the folder is absent, so a machine without the sibling checkout is
+ * not failed for it.
+ */
+function folderChecks(knownIds: Set<string>): number {
+	const root = path.join(ROOT, "..", "Adsum-Backend", "kbits")
+	if (!fs.existsSync(root)) {
+		return 0
+	}
+	const files: string[] = []
+	const walk = (dir: string): void => {
+		for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+			const full = path.join(dir, e.name)
+			if (e.isDirectory()) {
+				walk(full)
+			} else if (e.name.endsWith(".md")) {
+				files.push(full)
+			}
+		}
+	}
+	walk(root)
+	if (files.length === 0) {
+		return 0
+	}
+	console.log(`\n[test:hil-bits] ${files.length} bit(s) in the authoring folder — checked before anything publishes them\n`)
+
+	// Every id the folder itself declares counts as resolvable: a draft may legitimately require a sibling
+	// draft that no registry has heard of yet.
+	const folderIds = new Set<string>()
+	const parsed: { rel: string; fm: string; body: string }[] = []
+	for (const abs of files) {
+		const raw = fs.readFileSync(abs, "utf8")
+		const fm = frontmatterOf(raw)
+		const id = scalar(fm, "id")
+		if (id) {
+			folderIds.add(id)
+		}
+		parsed.push({ rel: path.relative(root, abs), fm, body: raw.slice(raw.indexOf("---", 3) + 3) })
+	}
+
+	for (const { rel, fm, body } of parsed) {
+		const id = scalar(fm, "id") ?? `folder:${rel}`
+		record(id, "FOLDER-ID", scalar(fm, "id") ? "PASS" : "FAIL", `${rel} declares no id`)
+		record(id, "FOLDER-VERSION", scalar(fm, "version") ? "PASS" : "FAIL", `${rel} declares no version`)
+		record(id, "FOLDER-CREDIT", scalar(fm, "author") ? "PASS" : "FAIL", `${rel} names no author — the byline is the point`)
+		record(id, "FOLDER-BODY", body.trim().length > 0 ? "PASS" : "FAIL", `${rel} is frontmatter with nothing under it`)
+		const dangling = requiresOf(fm).filter((r) => !knownIds.has(r) && !folderIds.has(r))
+		record(
+			id,
+			"FOLDER-REQUIRES",
+			dangling.length ? "FAIL" : "PASS",
+			dangling.length ? `unresolvable: ${dangling.join(", ")}` : "",
+		)
+	}
+	return files.length
 }
 
 /**
@@ -214,7 +310,9 @@ async function registryChecks(bundledIds: Set<string>): Promise<number> {
 		return 0
 	}
 	const ids = new Set(advertised.map((r) => String(r.id)))
-	console.log(`\n[test:hil-bits] ${advertised.length} bit(s) advertised by the registry for v${ExtensionRegistryInfo.version}\n`)
+	console.log(
+		`\n[test:hil-bits] ${advertised.length} bit(s) advertised by the registry for v${ExtensionRegistryInfo.version}\n`,
+	)
 
 	for (const row of advertised) {
 		const id = String(row.id)

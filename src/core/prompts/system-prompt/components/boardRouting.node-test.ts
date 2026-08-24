@@ -92,23 +92,26 @@ describe("every routed file actually exists", () => {
 	/**
 	 * The ESP half, which this suite never covered — and the gap is live.
 	 *
-	 * `getEspBoardKnowledgeFile` routes four targets; only two of them have a bit in either home. The
-	 * bench's own board is an ESP32-C6, so an ESP session there is assembled with no board knowledge and
-	 * no sign that any was expected. Declared rather than skipped, so the day a bit is authored the list
-	 * shrinks instead of the gap being forgotten.
+	 * `getEspBoardKnowledgeFile` routes four targets, and every one of them now has a bit. It did not:
+	 * esp32-c6 and esp32-c3 were dead links, so an ESP session on the bench's own C6 was assembled with no
+	 * board knowledge and no sign that any was expected — `readKnowledgeFile` swallows a missing file and
+	 * returns "". Both were authored on 2026-08-24 and the set is empty; it stays here because the ratchet
+	 * below is what turned the gap from invisible into a failing assertion, and the next added route will
+	 * hit the same wall.
 	 */
 	const ESP_TARGETS = ["esp32s3", "esp32c6", "esp32c3", "esp32"]
-	const ESP_KNOWN_MISSING = new Set(["platforms/esp/boards/esp32-c6.md", "platforms/esp/boards/esp32-c3.md"])
+	const ESP_KNOWN_MISSING = new Set<string>()
 
 	test("every ESP target this router claims routes somewhere", () => {
 		const unrouted = ESP_TARGETS.filter((t) => !getEspBoardKnowledgeFile(t))
 		assert.deepEqual(unrouted, [], `ESP targets with no route: ${unrouted.join(", ")}`)
 	})
 
-	test("no ESP route is a dead link, except the gaps named above", () => {
-		const roots = [path.join(process.cwd(), "iot-knowledge"), path.join(process.cwd(), "..", "Adsum-Backend", "kbits")].filter(
-			(r) => fs.existsSync(r),
-		)
+	test("no ESP route is a dead link", () => {
+		const roots = [
+			path.join(process.cwd(), "iot-knowledge"),
+			path.join(process.cwd(), "..", "Adsum-Backend", "kbits"),
+		].filter((r) => fs.existsSync(r))
 		if (!roots.some((r) => r.includes("Adsum-Backend"))) {
 			return // sibling registry folder absent — file existence is unknowable from here
 		}
