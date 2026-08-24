@@ -107,29 +107,68 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 			 * only start after VS Code has said the command is over.
 			 */
 			let executionEnded = false
+			/**
+			 * The end signal must be a PROMISE in the race, not a boolean read before blocking.
+			 *
+			 * The first version of this backstop checked `executionEnded` once per iteration and then did a
+			 * bare `await next`. For the very stream it exists to rescue — one that delivers ZERO chunks —
+			 * that await blocks immediately and forever, and the end event that fires moments later has
+			 * nobody listening for it. Measured on the bench 2026-08-24: a completed `mkdir` showed 12
+			 * output events in the transcript; the stuck `cat … && wc -l` showed 0, with VS Code's own
+			 * command decorations proving the command end WAS detected. The rescue existed and was parked
+			 * behind the exact await it was meant to bound.
+			 *
+			 * Matching is belt-and-braces because the event's `execution` object is not guaranteed to be
+			 * reference-equal to ours across the extension-host API layer: reference first, then the
+			 * command line the execution reports, then same-terminal-after-500ms (a stale end event for a
+			 * PREVIOUS command on this terminal arrives within milliseconds of our start; ours cannot).
+			 */
+			let signalEnd: (() => void) | undefined
+			const endSeen = new Promise<void>((resolve) => {
+				signalEnd = resolve
+			})
+			const startedAt = Date.now()
 			// Reached through a narrow local shape rather than the ambient type: this extension's
 			// @types/vscode declares onDidStartTerminalShellExecution but not its End counterpart, and the
 			// optional call means an older VS Code simply never arms the backstop instead of throwing.
 			const windowWithEndEvent = vscode.window as unknown as {
-				onDidEndTerminalShellExecution?: (listener: (e: { execution: unknown }) => void) => { dispose: () => void }
+				onDidEndTerminalShellExecution?: (listener: (e: { execution: unknown; terminal?: unknown }) => void) => {
+					dispose: () => void
+				}
 			}
 			const endListener = windowWithEndEvent.onDidEndTerminalShellExecution?.((e) => {
-				if (e.execution === execution) {
+				const byRef = e.execution === execution
+				const byCmd = (e.execution as { commandLine?: { value?: string } })?.commandLine?.value === command
+				const byTerm = e.terminal === terminal && Date.now() - startedAt > 500
+				if (byRef || byCmd || byTerm) {
+					console.log(`[TerminalProcess] shell execution ended (ref=${byRef} cmd=${byCmd} term=${byTerm})`)
 					executionEnded = true
+					signalEnd?.()
 				}
 			})
 			const iterator = stream[Symbol.asyncIterator]()
+			const graceOut = (): Promise<IteratorResult<string>> =>
+				new Promise((resolve) => setTimeout(() => resolve({ done: true, value: undefined }), TRAILING_CHUNK_GRACE_MS))
 			try {
 				for (;;) {
 					const next = iterator.next()
-					const step = executionEnded
-						? await Promise.race([
-								next,
-								new Promise<IteratorResult<string>>((resolve) =>
-									setTimeout(() => resolve({ done: true, value: undefined }), TRAILING_CHUNK_GRACE_MS),
-								),
-							])
-						: await next
+					let step: IteratorResult<string>
+					if (executionEnded) {
+						// Already ended: drain whatever trailing chunks land, stop when quiet.
+						step = await Promise.race([next, graceOut()])
+					} else {
+						// Not ended yet: wait for a chunk OR the end event — never a bare await on the stream.
+						const first = await Promise.race([
+							next.then((r) => ({ kind: "chunk" as const, r })),
+							endSeen.then(() => ({ kind: "end" as const })),
+						])
+						if (first.kind === "chunk") {
+							step = first.r
+						} else {
+							console.log("[TerminalProcess] end event won the race — draining with grace timeout")
+							step = await Promise.race([next, graceOut()])
+						}
+					}
 					if (step.done) {
 						break
 					}
