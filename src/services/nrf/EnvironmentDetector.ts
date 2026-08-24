@@ -506,9 +506,18 @@ export function boardFromEntry(entry: DeviceListEntry): NrfBoard {
 	if (!board.deviceName && !board.deviceFamily) {
 		board.deviceName = nordicChipFromProduct(entry.usbProduct)
 	}
-	// A Nordic USB device that still names no part is named by what it IS: the dongle's product string
-	// says "nRF Sniffer for Bluetooth LE", which is exactly what the developer needs to read. Better than
-	// a bare serial, and far better than the device being absent.
+	// A Nordic USB device that still names no part is named by what it IS — its product string.
+	//
+	// Note what that string is: FIRMWARE identity, not hardware. The bench's dongle reports product
+	// "nRF Sniffer for Bluetooth LE" and vendor "ZEPHYR"; flash it with something else and both change.
+	// That is not a shortcoming here, it is the only identity such a device publishes: a DK is named from
+	// its on-board J-Link (devkit.boardVersion -> PCA -> board-identity), and a dongle has no debugger, so
+	// the board type is not hidden — it is never sent.
+	//
+	// Deliberately NOT derived from VID/PID. 1915:522a with a vendor string of "ZEPHYR" is a Zephyr USB
+	// identity rather than a Nordic-hardware one, and the same pair appears on any Zephyr USB application
+	// running on Nordic silicon — so mapping it to "nRF52840 Dongle" would confidently name the wrong
+	// board. Naming the role it is actually performing is both truthful and the more useful fact.
 	if (!board.deviceName && !board.deviceFamily && !board.boardVersion && board.nordicUsb && entry.usbProduct) {
 		board.deviceName = entry.usbProduct
 	}
