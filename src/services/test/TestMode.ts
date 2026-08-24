@@ -53,6 +53,22 @@ async function checkForTestMode(): Promise<boolean> {
  * Initialize test mode detection and setup file watchers
  * @param webviewProvider The webview provider instance
  */
+/** The Controller, whether we were handed the provider or the controller itself. */
+const controllerOf = (p: any) => p?.controller ?? p
+
+/**
+ * `webviewProvider` is a WebviewProvider; the CONTROLLER hangs off it.
+ *
+ * createTestServer's parameter is typed `Controller` and it immediately reaches for
+ * `controller.stateManager` to switch auto-approval on. Passing the provider instead meant that read threw
+ * on undefined, the try/catch swallowed it as a log line, and test mode came up with auto-approval NEVER
+ * enabled — so every driven task stopped at its first approval prompt and sat there. The log said it
+ * plainly all along: "Error updating auto approval settings: TypeError: Cannot read properties of undefined
+ * (reading 'getGlobalSettingsKey')".
+ *
+ * The parameter stays `any` because this is also called from tests with a stub; `controllerOf` below is
+ * what makes the intent explicit and tolerates either shape.
+ */
 export async function initializeTestMode(webviewProvider?: any): Promise<vscode.Disposable[]> {
 	const disposables: vscode.Disposable[] = []
 
@@ -66,7 +82,7 @@ export async function initializeTestMode(webviewProvider?: any): Promise<vscode.
 		vscode.commands.executeCommand("setContext", "cline.isTestMode", true)
 
 		// Set up test server if in test mode
-		createTestServer(webviewProvider)
+		createTestServer(controllerOf(webviewProvider))
 	}
 
 	// Watch for evals.env files being added or removed
@@ -78,7 +94,7 @@ export async function initializeTestMode(webviewProvider?: any): Promise<vscode.
 		if (!isInTestMode()) {
 			setTestMode(true)
 			vscode.commands.executeCommand("setContext", "cline.isTestMode", true)
-			createTestServer(webviewProvider)
+			createTestServer(controllerOf(webviewProvider))
 		}
 	})
 
