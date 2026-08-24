@@ -9,7 +9,6 @@ import {
 	MAX_UNRETRIEVED_LINES,
 	PROCESS_HOT_TIMEOUT_COMPILING,
 	PROCESS_HOT_TIMEOUT_NORMAL,
-	TERMINAL_SNAPSHOT_TIMEOUT_MS,
 	TRAILING_CHUNK_GRACE_MS,
 	TRUNCATE_KEEP_LINES,
 } from "@/integrations/terminal/constants"
@@ -66,10 +65,7 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 				// Bounded rather than removed: when it works it is genuinely useful (it is what turns a
 				// silent `mkdir` into "ran to completion, produced no output"). When it does not answer in a
 				// few seconds, no snapshot is better than no run.
-				const terminalSnapshot = await Promise.race([
-					getLatestTerminalOutput(),
-					new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), TERMINAL_SNAPSHOT_TIMEOUT_MS)),
-				])
+				const terminalSnapshot = await getLatestTerminalOutput()
 				if (terminalSnapshot && terminalSnapshot.trim()) {
 					const framing =
 						reason === "silent"
