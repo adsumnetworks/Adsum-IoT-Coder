@@ -48,14 +48,21 @@ const ESP_TERMINAL_NAME = "Adsum ESP-IDF"
  * we run subsequent commands bare (no re-sourcing — faster and cleaner). Keyed
  * by terminal reference and evicted on close, so a reopened terminal re-sources.
  */
-const sourcedTerminals = new Set<vscode.Terminal>()
+const sourcedTerminals = new Set<string>()
 let closeListenerRegistered = false
 function ensureCloseListener(): void {
 	if (closeListenerRegistered) {
 		return
 	}
 	closeListenerRegistered = true
-	vscode.window.onDidCloseTerminal((t) => sourcedTerminals.delete(t))
+	// Our terminal closing means every cwd that shared it lost its sourced shell. The set is keyed by
+	// (cwd, name) now rather than by terminal object, so clear all of ours rather than deleting one
+	// reference — a stale "already sourced" is what leaves later commands running bare.
+	vscode.window.onDidCloseTerminal((t) => {
+		if (t.name === ESP_TERMINAL_NAME) {
+			sourcedTerminals.clear()
+		}
+	})
 }
 
 /** Narrow the host's `process.platform` to the resolver's supported set. */
@@ -158,23 +165,45 @@ export interface PreparedEspTerminal {
  * command the caller marks it via {@link markEspTerminalSourced} and subsequent
  * commands run bare (the env persists in the shell session).
  */
-export async function prepareEspTerminal(): Promise<PreparedEspTerminal> {
+export async function prepareEspTerminal(cwd?: string): Promise<PreparedEspTerminal> {
 	ensureCloseListener()
 	let terminal = findOurEspTerminal()
 	if (!terminal) {
 		terminal = vscode.window.createTerminal({ name: ESP_TERMINAL_NAME })
 	}
 	terminal.show()
-	return { terminal, terminalName: terminal.name, needsSourcing: !sourcedTerminals.has(terminal) }
+	return { terminal, terminalName: terminal.name, needsSourcing: !sourcedTerminals.has(sourceKey(cwd)) }
 }
 
 /**
- * Record that the IDF env has been sourced in this terminal. Call ONLY after a
+ * The identity the SOURCING state must be keyed by.
+ *
+ * Reported 2026-08-24, in the developer's words: *"you are switching terminal, you source a one and u
+ * used other."* Exactly right. Two different notions of "our terminal" were in play:
+ *
+ *   - `prepareEspTerminal` found one by NAME alone and tracked sourcing against that object.
+ *   - the command then ran through `executeCommandTool(..., terminalName, ...)`, which resolves via
+ *     `getOrCreateTerminal(cwd, name)` — by cwd AND name.
+ *
+ * So a command issued from a different cwd landed in a DIFFERENT terminal, one that had never sourced
+ * the IDF env — while the sourced flag was set on the first one. The symptom is brutal to read: `build`
+ * works and shows "Activating ESP-IDF", then `flash` fails with "idf.py is not recognized" and no
+ * banner, and from then on even `execute` fails, because the first terminal is marked sourced and every
+ * later command runs bare.
+ *
+ * Keying on the same (cwd, name) pair the executor uses makes the two agree by construction.
+ */
+function sourceKey(cwd?: string): string {
+	return `${cwd ?? ""}::${ESP_TERMINAL_NAME}`
+}
+
+/**
+ * Record that the IDF env has been sourced for this working directory. Call ONLY after a
  * sourced command actually ran (IDF_PATH resolved), so a failed first command
  * re-sources next time rather than running bare in an unsourced shell.
  */
-export function markEspTerminalSourced(terminal: vscode.Terminal): void {
-	sourcedTerminals.add(terminal)
+export function markEspTerminalSourced(cwd?: string): void {
+	sourcedTerminals.add(sourceKey(cwd))
 }
 
 export interface BuiltEspCommand {

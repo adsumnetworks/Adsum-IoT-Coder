@@ -101,7 +101,9 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 		// Get our integrated terminal and shape the command: source the IDF env
 		// only on the first command in that terminal (the env persists after),
 		// bare on subsequent commands.
-		const prepared = await prepareEspTerminal()
+		// Pass the cwd: the executor resolves its terminal by (cwd, name), so the sourcing state has to
+		// be keyed the same way or we mark one terminal sourced and run the command in another.
+		const prepared = await prepareEspTerminal(config.cwd)
 		// Version resolution mirrors the nRF handler: explicit `idf_version` param → persisted per-project
 		// choice → project pin → sole install → ask once. The explicit choice is remembered so the next
 		// build is silent (no re-asking, no falling back to a plain terminal).
@@ -135,7 +137,7 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 		// The env is now sourced in this terminal — subsequent commands run bare.
 		// Mark only after the sourced command ran (built.command existed ⇒ IDF_PATH resolved).
 		if (prepared.needsSourcing) {
-			markEspTerminalSourced(prepared.terminal)
+			markEspTerminalSourced(config.cwd)
 		}
 		// Telemetry (mirror the Nordic handler). `sayPath` is the clean command label (e.g. "idf.py flash").
 		if (userRejected) {
