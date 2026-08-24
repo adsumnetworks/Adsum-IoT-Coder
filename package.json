@@ -511,7 +511,8 @@
 		"test:engine-config": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/headless/engineConfigExport.test.ts",
 		"compile-standalone:prod": "node esbuild.mjs --standalone --production && node scripts/package-standalone.mjs --no-zip",
 		"test:standalone-package": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/headless/standalonePackage.test.ts",
-		"test:shipped-engine-boot": "node scripts/test-shipped-engine-boot.mjs"
+		"test:shipped-engine-boot": "node scripts/test-shipped-engine-boot.mjs",
+		"test:hil-precedence": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-precedence.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [

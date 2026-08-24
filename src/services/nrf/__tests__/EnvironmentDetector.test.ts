@@ -4,6 +4,7 @@ import { tmpdir } from "os"
 import { join } from "path"
 import "should"
 import {
+	boardFromEntry,
 	collectBuildNcsVersions,
 	isNordicBoard,
 	nordicChipFromProduct,
@@ -294,6 +295,60 @@ describe("parseDeviceListFull — carries the USB product string through", () =>
 		entries.should.have.length(1)
 		entries[0].usbProduct!.should.equal("Seeed Studio XIAO nRF54LM20A CMSIS-DAP")
 		nordicChipFromProduct(entries[0].usbProduct)!.should.equal("nRF54LM20A")
+	})
+
+	/**
+	 * The name the developer recognises must SURVIVE the parse.
+	 *
+	 * It is resolved here, from the board-identity bit, and it was being dropped one line later:
+	 * DeviceListEntry had no field to hold it, and the NrfBoard built from the entry copied five
+	 * property names by hand. The webview's own PCA table had been deleted in the same change, so
+	 * its fallback stopped being "the old name" and became the raw number — every Nordic board in
+	 * the welcome strip read as "PCA10153" with no indication of what that is.
+	 *
+	 * Nothing caught it: the resolver was right, the webview was right, and the field went missing
+	 * in the copy between them. So the assertion is on the boundary, not on either side.
+	 */
+	it("boardFromEntry carries boardName through — the copy where it was being dropped", () => {
+		const board = boardFromEntry({
+			serialNumber: "1050992288",
+			deviceFamily: "NRF91",
+			boardVersion: "PCA10153",
+			boardName: "nRF9161 DK",
+		})
+		board.boardVersion!.should.equal("PCA10153")
+		board.boardName!.should.equal("nRF9161 DK")
+	})
+
+	it("boardFromEntry leaves boardName undefined when the table did not know the PCA", () => {
+		const board = boardFromEntry({ serialNumber: "X", boardVersion: "PCA99999" })
+		;(board.boardName === undefined).should.be.true()
+		board.boardVersion!.should.equal("PCA99999") // the UI then shows the raw number, as it always did
+	})
+
+	it("carries boardName — the recognisable name, resolved from the board-identity bit", () => {
+		const dks = [
+			JSON.stringify({ type: "task_begin", data: { task: { id: "d", name: "list_devices" } } }),
+			JSON.stringify({
+				type: "info",
+				data: {
+					devices: [
+						{ serialNumber: "1050256273", traits: { jlink: true, devkit: true }, devkit: { deviceFamily: "NRF52", boardVersion: "PCA10056" } },
+						{ serialNumber: "1050992288", traits: { jlink: true, devkit: true }, devkit: { deviceFamily: "NRF91", boardVersion: "PCA10153" } },
+					],
+				},
+			}),
+		].join("\n")
+		const entries = parseDeviceListFull(dks)
+		entries.should.have.length(2)
+		// Resolution needs a host to find the bundled bit; without one the table is empty by design and
+		// the field is undefined. Assert the CARRY either way — that is the boundary that broke.
+		entries[0].should.have.property("boardName")
+		entries[1].should.have.property("boardName")
+		if (entries[0].boardName !== undefined) {
+			entries[0].boardName!.should.equal("nRF52840 DK")
+			entries[1].boardName!.should.equal("nRF9161 DK")
+		}
 	})
 })
 

@@ -30,14 +30,38 @@ IS_WINDOWS = os.name == "nt"
 PCAP_HEADER_BYTES = 24
 
 
+def resolve_port(port):
+    """The real device node behind ``port``.
+
+    nrfutil resolves --port through its OWN enumeration and will not follow a symlink: given
+    ``/dev/bench/nrf-sniffer-ble`` it answers ``Could not find board ID`` and writes a 24-byte pcap.
+    That path is not exotic — a udev symlink is the documented way to name a board stably on Linux,
+    and it is what survives a replug. The capture then looks like quiet air rather than a capture that
+    never started, so the reader goes and checks the antenna.
+
+    Resolved here, once, at the boundary where the tool hands the port to nrfutil. Anything that is not
+    a resolvable symlink (a COM port on Windows, a plain node, a path that does not exist yet) is passed
+    through exactly as given.
+    """
+    try:
+        if os.path.islink(port):
+            return os.path.realpath(port)
+    except OSError:
+        pass
+    return port
+
+
 def build_command(args):
     timeout_ms = max(1000, int(args.duration * 1000))
+    port = resolve_port(args.port)
+    if port != args.port:
+        print(f"[sniffer] --port {args.port} -> {port} (nrfutil does not follow symlinks)", flush=True)
     cmd = [
         args.nrfutil,
         "ble-sniffer",
         "sniff",
         "--port",
-        args.port,
+        port,
         "--output-pcap-file",
         str(args.output),
         "--timeout",
@@ -93,7 +117,11 @@ def stop(proc):
 
 def main():
     ap = argparse.ArgumentParser(description="Capture over-the-air BLE packets to a PCAP via nrfutil ble-sniffer.")
-    ap.add_argument("--port", required=True, help="Serial port of the SNIFFER dongle (e.g. COM7 or /dev/ttyACM0).")
+    ap.add_argument(
+        "--port",
+        required=True,
+        help="Serial port of the SNIFFER dongle (e.g. COM7 or /dev/ttyACM0). A udev symlink is resolved to its real node.",
+    )
     ap.add_argument("--output", required=True, type=Path, help="Output .pcap path.")
     ap.add_argument("--duration", type=float, default=20.0, help="Capture window in seconds (default 20).")
     ap.add_argument("--follow-name", default=None, help="Follow a device by advertised name.")
@@ -151,9 +179,11 @@ def main():
         if size <= PCAP_HEADER_BYTES:
             print(
                 f"[sniffer] NO PACKETS CAPTURED — {args.output} is {size} bytes, a PCAP header and nothing else.\n"
-                "[sniffer] This says NOTHING about the air: the usual causes are the wrong serial port "
-                "(a DK exposes several VCOMs; the sniffer answers on only one) or firmware that is not "
-                "the nRF Sniffer build.",
+                "[sniffer] This says NOTHING about the air. Check, in this order: did nrfutil report "
+                "'Could not find board ID' (then --port names something nrfutil cannot enumerate — pass "
+                "the real node, not a symlink or an alias); is this the sniffer's own port (a DK exposes "
+                "several VCOMs and the sniffer answers on only one); is the dongle running the nRF Sniffer "
+                "firmware.",
                 flush=True,
             )
         else:
