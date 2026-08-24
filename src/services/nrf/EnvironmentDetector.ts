@@ -506,21 +506,18 @@ export function boardFromEntry(entry: DeviceListEntry): NrfBoard {
 	if (!board.deviceName && !board.deviceFamily) {
 		board.deviceName = nordicChipFromProduct(entry.usbProduct)
 	}
-	// A Nordic USB device that still names no part is named by what it IS — its product string.
+	// A Nordic USB device with no chip identity is NOT given a fabricated one.
 	//
-	// Note what that string is: FIRMWARE identity, not hardware. The bench's dongle reports product
-	// "nRF Sniffer for Bluetooth LE" and vendor "ZEPHYR"; flash it with something else and both change.
-	// That is not a shortcoming here, it is the only identity such a device publishes: a DK is named from
-	// its on-board J-Link (devkit.boardVersion -> PCA -> board-identity), and a dongle has no debugger, so
-	// the board type is not hidden — it is never sent.
+	// The chip is genuinely unknowable here, and not for want of trying: `nrfutil device device-info` on
+	// the bench's dongle answers "The operation is either not supported for this type of device". There is
+	// no debug probe — traits are devkit:false, jlink:false — so Nordic's own tool cannot read the part.
+	// The USB descriptor is firmware's to choose: that dongle reports manufacturer "ZEPHYR", product
+	// "nRF Sniffer for Bluetooth LE", 1915:522A. An nRF52833, nRF5340 or nRF54 running a Zephyr USB
+	// application presents identically, so "nRF52840" would be a confident guess, not a reading.
 	//
-	// Deliberately NOT derived from VID/PID. 1915:522a with a vendor string of "ZEPHYR" is a Zephyr USB
-	// identity rather than a Nordic-hardware one, and the same pair appears on any Zephyr USB application
-	// running on Nordic silicon — so mapping it to "nRF52840 Dongle" would confidently name the wrong
-	// board. Naming the role it is actually performing is both truthful and the more useful fact.
-	if (!board.deviceName && !board.deviceFamily && !board.boardVersion && board.nordicUsb && entry.usbProduct) {
-		board.deviceName = entry.usbProduct
-	}
+	// What IS known: VID 0x1915 is Nordic's, and nrfutil classified it nordicUsb. The strip composes
+	// "Nordic USB device · <product>" from that — a category, like every other row states a board, plus
+	// the only specific identity the device publishes: what it is currently running.
 	return board
 }
 

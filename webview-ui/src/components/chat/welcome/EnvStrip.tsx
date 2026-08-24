@@ -231,7 +231,15 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 			// Resolved host-side from the board-identity bit, so a board Nordic ships between our releases
 			// can be named by a registry update rather than a reinstall. Falls back to the raw PCA.
 			const friendly = b.boardVersion ? (b.boardName ?? b.boardVersion) : undefined
-			const name = b.deviceName ?? friendly ?? b.deviceFamily ?? b.serialNumber
+			// A Nordic USB device with no probe — a dongle — publishes no chip: nrfutil itself answers
+			// "not supported for this type of device". Name the CATEGORY, as every other row names a board,
+			// plus the only specific identity it does publish: the firmware it is running.
+			const usbOnly = b.nordicUsb && !b.deviceName && !b.deviceFamily && !b.boardVersion
+			const name = usbOnly
+				? b.productName
+					? `Nordic USB device · ${b.productName}`
+					: "Nordic USB device"
+				: (b.deviceName ?? friendly ?? b.deviceFamily ?? b.serialNumber)
 			return { board: b, label: b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name }
 		})
 		// Two boards of the same kind render identically — the bench has two nRF9161 DKs, both reporting
