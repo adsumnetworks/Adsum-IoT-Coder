@@ -1,5 +1,5 @@
 import type { NrfBoard, NrfEnvironment, ProjectSdk } from "@shared/nrf"
-import { boardNameFor } from "@/services/knowledge/dataBits"
+import { boardNameFor, boardNameForUsbProduct } from "@/services/knowledge/dataBits"
 import { exec } from "child_process"
 import { existsSync, readdirSync, readFileSync, statSync } from "fs"
 import { homedir } from "os"
@@ -285,6 +285,8 @@ interface DeviceListEntry {
 	traits?: Record<string, boolean>
 	/** nrfutil's own `nordicUsb` trait — see NrfBoard.nordicUsb. */
 	nordicUsb?: boolean
+	/** Board resolved from a Nordic-published USB product string, for devices with no PCA. */
+	boardNameFromUsb?: string
 	/** USB product description, e.g. "Seeed Studio XIAO nRF54LM20A CMSIS-DAP". */
 	usbProduct?: string
 	usbManufacturer?: string
@@ -337,6 +339,8 @@ export function parseDeviceListFull(stdout: string): DeviceListEntry[] {
 					boardName: boardNameFor(d.devkit?.boardVersion as string | undefined),
 					traits: d.traits as Record<string, boolean> | undefined,
 					nordicUsb: Boolean((d.traits as Record<string, boolean> | undefined)?.nordicUsb),
+					// A dongle has no PCA; Nordic's own firmware strings name the hardware they ship for.
+					boardNameFromUsb: boardNameForUsbProduct(d.usb?.product as string | undefined),
 					// The only identity a third-party module (XIAO, custom CMSIS-DAP board) publishes.
 					usbProduct: d.usb?.product as string | undefined,
 					usbManufacturer: d.usb?.manufacturer as string | undefined,
@@ -496,7 +500,8 @@ export function boardFromEntry(entry: DeviceListEntry): NrfBoard {
 		serialNumber: entry.serialNumber,
 		deviceFamily: entry.deviceFamily,
 		boardVersion: entry.boardVersion,
-		boardName: entry.boardName,
+		// A PCA-derived name first; for a device that has none, the board its firmware is published for.
+		boardName: entry.boardName ?? entry.boardNameFromUsb,
 		productName: entry.usbProduct,
 		usbManufacturer: entry.usbManufacturer,
 		nordicUsb: entry.nordicUsb,

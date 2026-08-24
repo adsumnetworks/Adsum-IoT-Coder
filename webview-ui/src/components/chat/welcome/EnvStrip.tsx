@@ -234,11 +234,13 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 			// A Nordic USB device with no probe — a dongle — publishes no chip: nrfutil itself answers
 			// "not supported for this type of device". Name the CATEGORY, as every other row names a board,
 			// plus the only specific identity it does publish: the firmware it is running.
+			// This line answers "what boards and DKs are detected" — hardware, not what is running on it.
+			// A dongle has no PCA, so its board comes from the board-identity bit, which knows which board
+			// Nordic's own firmware images ship for; when the bit cannot name it we say what we do know
+			// rather than reporting the firmware string as if it were a model.
 			const usbOnly = b.nordicUsb && !b.deviceName && !b.deviceFamily && !b.boardVersion
 			const name = usbOnly
-				? b.productName
-					? `Nordic USB device · ${b.productName}`
-					: "Nordic USB device"
+				? (b.boardName ?? "Nordic USB device")
 				: (b.deviceName ?? friendly ?? b.deviceFamily ?? b.serialNumber)
 			return { board: b, label: b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name }
 		})
