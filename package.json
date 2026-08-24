@@ -444,7 +444,7 @@
 		"test:memory": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/memory.test.ts",
 		"test:memory-migrate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/migrate.test.ts",
 		"test:sniffer-payload": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/nrf/payloadHex.node-test.ts",
-		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:workspace test:cve test:engine-config test:standalone-package",
+		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:workspace test:cve test:engine-config test:chip-identity test:standalone-package",
 		"kbit": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit.ts",
 		"qa": "bash qa/regression/run.sh",
 		"format": "biome format --changed --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error",
@@ -512,7 +512,8 @@
 		"compile-standalone:prod": "node esbuild.mjs --standalone --production && node scripts/package-standalone.mjs --no-zip",
 		"test:standalone-package": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/headless/standalonePackage.test.ts",
 		"test:shipped-engine-boot": "node scripts/test-shipped-engine-boot.mjs",
-		"test:hil-precedence": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-precedence.ts"
+		"test:hil-precedence": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-precedence.ts",
+		"test:chip-identity": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/chipIdentityParity.node-test.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [
