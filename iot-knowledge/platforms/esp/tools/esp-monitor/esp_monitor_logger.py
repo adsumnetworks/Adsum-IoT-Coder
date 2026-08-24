@@ -406,6 +406,20 @@ CAPTURE_FAILURE_MARKERS = (
 )
 
 
+def captured_nothing(log_path: str) -> bool:
+    """
+    True when the log holds no DEVICE output — only the header lines we wrote ourselves.
+
+    Deliberately not "the file is empty": the capture always writes a header, so an empty-file test
+    would never fire. Header lines start with '#', matching how the logger writes them.
+    """
+    try:
+        with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+            return not any(ln.strip() and not ln.lstrip().startswith("#") for ln in f)
+    except OSError:
+        return True
+
+
 def summarize(log_path: str) -> str:
     try:
         with open(log_path, "r", encoding="utf-8", errors="replace") as f:
@@ -499,18 +513,43 @@ def capture_one(device: dict, duration: int, output: str, no_reset: bool, chip_o
         print(f"{prefix}auto-selected port: {port or 'none found'}")
     print(f"{prefix}capturing {duration}s → {log_path}")
 
-    if is_built_idf_project(project_abs):
-        ok = capture_via_idf_monitor(project_abs, port, no_reset, duration, log_path, prefix)
-        if not ok:
-            print(f"{prefix}idf.py monitor unavailable → falling back to raw serial capture")
-            capture_raw_serial(port, duration, no_reset, log_path, prefix, baud)
-    else:
-        if project_abs:
-            reason = "not a built ESP-IDF project (need CMakeLists.txt + build/project_description.json)"
+    def run_capture() -> None:
+        if is_built_idf_project(project_abs):
+            ok = capture_via_idf_monitor(project_abs, port, no_reset, duration, log_path, prefix)
+            if not ok:
+                print(f"{prefix}idf.py monitor unavailable → falling back to raw serial capture")
+                capture_raw_serial(port, duration, no_reset, log_path, prefix, baud)
         else:
-            reason = "no project given"
-        print(f"{prefix}{reason} → raw serial capture (panic backtraces will NOT be decoded)")
-        capture_raw_serial(port, duration, no_reset, log_path, prefix, baud)
+            if project_abs:
+                reason = "not a built ESP-IDF project (need CMakeLists.txt + build/project_description.json)"
+            else:
+                reason = "no project given"
+            print(f"{prefix}{reason} → raw serial capture (panic backtraces will NOT be decoded)")
+            capture_raw_serial(port, duration, no_reset, log_path, prefix, baud)
+
+    run_capture()
+
+    # A silent capture is usually a reset that missed, not a board with nothing to say.
+    #
+    # We pulse DTR/RTS before listening — the standard ESP32 auto-reset. When that sequence lands the
+    # chip in DOWNLOAD mode instead of running the application, the app never starts and the log is
+    # empty. A second pulse normally lands it in run mode.
+    #
+    # Reported on a Fanstel LEW840X, 2026-08-24: the monitor was silent at the flashing bridge position
+    # and only produced output after the board was power-cycled or the bridge physically moved — which
+    # is a power cycle by other means. Moving a bridge between every flash and every log turns an
+    # automated loop into a manual one, so retry here before anyone touches hardware.
+    #
+    # NOT yet confirmed on that board: this is the mechanism the code implies, not a bench result. The
+    # retry is cheap and safe either way — one extra reset on a capture that had nothing to lose.
+    if not no_reset and captured_nothing(log_path):
+        print(f"{prefix}nothing captured — retrying once with a fresh reset (the first may have left the chip in download mode)")
+        run_capture()
+        if captured_nothing(log_path):
+            print(
+                f"{prefix}still nothing. The board may need its RESET button pressed during the capture. "
+                "On a Fanstel LEW840X, moving the bridge is a LAST resort — it cannot flash from the log position."
+            )
 
     print(f"{prefix}done — {summarize(log_path)}")
     print(f"{prefix}log: {log_path}")
