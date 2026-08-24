@@ -167,17 +167,80 @@ async function main(): Promise<void> {
 		}
 	}
 
+	const registryCount = await registryChecks(ids)
+
 	const n = (o: Outcome) => results.filter((r) => r.outcome === o).length
 	const failed = results.filter((r) => r.outcome === "FAIL")
 	if (failed.length) {
 		console.log(`\nfailing bits:\n${[...new Set(failed.map((f) => `  ${f.bit} (${f.check})`))].join("\n")}`)
 	}
 	console.log(
-		`\n[test:hil-bits] ${n("PASS")} passed · ${n("FAIL")} failed · ${n("SKIP")} skipped · ${n("WARN")} warning(s) over ${bits.length} bit(s)`,
+		`\n[test:hil-bits] ${n("PASS")} passed · ${n("FAIL")} failed · ${n("SKIP")} skipped · ${n("WARN")} warning(s) ` +
+			`over ${bits.length} bundled bit(s)${registryCount ? ` + ${registryCount} advertised by the registry` : " (registry not reached)"}`,
 	)
 	if (n("FAIL")) {
 		process.exit(1)
 	}
+}
+
+/**
+ * The bits that are NOT in the VSIX — everything the registry serves.
+ *
+ * Three times as many bits live there as ship bundled, and nothing checks them: the corpus lint reads the
+ * repo, and `hil-tools` covers the download rail for TOOL bits only. A knowledge bit published with a
+ * dangling `requires:` or an unreachable body is a gap nobody sees until a session needs it and the agent
+ * quietly proceeds without knowledge it was promised.
+ *
+ * Fetches through the same client the extension uses, so a bit that cannot be fetched here cannot be
+ * fetched by a developer either. Needs the network; SKIPs, loudly, without it.
+ */
+async function registryChecks(bundledIds: Set<string>): Promise<number> {
+	const { downloadedEntries, loadBit, setPrecedenceEnv } = await import("../src/services/knowledge/KnowledgeResolver")
+	const { ExtensionRegistryInfo } = await import("../src/registry")
+	// Same injection activation does — without it every min_ext gate compares against "" and the registry
+	// copies are all withheld, which would look like a clean run over an empty set.
+	setPrecedenceEnv({ extVersion: ExtensionRegistryInfo.version, enforcement: "not-enforced" })
+
+	let rows: Record<string, unknown>[] = []
+	try {
+		rows = (await downloadedEntries()) as Record<string, unknown>[]
+	} catch (e) {
+		record("registry", "REACHABLE", "SKIP", String((e as Error)?.message ?? e))
+		return 0
+	}
+	const advertised = rows.filter((r) => typeof r.id === "string")
+	if (!advertised.length) {
+		record("registry", "REACHABLE", "SKIP", "the catalog advertises nothing for this extension version")
+		return 0
+	}
+	const ids = new Set(advertised.map((r) => String(r.id)))
+	console.log(`\n[test:hil-bits] ${advertised.length} bit(s) advertised by the registry for v${ExtensionRegistryInfo.version}\n`)
+
+	for (const row of advertised) {
+		const id = String(row.id)
+		// A tool bit's body is a descriptor; hil-tools drives those. Here: the knowledge the agent reads.
+		if (String(row.type ?? "") === "tool") {
+			continue
+		}
+		let body = ""
+		try {
+			body = await loadBit(id)
+		} catch (e) {
+			record(id, "FETCHES", "FAIL", String((e as Error)?.message ?? e))
+			continue
+		}
+		if (!body.trim()) {
+			// Bundled-and-newer is a legitimate reason to serve nothing new; anything else is a hole.
+			record(id, "FETCHES", bundledIds.has(id) ? "PASS" : "FAIL", bundledIds.has(id) ? "" : "empty body from the registry")
+			continue
+		}
+		record(id, "FETCHES", "PASS")
+		record(id, "FRONTMATTER", /^---\s*\n/.test(body) ? "FAIL" : "PASS", "the served body carries its frontmatter")
+		const declared = requiresOf(frontmatterOf(body) || "")
+		const dangling = declared.filter((r) => !ids.has(r) && !bundledIds.has(r))
+		record(id, "REQUIRES", dangling.length ? "FAIL" : "PASS", dangling.length ? `unresolvable: ${dangling.join(", ")}` : "")
+	}
+	return advertised.length
 }
 
 main().catch((e) => {
