@@ -2,7 +2,7 @@
 id: adsum/esp/sdks/esp-idf/sdk
 title: "ESP-IDF — SDK Knowledge"
 type: knowledge
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -51,6 +51,38 @@ ESP-IDF is Espressif's official SDK for the ESP32 family, built on **FreeRTOS**.
 - `idf.py --version` → ESP-IDF version.
 - `python -m serial.tools.list_ports` → connected serial ports.
 - PSRAM: `sdkconfig` `CONFIG_SPIRAM*`, confirmed by boot log `Found NMB SPI RAM device`.
+
+## "idf.py is not recognized" — read this before blaming the terminal
+This looks like a sourcing failure and almost never is. The device tool DOES run `export.ps1`; that
+script then fails its own Python dependency check, exports nothing, and `idf.py` never reaches the PATH.
+
+The signature, seen on a real bench 2026-08-24:
+```
+The expression after '.' in a pipeline element produced an object that was not valid.
+At C:\esp\v5.5.4\esp-idf\export.ps1:27 char:3
++ . $idf_exports                      ← $idf_exports is EMPTY, because the check above failed
+idf.py : The term 'idf.py' is not recognized …
+```
+
+**Scroll up to the real error.** It reads `* Checking python dependencies ... FAILED` and names packages:
+
+```
+Requirement 'pyparsing<3.3,>=3.1.0'   was not met. Installed version: 3.3.1
+Requirement 'click<8.2,>=7.0'         was not met. Installed version: 8.2.1
+Requirement 'cryptography<45,>=2.1.4' was not met. Installed version: 46.0.5
+```
+
+**Packages too NEW, not missing.** ESP-IDF pins upper bounds; a `pip install --upgrade` in the shared
+venv (`~/.espressif/python_env/idf<ver>_py<pyver>_env`) breaks the ceiling and takes IDF down with it.
+
+**The fix is IDF's own installer**, which rebuilds the venv against the constraint file:
+`install.bat` (Windows) / `install.sh` (Linux, macOS) from the IDF root.
+
+Rules:
+- **Never report this as "the environment was not sourced".** It was. Say what actually failed.
+- It mutates `~/.espressif` and downloads packages, so **ask before running it** — offer it as a button.
+- **Check the version is actually installed before offering it.** A missing `idf<ver>` folder under
+  `~/.espressif/python_env` means that IDF version was never set up, so switching to it fixes nothing.
 
 ## sdkconfig — the usual suspects
 ```ini
