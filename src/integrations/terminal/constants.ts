@@ -129,3 +129,19 @@ export const TRAILING_CHUNK_GRACE_MS = 2_000
  * trip can never settle at all. Nothing downstream needs it, so a few seconds is generous.
  */
 export const TERMINAL_SNAPSHOT_TIMEOUT_MS = 3_000
+
+/**
+ * How long a command may go COMPLETELY silent — no stream chunk, no end event — before we stop waiting
+ * on shell integration and read the terminal instead.
+ *
+ * The end-event backstop in VscodeTerminalProcess rescues a lost OSC 633;D marker, but it needs the event
+ * to arrive at all. On 2026-08-24 a driven run parked for 8½ minutes on an interactive `JLinkExe` prompt:
+ * the start event fired, the process sat waiting for keyboard input, and no end event ever came because
+ * the command had not ended. Nothing in the loop bounded that wait, so the run showed "Pending" over a
+ * terminal plainly displaying a prompt.
+ *
+ * Only silence arms it — every chunk re-arms the timer — so a build that prints as it goes is never cut
+ * short however long it takes. Four minutes is chosen to sit well past a slow silent step (a big `cp`, a
+ * signing step) while still ending a wedged run inside a single reply.
+ */
+export const SILENT_COMMAND_BACKSTOP_MS = 4 * 60 * 1000
