@@ -26,6 +26,7 @@
 // Usage:  npm run test:hil-precedence
 
 import * as fs from "node:fs"
+import * as os from "node:os"
 import * as path from "node:path"
 
 const ROOT = path.join(__dirname, "..")
@@ -161,7 +162,69 @@ async function main() {
 		if (prev === undefined) delete process.env.ADSUM_REGISTRY_URL
 		else process.env.ADSUM_REGISTRY_URL = prev
 	}
+	await folderOverrideChecks()
 	summarise()
+}
+
+/**
+ * The LOCAL rail: `ADSUM_KBIT_LOCAL` serving a bit from an authoring folder instead of the registry.
+ *
+ * This is the seam the unattended-loop rule depends on — prove a modified bit on the bench without
+ * publishing anything — so it is worth knowing it works before relying on it for hours. It is also the
+ * one precedence copy the live-catalog checks above can never observe, because a folder override outranks
+ * everything and needs no registry at all.
+ *
+ * Gated on IS_DEV, deliberately and permanently: a production build compiles the branch away so an
+ * unpublished proprietary bit can never be served from a shipped VSIX. Under ts-node IS_DEV is whatever
+ * the environment says, so this sets it — the same thing an F5 session does.
+ */
+async function folderOverrideChecks(): Promise<void> {
+	const { loadBit, provenanceOf, __resetManifestCache } = await import("../src/services/knowledge/KnowledgeResolver")
+
+	// A folder holding ONE bit, with a sentence no published copy contains.
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adsum-folder-bits-"))
+	const rel = path.join(dir, "tools", "log-shape.md")
+	fs.mkdirSync(path.dirname(rel), { recursive: true })
+	const MARKER = "SENTINEL-local-override-" + process.pid
+	fs.writeFileSync(
+		rel,
+		["---", "id: adsum/tools/log-shape", "version: 99.0.0", "---", "", `# log-shape`, "", MARKER, ""].join("\n"),
+	)
+
+	const prevLocal = process.env.ADSUM_KBIT_LOCAL
+	const prevDev = process.env.IS_DEV
+	process.env.ADSUM_KBIT_LOCAL = dir
+	process.env.IS_DEV = "true"
+	try {
+		__resetManifestCache()
+		const text = await loadBit("adsum/tools/log-shape")
+		const served = text.includes(MARKER)
+		record(
+			"folder override · the authoring copy is what loads",
+			served ? "PASS" : "FAIL",
+			served ? `served the folder copy (${MARKER})` : "the folder copy was NOT served — a local edit would be invisible to a run",
+		)
+		const prov = provenanceOf("adsum/tools/log-shape")
+		record(
+			"folder override · provenance says so",
+			prov === "local" ? "PASS" : "FAIL",
+			`provenance=${prov ?? "(none)"} — a run must be able to record that it did not use a published bit`,
+		)
+	} catch (e) {
+		record("folder override", "FAIL", String((e as Error)?.message ?? e))
+	} finally {
+		if (prevLocal === undefined) {
+			delete process.env.ADSUM_KBIT_LOCAL
+		} else {
+			process.env.ADSUM_KBIT_LOCAL = prevLocal
+		}
+		if (prevDev === undefined) {
+			delete process.env.IS_DEV
+		} else {
+			process.env.IS_DEV = prevDev
+		}
+		fs.rmSync(dir, { recursive: true, force: true })
+	}
 }
 
 function summarise(): void {
