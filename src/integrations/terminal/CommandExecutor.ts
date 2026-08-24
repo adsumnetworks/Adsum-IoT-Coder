@@ -15,8 +15,8 @@
  * user's visible VSCode terminal.
  */
 
-import { isSubagentCommand, transformClineCommand } from "@integrations/cli-subagents/subagent_command"
 import { HostProvider } from "@hosts/host-provider"
+import { isSubagentCommand, transformClineCommand } from "@integrations/cli-subagents/subagent_command"
 import { Logger } from "@services/logging/Logger"
 import { telemetryService } from "@services/telemetry"
 import { findLastIndex } from "@shared/array"
@@ -117,7 +117,7 @@ export class CommandExecutor {
 		command: string,
 		timeoutSeconds: number | undefined,
 		terminalName?: string,
-		suppressShellIntegrationWarning?: boolean
+		suppressShellIntegrationWarning?: boolean,
 	): Promise<[boolean, ClineToolResponseContent]> {
 		// Transform subagent commands to ensure flags are correct
 		const isSubagent = isSubagentCommand(command)
@@ -160,6 +160,7 @@ export class CommandExecutor {
 
 		// Get terminal and run command
 		const terminalInfo = await manager.getOrCreateTerminal(this.cwd, terminalName)
+		Logger.info(`[CommandExecutor] terminal acquired (id ${terminalInfo.id}) — running command`)
 		terminalInfo.terminal.show()
 		const process = manager.runCommand(terminalInfo, command)
 
