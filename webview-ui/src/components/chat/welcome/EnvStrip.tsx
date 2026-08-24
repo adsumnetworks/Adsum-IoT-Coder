@@ -1,4 +1,4 @@
-import { type EspDevice, type EspEnvironment, espUnresolvedDeviceLabel } from "@shared/esp"
+import { type EspDevice, type EspEnvironment, espUnresolvedDeviceLabel, looksLikeSiblingBridge } from "@shared/esp"
 import type { NrfBoard, NrfEnvironment } from "@shared/nrf"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import React, { useState } from "react"
@@ -331,7 +331,15 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 		// confirmed (never claim "ESP32-family" off an unconfirmed CH34x/CP210x/FTDI device).
 		devices = env.espDevices
 			.map((d: EspDevice) => {
-				const name = d.chip ?? espUnresolvedDeviceLabel(d.vid)
+				// An unresolved device sharing a USB hub with a resolved native-USB ESP is almost certainly
+				// that board's own UART bridge — one DevKit, two interfaces. Say so rather than leaving a
+				// nameless row the reader counts as a third board. Not hidden: a merge could lose a real
+				// board (two ESPs in one desk hub also share a parent), and an extra row beats a missing one.
+				const name = d.chip
+					? d.chip
+					: looksLikeSiblingBridge(d, env.espDevices)
+						? `${espUnresolvedDeviceLabel(d.vid)} · likely the UART bridge of the board above`
+						: espUnresolvedDeviceLabel(d.vid)
 				return d.chip && d.chipRevision ? `${name} (${d.chipRevision})` : name
 			})
 			.join(", ")
