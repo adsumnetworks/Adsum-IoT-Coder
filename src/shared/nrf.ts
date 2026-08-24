@@ -26,6 +26,16 @@ export interface NrfBoard {
 	productName?: string
 	/** USB vendor name, e.g. "Seeed Studio". Present for third-party modules. */
 	usbManufacturer?: string
+	/**
+	 * nrfutil classified this as a Nordic USB device — its `nordicUsb` trait.
+	 *
+	 * The nRF52840 Dongle running sniffer firmware has NO devkit and NO jlink object: it publishes
+	 * `nordicUsb` and the product string "nRF Sniffer for Bluetooth LE", and names no chip. Every
+	 * Nordic-identity field is therefore empty and the board filter dropped it — so the one device the
+	 * over-the-air layer of a BLE debug needs was the one the strip would not admit was plugged in.
+	 * nrfutil has already decided this is a Nordic device; take its word rather than re-deriving.
+	 */
+	nordicUsb?: boolean
 }
 
 /**

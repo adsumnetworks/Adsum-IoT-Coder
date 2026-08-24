@@ -254,6 +254,49 @@ describe("isNordicBoard — filter out non-Nordic enumerated serial ports (e.g. 
 	})
 })
 
+/**
+ * The nRF52840 Dongle running sniffer firmware.
+ *
+ * Real output from this bench: no `devkit`, no `jlink`, traits `nordicUsb, serialPorts, usb`, product
+ * "nRF Sniffer for Bluetooth LE". Every Nordic-identity field the filter looked at is empty and the
+ * product string names a ROLE, not a part — so `nordicChipFromProduct` finds nothing and the device was
+ * dropped. The sniffer is the over-the-air layer of a BLE debug; a developer with one plugged in saw no
+ * evidence of it in the strip, and the agent's environment summary omitted it too.
+ */
+describe("isNordicBoard — a Nordic USB device with no chip identity is still a Nordic device", () => {
+	it("keeps the sniffer dongle, which publishes only nordicUsb and a role name", () => {
+		isNordicBoard({ serialNumber: "A6D98491ED8264D2", productName: "nRF Sniffer for Bluetooth LE", nordicUsb: true }).should.be
+			.true()
+	})
+
+	it("still drops a non-Nordic USB-serial device", () => {
+		isNordicBoard({ serialNumber: "5B5F121973", productName: "USB JTAG/serial debug unit" }).should.be.false()
+	})
+
+	it("boardFromEntry names it by what it IS, rather than leaving a bare serial", () => {
+		const board = boardFromEntry({
+			serialNumber: "A6D98491ED8264D2",
+			usbProduct: "nRF Sniffer for Bluetooth LE",
+			nordicUsb: true,
+		})
+		board.deviceName!.should.equal("nRF Sniffer for Bluetooth LE")
+		isNordicBoard(board).should.be.true()
+	})
+
+	it("does not overwrite a real chip name with the product string", () => {
+		const board = boardFromEntry({
+			serialNumber: "1050256273",
+			deviceFamily: "NRF52",
+			boardVersion: "PCA10056",
+			boardName: "nRF52840 DK",
+			usbProduct: "J-Link",
+			nordicUsb: true,
+		})
+		;(board.deviceName === undefined).should.be.true() // the DK is named by boardName, not by "J-Link"
+		board.boardName!.should.equal("nRF52840 DK")
+	})
+})
+
 describe("nordicChipFromProduct — the identity a CMSIS-DAP module publishes", () => {
 	it("reads the chip out of a real XIAO product string", () => {
 		nordicChipFromProduct("Seeed Studio XIAO nRF54LM20A CMSIS-DAP")!.should.equal("nRF54LM20A")
