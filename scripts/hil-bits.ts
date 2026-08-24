@@ -193,8 +193,13 @@ async function main(): Promise<void> {
 		}
 	}
 
-	const registryCount = await registryChecks(ids)
-	const folderCount = folderChecks(ids)
+	const advertisedIds = new Set<string>()
+	const registryCount = await registryChecks(ids, advertisedIds)
+	// A draft may legitimately require a bit that lives ONLY in the registry — `adsum/cra/tools/posture-scan`
+	// is exactly that: served at 1.0.1, in neither the VSIX nor the folder. Resolving folder requirements
+	// against the bundled corpus alone called it dangling, which was a false alarm about the corpus and a
+	// true one about this check.
+	const folderCount = folderChecks(new Set([...ids, ...advertisedIds]))
 
 	const n = (o: Outcome) => results.filter((r) => r.outcome === o).length
 	const failed = results.filter((r) => r.outcome === "FAIL")
@@ -223,8 +228,9 @@ async function main(): Promise<void> {
  * This pass reads the folder directly and applies the checks that do not need a resolver: an id, a version,
  * a named author, no dangling `requires:`, and a body that is more than its own frontmatter. It cannot
  * check LOADS — an unpublished bit has no resolver entry, which is the point of it being unpublished — so
- * it does not pretend to. Silent when the folder is absent, so a machine without the sibling checkout is
- * not failed for it.
+ * it does not pretend to. `requires:` resolves against the bundled corpus, the registry's advertised ids
+ * AND the folder's own ids — a draft may depend on a sibling draft, or on a bit only the registry has.
+ * Silent when the folder is absent, so a machine without the sibling checkout is not failed for it.
  */
 function folderChecks(knownIds: Set<string>): number {
 	const root = path.join(ROOT, "..", "Adsum-Backend", "kbits")
@@ -290,7 +296,7 @@ function folderChecks(knownIds: Set<string>): number {
  * Fetches through the same client the extension uses, so a bit that cannot be fetched here cannot be
  * fetched by a developer either. Needs the network; SKIPs, loudly, without it.
  */
-async function registryChecks(bundledIds: Set<string>): Promise<number> {
+async function registryChecks(bundledIds: Set<string>, advertisedOut: Set<string>): Promise<number> {
 	const { downloadedEntries, loadBit, setPrecedenceEnv } = await import("../src/services/knowledge/KnowledgeResolver")
 	const { ExtensionRegistryInfo } = await import("../src/registry")
 	// Same injection activation does — without it every min_ext gate compares against "" and the registry
@@ -305,6 +311,9 @@ async function registryChecks(bundledIds: Set<string>): Promise<number> {
 		return 0
 	}
 	const advertised = rows.filter((r) => typeof r.id === "string")
+	for (const a of advertised) {
+		advertisedOut.add(a.id as string)
+	}
 	if (!advertised.length) {
 		record("registry", "REACHABLE", "SKIP", "the catalog advertises nothing for this extension version")
 		return 0
