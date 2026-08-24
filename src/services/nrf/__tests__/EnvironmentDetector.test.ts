@@ -4,6 +4,7 @@ import { tmpdir } from "os"
 import { join } from "path"
 import "should"
 import {
+	boardFromEntry,
 	collectBuildNcsVersions,
 	isNordicBoard,
 	nordicChipFromProduct,
@@ -253,6 +254,75 @@ describe("isNordicBoard — filter out non-Nordic enumerated serial ports (e.g. 
 	})
 })
 
+/**
+ * The nRF52840 Dongle running sniffer firmware.
+ *
+ * Real output from this bench: no `devkit`, no `jlink`, traits `nordicUsb, serialPorts, usb`, product
+ * "nRF Sniffer for Bluetooth LE". Every Nordic-identity field the filter looked at is empty and the
+ * product string names a ROLE, not a part — so `nordicChipFromProduct` finds nothing and the device was
+ * dropped. The sniffer is the over-the-air layer of a BLE debug; a developer with one plugged in saw no
+ * evidence of it in the strip, and the agent's environment summary omitted it too.
+ */
+describe("isNordicBoard — a Nordic USB device with no chip identity is still a Nordic device", () => {
+	it("keeps the sniffer dongle, which publishes only nordicUsb and a role name", () => {
+		isNordicBoard({ serialNumber: "A6D98491ED8264D2", productName: "nRF Sniffer for Bluetooth LE", nordicUsb: true }).should.be
+			.true()
+	})
+
+	it("still drops a non-Nordic USB-serial device", () => {
+		isNordicBoard({ serialNumber: "5B5F121973", productName: "USB JTAG/serial debug unit" }).should.be.false()
+	})
+
+	it("names the dongle from the board its firmware is published for", () => {
+		const board = boardFromEntry({
+			serialNumber: "A6D98491ED8264D2",
+			usbProduct: "nRF Sniffer for Bluetooth LE",
+			boardNameFromUsb: "nRF52840 Dongle",
+			nordicUsb: true,
+		})
+		board.boardName!.should.equal("nRF52840 Dongle")
+		board.productName!.should.equal("nRF Sniffer for Bluetooth LE") // the role survives alongside the board
+	})
+
+	it("a PCA-derived name still wins over a USB-product one", () => {
+		const board = boardFromEntry({
+			serialNumber: "1050256273",
+			boardVersion: "PCA10056",
+			boardName: "nRF52840 DK",
+			boardNameFromUsb: "nRF52840 Dongle",
+		})
+		board.boardName!.should.equal("nRF52840 DK")
+	})
+
+	it("boardFromEntry keeps it, and invents no chip for it", () => {
+		const board = boardFromEntry({
+			serialNumber: "A6D98491ED8264D2",
+			usbProduct: "nRF Sniffer for Bluetooth LE",
+			nordicUsb: true,
+		})
+		isNordicBoard(board).should.be.true()
+		// nrfutil itself cannot read the part on a probe-less device, so neither may we: an nRF52833,
+		// nRF5340 or nRF54 running a Zephyr USB app presents exactly the same descriptor.
+		;(board.deviceName === undefined).should.be.true()
+		;(board.deviceFamily === undefined).should.be.true()
+		board.productName!.should.equal("nRF Sniffer for Bluetooth LE")
+		board.nordicUsb!.should.be.true()
+	})
+
+	it("does not overwrite a real chip name with the product string", () => {
+		const board = boardFromEntry({
+			serialNumber: "1050256273",
+			deviceFamily: "NRF52",
+			boardVersion: "PCA10056",
+			boardName: "nRF52840 DK",
+			usbProduct: "J-Link",
+			nordicUsb: true,
+		})
+		;(board.deviceName === undefined).should.be.true() // the DK is named by boardName, not by "J-Link"
+		board.boardName!.should.equal("nRF52840 DK")
+	})
+})
+
 describe("nordicChipFromProduct — the identity a CMSIS-DAP module publishes", () => {
 	it("reads the chip out of a real XIAO product string", () => {
 		nordicChipFromProduct("Seeed Studio XIAO nRF54LM20A CMSIS-DAP")!.should.equal("nRF54LM20A")
@@ -294,6 +364,60 @@ describe("parseDeviceListFull — carries the USB product string through", () =>
 		entries.should.have.length(1)
 		entries[0].usbProduct!.should.equal("Seeed Studio XIAO nRF54LM20A CMSIS-DAP")
 		nordicChipFromProduct(entries[0].usbProduct)!.should.equal("nRF54LM20A")
+	})
+
+	/**
+	 * The name the developer recognises must SURVIVE the parse.
+	 *
+	 * It is resolved here, from the board-identity bit, and it was being dropped one line later:
+	 * DeviceListEntry had no field to hold it, and the NrfBoard built from the entry copied five
+	 * property names by hand. The webview's own PCA table had been deleted in the same change, so
+	 * its fallback stopped being "the old name" and became the raw number — every Nordic board in
+	 * the welcome strip read as "PCA10153" with no indication of what that is.
+	 *
+	 * Nothing caught it: the resolver was right, the webview was right, and the field went missing
+	 * in the copy between them. So the assertion is on the boundary, not on either side.
+	 */
+	it("boardFromEntry carries boardName through — the copy where it was being dropped", () => {
+		const board = boardFromEntry({
+			serialNumber: "1050992288",
+			deviceFamily: "NRF91",
+			boardVersion: "PCA10153",
+			boardName: "nRF9161 DK",
+		})
+		board.boardVersion!.should.equal("PCA10153")
+		board.boardName!.should.equal("nRF9161 DK")
+	})
+
+	it("boardFromEntry leaves boardName undefined when the table did not know the PCA", () => {
+		const board = boardFromEntry({ serialNumber: "X", boardVersion: "PCA99999" })
+		;(board.boardName === undefined).should.be.true()
+		board.boardVersion!.should.equal("PCA99999") // the UI then shows the raw number, as it always did
+	})
+
+	it("carries boardName — the recognisable name, resolved from the board-identity bit", () => {
+		const dks = [
+			JSON.stringify({ type: "task_begin", data: { task: { id: "d", name: "list_devices" } } }),
+			JSON.stringify({
+				type: "info",
+				data: {
+					devices: [
+						{ serialNumber: "1050256273", traits: { jlink: true, devkit: true }, devkit: { deviceFamily: "NRF52", boardVersion: "PCA10056" } },
+						{ serialNumber: "1050992288", traits: { jlink: true, devkit: true }, devkit: { deviceFamily: "NRF91", boardVersion: "PCA10153" } },
+					],
+				},
+			}),
+		].join("\n")
+		const entries = parseDeviceListFull(dks)
+		entries.should.have.length(2)
+		// Resolution needs a host to find the bundled bit; without one the table is empty by design and
+		// the field is undefined. Assert the CARRY either way — that is the boundary that broke.
+		entries[0].should.have.property("boardName")
+		entries[1].should.have.property("boardName")
+		if (entries[0].boardName !== undefined) {
+			entries[0].boardName!.should.equal("nRF52840 DK")
+			entries[1].boardName!.should.equal("nRF9161 DK")
+		}
 	})
 })
 

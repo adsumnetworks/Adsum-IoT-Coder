@@ -23,17 +23,41 @@ import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 type TableCache = { table: unknown; source: "registry" | "bundled" }
 const cache = new Map<string, TableCache>()
 
-/** The first fenced ```yaml block in a bit body. Fenced, so it cannot be confused with prose. */
+/**
+ * The fenced ```yaml tables in a bit body, merged. Fenced, so they cannot be confused with prose.
+ *
+ * EVERY block, not just the first: a bit documents each table under its own heading with the prose that
+ * explains it, and board-identity now carries two (PCA numbers, and the USB product strings of Nordic's
+ * own firmware images). Reading only the first silently returned `undefined` for every lookup in the
+ * second — the table was there, parsed by nothing.
+ *
+ * Merged at the top level, first block wins on a key clash: a later block cannot quietly redefine an
+ * earlier one.
+ */
 export function parseYamlBlock(body: string): unknown {
-	const m = /```ya?ml\r?\n([\s\S]*?)```/.exec(body)
-	if (!m) {
+	const blocks = [...body.matchAll(/```ya?ml\r?\n([\s\S]*?)```/g)]
+	if (!blocks.length) {
 		return null
 	}
-	try {
-		return yamlLoad(m[1])
-	} catch {
-		return null
+	let merged: Record<string, unknown> | null = null
+	for (const b of blocks) {
+		let parsed: unknown
+		try {
+			parsed = yamlLoad(b[1])
+		} catch {
+			continue // a broken block must not take the good ones down with it
+		}
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+			continue
+		}
+		merged ??= {}
+		for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+			if (!(k in merged)) {
+				merged[k] = v
+			}
+		}
 	}
+	return merged
 }
 
 /**
@@ -149,4 +173,35 @@ export function boardNames(): Map<string, string> {
 /** The friendly name for a PCA number, or undefined when the table does not know it. */
 export function boardNameFor(pca: string | undefined): string | undefined {
 	return pca ? boardNames().get(pca.toUpperCase()) : undefined
+}
+
+/**
+ * The board behind a Nordic-published USB product string — for devices that have no PCA to look up.
+ *
+ * A dongle carries no debugger, so `nrfutil device device-info` refuses it and there is no board version
+ * to resolve. The one thing it publishes is a product string, and for Nordic's OWN firmware images that
+ * string names the hardware the image is built for: "nRF Sniffer for Bluetooth LE" is Nordic's sniffer
+ * build, distributed for the nRF52840 Dongle. (A DK running the same image still has a J-Link and is named
+ * through the PCA path, so a device reaching here is the Dongle.)
+ *
+ * The table lives in the bit, deliberately: it is exactly the kind of fact that changes when a vendor
+ * ships firmware, and it can then be corrected from the registry rather than by a release. Only
+ * Nordic-published strings belong in it — a string a user's own application chose names nothing.
+ */
+export function boardNameForUsbProduct(product: string | undefined): string | undefined {
+	if (!product) {
+		return undefined
+	}
+	const read = readDataBitTable(BOARD_IDENTITY_REL)
+	const rows = (read?.table as { usb_products?: Array<{ product?: unknown; name?: unknown }> } | null)?.usb_products
+	if (!Array.isArray(rows)) {
+		return undefined
+	}
+	const want = product.trim().toLowerCase()
+	for (const r of rows) {
+		if (typeof r?.product === "string" && typeof r?.name === "string" && r.product.trim().toLowerCase() === want) {
+			return r.name
+		}
+	}
+	return undefined
 }

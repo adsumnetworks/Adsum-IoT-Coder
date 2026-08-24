@@ -3,7 +3,7 @@ import { afterEach, describe, it } from "mocha"
 import { tmpdir } from "os"
 import { join } from "path"
 import "should"
-import { dedupeEspDevicesByMac, type EspDevice, isMacShaped } from "@shared/esp"
+import { dedupeEspDevicesByMac, type EspDevice, isMacShaped, looksLikeSiblingBridge, usbParent } from "@shared/esp"
 import {
 	ESP_FAMILY_VIDS,
 	filterEspPorts,
@@ -292,5 +292,88 @@ describe("EspEnvironmentDetector — dedupeEspDevicesByMac", () => {
 		const c6: EspDevice = { port: "/dev/cu.c6", vid: 0x1a86, chip: "ESP32-C6", mac: "aa:bb:cc:dd:ee:ff" }
 		const noMac: EspDevice = { port: "/dev/cu.unknown", vid: 0x10c4 } // unresolved bridge, no MAC → never hidden
 		dedupeEspDevicesByMac([s3, c6, noMac]).length.should.equal(3)
+	})
+})
+
+/**
+ * The C6's two interfaces — one board, two rows, and why the second one is explained rather than hidden.
+ *
+ * Real data from the bench: the ESP32-C6 DevKit presents its native USB-Serial/JTAG (VID 0x303a, serial =
+ * the base MAC) at `1-14.1.4:1.0` AND a CH343 UART bridge (VID 0x1a86) at `1-14.1.2:1.0`, through an
+ * on-board hub. `dedupeEspDevicesByMac` cannot fold them: `read-mac` over the bridge is blocked because
+ * that board reports SECURE DOWNLOAD MODE, so there is no MAC to group on.
+ *
+ * Merging on the shared hub instead would be unsafe — two separate ESP boards in one desk hub also share
+ * a parent, and losing a real board is worse than showing an extra row. So the row stays and says what it
+ * probably is.
+ */
+describe("looksLikeSiblingBridge — one DevKit, two USB interfaces", () => {
+	const nativeC6: EspDevice = {
+		port: "/dev/ttyACM14",
+		vid: 0x303a,
+		pid: 0x1001,
+		serialNumber: "AC:EB:E6:0C:F8:C0",
+		chip: "ESP32-C6",
+		location: "1-14.1.4:1.0",
+	}
+	const bridgeC6: EspDevice = { port: "/dev/ttyACM9", vid: 0x1a86, pid: 0x55d3, serialNumber: "5B61094644", location: "1-14.1.2:1.0" }
+	const otherBoard: EspDevice = { port: "/dev/ttyACM16", vid: 0x1a86, pid: 0x55d3, serialNumber: "5B91100159", location: "1-4:1.0" }
+
+	it("usbParent strips the interface and the port, leaving the hub", () => {
+		;(usbParent("1-14.1.2:1.0") ?? "").should.equal("1-14.1")
+		;(usbParent("1-4:1.0") === undefined).should.be.true() // directly on a root port — no parent hub
+	})
+
+	it("flags the bridge that shares a hub with a resolved native ESP", () => {
+		looksLikeSiblingBridge(bridgeC6, [nativeC6, bridgeC6, otherBoard]).should.be.true()
+	})
+
+	it("leaves a board on its own root port alone — it is not anybody's second interface", () => {
+		looksLikeSiblingBridge(otherBoard, [nativeC6, bridgeC6, otherBoard]).should.be.false()
+	})
+
+	it("never flags the native interface itself, nor an already-resolved device", () => {
+		looksLikeSiblingBridge(nativeC6, [nativeC6, bridgeC6]).should.be.false()
+		looksLikeSiblingBridge({ ...bridgeC6, chip: "ESP32-C6" }, [nativeC6, bridgeC6]).should.be.false()
+	})
+
+	it("does not flag a bridge whose hub holds no native ESP — two bridges in a desk hub stay separate", () => {
+		const a: EspDevice = { port: "/dev/a", vid: 0x1a86, location: "1-5.1:1.0" }
+		const b: EspDevice = { port: "/dev/b", vid: 0x1a86, location: "1-5.2:1.0" }
+		looksLikeSiblingBridge(a, [a, b]).should.be.false()
+		looksLikeSiblingBridge(b, [a, b]).should.be.false()
+	})
+})
+
+/**
+ * The shape a developer actually reported: the C6 showing twice, the second row reading
+ * "ESP (model unknown)" — which requires Espressif's own VID. So the phantom there is not a generic UART
+ * bridge (the bench's shape) but a second interface on the chip's own vendor id, of which only one probed.
+ */
+describe("one board, two interfaces on the SAME vendor id", () => {
+	it("folds two ports that share a USB serial number — the device says they are one", () => {
+		const resolved: EspDevice = { port: "/dev/cu.usbmodem101", vid: 0x303a, serialNumber: "60:55:F9:12:34:56", chip: "ESP32-C6" }
+		const twin: EspDevice = { port: "/dev/cu.usbmodem103", vid: 0x303a, serialNumber: "60:55:F9:12:34:56" }
+		const out = dedupeEspDevicesByMac([twin, resolved])
+		out.should.have.length(1)
+		out[0].chip!.should.equal("ESP32-C6") // the informative one survives, whichever order they arrive in
+	})
+
+	it("still keeps two boards that merely look alike but identify differently", () => {
+		const a: EspDevice = { port: "/dev/cu.a", vid: 0x303a, serialNumber: "60:55:F9:00:00:01", chip: "ESP32-C6" }
+		const b: EspDevice = { port: "/dev/cu.b", vid: 0x303a, serialNumber: "60:55:F9:00:00:02", chip: "ESP32-C6" }
+		dedupeEspDevicesByMac([a, b]).should.have.length(2)
+	})
+
+	it("explains an unresolved NATIVE-vid port sharing a hub with a resolved board", () => {
+		const resolved: EspDevice = { port: "/dev/cu.x", vid: 0x303a, chip: "ESP32-C6", location: "20-1.4:1.0" }
+		const unresolved: EspDevice = { port: "/dev/cu.y", vid: 0x303a, location: "20-1.2:1.0" }
+		looksLikeSiblingBridge(unresolved, [resolved, unresolved]).should.be.true()
+	})
+
+	it("does not explain away a board that is simply unprobed on its own port", () => {
+		const lone: EspDevice = { port: "/dev/cu.z", vid: 0x303a, location: "20-3:1.0" }
+		const other: EspDevice = { port: "/dev/cu.w", vid: 0x303a, chip: "ESP32-S3", location: "20-1.4:1.0" }
+		looksLikeSiblingBridge(lone, [other, lone]).should.be.false()
 	})
 })

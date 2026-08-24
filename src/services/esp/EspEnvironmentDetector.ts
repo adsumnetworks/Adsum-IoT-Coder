@@ -163,6 +163,8 @@ export interface RawPortData {
 	pid?: number | null
 	description?: string | null
 	serial_number?: string | null
+	/** pyserial's USB location, e.g. "1-14.1.2:1.0". Two interfaces of one board share a parent hub. */
+	location?: string | null
 }
 
 /**
@@ -190,6 +192,7 @@ export function filterEspPorts(ports: RawPortData[]): EspDevice[] {
 			pid: p.pid ?? undefined,
 			description: p.description ?? undefined,
 			serialNumber: p.serial_number ?? undefined,
+			location: p.location ?? undefined,
 		})
 	}
 	return result
@@ -321,7 +324,7 @@ async function probeEspDevices(): Promise<EspDevice[]> {
 	const script = [
 		"from serial.tools.list_ports import comports",
 		"import json",
-		"print(json.dumps([{'device':p.device,'vid':p.vid,'pid':p.pid,'description':p.description,'serial_number':p.serial_number} for p in comports()]))",
+		"print(json.dumps([{'device':p.device,'vid':p.vid,'pid':p.pid,'description':p.description,'serial_number':p.serial_number,'location':p.location} for p in comports()]))",
 	].join(";")
 
 	const idfPython = getIdfPython()

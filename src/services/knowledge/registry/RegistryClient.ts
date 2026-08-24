@@ -17,9 +17,13 @@ import { getEditorIdentity } from "@/services/telemetry/editorIdentity"
  * ADSUM_KBIT_LOCAL dev override, it is deliberately NOT IS_DEV-gated: an installed author needs it.
  */
 export function resolveAuthorToken(): string | null {
+	// A DEFINED but EMPTY ADSUM_AUTHOR_TOKEN means "explicitly no author" — the file must not fill in behind
+	// it. On an author's own machine the token file is always present, so without this there is no way to ask
+	// for the PUBLISHED corpus: every run silently folded that author's drafts in while recording itself as
+	// `registry@current`. A measurement of published bits has to be able to say "published, and I mean it".
 	const env = process.env.ADSUM_AUTHOR_TOKEN
-	if (env && env.trim()) {
-		return env.trim()
+	if (env !== undefined) {
+		return env.trim() || null
 	}
 	try {
 		const file = join(homedir(), ".config", "adsum", "author.token")
