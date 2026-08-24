@@ -41,15 +41,25 @@ export const KbitPill = ({ bits, compact }: { bits: KbitLoadedPayload[]; compact
 		<div
 			className="mx-1 px-2 py-0.25 rounded-full inline-flex shrink-0 items-center gap-1 text-xs border"
 			style={{ borderColor: "var(--vscode-panel-border)", color: "var(--vscode-descriptionForeground)" }}
-			title={`${bits.length} Knowledge/Tool bit${bits.length > 1 ? "s" : ""} used this session — expand the header for the list`}>
+			title={
+				authors.length > 1
+					? `${bits.length} Knowledge/Tool bit${bits.length > 1 ? "s" : ""} from ${authors.length} authors — click to see who`
+					: `${bits.length} Knowledge/Tool bit${bits.length > 1 ? "s" : ""} used this session — click to expand`
+			}>
 			<KbitMark size={13} />
 			{compact || !lead ? (
 				<span>×{bits.length}</span>
 			) : (
 				<span className="whitespace-nowrap">
-					{/* The pill sits inside the header's expand/collapse target. The header ignores clicks that
-					    come from an <a>, so a profile link opens without also toggling — see TaskHeader. */}
-					<PersonLink name={lead} />
+					{/* NOT a profile link, deliberately.
+					    This pill summarises everyone who contributed to the session — "Omar Morceli +1" means two
+					    people. It used to render the lead name as an <a> to that one person, and because the
+					    header ignores clicks originating in an <a>, clicking the credit for a two-author session
+					    took you to one author's LinkedIn and never opened the roster that lists both. The pill
+					    sits inside the header's expand target, so plain text lets the click do the thing the
+					    tooltip already promised: expand, and show every author with their own link in
+					    KbitRoster below. A single link is the wrong destination for a summary of many. */}
+					<span style={{ color: BRAND_CORAL }}>{lead}</span>
 					<span style={{ color: BRAND_CORAL }}>{extra}</span>
 				</span>
 			)}
