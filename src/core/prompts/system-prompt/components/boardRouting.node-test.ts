@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { describe, test } from "node:test"
-import { getBoardKnowledgeFile } from "./iot_context"
+import { getBoardKnowledgeFile, getEspBoardKnowledgeFile } from "./iot_context"
 
 /**
  * Board-target → knowledge-file routing.
@@ -50,8 +50,16 @@ describe("existing routing is unchanged", () => {
 	})
 
 	test("an unknown board resolves to nothing rather than guessing", () => {
-		assert.equal(getBoardKnowledgeFile("nrf9160dk/nrf9160"), null)
+		// Deliberately a part that does not exist. This case used to name the nRF9160 DK, which WAS unknown
+		// when it was written and has since been given both a route and a bit — so the test failed while the
+		// router was the more correct of the two. An "unknown board" example has to be one nobody will ever
+		// author, or it decays into a false alarm the moment the corpus grows.
+		assert.equal(getBoardKnowledgeFile("nrf0000dk/nrf0000"), null)
 		assert.equal(getBoardKnowledgeFile(""), null)
+	})
+
+	test("the nRF9160 DK, which is no longer unknown, routes to its own bit", () => {
+		assert.equal(getBoardKnowledgeFile("nrf9160dk/nrf9160"), "platforms/nrf/boards/nrf9160dk.md")
 	})
 
 	test("case does not matter", () => {
@@ -81,6 +89,48 @@ describe("every routed file actually exists", () => {
 	// registry-delivered, so their home is the SIBLING Adsum-Backend/kbits, not a subdirectory of this repo;
 	// when that sibling is absent (a bare clone, public CI) there is nothing to resolve against and the
 	// check above is the whole test.
+	/**
+	 * The ESP half, which this suite never covered — and the gap is live.
+	 *
+	 * `getEspBoardKnowledgeFile` routes four targets; only two of them have a bit in either home. The
+	 * bench's own board is an ESP32-C6, so an ESP session there is assembled with no board knowledge and
+	 * no sign that any was expected. Declared rather than skipped, so the day a bit is authored the list
+	 * shrinks instead of the gap being forgotten.
+	 */
+	const ESP_TARGETS = ["esp32s3", "esp32c6", "esp32c3", "esp32"]
+	const ESP_KNOWN_MISSING = new Set(["platforms/esp/boards/esp32-c6.md", "platforms/esp/boards/esp32-c3.md"])
+
+	test("every ESP target this router claims routes somewhere", () => {
+		const unrouted = ESP_TARGETS.filter((t) => !getEspBoardKnowledgeFile(t))
+		assert.deepEqual(unrouted, [], `ESP targets with no route: ${unrouted.join(", ")}`)
+	})
+
+	test("no ESP route is a dead link, except the gaps named above", () => {
+		const roots = [path.join(process.cwd(), "iot-knowledge"), path.join(process.cwd(), "..", "Adsum-Backend", "kbits")].filter(
+			(r) => fs.existsSync(r),
+		)
+		if (!roots.some((r) => r.includes("Adsum-Backend"))) {
+			return // sibling registry folder absent — file existence is unknowable from here
+		}
+		const missing: string[] = []
+		const fixed: string[] = []
+		for (const t of ESP_TARGETS) {
+			const rel = getEspBoardKnowledgeFile(t)
+			if (!rel) {
+				continue
+			}
+			const exists = roots.some((r) => fs.existsSync(path.join(r, rel)))
+			if (!exists && !ESP_KNOWN_MISSING.has(rel)) {
+				missing.push(`${t} → ${rel}`)
+			}
+			if (exists && ESP_KNOWN_MISSING.has(rel)) {
+				fixed.push(rel)
+			}
+		}
+		assert.deepEqual(missing, [], `ESP routes pointing at files that do not exist:\n${missing.join("\n")}`)
+		assert.deepEqual(fixed, [], `these bits now exist — remove them from ESP_KNOWN_MISSING:\n${fixed.join("\n")}`)
+	})
+
 	test("no route is a dead link", () => {
 		const roots = [
 			path.join(process.cwd(), "iot-knowledge"),
