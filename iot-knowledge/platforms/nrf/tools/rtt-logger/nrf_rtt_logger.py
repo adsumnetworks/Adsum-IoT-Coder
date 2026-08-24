@@ -529,8 +529,25 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
     os.makedirs(log_dir, exist_ok=True)
     started = []  # (mode, name, proc_or_None, thread, raw_or_None, final_file, btmon_or_None)
 
+    # A CAPABILITY THAT WAS ASKED FOR AND COULD NOT RUN MUST NOT LOOK LIKE ONE THAT RAN AND FOUND NOTHING.
+    #
+    # The monitor rides RTT channel 1 and needs pylink-square. Without it this used to warn on stdout and
+    # carry on capturing channel 0, so a caller that asked for `monitor` got an ordinary log with no HCI in
+    # it — indistinguishable from a quiet bus. Observed cost, on the bench, 2026-08-24: an agent asked for
+    # the monitor, received channel-0 text, and spent half a 40-minute run hand-rolling JLinkRTTLogger to
+    # get what it had already requested. It never learned the capability had been withdrawn.
+    #
+    # This is the same rule the CRA scanner follows — a scan that did not run cannot read as clean — so the
+    # withdrawal is written where a caller reads results, not only where a human reads a terminal.
+    monitor_unavailable = None
     if monitor and not ensure_pylink():
-        print("  WARNING: pylink-square unavailable — falling back to single-channel (no .btmon).")
+        monitor_unavailable = (
+            "monitor capture was requested but pylink-square is not installed for this interpreter, "
+            "so RTT channel 1 (the BT monitor) was never opened. This capture is channel 0 only: it says "
+            "nothing about HCI traffic. Install it with: "
+            f"{sys.executable} -m pip install --user pylink-square"
+        )
+        print(f"  NOT PERFORMED: {monitor_unavailable}")
         monitor = False
 
     if monitor:
@@ -602,6 +619,18 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
         if raw and os.path.exists(raw):
             os.remove(raw)
         result[name] = final
+
+    # The tombstone. A caller that asked for the monitor and got a channel-0 log has to be able to tell
+    # that apart from a quiet bus, and it reads FILES, not this process's stdout. Written beside the
+    # capture, named after it, so whatever picks the log up finds the reason next to the evidence.
+    if monitor_unavailable:
+        for name, final in result.items():
+            try:
+                with open(f"{final}.not-performed", "w", encoding="utf-8") as fh:
+                    fh.write(monitor_unavailable + "\n")
+            except OSError:
+                pass  # a tombstone that cannot be written must not take the capture down with it
+        print(f"    [!] monitor NOT performed — see <log>.not-performed beside each capture")
 
     return result
 

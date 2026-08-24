@@ -12,6 +12,46 @@ export interface EspDevice {
 	/** Chip base MAC (e.g. "ac:eb:e6:0c:f8:c0"), when known — read by esptool over the bridge, or taken from a
 	 *  native-USB device's serial number (which IS the base MAC). Used to fold a board's two USB interfaces into one. */
 	mac?: string
+	/** USB location, e.g. "1-14.1.2:1.0" — two interfaces of one board sit behind the same parent hub. */
+	location?: string
+}
+
+/** The parent hub of a USB location: "1-14.1.2:1.0" → "1-14.1". Undefined when there is no parent. */
+export function usbParent(location: string | undefined): string | undefined {
+	const dev = location?.split(":")[0]
+	if (!dev || !dev.includes(".")) {
+		return undefined
+	}
+	return dev.slice(0, dev.lastIndexOf("."))
+}
+
+/**
+ * Which unresolved devices are most likely the UART bridge of a board already listed.
+ *
+ * A single DevKit can present two USB serial interfaces from one cable — the chip's native
+ * USB-Serial/JTAG (Espressif VID 0x303a) and an on-board bridge (CP210x/CH34x) — through an internal
+ * hub, so the two share a USB parent. When the bridge's chip cannot be probed (the bench's C6 reports
+ * SECURE DOWNLOAD MODE, which blocks `read-mac`), `dedupeEspDevicesByMac` has no MAC to fold on and the
+ * board appears twice: once resolved, once as a nameless mystery.
+ *
+ * This does NOT hide it. Hiding is what a merge would do, and a merge here is unsafe: two ESP boards in
+ * one desk hub also share a parent, and losing a real board is worse than showing an extra row. It only
+ * says what the extra row probably is, so the reader is not left counting phantom boards.
+ */
+export function looksLikeSiblingBridge(d: EspDevice, all: EspDevice[]): boolean {
+	if (d.chip) {
+		return false // already identified — nothing to explain
+	}
+	const parent = usbParent(d.location)
+	if (!parent) {
+		return false
+	}
+	// Any RESOLVED sibling behind the same hub, whatever VID this one carries. The first cut required the
+	// unresolved device to be a generic bridge and its sibling to be Espressif-native, which is the bench's
+	// C6 (native 0x303a + CH343 0x1a86 behind an on-board hub). It is not the only shape: a board can also
+	// present two interfaces on its OWN vendor id, and the one that fails to probe then reads as a second
+	// Espressif device — "ESP (model unknown)" — which is exactly what a developer reported seeing.
+	return all.some((o) => o !== d && Boolean(o.chip) && usbParent(o.location) === parent)
 }
 
 /** A USB serial number that is a 6-octet MAC ("AC:EB:E6:0C:F8:C0") — the form an ESP native-USB port exposes. */
@@ -45,6 +85,18 @@ export function dedupeEspDevicesByMac(devices: EspDevice[]): EspDevice[] {
 	const out: EspDevice[] = []
 	const idxByMac = new Map<string, number>()
 	for (const d of devices) {
+		// An identical USB SERIAL NUMBER is the same physical USB device presenting two interfaces — the
+		// case macOS shows most often, where one board yields two ports and only one of them probes. That
+		// is not an inference from topology, it is the device saying so, so it folds like a MAC match.
+		const bySerial = d.serialNumber?.trim()
+			? out.findIndex((o) => o.serialNumber?.trim() && o.serialNumber.trim() === d.serialNumber!.trim())
+			: -1
+		if (bySerial >= 0) {
+			if (!out[bySerial].chip && d.chip) {
+				out[bySerial] = d
+			}
+			continue
+		}
 		const key = macKey(d.mac)
 		if (!key) {
 			out.push(d) // no MAC → can't prove it's a duplicate → keep it

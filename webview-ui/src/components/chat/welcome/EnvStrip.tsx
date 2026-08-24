@@ -1,4 +1,4 @@
-import { type EspDevice, type EspEnvironment, espUnresolvedDeviceLabel } from "@shared/esp"
+import { type EspDevice, type EspEnvironment, espUnresolvedDeviceLabel, looksLikeSiblingBridge } from "@shared/esp"
 import type { NrfBoard, NrfEnvironment } from "@shared/nrf"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import React, { useState } from "react"
@@ -231,7 +231,17 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 			// Resolved host-side from the board-identity bit, so a board Nordic ships between our releases
 			// can be named by a registry update rather than a reinstall. Falls back to the raw PCA.
 			const friendly = b.boardVersion ? (b.boardName ?? b.boardVersion) : undefined
-			const name = b.deviceName ?? friendly ?? b.deviceFamily ?? b.serialNumber
+			// A Nordic USB device with no probe — a dongle — publishes no chip: nrfutil itself answers
+			// "not supported for this type of device". Name the CATEGORY, as every other row names a board,
+			// plus the only specific identity it does publish: the firmware it is running.
+			// This line answers "what boards and DKs are detected" — hardware, not what is running on it.
+			// A dongle has no PCA, so its board comes from the board-identity bit, which knows which board
+			// Nordic's own firmware images ship for; when the bit cannot name it we say what we do know
+			// rather than reporting the firmware string as if it were a model.
+			const usbOnly = b.nordicUsb && !b.deviceName && !b.deviceFamily && !b.boardVersion
+			const name = usbOnly
+				? (b.boardName ?? "Nordic USB device")
+				: (b.deviceName ?? friendly ?? b.deviceFamily ?? b.serialNumber)
 			return { board: b, label: b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name }
 		})
 		// Two boards of the same kind render identically — the bench has two nRF9161 DKs, both reporting
@@ -323,7 +333,15 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 		// confirmed (never claim "ESP32-family" off an unconfirmed CH34x/CP210x/FTDI device).
 		devices = env.espDevices
 			.map((d: EspDevice) => {
-				const name = d.chip ?? espUnresolvedDeviceLabel(d.vid)
+				// An unresolved device sharing a USB hub with a resolved native-USB ESP is almost certainly
+				// that board's own UART bridge — one DevKit, two interfaces. Say so rather than leaving a
+				// nameless row the reader counts as a third board. Not hidden: a merge could lose a real
+				// board (two ESPs in one desk hub also share a parent), and an extra row beats a missing one.
+				const name = d.chip
+					? d.chip
+					: looksLikeSiblingBridge(d, env.espDevices)
+						? `${espUnresolvedDeviceLabel(d.vid)} · likely the UART bridge of the board above`
+						: espUnresolvedDeviceLabel(d.vid)
 				return d.chip && d.chipRevision ? `${name} (${d.chipRevision})` : name
 			})
 			.join(", ")

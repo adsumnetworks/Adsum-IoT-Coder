@@ -1,5 +1,5 @@
 import type { NrfBoard, NrfEnvironment, ProjectSdk } from "@shared/nrf"
-import { boardNameFor } from "@/services/knowledge/dataBits"
+import { boardNameFor, boardNameForUsbProduct } from "@/services/knowledge/dataBits"
 import { exec } from "child_process"
 import { existsSync, readdirSync, readFileSync, statSync } from "fs"
 import { homedir } from "os"
@@ -280,7 +280,13 @@ interface DeviceListEntry {
 	serialNumber: string
 	deviceFamily?: string
 	boardVersion?: string
+	/** Resolved from the board-identity bit at parse time — see NrfBoard.boardName. */
+	boardName?: string
 	traits?: Record<string, boolean>
+	/** nrfutil's own `nordicUsb` trait — see NrfBoard.nordicUsb. */
+	nordicUsb?: boolean
+	/** Board resolved from a Nordic-published USB product string, for devices with no PCA. */
+	boardNameFromUsb?: string
 	/** USB product description, e.g. "Seeed Studio XIAO nRF54LM20A CMSIS-DAP". */
 	usbProduct?: string
 	usbManufacturer?: string
@@ -332,6 +338,9 @@ export function parseDeviceListFull(stdout: string): DeviceListEntry[] {
 					boardVersion: d.devkit?.boardVersion as string | undefined,
 					boardName: boardNameFor(d.devkit?.boardVersion as string | undefined),
 					traits: d.traits as Record<string, boolean> | undefined,
+					nordicUsb: Boolean((d.traits as Record<string, boolean> | undefined)?.nordicUsb),
+					// A dongle has no PCA; Nordic's own firmware strings name the hardware they ship for.
+					boardNameFromUsb: boardNameForUsbProduct(d.usb?.product as string | undefined),
 					// The only identity a third-party module (XIAO, custom CMSIS-DAP board) publishes.
 					usbProduct: d.usb?.product as string | undefined,
 					usbManufacturer: d.usb?.manufacturer as string | undefined,
@@ -465,7 +474,56 @@ async function probeSdks(sdkManagerPrefix: string): Promise<SdkProbeResult> {
  * Nordic part, so they are still dropped. Exported for unit tests.
  */
 export function isNordicBoard(board: Partial<NrfBoard>): boolean {
-	return !!(board.deviceName || board.deviceFamily || board.boardVersion || nordicChipFromProduct(board.productName))
+	// `nordicUsb` is nrfutil's own classification, and it is the ONLY Nordic identity a dongle running
+	// sniffer firmware has: no devkit, no jlink, and a product string that names a role rather than a
+	// part. Without this the sniffer — the whole over-the-air layer of a BLE debug — is invisible.
+	return !!(
+		board.deviceName ||
+		board.deviceFamily ||
+		board.boardVersion ||
+		board.nordicUsb ||
+		nordicChipFromProduct(board.productName)
+	)
+}
+
+/**
+ * One parsed device → the board the UI is given.
+ *
+ * Extracted because this copy is where a field goes missing. It was a literal naming five properties by
+ * hand inside a loop, and `boardName` — resolved from the board-identity bit a few lines earlier — was
+ * not one of them. The resolver was right and the webview was right; the name died in between, and
+ * because the webview's own PCA table had just been deleted, every Nordic board in the welcome strip
+ * rendered as a bare "PCA10153". A mapping worth getting wrong is worth being able to test.
+ */
+export function boardFromEntry(entry: DeviceListEntry): NrfBoard {
+	const board: NrfBoard = {
+		serialNumber: entry.serialNumber,
+		deviceFamily: entry.deviceFamily,
+		boardVersion: entry.boardVersion,
+		// A PCA-derived name first; for a device that has none, the board its firmware is published for.
+		boardName: entry.boardName ?? entry.boardNameFromUsb,
+		productName: entry.usbProduct,
+		usbManufacturer: entry.usbManufacturer,
+		nordicUsb: entry.nordicUsb,
+	}
+	// A third-party module has no devkit/jlink identity at all, so name the chip from its USB product
+	// string — otherwise the board is invisible and the model invents one.
+	if (!board.deviceName && !board.deviceFamily) {
+		board.deviceName = nordicChipFromProduct(entry.usbProduct)
+	}
+	// A Nordic USB device with no chip identity is NOT given a fabricated one.
+	//
+	// The chip is genuinely unknowable here, and not for want of trying: `nrfutil device device-info` on
+	// the bench's dongle answers "The operation is either not supported for this type of device". There is
+	// no debug probe — traits are devkit:false, jlink:false — so Nordic's own tool cannot read the part.
+	// The USB descriptor is firmware's to choose: that dongle reports manufacturer "ZEPHYR", product
+	// "nRF Sniffer for Bluetooth LE", 1915:522A. An nRF52833, nRF5340 or nRF54 running a Zephyr USB
+	// application presents identically, so "nRF52840" would be a confident guess, not a reading.
+	//
+	// What IS known: VID 0x1915 is Nordic's, and nrfutil classified it nordicUsb. The strip composes
+	// "Nordic USB device · <product>" from that — a category, like every other row states a board, plus
+	// the only specific identity the device publishes: what it is currently running.
+	return board
 }
 
 async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: boolean; boards: NrfBoard[] }> {
@@ -484,18 +542,7 @@ async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: bool
 
 		const boards: NrfBoard[] = []
 		for (const entry of entries) {
-			const board: NrfBoard = {
-				serialNumber: entry.serialNumber,
-				deviceFamily: entry.deviceFamily,
-				boardVersion: entry.boardVersion,
-				productName: entry.usbProduct,
-				usbManufacturer: entry.usbManufacturer,
-			}
-			// A third-party module has no devkit/jlink identity at all, so name the chip from its USB
-			// product string — otherwise the board is invisible and the model invents one.
-			if (!board.deviceName && !board.deviceFamily) {
-				board.deviceName = nordicChipFromProduct(entry.usbProduct)
-			}
+			const board = boardFromEntry(entry)
 			const kept = isNordicBoard(board)
 			console.info(
 				`[adsum][nrf] list entry ${entry.serialNumber} → family=${entry.deviceFamily ?? "?"} board=${entry.boardVersion ?? "?"} product=${entry.usbProduct ?? "?"} traits.jlink=${entry.traits?.jlink ?? "?"} ${kept ? "(kept)" : "(DROPPED: no Nordic identity)"}`,

@@ -2,7 +2,7 @@
 id: adsum/nrf/tools/nrf-sniffer
 title: "nrf-sniffer"
 type: tool
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: Omar Morceli
 license: Apache-2.0
@@ -23,7 +23,7 @@ artifacts:
   - path: nrf-sniffer.bat
     sha256: febe7e741799520b64da464454411d3ef922741281cb1f9b03dbc790deb48bce
   - path: nrf_sniffer.py
-    sha256: aa63291e1363b525897fbe4598955cf05aff03b5a9f5d6a2a7a442a955ae9546
+    sha256: e74d970d929f385619f3cd5e8e51a0d3537109fe3fd5d711cd8024b087f67f99
 ---
 
 Capture Bluetooth LE traffic with an nRF52840 dongle running sniffer firmware, to a .pcap.
