@@ -2,7 +2,7 @@
 id: adsum/rules/tool-routing
 title: "Tool Routing Directives"
 type: knowledge
-version: 1.2.0
+version: 1.2.1
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -36,7 +36,9 @@ Standard shell terminals on embedded development machines often lack the cross-c
 
    **A Device tool's NAME is not a command on your PATH.** The "Device tools" block lists each one as
    **name** followed by the exact command to run — usually an absolute interpreter path and script path,
-   e.g. `- **posture-scan** — /usr/bin/node /…/tbit-cache/…/posture_scan.mjs --platform nrf|esp …`.
+   e.g. `- **posture-scan** — <absolute path to node> <absolute path to posture_scan.mjs> --platform nrf|esp …`.
+   Those paths look different on Windows, macOS and Linux; copy what the block gives you rather than
+   reconstructing one.
    Knowledge bits refer to a tool by that NAME and write usage as `name --args`. That is shorthand for the
    advertised line, not something you can type.
    - **Find the tool by NAME in the block, then copy its command VERBATIM** and append your arguments.
