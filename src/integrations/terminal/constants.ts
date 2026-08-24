@@ -121,3 +121,11 @@ export function isCompilingOutput(data: string): boolean {
  * fired — a long silent build is never cut short by it.
  */
 export const TRAILING_CHUNK_GRACE_MS = 2_000
+
+/**
+ * How long the clipboard-based terminal snapshot may take before we give up on it.
+ *
+ * It is a best-effort nicety, not a result the run depends on — and over Remote-SSH the clipboard round
+ * trip can never settle at all. Nothing downstream needs it, so a few seconds is generous.
+ */
+export const TERMINAL_SNAPSHOT_TIMEOUT_MS = 3_000
