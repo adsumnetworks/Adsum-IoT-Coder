@@ -27,7 +27,6 @@
 
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { HostProvider } from "../src/hosts/host-provider"
 
 const ROOT = path.join(__dirname, "..")
 
