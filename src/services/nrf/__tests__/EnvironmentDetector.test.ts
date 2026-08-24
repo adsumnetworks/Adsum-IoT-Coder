@@ -273,6 +273,27 @@ describe("isNordicBoard — a Nordic USB device with no chip identity is still a
 		isNordicBoard({ serialNumber: "5B5F121973", productName: "USB JTAG/serial debug unit" }).should.be.false()
 	})
 
+	it("names the dongle from the board its firmware is published for", () => {
+		const board = boardFromEntry({
+			serialNumber: "A6D98491ED8264D2",
+			usbProduct: "nRF Sniffer for Bluetooth LE",
+			boardNameFromUsb: "nRF52840 Dongle",
+			nordicUsb: true,
+		})
+		board.boardName!.should.equal("nRF52840 Dongle")
+		board.productName!.should.equal("nRF Sniffer for Bluetooth LE") // the role survives alongside the board
+	})
+
+	it("a PCA-derived name still wins over a USB-product one", () => {
+		const board = boardFromEntry({
+			serialNumber: "1050256273",
+			boardVersion: "PCA10056",
+			boardName: "nRF52840 DK",
+			boardNameFromUsb: "nRF52840 Dongle",
+		})
+		board.boardName!.should.equal("nRF52840 DK")
+	})
+
 	it("boardFromEntry keeps it, and invents no chip for it", () => {
 		const board = boardFromEntry({
 			serialNumber: "A6D98491ED8264D2",
