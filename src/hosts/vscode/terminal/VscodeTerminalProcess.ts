@@ -9,6 +9,7 @@ import {
 	MAX_UNRETRIEVED_LINES,
 	PROCESS_HOT_TIMEOUT_COMPILING,
 	PROCESS_HOT_TIMEOUT_NORMAL,
+	TERMINAL_SNAPSHOT_TIMEOUT_MS,
 	TRAILING_CHUNK_GRACE_MS,
 	TRUNCATE_KEEP_LINES,
 } from "@/integrations/terminal/constants"
@@ -49,7 +50,26 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 		//    could not be captured and success is unknown.
 		const returnCurrentTerminalContents = async (reason: "silent" | "no-integration"): Promise<string | undefined> => {
 			try {
-				const terminalSnapshot = await getLatestTerminalOutput()
+				// A FALLBACK MUST NOT OUTLAST THE FAILURE IT COVERS.
+				//
+				// getLatestTerminalOutput() is a clipboard round-trip — terminal.selectAll, copySelection,
+				// then readTextFromClipboard. Over Remote-SSH the clipboard belongs to the LOCAL client while
+				// these commands are issued from the remote extension host, and that round-trip can simply
+				// never come back: no error, no rejection, just a promise that never settles. This is the
+				// only await between the command finishing and `completed` being emitted, so when it hangs
+				// the run sits at "Pending" over a command whose output is visible in the terminal beside it.
+				//
+				// It is reached precisely when the stream delivered nothing, which is the same intermittent
+				// case the end-event backstop above exists for — so the two failures compound: the marker is
+				// lost, the fallback is tried, and the fallback is what actually hangs.
+				//
+				// Bounded rather than removed: when it works it is genuinely useful (it is what turns a
+				// silent `mkdir` into "ran to completion, produced no output"). When it does not answer in a
+				// few seconds, no snapshot is better than no run.
+				const terminalSnapshot = await Promise.race([
+					getLatestTerminalOutput(),
+					new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), TERMINAL_SNAPSHOT_TIMEOUT_MS)),
+				])
 				if (terminalSnapshot && terminalSnapshot.trim()) {
 					const framing =
 						reason === "silent"
