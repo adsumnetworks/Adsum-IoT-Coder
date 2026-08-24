@@ -54,13 +54,23 @@ export const DEFAULT_API_PROVIDER = "openrouter" as ApiProvider
 // server-side; the client only ever references the logical "free-default" id. Used by BOTH the webview (provider
 // picker + the task-header context chip, via providerUtils → selectedModelInfo) AND the host provider
 // (src/core/api/providers/adsum-free.ts re-exports ADSUM_FREE_MODEL_INFO from here). `contextWindow` drives the
-// REAL budget — getContextWindowInfo → ContextManager truncation/compaction. Upstream is DeepSeek V4 Pro (1M);
-// 200K gives real-firmware headroom (a CRA run on a big project peaked ~78% of 128K); raise toward 1M if needed.
+// REAL budget — getContextWindowInfo → ContextManager truncation/compaction.
+//
+// Upstream is DeepSeek V4 Pro, whose window is 1M, and this now matches it. It was 200K: deliberately
+// conservative headroom while nobody had measured a long firmware session. They have now. A driven nRF9161
+// build-and-flash run composes an application from two NCS samples while holding the SDK headers, Kconfig
+// and its own sources in context, and a CRA run over a real project carries the SBOM, the scan JSON and the
+// posture evidence at once. Truncating those mid-run is not a saving — the agent loses the file it is
+// editing and re-reads it, which costs more than it saved and produces worse work.
+//
+// The number here is a CLAIM ABOUT THE UPSTREAM MODEL, not a preference. If the served model is ever swapped
+// for one with a smaller window, this must come down with it: too high and the provider rejects the request
+// outright instead of the ContextManager compacting gracefully before the limit.
 export const adsumFreeModels = {
 	"free-default": {
 		name: "Adsum Free Tier",
 		maxTokens: 8192,
-		contextWindow: 200_000,
+		contextWindow: 1_000_000,
 		supportsImages: false,
 		supportsPromptCache: true,
 		inputPrice: 0,

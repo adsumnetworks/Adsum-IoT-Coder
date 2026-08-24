@@ -11,6 +11,7 @@ import * as vscode from "vscode"
 import { Controller } from "@/core/controller"
 import { ExtensionRegistryInfo } from "@/registry"
 import { getCwd } from "@/utils/path"
+import { checkRespond, pendingAskFrom } from "./askBridge"
 import { calculateToolSuccessRate, getFileChanges, initializeGitRepository, validateWorkspacePath } from "./GitHelper"
 
 /**
@@ -119,6 +120,77 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 				shutdownTestServer()
 			}, 100)
 
+			return
+		}
+
+		/**
+		 * The consult seam, extension edition — the same idea as the Studio's agent-attach.
+		 *
+		 * /task fires a mission and runs it, but a driven run that hits an ask the auto-approval settings do
+		 * not cover (a followup question, a browser launch) used to park until a human clicked in the
+		 * webview. The driving agent could pre-answer everything it could predict in the task text and still
+		 * be helpless the moment something new came up — it had no way to SEE the question, let alone answer.
+		 *
+		 * GET /ask returns the pending ask when the last message is one (type, text, partial), and
+		 * {ask: null} otherwise. POST /respond answers it through controller.task.handleWebviewAskResponse —
+		 * the exact handler the webview's buttons call, so an outside answer is indistinguishable from a
+		 * click and shows up in the visible session the same way. The developer watching keeps priority:
+		 * whoever answers first wins, identically to two clicks racing.
+		 */
+		if (req.method === "GET" && req.url === "/ask") {
+			void (async () => {
+				try {
+					const task = WebviewProvider.getVisibleInstance()?.controller?.task
+					if (!task) {
+						res.writeHead(200)
+						res.end(JSON.stringify({ ask: null, reason: "no active task" }))
+						return
+					}
+					const msgs = task.messageStateHandler.getClineMessages()
+					res.writeHead(200)
+					res.end(JSON.stringify({ ask: pendingAskFrom(msgs), messages: msgs.length }))
+				} catch (e) {
+					res.writeHead(500)
+					res.end(JSON.stringify({ error: String(e) }))
+				}
+			})()
+			return
+		}
+
+		if (req.method === "POST" && req.url === "/respond") {
+			let respBody = ""
+			req.on("data", (chunk) => {
+				respBody += chunk.toString()
+			})
+			req.on("end", async () => {
+				try {
+					const task = WebviewProvider.getVisibleInstance()?.controller?.task
+					if (!task) {
+						res.writeHead(409)
+						res.end(JSON.stringify({ error: "no active task" }))
+						return
+					}
+					// Every rule about WHETHER this may be delivered lives in askBridge, where it is tested;
+					// this handler only carries the decision out.
+					const pending = pendingAskFrom(task.messageStateHandler.getClineMessages())
+					const check = checkRespond(respBody, pending)
+					if (!check.ok) {
+						res.writeHead(check.status)
+						res.end(JSON.stringify({ error: check.error }))
+						return
+					}
+					await task.handleWebviewAskResponse(check.responseType, check.text)
+					Logger.log(
+						`Test server answered ask '${pending?.kind}' with ${check.responseType}` +
+							`${check.text ? `: ${check.text.slice(0, 80)}` : ""}`,
+					)
+					res.writeHead(200)
+					res.end(JSON.stringify({ ok: true, answered: pending?.kind, ts: pending?.ts }))
+				} catch (e) {
+					res.writeHead(500)
+					res.end(JSON.stringify({ error: String(e) }))
+				}
+			})
 			return
 		}
 
