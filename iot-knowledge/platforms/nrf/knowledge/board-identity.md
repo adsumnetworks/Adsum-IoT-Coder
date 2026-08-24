@@ -2,7 +2,7 @@
 id: adsum/nrf/knowledge/board-identity
 title: "Reference: Nordic Board Identity"
 type: knowledge
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: Omar Morceli
 co_authors:
@@ -70,6 +70,28 @@ boards:
     name: "Thingy:52"
   - pca: PCA20035
     name: "Thingy:91"
+```
+
+## A device with no debugger: name it from the firmware Nordic itself ships
+
+A dongle has no on-board J-Link, so `nrfutil device device-info` refuses it — *"the operation is not
+supported for this type of device"* — and there is no PCA to look up. What it does publish is a USB
+product string, and for Nordic's own firmware images that string is specific enough to name the hardware
+it is built for.
+
+Only Nordic-published strings belong here. `nRF Sniffer for Bluetooth LE` is the product string set by
+Nordic's nRF Sniffer firmware, which is distributed for the nRF52840 Dongle; a DK running the same image
+still carries a J-Link and is named through the PCA path above, so a device reaching this table is the
+Dongle. A generic string — anything a user's own Zephyr application chooses — must NOT be added: the
+descriptor is firmware's to set, and `1915:522a` alone is a Zephyr USB identity shared by any Zephyr
+application on Nordic silicon.
+
+```yaml
+usb_products:
+  - product: nRF Sniffer for Bluetooth LE
+    name: nRF52840 Dongle
+  - product: Open DFU Bootloader
+    name: nRF52840 Dongle
 ```
 
 ## A board with no PCA is not an unknown board
