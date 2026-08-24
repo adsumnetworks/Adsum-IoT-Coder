@@ -280,6 +280,8 @@ interface DeviceListEntry {
 	serialNumber: string
 	deviceFamily?: string
 	boardVersion?: string
+	/** Resolved from the board-identity bit at parse time — see NrfBoard.boardName. */
+	boardName?: string
 	traits?: Record<string, boolean>
 	/** USB product description, e.g. "Seeed Studio XIAO nRF54LM20A CMSIS-DAP". */
 	usbProduct?: string
@@ -468,6 +470,32 @@ export function isNordicBoard(board: Partial<NrfBoard>): boolean {
 	return !!(board.deviceName || board.deviceFamily || board.boardVersion || nordicChipFromProduct(board.productName))
 }
 
+/**
+ * One parsed device → the board the UI is given.
+ *
+ * Extracted because this copy is where a field goes missing. It was a literal naming five properties by
+ * hand inside a loop, and `boardName` — resolved from the board-identity bit a few lines earlier — was
+ * not one of them. The resolver was right and the webview was right; the name died in between, and
+ * because the webview's own PCA table had just been deleted, every Nordic board in the welcome strip
+ * rendered as a bare "PCA10153". A mapping worth getting wrong is worth being able to test.
+ */
+export function boardFromEntry(entry: DeviceListEntry): NrfBoard {
+	const board: NrfBoard = {
+		serialNumber: entry.serialNumber,
+		deviceFamily: entry.deviceFamily,
+		boardVersion: entry.boardVersion,
+		boardName: entry.boardName,
+		productName: entry.usbProduct,
+		usbManufacturer: entry.usbManufacturer,
+	}
+	// A third-party module has no devkit/jlink identity at all, so name the chip from its USB product
+	// string — otherwise the board is invisible and the model invents one.
+	if (!board.deviceName && !board.deviceFamily) {
+		board.deviceName = nordicChipFromProduct(entry.usbProduct)
+	}
+	return board
+}
+
 async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: boolean; boards: NrfBoard[] }> {
 	try {
 		const listResult = await execAsync(`${devicePrefix} list --json`, { timeout: 8000 })
@@ -484,18 +512,7 @@ async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: bool
 
 		const boards: NrfBoard[] = []
 		for (const entry of entries) {
-			const board: NrfBoard = {
-				serialNumber: entry.serialNumber,
-				deviceFamily: entry.deviceFamily,
-				boardVersion: entry.boardVersion,
-				productName: entry.usbProduct,
-				usbManufacturer: entry.usbManufacturer,
-			}
-			// A third-party module has no devkit/jlink identity at all, so name the chip from its USB
-			// product string — otherwise the board is invisible and the model invents one.
-			if (!board.deviceName && !board.deviceFamily) {
-				board.deviceName = nordicChipFromProduct(entry.usbProduct)
-			}
+			const board = boardFromEntry(entry)
 			const kept = isNordicBoard(board)
 			console.info(
 				`[adsum][nrf] list entry ${entry.serialNumber} → family=${entry.deviceFamily ?? "?"} board=${entry.boardVersion ?? "?"} product=${entry.usbProduct ?? "?"} traits.jlink=${entry.traits?.jlink ?? "?"} ${kept ? "(kept)" : "(DROPPED: no Nordic identity)"}`,
