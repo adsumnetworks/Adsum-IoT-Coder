@@ -283,6 +283,8 @@ interface DeviceListEntry {
 	/** Resolved from the board-identity bit at parse time — see NrfBoard.boardName. */
 	boardName?: string
 	traits?: Record<string, boolean>
+	/** nrfutil's own `nordicUsb` trait — see NrfBoard.nordicUsb. */
+	nordicUsb?: boolean
 	/** USB product description, e.g. "Seeed Studio XIAO nRF54LM20A CMSIS-DAP". */
 	usbProduct?: string
 	usbManufacturer?: string
@@ -334,6 +336,7 @@ export function parseDeviceListFull(stdout: string): DeviceListEntry[] {
 					boardVersion: d.devkit?.boardVersion as string | undefined,
 					boardName: boardNameFor(d.devkit?.boardVersion as string | undefined),
 					traits: d.traits as Record<string, boolean> | undefined,
+					nordicUsb: Boolean((d.traits as Record<string, boolean> | undefined)?.nordicUsb),
 					// The only identity a third-party module (XIAO, custom CMSIS-DAP board) publishes.
 					usbProduct: d.usb?.product as string | undefined,
 					usbManufacturer: d.usb?.manufacturer as string | undefined,
@@ -467,7 +470,16 @@ async function probeSdks(sdkManagerPrefix: string): Promise<SdkProbeResult> {
  * Nordic part, so they are still dropped. Exported for unit tests.
  */
 export function isNordicBoard(board: Partial<NrfBoard>): boolean {
-	return !!(board.deviceName || board.deviceFamily || board.boardVersion || nordicChipFromProduct(board.productName))
+	// `nordicUsb` is nrfutil's own classification, and it is the ONLY Nordic identity a dongle running
+	// sniffer firmware has: no devkit, no jlink, and a product string that names a role rather than a
+	// part. Without this the sniffer — the whole over-the-air layer of a BLE debug — is invisible.
+	return !!(
+		board.deviceName ||
+		board.deviceFamily ||
+		board.boardVersion ||
+		board.nordicUsb ||
+		nordicChipFromProduct(board.productName)
+	)
 }
 
 /**
@@ -487,11 +499,18 @@ export function boardFromEntry(entry: DeviceListEntry): NrfBoard {
 		boardName: entry.boardName,
 		productName: entry.usbProduct,
 		usbManufacturer: entry.usbManufacturer,
+		nordicUsb: entry.nordicUsb,
 	}
 	// A third-party module has no devkit/jlink identity at all, so name the chip from its USB product
 	// string — otherwise the board is invisible and the model invents one.
 	if (!board.deviceName && !board.deviceFamily) {
 		board.deviceName = nordicChipFromProduct(entry.usbProduct)
+	}
+	// A Nordic USB device that still names no part is named by what it IS: the dongle's product string
+	// says "nRF Sniffer for Bluetooth LE", which is exactly what the developer needs to read. Better than
+	// a bare serial, and far better than the device being absent.
+	if (!board.deviceName && !board.deviceFamily && !board.boardVersion && board.nordicUsb && entry.usbProduct) {
+		board.deviceName = entry.usbProduct
 	}
 	return board
 }
