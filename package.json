@@ -513,7 +513,8 @@
 		"test:standalone-package": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/headless/standalonePackage.test.ts",
 		"test:shipped-engine-boot": "node scripts/test-shipped-engine-boot.mjs",
 		"test:hil-precedence": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-precedence.ts",
-		"test:chip-identity": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/chipIdentityParity.node-test.ts"
+		"test:chip-identity": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/chipIdentityParity.node-test.ts",
+		"test:hil-bits": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-bits.ts"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [
