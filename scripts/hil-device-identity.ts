@@ -12,11 +12,12 @@
  * can never fail a machine without boards.
  *
  *   npm run test:hil-identity
- *   HIL_ESP_PORT=COM4 npm run test:hil-identity     (also probe the ESP chip on that port)
+ *   HIL_ESP_PORT=COM4 npm run test:hil-identity     (override: probe only that port)
  */
 
 import { execFileSync } from "node:child_process"
 import { getBoardKnowledgeFile, getEspBoardKnowledgeFile } from "../src/core/prompts/system-prompt/components/iot_context"
+import { filterEspPorts } from "../src/services/esp/EspEnvironmentDetector"
 import { getIdfPython, parseEsptoolChip, probeChip, resolveIdfPython } from "../src/services/esp/espChipProbe"
 import {
 	isNordicBoard,
@@ -108,57 +109,96 @@ async function nordicSection(): Promise<void> {
 	}
 }
 
-async function espSection(): Promise<void> {
-	const port = process.env.HIL_ESP_PORT
-	if (!port) {
-		notes.push("HIL_ESP_PORT not set — skipped the ESP half")
-		return
+/**
+ * Every ESP serial port the production filter recognises, discovered the way the extension discovers
+ * them — pyserial's comports() through the exported filterEspPorts.
+ *
+ * The Nordic half enumerates its own boards; this half used to sit and wait for HIL_ESP_PORT, so on a
+ * bench with two ESP boards attached it tested neither and said "skipped" in a passing run. A harness
+ * that reports success for a rail it never touched is the defect this file exists to catch elsewhere.
+ */
+function discoverEspPorts(python: string): string[] {
+	const script =
+		"from serial.tools.list_ports import comports;import json;" +
+		"print(json.dumps([{'device':p.device,'vid':p.vid,'pid':p.pid,'description':p.description," +
+		"'serial_number':p.serial_number,'location':p.location} for p in comports()]))"
+	try {
+		const out = execFileSync(python, ["-c", script], { encoding: "utf8", timeout: 15_000, stdio: ["ignore", "pipe", "pipe"] })
+		return filterEspPorts(JSON.parse(out.trim())).map((d) => d.port)
+	} catch {
+		return []
 	}
+}
+
+async function espSection(): Promise<void> {
 	const python =
 		getIdfPython() ?? resolveIdfPython({ platform: process.platform, env: process.env, home: require("node:os").homedir() })
 	if (!python) {
 		notes.push("no IDF python env found — skipped the ESP half")
 		return
 	}
-	console.log(`\n[esp] probing ${port} with ${python}`)
 
-	// A port held by another process is an ENVIRONMENT condition, not a product defect — most often a
-	// leftover `idf.py monitor` from an earlier session still holding it. Treat it the same way as
-	// "no hardware attached": report it and skip, rather than reporting a failure this code did not cause.
-	try {
-		const probe = execFileSync(python, ["-m", "esptool", "--port", port, "flash_id"], {
-			encoding: "utf8",
-			timeout: 30_000,
-			stdio: ["ignore", "pipe", "pipe"],
-		})
-		void probe
-	} catch (e) {
-		const out = `${(e as { stdout?: string }).stdout ?? ""}${(e as { stderr?: string }).stderr ?? ""}${e instanceof Error ? e.message : ""}`
-		if (/port is busy|Access is denied|PermissionError|could not open port/i.test(out)) {
-			notes.push(
-				`${port} is held by another process (a leftover serial monitor?) — skipped the ESP half. ` +
-					`Close it and re-run to exercise this rail.`,
-			)
-			return
-		}
-	}
-
-	let chip: string | undefined
-	try {
-		const res = await probeChip(python, port)
-		chip = res.chip
-		console.log(`  chip=${res.chip ?? "(unresolved)"} rev=${res.chipRevision ?? "-"} mac=${res.mac ?? "-"}`)
-	} catch (e) {
-		notes.push(`esptool probe failed on ${port}: ${e instanceof Error ? e.message : e}`)
+	// HIL_ESP_PORT remains an override for a board the filter does not recognise; unset now means
+	// "find them", not "do nothing".
+	const override = process.env.HIL_ESP_PORT
+	const ports = override ? [override] : discoverEspPorts(python)
+	if (ports.length === 0) {
+		notes.push("no ESP serial port attached — skipped the ESP half")
 		return
 	}
+	console.log(`\n[esp] ${ports.length} port(s) via ${python}${override ? " (HIL_ESP_PORT override)" : ""}`)
 
-	check(!!chip, `esptool resolved a chip on ${port} (this is the probe the agent must NOT repeat)`)
-	if (chip) {
+	let resolved = 0
+	for (const port of ports) {
+		// A port held by another process is an ENVIRONMENT condition, not a product defect — most often a
+		// leftover `idf.py monitor` from an earlier session still holding it. Treat it the same way as
+		// "no hardware attached": report it and move on, rather than reporting a failure this code did not
+		// cause. The same applies to a board that will not enter download mode: the bench's ESP32-C6 sits
+		// in Secure Download Mode and its native USB-Serial/JTAG port answers nothing under any reset mode,
+		// which says something true about that board and nothing at all about this rail.
+		try {
+			const probe = execFileSync(python, ["-m", "esptool", "--port", port, "flash_id"], {
+				encoding: "utf8",
+				timeout: 30_000,
+				stdio: ["ignore", "pipe", "pipe"],
+			})
+			void probe
+		} catch (e) {
+			const out = `${(e as { stdout?: string }).stdout ?? ""}${(e as { stderr?: string }).stderr ?? ""}${e instanceof Error ? e.message : ""}`
+			if (/port is busy|Access is denied|PermissionError|could not open port/i.test(out)) {
+				notes.push(
+					`${port} is held by another process (a leftover serial monitor?) — close it and re-run to exercise it.`,
+				)
+				continue
+			}
+		}
+
+		let chip: string | undefined
+		try {
+			const res = await probeChip(python, port)
+			chip = res.chip
+			console.log(`  ${port}  chip=${res.chip ?? "(unresolved)"} rev=${res.chipRevision ?? "-"} mac=${res.mac ?? "-"}`)
+		} catch (e) {
+			notes.push(`esptool probe failed on ${port}: ${e instanceof Error ? e.message : e}`)
+			continue
+		}
+		if (!chip) {
+			notes.push(`${port} did not answer esptool — board not in download mode (Secure Download Mode?), not a rail failure.`)
+			continue
+		}
+		resolved++
+
 		const bit = getEspBoardKnowledgeFile(chip)
 		console.log(`  ${chip} → ${bit ?? "(no board bit)"}`)
 		check(!!bit, `the probed chip ${chip} routes to a board bit without any build existing`)
 	}
+
+	// The rail is proven by at least one board identifying end to end. Zero out of several, with ports
+	// present and a python found, is the one ESP outcome that is genuinely this code's problem.
+	check(
+		resolved > 0,
+		`esptool resolved a chip on at least one of ${ports.length} ESP port(s) (the probe the agent must NOT repeat)`,
+	)
 }
 
 async function main(): Promise<void> {

@@ -27,11 +27,12 @@ import { audioRecordingService } from "./services/dictation/AudioRecordingServic
 import { ErrorService } from "./services/error"
 import { featureFlagsService } from "./services/feature-flags"
 import { __setKbitTelemetry, setPrecedenceEnv } from "./services/knowledge/KnowledgeResolver"
-import { signatureEnforcementState } from "./services/tools/verifySignature"
 import { getDistinctId, initializeDistinctId, setDistinctId } from "./services/logging/distinctId"
 import { getCachedWorkspaceFeatures, getCachedWorkspaceSummary } from "./services/platform/WorkspaceClassifier"
 import { telemetryService } from "./services/telemetry"
 import { PostHogClientProvider } from "./services/telemetry/providers/posthog/PostHogClientProvider"
+import { signatureEnforcementState } from "./services/tools/verifySignature"
+import { watchForNewerInstalledBuild } from "./services/upgradeWatch"
 import { ShowMessageType } from "./shared/proto/host/window"
 import { FeatureFlag } from "./shared/services/feature-flags/feature-flags"
 import { syncWorker } from "./shared/services/worker/sync"
@@ -106,6 +107,10 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	// first-run funnel flag across restarts
 	initFreeTierPersistence(context.globalState)
 	initDemoManager(context.extensionPath, context.globalStorageUri.fsPath)
+
+	// Notice when a newer build is installed under a running window — a CLI --force install does not swap
+	// the extension host, so the fix on disk and the code executing can silently differ.
+	watchForNewerInstalledBuild(context, process.env.IS_DEV === "true")
 
 	// Initialize PostHog client provider
 	PostHogClientProvider.getInstance()
