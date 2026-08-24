@@ -113,3 +113,11 @@ export function isCompilingOutput(data: string): boolean {
 	const hasNullifier = COMPILING_NULLIFIERS.some((nullifier) => lowerData.includes(nullifier.toLowerCase()))
 	return hasMarker && !hasNullifier
 }
+
+/**
+ * How long to keep draining a shell-execution stream after VS Code has already reported the execution
+ * ended. The end event and the stream's own end marker are two witnesses to one fact and they do not
+ * always arrive in order, so trailing output can land just after the event. Only armed once the event has
+ * fired — a long silent build is never cut short by it.
+ */
+export const TRAILING_CHUNK_GRACE_MS = 2_000
