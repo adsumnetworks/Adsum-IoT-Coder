@@ -39,14 +39,19 @@ export function usbParent(location: string | undefined): string | undefined {
  * says what the extra row probably is, so the reader is not left counting phantom boards.
  */
 export function looksLikeSiblingBridge(d: EspDevice, all: EspDevice[]): boolean {
-	if (d.chip || d.vid === ESP_NATIVE_USB_VID) {
-		return false // already identified, or it IS the native interface
+	if (d.chip) {
+		return false // already identified — nothing to explain
 	}
 	const parent = usbParent(d.location)
 	if (!parent) {
 		return false
 	}
-	return all.some((o) => o !== d && o.vid === ESP_NATIVE_USB_VID && usbParent(o.location) === parent)
+	// Any RESOLVED sibling behind the same hub, whatever VID this one carries. The first cut required the
+	// unresolved device to be a generic bridge and its sibling to be Espressif-native, which is the bench's
+	// C6 (native 0x303a + CH343 0x1a86 behind an on-board hub). It is not the only shape: a board can also
+	// present two interfaces on its OWN vendor id, and the one that fails to probe then reads as a second
+	// Espressif device — "ESP (model unknown)" — which is exactly what a developer reported seeing.
+	return all.some((o) => o !== d && Boolean(o.chip) && usbParent(o.location) === parent)
 }
 
 /** A USB serial number that is a 6-octet MAC ("AC:EB:E6:0C:F8:C0") — the form an ESP native-USB port exposes. */
@@ -80,6 +85,18 @@ export function dedupeEspDevicesByMac(devices: EspDevice[]): EspDevice[] {
 	const out: EspDevice[] = []
 	const idxByMac = new Map<string, number>()
 	for (const d of devices) {
+		// An identical USB SERIAL NUMBER is the same physical USB device presenting two interfaces — the
+		// case macOS shows most often, where one board yields two ports and only one of them probes. That
+		// is not an inference from topology, it is the device saying so, so it folds like a MAC match.
+		const bySerial = d.serialNumber?.trim()
+			? out.findIndex((o) => o.serialNumber?.trim() && o.serialNumber.trim() === d.serialNumber!.trim())
+			: -1
+		if (bySerial >= 0) {
+			if (!out[bySerial].chip && d.chip) {
+				out[bySerial] = d
+			}
+			continue
+		}
 		const key = macKey(d.mac)
 		if (!key) {
 			out.push(d) // no MAC → can't prove it's a duplicate → keep it

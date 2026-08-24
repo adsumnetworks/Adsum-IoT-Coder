@@ -344,3 +344,36 @@ describe("looksLikeSiblingBridge — one DevKit, two USB interfaces", () => {
 		looksLikeSiblingBridge(b, [a, b]).should.be.false()
 	})
 })
+
+/**
+ * The shape a developer actually reported: the C6 showing twice, the second row reading
+ * "ESP (model unknown)" — which requires Espressif's own VID. So the phantom there is not a generic UART
+ * bridge (the bench's shape) but a second interface on the chip's own vendor id, of which only one probed.
+ */
+describe("one board, two interfaces on the SAME vendor id", () => {
+	it("folds two ports that share a USB serial number — the device says they are one", () => {
+		const resolved: EspDevice = { port: "/dev/cu.usbmodem101", vid: 0x303a, serialNumber: "60:55:F9:12:34:56", chip: "ESP32-C6" }
+		const twin: EspDevice = { port: "/dev/cu.usbmodem103", vid: 0x303a, serialNumber: "60:55:F9:12:34:56" }
+		const out = dedupeEspDevicesByMac([twin, resolved])
+		out.should.have.length(1)
+		out[0].chip!.should.equal("ESP32-C6") // the informative one survives, whichever order they arrive in
+	})
+
+	it("still keeps two boards that merely look alike but identify differently", () => {
+		const a: EspDevice = { port: "/dev/cu.a", vid: 0x303a, serialNumber: "60:55:F9:00:00:01", chip: "ESP32-C6" }
+		const b: EspDevice = { port: "/dev/cu.b", vid: 0x303a, serialNumber: "60:55:F9:00:00:02", chip: "ESP32-C6" }
+		dedupeEspDevicesByMac([a, b]).should.have.length(2)
+	})
+
+	it("explains an unresolved NATIVE-vid port sharing a hub with a resolved board", () => {
+		const resolved: EspDevice = { port: "/dev/cu.x", vid: 0x303a, chip: "ESP32-C6", location: "20-1.4:1.0" }
+		const unresolved: EspDevice = { port: "/dev/cu.y", vid: 0x303a, location: "20-1.2:1.0" }
+		looksLikeSiblingBridge(unresolved, [resolved, unresolved]).should.be.true()
+	})
+
+	it("does not explain away a board that is simply unprobed on its own port", () => {
+		const lone: EspDevice = { port: "/dev/cu.z", vid: 0x303a, location: "20-3:1.0" }
+		const other: EspDevice = { port: "/dev/cu.w", vid: 0x303a, chip: "ESP32-S3", location: "20-1.4:1.0" }
+		looksLikeSiblingBridge(lone, [other, lone]).should.be.false()
+	})
+})
