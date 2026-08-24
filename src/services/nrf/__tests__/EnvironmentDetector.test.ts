@@ -273,14 +273,19 @@ describe("isNordicBoard — a Nordic USB device with no chip identity is still a
 		isNordicBoard({ serialNumber: "5B5F121973", productName: "USB JTAG/serial debug unit" }).should.be.false()
 	})
 
-	it("boardFromEntry names it by what it IS, rather than leaving a bare serial", () => {
+	it("boardFromEntry keeps it, and invents no chip for it", () => {
 		const board = boardFromEntry({
 			serialNumber: "A6D98491ED8264D2",
 			usbProduct: "nRF Sniffer for Bluetooth LE",
 			nordicUsb: true,
 		})
-		board.deviceName!.should.equal("nRF Sniffer for Bluetooth LE")
 		isNordicBoard(board).should.be.true()
+		// nrfutil itself cannot read the part on a probe-less device, so neither may we: an nRF52833,
+		// nRF5340 or nRF54 running a Zephyr USB app presents exactly the same descriptor.
+		;(board.deviceName === undefined).should.be.true()
+		;(board.deviceFamily === undefined).should.be.true()
+		board.productName!.should.equal("nRF Sniffer for Bluetooth LE")
+		board.nordicUsb!.should.be.true()
 	})
 
 	it("does not overwrite a real chip name with the product string", () => {
