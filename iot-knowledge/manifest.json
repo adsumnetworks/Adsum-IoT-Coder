@@ -144,7 +144,7 @@
 			"id": "adsum/esp/sdks/esp-idf/sdk",
 			"title": "ESP-IDF — SDK Knowledge",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -156,7 +156,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "platforms/esp/sdks/esp-idf/SDK.md",
-			"content_hash": "a2a1d422fd5cef8164f26e7a35f20099156a705934ba16b65d6618131d44d558"
+			"content_hash": "6e4b86b9f9a7f6330359a29119d05739614c4a8ec9df8588514a3f1344b1d950"
 		},
 		{
 			"id": "adsum/esp/tools/esp-action",
