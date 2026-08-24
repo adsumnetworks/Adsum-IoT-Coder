@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { describe, test } from "node:test"
-import { getBoardKnowledgeFile, getEspBoardKnowledgeFile } from "./iot_context"
+import { boardSignalTargetFor, getBoardKnowledgeFile, getEspBoardKnowledgeFile } from "./iot_context"
 
 /**
  * Board-target → knowledge-file routing.
@@ -150,5 +150,46 @@ describe("every routed file actually exists", () => {
 			}
 		}
 		assert.deepEqual(missing, [], `routes pointing at files that do not exist:\n${missing.join("\n")}`)
+	})
+})
+
+describe("which field identifies a connected board", () => {
+	/**
+	 * On a Nordic DK the product string is the DEBUGGER. `nrfutil device list` reports Product = "J-Link"
+	 * for every one of them, so reading product first made the signal for an nRF9161 DK the literal string
+	 * "J-Link" — which routes to no board bit, and which the cellular gate (NRF91_BOARD_RE over board
+	 * targets) also fails to match, so LTE knowledge never loaded from hardware either.
+	 *
+	 * Caught on 2026-08-24 by a driven run that built and flashed an nRF9161 while holding boards/nrf5340,
+	 * boards/nrf54lm20dk and protocols/ble — every one of them from the unrelated open workspace, with the
+	 * target board's own bit, LTE and GNSS all missing.
+	 */
+	test("a DK is identified by its resolved board name, never by 'J-Link'", () => {
+		const target = boardSignalTargetFor({ productName: "J-Link", boardName: "nRF9161 DK", boardVersion: "PCA10153" })
+		assert.equal(target, "nRF9161 DK")
+		assert.equal(getBoardKnowledgeFile(target as string), "platforms/nrf/boards/nrf9161dk.md")
+	})
+
+	test("'J-Link' is never the target even when nothing else resolved it", () => {
+		// Falling back to the PCA number is still useful — the router may learn it — but the debugger name
+		// must never be handed on as a board.
+		assert.equal(boardSignalTargetFor({ productName: "J-Link", boardVersion: "PCA10153" }), "PCA10153")
+		assert.equal(boardSignalTargetFor({ productName: "j-link" }), undefined)
+		assert.equal(boardSignalTargetFor({ productName: " J-Link " }), undefined)
+	})
+
+	test("a real product string still wins over the chip — a XIAO is not its DK", () => {
+		assert.equal(boardSignalTargetFor({ productName: "XIAO nRF54LM20A", deviceFamily: "NRF54L" }), "XIAO nRF54LM20A")
+	})
+
+	test("board name outranks product, so a DK is the DK and not whatever the probe calls itself", () => {
+		assert.equal(
+			boardSignalTargetFor({ boardName: "nRF52840 DK", productName: "J-Link", deviceFamily: "NRF52" }),
+			"nRF52840 DK",
+		)
+	})
+
+	test("with nothing identifying at all, there is no signal rather than a guess", () => {
+		assert.equal(boardSignalTargetFor({}), undefined)
 	})
 })

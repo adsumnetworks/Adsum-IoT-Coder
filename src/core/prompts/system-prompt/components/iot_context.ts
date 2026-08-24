@@ -334,12 +334,39 @@ export async function detectPinnedBoards(cwd: string): Promise<BoardSignal[]> {
  * board this project targets. It is still far better than silence — it is the difference between
  * "an nRF54LM20A is plugged in" and the model guessing which nRF54 exists.
  */
+export function boardSignalTargetFor(b: {
+	productName?: string
+	boardName?: string
+	deviceName?: string
+	deviceFamily?: string
+	boardVersion?: string
+}): string | undefined {
+	const product = b.productName && !/^j-?link$/i.test(b.productName.trim()) ? b.productName : undefined
+	return b.boardName || product || b.deviceName || b.deviceFamily || b.boardVersion
+}
+
 function connectedBoardSignals(): BoardSignal[] {
 	const out: BoardSignal[] = []
 	for (const b of getCachedNrfEnvironment().boards ?? []) {
-		// The product string is the more specific of the two — it distinguishes a XIAO from the DK
-		// carrying the same chip. Fall back to the chip name when there is no product string.
-		const target = b.productName || b.deviceName || b.deviceFamily
+		/**
+		 * ON A NORDIC DK THE PRODUCT STRING IS THE DEBUGGER, NOT THE BOARD.
+		 *
+		 * `nrfutil device list` reports Product = "J-Link" for every DK — the on-board SEGGER probe. This
+		 * used to be read first, so the signal for an nRF9161 DK was the literal string "J-Link", which
+		 * routes to no board bit at all. Every connected Nordic DK therefore contributed nothing, and
+		 * because the cellular gate keys off the same signal (NRF91_BOARD_RE over board targets), LTE
+		 * knowledge never loaded from hardware either.
+		 *
+		 * Observed 2026-08-24: a driven run built and flashed an nRF9161 while holding boards/nrf5340 and
+		 * boards/nrf54lm20dk (from the open workspace) and protocols/ble — with the nRF9161 DK's own bit,
+		 * LTE and GNSS all absent, on a task explicitly about LTE and GNSS.
+		 *
+		 * `boardName` is the honest identity: resolved host-side from the `board-identity` bit's PCA table
+		 * (PCA10153 → "nRF9161 DK"), so a board Nordic ships after this release is named by a registry
+		 * update rather than a reinstall. Product still comes next because it is what distinguishes a XIAO
+		 * from the DK carrying the same chip; "J-Link" is skipped explicitly so it can never win again.
+		 */
+		const target = boardSignalTargetFor(b)
 		if (target) {
 			out.push({ target, origin: `connected board ${b.serialNumber}` })
 		}
