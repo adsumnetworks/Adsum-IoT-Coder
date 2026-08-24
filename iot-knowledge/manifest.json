@@ -267,7 +267,7 @@
 			"id": "adsum/nrf/knowledge/board-identity",
 			"title": "Reference: Nordic Board Identity",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -283,7 +283,7 @@
 				}
 			],
 			"path": "platforms/nrf/knowledge/board-identity.md",
-			"content_hash": "d14a27f5970e005d1340ad3fa1e25cf2c03642cb87889e804063875c3ecff5b1"
+			"content_hash": "74730a5e20b6c716c03268b52e20e7932f1179ff1c87fb4b12912eb7819eede0"
 		},
 		{
 			"id": "adsum/nrf/platform",
@@ -457,7 +457,7 @@
 			"id": "adsum/nrf/tools/nrf-sniffer",
 			"title": "nrf-sniffer",
 			"type": "tool",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "Apache-2.0",
@@ -483,7 +483,7 @@
 				},
 				{
 					"path": "nrf_sniffer.py",
-					"sha256": "aa63291e1363b525897fbe4598955cf05aff03b5a9f5d6a2a7a442a955ae9546"
+					"sha256": "e74d970d929f385619f3cd5e8e51a0d3537109fe3fd5d711cd8024b087f67f99"
 				}
 			],
 			"requires_tools": [
