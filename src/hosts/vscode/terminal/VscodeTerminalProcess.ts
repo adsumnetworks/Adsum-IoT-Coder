@@ -13,6 +13,7 @@ import {
 	TRUNCATE_KEEP_LINES,
 } from "@/integrations/terminal/constants"
 import type { ITerminalProcess, TerminalProcessEvents } from "@/integrations/terminal/types"
+import { Logger } from "@/services/logging/Logger"
 
 /**
  * VscodeTerminalProcess - Manages command execution in VSCode's integrated terminal.
@@ -81,6 +82,12 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 
 		if (terminal.shellIntegration && terminal.shellIntegration.executeCommand) {
 			// Track that we're using shell integration
+			//
+			// The Logger breadcrumbs below exist because this loop hung four different ways on 2026-08-24 and
+			// every diagnosis had to be guessed: console.log is NOT captured in the extension output channel,
+			// so earlier diagnostics here were invisible. These lines make the next stuck run name its own
+			// parked await in "1-Adsum IoT Coder.log" instead.
+			Logger.info(`[TerminalProcess] executeCommand via shell integration: ${command.slice(0, 80)}`)
 			const execution = terminal.shellIntegration.executeCommand(command)
 			const stream = execution.read()
 			// todo: need to handle errors
@@ -141,11 +148,17 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 				const byCmd = (e.execution as { commandLine?: { value?: string } })?.commandLine?.value === command
 				const byTerm = e.terminal === terminal && Date.now() - startedAt > 500
 				if (byRef || byCmd || byTerm) {
-					console.log(`[TerminalProcess] shell execution ended (ref=${byRef} cmd=${byCmd} term=${byTerm})`)
+					Logger.info(`[TerminalProcess] end event received (ref=${byRef} cmd=${byCmd} term=${byTerm})`)
 					executionEnded = true
 					signalEnd?.()
+				} else {
+					Logger.info("[TerminalProcess] end event for a DIFFERENT execution — ignored")
 				}
 			})
+			if (!endListener) {
+				Logger.info("[TerminalProcess] onDidEndTerminalShellExecution UNAVAILABLE — backstop not armed")
+			}
+			let sawFirstChunk = false
 			const iterator = stream[Symbol.asyncIterator]()
 			const graceOut = (): Promise<IteratorResult<string>> =>
 				new Promise((resolve) => setTimeout(() => resolve({ done: true, value: undefined }), TRAILING_CHUNK_GRACE_MS))
@@ -165,12 +178,17 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 						if (first.kind === "chunk") {
 							step = first.r
 						} else {
-							console.log("[TerminalProcess] end event won the race — draining with grace timeout")
+							Logger.info("[TerminalProcess] end event won the race — draining with grace timeout")
 							step = await Promise.race([next, graceOut()])
 						}
 					}
 					if (step.done) {
+						Logger.info(`[TerminalProcess] stream loop exit (sawFirstChunk=${sawFirstChunk} ended=${executionEnded})`)
 						break
+					}
+					if (!sawFirstChunk) {
+						sawFirstChunk = true
+						Logger.info("[TerminalProcess] first chunk received")
 					}
 					let data = step.value
 					// 1. Process chunk and remove artifacts
@@ -310,6 +328,7 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 
 			// the command process is finished, let's check the output to see if we need to use the terminal capture fallback
 			if (!this.fullOutput.trim()) {
+				Logger.info("[TerminalProcess] no stream output — taking terminal-snapshot fallback")
 				// No output captured via shell integration, trying fallback
 				telemetryService.captureTerminalOutputFailure(TerminalOutputFailureReason.TIMEOUT, "vscode")
 				const postCompletionOutput = await returnCurrentTerminalContents("silent")
@@ -323,6 +342,7 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 				// Resolve the orchestrator's promise BEFORE emitting lines so we don't block
 				if (this.hotTimer) clearTimeout(this.hotTimer)
 				this.isHot = false
+				Logger.info("[TerminalProcess] emitting completed")
 				this.emit("completed")
 				this.emit("continue")
 
@@ -339,6 +359,7 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 					clearTimeout(this.hotTimer)
 				}
 				this.isHot = false
+				Logger.info("[TerminalProcess] emitting completed")
 				this.emit("completed")
 				this.emit("continue")
 			}
@@ -369,6 +390,7 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 			// For terminals without shell integration, we can't know when the command completes
 			// Emit completion FIRST so that Orchestrator marks process as continued,
 			// which prevents output chunks from hanging the UI awaiting user response
+			Logger.info("[TerminalProcess] emitting completed")
 			this.emit("completed")
 			this.emit("continue")
 			this.emit("no_shell_integration")
