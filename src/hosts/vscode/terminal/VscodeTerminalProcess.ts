@@ -9,6 +9,7 @@ import {
 	MAX_UNRETRIEVED_LINES,
 	PROCESS_HOT_TIMEOUT_COMPILING,
 	PROCESS_HOT_TIMEOUT_NORMAL,
+	SILENT_COMMAND_BACKSTOP_MS,
 	TRAILING_CHUNK_GRACE_MS,
 	TRUNCATE_KEEP_LINES,
 } from "@/integrations/terminal/constants"
@@ -48,7 +49,9 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 		//    such commands (mkdir, cp, Set-Content, …) that IS success, not a capture problem.
 		//  - "no-integration": we sent the command blind (no shell integration) — output genuinely
 		//    could not be captured and success is unknown.
-		const returnCurrentTerminalContents = async (reason: "silent" | "no-integration"): Promise<string | undefined> => {
+		const returnCurrentTerminalContents = async (
+			reason: "silent" | "no-integration" | "backstop",
+		): Promise<string | undefined> => {
 			try {
 				// A FALLBACK MUST NOT OUTLAST THE FAILURE IT COVERS.
 				//
@@ -69,9 +72,11 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 				const terminalSnapshot = await getLatestTerminalOutput()
 				if (terminalSnapshot && terminalSnapshot.trim()) {
 					const framing =
-						reason === "silent"
-							? "The command ran to completion and produced no output stream — many commands (mkdir, cp, Set-Content, …) are silent on success. Do NOT treat this as a failure or as evidence about state; if the result matters, verify it directly (list/read the target). Current terminal content for reference:"
-							: "The command's output could not be captured (this terminal has no shell-integration capture), so its result is unverified from the output alone. Here's the current terminal's content to help you get the command's output:"
+						reason === "backstop"
+							? `The command never signalled that it finished: nothing was printed and no end-of-command marker arrived for ${Math.round(SILENT_COMMAND_BACKSTOP_MS / 60000)} minutes, so waiting was stopped. This is NOT success and NOT failure — it usually means the command is waiting for keyboard input (a tool that opened an interactive prompt), or is still running. Read the terminal content below to see which; if something is prompting, re-run the command in a non-interactive form rather than answering it. Current terminal content:`
+							: reason === "silent"
+								? "The command ran to completion and produced no output stream — many commands (mkdir, cp, Set-Content, …) are silent on success. Do NOT treat this as a failure or as evidence about state; if the result matters, verify it directly (list/read the target). Current terminal content for reference:"
+								: "The command's output could not be captured (this terminal has no shell-integration capture), so its result is unverified from the output alone. Here's the current terminal's content to help you get the command's output:"
 					return `${framing}\n\n${terminalSnapshot}`
 				}
 			} catch (error) {
@@ -184,6 +189,27 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 				Logger.info("[TerminalProcess] onDidEndTerminalShellExecution UNAVAILABLE — backstop not armed")
 			}
 			let sawFirstChunk = false
+			/**
+			 * ...AND AN END EVENT THAT NEVER COMES IS NOT A WITNESS EITHER.
+			 *
+			 * Both rescues above assume the command ends. An interactive one does not: on 2026-08-24 a driven
+			 * run sent `JLinkExe … -CommanderScript`, J-Link did not recognise the device and opened its
+			 * selection prompt, and the run sat at "Pending" for 8½ minutes over a terminal that was plainly
+			 * showing the question. Start event fired, no chunk, no end event, nothing bounded the wait.
+			 *
+			 * So the race gets a third arm: total silence for SILENT_COMMAND_BACKSTOP_MS ends the loop and
+			 * hands back what the terminal is showing — which is exactly the prompt the agent needs to see to
+			 * fix its own command. Every chunk re-arms it, so this can only fire on a command that is
+			 * producing nothing at all.
+			 */
+			let backstopFired = false
+			const silenceOut = () => {
+				let timer: NodeJS.Timeout | undefined
+				const promise = new Promise<{ kind: "silence" }>((resolve) => {
+					timer = setTimeout(() => resolve({ kind: "silence" }), SILENT_COMMAND_BACKSTOP_MS)
+				})
+				return { promise, cancel: () => timer && clearTimeout(timer) }
+			}
 			const iterator = stream[Symbol.asyncIterator]()
 			const graceOut = (): Promise<IteratorResult<string>> =>
 				new Promise((resolve) => setTimeout(() => resolve({ done: true, value: undefined }), TRAILING_CHUNK_GRACE_MS))
@@ -195,11 +221,22 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 						// Already ended: drain whatever trailing chunks land, stop when quiet.
 						step = await Promise.race([next, graceOut()])
 					} else {
-						// Not ended yet: wait for a chunk OR the end event — never a bare await on the stream.
+						// Not ended yet: wait for a chunk OR the end event OR a long silence — never a bare
+						// await on the stream.
+						const silence = silenceOut()
 						const first = await Promise.race([
 							next.then((r) => ({ kind: "chunk" as const, r })),
 							endSeen.then(() => ({ kind: "end" as const })),
+							silence.promise,
 						])
+						silence.cancel()
+						if (first.kind === "silence") {
+							Logger.info(
+								`[TerminalProcess] silent for ${SILENT_COMMAND_BACKSTOP_MS}ms with no end event — giving up on shell integration`,
+							)
+							backstopFired = true
+							break
+						}
 						if (first.kind === "chunk") {
 							step = first.r
 						} else {
@@ -352,12 +389,21 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 
 			this.emitRemainingBufferIfListening()
 
+			// A backstopped command that DID print keeps its output — but the output must not read as the
+			// whole story, or a half-finished capture gets reported as a finished one.
+			if (backstopFired && this.fullOutput.trim()) {
+				this.emit(
+					"line",
+					`[Adsum] Output above is partial: the command then went silent for ${Math.round(SILENT_COMMAND_BACKSTOP_MS / 60000)} minutes without finishing, so waiting was stopped. It may still be running or waiting for input.`,
+				)
+			}
+
 			// the command process is finished, let's check the output to see if we need to use the terminal capture fallback
 			if (!this.fullOutput.trim()) {
 				Logger.info("[TerminalProcess] no stream output — taking terminal-snapshot fallback")
 				// No output captured via shell integration, trying fallback
 				telemetryService.captureTerminalOutputFailure(TerminalOutputFailureReason.TIMEOUT, "vscode")
-				const postCompletionOutput = await returnCurrentTerminalContents("silent")
+				const postCompletionOutput = await returnCurrentTerminalContents(backstopFired ? "backstop" : "silent")
 				// Check if fallback worked
 				if (postCompletionOutput) {
 					telemetryService.captureTerminalExecution(true, "vscode", "clipboard")
