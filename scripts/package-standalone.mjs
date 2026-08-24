@@ -165,7 +165,11 @@ async function packageAllBinaryDeps() {
 	// native module (binding.gyp / a prebuilt .node that came down in the tarball) rather than for build output —
 	// otherwise this guard silently passes and a new native dependency reaches the distribution unpackaged.
 	const nativeMarkers = await glob(["**/binding.gyp", "**/*.node"], { cwd: path.join(BUILD_DIR, "node_modules"), nodir: true })
-	const isAllowed = (p) => SUPPORTED_BINARY_MODULES.some((allowed) => p.split("/").includes(allowed))
+	// Split on EITHER separator. glob hands back backslashes on Windows, so a forward-slash-only split
+	// leaves the whole path as one segment ("better-sqlite3\binding.gyp"), the allow-list can never
+	// match, and the guard rejects the very module it is meant to permit. Green on Linux and macOS,
+	// fatal on Windows — where ~95% of users are (2026-08-23).
+	const isAllowed = (p) => SUPPORTED_BINARY_MODULES.some((allowed) => p.split(/[\\/]/).includes(allowed))
 	const blocked = nativeMarkers.filter((x) => !isAllowed(x))
 
 	if (blocked.length > 0) {
