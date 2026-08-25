@@ -50,7 +50,7 @@ Cellular silicon, the first composable gateway, and tools that update without a 
 
 ## Why it exists
 
-Adsum does not replace the embedded engineer, it accelerates them. Embedded firmware work is two jobs at once: routine setup you would rather automate, and a handful of genuinely hard bugs that live outside the source file. General agents help with neither, because both need the board, not just the code.
+Adsum does not replace the embedded engineer, it accelerates them. Embedded IoT firmware work is two jobs at once: routine setup you would rather automate, and a handful of genuinely hard bugs that live outside the source file. General agents help with neither, because both need the board, not just the code.
 
 What makes it good at the hard parts is the part general agents do not have: **real human expertise**, curated by engineers who have shipped, loaded on demand, and validated on real hardware. [Why it exists →](https://docs.adsumnetworks.com/why-it-exists) · [How it works →](https://docs.adsumnetworks.com/architecture)
 
@@ -147,7 +147,7 @@ nRF, nRF Connect SDK and Nordic Semiconductor are trademarks of Nordic Semicondu
 
 ## About
 
-**[Adsum Networks](https://github.com/adsumnetworks)** has built embedded firmware on Nordic nRF and other SoC platforms for 8 years, living inside the failure modes that cost embedded engineers their days. We built Adsum IoT Coder because general coding agents leave embedded developers without reliable help for the work that fills the day: the routine setup worth automating, and the runtime bugs that never show up in source review. The difference is real human expertise, not just the AI model: curated firmware knowledge authored by engineers who have shipped, loaded on demand and measured against an open benchmark on real hardware, so the value can be defended, not just claimed.
+**[Adsum Networks](https://github.com/adsumnetworks)** has built embedded IoT firmware on Nordic nRF and other SoC platforms for 8 years, living inside the failure modes that cost embedded engineers their days. We built Adsum IoT Coder because general coding agents leave embedded developers without reliable help for the work that fills the day: the routine setup worth automating, and the runtime bugs that never show up in source review. The difference is real human expertise, not just the AI model: curated firmware knowledge authored by engineers who have shipped, loaded on demand and measured against an open benchmark on real hardware, so the value can be defended, not just claimed.
 
 ---
 
