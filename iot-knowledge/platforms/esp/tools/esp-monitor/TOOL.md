@@ -2,7 +2,7 @@
 id: adsum/esp/tools/esp-monitor
 title: "esp-monitor"
 type: tool
-version: 1.2.0
+version: 1.3.0
 owner: adsum-core
 author: Omar Morceli
 license: Apache-2.0
