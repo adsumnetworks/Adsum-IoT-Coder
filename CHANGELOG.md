@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A multi-chip product had nowhere to keep its project memory.
+- The ESP monitor put the chip into the bootloader when opening the port.
+- A silent ESP capture now retries the reset once, and a retry never leaves less evidence than the first attempt.
+- ESP commands source the toolchain environment in the terminal that actually runs them.
+- `idf.py is not recognized` is reported as a broken virtual environment, not a missing source step.
+- The native-module allow-list never matched on Windows.
+
 ## [0.3.1] - 2026-08-23
 
 ### Added
