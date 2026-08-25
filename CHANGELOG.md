@@ -1,67 +1,67 @@
 # Changelog
 
-All notable changes to the **Adsum IoT Coder** extension will be documented in this file.
+All notable changes to the **Adsum IoT Coder** extension are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
 
 ## [0.3.1] - 2026-08-23
 
-Tools that improve without waiting for a release — and the agent, without an editor around it.
-
 ### Added
-- **Every device tool is now a Tool bit that can be improved from the registry.** The HCI and sniffer decoders, the crash decoder, and the CRA scan engine used to be compiled into the extension, so correcting one meant shipping a new version. They are delivered and updated the same way curated knowledge is: versioned, credited to their author, and checked against a published hash before anything runs.
-- **The CRA engine's CVE tables travel with the tool.** Advisory hints and package mappings change weekly; releases do not. Correcting them no longer waits for one.
-- **A crash-address decoder you can point at an ELF.** It picks the right `addr2line` for the chip's architecture, finds the toolchain by absolute path instead of hoping the terminal pre-loaded it, and says where it looked when it cannot — rather than going quiet, which reads like "no fault".
-- **Board and chip names come from knowledge, not from a table inside the app.** Nordic DK names, and a catalogue of all ten shipping ESP32 targets with each one's CPU architecture. A part released after your extension can now be named without an update.
-- **Fanstel LEW840X boards route to their own product knowledge.**
-- **The extension now carries a headless engine.** The same agent that runs behind the chat panel — the same task loop, the same context management and compaction, the same tools and Knowledge bits — can now be started with no editor window at all, and it ships inside the extension rather than being built separately. This is the groundwork for driving Adsum from your own coding agent, and for running a task on a machine you only have a terminal on.
-- **"Adsum: Export engine configuration…"** hands a headless run the provider you already set up here — provider, model, thinking budget and key — after a prompt that names the folder it will be written to and how many keys that means. Keys are written readable by your user account only; the record kept alongside them lists key *names*, never values.
-- **"Adsum: Headless engine info"** answers where that engine is and which build it is, so whatever drives it can record the exact agent it drove.
+- Every device tool is a Tool bit: versioned, credited, and hash-verified before it runs.
+- CRA advisory hints and package mappings update from the registry instead of a release.
+- Crash-address decoder that picks `addr2line` by chip architecture and reports where it looked.
+- Board and chip names come from knowledge, including a catalogue of ten shipping ESP32 targets.
+- Fanstel LEW840X boards route to their own product knowledge.
 
 ### Changed
-- **A newer copy from the registry now wins over the one shipped inside the extension** — for knowledge and for tools alike, with the bundled copy as the fallback whenever the newer one cannot be fetched or checked. An improved tool reaches you without an update; a slow network never costs you a capture. An update may not quietly widen what a tool is allowed to do on its own: the stricter of the two rules stands.
-- Whatever actually served a bit is what gets credited — its author, its licence, its version — instead of always reporting the copy inside the extension.
-- **About** now describes what the extension actually is — two platforms and a CRA readiness check, not a Nordic log assistant — and links to the docs, not to a chip vendor.
-- Building the extension no longer depends on the Node version installed on the build machine.
+- A newer registry copy of a bit or tool wins over the bundled one; bundled remains the fallback.
+- An update cannot widen what a tool may do on its own; the stricter rule stands.
+- Credit reports the copy that actually served, not always the bundled one.
+- About names both platforms and the CRA check, and links the docs rather than a chip vendor.
+- Building the extension no longer depends on the build machine's Node version.
 
 ### Fixed
-- **A CVE scan that could not run no longer reads as a clean one.** An unresolvable scanner used to leave nothing behind, and "no known CVEs" then stood by having nothing to contradict it. A scan that did not happen now says so, and any claim about vulnerabilities standing beside that is caught.
-- **A large capture no longer comes back truncated.** The decoders exited before their output had finished writing, so a 1,877-frame capture returned well-formed-looking JSON that stopped mid-string — with a success status. Found by a test that compares the shipped tool against the source it was built from.
-- A tool improved in the registry could still be read back from the older copy on disk, so one task could quote two versions of the same thing.
-- Third-party code bundled into a tool must now be named in its notice file; one tool was shipping a library without the attribution its licence requires.
-- Two links pointed at a repository that had been renamed: "GitHub"/"Issues" in About, and the telemetry document referenced from Settings.
-- If you author Knowledge bits, your unpublished drafts were served to every session on your machine with no way to ask for the published set instead. Setting `ADSUM_AUTHOR_TOKEN` to an empty value now means "published only", so a comparison between your draft and what everyone else gets is possible at all.
+- A CVE scan that could not run no longer reads as a clean one.
+- Large captures no longer return truncated with a success status.
+- A tool improved in the registry could still be read back from an older copy on disk.
+- Third-party code bundled into a tool is now named in its notice file.
+- Two links pointed at a repository that had been renamed.
+- Setting `ADSUM_AUTHOR_TOKEN` empty now means "published only", so drafts can be compared against it.
 
 ### Known issues
-- Modem trace needs firmware built with tracing enabled, and a SIM to be interesting; without both, a capture is empty and says so.
+- Modem trace needs firmware built with tracing enabled, and a SIM, or the capture is empty.
 
 ## [0.3.0] - 2026-08-22
 
-Cellular, and the tools that talk to your hardware. nRF9161, nRF9151, and nRF9160 boards with the four nRF91 protocols; and every device tool the extension ships is now a **Tool bit** — versioned, credited to the engineer who wrote it, and updatable without waiting for a release.
-
-*(0.2.2 was never released; its work ships here.)*
+*0.2.2 was never released; its work ships here.*
 
 ### Added
-- **Device tools are Tool bits now.** Board shell, modem trace, the RTT and UART loggers, the BLE sniffer and the ESP monitor each carry their own descriptor — version, licence, what it does, what it needs — and the agent is told about them from that descriptor rather than from a path compiled into the extension. Each one credits its author the first time it runs, the same way curated knowledge does.
-- **Tools can arrive without an update.** A Tool bit can be delivered from the registry, verified against its published hash before anything runs, and cached; a tampered or unverifiable tool is simply never offered.
-- **log-shape** — describe the structure of a log in one call instead of searching it three times: distinct message kinds with counts and line ranges, then `--kind <n>` to see any of them in context. It says so plainly when a log has too little repetition to be worth shaping.
-- nRF91 cellular support: NB-IoT and LTE-M, NTN (satellite), DECT NR+, and GNSS, each with its own knowledge and each loaded only for the project that needs it. Board knowledge for the nRF9161 DK, nRF9151 DK, and nRF9160 DK.
-- **Board shell** — send commands to a board and read the answers: AT commands on an nRF91, Zephyr shell commands, anything with a console. It reads until the board finishes rather than sleeping for a fixed time, so a command that answers in 40 ms costs 40 ms, and a network scan that takes three minutes is not cut off at three seconds. Several commands run in one session. Works the same on Windows, Linux, and macOS.
-- **Modem trace** — capture a trace, decode it, and explain it in plain English: registration state, the network's own reason for a refusal, radio mode, and the modem's search events. It also reads the radio layer, which answers a question the AT commands cannot: whether the modem found real cells and never joined them, or saw nothing at all. Those two look identical in an application log and have completely different fixes.
-- Knowledge is named when it loads, not only when the agent reads a file. Board, protocol, and platform knowledge used to load silently; the credit line now covers it.
+- nRF91 cellular: NB-IoT, LTE-M, NTN and DECT NR+, each loaded only for the project that needs it.
+- GNSS positioning knowledge for nRF91.
+- Board knowledge for the nRF9161 DK, nRF9151 DK and nRF9160 DK.
+- Device tools are Tool bits, each with its own descriptor and author credit.
+- Tool bits can arrive from the registry, verified against a published hash before running.
+- Board shell: send AT and Zephyr shell commands and read until the board finishes, on all platforms.
+- Modem trace: capture, decode and explain registration state, refusal reason, radio mode and search events.
+- `log-shape`: describe a log's structure in one call, then read any message kind in context.
+- Knowledge is named when it loads, not only when the agent reads a file.
 
 ### Fixed
-- A tool that could not run no longer reports as though it had. The ESP monitor announced "no crash markers detected" over a capture that had failed outright, and the BLE sniffer reported a written file for a capture containing no packets at all. Both now say what actually happened, and a capture that broke partway says how much of it is real.
-- Device tools no longer try to install Python packages on your machine. They tell you the one command to run instead — and that command now works, which it did not before: the wrappers were hiding the very install location `pip install --user` writes to, so on a stock macOS the tools could never find pyserial at all.
-- An empty answer from a device is no longer reported as a finding. A network scan that returned nothing in under a second was being read as "no coverage here" — it had not started. Commands that come back with nothing conclusive now say so.
-- The "Open project folder" button did nothing. It rendered as Approve/Reject and never opened anything, in every version that has shipped it.
-- The same button could point at the wrong project when more than one was scaffolded, and never appeared at all when a project was created by copying a sample rather than writing its files.
-- A scaffolded project you never opened stopped following you into unrelated tasks weeks later.
-- Refusing to write project memory now says plainly that it is a blocker, rather than something to work around.
-- Log and code search: the search program was not being found at all, so nearly every search returned "0 results" — a failed search now says it failed instead of looking like a clean one.
+- A tool that could not run no longer reports as though it had.
+- Device tools no longer try to install Python packages; the wrappers no longer hide the install location.
+- An empty answer from a device is no longer reported as a finding.
+- The "Open project folder" button did nothing, could point at the wrong project, and never appeared for copied samples.
+- A scaffolded project you never opened stopped following you into unrelated tasks.
+- Refusing to write project memory now says plainly that it is a blocker.
+- Log and code search: the search program was not found, so nearly every search returned no results.
 - Mermaid diagrams render more reliably.
 
 ### Known issues
-- NTN needs an nRF9151 with the LACA A1A variant and its own modem firmware; no other nRF91 part can do it.
-- DECT NR+ needs a separate modem firmware image, available from Nordic sales rather than as a download. The nRF9161 and nRF9151 are both capable once it is flashed.
+- NTN needs an nRF9151 with the LACA A1A variant and its own modem firmware.
+- DECT NR+ needs a separate modem firmware image, available from Nordic sales rather than as a download.
 - Two sessions using one development kit at the same time can interfere with each other.
 
 ## [0.2.1] - 2026-08-17
@@ -93,37 +93,37 @@ Cellular, and the tools that talk to your hardware. nRF9161, nRF9151, and nRF916
 
 A full end-to-end gateway build, your model or your key, credited expertise, and a second marketplace.
 
-### Build a whole product, not just a fix
+### Added
 
 Expanded curated firmware knowledge now carries a full, long-horizon build across two chips and two toolchains. The launch build is a complete two-chip BLE-to-WiFi gateway, an nRF52840 BLE scanner on Zephyr and an ESP32 Wi-Fi and MQTT uplink on ESP-IDF, for the Fanstel board, from one spec in one working session with the developer approving each step. See the [walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway).
 
-### Choose your model
+### Added
 
 A curated model picker: the free tier, the GLM Coding Plan (glm-5.2 with 1M context, plus glm-5-turbo and glm-4.7), Claude (Sonnet 5, now the default, Opus 4.8, Haiku 4.5), DeepSeek V4 (flash and pro), and any OpenAI or Anthropic-compatible endpoint, cloud or local. Switch on a live task with no restart.
 
-### Credited expertise
+### Added
 
 When the agent uses a piece of curated knowledge, it names the engineer who wrote it, in the conversation and linked, with a provenance popover (author, maintainer, version, license, source). Human-curated, never anonymous AI output.
 
-### A next step, everywhere
+### Added
 
 The forward-handoff behavior CRA runs got in 0.1.8 now applies to every workflow: a finished task offers concrete next actions instead of a dead-end "done".
 
-### Longer sessions hold up
+### Added
 
 Token-aware context handling replaces blunt transcript truncation, so a long session (the gateway build above, a big BLE capture, a full CRA sweep) is less likely to lose the data it needs mid-session.
 
-### Now on Open VSX
+### Added
 
 Adsum is published to [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) as well as the VS Code Marketplace, so Cursor, Windsurf, VSCodium, and other VS Code-compatible editors can install it.
 
-### Reliability
+### Fixed
 
 - ESP-IDF version parsing fixed for more install layouts.
 - The Stop button now interrupts a hanging terminal command.
 - The CRA nudge no longer fires on Adsum's own repository.
 
-### Preview
+### Added
 
 - Hand a running task to your own coding agent (beta): Adsum supplies the embedded knowledge and drives the toolchain while your agent does the work. Rolling out gradually.
 
@@ -131,34 +131,31 @@ Adsum is published to [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf
 
 3-layer debug lands (app, HCI, and radio), alongside a hardening pass for the CRA Readiness Check driven by real field runs on Windows and macOS.
 
-### 3-layer debug
+### Added
 
 Adsum now debugs across all three layers of a BLE connection: the application log, the HCI host↔controller bus, and the over-the-air radio, correlated to show where a flow actually broke. It builds on the HCI decoding shipped in 0.1.7 (parsing Host Controller Interface event streams into human-readable BLE protocol events). The guided **HCI + Sniffer sample run** promised in 0.1.7 is now the on-ramp: a walkthrough of a real one-directional BLE bug that lands on the one-line fix and bridges into the CRA readiness check. It runs on a bundled sample with no hardware needed, and the same debugging works on your own nRF boards.
 
-### CRA runs don't dead-end anymore
+### Fixed
 
 - **A CRA run now rests on an open question, never a "task complete" box.** No more dead-end endings or "I'll continue later" traps, the run always offers concrete forward actions (triage this CVE, start closing this gap), and you leave simply by moving on. The old completion scorecards (with pass/fail glyphs) are blocked at the source.
 - **Knowledge-loading is self-healing.** A transient network blip on a knowledge fetch now retries silently; a mistyped knowledge path auto-corrects when the catalog has exactly one match (a real run dead-ended on `cra/rules/core.md` vs `cra/core.md`, that class of failure is gone). Error messages now say precisely what failed: transient fetch vs not-in-catalog vs registry unreachable.
 - **The readiness-report integrity guard is fairer and clearer.** It no longer misreads honest phrasing like "62 total packages: 10 queryable" as a wrong count (a correct report was rejected 3× for this), and every rejection now quotes the exact line it objected to, so a rewrite lands in one attempt.
-
-### Honesty & safety hardening (from real run reviews)
-
 - **Never weakens your project to make a scan work.** New hard rules: the agent must never disable your security features (secure boot, flash encryption, signed OTA) to force a build, must never edit your SDK/toolchain installation (a run had patched a script inside `C:\ncs\`, now banned), and if an earlier scan run left your config modified, the posture check detects it and offers a restore instead of counting those as *your* gaps.
 - **ESP SBOM generation fixed for IDF 5.x.** The documented `--output-file` flag is used, and `idf.py sbom-create --spdx-file` (absent on IDF 5.5.4) is version-checked before use instead of failing.
 - **Silent commands aren't "failures" anymore.** Commands that legitimately produce no output (`mkdir`, `cp`, …) no longer report a scary "technical issue", the agent is told plainly: silent success, verify state directly if it matters.
 
-### Windows reliability
+### Fixed
 
 - **The terminal just works on a fresh Windows install.** New Windows machines ship PowerShell locked down (Restricted execution policy), which silently blocks VS Code's shell integration so the agent can't read command output. The extension now detects and repairs this in the background at startup, sets the execution policy to RemoteSigned (current-user scope), selects a working default terminal profile, and restarts stale terminals, with a dismissible note of what changed. Group Policy-managed machines are left untouched.
 
-### Compact input area
+### Added
 
 - The input stack is dramatically slimmer: one-line input that grows as you type, auto-approve as a compact ⚡ chip next to **@**, and the wide Cancel/Resume buttons replaced by a Claude-style **send ↔ stop** morphing icon (brand cyan, instant tooltips). The chat input glows cyan on focus.
 - The "What's new" card icon is now theme-consistent (no more OS-style emoji).
 
 ## [0.1.7] - 2026-06-24
 
-### CRA Readiness Check: get CRA-ready as you build
+### Added
 
 A new one-click **CRA Readiness Check** helps you prepare for the EU Cyber Resilience Act, on **both nRF and ESP**. It's a readiness snapshot to help you prepare, not a conformity assessment, and not legal advice.
 
@@ -170,7 +167,7 @@ A new one-click **CRA Readiness Check** helps you prepare for the EU Cyber Resil
 
 It also tells you which CRA date applies to you up front, whether you're getting a head start on the Dec 2027 essential requirements, or already in scope for the Sep 2026 reporting duty.
 
-### HCI deep-debug: three layers for BLE projects
+### Added
 
 When a BLE project is open (`CONFIG_BT=y` detected), the welcome screen now surfaces a one-line shortcut to the full debug stack:
 
@@ -180,30 +177,27 @@ The HCI layer is new: the extension can now parse Host Controller Interface (HCI
 
 A guided **HCI + Sniffer sample run**, a three-layer walkthrough (app log → HCI bus → over-the-air) that lands on the one-line fix and bridges to the CRA readiness check, is coming in a follow-up release.
 
-### nRF terminal: self-contained, version-aware
+### Added
 
 The nRF terminal now detects which NCS version your build uses and executes commands against that SDK automatically, no manual path wrangling. When you have multiple NCS installs (e.g. v3.2.1 and v3.3.1), the agent follows the build directory's version, not whichever was compiled most recently.
 
-### ESP reliability
+### Fixed
 
 - **Multi-board builds.** When multiple ESP-IDF versions are installed, the extension now shows all of them, not just the first, removing the "ambiguous forever" state where a project pinned to a different version than the global install.
 - **Version detection on git-clone installs.** ESP-IDF git checkouts have no `version.txt`; the extension now reads `tools/cmake/version.cmake` as a reliable fallback, so the platform strip always shows the correct IDF version regardless of install method.
 
-### Welcome screen: adaptive, not static
+### Added
 
 - **"Try it on a sample" picker.** A new inline picker lists available demos (BLE bug, CRA readiness check, and more). Appears when no project is open; becomes a re-run link once you've tried one.
 - **CRA nudge for BLE projects.** When a BLE project is open but has no `compliance/` folder yet, a dismissible note surfaces: "A connected product likely falls under the EU CRA, preview your secure-by-design posture." Evidence-grounded, never a verdict.
 - **Compact platform status.** The nRF/ESP detection panel collapses to a one-line summary per detected platform (e.g. `nRF · NCS 3.2.1 · nRF5340 DK`). Click to expand for full detail.
-
-### Diagrams that match your theme
-
 Mermaid diagrams in chat now follow your VS Code light/dark theme and the Adsum palette, previously they used a fixed dark theme that was hard to read in light mode.
 
-### Honesty hardening
+### Fixed
 
 The agent's CRA output is now verified against a 108-fixture scanner before it leaves the model. New rules added this release: the agent can no longer produce numeric readiness scores, "non-compliant" verdicts, or citations to CRA articles that don't exist. All posture items are evidence-mode only, literal config facts, with "verify" always the next step.
 
-### Legal
+### Changed
 
 - `NOTICE` file added (Apache 2.0 §4c attribution).
 - `iot-knowledge/LICENSE` makes the open k-bits' license explicit.
@@ -211,7 +205,7 @@ The agent's CRA output is now verified against a 108-fixture scanner before it l
 
 ## [0.1.6] - 2026-06-16
 
-### One extension: now for ESP32, too
+### Added
 
 Adsum IoT Coder now speaks **Espressif ESP32 / ESP-IDF** as well as Nordic nRF, in a single install. It reads what's on your desk and in your workspace and shows the right tools, workflows, and guidance for each platform, nothing to switch.
 
@@ -220,20 +214,20 @@ Adsum IoT Coder now speaks **Espressif ESP32 / ESP-IDF** as well as Nordic nRF, 
 - **Prototyping for both platforms.** *Start a prototype* now scaffolds complete ESP-IDF projects too, it sets the target chip, lays out the project, and gets you to a first build, the same way it already does for nRF.
 - **Always-current knowledge, leaner install.** Platform expertise is delivered on demand and cached locally, so the extension stays small and the guidance stays up to date without waiting for a new release.
 
-### Reliability & cross-platform
+### Fixed
 
 - **Stronger Windows support.** Board and toolchain detection now handle the full range of real-world install layouts on Windows, nRF boards and NCS versions surface correctly, ESP-IDF is found wherever it's installed, and serial-log capture runs cleanly. Verified on real nRF and ESP hardware.
 - **Smarter ESP toolchain selection.** When more than one ESP-IDF version is installed, the agent uses the one your project pins, and asks you when it's genuinely ambiguous instead of guessing.
 - **Steadier file editing.** Edits now apply cleanly even on large, streamed changes.
 - **Cleaner diagrams.** Architecture and sequence diagrams render reliably across models.
 
-### Notes
+### Known issues
 
 - Existing nRF projects are unaffected, same workflows, same behavior.
 
 ## [0.1.5] - 2026-06-08
 
-### A full UI redesign: rebuilt around how you start
+### Added
 
 Early users told us the hardest part wasn't the agent, it was the cold start. So we rebuilt the entire first-run experience: see it work *before* any setup, land on something useful immediately, and always have a clear next step.
 
@@ -241,11 +235,11 @@ Early users told us the hardest part wasn't the agent, it was the cold start. So
 - **Zero-config first run.** Fresh installs land directly on a working home screen, no provider-selection gate before you can try the agent. The free tier is on by default; bring your own key anytime.
 - **A home screen that guides the next step.** With a project open, the agent reads what it is and offers one-click **workflow cards**, *Build, flash & debug*, *Add a feature*, *Test & validate*, with *SDK migration* and *board bring-up* on the way. With no project open, it points you to *start a prototype* or *open your nRF project*. After any task finishes, it suggests where to go next instead of leaving a blank prompt.
 
-### Notes
+### Known issues
 
 - The previous two-button home (*Analyze Logs* / *Generate Logging Code*) is replaced by the demo + context-aware workflow cards above; the same capabilities are reachable through *Build, flash & debug*.
 
-### Reliability
+### Fixed
 
 - **Free-tier "tokens left" counter is now accurate.** It decrements by each request's real usage and shows **0** the moment the quota is exhausted, fixing the prior behavior where the chip could plateau (e.g. "~20k left") even after the free tier ran out. Resolves the 0.1.3 known issue.
 - **Token counter shows on first launch.** The free-tier balance now appears immediately on a fresh install, instead of only after switching providers and back.
@@ -253,7 +247,7 @@ Early users told us the hardest part wasn't the agent, it was the cold start. So
 - **Windows: better nRF tooling detection.** `nrfutil` is now found in more install locations (`NRFUTIL_HOME` and common Windows paths), fixing a spurious "nrfutil not found".
 - **"What's new" re-appears on updates.** Patch releases (e.g. 0.1.3 → 0.1.5) now show the what's-new note to existing users, not only fresh installs.
 
-### Smarter workflows behind the cards
+### Added
 
 The one-click workflow cards now hold up across platforms and harder projects:
 
@@ -263,13 +257,13 @@ The one-click workflow cards now hold up across platforms and harder projects:
 
 ## [0.1.3] - 2026-06-01
 
-### Free tier: zero-friction onboarding
+### Added
 
 - **Run the agent without an API key.** New built-in free tier backed by a managed model hosted by Adsum Networks, no key, account, or card to evaluate the tool. Acted on the most-requested item from the previous release.
 - **Instant BYOK switchover.** Adding your own key swaps the provider on the live task, no restart, the in-flight session continues.
 - **Quota conversion card.** When the free quota runs out, a single-click prompt routes you to add a key and resumes the same task on your provider, instead of failing with a raw error.
 
-### Reliability
+### Fixed
 
 - Quota exhaustion (HTTP 402) is handled cleanly, no spurious auto-retries or "Invalid API Response" noise.
 - Rate-limit (429) responses surface a readable message instead of raw JSON.
@@ -328,3 +322,11 @@ The first release built around the **skill-first architecture**: domain expertis
 - Initial release of Adsum IoT Coder!
 - Seamless integration with the nRF Connect SDK terminal in VS Code.
 - AI-powered assistant for Zephyr-based projects capable of automatically analyzing UAR/RTT logs, executing Nordic toolchain commands, and debugging code.
+
+[Unreleased]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.1.8...v0.2.0
+[0.1.8]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.1.7...v0.1.8
+[0.1.7]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.1.2...v0.1.7
+[0.1.2]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.1.0...v0.1.2
+[0.1.0]: https://github.com/adsumnetworks/Adsum-IoT-Coder/releases/tag/v0.1.0
