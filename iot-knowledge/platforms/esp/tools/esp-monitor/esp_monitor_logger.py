@@ -351,11 +351,35 @@ def capture_via_idf_monitor(project: str, port: str | None, no_reset: bool, dura
 _RAW_CAPTURE_SRC = r"""
 import sys, time, serial
 port, duration, no_reset = sys.argv[1], float(sys.argv[2]), sys.argv[3] == "1"
-ser = serial.Serial(port, int(sys.argv[4]), timeout=0.5)
+
+# OPEN WITHOUT ASSERTING THE CONTROL LINES.
+#
+# pyserial asserts DTR and RTS on open. On any ESP32 board carrying the usual NodeMCU-style
+# auto-program circuit (two transistors driven by DTR/RTS into IO0 and EN), that pulls the chip
+# straight into the ROM bootloader. It then sits there printing:
+#
+#     rst:0x10 (RTCWDT_RTC_RESET),boot:0x3 (DOWNLOAD_BOOT(UART0/UART1/SDIO...))
+#     waiting for download
+#
+# ...and never runs the application, so a capture returns no application log at all. Arduino IDE and
+# `idf.py monitor` look fine next to it precisely because they manage these lines deliberately.
+#
+# The lines must be configured on the UNOPENED object: setting them after open() still emits the
+# glitch that resets the chip.
+ser = serial.Serial()
+ser.port = port
+ser.baudrate = int(sys.argv[4])
+ser.timeout = 0.5
+ser.dtr = False   # IO0 stays HIGH -> boot from flash, never the bootloader
+ser.rts = False   # EN released
+ser.open()
 try:
     if not no_reset:
-        ser.setDTR(False); ser.setRTS(True); time.sleep(0.1)
-        ser.setRTS(False); time.sleep(0.1); ser.setDTR(True)
+        # Reset INTO THE APPLICATION: pulse EN only. IO0 must stay deasserted throughout —
+        # asserting it (the old code ended with setDTR(True)) is what selects download mode.
+        ser.rts = True    # EN low  -> hold in reset
+        time.sleep(0.1)
+        ser.rts = False   # EN high -> boot from flash
     deadline = time.time() + duration
     while time.time() < deadline:
         line = ser.readline()
@@ -404,6 +428,22 @@ CAPTURE_FAILURE_MARKERS = (
     "could not open port",
     "SerialException",
 )
+
+
+# The chip parked in its ROM bootloader instead of running the application. Distinctive, and NOT the
+# same as "the board said nothing" — it said plenty, just not the application log. Reporting it as an
+# empty capture sends the developer hunting for a firmware bug that is not there.
+DOWNLOAD_MODE_MARKERS = ("waiting for download", "DOWNLOAD_BOOT")
+
+
+def stuck_in_bootloader(log_path: str) -> bool:
+    """True when the log shows the ROM bootloader waiting, rather than an application boot."""
+    try:
+        with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+    except OSError:
+        return False
+    return any(m in content for m in DOWNLOAD_MODE_MARKERS)
 
 
 def captured_nothing(log_path: str) -> bool:
@@ -542,13 +582,25 @@ def capture_one(device: dict, duration: int, output: str, no_reset: bool, chip_o
     #
     # NOT yet confirmed on that board: this is the mechanism the code implies, not a bench result. The
     # retry is cheap and safe either way — one extra reset on a capture that had nothing to lose.
+    if stuck_in_bootloader(log_path):
+        # A capture that lands here is not a firmware problem: the chip was put into the bootloader,
+        # usually by control lines asserted on open. Re-run with a clean application reset and say so,
+        # rather than handing back "waiting for download" as if it were the application's own output.
+        print(f"{prefix}chip is in the ROM bootloader, not the application — resetting into the app and re-capturing")
+        run_capture()
+
     if not no_reset and captured_nothing(log_path):
         print(f"{prefix}nothing captured — retrying once with a fresh reset (the first may have left the chip in download mode)")
         run_capture()
         if captured_nothing(log_path):
+            # Confirmed on a Fanstel LEW840X, 2026-08-25: some boards have no auto-program circuit, so
+            # DTR/RTS never reach EN/IO0 and NO software reset is possible. Say that plainly and name the
+            # one-time physical fix, rather than implying the board or the firmware is broken.
             print(
-                f"{prefix}still nothing. The board may need its RESET button pressed during the capture. "
-                "On a Fanstel LEW840X, moving the bridge is a LAST resort — it cannot flash from the log position."
+                f"{prefix}still nothing after a second reset. This board may have no auto-program circuit "
+                "(DTR/RTS not wired to EN/IO0), in which case software cannot reset it at all.\n"
+                f"{prefix}  Set the switch on the UART bridge to ON and press the board's RESET button once. "
+                "The switch can stay ON — monitoring works in either position."
             )
 
     print(f"{prefix}done — {summarize(log_path)}")
