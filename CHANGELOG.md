@@ -103,27 +103,13 @@ A full end-to-end gateway build, your model or your key, credited expertise, and
 
 ### Added
 
-Expanded curated firmware knowledge now carries a full, long-horizon build across two chips and two toolchains. The launch build is a complete two-chip BLE-to-WiFi gateway, an nRF52840 BLE scanner on Zephyr and an ESP32 Wi-Fi and MQTT uplink on ESP-IDF, for the Fanstel board, from one spec in one working session with the developer approving each step. See the [walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway).
-
-### Added
-
-A curated model picker: the free tier, the GLM Coding Plan (glm-5.2 with 1M context, plus glm-5-turbo and glm-4.7), Claude (Sonnet 5, now the default, Opus 4.8, Haiku 4.5), DeepSeek V4 (flash and pro), and any OpenAI or Anthropic-compatible endpoint, cloud or local. Switch on a live task with no restart.
-
-### Added
-
-When the agent uses a piece of curated knowledge, it names the engineer who wrote it, in the conversation and linked, with a provenance popover (author, maintainer, version, license, source). Human-curated, never anonymous AI output.
-
-### Added
-
-The forward-handoff behavior CRA runs got in 0.1.8 now applies to every workflow: a finished task offers concrete next actions instead of a dead-end "done".
-
-### Added
-
-Token-aware context handling replaces blunt transcript truncation, so a long session (the gateway build above, a big BLE capture, a full CRA sweep) is less likely to lose the data it needs mid-session.
-
-### Added
-
-Adsum is published to [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) as well as the VS Code Marketplace, so Cursor, Windsurf, VSCodium, and other VS Code-compatible editors can install it.
+- **Long-horizon builds.** Curated knowledge now carries a complete two-chip gateway from one spec: an nRF52840 BLE scanner on Zephyr and an ESP32 Wi-Fi and MQTT uplink on ESP-IDF, on a Fanstel board, with the developer approving each step. See the [walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway).
+- **A curated model picker.** The free tier, the GLM Coding Plan (glm-5.2 with 1M context, glm-5-turbo, glm-4.7), Claude (Sonnet 5, now the default, Opus 4.8, Haiku 4.5), DeepSeek V4 (flash and pro), and any OpenAI- or Anthropic-compatible endpoint, cloud or local. Switchable on a live task with no restart.
+- **Credited expertise.** When the agent uses a piece of curated knowledge it names the engineer who wrote it, linked, with a provenance popover: author, maintainer, version, licence, source.
+- **A next step, everywhere.** The forward handoff CRA runs got in 0.1.8 now applies to every workflow: a finished task offers concrete next actions instead of a dead-end "done".
+- **Token-aware context handling.** Replaces blunt transcript truncation, so a long session is less likely to lose the data it needs mid-run.
+- **Published to [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger).** Installable in Cursor, Windsurf, VSCodium and other VS Code-compatible editors.
+- **Agent handover (beta).** Hand a running task to your own coding agent, with Adsum supplying the embedded knowledge and driving the toolchain. Rolling out gradually.
 
 ### Fixed
 
@@ -131,85 +117,57 @@ Adsum is published to [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf
 - The Stop button now interrupts a hanging terminal command.
 - The CRA nudge no longer fires on Adsum's own repository.
 
-### Added
-
-- Hand a running task to your own coding agent (beta): Adsum supplies the embedded knowledge and drives the toolchain while your agent does the work. Rolling out gradually.
-
 ## [0.1.8] - 2026-07-07
 
 3-layer debug lands (app, HCI, and radio), alongside a hardening pass for the CRA Readiness Check driven by real field runs on Windows and macOS.
 
 ### Added
 
-Adsum now debugs across all three layers of a BLE connection: the application log, the HCI host↔controller bus, and the over-the-air radio, correlated to show where a flow actually broke. It builds on the HCI decoding shipped in 0.1.7 (parsing Host Controller Interface event streams into human-readable BLE protocol events). The guided **HCI + Sniffer sample run** promised in 0.1.7 is now the on-ramp: a walkthrough of a real one-directional BLE bug that lands on the one-line fix and bridges into the CRA readiness check. It runs on a bundled sample with no hardware needed, and the same debugging works on your own nRF boards.
+- **3-layer BLE debug.** The application log, the HCI host-controller bus, and the over-the-air radio, correlated to show where a flow actually broke. Builds on the HCI decoding shipped in 0.1.7.
+- **The guided HCI + Sniffer sample run**, promised in 0.1.7, is the on-ramp: a real one-directional BLE bug walked to its one-line fix, then bridged into the CRA readiness check. Runs on a bundled sample with no hardware.
+- **A much slimmer input stack.** One-line input that grows as you type, auto-approve as a compact chip beside **@**, and the wide Cancel/Resume buttons replaced by a morphing send-stop icon.
+- The "What's new" card icon is now theme-consistent, with no OS-style emoji.
 
 ### Fixed
 
-- **A CRA run now rests on an open question, never a "task complete" box.** No more dead-end endings or "I'll continue later" traps, the run always offers concrete forward actions (triage this CVE, start closing this gap), and you leave simply by moving on. The old completion scorecards (with pass/fail glyphs) are blocked at the source.
-- **Knowledge-loading is self-healing.** A transient network blip on a knowledge fetch now retries silently; a mistyped knowledge path auto-corrects when the catalog has exactly one match (a real run dead-ended on `cra/rules/core.md` vs `cra/core.md`, that class of failure is gone). Error messages now say precisely what failed: transient fetch vs not-in-catalog vs registry unreachable.
-- **The readiness-report integrity guard is fairer and clearer.** It no longer misreads honest phrasing like "62 total packages: 10 queryable" as a wrong count (a correct report was rejected 3× for this), and every rejection now quotes the exact line it objected to, so a rewrite lands in one attempt.
-- **Never weakens your project to make a scan work.** New hard rules: the agent must never disable your security features (secure boot, flash encryption, signed OTA) to force a build, must never edit your SDK/toolchain installation (a run had patched a script inside `C:\ncs\`, now banned), and if an earlier scan run left your config modified, the posture check detects it and offers a restore instead of counting those as *your* gaps.
-- **ESP SBOM generation fixed for IDF 5.x.** The documented `--output-file` flag is used, and `idf.py sbom-create --spdx-file` (absent on IDF 5.5.4) is version-checked before use instead of failing.
-- **Silent commands aren't "failures" anymore.** Commands that legitimately produce no output (`mkdir`, `cp`, …) no longer report a scary "technical issue", the agent is told plainly: silent success, verify state directly if it matters.
-
-### Fixed
-
-- **The terminal just works on a fresh Windows install.** New Windows machines ship PowerShell locked down (Restricted execution policy), which silently blocks VS Code's shell integration so the agent can't read command output. The extension now detects and repairs this in the background at startup, sets the execution policy to RemoteSigned (current-user scope), selects a working default terminal profile, and restarts stale terminals, with a dismissible note of what changed. Group Policy-managed machines are left untouched.
-
-### Added
-
-- The input stack is dramatically slimmer: one-line input that grows as you type, auto-approve as a compact ⚡ chip next to **@**, and the wide Cancel/Resume buttons replaced by a Claude-style **send ↔ stop** morphing icon (brand cyan, instant tooltips). The chat input glows cyan on focus.
-- The "What's new" card icon is now theme-consistent (no more OS-style emoji).
+- **A CRA run rests on an open question, never a "task complete" box.** No dead-end endings and no "I'll continue later" traps: the run always offers concrete forward actions, and you leave by moving on. The old pass/fail completion scorecards are blocked at the source.
+- **Knowledge loading is self-healing.** A transient fetch blip retries silently, and a mistyped knowledge path auto-corrects when the catalog has exactly one match (a real run dead-ended on `cra/rules/core.md` against `cra/core.md`). Errors now name the cause: transient fetch, not in catalog, or registry unreachable.
+- **The readiness-report integrity guard is fairer.** It no longer misreads honest phrasing such as "62 total packages: 10 queryable" as a wrong count, and every rejection quotes the line it objected to, so a rewrite lands first time.
+- **The agent never weakens your project to make a scan work.** It may not disable secure boot, flash encryption or signed OTA to force a build, and may not edit your SDK installation (a run had patched a script inside `C:\ncs\`; now banned). If an earlier run left your config modified, the posture check offers a restore instead of counting those as your gaps.
+- **ESP SBOM generation fixed for IDF 5.x.** The documented `--output-file` flag is used, and `idf.py sbom-create --spdx-file`, absent on IDF 5.5.4, is version-checked before use rather than failing.
+- **Silent commands are no longer reported as failures.** Commands that legitimately produce no output (`mkdir`, `cp`) no longer raise a "technical issue": the agent is told plainly that this is silent success.
+- **The terminal works on a fresh Windows install.** New machines ship PowerShell Restricted, which silently blocks shell integration so the agent cannot read command output. This is now detected and repaired at startup, with a dismissible note of what changed. Group Policy-managed machines are left untouched.
 
 ## [0.1.7] - 2026-06-24
 
-### Added
-
-A new one-click **CRA Readiness Check** helps you prepare for the EU Cyber Resilience Act, on **both nRF and ESP**. It's a readiness snapshot to help you prepare, not a conformity assessment, and not legal advice.
-
-- **SBOM from your real build.** A machine-readable software bill of materials (SPDX), the CRA's named artifact, generated from the actual build, not a guess.
-- **Secure-by-design posture.** A checklist against your build's real configuration (secure boot, signed updates, debug-port lock, secure pairing, secure storage, and more), each item evidence-grounded (the literal config fact, not a generic assertion), ordered so prerequisites come first.
-- **Advisories for your SDK version.** Surfaced with links to review, never an automatic verdict.
-- **Help you start.** The agent offers to begin closing the top gap (e.g. add a secure bootloader), routing into the normal add-feature flow.
-- Writes a `compliance/` folder: a human-readable report, a machine-readable JSON companion, and the SBOM. Run it on your project, or try it on a bundled sample with nothing open.
-
-It also tells you which CRA date applies to you up front, whether you're getting a head start on the Dec 2027 essential requirements, or already in scope for the Sep 2026 reporting duty.
+The one-click CRA Readiness Check arrives, on both nRF and ESP, alongside HCI decoding and a version-aware nRF terminal.
 
 ### Added
 
-When a BLE project is open (`CONFIG_BT=y` detected), the welcome screen now surfaces a one-line shortcut to the full debug stack:
-
-> **app logs · HCI · radio sniffer** *(soon)*
-
-The HCI layer is new: the extension can now parse Host Controller Interface (HCI) event streams and decode them to human-readable BLE protocol events, helping you see exactly what's happening at the controller level, not just the application log.
-
-A guided **HCI + Sniffer sample run**, a three-layer walkthrough (app log → HCI bus → over-the-air) that lands on the one-line fix and bridges to the CRA readiness check, is coming in a follow-up release.
-
-### Added
-
-The nRF terminal now detects which NCS version your build uses and executes commands against that SDK automatically, no manual path wrangling. When you have multiple NCS installs (e.g. v3.2.1 and v3.3.1), the agent follows the build directory's version, not whichever was compiled most recently.
-
-### Fixed
-
-- **Multi-board builds.** When multiple ESP-IDF versions are installed, the extension now shows all of them, not just the first, removing the "ambiguous forever" state where a project pinned to a different version than the global install.
-- **Version detection on git-clone installs.** ESP-IDF git checkouts have no `version.txt`; the extension now reads `tools/cmake/version.cmake` as a reliable fallback, so the platform strip always shows the correct IDF version regardless of install method.
-
-### Added
-
-- **"Try it on a sample" picker.** A new inline picker lists available demos (BLE bug, CRA readiness check, and more). Appears when no project is open; becomes a re-run link once you've tried one.
-- **CRA nudge for BLE projects.** When a BLE project is open but has no `compliance/` folder yet, a dismissible note surfaces: "A connected product likely falls under the EU CRA, preview your secure-by-design posture." Evidence-grounded, never a verdict.
-- **Compact platform status.** The nRF/ESP detection panel collapses to a one-line summary per detected platform (e.g. `nRF · NCS 3.2.1 · nRF5340 DK`). Click to expand for full detail.
-Mermaid diagrams in chat now follow your VS Code light/dark theme and the Adsum palette, previously they used a fixed dark theme that was hard to read in light mode.
-
-### Fixed
-
-The agent's CRA output is now verified against a 108-fixture scanner before it leaves the model. New rules added this release: the agent can no longer produce numeric readiness scores, "non-compliant" verdicts, or citations to CRA articles that don't exist. All posture items are evidence-mode only, literal config facts, with "verify" always the next step.
+- **A one-click CRA Readiness Check**, on both nRF and ESP. A readiness snapshot to help you prepare: not a conformity assessment, and not legal advice. It tells you up front which CRA date applies to you, the Dec 2027 essential requirements or the Sep 2026 reporting duty.
+- **An SBOM from your real build.** A machine-readable SPDX bill of materials, the CRA's named artifact, generated from the actual build rather than guessed.
+- **A secure-by-design posture check.** Measured against your build's real configuration (secure boot, signed updates, debug-port lock, secure pairing, secure storage), each item evidence-grounded in the literal config fact and ordered so prerequisites come first.
+- **Advisories for your SDK version**, surfaced with links to review, never as an automatic verdict.
+- **An offer to start closing the top gap**, routing into the normal add-feature flow.
+- **A `compliance/` folder** holding a human-readable report, a JSON companion, and the SBOM. Run it on your project or on a bundled sample with nothing open.
+- **HCI decoding.** Host Controller Interface event streams are parsed into human-readable BLE protocol events, so you can see what happens at the controller level, not just in the application log. When a BLE project is open (`CONFIG_BT=y` detected), the welcome screen surfaces the full debug stack: app logs, HCI, radio sniffer.
+- **A version-aware nRF terminal.** It detects which NCS version your build uses and runs commands against that SDK. With several installs it follows the build directory's version, not whichever was compiled most recently.
+- **A "try it on a sample" picker**, listing the available demos when no project is open, and becoming a re-run link once you have tried one.
+- **A CRA nudge for BLE projects** with no `compliance/` folder yet. Dismissible, evidence-grounded, never a verdict.
+- **A compact platform status strip.** The nRF/ESP detection panel collapses to one line per platform (`nRF · NCS 3.2.1 · nRF5340 DK`), expandable for detail.
 
 ### Changed
 
-- `NOTICE` file added (Apache 2.0 §4c attribution).
-- `iot-knowledge/LICENSE` makes the open k-bits' license explicit.
-- README updated: open-core model, AI limitations, trademark notices.
+- Mermaid diagrams in chat now follow your VS Code theme and the Adsum palette, instead of a fixed dark theme that was hard to read in light mode.
+- `NOTICE` file added, for Apache 2.0 section 4(c) attribution.
+- `iot-knowledge/LICENSE` makes the open bits' licence explicit.
+- README updated for the open-core model, AI limitations and trademark notices.
+
+### Fixed
+
+- **CRA output is verified against a 108-fixture scanner before it leaves the model.** The agent can no longer produce numeric readiness scores, "non-compliant" verdicts, or citations to CRA articles that do not exist. Posture items are evidence-mode only, with "verify" always the next step.
+- **Multi-board builds.** With several ESP-IDF versions installed, all of them are shown rather than only the first, removing the state where a project pinned to a different version than the global install stayed ambiguous.
+- **Version detection on git-clone installs.** ESP-IDF checkouts have no `version.txt`, so `tools/cmake/version.cmake` is read as a fallback and the platform strip shows the right version regardless of install method.
 
 ## [0.1.6] - 2026-06-16
 
@@ -235,33 +193,28 @@ Adsum IoT Coder now speaks **Espressif ESP32 / ESP-IDF** as well as Nordic nRF, 
 
 ## [0.1.5] - 2026-06-08
 
+A full first-run redesign, built around the cold start rather than the agent.
+
 ### Added
 
-Early users told us the hardest part wasn't the agent, it was the cold start. So we rebuilt the entire first-run experience: see it work *before* any setup, land on something useful immediately, and always have a clear next step.
-
-- **See it debug a real bug, in 30 seconds, before you set anything up.** A new first-run demo debugs a real BLE bug on firmware bundled with the extension, capture → analyze → fix on a genuine failure, with no board, API key, or project of your own required. Run it on your own firmware right after.
-- **Zero-config first run.** Fresh installs land directly on a working home screen, no provider-selection gate before you can try the agent. The free tier is on by default; bring your own key anytime.
-- **A home screen that guides the next step.** With a project open, the agent reads what it is and offers one-click **workflow cards**, *Build, flash & debug*, *Add a feature*, *Test & validate*, with *SDK migration* and *board bring-up* on the way. With no project open, it points you to *start a prototype* or *open your nRF project*. After any task finishes, it suggests where to go next instead of leaving a blank prompt.
-
-### Known issues
-
-- The previous two-button home (*Analyze Logs* / *Generate Logging Code*) is replaced by the demo + context-aware workflow cards above; the same capabilities are reachable through *Build, flash & debug*.
+- **See it debug a real bug in 30 seconds, before you set anything up.** A first-run demo runs capture, analyse and fix on a genuine BLE failure in bundled firmware, with no board, key or project of your own.
+- **Zero-config first run.** Fresh installs land on a working home screen with no provider-selection gate. The free tier is on by default.
+- **A home screen that offers the next step.** With a project open it reads what the project is and offers one-click workflow cards: *Build, flash & debug*, *Add a feature*, *Test & validate*. With none open it points to starting a prototype or opening an existing project.
+- **Test & validate works on Windows and macOS**, not only Linux. It picks a host simulator where one fits or runs the same tests on your connected board with no extra install, is honest about what a simulator cannot prove (real radio, sensor and timing), and walks you through the one-time QEMU setup only when you actually need board-free runs.
+- **Prototyping handles two-device and sensor builds.** A central-peripheral system scaffolds both apps from the matching Nordic samples and flashes each to its own board; an I²C sensor gets its devicetree overlay wired correctly.
+- **Debug a running board without reflashing.** *Build, flash & debug* can skip straight to capturing and analysing logs when the device already runs the firmware you want to inspect.
 
 ### Fixed
 
-- **Free-tier "tokens left" counter is now accurate.** It decrements by each request's real usage and shows **0** the moment the quota is exhausted, fixing the prior behavior where the chip could plateau (e.g. "~20k left") even after the free tier ran out. Resolves the 0.1.3 known issue.
-- **Token counter shows on first launch.** The free-tier balance now appears immediately on a fresh install, instead of only after switching providers and back.
-- **Invite codes.** Redeem a code in the free-tier panel (or the quota-exhausted card) for extra free-tier tokens.
-- **Windows: better nRF tooling detection.** `nrfutil` is now found in more install locations (`NRFUTIL_HOME` and common Windows paths), fixing a spurious "nrfutil not found".
-- **"What's new" re-appears on updates.** Patch releases (e.g. 0.1.3 → 0.1.5) now show the what's-new note to existing users, not only fresh installs.
+- **The free-tier "tokens left" counter is accurate.** It decrements by each request's real usage and shows 0 the moment the quota is exhausted, rather than plateauing at, say, "~20k left" after the free tier ran out. Resolves the 0.1.3 known issue.
+- **The token counter shows on first launch**, instead of only after switching providers and back.
+- **Invite codes** can be redeemed in the free-tier panel or the quota-exhausted card, for extra free-tier tokens.
+- **Windows nRF tooling detection.** `nrfutil` is found in more locations, including `NRFUTIL_HOME` and common Windows paths, fixing a spurious "nrfutil not found".
+- **"What's new" reappears on updates.** Patch releases now show the note to existing users, not only to fresh installs.
 
-### Added
+### Known issues
 
-The one-click workflow cards now hold up across platforms and harder projects:
-
-- **Test & validate works on Windows and macOS, not just Linux.** It picks the right path for your machine: a host simulator where one fits, or running the **same tests on your connected board** with no extra install. It's also honest about what a simulator can and can't prove (logic vs. real radio, sensor, and timing), and walks you through the one-time QEMU setup only when you actually need board-free runs.
-- **Prototyping handles two-device and sensor builds.** Ask for a central ↔ peripheral system and it scaffolds **both** apps from the matching Nordic samples and flashes each to its own board; ask for an I²C sensor and it wires the devicetree overlay correctly, the parts that usually trip people up. It builds the files for you instead of pointing you at a sample to open, and sketches the architecture (and a two-device timeline) first.
-- **Debug a board that's already running, no reflash.** *Build, flash & debug* can now skip straight to capturing and analyzing logs when your device is already running the firmware you want to inspect.
+- The previous two-button home (*Analyze Logs* and *Generate Logging Code*) is replaced by the demo and the workflow cards above. The same capabilities are reachable through *Build, flash & debug*.
 
 ## [0.1.3] - 2026-06-01
 
@@ -283,14 +236,14 @@ The one-click workflow cards now hold up across platforms and harder projects:
 
 ## [0.1.2] - 2026-05-31
 
-### Fixed
-
-- Toolbar and chat icons showed as blank squares, and the chat send button was missing on Linux. Icons now render correctly on macOS, Windows, and Linux.
-
 ### Changed
 
-- Reduced the extension download size by ~6 MB.
+- Reduced the extension download size by around 6 MB.
 - Improved Marketplace search keywords (nRF52/53/54, Zephyr, BLE, RTT, J-Link).
+
+### Fixed
+
+- Toolbar and chat icons showed as blank squares, and the chat send button was missing on Linux. Icons now render correctly on macOS, Windows and Linux.
 
 ## [0.1.0] - 2026-05-26
 
@@ -305,17 +258,20 @@ The first release built around the **skill-first architecture**: domain expertis
 
 ## [0.0.4] - 2026-03-23
 
-### Changed
-- **Major Rebrand:** Extension renamed from "nRF AI Debugger" to **Adsum IoT Coder – for nRF**.
-- **Repository Move:** All internal links and configuration updated to point to the new repository at [https://github.com/adsumnetworks/SoC-AI-Debugger](https://github.com/adsumnetworks/SoC-AI-Debugger).
-
 ### Added
+
 - **Trademark disclaimer** added for nRF and Nordic Semiconductor compliance.
-- Pseudonymous usage analytics to help catch missing dependencies and toolchain errors automatically; opt out anytime.
+- Pseudonymous usage analytics, to catch missing dependencies and toolchain errors automatically. Opt out anytime.
+
+### Changed
+
+- **Major rebrand.** The extension was renamed from "nRF AI Debugger" to **Adsum IoT Coder, for nRF**.
+- **Repository move.** All internal links and configuration point to the new repository.
 
 ### Fixed
-- **Log Analyzer Reliability:** Significant improvements to cross-platform UART and RTT log capture stability.
-- **Terminal Routing:** Fixed a bug where named terminals (nRF Connect) were incorrectly routed to hidden `cmd.exe` processes in background execution mode.
+
+- **Log analyser reliability.** Significant improvements to cross-platform UART and RTT log capture stability.
+- **Terminal routing.** Named terminals (nRF Connect) were incorrectly routed to hidden `cmd.exe` processes in background execution mode.
 
 ## [0.0.2] - 2026-03-02
 
