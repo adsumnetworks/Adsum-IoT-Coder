@@ -136,7 +136,7 @@ When you want your own model or heavier usage, drop in a key for the GLM Coding 
 
 ## Contributing
 
-The agent gets stronger as its curated knowledge grows, and there are two ways in. **Contribute knowledge** if you have shipped nRF or ESP firmware: the hard-won fixes and idioms that only come from real hardware, credited to you in every session that loads them. **Contribute code** to the extension itself, which is Apache-2.0 and built on [Cline](https://github.com/cline/cline).
+The agent gets stronger as its curated knowledge grows, and there are two ways in. **Contribute knowledge** if you have shipped nRF or ESP firmware: the hard-won fixes and idioms that only come from real hardware, credited to you in every session that loads them. **Contribute code** to the extension itself, which is Apache-2.0.
 
 [Contributing →](https://docs.adsumnetworks.com/contributing) · [Open an issue or PR](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues) · [Start a discussion](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions)
 
