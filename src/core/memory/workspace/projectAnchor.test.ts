@@ -171,3 +171,55 @@ describe("anchoring: memory follows the code", () => {
 		}
 	})
 })
+
+describe("a multi-chip product keeps its memory at the container", () => {
+	// Reported 2026-08-25: a two-chip gateway scaffolded as lew840x-gateway/{esp32,nrf52840} ended up
+	// with NO .adsum/ at all. The markers live in the apps, the root has none, so canHoldMemory() said
+	// no and every write was refused — the objectives, the board facts and the open defects all lost the
+	// moment the folder was opened. resolveMemoryAnchor's own comment described this exact case as
+	// supported; it simply could never be satisfied.
+	function gateway(): string {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), "gw-"))
+		fs.mkdirSync(path.join(root, "esp32"))
+		fs.writeFileSync(path.join(root, "esp32", "CMakeLists.txt"), "")
+		fs.mkdirSync(path.join(root, "nrf52840"))
+		fs.writeFileSync(path.join(root, "nrf52840", "prj.conf"), "")
+		fs.writeFileSync(path.join(root, "README.md"), "")
+		return root
+	}
+
+	test("THE REPORTED CASE: a root holding two app folders can hold memory", () => {
+		const root = gateway()
+		try {
+			assert.equal(canHoldMemory(root), true, "a container of apps is the shared memory layer")
+		} finally {
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+
+	test("one app is NOT enough — the anchor resolves to that app instead", () => {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), "one-"))
+		fs.mkdirSync(path.join(root, "app"))
+		fs.writeFileSync(path.join(root, "app", "prj.conf"), "")
+		try {
+			assert.equal(canHoldMemory(root), false, "a lone child would make any parent directory qualify")
+		} finally {
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+
+	test("a personal folder full of projects is STILL refused", () => {
+		// The whole reason this guard exists: a Desktop holding several prototypes must never become a
+		// memory root, however many projects sit in it.
+		assert.equal(canHoldMemory(path.join(os.homedir(), "Desktop")), false)
+	})
+
+	test("an empty directory is still not a container", () => {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), "empty2-"))
+		try {
+			assert.equal(canHoldMemory(root), false)
+		} finally {
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+})
