@@ -582,16 +582,43 @@ def capture_one(device: dict, duration: int, output: str, no_reset: bool, chip_o
     #
     # NOT yet confirmed on that board: this is the mechanism the code implies, not a bench result. The
     # retry is cheap and safe either way — one extra reset on a capture that had nothing to lose.
+    def recapture_preserving(reason: str) -> None:
+        """
+        Re-run a capture WITHOUT destroying what we already have.
+
+        Found 2026-08-25, in this tool, by its own author: the bootloader re-capture overwrote the log
+        that had triggered it, and when the port briefly vanished on re-open the evidence was gone
+        entirely — the log ended up holding only a traceback. A retry must never leave the developer with
+        less than the first attempt gave them.
+        """
+        try:
+            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                previous = f.read()
+        except OSError:
+            previous = ""
+        print(f"{prefix}{reason}")
+        run_capture()
+        try:
+            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                now = f.read()
+        except OSError:
+            now = ""
+        # Keep the retry only if it actually produced device output. A traceback or an empty file is
+        # not an improvement on real bytes, however stuck the chip was.
+        if previous.strip() and (captured_nothing(log_path) or any(m in now for m in CAPTURE_FAILURE_MARKERS)):
+            with open(log_path, "w", encoding="utf-8") as f:
+                f.write(previous)
+                f.write("\n# --- retry produced nothing usable; the capture above is the real device output ---\n")
+            print(f"{prefix}retry gave nothing usable — kept the original capture")
+
     if stuck_in_bootloader(log_path):
         # A capture that lands here is not a firmware problem: the chip was put into the bootloader,
         # usually by control lines asserted on open. Re-run with a clean application reset and say so,
         # rather than handing back "waiting for download" as if it were the application's own output.
-        print(f"{prefix}chip is in the ROM bootloader, not the application — resetting into the app and re-capturing")
-        run_capture()
+        recapture_preserving("chip is in the ROM bootloader, not the application — resetting into the app and re-capturing")
 
     if not no_reset and captured_nothing(log_path):
-        print(f"{prefix}nothing captured — retrying once with a fresh reset (the first may have left the chip in download mode)")
-        run_capture()
+        recapture_preserving("nothing captured — retrying once with a fresh reset")
         if captured_nothing(log_path):
             # Confirmed on a Fanstel LEW840X, 2026-08-25: some boards have no auto-program circuit, so
             # DTR/RTS never reach EN/IO0 and NO software reset is possible. Say that plainly and name the
