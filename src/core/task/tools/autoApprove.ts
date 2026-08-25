@@ -52,6 +52,7 @@ export class AutoApprove {
 				case ClineDefaultTool.FILE_NEW:
 				case ClineDefaultTool.FILE_EDIT:
 				case ClineDefaultTool.APPLY_PATCH:
+				case ClineDefaultTool.UPDATE_MEMORY:
 				case ClineDefaultTool.BASH:
 					return [true, true]
 
@@ -76,6 +77,11 @@ export class AutoApprove {
 			case ClineDefaultTool.FILE_NEW:
 			case ClineDefaultTool.FILE_EDIT:
 			case ClineDefaultTool.APPLY_PATCH:
+			// Writing the project's status file IS a file edit — it lands in .adsum/ in the workspace. Left
+			// out of this switch it fell to the `return false` below, so it asked for a click on every
+			// update no matter what the developer had turned on, YOLO mode included. A driven run parked on
+			// one for a minute and a half on 2026-08-24; an unattended run parks forever.
+			case ClineDefaultTool.UPDATE_MEMORY:
 				return [autoApprovalSettings.actions.editFiles, autoApprovalSettings.actions.editFilesExternally ?? false]
 			case ClineDefaultTool.BASH:
 				return [
