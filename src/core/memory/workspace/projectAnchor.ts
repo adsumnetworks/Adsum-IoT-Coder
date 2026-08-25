@@ -115,8 +115,43 @@ export function hasProjectMarker(dir: string | undefined): boolean {
  * this returns false the caller must write NOTHING — no scaffold, no files. A scratch chat with no
  * project simply has no project memory, which is the honest outcome.
  */
+/**
+ * How many immediate subdirectories are themselves projects.
+ *
+ * A multi-chip product has its markers in the APPS, not at the top: a gateway is `esp32/CMakeLists.txt`
+ * plus `nrf52840/prj.conf`, and the root that holds them has no marker of its own.
+ */
+function childProjectCount(dir: string): number {
+	try {
+		return fs
+			.readdirSync(dir, { withFileTypes: true })
+			.filter((e) => e.isDirectory() && hasProjectMarker(path.join(dir, e.name))).length
+	} catch {
+		return 0
+	}
+}
+
+/**
+ * True when project memory may be anchored here.
+ *
+ * A CONTAINER of apps counts, not only a project itself. Reported 2026-08-25: a two-chip gateway
+ * scaffolded as `lew840x-gateway/{esp32,nrf52840}` got no `.adsum/` at all, so every objective, board
+ * fact and open defect was lost the moment the folder was opened — the developer described it as the
+ * agent "losing the objectives", which is exactly what happened. The root has no marker, so this
+ * returned false and every write was refused.
+ *
+ * `resolveMemoryAnchor` already documents the intent ("several detected apps → the workspace root...
+ * the shared layer for a multi-app repo"); it could just never be satisfied.
+ *
+ * TWO or more child projects, deliberately. One child resolves to the app itself, so the container does
+ * not need to hold anything — and requiring two keeps an arbitrary parent directory from qualifying.
+ * The personal-folder guard still runs first, so a Desktop full of projects is still refused.
+ */
 export function canHoldMemory(dir: string | undefined): boolean {
-	return !!dir && !isForbiddenMemoryRoot(dir) && hasProjectMarker(dir)
+	if (!dir || isForbiddenMemoryRoot(dir)) {
+		return false
+	}
+	return hasProjectMarker(dir) || childProjectCount(dir) >= 2
 }
 
 /**
