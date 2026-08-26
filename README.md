@@ -44,7 +44,7 @@ Cellular silicon, the first composable gateway, and tools that update without a 
 
 <img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Gateways as products.** A gateway is a base, a radio card and an enclosure that have to agree, and the part printed on a card is not always the part fitted. The Fanstel LEW840X is the first product with its own knowledge: which card carries which radio, which connector programs which chip. [Partner open hardware](https://docs.adsumnetworks.com/supported-hardware/partner-open-hardware)
 
-<img src="assets/icons/whatsnew-knowledge.png" width="18" valign="middle" alt="" /> &nbsp;**Tools update themselves.** The loggers, the BLE sniffer, the decoders and the CRA scan engine are now Tool bits: versioned, credited, and hash-verified before they run. A fix reaches you without an extension update. [Device tools](https://docs.adsumnetworks.com/device-tools) · [how delivery works](https://docs.adsumnetworks.com/knowledge-bits)
+<img src="assets/icons/whatsnew-knowledge.png" width="18" valign="middle" alt="" /> &nbsp;**Tools update themselves.** The loggers, the BLE sniffer, the decoders and the CRA scan engine are now Tool bits: versioned, credited, and hash-verified before they run. A fix reaches you without an extension update. [Tool bits](https://docs.adsumnetworks.com/tool-bits) · [how delivery works](https://docs.adsumnetworks.com/knowledge-bits)
 
 **In `v0.2.1`:** project memory, longer sessions, and log search that took one capture from 333,000 tokens to a few thousand. **In `v0.2.0`:** a two-chip industrial gateway built, debugged and CRA-checked from one spec **in under 30 minutes**, the build this release makes composable. **[Watch the playlist](https://www.youtube.com/playlist?list=PLYh65pF22Elk)** · *full history in the [changelog](./CHANGELOG.md).*
 
@@ -52,14 +52,14 @@ Cellular silicon, the first composable gateway, and tools that update without a 
 
 Adsum does not replace the embedded engineer, it accelerates them. Embedded IoT firmware work is two jobs at once: routine setup you would rather automate, and a handful of genuinely hard bugs that live outside the source file. General agents help with neither, because both need the board, not just the code.
 
-What makes it good at the hard parts is the part general agents do not have: **real human expertise**, curated by engineers who have shipped, loaded on demand, and validated on real hardware. [Why it exists →](https://docs.adsumnetworks.com/why-it-exists) · [How it works →](https://docs.adsumnetworks.com/architecture)
+What makes it good at the hard parts is the part general agents do not have: **real human expertise**, curated by engineers who have shipped, loaded on demand, and tested on real hardware before it is marked certified. [Why it exists →](https://docs.adsumnetworks.com/why-it-exists) · [How it works →](https://docs.adsumnetworks.com/architecture)
 
 ## What it does: debug, build, and prototype ESP and nRF firmware
 
 - **Detects your platform.** nRF, ESP, both, or a fresh start, with the right tools for each.
 - **Carries a full product build.** One spec to a working two-chip gateway, across both toolchains, in under 30 minutes with you approving each step. [Watch the playlist](https://www.youtube.com/playlist?list=PLYh65pF22Elk) · [walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway)
 - **Builds, flashes and debugs on real hardware.** Live logs over RTT and UART on nRF, serial on ESP, analysed against your source.
-- **Debugs across three layers.** App log, HCI bus and over-the-air radio, correlated, so you see where a BLE flow actually broke. A guided sample needs no hardware.
+- **Debugs across three layers.** App log, HCI bus and over-the-air radio, correlated, so you see where a BLE flow actually broke. A guided sample needs no hardware. [A real one](https://docs.adsumnetworks.com/ble-wifi-gateway/troubleshooting): 36 advertisements on the air, 0 received, and a radio front end that was never switched on.
 - **Talks to the board directly.** AT and Zephyr shell commands, and a modem trace that reports the network's own reason for refusing a connection.
 - **Scaffolds and extends.** A new nRF or ESP-IDF project, or a BLE service, sensor, shell or storage wired into your existing one.
 - **Tests and validates.** Host tests and on-hardware checks.
@@ -71,7 +71,7 @@ What makes it good at the hard parts is the part general agents do not have: **r
 |:---|:---|:---|:---|
 | **Nordic** | nRF52, nRF53, nRF54L (L15, LM20), **nRF91 (9160, 9161, 9151)** | nRF Connect SDK (Zephyr) | BLE, **NB-IoT, LTE-M, GNSS** |
 | **Espressif** | ESP32, ESP32-S3, ESP32-C6, and the rest of the shipping range | ESP-IDF | Wi-Fi, BLE |
-| **Products** | **Fanstel LEW840X, BWG840** gateways, with their own product knowledge | both, one workspace | BLE, Ethernet, Wi-Fi |
+| **Products** | **Fanstel LEW840X, BWG840X** gateways, with their own product knowledge | both, one workspace | BLE, Ethernet, Wi-Fi |
 | **Roadmap** | nRF7x (Wi-Fi), on-device AI on nRF54 / ESP32, Linux devices (NVIDIA Jetson, Raspberry Pi) | | LoRa, 5G / 5G RedCap via hats |
 
 DECT NR+ and NTN knowledge ships today, but the hardware gates it: NTN needs an nRF9151 with the LACA A1A variant and its own modem firmware, and DECT NR+ needs an image from Nordic sales rather than a download. Adsum works on **any board built with a supported chip**: your own design, a reference board, a development kit, or a product off the shelf. There is no list your board has to be on. [Chips and protocols](https://docs.adsumnetworks.com/supported-hardware) · [cellular](https://docs.adsumnetworks.com/cellular) · [partner open hardware](https://docs.adsumnetworks.com/supported-hardware/partner-open-hardware)
@@ -82,7 +82,7 @@ CRA readiness (SBOM + secure-by-design posture) runs on both Nordic and Espressi
 
 One click runs a build-time readiness check for the **EU Cyber Resilience Act (CRA)**, on both nRF and ESP. A readiness snapshot to help you prepare, **not a conformity assessment and not legal advice.**
 
-**[▶ Watch the CRA check run on a real gateway build →](https://www.youtube.com/watch?v=uwl76c6FuY0)**
+**[▶ Watch the CRA check run on a real gateway build →](https://www.youtube.com/watch?v=uwl76c6FuY0)** · **[read the run, with its numbers →](https://docs.adsumnetworks.com/ble-wifi-gateway/cra)**
 
 - **An SBOM from your real build.** Machine-readable SPDX, the CRA's named artifact, generated with the vendor-native tools rather than guessed.
 - **A known-CVE scan across it.** Your build's identifiable components (CPE/PURL) matched against EUVD, NVD and OSV, with coverage stated honestly. Never a pass/fail verdict.
