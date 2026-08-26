@@ -62,7 +62,7 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
 				}}>
 				{/* Coral rocket = identity/"what's new" framing on this coral nudge (on-palette). */}
 				<i className="codicon codicon-rocket" style={{ fontSize: "14px", color: BRAND_CORAL, flexShrink: 0 }} />
-				What's new in v{version} — cellular, gateways as products, and tools that update themselves
+				What's new in v{version} — cellular, partner open hardware, and downloadable Tool bits
 			</div>
 
 			<div
@@ -72,9 +72,9 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
 					marginBottom: 0,
 					lineHeight: 1.5,
 				}}>
-				nRF9160, nRF9161 and nRF9151 with NB-IoT, LTE-M and GNSS. A board shell speaks AT and Zephyr commands; a modem
-				trace says why a connection failed. The loggers, sniffer and scan engines are Tool bits now: credited,
-				hash-verified, and fixed without waiting for a release.
+				nRF9160, nRF9161 and nRF9151 with NB-IoT, LTE-M and GNSS, plus a board shell and a modem trace for bringing one
+				up. On a Fanstel gateway the product knowledge already holds the pinouts. And the loggers, sniffer and scan
+				engines are Tool bits now: downloaded on demand, credited, and hash-verified before they run.
 			</div>
 		</div>
 	)
