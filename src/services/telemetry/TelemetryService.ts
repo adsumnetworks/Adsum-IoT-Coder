@@ -2775,13 +2775,24 @@ export class TelemetryService {
 		})
 	}
 
-	public captureNrfEnvDetected(args: { extensionPresent: boolean; nrfutilPresent: boolean; boardCount: number }) {
+	/**
+	 * `chipFamilies` is the segmentation 0.3.0 needed and did not have: an nRF91 cellular user and an nRF52
+	 * BLE user both reported `iot_platform: "nrf"`, so adoption of a whole silicon family was unmeasurable.
+	 * A closed enum, sorted and deduped — never a board name, a serial number or a device path.
+	 */
+	public captureNrfEnvDetected(args: {
+		extensionPresent: boolean
+		nrfutilPresent: boolean
+		boardCount: number
+		chipFamilies?: string[]
+	}) {
 		this.capture({
 			event: TelemetryService.EVENTS.NRF.ENV_DETECTED,
 			properties: {
 				extensionPresent: args.extensionPresent,
 				nrfutilPresent: args.nrfutilPresent,
 				boardCount: args.boardCount,
+				chipFamilies: args.chipFamilies ?? [],
 			},
 		})
 	}
@@ -2812,13 +2823,20 @@ export class TelemetryService {
 	}
 
 	/** ESP env detected — parity with nrf.env_detected (install-base platform mix + toolchain/device presence). */
-	public captureEspEnvDetected(args: { extensionPresent: boolean; idfPresent: boolean; deviceCount: number }) {
+	/** Same segmentation as nRF: which ESP32 variants are actually on desks. Closed enum, never a port. */
+	public captureEspEnvDetected(args: {
+		extensionPresent: boolean
+		idfPresent: boolean
+		deviceCount: number
+		chipFamilies?: string[]
+	}) {
 		this.capture({
 			event: TelemetryService.EVENTS.ESP.ENV_DETECTED,
 			properties: {
 				extensionPresent: args.extensionPresent,
 				idfPresent: args.idfPresent,
 				deviceCount: args.deviceCount,
+				chipFamilies: args.chipFamilies ?? [],
 			},
 		})
 	}

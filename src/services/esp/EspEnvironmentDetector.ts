@@ -1,3 +1,4 @@
+import { chipFamilyList, espChipFamily } from "@/services/telemetry/chipFamily"
 /**
  * ESP-IDF environment detector — mirrors src/services/nrf/EnvironmentDetector.ts.
  *
@@ -473,6 +474,7 @@ export async function detectEspEnvironment(): Promise<EspEnvironment> {
 		extensionPresent: _cache.extensionPresent,
 		idfPresent: _cache.idfPresent,
 		deviceCount: _cache.espDevices.length,
+		chipFamilies: chipFamilyList(_cache.espDevices.map((d) => espChipFamily(d.chip))),
 	})
 
 	return _cache
