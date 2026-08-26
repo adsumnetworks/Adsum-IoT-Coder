@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { execSync } from "node:child_process"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { describe, test } from "node:test"
@@ -115,35 +116,67 @@ describe("announcement surfaces reach a user", () => {
 describe("announcement copy names the shipping release", () => {
 	const version: string = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "package.json"), "utf8")).version
 
-	/** The changelog entry for the current version — the release's own account of itself. */
-	function currentChangelogEntry(): string {
+	/**
+	 * Every changelog entry an upgrading user has not seen yet: this version, plus any version above the
+	 * newest one that actually reached people. A released version has a git tag; an entry with no tag was
+	 * written up and never shipped.
+	 *
+	 * 0.3.0 is the case that made this necessary. It was dated and described as a release, never published,
+	 * and its cellular work is new to everyone arriving from 0.2.1 — which is who the panel card speaks to.
+	 * Comparing that card against this version's entry alone would have called correct copy stale.
+	 */
+	function unseenChangelog(): string {
 		const changelog = fs.readFileSync(path.join(REPO_ROOT, "CHANGELOG.md"), "utf8")
 		const start = changelog.indexOf(`## [${version}]`)
 		assert.notEqual(start, -1, `CHANGELOG.md has no "## [${version}]" entry — add one before shipping`)
-		const next = changelog.indexOf("\n## [", start + 1)
-		return changelog.slice(start, next === -1 ? undefined : next)
+
+		let released = new Set<string>()
+		try {
+			released = new Set(
+				execSync("git tag -l v*", { cwd: REPO_ROOT, encoding: "utf8" })
+					.split("\n")
+					.filter(Boolean)
+					.map((t) => t.trim().replace(/^v/, "")),
+			)
+		} catch {
+			// No git or no tags: fall back to this entry alone, which is the stricter reading.
+		}
+
+		const unseen: string[] = []
+		for (const entry of changelog.slice(start).split(/\n(?=## \[)/)) {
+			const seen = /^## \[([^\]]+)\]/.exec(entry)?.[1]
+			if (seen && seen !== version && released.has(seen)) {
+				break
+			}
+			unseen.push(entry)
+		}
+		return unseen.join("\n")
 	}
 
-	// The failure this catches: copy describing the PREVIOUS release under the CURRENT version number.
+	// The failure this catches: copy describing a PREVIOUS release under the CURRENT version number.
 	// Rather than pin exact wording, which would fight every edit, require the live surfaces to share
-	// vocabulary with the changelog entry for the version actually being shipped.
-	test("the live surfaces share vocabulary with this version's changelog entry", () => {
-		const entry = currentChangelogEntry().toLowerCase()
+	// vocabulary with everything the upgrading user has not been told about yet.
+	test("the live surfaces share vocabulary with what an upgrading user has not seen", () => {
+		const entry = unseenChangelog().toLowerCase()
 		const surfaces: Array<[string, string]> = [
 			["UpgradeCard", fs.readFileSync(path.join(WEBVIEW_SRC, "components", "chat", "UpgradeCard.tsx"), "utf8")],
 			["update toast", fs.readFileSync(path.join(REPO_ROOT, "src", "utils", "announcements.ts"), "utf8")],
 		]
 		// Distinctive nouns from the release, not filler. Each must appear in the changelog (proving it is
 		// really this release's story) and in at least one live surface (proving users are told).
-		const themes = ["memory", "compaction", "log", "session"]
+		const themes = ["cellular", "modem", "tool bit", "product"]
 		for (const theme of themes) {
-			assert.ok(entry.includes(theme), `"${theme}" is not in the ${version} changelog entry — update the themes list`)
+			assert.ok(
+				entry.includes(theme),
+				`"${theme}" is in no changelog entry an upgrading user has yet to see — update the themes list`,
+			)
 		}
+		// Name where each missing theme was looked for, so fixing it does not mean reading this test.
 		const missing = themes.filter((t) => !surfaces.some(([, body]) => body.toLowerCase().includes(t)))
 		assert.deepEqual(
 			missing,
 			[],
-			`this release's themes appear in no live announcement surface: ${missing.join(", ")} — the panel card and the toast still describe an older release`,
+			`this release's themes appear in neither live announcement surface: ${missing.join(", ")} — refresh the panel card (UpgradeCard.tsx) or the update toast (announcements.ts), whichever is stale`,
 		)
 	})
 

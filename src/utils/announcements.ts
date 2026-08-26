@@ -26,5 +26,5 @@ export function getLatestAnnouncementId(): string {
 export function whatsNewToastMessage(version: string, isNewInstall = false): string {
 	return isNewInstall
 		? `✦ Welcome to Adsum IoT Coder — the free tier is on, no key needed · curated firmware expertise, credited to the engineers who wrote it.`
-		: `✦ What's new in Adsum IoT Coder v${version} — nRF91 cellular · talk to your board, don't guess at it · device tools credited to the engineers who wrote them.`
+		: `✦ What's new in Adsum IoT Coder v${version} — nRF91 cellular · talk to your board, don't guess at it · Tool bits credited to the engineers who wrote them.`
 }
