@@ -41,7 +41,7 @@ const QuotaExhaustedCard = () => {
 			<VSCodeButton
 				appearance="secondary"
 				className="w-full mt-2"
-				onClick={() => handOverCard({ intentId: "buildFlashDebug", platform: "both", prompt: "" })}>
+				onClick={() => handOverCard({ intentId: "buildFlashDebug", platform: "both", prompt: "", source: "quota_card" })}>
 				<ArrowRightLeftIcon className="mr-2" size={14} />
 				Continue on my coding agent
 			</VSCodeButton>
