@@ -209,12 +209,11 @@ export class TelemetryService {
 			NEXT_STEP_OFFERED: "free_tier.next_step_offered",
 			// User started a non-demo task (crossed from demo to real use)
 			FIRST_REAL_TASK_STARTED: "free_tier.first_real_task_started",
-			// Upgrade card shown to dormant user after version bump
+			// The what's-new card was shown to a returning user, once per version. Its "See it live" CTA was
+			// removed deliberately (it duplicated the welcome-screen demo), and dismissal shares one RPC with
+			// showing, so it cannot be told apart host-side — the two events for those are gone rather than
+			// firing something indistinguishable.
 			UPGRADE_PROMPT_SHOWN: "free_tier.upgrade_prompt_shown",
-			// Dormant user clicked "See it live" on the upgrade card
-			UPGRADE_PROMPT_DEMO_CLICKED: "free_tier.upgrade_prompt_demo_clicked",
-			// Dormant user dismissed the upgrade card without acting
-			UPGRADE_PROMPT_DISMISSED: "free_tier.upgrade_prompt_dismissed",
 			// User successfully redeemed an invite code for extra free-tier tokens
 			INVITE_CODE_REDEEMED: "free_tier.invite_code_redeemed",
 			// User attempted to redeem an invite code but it failed (with reason)
@@ -388,6 +387,9 @@ export class TelemetryService {
 			// "not_in_registry" (unknown id / wrong path), "registry_unreachable". `afterRetry` = the outer 3s
 			// retry already ran. Reason enum + bit id only — never file/user paths.
 			KBIT_LOAD_FAILED: "kbit.load_failed",
+			/** A session was handed to the developer's own coding agent. Source + intent enums only, never the
+			 *  prompt, the brief, or any path. The feature shipped in beta with no measurement at all. */
+			HANDOVER_STARTED: "task.handover_started",
 			/** A tool bit was invoked through execute_command. Id and delivery only — never arguments or paths. */
 			TOOL_BIT_INVOKED: "task.tool_bit_invoked",
 			// CRA: a CVE scan completed (findings volume + SBOM coverage; never CVE ids or component names)
@@ -756,22 +758,6 @@ export class TelemetryService {
 
 	public captureFreeTierUpgradePromptShown(installId: string, version: string) {
 		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.UPGRADE_PROMPT_SHOWN, {
-			install_id: installId,
-			version,
-			tier: "anonymous",
-		})
-	}
-
-	public captureFreeTierUpgradePromptDemoClicked(installId: string, version: string) {
-		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.UPGRADE_PROMPT_DEMO_CLICKED, {
-			install_id: installId,
-			version,
-			tier: "anonymous",
-		})
-	}
-
-	public captureFreeTierUpgradePromptDismissed(installId: string, version: string) {
-		this.captureRequired(TelemetryService.EVENTS.FREE_TIER.UPGRADE_PROMPT_DISMISSED, {
 			install_id: installId,
 			version,
 			tier: "anonymous",
@@ -2590,6 +2576,15 @@ export class TelemetryService {
 
 	/** Tool bit: invoked via execute_command. Records the catalog id and how it was delivered — never
 	 *  the arguments, the target port or any output, which would carry workspace detail. */
+	/**
+	 * A handover started. `source` says which surface launched it — the quota card's escape hatch is a
+	 * different act from a deliberate handover off a welcome card, and the free-tier funnel could not
+	 * distinguish them because neither was recorded.
+	 */
+	public captureHandoverStarted(props: { source?: string; intentId?: string; platform?: string } = {}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.HANDOVER_STARTED, properties: { ...props } })
+	}
+
 	public captureToolBitInvoked(ulid: string, bitId: string, delivery: "bundled" | "downloaded" | "override") {
 		this.capture({ event: TelemetryService.EVENTS.TASK.TOOL_BIT_INVOKED, properties: { ulid, bitId, delivery } })
 	}
