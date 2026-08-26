@@ -7,15 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- A multi-chip product had nowhere to keep its project memory.
-- The ESP monitor put the chip into the bootloader when opening the port.
-- A silent ESP capture now retries the reset once, and a retry never leaves less evidence than the first attempt.
-- ESP commands source the toolchain environment in the terminal that actually runs them.
-- `idf.py is not recognized` is reported as a broken virtual environment, not a missing source step.
-- The native-module allow-list never matched on Windows.
-
-## [0.3.1] - 2026-08-23
+## [0.3.1] - 2026-08-26
 
 ### Added
 - Every device tool is a Tool bit: versioned, credited, and hash-verified before it runs.
@@ -38,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Third-party code bundled into a tool is now named in its notice file.
 - Two links pointed at a repository that had been renamed.
 - Setting `ADSUM_AUTHOR_TOKEN` empty now means "published only", so drafts can be compared against it.
+- A multi-chip product had nowhere to keep its project memory.
+- The ESP monitor put the chip into the bootloader when opening the port.
+- A silent ESP capture now retries the reset once, and a retry never leaves less evidence than the first attempt.
+- ESP commands source the toolchain environment in the terminal that actually runs them.
+- `idf.py is not recognized` is reported as a broken virtual environment, not a missing source step.
+- The native-module allow-list never matched on Windows.
 
 ### Known issues
 - Modem trace needs firmware built with tracing enabled, and a SIM, or the capture is empty.
@@ -287,7 +285,8 @@ The first release built around the **skill-first architecture**: domain expertis
 - Seamless integration with the nRF Connect SDK terminal in VS Code.
 - AI-powered assistant for Zephyr-based projects capable of automatically analyzing UAR/RTT logs, executing Nordic toolchain commands, and debugging code.
 
-[Unreleased]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.2.1...v0.3.1
 [0.2.1]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.1.8...v0.2.0
 [0.1.8]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.1.7...v0.1.8
