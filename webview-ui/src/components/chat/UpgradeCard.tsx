@@ -62,7 +62,7 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
 				}}>
 				{/* Coral rocket = identity/"what's new" framing on this coral nudge (on-palette). */}
 				<i className="codicon codicon-rocket" style={{ fontSize: "14px", color: BRAND_CORAL, flexShrink: 0 }} />
-				What's new in v{version} — project memory, longer sessions, and cheaper logs
+				What's new in v{version} — cellular, gateways as products, and tools that update themselves
 			</div>
 
 			<div
@@ -72,9 +72,9 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
 					marginBottom: 0,
 					lineHeight: 1.5,
 				}}>
-				An <code>.adsum/</code> folder remembers your board, goal and open bugs between chats. Context bugs are fixed and
-				compaction warns you first. Captures are searched by pattern instead of read whole — one went from 333,000 tokens
-				to a few thousand. Plus deeper nRF54L knowledge and native DeepSeek.
+				nRF9160, nRF9161 and nRF9151 with NB-IoT, LTE-M and GNSS. A board shell speaks AT and Zephyr commands; a modem
+				trace says why a connection failed. The loggers, sniffer and scan engines are Tool bits now: credited,
+				hash-verified, and fixed without waiting for a release.
 			</div>
 		</div>
 	)
