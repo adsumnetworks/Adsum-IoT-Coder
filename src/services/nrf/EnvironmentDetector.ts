@@ -1,11 +1,12 @@
 import type { NrfBoard, NrfEnvironment, ProjectSdk } from "@shared/nrf"
-import { boardNameFor, boardNameForUsbProduct } from "@/services/knowledge/dataBits"
 import { exec } from "child_process"
 import { existsSync, readdirSync, readFileSync, statSync } from "fs"
 import { homedir } from "os"
 import { dirname, join } from "path"
 import { promisify } from "util"
+import { boardNameFor, boardNameForUsbProduct } from "@/services/knowledge/dataBits"
 import { telemetryService } from "@/services/telemetry"
+import { chipFamilyList, nrfChipFamily } from "@/services/telemetry/chipFamily"
 
 export type { NrfBoard, NrfEnvironment, ProjectSdk }
 
@@ -774,6 +775,7 @@ export async function detectNrfEnvironment(): Promise<NrfEnvironment> {
 		extensionPresent: _cache.extensionPresent,
 		nrfutilPresent: _cache.nrfutilPresent,
 		boardCount: _cache.boards.length,
+		chipFamilies: chipFamilyList(_cache.boards.map((b) => nrfChipFamily(b.deviceFamily))),
 	})
 
 	return _cache
