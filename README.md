@@ -38,7 +38,7 @@
 
 ## What's New <sup>`v0.3.1`</sup>
 
-Cellular silicon, the first composable gateway, and tools that update without a release.
+Cellular silicon, a partner's composable open industrial IoT gateway, and Tool bits downloaded on demand. More devices and partners are coming: we onboard them, and in time they author and maintain the Knowledge and Tool bits for their own boards.
 
 <img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Cellular.** nRF9160, nRF9161 and nRF9151 boards, with NB-IoT, LTE-M and GNSS. Two new tools talk to the modem: a board shell for AT and Zephyr commands, and a modem trace that reports why a connection failed. DECT NR+ and NTN knowledge ships too, though both need modem firmware you cannot download. [Cellular on nRF91](https://docs.adsumnetworks.com/cellular)
 
