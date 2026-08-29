@@ -2,7 +2,7 @@
 id: adsum/rules/core
 title: "Universal Embedded Rules"
 type: knowledge
-version: 1.3.0
+version: 1.4.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -68,7 +68,7 @@ This pattern applies to ALL platforms for actions such as:
 Advanced workflows and actions are documented as `.md` files in the `iot-knowledge` directory (indexed in `PLATFORM.md`). 
 
 - **Entry-Point Hierarchy (Workflows vs Actions):** Always start a task by loading a Primary Workflow. "Actions" are internal subroutines and must NEVER be loaded as the first step of a task. You may only load an Action if an active Workflow explicitly instructs you to do so.
-- **Mandatory First Load (via `read_file`):** You **MUST** proactively use `read_file` or `view_file` to load the required skill manual from the disk before executing. Do not attempt to execute complex tasks (like analyzing logs, generating code, building and flashing etc.) based on your pre-trained knowledge or general assumptions. There is no `load_workflow` tool; "loading" simply means reading the markdown file.
+- **Mandatory First Load (via `read_file`):** You **MUST** proactively use `read_file` or `view_file` to load the required skill manual from the disk before executing. Do not attempt to execute complex tasks (like analyzing logs, generating code, building and flashing etc.) based on your pre-trained knowledge or general assumptions. There is no `load_skill` or `load_workflow` tool and no MCP server holding these bits; "loading" simply means reading the markdown file from the extension's install directory. A live run lost time asking an invented `iot-knowledge` MCP server for `load_skill` — the paths are files, not a server.
 - **Context Optimization (Load Once):** If you have *already loaded* a specific skill file during the current ongoing task (for example, you are repeating an iteration in a debug loop), **DO NOT load it again**. Rely on the instructions already present in your conversational history to save context limits. Only load a file if it is missing from your immediate context.
 
 ## 9. Context Budget Protection

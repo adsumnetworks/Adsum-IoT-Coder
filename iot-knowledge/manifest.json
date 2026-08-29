@@ -623,7 +623,7 @@
 			"id": "adsum/rules/core",
 			"title": "Universal Embedded Rules",
 			"type": "knowledge",
-			"version": "1.3.0",
+			"version": "1.4.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -635,13 +635,13 @@
 				"adsum/nrf/tools/nrf-action"
 			],
 			"path": "rules/core.md",
-			"content_hash": "81d7c1adcfddccafc0c9f8ad57d78a5e6a2a4e6ffc441ee2dff34c983186d6aa"
+			"content_hash": "7e8c49244296a20493f636e4554347c358f04e39f5477d0ab33fad0f169dc93e"
 		},
 		{
 			"id": "adsum/rules/skill-loading",
 			"title": "Universal Rule: Skill Loading",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -650,7 +650,7 @@
 			"domain": "embedded-iot",
 			"platform": "universal",
 			"path": "rules/skill-loading.md",
-			"content_hash": "ef6831cfc4dbdf253e048f2b1318ca09509b292ae6b4dc19aaa5dd4b45adce67"
+			"content_hash": "17b11264609f34a538de878331fa9eb702f20ed3f5ac70b8f803e78c1b65a714"
 		},
 		{
 			"id": "adsum/rules/tool-routing",
