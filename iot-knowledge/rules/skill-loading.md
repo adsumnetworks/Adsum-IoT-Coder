@@ -2,7 +2,7 @@
 id: adsum/rules/skill-loading
 title: "Universal Rule: Skill Loading"
 type: knowledge
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -35,7 +35,16 @@ This rule fires whenever you are *about to act*, regardless of how you arrived a
 
 You may NOT execute a complex operation from pre-trained knowledge or general assumptions — the Workflow
 is the source of truth for the steps, permission gates, error handling, and Action chain. "Loading" the
-Workflow is the same act as `read_file` on the markdown file; there is no separate `load_workflow` tool.
+Workflow is the same act as `read_file` on the markdown file.
+
+There is no tool for this and no MCP server behind it. "Loading" a skill IS `read_file` on the
+markdown file — nothing else. Do not call `load_skill`, `load_workflow`, `load_bit` or any similar verb,
+and do not address one to an MCP server: the paths you see under `iot-knowledge/` are FILES ON DISK in
+the extension's install directory, not a server namespace, and a request to a server called
+`iot-knowledge` reaches nothing. On 2026-08-29 a live run stalled doing exactly that — it asked an
+`iot-knowledge` MCP server for `load_skill("adsum/nrf/sdks/ncs/sample-http-client")` when no MCP server
+was configured at all. The directive that prompts this reads **MANDATORY SKILL LOAD**, which is why the
+invented verb is usually `load_skill`; the word "LOAD" there is an instruction to read a file.
 
 If an upcoming operation matches no row of the platform stub's Operation → Workflow table, you are not in
 a Workflow's scope — proceed with standard tool use (consult `AGENT.md` Scope Gate first).
