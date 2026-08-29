@@ -121,7 +121,7 @@ const FeatureSettingsSection = ({ renderSectionHeader }: FeatureSettingsSectionP
 											}}>
 											cline auth
 										</code>
-										To authenticate with Cline or configure an API provider.
+										To authenticate with Adsum IoT Coder or configure an API provider.
 									</span>
 								</p>
 								{!isClineCliInstalled && (
@@ -157,8 +157,8 @@ const FeatureSettingsSection = ({ renderSectionHeader }: FeatureSettingsSectionP
 							<p className="text-xs mt-1 mb-0">
 								<span className="text-[var(--vscode-errorForeground)]">Experimental: </span>{" "}
 								<span className="text-description">
-									Allows Cline to spawn subprocesses to handle focused tasks like exploring large codebases,
-									keeping your main context clean.
+									Allows Adsum IoT Coder to spawn subprocesses to handle focused tasks like exploring large
+									codebases, keeping your main context clean.
 								</span>
 							</p>
 							{subagentsEnabled && (
@@ -478,8 +478,8 @@ const FeatureSettingsSection = ({ renderSectionHeader }: FeatureSettingsSectionP
 						</Tooltip>
 
 						<p className="text-xs text-(--vscode-errorForeground)">
-							EXPERIMENTAL & DANGEROUS: This mode disables safety checks and user confirmations. Cline will
-							automatically approve all actions without asking. Use with extreme caution.
+							EXPERIMENTAL & DANGEROUS: This mode disables safety checks and user confirmations. Adsum IoT Coder
+							will automatically approve all actions without asking. Use with extreme caution.
 						</p>
 					</div>
 				</div>

@@ -2,7 +2,7 @@
 id: adsum/rules/core
 title: "Universal Embedded Rules"
 type: knowledge
-version: 1.4.0
+version: 1.5.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -125,8 +125,33 @@ The tool is section-scoped. Pick a `target`:
 Rules the tool enforces, so write to fit them:
 - Every `defect` write needs at least one evidence citation as `path:line` or `logpath:line-range`.
 - **Never paste log or build output into memory.** Record the conclusion plus the log path and line range.
+- **A fact you read from a tool needs somewhere to cite.** Output that only ever existed on a terminal —
+  an AT reply, a signal reading, an assigned IP — has no `path:line` until you save it. Write the capture
+  under the run's log directory first, then cite that file. On 2026-08-29 an agent read a modem's APN and
+  never recorded it; the fact reached the developer six minutes later from a human reading a web console.
 - Board, ports, serials, SDK versions, the file map and the app list are detected and written
   automatically — do not record them yourself. If one looks wrong, say so and it will be re-probed.
 - You cannot mark a defect verified; that is stamped only after a real build → flash → capture.
 
 Keep each write focused on what changed — do not re-dump the whole file's history on every call.
+
+## 13. A Tool's Own Limit Is Not a Measurement
+
+When a tool stops early, that is the tool talking about itself. It is never evidence about the board, the
+radio, the network or the code.
+
+`[IDLE]`, `[TIMEOUT]`, `0 lines captured`, an empty capture file, `ERROR` from a parser that did not
+understand the command — each of these licenses exactly one conclusion: **my window or my instrument was
+wrong; measure again.** None of them is a finding, and none may be reported to the developer as one.
+
+Two rules follow, and they are not optional:
+
+1. **Before concluding anything from a quiet result, widen the window and repeat it.** A capture shorter
+   than the operation cannot tell "still working" from "hung": a cellular attach alone takes 10–30 seconds,
+   and `board-shell --idle` defaults to a quiet gap far shorter than a cellular round trip.
+2. **A response meaning "command not understood" says which firmware you are talking to, and nothing
+   else.** Check the instrument before you doubt the subject.
+
+This is written down because ignoring it cost four hours and three retracted verdicts on 2026-08-29, on a
+question — "can this SIM reach the internet?" — whose answer was *yes* from the first minute. Every wrong
+answer along the way came from reading an instrument's silence as the world's.

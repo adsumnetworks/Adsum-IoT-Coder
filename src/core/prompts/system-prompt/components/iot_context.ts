@@ -71,6 +71,18 @@ async function hasDectIntent(cwd: string): Promise<boolean> {
 	}
 }
 
+async function hasGnssIntent(cwd: string): Promise<boolean> {
+	try {
+		const prj = path.join(cwd, "prj.conf")
+		// GNSS anywhere in the symbol NAME, for the same reason DECT is matched that way: the canonical
+		// hit is `CONFIG_NRF_MODEM_GNSS=y`, where GNSS is not a prefix. `CONFIG_LTE_NETWORK_MODE_*_GPS`
+		// and `CONFIG_GNSS_*` also land here, which is correct — they are all GNSS projects.
+		return (await fileExistsAtPath(prj)) && /^\s*CONFIG_\w*GNSS\w*\s*=\s*y/im.test(await fs.readFile(prj, "utf-8"))
+	} catch {
+		return false
+	}
+}
+
 async function readKnowledgeFile(relativePath: string): Promise<string> {
 	try {
 		const extPath = HostProvider.get().extensionFsPath
@@ -786,8 +798,20 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 		// board bits carry the "this part cannot" verdict, which is the whole answer for them.
 		if (boardSignals.some((b) => /nrf9151/i.test(b.target)) || (await hasNtnIntent(cwd))) {
 			ctx += (await load("platforms/nrf/sdks/ncs/protocols/NTN.md")) + "\n\n"
-			ctx += (await load("platforms/nrf/sdks/ncs/protocols/GNSS.md")) + "\n\n"
 		}
+	}
+
+	// GNSS HANGS OFF ITS OWN GATE, not off NTN and not off cellular.
+	//
+	// It used to load only inside the cellular block above, and only for an nRF9151 or a declared NTN
+	// project — so a GNSS mission on an nRF9161 could not reach it at any point. Observed 2026-08-29: a
+	// task whose entire subject was "read a GPS fix and publish it over MQTT" loaded LTE.md and never
+	// GNSS.md, because the gate was keyed on NTN and the task never set CONFIG_NTN.
+	//
+	// Its own gate, because GNSS without LTE is a legitimate project (standalone fix, no SIM), and the
+	// nRF9151/NTN path keeps working for the satellite case that first introduced it.
+	if ((await hasGnssIntent(cwd)) || boardSignals.some((b) => /nrf9151/i.test(b.target)) || (await hasNtnIntent(cwd))) {
+		ctx += (await load("platforms/nrf/sdks/ncs/protocols/GNSS.md")) + "\n\n"
 	}
 
 	// DECT NR+ is NOT cellular, so it hangs off its own gate rather than the LTE block above: a DECT

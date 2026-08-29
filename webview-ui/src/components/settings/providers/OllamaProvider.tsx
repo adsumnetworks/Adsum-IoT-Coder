@@ -140,8 +140,9 @@ export const OllamaProvider = ({ showModelOptions, isPopup, currentMode }: Ollam
 					quickstart guide.
 				</VSCodeLink>{" "}
 				<span style={{ color: "var(--vscode-errorForeground)" }}>
-					(<span style={{ fontWeight: 500 }}>Note:</span> Cline uses complex prompts and works best with Claude models.
-					Less capable models may not work as expected.)
+					(<span style={{ fontWeight: 500 }}>Note:</span> Adsum IoT Coder leans on long, structured prompts and
+					multi-step tool use. Models vary a lot at that — if tool calls come back malformed, the model picker is one
+					click away and switching keeps your conversation.)
 				</span>
 			</p>
 		</div>

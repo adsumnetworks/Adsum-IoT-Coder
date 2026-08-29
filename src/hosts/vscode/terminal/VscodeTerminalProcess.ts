@@ -3,6 +3,7 @@ import { EventEmitter } from "events"
 import * as vscode from "vscode"
 import { stripAnsi } from "@/hosts/vscode/terminal/ansiUtils"
 import { getLatestTerminalOutput } from "@/hosts/vscode/terminal/get-latest-output"
+import { endEventDecision, isCompoundCommand } from "@/hosts/vscode/terminal/terminalEndEvents"
 import {
 	isCompilingOutput,
 	MAX_FULL_OUTPUT_SIZE,
@@ -172,19 +173,29 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 					Logger.info(`[TerminalProcess] start event on our terminal (cmd=${line?.slice(0, 60) ?? "?"})`)
 				}
 			})
+			// Every rule about WHICH end event is ours lives in terminalEndEvents.ts, where it is tested
+			// against the incidents that produced it. This listener only reports the facts and obeys.
+			const compound = isCompoundCommand(command)
 			const endListener = windowWithShellEvents.onDidEndTerminalShellExecution?.((e) => {
-				const byRef = e.execution === execution
-				const byCmd = (e.execution as { commandLine?: { value?: string } })?.commandLine?.value === command
-				const bySequence = e.terminal === terminal && sawOurStart
-				if (byRef || byCmd || bySequence) {
-					Logger.info(`[TerminalProcess] end event accepted (ref=${byRef} cmd=${byCmd} seq=${bySequence})`)
+				const decision = endEventDecision({
+					byRef: e.execution === execution,
+					sameTerminal: e.terminal === terminal,
+					sawOurStart,
+					isCompound: compound,
+				})
+				if (decision.accept) {
+					Logger.info(`[TerminalProcess] end event accepted (${decision.why})`)
 					executionEnded = true
 					signalEnd?.()
 				} else {
-					const line = (e.execution as { commandLine?: { value?: string } })?.commandLine?.value
-					Logger.info(`[TerminalProcess] end event ignored as stale (theirCmd=${line?.slice(0, 60) ?? "?"})`)
+					Logger.info(`[TerminalProcess] end event not ours (${decision.why})`)
 				}
 			})
+			if (compound) {
+				// Say it out loud in the log: a compound command cannot use the sequence rule, so it will
+				// complete on reference identity or on the silence backstop, and that is slower on purpose.
+				Logger.info("[TerminalProcess] compound command — end events arrive per sub-command; sequence rule disabled")
+			}
 			if (!endListener) {
 				Logger.info("[TerminalProcess] onDidEndTerminalShellExecution UNAVAILABLE — backstop not armed")
 			}

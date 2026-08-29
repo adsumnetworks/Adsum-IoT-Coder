@@ -2,7 +2,7 @@
 id: adsum/nrf/tools/uart-logger
 title: "uart-logger"
 type: tool
-version: 1.0.1
+version: 1.0.2
 owner: adsum-core
 author: Omar Morceli
 license: Apache-2.0
@@ -13,7 +13,7 @@ platform: nrf
 min_ext: "0.3.0"
 runtime: python3
 entry: nrf_uart_logger.py
-usage: '--capture --port <PORT> --duration <SECONDS> --out <FILE>'
+usage: '--capture --port <PORT> --duration <SECONDS> --out <FILE>   # or --output <DIR> for several devices'
 safety: [shell]
 readonly: false
 artifacts:

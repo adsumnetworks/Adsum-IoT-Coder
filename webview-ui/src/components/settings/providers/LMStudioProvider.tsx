@@ -164,8 +164,9 @@ export const LMStudioProvider = ({ currentMode }: LMStudioProviderProps) => {
 				</VSCodeLink>{" "}
 				feature with <code>lms server start</code> to use it with this extension.{" "}
 				<div className="text-error">
-					<span className="font-semibold">Note:</span> Cline uses complex prompts and works best with Claude models.
-					Less capable models may not work as expected.
+					<span className="font-semibold">Note:</span> Adsum IoT Coder leans on long, structured prompts and multi-step
+					tool use. Models vary a lot at that — if tool calls come back malformed, the model picker is one click away
+					and switching keeps your conversation.
 				</div>
 			</div>
 		</div>

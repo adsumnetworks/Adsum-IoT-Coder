@@ -512,6 +512,86 @@ class MonitorRTTThread(threading.Thread):
 # Capture Orchestration
 # ============================================================================
 
+
+# ── the instrument-limit contract ──────────────────────────────────────────────────────────────────
+# A capture that saw nothing must SAY it saw nothing. It must never leave a friendly summary and exit 0,
+# because a caller then cannot tell "the board was quiet" from "this tool never attached".
+#
+# 2026-08-29, both halves of that: `rtt-logger --out /tmp/x/rtt_probe.log` created a DIRECTORY named
+# rtt_probe.log and left it empty (see the argparse note below), and a 30-second capture of a board that
+# was mid-attach produced four lines. Both were reported to the developer as "the console is silent" and
+# sent an agent forty messages deep into a firmware theory. The board was fine.
+
+
+ZERO_CAPTURE = []
+
+def honour_out_file(out_path, log_files):
+    """
+    `--out FILE` means that file, exactly.
+
+    Implemented as a rename after the capture rather than by threading a filename through the capture
+    path, because the capture names files per device and only a single-device run has one answer. With
+    more than one device the request is ambiguous, and saying so is better than silently picking one.
+
+    Why it exists: TOOL.md documented --out <FILE> while the parser only had --output <DIR>, argparse
+    prefix-matched them, and os.makedirs created a DIRECTORY named rtt_probe.log. The caller found a
+    directory where its log should be and reported that the capture had produced nothing (2026-08-29).
+    """
+    import os as _os
+
+    paths = list(log_files.values()) if isinstance(log_files, dict) else list(log_files or [])
+    if not out_path:
+        return log_files
+    if len(paths) != 1:
+        print(
+            f"  [!] --out names a single file but this run captured {len(paths)} device(s); "
+            f"leaving them under the output directory. Use --output <DIR> for multi-device captures."
+        )
+        return log_files
+    src = paths[0]
+    try:
+        parent = _os.path.dirname(_os.path.abspath(out_path))
+        if parent:
+            _os.makedirs(parent, exist_ok=True)
+        if _os.path.isdir(out_path):
+            print(f"  [!] --out {out_path} is an existing DIRECTORY; refusing to write a file over it")
+            return log_files
+        if _os.path.abspath(src) != _os.path.abspath(out_path):
+            _os.replace(src, out_path)
+        print(f"  -> {out_path}")
+        return {"device": out_path} if isinstance(log_files, dict) else [out_path]
+    except OSError as e:
+        print(f"  [!] could not write {out_path}: {e}")
+        return log_files
+
+
+
+
+def report_zero_capture(zero_capture, duration):
+    """
+    Say plainly that the capture saw nothing, and make it machine-detectable.
+
+    Symmetric on purpose: this reports what the CAPTURE saw, not what the board did. A genuinely quiet
+    board is a real result, and this message must not read as "the board is broken" any more than an empty
+    file should have read as "the board is silent" — which is exactly how it was read on 2026-08-29.
+    """
+    for name, path in zero_capture:
+        line = (
+            f"0 lines captured in {duration}s from {name} — the capture saw nothing. This does NOT say the "
+            f"board printed nothing: check the channel, --device-type, that the firmware logs to this "
+            f"transport, and that the window was long enough (a cellular attach alone takes 10-30s)."
+        )
+        print(f"  [!] {line}")
+        try:
+            # Into the artefact as well as stdout: whatever picks the log up later reads the FILE, and an
+            # empty file is the thing that misled a reader in the first place.
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(f"\n# {line}\n")
+        except OSError:
+            pass
+    return 1 if zero_capture else 0
+
+
 def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFAULT_DEVICE_TYPE, channel=DEFAULT_RTT_CHANNEL, monitor=False):
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -602,6 +682,7 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
 
     print("\n  Processing logs...")
     result = {}
+    zero_capture = []
     for _, name, proc, thread, raw, final, btmon in started:
         thread.stop()
         if proc and proc.poll() is None:
@@ -613,6 +694,8 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
         if os.path.exists(final):
             size = os.path.getsize(final)
             print(f"    [{name}] {os.path.basename(final)} ({size} bytes, {thread.line_count} lines)")
+            if thread.line_count == 0:
+                zero_capture.append((name, final))
         if btmon and os.path.exists(btmon):
             bsize = os.path.getsize(btmon)
             print(f"    [{name}] {os.path.basename(btmon)} ({bsize} bytes, HCI monitor)")
@@ -623,6 +706,8 @@ def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFA
     # The tombstone. A caller that asked for the monitor and got a channel-0 log has to be able to tell
     # that apart from a quiet bus, and it reads FILES, not this process's stdout. Written beside the
     # capture, named after it, so whatever picks the log up finds the reason next to the evidence.
+    ZERO_CAPTURE.extend(zero_capture)
+
     if monitor_unavailable:
         for name, final in result.items():
             try:
@@ -736,7 +821,8 @@ def analyze_logs(log_files):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="nRF RTT Logger")
+    parser = argparse.ArgumentParser(
+        allow_abbrev=False,description="nRF RTT Logger")
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--capture", action="store_true")
     parser.add_argument("--auto-detect", action="store_true")
@@ -744,6 +830,15 @@ def main():
     parser.add_argument("--port", type=str)
     parser.add_argument("--name", type=str, default="device")
     parser.add_argument("--duration", type=int, default=DEFAULT_DURATION)
+    # allow_abbrev=False, and an explicit --out.
+    #
+    # TOOL.md documented `--out <FILE>` and this parser only defined `--output <DIR>`. argparse's prefix
+    # matching silently accepted --out AS --output, so `--out /tmp/x/rtt_probe.log` was read as an output
+    # DIRECTORY and os.makedirs created a directory with that name. The capture then wrote its real log
+    # inside it under a generated name, the caller looked at the path it had asked for, found a directory,
+    # and reported "the capture produced nothing". The tool's own documentation taught the flag that did
+    # this (2026-08-29).
+    parser.add_argument("--out", help="Write the capture to exactly this FILE (single device)")
     parser.add_argument("--output", type=str, default="logs")
     parser.add_argument("--no-reset", action="store_true")
     parser.add_argument("--reset-serials", help="Device serial numbers to reset (comma-separated)")
@@ -799,6 +894,7 @@ def main():
 
     # Capture
     log_files = capture_rtt_logs(devices, args.duration, args.output, reset=not args.no_reset, device_type=args.device_type, channel=args.channel, monitor=args.monitor)
+    log_files = honour_out_file(args.out, log_files)
     
     # Analyze
     if args.analyze and log_files:
@@ -806,6 +902,11 @@ def main():
         file_list = list(log_files.values()) if isinstance(log_files, dict) else log_files
         if file_list:
             analyze_logs(file_list)
+
+    # A capture that saw nothing is a failed measurement, and the exit code has to say so: a caller that
+    # reads only the status must not be told this succeeded.
+    if report_zero_capture(ZERO_CAPTURE, args.duration):
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
