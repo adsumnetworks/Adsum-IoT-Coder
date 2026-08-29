@@ -75,9 +75,17 @@ export const KbitRoster = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 	return (
 		<div className="mt-2 text-xs">
 			<div className="uppercase tracking-wide font-semibold text-[9px] opacity-55 mb-1">
-				Knowledge & Tool bits used this session
+				Knowledge &amp; Tool bits used this session
+				<span className="font-mono opacity-70"> ({bits.length})</span>
 			</div>
-			<div className="flex flex-col">
+			{/* THE ROSTER SCROLLS ITSELF, because the header above it cannot.
+			    The task header is `overflow-hidden` with no height of its own, so every row added here grew
+			    it until the bottom of the list was simply clipped — a session that loaded seventeen bits
+			    showed maybe twelve and no way to reach the rest. Bounding it here rather than loosening the
+			    header keeps the header's clipping (which the collapse animation depends on) and gives the
+			    one list that can grow without limit its own scroll. `overscroll-contain` stops a flick at
+			    the end of the list from scrolling the transcript behind it. */}
+			<div className="flex flex-col max-h-[38vh] overflow-y-auto overscroll-contain pr-1">
 				{bits.map((b) => (
 					<div
 						className="flex items-center gap-2 py-1"
