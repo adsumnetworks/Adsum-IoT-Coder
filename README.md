@@ -40,7 +40,7 @@
 
 Cellular silicon, a partner's composable open industrial IoT gateway, and Tool bits downloaded on demand. More devices and partners are coming: we onboard them, and in time they author and maintain the Knowledge and Tool bits for their own boards.
 
-<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Cellular.** nRF9160, nRF9161 and nRF9151 boards, with NB-IoT, LTE-M and GNSS. Two new tools talk to the modem: a board shell for AT and Zephyr commands, and a modem trace that reports why a connection failed. DECT NR+ and NTN knowledge ships too; both need modem firmware from Nordic. [Cellular on nRF91](https://docs.adsumnetworks.com/cellular)
+<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Cellular.** nRF9160, nRF9161 and nRF9151 boards, with NB-IoT, LTE-M and GNSS. Two new tools talk to the modem: a board shell for AT and Zephyr commands, and a modem trace that reports why a connection failed. DECT NR+ and NTN knowledge ships too; NTN needs LACA A1A silicon, DECT NR+ needs firmware from Nordic sales. [Cellular on nRF91](https://docs.adsumnetworks.com/cellular)
 
 <img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Build on partner open hardware, starting with Fanstel.** On a supported gateway Adsum already knows the pinouts, which M.2 card holds which radio, and which connector programs which chip. You do not work it out from a schematic. The LEW840X is the first. [Partner open hardware](https://docs.adsumnetworks.com/supported-hardware/partner-open-hardware)
 
@@ -81,7 +81,7 @@ Field-tested on our own gateway builds: the budget tiers handle most routine wor
 | **Products** | **Fanstel LEW840X, BWG840X** gateways, with their own product knowledge | both, one workspace | BLE, Ethernet, Wi-Fi |
 | **Roadmap** | nRF7x (Wi-Fi), on-device AI on nRF54 / ESP32, Linux devices (NVIDIA Jetson, Raspberry Pi) | | LoRa, 5G / 5G RedCap via hats |
 
-DECT NR+ and NTN knowledge ships today. Both need modem firmware from Nordic rather than a download, and NTN needs an nRF9151 of the LACA A1A revision. Adsum works on **any board built with a supported chip**: your own design, a reference board, a development kit, or a product off the shelf. There is no list your board has to be on. [Chips and protocols](https://docs.adsumnetworks.com/supported-hardware) · [cellular](https://docs.adsumnetworks.com/cellular) · [partner open hardware](https://docs.adsumnetworks.com/supported-hardware/partner-open-hardware)
+DECT NR+ and NTN knowledge ships today. NTN's modem firmware is a public download but runs only on an nRF9151 of the LACA A1A revision; DECT NR+ needs a modem image from Nordic sales rather than a download. Adsum works on **any board built with a supported chip**: your own design, a reference board, a development kit, or a product off the shelf. There is no list your board has to be on. [Chips and protocols](https://docs.adsumnetworks.com/supported-hardware) · [cellular](https://docs.adsumnetworks.com/cellular) · [partner open hardware](https://docs.adsumnetworks.com/supported-hardware/partner-open-hardware)
 
 ## CRA Readiness: SBOM, CVE, and secure-by-design
 
