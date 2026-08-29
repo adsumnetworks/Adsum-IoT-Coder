@@ -3,7 +3,11 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { describe, test } from "node:test"
 
-const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..")
+// `process.cwd()` rather than `__dirname`: mocha loads this file as an ES module, where __dirname does
+// not exist, and the whole suite aborted on it — "Exception during run", zero tests reported, which
+// reads as a broken repo rather than one broken file. The sibling announcementSurfaces test already
+// resolves the root this way, and both runners start at the repo root.
+const REPO_ROOT = process.cwd()
 const read = (p: string) => fs.readFileSync(path.join(REPO_ROOT, p), "utf8")
 
 /**
