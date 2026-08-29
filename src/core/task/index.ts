@@ -95,9 +95,7 @@ import {
 } from "@/integrations/terminal"
 import { consumeQuotaExhausted } from "@/services/adsum/FreeTierState"
 import { ClineError, ClineErrorType, ErrorService } from "@/services/error"
-import { creditFor, deriveIdFromRel, hasBit,
-	provenanceOf,
-} from "@/services/knowledge/KnowledgeResolver"
+import { creditFor, deriveIdFromRel, hasBit, provenanceOf } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import {
 	ClineAssistantContent,
@@ -2438,11 +2436,16 @@ export class Task {
 					message: "Adsum IoT Coder is having trouble. Would you like to continue the task?",
 				})
 			}
+			// This is the message a developer reads at their most frustrated moment, so it has to be useful
+			// rather than a shrug. The inherited text told anyone not on a Claude model that their model was
+			// "less capable" and to switch to "Claude 4 Sonnet" — a model name that is out of date, advice
+			// that reads as an advert, and an insult aimed squarely at the free tier this product ships
+			// with. Repeated tool errors are far more often a step that is too broad than a model that
+			// cannot cope, so the guidance now says what actually moves a stuck run, and mentions the model
+			// picker without naming anything that will age.
 			const { response, text, images, files } = await this.ask(
 				"mistake_limit_reached",
-				this.api.getModel().id.includes("claude")
-					? `This may indicate a failure in his thought process or inability to use a tool properly, which can be mitigated with some user guidance (e.g. "Try breaking down the task into smaller steps").`
-					: "Adsum IoT Coder uses complex prompts and iterative task execution that may be challenging for less capable models. For best results, it's recommended to use Claude 4 Sonnet for its advanced agentic coding capabilities.",
+				"Repeated tool errors usually mean the next step is too broad rather than the task being impossible. Telling it what to do differently is what moves this: narrow the step, name the file to change, or give the exact command to run. If guidance does not shift it, a more capable model from the picker is worth trying — long agentic work is where models differ most.",
 			)
 			if (response === "messageResponse") {
 				// Display the user's message in the chat UI
