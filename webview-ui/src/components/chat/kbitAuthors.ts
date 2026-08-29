@@ -12,6 +12,7 @@
  */
 export const AUTHOR_LINKS: Record<string, string> = {
 	"Ismail Hamdad": "https://www.linkedin.com/in/ismailhamdad/",
+	"Nebil Alamin": "https://www.linkedin.com/in/nebil-alamin-71910521/",
 	"Omar Morceli": "https://www.linkedin.com/in/omar-morceli/",
 	"Redouane Elmagroud": "https://www.linkedin.com/in/red1profile/",
 	"Yaman Kalaji": "https://www.linkedin.com/in/yrkalaji/",
