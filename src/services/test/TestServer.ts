@@ -1,44 +1,24 @@
-import { getSavedApiConversationHistory, getSavedClineMessages } from "@core/storage/disk"
 import { WebviewProvider } from "@core/webview"
 import { Logger } from "@services/logging/Logger"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "@shared/AutoApprovalSettings"
 import { ApiProvider } from "@shared/api"
-import { HistoryItem } from "@shared/HistoryItem"
 import { execa } from "execa"
 import * as http from "http"
-import * as path from "path"
 import * as vscode from "vscode"
 import { Controller } from "@/core/controller"
 import { ExtensionRegistryInfo } from "@/registry"
 import { getCwd } from "@/utils/path"
-import { checkRespond, pendingAskFrom } from "./askBridge"
-import { calculateToolSuccessRate, getFileChanges, initializeGitRepository, validateWorkspacePath } from "./GitHelper"
+import { checkRespond, messagesSince, pendingAskFrom, sessionStateFrom } from "./askBridge"
+import { initializeGitRepository, validateWorkspacePath } from "./GitHelper"
+import { checkInject, queuedCount, queueNote } from "./injectQueue"
+import { checkClaim, claim, type Lease } from "./sessionLease"
 
 /**
  * Creates a tracker to monitor tool calls and failures during task execution
  * @returns Object tracking tool calls and failures
  */
-function createToolCallTracker(): {
-	toolCalls: Record<string, number>
-	toolFailures: Record<string, number>
-} {
-	const tracker = {
-		toolCalls: {} as Record<string, number>,
-		toolFailures: {} as Record<string, number>,
-	}
-	return tracker
-}
-
-// Task completion tracking
-let _taskCompletionResolver: (() => void) | null = null
-
-// Function to create a new task completion promise
-function createTaskCompletionTracker(): Promise<void> {
-	// Create a new promise that will resolve when the task is completed
-	return new Promise<void>((resolve) => {
-		_taskCompletionResolver = resolve
-	})
-}
+/** Who is driving, for as long as this extension host lives. See sessionLease.ts. */
+let currentLease: Lease | null = null
 
 let testServer: http.Server | undefined
 let messageCatcherDisposable: vscode.Disposable | undefined
@@ -137,6 +117,64 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 		 * click and shows up in the visible session the same way. The developer watching keeps priority:
 		 * whoever answers first wins, identically to two clicks racing.
 		 */
+		// What is this run doing? The one question the seam could not answer.
+		if (req.method === "GET" && req.url === "/status") {
+			void (async () => {
+				try {
+					const task = WebviewProvider.getVisibleInstance()?.controller?.task
+					const msgs = task?.messageStateHandler.getClineMessages() ?? []
+					res.writeHead(200)
+					res.end(
+						JSON.stringify({
+							state: sessionStateFrom(msgs, Boolean(task)),
+							taskId: task?.taskId ?? null,
+							driver: currentLease?.driver ?? null,
+							ask: pendingAskFrom(msgs),
+							messages: msgs.length,
+							lastMessageTs: msgs.length ? Number(msgs[msgs.length - 1]?.ts ?? 0) : 0,
+						}),
+					)
+				} catch (e) {
+					res.writeHead(500)
+					res.end(JSON.stringify({ error: String(e) }))
+				}
+			})()
+			return
+		}
+
+		// What has this run LEARNED? Not only what it is asking.
+		//
+		// Without this a driver can see questions and conclusions and nothing in between, so a fact the
+		// agent read off a modem — an APN, a signal level, an IP — is invisible unless it happens to be
+		// mentioned in an ask. On 2026-08-29 every such fact had to be recovered by grepping the task's
+		// ui_messages.json from outside.
+		if (req.method === "GET" && req.url?.startsWith("/messages")) {
+			void (async () => {
+				try {
+					const sinceTs = Number(new URL(req.url ?? "", "http://x").searchParams.get("sinceTs") ?? 0)
+					const task = WebviewProvider.getVisibleInstance()?.controller?.task
+					if (!task) {
+						res.writeHead(200)
+						res.end(JSON.stringify({ messages: [], reason: "no active task" }))
+						return
+					}
+					const msgs = task.messageStateHandler.getClineMessages()
+					res.writeHead(200)
+					res.end(
+						JSON.stringify({
+							taskId: task.taskId,
+							state: sessionStateFrom(msgs, true),
+							messages: messagesSince(msgs, Number.isFinite(sinceTs) ? sinceTs : 0),
+						}),
+					)
+				} catch (e) {
+					res.writeHead(500)
+					res.end(JSON.stringify({ error: String(e) }))
+				}
+			})()
+			return
+		}
+
 		if (req.method === "GET" && req.url === "/ask") {
 			void (async () => {
 				try {
@@ -148,12 +186,113 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 					}
 					const msgs = task.messageStateHandler.getClineMessages()
 					res.writeHead(200)
-					res.end(JSON.stringify({ ask: pendingAskFrom(msgs), messages: msgs.length }))
+					res.end(
+						JSON.stringify({
+							ask: pendingAskFrom(msgs),
+							// `state` is the fact two drivers guessed wrong in opposite directions on
+							// 2026-08-29 — see sessionStateFrom. A pending ask alone cannot tell finished
+							// from stuck, and both mistakes cost real work.
+							state: sessionStateFrom(msgs, true),
+							messages: msgs.length,
+							lastMessageTs: msgs.length ? Number(msgs[msgs.length - 1]?.ts ?? 0) : 0,
+						}),
+					)
 				} catch (e) {
 					res.writeHead(500)
 					res.end(JSON.stringify({ error: String(e) }))
 				}
 			})()
+			return
+		}
+
+		// Tell a running session something it did not ask about.
+		if (req.method === "POST" && req.url === "/inject") {
+			let noteBody = ""
+			req.on("data", (chunk) => {
+				noteBody += chunk.toString()
+			})
+			req.on("end", async () => {
+				try {
+					const task = WebviewProvider.getVisibleInstance()?.controller?.task
+					if (!task) {
+						res.writeHead(409)
+						res.end(JSON.stringify({ error: "no active task" }))
+						return
+					}
+					const pending = pendingAskFrom(task.messageStateHandler.getClineMessages())
+					const check = checkInject(noteBody, pending !== null, queuedCount())
+					if (!check.ok) {
+						res.writeHead(check.status)
+						res.end(JSON.stringify({ error: check.error, ...(pending ? { ask: pending } : {}) }))
+						return
+					}
+					const { driver } = JSON.parse(noteBody || "{}")
+					const queued = queueNote(check.text, typeof driver === "string" ? driver : currentLease?.driver)
+					Logger.log(`Test server queued a driver note (${queued} waiting)`)
+					res.writeHead(200)
+					res.end(JSON.stringify({ ok: true, queued, delivery: "next turn" }))
+				} catch (e) {
+					res.writeHead(500)
+					res.end(JSON.stringify({ error: String(e) }))
+				}
+			})
+			return
+		}
+
+		// Pick a task back up instead of starting a new one.
+		//
+		// Without this the only door was POST /task, so an extension-host restart meant a 600-message
+		// session with real hardware state in it had to be re-briefed by hand and its context paid for
+		// again. That happened three times on 2026-08-29. The resulting resume_task ask is answered
+		// through /respond like any other.
+		if (req.method === "POST" && req.url === "/resume") {
+			let resumeBody = ""
+			req.on("data", (chunk) => {
+				resumeBody += chunk.toString()
+			})
+			req.on("end", async () => {
+				try {
+					const { taskId, driver, takeover } = JSON.parse(resumeBody || "{}")
+					if (!taskId || typeof taskId !== "string") {
+						res.writeHead(400)
+						res.end(JSON.stringify({ error: "need { taskId }" }))
+						return
+					}
+					const controller = WebviewProvider.getVisibleInstance()?.controller
+					if (!controller) {
+						res.writeHead(500)
+						res.end(JSON.stringify({ error: "No active Adsum IoT Coder instance found" }))
+						return
+					}
+					const live = controller.task
+					const state = sessionStateFrom(live?.messageStateHandler.getClineMessages() ?? [], Boolean(live))
+					const verdict = checkClaim(currentLease, state, driver, takeover === true)
+					if (!verdict.ok) {
+						res.writeHead(verdict.status)
+						res.end(JSON.stringify(verdict))
+						return
+					}
+					try {
+						await controller.reinitExistingTaskFromId(taskId)
+					} catch (e) {
+						res.writeHead(404)
+						res.end(JSON.stringify({ error: `no task ${taskId} in history`, detail: String(e) }))
+						return
+					}
+					if (!controller.task) {
+						res.writeHead(404)
+						res.end(JSON.stringify({ error: `no task ${taskId} in history` }))
+						return
+					}
+					currentLease = claim(driver, taskId)
+					Logger.log(`Test server resumed task ${taskId} for ${currentLease.driver}`)
+					res.writeHead(200)
+					res.end(JSON.stringify({ success: true, taskId, resumed: true, driver: currentLease.driver }))
+				} catch (e) {
+					res.writeHead(500)
+					res.end(JSON.stringify({ error: String(e) }))
+				}
+			})
 			return
 		}
 
@@ -210,7 +349,21 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 		req.on("end", async () => {
 			try {
 				// Parse the JSON body
-				const { task, apiKey } = JSON.parse(body)
+				const { task, apiKey, driver, takeover } = JSON.parse(body)
+
+				// Is someone else already driving? A collision used to be silent: the second POST simply
+				// replaced the first driver's run. Now it is an answer with a name in it, and a driver who
+				// means to take over says so.
+				{
+					const live = WebviewProvider.getVisibleInstance()?.controller?.task
+					const state = sessionStateFrom(live?.messageStateHandler.getClineMessages() ?? [], Boolean(live))
+					const verdict = checkClaim(currentLease, state, driver, takeover === true)
+					if (!verdict.ok) {
+						res.writeHead(verdict.status)
+						res.end(JSON.stringify(verdict))
+						return
+					}
+				}
 
 				if (!task) {
 					res.writeHead(400)
@@ -311,12 +464,6 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 						await visibleWebview.controller.togglePlanActMode("act")
 					}
 
-					// Initialize tool call tracker
-					const toolTracker = createToolCallTracker()
-
-					// Record task start time
-					const taskStartTime = Date.now()
-
 					// Initiate the new task
 					const result = await visibleWebview.controller.initTask(task)
 
@@ -353,133 +500,21 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 
 					Logger.log(`Task initiated with ID: ${taskId}`)
 
-					// Create a completion tracker for this task
-					const completionPromise = createTaskCompletionTracker()
-
-					// Wait for the task to complete with a timeout
-					const timeoutPromise = new Promise<void>((_, reject) => {
-						setTimeout(() => reject(new Error("Task completion timeout")), 15 * 60 * 1000) // 15 minute timeout
-					})
-
-					try {
-						// Wait for either completion or timeout
-						await Promise.race([completionPromise, timeoutPromise])
-
-						// Get task history and metrics
-						const taskHistory = await visibleWebview.controller.getStateToPostToWebview()
-						const taskData = taskHistory.taskHistory?.find((t: HistoryItem) => t.id === taskId)
-
-						// Get messages and API conversation history
-						let messages: any[] = []
-						let apiConversationHistory: any[] = []
-						try {
-							if (typeof taskId === "string") {
-								messages = await getSavedClineMessages(taskId)
-							}
-						} catch (error) {
-							Logger.log(`Error getting saved Cline messages: ${error}`)
-						}
-
-						try {
-							if (typeof taskId === "string") {
-								apiConversationHistory = await getSavedApiConversationHistory(taskId)
-							}
-						} catch (error) {
-							Logger.log(`Error getting saved API conversation history: ${error}`)
-						}
-
-						// Get file changes
-						let fileChanges
-						try {
-							// Get the workspace path using our helper function
-							const workspacePath = await getCwd()
-							Logger.log(`Getting file changes from workspace path: ${workspacePath}`)
-
-							// Log directory contents for debugging
-							try {
-								const { stdout: lsOutput } = await execa("ls", ["-la", workspacePath])
-								Logger.log(`Directory contents after task completion:\n${lsOutput}`)
-							} catch (lsError) {
-								Logger.log(`Warning: Failed to list directory contents: ${lsError.message}`)
-							}
-
-							// Get file changes using Git
-							fileChanges = await getFileChanges(workspacePath)
-
-							// If no changes were detected, use a fallback method
-							if (!fileChanges.created.length && !fileChanges.modified.length && !fileChanges.deleted.length) {
-								Logger.log("No changes detected by Git, using fallback directory scan")
-
-								// Try to get a list of all files in the directory
-								try {
-									const { stdout: findOutput } = await execa("find", [
-										workspacePath,
-										"-type",
-										"f",
-										"-not",
-										"-path",
-										"*/.*",
-										"-not",
-										"-path",
-										"*/node_modules/*",
-									])
-									const files = findOutput.split("\n").filter(Boolean)
-
-									// Add all files as "created" since we can't determine which ones are new
-									fileChanges.created = files.map((file) => path.relative(workspacePath, file))
-									Logger.log(`Fallback found ${fileChanges.created.length} files`)
-								} catch (findError) {
-									Logger.log(`Warning: Fallback directory scan failed: ${findError.message}`)
-								}
-							}
-						} catch (fileChangeError) {
-							Logger.log(`Error getting file changes: ${fileChangeError.message}`)
-							throw new Error(`Error getting file changes: ${fileChangeError.message}`)
-						}
-
-						// Get tool metrics
-						const toolMetrics = {
-							toolCalls: toolTracker.toolCalls,
-							toolFailures: toolTracker.toolFailures,
-							totalToolCalls: Object.values(toolTracker.toolCalls).reduce((a, b) => a + b, 0),
-							totalToolFailures: Object.values(toolTracker.toolFailures).reduce((a, b) => a + b, 0),
-							toolSuccessRate: calculateToolSuccessRate(toolTracker.toolCalls, toolTracker.toolFailures),
-						}
-
-						// Calculate task duration
-						const taskDuration = Date.now() - taskStartTime
-
-						// Return comprehensive response with all metrics and data
-						res.writeHead(200, { "Content-Type": "application/json" })
-						res.end(
-							JSON.stringify({
-								success: true,
-								taskId,
-								completed: true,
-								metrics: {
-									tokensIn: taskData?.tokensIn || 0,
-									tokensOut: taskData?.tokensOut || 0,
-									cost: taskData?.totalCost || 0,
-									duration: taskDuration,
-									...toolMetrics,
-								},
-								messages,
-								apiConversationHistory,
-								files: fileChanges,
-							}),
-						)
-					} catch (_timeoutError) {
-						// Task didn't complete within the timeout period
-						res.writeHead(200, { "Content-Type": "application/json" })
-						res.end(
-							JSON.stringify({
-								success: true,
-								taskId,
-								completed: false,
-								timeout: true,
-							}),
-						)
-					}
+					// RETURN THE MOMENT THE TASK STARTS. Drivers poll /status.
+					//
+					// This used to await a "completion tracker" against a 15-minute timeout. Nothing ever
+					// resolved that promise — `_taskCompletionResolver` was assigned here and called from
+					// nowhere in the codebase — so every POST /task hung for the full fifteen minutes and
+					// then answered `completed: false, timeout: true` about a task that had very often
+					// finished. Every driver worked around it with `curl --max-time 5` and read the
+					// transcript instead, which is the behaviour this now makes official.
+					//
+					// The metrics block that followed is gone with it: it reported on a completion that had
+					// not been observed. A driver that wants them reads /status and the task history once
+					// the state says complete.
+					currentLease = claim(driver, String(taskId))
+					res.writeHead(200, { "Content-Type": "application/json" })
+					res.end(JSON.stringify({ success: true, taskId, state: "running", driver: currentLease.driver }))
 				} catch (error) {
 					Logger.log(`Error initiating task: ${error}`)
 					res.writeHead(500)

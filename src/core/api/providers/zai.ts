@@ -1,3 +1,4 @@
+import { effectiveMaxOutputTokens } from "@core/context/context-management/output-reservation"
 import {
 	GLM_EFFORT_MODELS,
 	internationalZAiDefaultModelId,
@@ -18,7 +19,6 @@ import { fetch } from "@/shared/net"
 import { version as extensionVersion } from "../../../../package.json"
 import { ApiHandler, CommonApiHandlerOptions } from ".."
 import { withRetry } from "../retry"
-import { effectiveMaxOutputTokens } from "@core/context/context-management/output-reservation"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { splitOpenAiUsage } from "../transform/openai-usage"
 import { ApiStream } from "../transform/stream"

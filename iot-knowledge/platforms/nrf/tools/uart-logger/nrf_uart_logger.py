@@ -510,6 +510,85 @@ class DeviceLogger(threading.Thread):
             ser.close()
 
 
+
+# ── the instrument-limit contract ──────────────────────────────────────────────────────────────────
+# A capture that saw nothing must SAY it saw nothing. It must never leave a friendly summary and exit 0,
+# because a caller then cannot tell "the board was quiet" from "this tool never attached".
+#
+# 2026-08-29, both halves of that: `rtt-logger --out /tmp/x/rtt_probe.log` created a DIRECTORY named
+# rtt_probe.log and left it empty (see the argparse note below), and a 30-second capture of a board that
+# was mid-attach produced four lines. Both were reported to the developer as "the console is silent" and
+# sent an agent forty messages deep into a firmware theory. The board was fine.
+
+ZERO_CAPTURE = []
+
+def honour_out_file(out_path, log_files):
+    """
+    `--out FILE` means that file, exactly.
+
+    Implemented as a rename after the capture rather than by threading a filename through the capture
+    path, because the capture names files per device and only a single-device run has one answer. With
+    more than one device the request is ambiguous, and saying so is better than silently picking one.
+
+    Why it exists: TOOL.md documented --out <FILE> while the parser only had --output <DIR>, argparse
+    prefix-matched them, and os.makedirs created a DIRECTORY named rtt_probe.log. The caller found a
+    directory where its log should be and reported that the capture had produced nothing (2026-08-29).
+    """
+    import os as _os
+
+    paths = list(log_files.values()) if isinstance(log_files, dict) else list(log_files or [])
+    if not out_path:
+        return log_files
+    if len(paths) != 1:
+        print(
+            f"  [!] --out names a single file but this run captured {len(paths)} device(s); "
+            f"leaving them under the output directory. Use --output <DIR> for multi-device captures."
+        )
+        return log_files
+    src = paths[0]
+    try:
+        parent = _os.path.dirname(_os.path.abspath(out_path))
+        if parent:
+            _os.makedirs(parent, exist_ok=True)
+        if _os.path.isdir(out_path):
+            print(f"  [!] --out {out_path} is an existing DIRECTORY; refusing to write a file over it")
+            return log_files
+        if _os.path.abspath(src) != _os.path.abspath(out_path):
+            _os.replace(src, out_path)
+        print(f"  -> {out_path}")
+        return {"device": out_path} if isinstance(log_files, dict) else [out_path]
+    except OSError as e:
+        print(f"  [!] could not write {out_path}: {e}")
+        return log_files
+
+
+
+
+def report_zero_capture(zero_capture, duration):
+    """
+    Say plainly that the capture saw nothing, and make it machine-detectable.
+
+    Symmetric on purpose: this reports what the CAPTURE saw, not what the board did. A genuinely quiet
+    board is a real result, and this message must not read as "the board is broken" any more than an empty
+    file should have read as "the board is silent" — which is exactly how it was read on 2026-08-29.
+    """
+    for name, path in zero_capture:
+        line = (
+            f"0 lines captured in {duration}s from {name} — the capture saw nothing. This does NOT say the "
+            f"board printed nothing: check the channel, --device-type, that the firmware logs to this "
+            f"transport, and that the window was long enough (a cellular attach alone takes 10-30s)."
+        )
+        print(f"  [!] {line}")
+        try:
+            # Into the artefact as well as stdout: whatever picks the log up later reads the FILE, and an
+            # empty file is the thing that misled a reader in the first place.
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(f"\n# {line}\n")
+        except OSError:
+            pass
+    return 1 if zero_capture else 0
+
+
 def record_logs(devices, duration, output_dir, reset_serials=None, pre_capture_delay=0):
     """Record logs from multiple devices simultaneously.
     
@@ -592,6 +671,7 @@ def record_logs(devices, duration, output_dir, reset_serials=None, pre_capture_d
         logger.join(timeout=2)
     
     # Report results
+    zero_capture = []
     print("\n\n[COMPLETE] Recording finished!")
     print("-" * 60)
     for logger in loggers:
@@ -599,8 +679,11 @@ def record_logs(devices, duration, output_dir, reset_serials=None, pre_capture_d
             print(f"  {logger.name}: ERROR - {logger.error}")
         else:
             print(f"  {logger.name}: {logger.line_count} lines -> {logger.filename}")
+            if logger.line_count == 0:
+                zero_capture.append((logger.name, logger.filename))
     print("-" * 60)
-    
+    ZERO_CAPTURE.extend(zero_capture)
+
     return [l.filename for l in loggers if not l.error]
 
 
@@ -700,6 +783,7 @@ def analyze_logs(log_files):
 
 def main():
     parser = argparse.ArgumentParser(
+        allow_abbrev=False,
         description="nRF UART Logger - Cross-platform serial logging tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -721,6 +805,15 @@ Usage:
     parser.add_argument("--devices", help="Multi-device: name1:port1,name2:port2")
     parser.add_argument("--baudrate", type=int, default=DEFAULT_BAUDRATE, help=f"Baud rate (default: {DEFAULT_BAUDRATE})")
     parser.add_argument("--duration", type=int, default=DEFAULT_DURATION, help=f"Recording duration in seconds (default: {DEFAULT_DURATION})")
+    # allow_abbrev=False, and an explicit --out.
+    #
+    # TOOL.md documented `--out <FILE>` and this parser only defined `--output <DIR>`. argparse's prefix
+    # matching silently accepted --out AS --output, so `--out /tmp/x/rtt_probe.log` was read as an output
+    # DIRECTORY and os.makedirs created a directory with that name. The capture then wrote its real log
+    # inside it under a generated name, the caller looked at the path it had asked for, found a directory,
+    # and reported "the capture produced nothing". The tool's own documentation taught the flag that did
+    # this (2026-08-29).
+    parser.add_argument("--out", help="Write the capture to exactly this FILE (single device)")
     parser.add_argument("--output", default="logs", help="Output directory (default: logs/)")
     parser.add_argument("--reset", action="store_true", help="Reset device(s) before capture (DEFAULT for boot logs)")
     parser.add_argument("--no-reset", action="store_true", help="Skip reset (for mid-runtime capture)")
@@ -819,11 +912,16 @@ Usage:
     
     # Record logs
     log_files = record_logs(devices, args.duration, args.output, reset_serials, args.pre_capture_delay)
-    
+    log_files = honour_out_file(args.out, log_files)
+
     # Analyze if requested
     if args.analyze and log_files:
         analyze_logs(log_files)
-    
+
+    # A capture that saw nothing is a failed measurement, and the exit code has to say so.
+    if report_zero_capture(ZERO_CAPTURE, args.duration):
+        return 1
+
     return 0
 
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { type AskLike, checkRespond, MAX_ANSWER_CHARS, pendingAskFrom } from "./askBridge"
+import { type AskLike, checkRespond, MAX_ANSWER_CHARS, messagesSince, pendingAskFrom, sessionStateFrom } from "./askBridge"
 
 /**
  * The rules that decide whether a remote answer may be delivered into a live session.
@@ -125,5 +125,88 @@ describe("checkRespond", () => {
 	test("responseType is checked before the pending ask, so a bad body is a 400 even with nothing pending", () => {
 		const r = checkRespond(JSON.stringify({ responseType: "nope" }), null)
 		assert.equal((r as { status: number }).status, 400)
+	})
+})
+
+describe("what state a driven run is in", () => {
+	const say = (ts: number, text = "working") => ({ type: "say", say: "text", text, ts })
+	const ask = (kind: string, ts: number, partial?: boolean) => ({ type: "ask", ask: kind, text: "?", ts, partial })
+
+	test("no task at all is idle, not finished and not stuck", () => {
+		assert.equal(sessionStateFrom([], false), "idle")
+		assert.equal(sessionStateFrom(undefined, false), "idle")
+	})
+
+	/**
+	 * The mistake that cost a hardware test: a watcher read file modification time, saw a run that had
+	 * PARKED at the mistake limit, decided it was finished and posted a new task over the top of it.
+	 */
+	test("parked at the mistake limit is awaiting_human — a quiet run is not a finished one", () => {
+		assert.equal(sessionStateFrom([say(1), ask("mistake_limit_reached", 2)], true), "awaiting_human")
+	})
+
+	/**
+	 * And the opposite mistake, twenty minutes later, from the watcher written to fix the first one:
+	 *     17:22:02  parked on 'completion_result' (idle 93s) — NOT posting
+	 *     17:22:23  parked on 'completion_result' (idle 114s) — NOT posting
+	 * completion_result IS the finished signal. Refusing to advance on it is refusing to advance, ever.
+	 */
+	test("completion_result is complete — it is the done signal, not a park", () => {
+		assert.equal(sessionStateFrom([say(1), ask("completion_result", 2)], true), "complete")
+		assert.equal(sessionStateFrom([say(1), ask("resume_completed_task", 2)], true), "complete")
+	})
+
+	test("every other pending ask is a human being waited on", () => {
+		for (const kind of ["followup", "tool", "command", "api_req_failed", "resume_task", "browser_action_launch"]) {
+			assert.equal(sessionStateFrom([ask(kind, 2)], true), "awaiting_human", kind)
+		}
+	})
+
+	test("a partial ask is still running — the question is not finished being written", () => {
+		assert.equal(sessionStateFrom([ask("followup", 2, true)], true), "running")
+	})
+
+	test("a task whose last word was its own is running", () => {
+		assert.equal(sessionStateFrom([ask("tool", 1), say(2)], true), "running")
+	})
+})
+
+describe("what a run has learned, not only what it asks", () => {
+	/**
+	 * 2026-08-29: an agent read `+CGDCONT: 0,"IP","wlapn.com","10.74.120.60"` off a modem at 18:20:09 and
+	 * never surfaced it — not an ask, not a completion, so the seam could not show it. The driver learned
+	 * the APN six minutes later from a human reading a web console, and found the device's own reading
+	 * only by grepping the task's ui_messages.json.
+	 */
+	const msgs = [
+		{ type: "say", say: "text", text: "probing the modem", ts: 100 },
+		{ type: "ask", ask: "command_output", text: '+CGDCONT: 0,"IP","wlapn.com","10.74.120.60"', ts: 200 },
+		{ type: "say", say: "text", text: "the network assigned the APN", ts: 300 },
+	]
+
+	test("a fact the agent read is visible without grepping a transcript file", () => {
+		const found = messagesSince(msgs, 0)
+		assert.equal(found.length, 3)
+		assert.ok(found.some((m) => m.text.includes("wlapn.com")))
+		assert.equal(found[1].kind, "command_output")
+	})
+
+	test("sinceTs is strictly greater, so polling never repeats or skips a message", () => {
+		assert.deepEqual(
+			messagesSince(msgs, 200).map((m) => m.ts),
+			[300],
+		)
+		assert.deepEqual(messagesSince(msgs, 300), [])
+	})
+
+	test("a partial is marked, so a driver does not read half a sentence as the answer", () => {
+		const streaming = [{ type: "say", say: "text", text: "half a th", ts: 400, partial: true }]
+		assert.equal(messagesSince(streaming, 0)[0].partial, true)
+		assert.equal(messagesSince(msgs, 0)[0].partial, undefined)
+	})
+
+	test("no messages is an empty list, never a throw", () => {
+		assert.deepEqual(messagesSince(undefined, 0), [])
+		assert.deepEqual(messagesSince([], 0), [])
 	})
 })

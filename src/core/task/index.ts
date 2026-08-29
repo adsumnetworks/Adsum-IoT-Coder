@@ -57,6 +57,7 @@ import { listFiles } from "@services/glob/list-files"
 import { withLinks } from "@services/knowledge/kbit/people"
 import { Logger } from "@services/logging/Logger"
 import { McpHub } from "@services/mcp/McpHub"
+import { drainNotes } from "@services/test/injectQueue"
 import { ApiConfiguration } from "@shared/api"
 import { findLast, findLastIndex } from "@shared/array"
 import { combineApiRequests } from "@shared/combineApiRequests"
@@ -1777,12 +1778,15 @@ export class Task {
 			}
 			this.taskState.didNotifyLowTierToolCallReliability = true
 			const label = `${providerInfo.providerId}/${providerInfo.model.id}`
+			// The second copy of the same mistake as the mistake-limit message, and it fired on the bench
+			// on 2026-08-29: it named four specific models, two of them already out of date, and told a
+			// developer on the free tier this extension ships with that their model was the problem. Say
+			// what is happening and what the options are; name nothing that will age.
 			await this.say(
 				"info",
-				`The current model (${label}) has produced malformed tool calls ${this.taskState.consecutiveMistakeCount} times in a row. ` +
-					`Smaller / older models often struggle with the XML tool-call format and burn retries silently. ` +
-					`If this keeps happening, consider switching to Claude Haiku 4.5, Claude Sonnet 4.5+, GPT-5, or Gemini 2.5+ — those are the most reliable tiers. ` +
-					`You can switch from the model picker without losing this conversation.`,
+				`${label} has produced malformed tool calls ${this.taskState.consecutiveMistakeCount} times in a row — the reply came back in a shape the tool parser could not read. ` +
+					`Retries are automatic, so a run can spend turns on this without obviously failing. ` +
+					`Narrowing the next step usually helps; the model picker is there if it keeps happening, and switching does not lose this conversation.`,
 			)
 		} catch {
 			// Diagnostic only — never let this break the retry loop.
@@ -2403,6 +2407,16 @@ export class Task {
 			throw new Error("Task instance aborted")
 		}
 
+		// A note the person driving sent while this was running — see services/test/injectQueue.ts.
+		//
+		// Here, and nowhere else: this is a turn boundary, before the request is assembled, so the note
+		// becomes its own labelled user block. Delivered mid-stream it would interleave with the model's
+		// own output; delivered into userMessageContent beside a tool result it would read as output FROM
+		// that tool, which would be a fabricated observation. Empty for every run that is not being driven.
+		for (const note of drainNotes()) {
+			userContent.push({ type: "text", text: note } as ClineTextContentBlock)
+		}
+
 		// Increment API request counter for focus chain list management
 		this.taskState.apiRequestCount++
 		this.taskState.apiRequestsSinceLastTodoUpdate++
@@ -2421,7 +2435,21 @@ export class Task {
 			mode: mode,
 		}
 
-		if (this.taskState.consecutiveMistakeCount >= this.stateManager.getGlobalSettingsKey("maxConsecutiveMistakes")) {
+		// THE COUNTER COUNTS FORMAT MISTAKES, SO THE LIMIT SHOULD DEPEND ON THE FORMATTER.
+		//
+		// Every increment of consecutiveMistakeCount is a malformed or absent tool call — no tool used, a
+		// followup without its question, a Nordic action missing a parameter. None of them is a failed
+		// operation; a command that runs and returns an error does not touch this counter at all.
+		//
+		// So a limit of three is a statement about how many XML formatting slips a run may make, and
+		// models differ enormously at that. The free tier this extension ships with is a low-reliability
+		// formatter by getToolCallReliabilityTier's own classification, and long hardware sessions on it
+		// reached the limit routinely on 2026-08-29 while making perfectly good progress. Doubling the
+		// allowance there costs a few wasted turns; parking the run costs the session.
+		const mistakeLimit =
+			this.stateManager.getGlobalSettingsKey("maxConsecutiveMistakes") *
+			(getToolCallReliabilityTier(this.getCurrentProviderInfo()) === "low" ? 2 : 1)
+		if (this.taskState.consecutiveMistakeCount >= mistakeLimit) {
 			// In yolo mode, don't wait for user input - fail the task
 			if (this.stateManager.getGlobalSettingsKey("yoloModeToggled")) {
 				const errorMessage =
