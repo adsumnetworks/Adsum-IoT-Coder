@@ -54,6 +54,7 @@ import { showSystemNotification } from "@integrations/notifications"
 import { ITerminalManager } from "@integrations/terminal/types"
 import { featureFlagsService } from "@services/feature-flags"
 import { listFiles } from "@services/glob/list-files"
+import { withLinks } from "@services/knowledge/kbit/people"
 import { Logger } from "@services/logging/Logger"
 import { McpHub } from "@services/mcp/McpHub"
 import { ApiConfiguration } from "@shared/api"
@@ -808,6 +809,8 @@ export class Task {
 						author: credit.author,
 						attributed: credit.attributed,
 						coAuthors: credit.coAuthors.length ? credit.coAuthors : undefined,
+						// Profile links for the names on THIS line, resolved host-side — the webview has no network.
+						links: withLinks(credit).links,
 						version: credit.version,
 						license: credit.license,
 						platform: credit.platform,

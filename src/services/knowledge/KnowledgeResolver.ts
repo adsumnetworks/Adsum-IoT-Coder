@@ -12,6 +12,7 @@ import {
 	RegistryClient,
 } from "@/services/knowledge/registry/RegistryClient"
 import { fileExistsAtPath } from "@/utils/fs"
+import { refreshPeopleIndex } from "./kbit/people"
 
 /**
  * KnowledgeResolver — resolves a K-bit by its stable `id` to its on-disk location/content.
@@ -342,6 +343,11 @@ async function downloadedManifest(): Promise<Map<string, DownloadedManifestEntry
 		const fetched = await registry().fetchManifest()
 		if (fetched) {
 			manifestRevalidated = true
+			// The credit roster rides along with the once-per-session manifest revalidation rather than
+			// getting a fetch of its own — it changes at the pace people join, and a credit line must never
+			// wait on the network. Failure is silent by design: the bundled baseline stays in place, so a
+			// blip costs a link and never a credit. Not awaited, for the same reason.
+			void refreshPeopleIndex(registry())
 			manifestJson = JSON.stringify(fetched)
 			await cache().writeManifest(manifestJson)
 			await reconcileCache(fetched)

@@ -25,6 +25,10 @@ export interface KbitLoadedPayload {
 	/** Co-authors of the bit, in declared order — typically whoever curated the version this one grew out
 	 *  of. Absent for a single-author bit, so an older payload renders exactly as before. */
 	coAuthors?: string[]
+	/** name → profile URL, for the names on THIS credit only. Resolved host-side, because the webview has
+	 *  no network and a CSP that forbids one, and served from the registry so a contributor added after a
+	 *  release is still creditable. Absent when nobody on the line has a known profile. */
+	links?: Record<string, string>
 	version?: string
 	license?: string
 	platform?: string
@@ -150,8 +154,13 @@ const KindChip = ({ kind, size = 17 }: { kind: KbitLoadedPayload["kind"]; size?:
  * task header expanding when the pill was clicked; that is fixed on the header side instead, which ignores
  * clicks originating inside an <a>.
  */
-export const PersonLink = ({ name, color }: { name: string; color?: string }) => {
-	const href = authorLink(name)
+/**
+ * `links` comes from the registry via the host and wins, so a contributor added or corrected after this
+ * build shipped still gets a link. `authorLink` is the compiled-in floor for an offline install. Neither
+ * ever guesses: a name with no confirmed profile renders as plain text, which is honest rather than broken.
+ */
+export const PersonLink = ({ name, color, links }: { name: string; color?: string; links?: Record<string, string> }) => {
+	const href = links?.[name] ?? authorLink(name)
 	const tone = color ?? BRAND_CORAL
 	return href ? (
 		<a
@@ -170,7 +179,11 @@ export const PersonLink = ({ name, color }: { name: string; color?: string }) =>
 
 /** Only a real, attributed person is a name; an unattributed bit says so plainly rather than inventing one. */
 const AuthorName = ({ bit }: { bit: KbitLoadedPayload }) =>
-	bit.attributed === false ? <span className="opacity-80">{bit.author}</span> : <PersonLink name={bit.author} />
+	bit.attributed === false ? (
+		<span className="opacity-80">{bit.author}</span>
+	) : (
+		<PersonLink links={bit.links} name={bit.author} />
+	)
 
 /** Co-authors on the one-line credit: the first name in full, the rest as a count the popover expands.
  *  Re-attributing a bit moves the lead name; this is what keeps the previous curator visible. */
@@ -182,7 +195,7 @@ export const CoAuthors = ({ bit, color }: { bit: KbitLoadedPayload; color?: stri
 	return (
 		<span>
 			{" with "}
-			<PersonLink color={color} name={co[0]} />
+			<PersonLink color={color} links={bit.links} name={co[0]} />
 			{co.length > 1 ? <span className="opacity-70">{` +${co.length - 1}`}</span> : null}
 		</span>
 	)
@@ -226,7 +239,7 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 		    same platform. Platform moved into the metadata line; everything factual is a labelled row. */}
 		<div className="mt-[10px] flex flex-col gap-[6px]">
 			<ProvRow label="Curated by" muted={bit.attributed === false}>
-				{bit.attributed === false ? bit.author : <PersonLink color="inherit" name={bit.author} />}
+				{bit.attributed === false ? bit.author : <PersonLink color="inherit" links={bit.links} name={bit.author} />}
 			</ProvRow>
 			{/* Credit is cumulative: whoever curated the version this one grew out of stays named here after
 			    the lead changes hands. Absent when the bit declares no co-authors. */}
@@ -235,7 +248,7 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 					{bit.coAuthors.map((name, i) => (
 						<span key={name}>
 							{i > 0 ? ", " : ""}
-							<PersonLink color="inherit" name={name} />
+							<PersonLink color="inherit" links={bit.links} name={name} />
 						</span>
 					))}
 				</ProvRow>
