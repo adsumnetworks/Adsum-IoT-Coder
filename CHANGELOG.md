@@ -9,7 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.1] - 2026-08-26
 
+*0.2.2 and 0.3.0 were never published; their work ships here.*
+
 ### Added
+- nRF91 cellular: NB-IoT, LTE-M, NTN and DECT NR+, each loaded only for the project that needs it.
+- GNSS positioning knowledge for nRF91.
+- Board knowledge for the nRF9161 DK, nRF9151 DK and nRF9160 DK.
+- Board shell: send AT and Zephyr shell commands and read until the board finishes, on all platforms.
+- Modem trace: capture, decode and explain registration state, refusal reason, radio mode and search events.
+- `log-shape`: describe a log's structure in one call, then read any message kind in context.
+- Knowledge is named when it loads, not only when the agent reads a file.
 - Every device tool is a Tool bit: versioned, credited, and hash-verified before it runs.
 - CRA advisory hints and package mappings update from the registry instead of a release.
 - Crash-address decoder that picks `addr2line` by chip architecture and reports where it looked.
@@ -24,38 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Building the extension no longer depends on the build machine's Node version.
 
 ### Fixed
-- A CVE scan that could not run no longer reads as a clean one.
-- Large captures no longer return truncated with a success status.
-- A tool improved in the registry could still be read back from an older copy on disk.
-- Third-party code bundled into a tool is now named in its notice file.
-- Two links pointed at a repository that had been renamed.
-- Setting `ADSUM_AUTHOR_TOKEN` empty now means "published only", so drafts can be compared against it.
-- A multi-chip product had nowhere to keep its project memory.
-- The ESP monitor put the chip into the bootloader when opening the port.
-- A silent ESP capture now retries the reset once, and a retry never leaves less evidence than the first attempt.
-- ESP commands source the toolchain environment in the terminal that actually runs them.
-- `idf.py is not recognized` is reported as a broken virtual environment, not a missing source step.
-- The native-module allow-list never matched on Windows.
-
-### Known issues
-- Modem trace needs firmware built with tracing enabled, and a SIM, or the capture is empty.
-
-## [0.3.0] - 2026-08-22
-
-*0.2.2 was never released; its work ships here.*
-
-### Added
-- nRF91 cellular: NB-IoT, LTE-M, NTN and DECT NR+, each loaded only for the project that needs it.
-- GNSS positioning knowledge for nRF91.
-- Board knowledge for the nRF9161 DK, nRF9151 DK and nRF9160 DK.
-- Device tools are Tool bits, each with its own descriptor and author credit.
-- Tool bits can arrive from the registry, verified against a published hash before running.
-- Board shell: send AT and Zephyr shell commands and read until the board finishes, on all platforms.
-- Modem trace: capture, decode and explain registration state, refusal reason, radio mode and search events.
-- `log-shape`: describe a log's structure in one call, then read any message kind in context.
-- Knowledge is named when it loads, not only when the agent reads a file.
-
-### Fixed
 - A tool that could not run no longer reports as though it had.
 - Device tools no longer try to install Python packages; the wrappers no longer hide the install location.
 - An empty answer from a device is no longer reported as a finding.
@@ -64,11 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refusing to write project memory now says plainly that it is a blocker.
 - Log and code search: the search program was not found, so nearly every search returned no results.
 - Mermaid diagrams render more reliably.
-
-### Known issues
-- NTN needs an nRF9151 with the LACA A1A variant and its own modem firmware.
-- DECT NR+ needs a separate modem firmware image, available from Nordic sales rather than as a download.
-- Two sessions using one development kit at the same time can interfere with each other.
+- A CVE scan that could not run no longer reads as a clean one.
+- Large captures no longer return truncated with a success status.
+- A tool improved in the registry could still be read back from an older copy on disk.
+- Third-party code bundled into a tool is now named in its notice file.
+- Two links pointed at a repository that had been renamed.
+- A multi-chip product had nowhere to keep its project memory.
+- The ESP monitor put the chip into the bootloader when opening the port.
+- A silent ESP capture now retries the reset once, and a retry never leaves less evidence than the first attempt.
+- ESP commands source the toolchain environment in the terminal that actually runs them.
+- `idf.py is not recognized` is reported as a broken virtual environment, not a missing source step.
+- Native modules now load on Windows.
 
 ## [0.2.1] - 2026-08-17
 
@@ -90,10 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Checkpoint messages say what is happening: a slow first snapshot on a large repo reads as work in progress, says so once, and takes itself down; nothing is shown where checkpoints simply do not apply.
 - A prototype run ends on an "Open project folder" button instead of a paragraph of instructions; the conversation is saved and returns from History after the reload.
 - GLM 4.7 and 5.x are recognised, so they are no longer scored as unreliable models.
-
-### Known issues
-- Opening a scaffolded project is still a manual step; until the folder is open, the new project has no memory or checkpoints.
-- nRF54L support is still maturing. Building and flashing works, with rough edges around board-root setup and runner selection. nRF52 and nRF53 paths are unaffected.
 
 ## [0.2.0] - 2026-07-21
 
@@ -169,9 +148,9 @@ The one-click CRA Readiness Check arrives, on both nRF and ESP, alongside HCI de
 
 ## [0.1.6] - 2026-06-16
 
-### Added
-
 Adsum IoT Coder now speaks **Espressif ESP32 / ESP-IDF** as well as Nordic nRF, in a single install. It reads what's on your desk and in your workspace and shows the right tools, workflows, and guidance for each platform, nothing to switch.
+
+### Added
 
 - **ESP32 / ESP-IDF support.** Build, flash, monitor, and test ESP-IDF firmware with the same guided agent workflows you already use for nRF, `idf.py`/`esptool`-driven, with chip, flash, and PSRAM detection and serial-log capture built in.
 - **Automatic platform detection.** The home screen recognizes whether your workspace is nRF, ESP, both, or a fresh start, and routes every workflow card and the agent's expertise to the right platform automatically.
@@ -184,10 +163,6 @@ Adsum IoT Coder now speaks **Espressif ESP32 / ESP-IDF** as well as Nordic nRF, 
 - **Smarter ESP toolchain selection.** When more than one ESP-IDF version is installed, the agent uses the one your project pins, and asks you when it's genuinely ambiguous instead of guessing.
 - **Steadier file editing.** Edits now apply cleanly even on large, streamed changes.
 - **Cleaner diagrams.** Architecture and sequence diagrams render reliably across models.
-
-### Known issues
-
-- Existing nRF projects are unaffected, same workflows, same behavior.
 
 ## [0.1.5] - 2026-06-08
 
@@ -210,9 +185,9 @@ A full first-run redesign, built around the cold start rather than the agent.
 - **Windows nRF tooling detection.** `nrfutil` is found in more locations, including `NRFUTIL_HOME` and common Windows paths, fixing a spurious "nrfutil not found".
 - **"What's new" reappears on updates.** Patch releases now show the note to existing users, not only to fresh installs.
 
-### Known issues
+### Removed
 
-- The previous two-button home (*Analyze Logs* and *Generate Logging Code*) is replaced by the demo and the workflow cards above. The same capabilities are reachable through *Build, flash & debug*.
+- The two-button home (*Analyze Logs* and *Generate Logging Code*), replaced by the demo and the workflow cards above. The same capabilities are reachable through *Build, flash & debug*.
 
 ## [0.1.3] - 2026-06-01
 
@@ -230,7 +205,7 @@ A full first-run redesign, built around the cold start rather than the agent.
 
 ### Known issues
 
-- Free-tier "tokens left" chip can briefly show a stale value until the next prompt; balance is backend-authoritative and harmless. See README → Limitations. *(Fixed in 0.1.5, the chip now decrements live and shows 0 on exhaustion.)*
+- Free-tier "tokens left" chip can briefly show a stale value until the next prompt; balance is backend-authoritative and harmless. *(Fixed in 0.1.5, the chip now decrements live and shows 0 on exhaustion.)*
 
 ## [0.1.2] - 2026-05-31
 
@@ -246,6 +221,8 @@ A full first-run redesign, built around the cold start rather than the agent.
 ## [0.1.0] - 2026-05-26
 
 The first release built around the **skill-first architecture**: domain expertise lives in versioned Markdown modules (workflows, actions, rules, board specs) that are loaded into the system prompt on demand based on what the agent detects in your workspace, not baked into a fixed prompt. Same model, smaller context, fewer wrong turns. Backed by an open hardware-in-the-loop benchmark.
+
+### Added
 
 - **Knowledge loads on demand.** The agent reads your project (`prj.conf`, build targets) and pulls only the modules that match: the BLE guide for a BLE build, the right board file, the SDK reference. Adding a new SoC, protocol, or debug procedure is a knowledge change, not a code change.
 - **Enters through a workflow, never improvises.** Before any build, flash, capture, or analyze, the agent loads the matching workflow first, closing the failure mode where smaller models skip it and guess from pre-training.
