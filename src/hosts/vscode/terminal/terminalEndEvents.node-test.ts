@@ -7,6 +7,8 @@ const facts = (over: Partial<Parameters<typeof endEventDecision>[0]> = {}) => ({
 	sameTerminal: true,
 	sawOurStart: true,
 	isCompound: false,
+	startsSeen: 1,
+	endsSeen: 0,
 	...over,
 })
 
@@ -39,7 +41,41 @@ describe("which end-of-command event is ours", () => {
 	 * command's — so the run moved on while JLinkExe was still running.
 	 */
 	test("a sub-command's end does not complete a compound command", () => {
-		assert.deepEqual(endEventDecision(facts({ isCompound: true })), { accept: false, why: "compound-subcommand" })
+		// Three sub-commands started, none ended yet: this end belongs to the first of them.
+		assert.deepEqual(endEventDecision(facts({ isCompound: true, startsSeen: 3, endsSeen: 0 })), {
+			accept: false,
+			why: "compound-subcommand",
+		})
+	})
+
+	/**
+	 * THE OVER-CORRECTION, caught the same evening the guard above shipped.
+	 *
+	 * The first version refused the sequence rule for compound commands outright. Correct, and unusable:
+	 * reference matching is unavailable in the common case — it is the whole reason the sequence rule
+	 * exists — so nothing was left to complete the command and every compound one cost the full
+	 * four-minute silence backstop:
+	 *
+	 *     end event not ours (compound-subcommand)
+	 *     silent for 240000ms with no end event — giving up on shell integration
+	 *
+	 * A driven run issuing `find … ; echo … ; command -v … ; ls …` sat for four minutes on a command
+	 * that had already finished.
+	 */
+	test("the LAST sub-command's end does complete it — counting, not refusing", () => {
+		assert.deepEqual(endEventDecision(facts({ isCompound: true, startsSeen: 3, endsSeen: 2 })), {
+			accept: true,
+			why: "sequence",
+		})
+	})
+
+	test("a compound command whose sub-commands all reported completes on the next end", () => {
+		// One start observed (VS Code reported the compound as a single execution): behaves like a plain
+		// command rather than waiting for a second sub-command that will never come.
+		assert.deepEqual(endEventDecision(facts({ isCompound: true, startsSeen: 1, endsSeen: 0 })), {
+			accept: true,
+			why: "sequence",
+		})
 	})
 })
 

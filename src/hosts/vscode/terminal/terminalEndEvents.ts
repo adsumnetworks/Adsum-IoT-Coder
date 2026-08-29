@@ -23,6 +23,10 @@ export interface EndEventFacts {
 	sawOurStart: boolean
 	/** The command we sent contains more than one shell command. */
 	isCompound: boolean
+	/** Start events seen on our terminal, ours included. Only meaningful for a compound command. */
+	startsSeen: number
+	/** End events seen on our terminal since ours started, this one excluded. */
+	endsSeen: number
 }
 
 export type EndDecision =
@@ -64,16 +68,24 @@ export function endEventDecision(facts: EndEventFacts): EndDecision {
 		// executions per terminal, so anything before our own start belongs to what came before.
 		return { accept: false, why: "stale" }
 	}
-	if (facts.isCompound) {
-		// SEQUENCE CANNOT BE TRUSTED HERE, and pretending otherwise truncates output.
+	if (facts.isCompound && facts.endsSeen + 1 < facts.startsSeen) {
+		// COUNT THE SUB-COMMANDS; DO NOT REFUSE THEM.
 		//
 		// Shell integration reports start/end per SUB-command. On 2026-08-29 `echo "si 1" > f; echo …;
-		// JLinkExe …` produced a start for `echo "si 1"` and an end for it, and the sequence rule accepted
-		// that first end as the whole command's — so the run moved on while JLinkExe was still going.
+		// JLinkExe …` produced a start for `echo "si 1"` and an end for it, and the sequence rule took
+		// that first end as the whole command's — the run moved on while JLinkExe was still running.
 		//
-		// There is no way to tell from the API how many sub-commands are coming, so this does not guess.
-		// A compound command completes on reference identity, or on the silence backstop that bounds every
-		// command anyway. Slower in the case where reference matching fails; never wrong.
+		// The first version of this guard refused the sequence rule outright for compound commands. That
+		// was correct and unusable: with reference matching unavailable (which is the common case — it is
+		// why the sequence rule exists at all), nothing was left to complete the command and every one of
+		// them cost the full four-minute silence backstop. Measured the same evening:
+		//
+		//     end event not ours (compound-subcommand)
+		//     silent for 240000ms with no end event — giving up on shell integration
+		//
+		// So: accept the end that matches the LAST start we have seen. While more starts than ends have
+		// arrived, a sub-command is still outstanding and this end is not the command's. The silence
+		// backstop remains the floor if VS Code under-reports a start.
 		return { accept: false, why: "compound-subcommand" }
 	}
 	return { accept: true, why: "sequence" }

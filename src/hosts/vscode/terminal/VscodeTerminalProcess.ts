@@ -155,6 +155,10 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 			 * commandLine stay as fast paths for when the start event itself is missed.
 			 */
 			let sawOurStart = false
+			// Sub-command bookkeeping for a compound command: shell integration reports a start and an end
+			// per sub-command, so the command is over when every start it announced has been matched.
+			let startsSeen = 0
+			let endsSeen = 0
 			// Reached through a narrow local shape rather than the ambient type: this extension's
 			// @types/vscode (1.84) predates both shell-execution events (1.93) — the optional calls mean an
 			// older VS Code simply never arms the backstop instead of throwing.
@@ -168,6 +172,7 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 			}
 			const startListener = windowWithShellEvents.onDidStartTerminalShellExecution?.((e) => {
 				if (e.terminal === terminal) {
+					startsSeen++
 					sawOurStart = true
 					const line = (e.execution as { commandLine?: { value?: string } })?.commandLine?.value
 					Logger.info(`[TerminalProcess] start event on our terminal (cmd=${line?.slice(0, 60) ?? "?"})`)
@@ -182,7 +187,12 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 					sameTerminal: e.terminal === terminal,
 					sawOurStart,
 					isCompound: compound,
+					startsSeen,
+					endsSeen,
 				})
+				if (e.terminal === terminal && sawOurStart) {
+					endsSeen++
+				}
 				if (decision.accept) {
 					Logger.info(`[TerminalProcess] end event accepted (${decision.why})`)
 					executionEnded = true
