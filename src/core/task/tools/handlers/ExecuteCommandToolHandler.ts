@@ -2,6 +2,7 @@ import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import { WorkspacePathAdapter } from "@core/workspace/WorkspacePathAdapter"
 import { showSystemNotification } from "@integrations/notifications"
+import { withLinks } from "@services/knowledge/kbit/people"
 import { COMMAND_REQ_APP_STRING } from "@shared/combineCommandSequences"
 import { ClineAsk } from "@shared/ExtensionMessage"
 import { arePathsEqual } from "@utils/path"
@@ -53,6 +54,8 @@ async function creditToolIfInvoked(config: any, command: string): Promise<void> 
 				author: credit.author,
 				attributed: credit.attributed,
 				coAuthors: credit.coAuthors.length ? credit.coAuthors : undefined,
+				// Profile links for the names on THIS line, resolved host-side — the webview has no network.
+				links: withLinks(credit).links,
 				version: credit.version,
 				license: credit.license,
 				platform: credit.platform,

@@ -116,6 +116,33 @@ export class RegistryClient {
 		}
 	}
 
+	/**
+	 * The credit roster: who to link next to a name. Null if unreachable — the caller keeps the bundled
+	 * baseline, so a network blip costs a link and never a credit.
+	 *
+	 * This lives in the registry rather than in the extension because a profile URL is data about a
+	 * PERSON, and hardcoding it meant a new contributor could not be credited until someone cut a
+	 * release. Deliberately thin — handle, display name, link — and it carries nothing about how much
+	 * anyone has published.
+	 */
+	async fetchPeople(): Promise<Array<{ handle: string; name: string; url: string | null }> | null> {
+		const text = await this.get("/v1/kbits/people")
+		if (text === null) {
+			return null
+		}
+		try {
+			const data = JSON.parse(text) as { people?: Array<{ handle?: string; name?: string; url?: string | null }> }
+			if (!Array.isArray(data?.people)) {
+				return null
+			}
+			return data.people
+				.filter((p) => typeof p?.handle === "string" && typeof p?.name === "string")
+				.map((p) => ({ handle: p.handle as string, name: p.name as string, url: p.url ?? null }))
+		} catch {
+			return null
+		}
+	}
+
 	/** A content-addressed bit body, or null if unreachable. Integrity is verified by the caller. */
 	async fetchBlob(contentHash: string): Promise<string | null> {
 		return this.get(`/v1/kbits/blob/${encodeURIComponent(contentHash)}`)

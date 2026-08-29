@@ -99,7 +99,11 @@ export const KbitRoster = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 							</div>
 							<div className="opacity-65 text-[10.5px]">
 								{b.kind === "tool" ? "Tool bit · " : ""}by{" "}
-								{b.attributed === false ? b.author : <PersonLink color="inherit" name={b.author} />}
+								{b.attributed === false ? (
+									b.author
+								) : (
+									<PersonLink color="inherit" links={b.links} name={b.author} />
+								)}
 								<CoAuthors bit={b} color="inherit" />
 							</div>
 						</div>

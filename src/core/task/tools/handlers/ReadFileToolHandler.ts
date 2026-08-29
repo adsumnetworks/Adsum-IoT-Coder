@@ -4,6 +4,7 @@ import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
+import { withLinks } from "@services/knowledge/kbit/people"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
 import {
@@ -59,6 +60,8 @@ async function sayKbitCredit(config: any, credit: KbitCredit | null, source: Bit
 				// Co-authors ride with the lead so the UI can credit them without a second lookup; omitted
 				// when empty so the payload of a single-author bit is unchanged (older webviews ignore it).
 				coAuthors: credit.coAuthors.length ? credit.coAuthors : undefined,
+				// Profile links for the names on THIS line, resolved host-side — the webview has no network.
+				links: withLinks(credit).links,
 				version: credit.version,
 				license: credit.license,
 				platform: credit.platform,
@@ -289,7 +292,11 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		// An OVERRIDDEN bundled bit takes this path too, even though the file is right there on disk:
 		// those bytes are the superseded text, and serving them would let one task quote two different
 		// versions of the same bit — the prompt's and the file's.
-		const kbId = isAbsKbPath ? bitIdForKbPath(absolutePath) : isBarePath ? deriveIdFromRel(relPath!.replace(/\\/g, "/")) : null
+		const kbId = isAbsKbPath
+			? bitIdForKbPath(absolutePath)
+			: isBarePath
+				? deriveIdFromRel(relPath!.replace(/\\/g, "/"))
+				: null
 		const overridden = kbId ? await isOverridden(kbId) : false
 		if ((isAbsKbPath || isBarePath) && (overridden || !(await fileAccessible(absolutePath)))) {
 			let bitBody = isAbsKbPath ? await loadBitByKbPath(absolutePath) : await loadBitByRel(relPath!)

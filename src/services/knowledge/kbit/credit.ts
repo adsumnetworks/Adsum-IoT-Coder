@@ -42,6 +42,9 @@ export interface KbitCredit {
 	platform?: string
 	steward: string
 	witness?: KbitWitness
+	/** name → profile URL, for exactly the names on this credit line. Resolved host-side because the
+	 *  webview has no network: see kbit/people.ts. Absent when nobody on the line has a known profile. */
+	links?: Record<string, string>
 }
 
 /** Shown when a bit carries no personal attribution. Honest: house-maintained, no individual claimed. */
