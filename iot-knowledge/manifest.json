@@ -261,7 +261,7 @@
 				"process-kill"
 			],
 			"path": "platforms/nrf/actions/flash.md",
-			"content_hash": "479e571523ef5a5d1b1adf06b241306b4ba162f98434720f7439202b4ffb03ee"
+			"content_hash": "bc5c2ff639445948f2d9802edae74522d2105bf308b2d69e7235f408349c7e2c"
 		},
 		{
 			"id": "adsum/nrf/knowledge/board-identity",
@@ -623,7 +623,7 @@
 			"id": "adsum/rules/core",
 			"title": "Universal Embedded Rules",
 			"type": "knowledge",
-			"version": "1.5.0",
+			"version": "1.6.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -635,7 +635,7 @@
 				"adsum/nrf/tools/nrf-action"
 			],
 			"path": "rules/core.md",
-			"content_hash": "dbdef981f1ebebc1705c34d72baa50c8a6ff689577bf1e1ac93921828c69e095"
+			"content_hash": "80953020be5ee37ed88bca8ca1c37613212299861f99c28dabf8a591730603e2"
 		},
 		{
 			"id": "adsum/rules/skill-loading",

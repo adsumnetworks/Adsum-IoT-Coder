@@ -23,6 +23,16 @@ Called from: Debug Loop Phase 2, or any task requiring firmware deployment to a 
   `<build_dir>/<app-folder>/zephyr/zephyr.hex` or `<build_dir>/merged.hex`; see `build.md` Output)
 - Device is physically connected via USB/J-Link
 - nRF Connect Terminal available
+- **GATE — the artifact's lowest address must be `0x0`.** An image whose lowest address is `0x10000`
+  flashes "successfully" and never executes: the core fetches its initial stack pointer and reset handler
+  from `0x0`, reads `0xFFFFFFFF`, and locks up before one instruction. Check before you flash:
+  ```python
+  from intelhex import IntelHex; print(hex(IntelHex("<artifact>.hex").minaddr()))   # must be 0x0
+  ```
+  Use the `intelhex` package, not a hand-rolled parser. Intel-HEX carries the base address in **type-02
+  AND type-04** records; a checker that reads only type-04 reports `0x0` for a file that starts at
+  `0x10000` — that mistake was made on 2026-08-30 and hid the fault for another hour. If the gate fails,
+  the fix is in the build, not the flash (see `build.md` → nRF91 `/ns` partition overlay).
 
 ## First-Flash Protocol
 On the **first flash** in a task/session:
@@ -66,9 +76,16 @@ Full chip erase before flashing. Useful when switching between incompatible firm
 ## Error Handling
 Common flash failures:
 - `ERROR: JLinkARM.dll: No matching device found` → Device not connected or wrong serial number
-- `ERROR: The flashing operation timed out` → J-Link busy (another process holds it). Process cleanup required:
-  - Linux/Mac: `pkill -9 JLink && pkill -9 nrfutil`
-  - Windows: `cmd /c "taskkill /F /IM JLink.exe 2>nul & taskkill /F /IM nrfutil.exe 2>nul"` (wrap in `cmd /c` so it works in PowerShell — `&` is reserved in PowerShell, but cmd.exe parses the quoted string natively)
+- `ERROR: The flashing operation timed out` → J-Link busy (another process holds it).
+  **Kill only what you started.** `pkill -9 JLink` kills *every* engineer's probe session on a shared
+  bench, including captures that are mid-run — on 2026-08-30 two different agents reached for exactly
+  that within a day. Identify the holder first, then stop that PID:
+  - Linux/Mac: `pgrep -af "JLinkExe|nrfutil"` (or `fuser -v /dev/ttyACM*`) → `kill <pid>` for the one you
+    started. Broad `pkill -9` by name is a last resort on a machine you know is yours alone.
+  - Windows: `Get-Process JLink*,nrfutil* | Select Id,StartTime` → `Stop-Process -Id <id>` for yours.
+  If the bench provides a claim tool (e.g. `bench-claim <board-id> <command...>`), run every flash and
+  capture through it: it serialises access per board and reaps its own child, so nothing has to guess
+  whose process is whose.
 - `ERROR: An error occurred while flashing` → Check USB cable, try a different port, or power cycle the DK.
 - `Configured peripheral: SPIM0; supported: [SPIM3, QSPI]` (or similar QSPI/SPIM external-flash error from the
   default `nrfutil`/`nrfjprog` runner, seen on `nrf52840dk` whose `runners.yaml` configures external flash) →

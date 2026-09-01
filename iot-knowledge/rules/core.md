@@ -2,7 +2,7 @@
 id: adsum/rules/core
 title: "Universal Embedded Rules"
 type: knowledge
-version: 1.5.0
+version: 1.6.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -151,6 +151,17 @@ Two rules follow, and they are not optional:
    and `board-shell --idle` defaults to a quiet gap far shorter than a cellular round trip.
 2. **A response meaning "command not understood" says which firmware you are talking to, and nothing
    else.** Check the instrument before you doubt the subject.
+3. **A silence after a flash is a question about the image, not about the reset path.** Before concluding
+   that some reset method "does not start this die", read the reset vector:
+   `nrfutil device x-read --address 0x0 --bytes 16 --serial-number <SN>`. `FFFFFFFF` there means nothing
+   has ever executed and no reset method and no capture length will change it. That read takes two
+   seconds. On 2026-08-30 the hypothesis it would have killed instead survived two hours, six flash
+   cycles and two power-cycle requests to the developer, and was never once tested against a register.
+4. **Name the test that would falsify your hypothesis before you spend a human on it.** If you cannot say
+   which result would prove you wrong, you do not have a hypothesis — and asking the developer to unplug
+   something is guesswork with their hands. In that same session a cold power-cycle produced the same
+   silence and was read as *confirmation*; a power-cycle is not a debug reset, so it should have
+   falsified the theory outright.
 
 This is written down because ignoring it cost four hours and three retracted verdicts on 2026-08-29, on a
 question — "can this SIM reach the internet?" — whose answer was *yes* from the first minute. Every wrong
