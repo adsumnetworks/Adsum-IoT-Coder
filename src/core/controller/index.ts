@@ -1018,6 +1018,7 @@ export class Controller {
 			workspaceClassification: getCachedWorkspaceSummary(),
 			workspaceFeatures: getCachedWorkspaceFeatures(),
 			handoverUi: getHandoverUiState(),
+			queuedUserMessages: this.task?.noteQueue.snapshot(),
 			// One-time "leave a review" nudge — three independent gates must ALL hold:
 			//   1. flag: dark-launched, default OFF (src/shared/services/feature-flags) — flipped on remotely once a
 			//      5-star floor is seeded; the completion counter keeps running while off, so launch lands warm.

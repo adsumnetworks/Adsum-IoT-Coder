@@ -1,5 +1,6 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
 
+import type { QueuedNote } from "@services/test/injectQueue"
 import type { EspEnvironment } from "@shared/esp"
 import type { HandoverUiState } from "@shared/handover"
 import { WorkspaceRoot } from "@shared/multi-root/types"
@@ -136,6 +137,10 @@ export interface ExtensionState {
 	/** Live view of a session handed to the developer's own coding agent (the agent strip), plus whether
 	 *  Adsum is conducting (no inference of its own) — drives run-path ordering on the session cards. */
 	handoverUi?: HandoverUiState
+	/** Messages sent to the running task that have not been delivered yet — rendered at the transcript tail
+	 *  so the developer can see what is waiting and take it back. Empty or absent for a task nobody is
+	 *  talking to. The message becomes a real transcript bubble only when it is delivered. */
+	queuedUserMessages?: QueuedNote[]
 	/** After a few successful task completions, show the one-time "leave a review" nudge. Retired for good via the
 	 *  banner-dismissal ledger (id "review-nudge"), so it never nags. */
 	reviewNudgeShow?: boolean

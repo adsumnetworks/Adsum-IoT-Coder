@@ -57,7 +57,7 @@ import { listFiles } from "@services/glob/list-files"
 import { withLinks } from "@services/knowledge/kbit/people"
 import { Logger } from "@services/logging/Logger"
 import { McpHub } from "@services/mcp/McpHub"
-import { drainNotes } from "@services/test/injectQueue"
+import { NoteQueue, type NoteSource } from "@services/test/injectQueue"
 import { ApiConfiguration } from "@shared/api"
 import { findLast, findLastIndex } from "@shared/array"
 import { combineApiRequests } from "@shared/combineApiRequests"
@@ -254,6 +254,15 @@ export class Task {
 
 	// Message and conversation state
 	messageStateHandler: MessageStateHandler
+
+	/**
+	 * Messages sent to this task while it was already working — from the chat box or from the bench seam.
+	 *
+	 * Per task, deliberately. This was a module-level array while only the seam could reach it, and a note
+	 * left over from a cancelled run would be delivered to whatever task started next. Delivered at the top
+	 * of the next turn (see recursivelyMakeClineRequests) and cleared in abortTask.
+	 */
+	readonly noteQueue = new NoteQueue()
 
 	// Workspace manager
 	workspaceManager?: WorkspaceRootManager
@@ -771,6 +780,53 @@ export class Task {
 		this.taskState.askResponseText = text
 		this.taskState.askResponseImages = images
 		this.taskState.askResponseFiles = files
+	}
+
+	/**
+	 * A message sent while this task was already working.
+	 *
+	 * Deliberately NOT handleWebviewAskResponse. Nothing is awaiting an answer at this moment, so writing
+	 * the ask slot here would leave the text sitting there until the next ask() — a tool or command
+	 * approval — picked it up and returned instantly, approving a tool the developer never saw. The
+	 * webview had exactly that branch, unreachable only because the composer was disabled while running.
+	 *
+	 * There is no pending-ask refusal on this path, and that is on purpose: an ask can appear between the
+	 * webview's snapshot and this call, and refusing then would lose the message for a race the developer
+	 * cannot see. Queuing is safe in every state because the queue never feeds the ask slot — a note sent
+	 * during an ask simply waits and is delivered on the turn after the answer.
+	 */
+	async queueUserMessage(
+		text: string,
+		images?: string[],
+		files?: string[],
+		source: NoteSource = "composer",
+		from?: string,
+	): Promise<{ accepted: boolean; reason?: string; queued: number; id?: string }> {
+		if (this.taskState.abort) {
+			return { accepted: false, reason: "aborted", queued: 0 }
+		}
+		const result = this.noteQueue.push({ text, images, files, source, from })
+		if (!result.ok) {
+			return { accepted: false, reason: result.status === 429 ? "full" : "invalid", queued: this.noteQueue.count() }
+		}
+		telemetryService.captureMessageQueued({
+			source,
+			hasImages: !!images?.length,
+			hasFiles: !!files?.length,
+			queued: this.noteQueue.count(),
+		})
+		await this.postStateToWebview()
+		return { accepted: true, queued: this.noteQueue.count(), id: result.id }
+	}
+
+	/** Take a queued message back before it is delivered. Once delivered it is a real message and stays. */
+	async removeQueuedUserMessage(id: string): Promise<boolean> {
+		const removed = this.noteQueue.remove(id)
+		if (removed) {
+			telemetryService.captureMessageRemoved({ queued: this.noteQueue.count() })
+			await this.postStateToWebview()
+		}
+		return removed
 	}
 
 	/**
@@ -1548,6 +1604,10 @@ export class Task {
 			// This must happen before canceling hooks so that hook catch blocks
 			// can properly detect the abort state
 			this.taskState.abort = true
+
+			// Anything queued for a turn that will now never come. Dropping it here is what keeps a message
+			// meant for this task from being delivered to whatever task the developer starts next.
+			this.noteQueue.clear()
 
 			// PHASE 3: Cancel any running hook execution
 			const activeHook = await this.getActiveHookExecution()
@@ -2407,14 +2467,44 @@ export class Task {
 			throw new Error("Task instance aborted")
 		}
 
-		// A note the person driving sent while this was running — see services/test/injectQueue.ts.
+		// Messages sent while this was running — from the chat box or the bench seam. See injectQueue.ts.
 		//
-		// Here, and nowhere else: this is a turn boundary, before the request is assembled, so the note
+		// Here, and nowhere else: this is a turn boundary, before the request is assembled, so each message
 		// becomes its own labelled user block. Delivered mid-stream it would interleave with the model's
 		// own output; delivered into userMessageContent beside a tool result it would read as output FROM
-		// that tool, which would be a fabricated observation. Empty for every run that is not being driven.
-		for (const note of drainNotes()) {
-			userContent.push({ type: "text", text: note } as ClineTextContentBlock)
+		// that tool, which would be a fabricated observation. Empty for every run nobody is talking to.
+		//
+		// The say() is the transcript bubble, and this is the first moment it can be written: earlier, while
+		// the model was still streaming, appending a message would have been mistaken for the partial being
+		// streamed into, and its lastMessageTs bump would have cancelled any ask that was open. Here the
+		// stream is finished and nothing is asking, so the bubble lands in its true place — just above the
+		// request it is about to be part of.
+		//
+		// One caveat, worth knowing rather than fixing: on a turn that compacts, loadContext is skipped, so
+		// @-mentions inside a message delivered on that turn are not expanded.
+		const queuedMessages = this.noteQueue.drain()
+		for (const queued of queuedMessages) {
+			await this.say("user_feedback", queued.text, queued.images, queued.files)
+			userContent.push({
+				type: "text",
+				text: formatResponse.queuedUserMessage(queued.text, queued.from),
+			} as ClineTextContentBlock)
+			if (queued.images?.length) {
+				userContent.push(...formatResponse.imageBlocks(queued.images))
+			}
+			if (queued.files?.length) {
+				const fileContentString = await processFilesIntoText(queued.files)
+				if (fileContentString) {
+					userContent.push({ type: "text", text: fileContentString } as ClineTextContentBlock)
+				}
+			}
+		}
+		if (queuedMessages.length > 0) {
+			telemetryService.captureMessageDelivered({
+				count: queuedMessages.length,
+				composer: queuedMessages.filter((m) => m.source === "composer").length,
+				seam: queuedMessages.filter((m) => m.source === "seam").length,
+			})
 		}
 
 		// Increment API request counter for focus chain list management

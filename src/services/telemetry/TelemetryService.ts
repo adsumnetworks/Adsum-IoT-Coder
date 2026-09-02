@@ -392,6 +392,12 @@ export class TelemetryService {
 			HANDOVER_STARTED: "task.handover_started",
 			/** A tool bit was invoked through execute_command. Id and delivery only — never arguments or paths. */
 			TOOL_BIT_INVOKED: "task.tool_bit_invoked",
+			/** A message was queued while the turn was running. Counts and enums only — never the message. */
+			MESSAGE_QUEUED: "task.message_queued",
+			/** Queued messages reached the model at a turn boundary. How many, and by which door. */
+			MESSAGE_DELIVERED: "task.message_delivered",
+			/** A queued message was taken back before it was delivered. */
+			MESSAGE_REMOVED: "task.message_removed",
 			// CRA: a CVE scan completed (findings volume + SBOM coverage; never CVE ids or component names)
 			CVE_SCAN_COMPLETED: "task.cve_scan_completed",
 			// CRA: the readiness-report integrity guard rejected a write (honesty-moat health — how often the model
@@ -2587,6 +2593,31 @@ export class TelemetryService {
 
 	public captureToolBitInvoked(ulid: string, bitId: string, delivery: "bundled" | "downloaded" | "override") {
 		this.capture({ event: TelemetryService.EVENTS.TASK.TOOL_BIT_INVOKED, properties: { ulid, bitId, delivery } })
+	}
+
+	/**
+	 * Sending a message to a session that is already working.
+	 *
+	 * The question these three answer is whether the feature is used and whether it is trusted: queued
+	 * vs delivered says how often a run is steered rather than cancelled, and removed says how often the
+	 * developer changed their mind while it waited. Counts, sources and booleans only — the message text
+	 * is the developer's work, and never leaves the machine.
+	 */
+	public captureMessageQueued(props: {
+		source: "composer" | "seam"
+		hasImages?: boolean
+		hasFiles?: boolean
+		queued?: number
+	}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.MESSAGE_QUEUED, properties: { ...props } })
+	}
+
+	public captureMessageDelivered(props: { count: number; composer?: number; seam?: number }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.MESSAGE_DELIVERED, properties: { ...props } })
+	}
+
+	public captureMessageRemoved(props: { queued?: number } = {}) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.MESSAGE_REMOVED, properties: { ...props } })
 	}
 
 	/** CRA: the bridge routed into a core feature (debug/addFeature). Fired host-side at the routed task's start. */

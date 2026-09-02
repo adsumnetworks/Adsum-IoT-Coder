@@ -7,28 +7,75 @@
  * APN, the operator's ping results — had to wait until the run happened to ask something before they
  * could be passed in. Facts a human had, that the agent needed, with no way across.
  *
+ * The developer at the keyboard had the same problem for longer, and worse: the composer is disabled
+ * while a task runs, so the only ways to steer a run were to wait for an ask or to cancel it. Since
+ * 2026-09-02 the chat box queues through here too, which is why this queue is no longer test-only
+ * furniture — `source` says which door a note came in by.
+ *
  * THIS IS THE ONE PIECE OF THE SEAM THAT CAN CORRUPT A RUN, so the rules are narrow on purpose:
  *
- *  - Refused while an ask is pending. `/respond` exists for that moment and carries a `ts` echo so two
- *    answers cannot race; an injection then would slip text in beside the answer with no such guard.
+ *  - The seam is refused while an ask is pending. `/respond` exists for that moment and carries a `ts`
+ *    echo so two answers cannot race; an injection then would slip text in beside the answer with no such
+ *    guard. (The composer needs no such rule: when an ask is pending the chat box IS the answer, so it
+ *    never reaches this queue. See useMessageHandlers.)
  *  - Delivered only at a turn boundary, as its own labelled user block. Never mid-stream, never merged
  *    into a tool result — a note that arrives inside a tool result reads to the model as output from the
  *    tool, which is a fabricated observation, the precise class of failure this whole day was about.
  *  - Bounded, and refused rather than dropped when full. A silently discarded note is worse than a
- *    rejected one: the driver believes the agent was told.
+ *    rejected one: the sender believes the agent was told.
+ *
+ * The queue holds RAW text. The model-facing wrapper lives in formatResponse.queuedUserMessage, because
+ * the same note is also written to the transcript verbatim as the developer's own message.
  *
  * Pure, so all of that is testable without an extension host.
  */
 
 /** Enough for a paragraph of context. Beyond this it is a task, not a note. */
 export const MAX_NOTE_CHARS = 10_000
-/** Enough to queue a few observations between turns; a driver with more to say should start a task. */
+/** Enough to queue a few observations between turns; anyone with more to say should start a task. */
 export const MAX_QUEUED_NOTES = 5
 
 export type InjectCheck = { ok: true; text: string } | { ok: false; status: number; error: string }
 
+/** Which door a note came in by. The transcript labels them differently, and Stop only pulls back its own. */
+export type NoteSource = "composer" | "seam"
+
+export interface QueuedNote {
+	id: string
+	ts: number
+	text: string
+	images?: string[]
+	files?: string[]
+	source: NoteSource
+	/** The driver name, for seam notes. The composer is always the developer at the keyboard. */
+	from?: string
+}
+
 /**
- * Whether this note may be queued right now.
+ * The rules that do not depend on a pending ask: is there text, is it short enough, is there room.
+ *
+ * Shared by both doors so the composer cannot accidentally accept what the seam refuses.
+ */
+export function validateNote(text: string, queued: number): InjectCheck {
+	const trimmed = typeof text === "string" ? text.trim() : ""
+	if (!trimmed) {
+		return { ok: false, status: 400, error: "need a non-empty { text }" }
+	}
+	if (trimmed.length > MAX_NOTE_CHARS) {
+		return { ok: false, status: 400, error: `text is longer than ${MAX_NOTE_CHARS} characters` }
+	}
+	if (queued >= MAX_QUEUED_NOTES) {
+		return {
+			ok: false,
+			status: 429,
+			error: `${MAX_QUEUED_NOTES} notes are already waiting for the next turn; nothing was dropped, but this one was not taken`,
+		}
+	}
+	return { ok: true, text: trimmed }
+}
+
+/**
+ * Whether a note from the SEAM may be queued right now.
  *
  * `hasPendingAsk` is the important one. It is not a courtesy — it is what keeps the two delivery paths
  * from overlapping.
@@ -41,12 +88,12 @@ export function checkInject(rawBody: string, hasPendingAsk: boolean, queued: num
 		return { ok: false, status: 400, error: "body must be JSON: { text: string, driver?: string }" }
 	}
 	const body = (parsed ?? {}) as { text?: unknown }
-	const text = typeof body.text === "string" ? body.text.trim() : ""
-	if (!text) {
-		return { ok: false, status: 400, error: "need a non-empty { text }" }
-	}
-	if (text.length > MAX_NOTE_CHARS) {
-		return { ok: false, status: 400, error: `text is longer than ${MAX_NOTE_CHARS} characters` }
+	const text = typeof body.text === "string" ? body.text : ""
+	// Emptiness and length first, so a malformed note is refused for the reason it is malformed rather
+	// than for the state of the session.
+	const shape = validateNote(text, 0)
+	if (!shape.ok) {
+		return shape
 	}
 	if (hasPendingAsk) {
 		return {
@@ -57,46 +104,56 @@ export function checkInject(rawBody: string, hasPendingAsk: boolean, queued: num
 				"cannot race. A note injected now would land beside the answer with no such guard.",
 		}
 	}
-	if (queued >= MAX_QUEUED_NOTES) {
-		return {
-			ok: false,
-			status: 429,
-			error: `${MAX_QUEUED_NOTES} notes are already waiting for the next turn; nothing was dropped, but this one was not taken`,
-		}
-	}
-	return { ok: true, text }
+	return validateNote(text, queued)
 }
 
 /**
- * How a note reads to the model.
+ * The notes one task is holding for its next turn.
  *
- * Labelled as coming from the person driving, and never disguised as tool output or as the agent's own
- * observation — the agent must be able to tell "a human told me this" from "I measured this", because the
- * second is a claim it can be held to.
+ * Per task, not per process. A module-level array outlived the task that filled it: cancel a run with a
+ * note still waiting and the next task inherited it, delivering a stale instruction to work it knew
+ * nothing about. Owned by Task, cleared in abortTask, gone with the instance.
  */
-export function formatNote(text: string, driver?: string): string {
-	const who = driver?.trim() ? ` from ${driver.trim()}` : ""
-	return `[note${who}, sent while the task was running]\n${text}`
-}
+export class NoteQueue {
+	private pending: QueuedNote[] = []
+	private seq = 0
 
-/** The queue itself: process-wide, because there is one driven session per extension host. */
-const pending: string[] = []
+	/** Queue a note, or say why not. The returned id is what removes it again before it is delivered. */
+	push(note: Omit<QueuedNote, "id" | "ts">): InjectCheck & { id?: string } {
+		const check = validateNote(note.text, this.pending.length)
+		if (!check.ok) {
+			return check
+		}
+		const id = `note-${Date.now().toString(36)}-${this.seq++}`
+		this.pending.push({ ...note, text: check.text, id, ts: Date.now() })
+		return { ...check, id }
+	}
 
-export function queueNote(text: string, driver?: string): number {
-	pending.push(formatNote(text, driver))
-	return pending.length
-}
+	/** Take one back out. Returns whether it was still there — a note already delivered cannot be unsent. */
+	remove(id: string): boolean {
+		const at = this.pending.findIndex((n) => n.id === id)
+		if (at === -1) {
+			return false
+		}
+		this.pending.splice(at, 1)
+		return true
+	}
 
-export function queuedCount(): number {
-	return pending.length
-}
+	count(): number {
+		return this.pending.length
+	}
 
-/** Take everything waiting. Called once at a turn boundary; delivering twice would repeat the note. */
-export function drainNotes(): string[] {
-	return pending.splice(0, pending.length)
-}
+	/** A copy for the webview to render. Callers must not mutate the queue through it. */
+	snapshot(): QueuedNote[] {
+		return this.pending.map((n) => ({ ...n }))
+	}
 
-/** Test seam: one test's queue must not leak into the next. */
-export function resetNotesForTests(): void {
-	pending.length = 0
+	/** Take everything waiting, in the order it was sent. Called once at a turn boundary; delivering twice would repeat the note. */
+	drain(): QueuedNote[] {
+		return this.pending.splice(0, this.pending.length)
+	}
+
+	clear(): void {
+		this.pending.length = 0
+	}
 }

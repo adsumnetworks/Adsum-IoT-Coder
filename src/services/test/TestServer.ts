@@ -10,7 +10,7 @@ import { ExtensionRegistryInfo } from "@/registry"
 import { getCwd } from "@/utils/path"
 import { checkRespond, messagesSince, pendingAskFrom, sessionStateFrom } from "./askBridge"
 import { initializeGitRepository, validateWorkspacePath } from "./GitHelper"
-import { checkInject, queuedCount, queueNote } from "./injectQueue"
+import { checkInject } from "./injectQueue"
 import { checkClaim, claim, type Lease } from "./sessionLease"
 
 /**
@@ -220,17 +220,31 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 						return
 					}
 					const pending = pendingAskFrom(task.messageStateHandler.getClineMessages())
-					const check = checkInject(noteBody, pending !== null, queuedCount())
+					const check = checkInject(noteBody, pending !== null, task.noteQueue.count())
 					if (!check.ok) {
 						res.writeHead(check.status)
 						res.end(JSON.stringify({ error: check.error, ...(pending ? { ask: pending } : {}) }))
 						return
 					}
 					const { driver } = JSON.parse(noteBody || "{}")
-					const queued = queueNote(check.text, typeof driver === "string" ? driver : currentLease?.driver)
-					Logger.log(`Test server queued a driver note (${queued} waiting)`)
+					// Same queue the chat box uses, so a driver note gets the same transcript bubble and the
+					// same turn-boundary delivery. The 409 above stays the seam's own rule: /respond is the
+					// door while an ask is open, and it carries a ts echo that this one cannot.
+					const result = await task.queueUserMessage(
+						check.text,
+						undefined,
+						undefined,
+						"seam",
+						typeof driver === "string" ? driver : currentLease?.driver,
+					)
+					if (!result.accepted) {
+						res.writeHead(result.reason === "full" ? 429 : 409)
+						res.end(JSON.stringify({ error: result.reason ?? "not accepted" }))
+						return
+					}
+					Logger.log(`Test server queued a driver note (${result.queued} waiting)`)
 					res.writeHead(200)
-					res.end(JSON.stringify({ ok: true, queued, delivery: "next turn" }))
+					res.end(JSON.stringify({ ok: true, id: result.id, queued: result.queued, delivery: "next turn" }))
 				} catch (e) {
 					res.writeHead(500)
 					res.end(JSON.stringify({ error: String(e) }))
