@@ -150,6 +150,7 @@
 							},
 							"features/multiroot-workspace",
 							"features/plan-and-act",
+							"features/sending-while-working",
 							"features/skills",
 							{
 								"group": "Slash Commands",

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Send a message to a session that is already working. It is queued, shown at the end of the
+  conversation with a way to take it back, and delivered at the agent's next step — so a run can be
+  steered without cancelling it. Stop is still its own button, and returns anything undelivered to the
+  chat box.
+
+### Fixed
+- A message typed while the agent was working could be taken as the answer to a tool approval that had
+  not been shown yet. The path that did this is gone; nothing typed mid-run can approve a tool.
+
 ## [0.3.1] - 2026-08-26
 
 *0.2.2 and 0.3.0 were never published; their work ships here.*

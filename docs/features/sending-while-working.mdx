@@ -1,0 +1,62 @@
+---
+title: "Sending a Message While the Agent Works"
+sidebarTitle: "Sending While Working"
+---
+
+You don't have to wait for Adsum IoT Coder to finish before you say something. Type into the chat box
+while the agent is thinking, streaming or running a tool, press Enter, and your message is **queued** —
+it goes in at the agent's next step, before it decides what to do next.
+
+This matters most on hardware. A build is running, you glance at the board and see the LED is off, or
+you remember the antenna isn't fitted. Previously your only options were to wait for the agent to ask
+you something or to cancel the run and lose the turn. Now you just say it.
+
+## How it works
+
+1. Type while the agent is working and press Enter (or click the send arrow).
+2. Your message appears at the bottom of the conversation, marked **queued**, with a ✕ to take it back.
+3. At the agent's next step it is delivered and becomes a normal message in the conversation.
+
+The agent reads it as part of the turn it is already in, not as a new task — so it keeps working on what
+you asked for and takes your message into account as it goes.
+
+<Note>
+	The send arrow and the stop button now sit side by side while a task runs. Stopping a run and saying
+	something to it are different intentions, and you no longer have to give up one to reach the other.
+</Note>
+
+## What you can send
+
+Everything the chat box normally accepts:
+
+-   Plain text
+-   Images and files — they ride along with the message
+-   `@` mentions of files, folders and problems, which are expanded when the message is delivered
+
+## Several messages
+
+Queue as many as five. They are delivered together, in the order you sent them.
+
+If you try to send a sixth, Adsum IoT Coder refuses it and tells you so — **your text stays in the box**.
+A message is never silently dropped: if it were, you would believe the agent had been told when it
+hadn't, and you would keep working on that assumption.
+
+## Taking a message back
+
+Click the ✕ on a queued message to remove it before it is delivered. Once a message has been delivered
+it is a real part of the conversation and stays there.
+
+## Stopping instead
+
+Stop still does what it always did: it interrupts the run. Anything you had queued and that had **not**
+yet been delivered comes back into the chat box, so stopping a run never throws away what you were about
+to say.
+
+## When the agent asks you a question
+
+Nothing changes. If the agent is waiting on an answer — a tool approval, a follow-up question, a plan to
+review — the chat box **is** the answer, exactly as before. Your message answers the question rather than
+joining a queue.
+
+A message you send while a question is still being written to the screen is queued instead, and delivered
+after you have answered.
