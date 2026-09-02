@@ -37,19 +37,11 @@ export const MAX_QUEUED_NOTES = 5
 
 export type InjectCheck = { ok: true; text: string } | { ok: false; status: number; error: string }
 
-/** Which door a note came in by. The transcript labels them differently, and Stop only pulls back its own. */
-export type NoteSource = "composer" | "seam"
+// The shape itself lives in shared/, because the webview renders what is waiting straight off
+// ExtensionState and cannot reach the host's path aliases. Re-exported so host code has one import site.
+import type { QueuedNote } from "@shared/messages/queuedNote"
 
-export interface QueuedNote {
-	id: string
-	ts: number
-	text: string
-	images?: string[]
-	files?: string[]
-	source: NoteSource
-	/** The driver name, for seam notes. The composer is always the developer at the keyboard. */
-	from?: string
-}
+export type { NoteSource, QueuedNote } from "@shared/messages/queuedNote"
 
 /**
  * The rules that do not depend on a pending ask: is there text, is it short enough, is there room.

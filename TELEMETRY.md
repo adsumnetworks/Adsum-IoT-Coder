@@ -23,6 +23,7 @@ Either switch disables telemetry entirely. No reload required.
 | **Lifecycle** | First install + every session start |
 | **Authentication** | Sign in / out events (no credentials) |
 | **Task lifecycle** | Task created, restarted, completed |
+| **Queued messages** | That a message was sent to a working session, delivered, or taken back — counts only |
 | **Tool usage** | Which tools you invoked (`read_file`, `execute_command`, …) — **not the arguments** |
 | **nRF / IoT actions** | `nrf_device_tool` build / flash / capture / monitor operations |
 | **Errors** | Provider API errors, tool failures (messages truncated to 500 chars) |
@@ -38,7 +39,7 @@ None of the following are ever sent:
 
 - **File names, paths, or contents** (workspace paths, opened files, source code, log contents)
 - **Workspace or folder names**
-- **Any text you type** (prompts, chat messages, custom commands, file edits, terminal input)
+- **Any text you type** (prompts, chat messages, custom commands, file edits, terminal input) — including messages sent to a session while it is working: we record how many were queued and delivered, never a word of what they said
 - **Tool call arguments** beyond the tool name itself (e.g. we record that `read_file` was used, not which file)
 - **API keys, tokens, or credentials** of any kind
 - **Your IP address or precise location**
