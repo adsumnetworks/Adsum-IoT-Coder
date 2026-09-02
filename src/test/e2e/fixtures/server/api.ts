@@ -74,8 +74,26 @@ export const name = "cline"
 </diff>
 </replace_in_file>`
 
+/**
+ * A turn that ends without attempt_completion, so the task loop takes the noToolsUsed path and makes a
+ * SECOND request — which is the turn boundary a queued message is delivered at. Without a second request
+ * there is nowhere for the queue test to observe delivery.
+ */
+const queue_first_turn = "Looking at the gateway now. I will report back shortly."
+
+/** The turn after a queued message arrived. Ends the task so the test does not loop. */
+const queue_after_message = `I have the message and will check that too.
+
+<attempt_completion>
+<result>
+Checked the LED and the gateway state.
+</result>
+</attempt_completion>`
+
 export const E2E_MOCK_API_RESPONSES = {
 	DEFAULT: "Hello! I'm a mock Cline API response.",
 	REPLACE_REQUEST: replace_in_file,
 	EDIT_REQUEST: edit_request,
+	QUEUE_FIRST_TURN: queue_first_turn,
+	QUEUE_AFTER_MESSAGE: queue_after_message,
 }

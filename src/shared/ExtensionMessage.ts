@@ -1,6 +1,5 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
 
-import type { QueuedNote } from "@services/test/injectQueue"
 import type { EspEnvironment } from "@shared/esp"
 import type { HandoverUiState } from "@shared/handover"
 import { WorkspaceRoot } from "@shared/multi-root/types"
@@ -19,6 +18,7 @@ import { FocusChainSettings } from "./FocusChainSettings"
 import { HistoryItem } from "./HistoryItem"
 import { McpDisplayMode } from "./McpDisplayMode"
 import { ClineMessageModelInfo } from "./messages"
+import type { QueuedNote } from "./messages/queuedNote"
 import { OnboardingModelGroup } from "./proto/cline/state"
 import { Mode, OpenaiReasoningEffort } from "./storage/types"
 import { TelemetrySetting } from "./TelemetrySetting"

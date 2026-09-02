@@ -120,6 +120,7 @@ describe("a message sent while the agent is working", () => {
 			assert.match(service, /captureMessageRemoved\(/)
 			assert.match(taskSource, /telemetryService\.captureMessageQueued\(/)
 			assert.match(taskSource, /telemetryService\.captureMessageDelivered\(/)
+			assert.match(taskSource, /telemetryService\.captureMessageRemoved\(/)
 
 			// The message text is the developer's work and never leaves the machine.
 			const queued = service.slice(service.indexOf("public captureMessageQueued("))

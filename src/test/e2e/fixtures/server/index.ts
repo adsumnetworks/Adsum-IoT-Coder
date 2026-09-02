@@ -383,6 +383,16 @@ export class ClineApiServerMock {
 						if (body.includes("edit_request")) {
 							responseText = E2E_MOCK_API_RESPONSES.EDIT_REQUEST
 						}
+						// queue.test.ts: a first turn that does not complete, so the loop makes a second
+						// request — the turn boundary where a message queued mid-run is delivered. The
+						// wrapper's own words are the marker for that second turn.
+						if (body.includes("sent a new message while you were working")) {
+							responseText = E2E_MOCK_API_RESPONSES.QUEUE_AFTER_MESSAGE
+						} else if (body.includes("[queue.test]")) {
+							responseText = E2E_MOCK_API_RESPONSES.QUEUE_FIRST_TURN
+							// Long enough for the test to type into a visibly-working session.
+							await new Promise((resolve) => setTimeout(resolve, 2000))
+						}
 						if (body.includes("[diff.test.ts] Hello, Cline!")) {
 							// The playwright test in diff.test.ts needs the "API Request..." text
 							// to be on the screen long enough to detect it.  This worked at 100ms
