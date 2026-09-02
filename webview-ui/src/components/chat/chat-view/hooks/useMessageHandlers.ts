@@ -1,6 +1,6 @@
 import type { ClineMessage } from "@shared/ExtensionMessage"
 import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
-import { AskResponseRequest, NewTaskRequest } from "@shared/proto/cline/task"
+import { AskResponseRequest, NewTaskRequest, QueueUserMessageRequest } from "@shared/proto/cline/task"
 import { useCallback } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient, SlashServiceClient, TaskServiceClient } from "@/services/grpc-client"
@@ -12,7 +12,7 @@ import type { ChatState, MessageHandlers } from "../types/chatTypes"
  * Handles sending messages, button clicks, and task management
  */
 export function useMessageHandlers(messages: ClineMessage[], chatState: ChatState): MessageHandlers {
-	const { backgroundCommandRunning } = useExtensionState()
+	const { backgroundCommandRunning, queuedUserMessages } = useExtensionState()
 	const {
 		setInputValue,
 		activeQuote,
@@ -23,6 +23,7 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 		setEnableButtons,
 		clineAsk,
 		lastMessage,
+		setQueueRefusal,
 		nordicMode,
 		setNordicMode,
 		setNordicPhase,
@@ -47,6 +48,7 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 			if (hasContent) {
 				console.log("[ChatView] handleSendMessage - Sending message:", messageToSend)
 				let messageSent = false
+				let queued = false
 
 				if (messages.length === 0) {
 					await TaskServiceClient.newTask(
@@ -57,7 +59,11 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 						}),
 					)
 					messageSent = true
-				} else if (clineAsk) {
+				} else if (clineAsk && lastMessage?.partial !== true) {
+					// Non-partial only, matching pendingAskFrom on the host: a still-streaming ask has thrown
+					// out of ask() before pWaitFor, so nothing is awaiting an answer yet. Answering one would
+					// write the ask slot, be cleared when the ask completed, and vanish without a trace.
+					// A message typed while the question is still arriving is queued instead, and stays visible.
 					// For resume_task and resume_completed_task, use yesButtonClicked to match Resume button behavior
 					// This ensures Enter key and Resume button work identically
 					if (clineAsk === "resume_task" || clineAsk === "resume_completed_task") {
@@ -86,6 +92,7 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 							case "new_task":
 							case "condense":
 							case "report_bug":
+							case "open_project":
 								await TaskServiceClient.askResponse(
 									AskResponseRequest.create({
 										responseType: "messageResponse",
@@ -98,24 +105,26 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 								break
 						}
 					}
-				} else if (messages.length > 0) {
-					// No clineAsk set - check if task is actively running
-					// If so, allow interrupting it with feedback
-					const lastMessage = messages[messages.length - 1]
-					const isTaskRunning =
-						lastMessage.partial === true || (lastMessage.type === "say" && lastMessage.say === "api_req_started")
+				} else {
+					// A task is running and nothing is asking: queue the message for the next turn boundary.
+					//
+					// NEVER askResponse here. Nothing is awaiting an answer at this moment, so the text would
+					// sit in the ask slot until the next ask() — a tool or command approval — returned
+					// instantly with it as the answer, approving something the developer never saw. That is
+					// exactly what this branch used to do; it was unreachable only because the composer was
+					// disabled while the agent worked, which is the restriction this feature lifts.
+					const result = await TaskServiceClient.queueUserMessage(
+						QueueUserMessageRequest.create({ text: messageToSend, images, files }),
+					).catch(() => undefined)
 
-					if (isTaskRunning) {
-						// Task is running - send message as interruption/feedback
-						await TaskServiceClient.askResponse(
-							AskResponseRequest.create({
-								responseType: "messageResponse",
-								text: messageToSend,
-								images,
-								files,
-							}),
-						)
+					if (result?.accepted) {
 						messageSent = true
+						queued = true
+						setQueueRefusal(null)
+					} else {
+						// The draft stays in the box. A refused message must never be silently swallowed —
+						// the developer would believe the agent had been told.
+						setQueueRefusal(result?.reason || "unreachable")
 					}
 				}
 
@@ -123,10 +132,16 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 				if (messageSent) {
 					setInputValue("")
 					setActiveQuote(null)
-					setSendingDisabled(true)
 					setSelectedImages([])
 					setSelectedFiles([])
-					setEnableButtons(false)
+
+					// A queued message did not start anything: the run is still going and the developer may
+					// well want to queue another. Disabling the box here would re-create the problem this
+					// feature exists to solve.
+					if (!queued) {
+						setSendingDisabled(true)
+						setEnableButtons(false)
+					}
 
 					// Reset auto-scroll
 					if ("disableAutoScrollRef" in chatState) {
@@ -138,6 +153,7 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 		[
 			messages.length,
 			clineAsk,
+			lastMessage,
 			activeQuote,
 			setInputValue,
 			setActiveQuote,
@@ -145,6 +161,7 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 			setSelectedImages,
 			setSelectedFiles,
 			setEnableButtons,
+			setQueueRefusal,
 			chatState,
 			nordicMode,
 		],
@@ -260,11 +277,30 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 					if (backgroundCommandRunning) {
 						await TaskServiceClient.cancelBackgroundCommand(EmptyRequest.create({}))
 					} else {
+						// Anything the developer typed that has not been delivered comes back to them rather
+						// than dying with the turn — stopping a run is not a decision to discard what you
+						// were about to say. Only their own messages: a note sent over the seam belongs to
+						// the driver who sent it and is not this box's to reclaim.
+						const unsent = (queuedUserMessages ?? []).filter((m) => m.source === "composer")
+						if (unsent.length > 0) {
+							setInputValue((current) =>
+								[current.trim(), ...unsent.map((m) => m.text)].filter(Boolean).join("\n\n"),
+							)
+							const images = unsent.flatMap((m) => m.images ?? [])
+							const files = unsent.flatMap((m) => m.files ?? [])
+							if (images.length > 0) {
+								setSelectedImages((current) => [...current, ...images])
+							}
+							if (files.length > 0) {
+								setSelectedFiles((current) => [...current, ...files])
+							}
+						}
 						await TaskServiceClient.cancelTask(EmptyRequest.create({}))
 					}
 					// Clear any pending state that might interfere with resume
 					setSendingDisabled(false)
 					setEnableButtons(true)
+					setQueueRefusal(null)
 					break
 
 				case "utility":
@@ -305,6 +341,11 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 			backgroundCommandRunning,
 			setSendingDisabled,
 			setEnableButtons,
+			setQueueRefusal,
+			setInputValue,
+			setSelectedImages,
+			setSelectedFiles,
+			queuedUserMessages,
 		],
 	)
 

@@ -186,9 +186,14 @@ export const BUTTON_CONFIGS: Record<string, ButtonConfig> = {
 		secondaryAction: undefined,
 	},
 
-	// Streaming/partial states - disable interaction during streaming
+	// Streaming/partial states.
+	//
+	// The box stays ENABLED: a message typed while the agent is working is queued and delivered at the
+	// next turn boundary, which is the whole point of being able to steer a run without cancelling it.
+	// It was disabled here to hide a hole in the webview — the send path wrote the ask slot when nothing
+	// was awaiting an answer — and that branch is gone (see useMessageHandlers).
 	partial: {
-		sendingDisabled: true,
+		sendingDisabled: false,
 		enableButtons: true,
 		primaryText: undefined,
 		secondaryText: "Cancel",
@@ -205,8 +210,9 @@ export const BUTTON_CONFIGS: Record<string, ButtonConfig> = {
 		primaryAction: undefined,
 		secondaryAction: undefined,
 	},
+	// Same as `partial`: the request is in flight, and a message sent now is queued for the next turn.
 	api_req_active: {
-		sendingDisabled: true,
+		sendingDisabled: false,
 		enableButtons: true,
 		primaryText: undefined,
 		secondaryText: "Cancel",

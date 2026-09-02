@@ -21,6 +21,8 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 	const [primaryButtonText, setPrimaryButtonText] = useState<string | undefined>("Approve")
 	const [secondaryButtonText, setSecondaryButtonText] = useState<string | undefined>("Reject")
 	const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({})
+	// Why a message could not be queued. Shown beside the box, which keeps the text either way.
+	const [queueRefusal, setQueueRefusal] = useState<string | null>(null)
 
 	// Nordic mode state
 	const [nordicMode, setNordicMode] = useState<NordicModeId | null>(null)
@@ -48,6 +50,7 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 		setSelectedFiles([])
 		setNordicMode(null)
 		setNordicPhase("awaiting_mode")
+		setQueueRefusal(null)
 	}, [])
 
 	// Handle focus change
@@ -90,6 +93,8 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 		setSecondaryButtonText,
 		expandedRows,
 		setExpandedRows,
+		queueRefusal,
+		setQueueRefusal,
 
 		// Refs
 		textAreaRef,

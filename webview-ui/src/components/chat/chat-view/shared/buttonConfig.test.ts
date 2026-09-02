@@ -22,6 +22,32 @@ describe("getButtonConfig", () => {
 		expect(config).toEqual(BUTTON_CONFIGS.partial)
 	})
 
+	/**
+	 * The composer stays live while the agent works, because a message typed then is queued and delivered
+	 * at the next turn boundary. It was disabled here to hide a webview branch that wrote the ask slot when
+	 * nothing was awaiting an answer; the branch is gone, and re-disabling either of these would take the
+	 * feature away without touching the code that implements it.
+	 */
+	describe("sending while the agent is working", () => {
+		it("leaves the box enabled while streaming, and still offers Stop", () => {
+			expect(BUTTON_CONFIGS.partial.sendingDisabled).toBe(false)
+			expect(BUTTON_CONFIGS.partial.secondaryAction).toBe("cancel")
+		})
+
+		it("leaves the box enabled while a request is in flight, and still offers Stop", () => {
+			expect(BUTTON_CONFIGS.api_req_active.sendingDisabled).toBe(false)
+			expect(BUTTON_CONFIGS.api_req_active.secondaryAction).toBe("cancel")
+		})
+
+		/**
+		 * Not a running state: the request has failed and the task is parked on an ask whose answer is one
+		 * of the two buttons. Nothing is working, so there is nothing to queue for.
+		 */
+		it("keeps the box disabled on a failed request, where the buttons are the answer", () => {
+			expect(BUTTON_CONFIGS.api_req_failed.sendingDisabled).toBe(true)
+		})
+	})
+
 	// Test error recovery states
 	describe("Error Recovery States", () => {
 		const errorStates = ["api_req_failed", "mistake_limit_reached"]

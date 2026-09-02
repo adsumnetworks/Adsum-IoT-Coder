@@ -27,6 +27,7 @@ import {
 	groupMessages,
 	InputSection,
 	MessagesArea,
+	QueuedMessages,
 	TaskSection,
 	useChatState,
 	useMessageHandlers,
@@ -484,9 +485,13 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		if (nordicPhase === "awaiting_mode") {
 			return "Select a mode to start..."
 		}
-		const text = task ? "Type a message..." : "Describe your nRF debugging task..."
-		return text
-	}, [task, nordicPhase])
+		if (!task) {
+			return "Describe your nRF debugging task..."
+		}
+		// While the agent is working the box still takes messages — say so, because a developer who has
+		// always seen it disabled here will not try it otherwise.
+		return inputMorph?.kind === "stop" ? "Type to queue for the agent's next step..." : "Type a message..."
+	}, [task, nordicPhase, inputMorph?.kind])
 
 	// No-ending sessions (operator direction, 1307): the phase NEVER flips to "task_complete" anymore. A
 	// completion — whether the workflow's `<!--TASK_COMPLETE-->` marker or an attempt_completion — is a
@@ -546,6 +551,10 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				{task && !openedAgentSession && (
 					<MessagesArea
 						chatState={chatState}
+						// Messages typed while the agent is working sit at the tail of the transcript — inside
+						// the scroller, so a queued row occupies the place its bubble will take when it is
+						// delivered, rather than covering the conversation from a fixed position.
+						footer={<QueuedMessages queueRefusal={chatState.queueRefusal} />}
 						// No-ending sessions: the post-task NextStepChooser footer is gone — a completion renders
 						// in-stream as a handoff card and the conversation simply continues. (The persistent
 						// AI-limitations disclaimer lives under the always-present input footer below.)
