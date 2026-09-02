@@ -42,6 +42,10 @@ service TaskService {
   rpc deleteAllTaskHistory(EmptyRequest) returns (DeleteAllTaskHistoryCount);
   // Explains changes with AI and adds inline comments to the diff view
   rpc explainChanges(ExplainChangesRequest) returns (Empty);
+  // Sends a message to a task that is already working. Queued, and delivered at the next turn boundary.
+  rpc queueUserMessage(QueueUserMessageRequest) returns (QueueUserMessageResponse);
+  // Takes a queued message back before it has been delivered
+  rpc removeQueuedUserMessage(StringRequest) returns (Empty);
 }
 
 // Request message for creating a new task
@@ -124,6 +128,28 @@ message ExecuteQuickWinRequest {
 // Results returned when deleting all task history
 message DeleteAllTaskHistoryCount {
   int32 tasks_deleted = 1;
+}
+
+// A message sent while the task was already working.
+//
+// Not an AskResponseRequest, deliberately: nothing is awaiting an answer at this moment, and writing the
+// ask slot here would let the next tool approval return with this text as its answer.
+message QueueUserMessageRequest {
+  Metadata metadata = 1;
+  string text = 2;
+  repeated string images = 3;
+  repeated string files = 4;
+}
+
+// Whether the message was taken, and what is waiting now.
+//
+// A refusal is a normal outcome, not an error: the queue is bounded so that a message is refused visibly
+// rather than dropped silently. The caller keeps the text in the box and tells the developer why.
+message QueueUserMessageResponse {
+  bool accepted = 1;
+  string reason = 2;
+  int32 queued = 3;
+  string id = 4;
 }
 
 // Request for explaining changes with AI
