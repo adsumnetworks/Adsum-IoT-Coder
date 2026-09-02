@@ -558,7 +558,10 @@ export async function detectEspFeatures(cwd: string): Promise<{ hasBle: boolean;
  * sdkconfig's target. Live connected-chip detection is the workflow's job
  * (idf.py / esptool), not here. Mirrors the nRF static-vs-runtime split.
  */
-async function getEspPlatformContext(cwd: string, load: TrackedLoad): Promise<string> {
+// `productRowEmitted` is true when the nRF block already ran in this same prompt (a `both` workspace —
+// which is exactly what a gateway looks like, two CMakeLists). The product router row must appear ONCE:
+// duplicating it wastes context and reads as a corpus bug.
+async function getEspPlatformContext(cwd: string, load: TrackedLoad, productRowEmitted = false): Promise<string> {
 	let ctx = "### Platform Detected: Espressif ESP32 / ESP-IDF\n\n"
 	// Always: platform index + mandatory rules + SDK reference (esp-idf auto-selected).
 	// All three rules under platforms/esp/rules/ are listed as MANDATORY/Always in
@@ -568,6 +571,16 @@ async function getEspPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	ctx += (await load("platforms/esp/rules/skill-loading.md")) + "\n\n"
 	ctx += (await load("platforms/esp/rules/device-identity.md")) + "\n\n"
 	ctx += (await load("platforms/esp/sdks/esp-idf/SDK.md")) + "\n\n"
+
+	// A product is not a platform, and the products that matter here are ESP-hosted: the Fanstel gateway
+	// is an ESP32 application with two Nordic radio cards. The router row existed only on the nRF path,
+	// so an ESP-classified workspace could never be routed to the family — the agent never learned the
+	// bits existed. Paths are written from the KNOWLEDGE ROOT, as the nRF table's comment explains.
+	if (!productRowEmitted) {
+		ctx += "| The developer says | Read this FIRST |\n|---|---|\n"
+		ctx += "| Fanstel, LEW840X, composable gateway, M.2 card | `products/fanstel/lew840x/PRODUCT.md` |\n\n"
+		ctx += "A bit already listed under *Knowledge Already Loaded* is in context — do not read it again.\n\n"
+	}
 
 	// Surface the IDF-version split so the agent can reconcile (rules/device-identity.md Step 3):
 	// the active env's IDF vs the project's pinned IDF (dependencies.lock). The host bridge already
@@ -974,8 +987,11 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	}
 
 	if (route.loadEsp && (await detectEspPlatform(cwd))) {
+		// `isPlatformDetected` is only true here if the nRF block above already ran, and that block always
+		// emits the product router row — so pass it along to keep the row unique in a `both` workspace.
+		const nrfAlreadyRan = isPlatformDetected
 		isPlatformDetected = true
-		iotContext += await getEspPlatformContext(cwd, load)
+		iotContext += await getEspPlatformContext(cwd, load, nrfAlreadyRan)
 	}
 
 	// Future platforms (Mbed, Zephyr-on-other-vendors, etc.) can be added here.
