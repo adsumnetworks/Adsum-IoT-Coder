@@ -348,28 +348,53 @@ describe("a refused memory write cannot be shrugged off", () => {
 
 describe("product knowledge is reachable", () => {
 	const ctx = fs.readFileSync(CTX, "utf8")
-	const block = ctx.slice(ctx.indexOf("The developer says"), ctx.indexOf("Knowledge Already Loaded"))
+	// There are now TWO router tables — one per platform context. The nRF path always had one; the ESP
+	// path gained the product row because the LEW840X is an ESP-hosted product, and an ESP-classified
+	// workspace could otherwise never reach the family. Slicing from the FIRST "The developer says" would
+	// silently test only whichever table is defined earlier in the file, so collect every block.
+	const blocks = [...ctx.matchAll(/The developer says[\s\S]*?Knowledge Already Loaded/g)].map((m) => m[0])
 
-	test("the Fanstel gateway routes to its index", () => {
+	test("both platform contexts carry a router table", () => {
+		assert.equal(blocks.length, 2, `expected an nRF and an ESP router table, found ${blocks.length}`)
+	})
+
+	test("the Fanstel gateway routes to its index, from BOTH platform contexts", () => {
 		// The bits were authored correct and complete, and NOTHING referenced them — the same way
 		// DECT-NR.md sat unreachable for weeks. A bit nobody can reach is indistinguishable from a bit
-		// that does not exist.
-		assert.ok(/products\/fanstel\/lew840x\/PRODUCT\.md/.test(block))
-		for (const word of ["Fanstel", "LEW840X", "M.2"]) {
-			assert.ok(block.includes(word), `"${word}" is not a trigger`)
+		// that does not exist. The ESP half is the same failure: the product is an ESP32 application.
+		for (const block of blocks) {
+			assert.ok(/products\/fanstel\/lew840x\/PRODUCT\.md/.test(block))
+			for (const word of ["Fanstel", "LEW840X", "M.2"]) {
+				assert.ok(block.includes(word), `"${word}" is not a trigger`)
+			}
 		}
+	})
+
+	test("the ESP product row is emitted ONCE in a both-platform workspace", () => {
+		// A gateway workspace has two CMakeLists and classifies as `both`, so BOTH context builders run.
+		// The ESP row is therefore guarded on whether the nRF block already emitted it; without the guard
+		// the developer pays for the same table twice and it reads as a corpus bug.
+		assert.ok(
+			/productRowEmitted/.test(ctx),
+			"the ESP router row must be guarded so a both-platform workspace does not print it twice",
+		)
+		assert.ok(
+			/getEspPlatformContext\(cwd, load, nrfAlreadyRan\)/.test(ctx),
+			"the detect path must pass whether the nRF context already ran",
+		)
 	})
 
 	test("every router path is written from the knowledge root", () => {
 		// The prompt tells the agent to join kbPath with the path it is given. Rows that were relative to
 		// platforms/nrf/ produced a path that does not exist when followed literally, and products/ could
 		// never be reached from a platform-relative row at all.
-		// Match every quoted .md path in the block. A string split was too fragile here — the escaping
-		// silently collapsed to a single-element array, so the check passed while testing one row.
-		const paths = [...block.matchAll(/`([^`]+\.md)`/g)].map((m) => m[1])
-		assert.ok(paths.length >= 7, `expected every router row to carry a path, found ${paths.length}`)
-		for (const p of paths) {
-			assert.ok(/^(platforms|products|rules|actions|workflows)\//.test(p), `router path is not root-relative: ${p}`)
+		const nrfBlock = blocks.find((b) => b.includes("DECT")) ?? ""
+		const nrfPaths = [...nrfBlock.matchAll(/`([^`]+\.md)`/g)].map((m) => m[1])
+		assert.ok(nrfPaths.length >= 7, `expected every nRF router row to carry a path, found ${nrfPaths.length}`)
+		for (const block of blocks) {
+			for (const p of [...block.matchAll(/`([^`]+\.md)`/g)].map((m) => m[1])) {
+				assert.ok(/^(platforms|products|rules|actions|workflows)\//.test(p), `router path is not root-relative: ${p}`)
+			}
 		}
 	})
 })

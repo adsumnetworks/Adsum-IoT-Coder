@@ -411,11 +411,11 @@ function headingChildrenToText(children: React.ReactNode): string {
 		.join("")
 }
 
-/** Render a `### Step N/5 · Title` heading as the styled CRA step marker; any other heading stays a normal heading. */
+/** Render a `### Step N/M · Title` heading as the styled step marker; any other heading stays a normal heading. */
 const stepAwareHeading = (Tag: "h2" | "h3" | "h4") => (props: ComponentProps<"h2">) => {
 	const parsed = parseStepHeading(headingChildrenToText(props.children))
 	if (parsed) {
-		return <CraStepMarker step={parsed.step} title={parsed.title} />
+		return <CraStepMarker step={parsed.step} title={parsed.title} total={parsed.total} />
 	}
 	return React.createElement(Tag, props)
 }
