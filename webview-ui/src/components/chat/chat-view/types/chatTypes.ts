@@ -42,6 +42,9 @@ export interface ChatState {
 	setSecondaryButtonText: React.Dispatch<React.SetStateAction<string | undefined>>
 	expandedRows: Record<number, boolean>
 	setExpandedRows: React.Dispatch<React.SetStateAction<Record<number, boolean>>>
+	/** Why the last message could not be queued, if it could not. Null whenever the box is in a normal state. */
+	queueRefusal: string | null
+	setQueueRefusal: React.Dispatch<React.SetStateAction<string | null>>
 
 	// Refs
 	textAreaRef: React.RefObject<HTMLTextAreaElement>

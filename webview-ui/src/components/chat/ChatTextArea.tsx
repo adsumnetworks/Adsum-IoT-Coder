@@ -1699,8 +1699,14 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									}}
 								/>
 							)}
-							{/* Send ↔ Stop morph (operator 0707, Claude Code-style). Brand palette: cyan = action
-							    (UI golden rules) — both icons are actions, never semantic red. */}
+							{/* Stop + Send (operator 0707, Claude Code-style). Brand palette: cyan = action
+							    (UI golden rules) — both icons are actions, never semantic red.
+
+						    These used to be a morph: while the agent worked there was a stop button and no way
+						    to send. They now sit side by side, because stopping a run and saying something to
+						    it are different intentions, and the developer should not have to give up one to
+						    reach the other. A message sent here is queued for the agent's next step; Stop
+						    still interrupts, and hands back anything it had not yet delivered. */}
 							{!isVoiceRecording && morph?.kind === "stop" && (
 								<div
 									aria-label="Stop"
@@ -1715,7 +1721,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									</svg>
 								</div>
 							)}
-							{!isVoiceRecording && morph?.kind !== "stop" && (
+							{!isVoiceRecording && (
 								<div
 									className={cn("input-icon-button", { disabled: sendingDisabled })}
 									data-testid="send-button"
@@ -1731,7 +1737,13 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										}
 									}}
 									style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-									title={morph?.kind === "resume" ? "Resume task" : "Send"}>
+									title={
+										morph?.kind === "resume"
+											? "Resume task"
+											: morph?.kind === "stop"
+												? "Send — delivers with the agent's next step"
+												: "Send"
+									}>
 									{/* S1 "Lift" — clean up-arrow (cyan = action; muted via currentColor when disabled). */}
 									<svg
 										fill="none"
