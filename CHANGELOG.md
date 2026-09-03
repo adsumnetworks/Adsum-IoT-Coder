@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-09-03
+
+*Pre-release, for the bench. Not published to the marketplace.*
+
+### Fixed
+- A workspace whose applications sit in subfolders — a gateway with its ESP app in `esp32/` and
+  its Zephyr apps beside it — loaded no platform knowledge and no product knowledge at all. The
+  heavy blocks probed only the workspace root for `sdkconfig` / `prj.conf`, while the classifier
+  had already scanned deeper and correctly called it a mixed workspace; the two disagreed, and
+  with no board plugged in nothing rescued it. Each platform's knowledge is now built from the
+  application folder the classifier found.
+
 ## [0.3.3] - 2026-09-03
 
 *Pre-release, for the bench. Not published to the marketplace.*

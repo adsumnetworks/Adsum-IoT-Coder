@@ -7,7 +7,13 @@ import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 import { ncsGateNotice } from "@/services/knowledge/kbit/ncsGate"
 import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { routePlatform } from "@/services/platform/platformRouting"
-import { getCachedWorkspaceSummary, NRF_BLE_RE, NRF_CELLULAR_RE, NRF91_BOARD_RE } from "@/services/platform/WorkspaceClassifier"
+import {
+	getCachedWorkspaceClassification,
+	getCachedWorkspaceSummary,
+	NRF_BLE_RE,
+	NRF_CELLULAR_RE,
+	NRF91_BOARD_RE,
+} from "@/services/platform/WorkspaceClassifier"
 import { type ResolvedTool, resolveToolsAsync } from "@/services/tools/ToolResolver"
 import { fileExistsAtPath } from "@/utils/fs"
 import { shouldInjectMap } from "../../../memory/workspace/mapGate"
@@ -980,18 +986,19 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	//    so even if the cwd detect is inconclusive the agent still has the right
 	//    persona and device tool — only the heavy knowledge is gated on the cwd.
 	let isPlatformDetected = false
+	const { nrfRoot, espRoot } = await resolvePlatformRoots(cwd)
 
-	if (route.loadNrf && (await detectNrfPlatform(cwd))) {
+	if (route.loadNrf && nrfRoot) {
 		isPlatformDetected = true
-		iotContext += await getNrfPlatformContext(cwd, load)
+		iotContext += await getNrfPlatformContext(nrfRoot, load)
 	}
 
-	if (route.loadEsp && (await detectEspPlatform(cwd))) {
+	if (route.loadEsp && espRoot) {
 		// `isPlatformDetected` is only true here if the nRF block above already ran, and that block always
 		// emits the product router row — so pass it along to keep the row unique in a `both` workspace.
 		const nrfAlreadyRan = isPlatformDetected
 		isPlatformDetected = true
-		iotContext += await getEspPlatformContext(cwd, load, nrfAlreadyRan)
+		iotContext += await getEspPlatformContext(espRoot, load, nrfAlreadyRan)
 	}
 
 	// Future platforms (Mbed, Zephyr-on-other-vendors, etc.) can be added here.
@@ -1152,6 +1159,35 @@ const iotContextMemo = new Map<string, IotContextMemoEntry>()
 const IOT_CONTEXT_MEMO_MAX_ENTRIES = 8
 
 /** cwd-level files whose content feeds platform detection / feature flags. */
+/**
+ * Where to build each platform's knowledge from.
+ *
+ * The cwd probe is the fast path and the right answer for a single-app workspace. A gateway is
+ * not that shape: its ESP application lives in `esp32/` and its Zephyr applications in
+ * `ble-scanner/` and `ble-lte/`, so the workspace ROOT carries no `sdkconfig` and no `prj.conf`
+ * and both probes fail — while `WorkspaceClassifier`, which scans to depth 2, has already
+ * correctly classified it `both`. One fact, two homes, and they disagreed.
+ *
+ * [BENCH 2026-09-03] With the boards unplugged, so the hardware fallback could not rescue it
+ * either, that combination loaded ZERO platform bits and ZERO product bits into a LEW840X
+ * gateway workspace: the agent was never told its own product knowledge existed, and answered a
+ * question the corpus answers by reading the source instead. On 2026-09-02 the boards were
+ * attached, which hid it completely.
+ *
+ * So: trust the cwd when it is a project, and otherwise trust the classifier and use the
+ * application directory it already found.
+ */
+export async function resolvePlatformRoots(cwd: string): Promise<{ nrfRoot?: string; espRoot?: string }> {
+	const apps = getCachedWorkspaceClassification().apps
+	const fromClassifier = (platform: "nrf" | "esp") =>
+		apps.find((a) => a.platform === platform && a.confidence === "definitive")?.path ??
+		apps.find((a) => a.platform === platform)?.path
+	return {
+		nrfRoot: (await detectNrfPlatform(cwd)) ? cwd : fromClassifier("nrf"),
+		espRoot: (await detectEspPlatform(cwd)) ? cwd : fromClassifier("esp"),
+	}
+}
+
 const FINGERPRINT_FILES = [
 	"prj.conf",
 	"CMakeLists.txt",
@@ -1180,6 +1216,12 @@ async function computeIotContextFingerprint(cwd: string): Promise<string | null>
 	try {
 		const parts: string[] = [`cwd=${cwd}`, `ext=${HostProvider.get().extensionFsPath}`, `ws=${getCachedWorkspaceSummary()}`]
 
+		// The platform blocks may be built from an application directory BELOW cwd (see
+		// resolvePlatformRoots), so the fingerprint has to name and stat the roots actually used —
+		// otherwise editing esp32/sdkconfig in a gateway would never invalidate the cached prompt.
+		const roots = await resolvePlatformRoots(cwd)
+		parts.push(`nrfRoot=${roots.nrfRoot ?? "-"}`, `espRoot=${roots.espRoot ?? "-"}`)
+
 		// Runtime env probes are read straight into the block (SDK/IDF version notes), so a
 		// re-probe that changes them must invalidate.
 		const nrf = getCachedNrfEnvironment()
@@ -1198,7 +1240,7 @@ async function computeIotContextFingerprint(cwd: string): Promise<string | null>
 		// boards/<board>.overlay|.conf names pin a board before any build exists. Only the NAMES matter,
 		// so list them rather than stat'ing contents.
 		try {
-			const overlays = (await fs.readdir(path.join(cwd, "boards"), { withFileTypes: true }))
+			const overlays = (await fs.readdir(path.join(roots.nrfRoot ?? cwd, "boards"), { withFileTypes: true }))
 				.filter((e) => e.isFile() && /\.(overlay|conf)$/i.test(e.name))
 				.map((e) => e.name)
 				.sort()
@@ -1217,8 +1259,10 @@ async function computeIotContextFingerprint(cwd: string): Promise<string | null>
 				.join("|")}`,
 		)
 
-		for (const rel of FINGERPRINT_FILES) {
-			parts.push(`${rel}=${await statSignature(path.join(cwd, rel))}`)
+		for (const root of [...new Set([cwd, roots.nrfRoot, roots.espRoot].filter(Boolean) as string[])]) {
+			for (const rel of FINGERPRINT_FILES) {
+				parts.push(`${root === cwd ? rel : `${root}/${rel}`}=${await statSignature(path.join(root, rel))}`)
+			}
 		}
 
 		// Build folders can have any name (build, build_52840, build_central…), so mirror the
