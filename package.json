@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.3.3",
+	"version": "0.3.4",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -445,7 +445,7 @@
 		"test:memory": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/memory.test.ts",
 		"test:memory-migrate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/migrate.test.ts",
 		"test:sniffer-payload": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/nrf/payloadHex.node-test.ts",
-		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:workspace test:cve test:engine-config test:ask-bridge test:chip-identity test:standalone-package test:session-lease test:inject-queue test:queued-messages test:terminal-events test:gnss-gate",
+		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:workspace test:cve test:engine-config test:ask-bridge test:chip-identity test:standalone-package test:session-lease test:platform-roots test:inject-queue test:queued-messages test:terminal-events test:gnss-gate",
 		"kbit": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit.ts",
 		"qa": "bash qa/regression/run.sh",
 		"format": "biome format --changed --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error",
@@ -505,6 +505,7 @@
 		"test:project-anchor": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/projectAnchor.test.ts",
 		"test:ncs-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/ncsGate.test.ts",
 		"test:deepseek-thinking": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/api/providers/__tests__/deepseekThinking.node-test.ts",
+		"test:platform-roots": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/platformRoots.node-test.ts",
 		"test:board-routing": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/boardRouting.node-test.ts",
 		"test:announcements": "ts-node --transpile-only -P tsconfig.unit-test.json src/utils/__tests__/announcementSurfaces.node-test.ts",
 		"test:tools": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/tools/toolResolver.node-test.ts",
