@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-09-03
+
+*Pre-release, for the bench. Not published to the marketplace.*
+
 ### Added
 - Send a message to a session that is already working. It is queued, shown at the end of the
   conversation with a way to take it back, and delivered at the agent's next step — so a run can be
@@ -16,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - A message typed while the agent was working could be taken as the answer to a tool approval that had
   not been shown yet. The path that did this is gone; nothing typed mid-run can approve a tool.
+- A guided build's step banner was hard-coded to five steps, so a seven-beat product build rendered
+  "Step 4/7" as a plain heading instead of a banner.
 
 ## [0.3.1] - 2026-08-26
 
