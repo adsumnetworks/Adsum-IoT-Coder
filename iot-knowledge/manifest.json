@@ -75,7 +75,7 @@
 			"id": "adsum/esp/platform",
 			"title": "ESP32 — Platform Index",
 			"type": "knowledge",
-			"version": "1.2.0",
+			"version": "1.3.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -87,7 +87,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "platforms/esp/PLATFORM.md",
-			"content_hash": "0282e77e70255ba3404ed2057398462286ec691d9238cf42b0e8fda23c0f793e"
+			"content_hash": "5872e7e606060c3a4b71813b1f16f89a27d6133e9bb3e98a64f32bf97019c059"
 		},
 		{
 			"id": "adsum/esp/rules/device-identity",

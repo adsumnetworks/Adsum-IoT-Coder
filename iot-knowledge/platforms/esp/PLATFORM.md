@@ -2,7 +2,7 @@
 id: adsum/esp/platform
 title: "ESP32 — Platform Index"
 type: knowledge
-version: 1.2.0
+version: 1.3.0
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -64,6 +64,9 @@ platforms/esp/
 | Bit | Load when |
 |---|---|
 | `knowledge/chip-identity.md` | You need what a `CONFIG_IDF_TARGET` value means — the part name, its CPU architecture, and therefore which `addr2line` decodes its addresses. Also states which memory-protection symbol to read rather than inferring one from the part number. |
+| `knowledge/config-schema-nvs.md` | The project stores settings an operator can change — a schema, NVS, a config API. **Load before diagnosing any "the setting saves but nothing happens" or "it does not survive a reboot" report**: NVS key limits, apply classes, secret accessors, last-known-good and the lint that makes a decorative setting impossible. |
+| `knowledge/gateway-dashboard.md` | The device serves its own web page to an installer. What to serve, how to size a handler, and the ladder for a server that accepts and then misbehaves. |
+| `knowledge/gateway-dashboard-ui.md` | You are writing or changing that page's own code. The render layer — what a screen must never assert about a device it did not hear it from. |
 
 ---
 
@@ -87,6 +90,7 @@ Other targets (`esp32c6`, `esp32c3`, …) are supported by the toolchain; board 
 | ESP-IDF | `sdks/esp-idf/SDK.md` | First ESP-IDF task. idf.py/CMake/FreeRTOS/sdkconfig + device introspection. |
 | Wi-Fi | `sdks/esp-idf/protocols/WIFI.md` | Project uses Wi-Fi — and **load before diagnosing any Wi-Fi problem** (Command Gate in `rules/skill-loading.md`). |
 | BLE (NimBLE) | `sdks/esp-idf/protocols/BLE.md` | Project uses BLE (`CONFIG_BT_ENABLED=y`) — and **load before diagnosing any BLE problem**. |
+| Multi-bearer | `sdks/esp-idf/patterns/multi-bearer-gateway.md` | The application reaches a broker or server over **more than one interface** (Ethernet / Wi-Fi / cellular) with failover. Route priority, the accessor contract, where the HTTP server may be started, and what a bearer costs in heap. |
 
 ---
 
