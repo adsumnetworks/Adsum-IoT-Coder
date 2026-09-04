@@ -63,7 +63,12 @@ const SCORE = {
 	boardMatch: 80,
 	craGrounded: 70,
 	productPartial: 65,
-	neutralRequirement: 35,
+	// BELOW `either`, deliberately. This is the score for a run we can state the requirements of
+	// but cannot confirm you meet — a sealed product needing its own kit and a probe. It used to
+	// outrank a run that works with whatever you already have, so an empty folder with NO boards
+	// detected led with "buy a gateway, a bridge board and a Nordic DK". Stating a requirement is
+	// not evidence that it is met; a run you can start now should come first.
+	neutralRequirement: 25,
 	either: 30,
 	noSignal: 20,
 	noMatch: 10,

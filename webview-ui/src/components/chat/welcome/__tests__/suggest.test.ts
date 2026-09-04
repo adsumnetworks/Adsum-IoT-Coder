@@ -88,6 +88,22 @@ describe("rank — the CRA rule, kept", () => {
 	})
 })
 
+describe("rank — a requirement is not evidence it is met", () => {
+	it("with a folder open and NO boards, a run you can start now beats one needing hardware to buy", () => {
+		// [SCREENSHOT 2026-09-04] An empty scratch folder with nothing plugged in led with the
+		// gateway build — "needs the gateway, its UART bridge board and a Nordic DK as probe".
+		// True, and the worst possible first offer to someone who has none of it.
+		const s: Signals = { ...base, hasWorkspace: true }
+		const order = rank(CATALOGUE, s).map((r) => r.item.id)
+		expect(order.indexOf("craCheck")).toBeLessThan(order.indexOf("gateway"))
+	})
+
+	it("but with the product actually recognised it still leads", () => {
+		const s: Signals = { ...base, hasWorkspace: true, product: "lew840x" }
+		expect(rank(CATALOGUE, s)[0].item.id).toBe("gateway")
+	})
+})
+
 describe("rank — never silently one platform", () => {
 	it("with nothing detected the two platforms alternate", () => {
 		const order = ids(base).filter((i) => i.startsWith("nrf") || i.startsWith("esp"))

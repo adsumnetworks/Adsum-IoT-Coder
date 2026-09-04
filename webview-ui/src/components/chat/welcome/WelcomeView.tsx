@@ -178,10 +178,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	const resumeTitle = resumeSession ? resumeSession.task.replace(/\s+/g, " ").slice(0, 60) : ""
 
 	return (
-		<div
-			className="relative flex flex-1 flex-col justify-start px-4 pb-2 pt-3"
-			data-testid="welcome-view"
-			style={{ overflowY: "auto" }}>
+		<div className="relative flex flex-1 flex-col px-4 pb-2 pt-3" data-testid="welcome-view" style={{ overflowY: "auto" }}>
 			{/* header: identity, and the ONE way to everything not on screen */}
 			<div className="mb-2 flex items-center gap-2">
 				<img alt="Adsum IoT Coder" src={isDark ? adsumLogoDark : adsumLogoLight} style={{ height: "18px" }} />
@@ -278,11 +275,16 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										: "Let's get your board talking."}
 							</div>
 							<div style={{ fontSize: "11.5px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
+								{/* A folder we have never worked in gets its own line just below saying exactly that,
+								    so this one must not ALSO open with "Working on X" — two sentences about the same
+								    folder, stacked, read as a stutter. */}
 								{isColdStart
 									? "Pick one and watch a real session do a real job — real curated knowledge, real commands, real evidence."
-									: projectName
-										? `Working on ${projectName} — pick a step, or just say what you want below.`
-										: "Describe what you want to build, or start from one of these."}
+									: mode.reason === "no-resume-here"
+										? "Pick a step, or just say what you want below."
+										: projectName
+											? `Working on ${projectName} — pick a step, or just say what you want below.`
+											: "Describe what you want to build, or start from one of these."}
 							</div>
 							{/* A first visit to THIS folder by someone who has worked in others. The runs above answer
 							    what to do; this line answers where everything else went. */}
@@ -428,6 +430,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				    described in two places. Passing null leaves the strip its own job: toolchain and build
 				    state, which the header does not cover. */}
 				<StatusHeader projectName={null} />
+				{/* The tip and the strip are the quiet tail of the surface. Pushing them down puts the
+				    empty space ABOVE them rather than below, so the panel ends near the composer instead
+				    of stranding its content at the top of a long void. */}
+				<div className="mt-auto" />
 				<DockCoachMark hasProject={signals.hasWorkspace} />
 			</div>
 
