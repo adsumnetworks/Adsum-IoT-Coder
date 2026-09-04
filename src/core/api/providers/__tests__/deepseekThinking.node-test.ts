@@ -41,9 +41,14 @@ describe("DeepSeek thinking toggle is reachable", () => {
 	})
 
 	test("thinking is sent only when the developer set it — never guessed", () => {
+		// The rule widened on 2026-09-04: a chosen EFFORT is also the developer setting it, because
+		// the panel let one be chosen without ever writing a budget. Still never guessed — with
+		// neither signal present nothing is sent and DeepSeek's own default stands.
 		assert.ok(
-			/budget !== undefined \? \{ thinking: \{ type: budget > 0 \? "enabled" : "disabled" \} \} : \{\}/.test(handler),
-			"an unset toggle must send no thinking parameter at all, leaving DeepSeek's own default",
+			/isV4 && \(budget !== undefined \|\| effort\) \? \{ thinking: \{ type: wantsThinking \? "enabled" : "disabled" \} \} : \{\}/.test(
+				handler,
+			),
+			"with neither a budget nor an effort, no thinking parameter may be sent",
 		)
 	})
 
@@ -84,14 +89,46 @@ describe("DeepSeek thinking EFFORT is reachable and correct", () => {
 
 	test("effort is sent only with thinking ON", () => {
 		assert.ok(
-			/v4ThinkingOn && this\.options\.reasoningEffort \? \{ reasoning_effort: this\.options\.reasoningEffort \} : \{\}/.test(
-				handler,
-			),
+			/v4ThinkingOn && effort \? \{ reasoning_effort: effort \} : \{\}/.test(handler),
 			"reasoning_effort must never accompany thinking: disabled",
 		)
 	})
 
 	test("an unchosen effort sends nothing, leaving DeepSeek's default of high", () => {
-		assert.ok(/this\.options\.reasoningEffort \?/.test(handler), "must be conditional on the developer having chosen")
+		assert.ok(/v4ThinkingOn && effort \?/.test(handler), "must be conditional on the developer having chosen")
+	})
+})
+
+describe("an effort chosen with no explicit budget still reaches the wire", () => {
+	// [OPERATOR 2026-09-04] "deepseek is currently configured with thinking = low but I see very
+	// long thinking sessions". The panel showed the effort dropdown whenever the budget was
+	// undefined, so Low could be stored while both handler guards — which required an explicit
+	// budget — dropped it. Neither parameter was sent and DeepSeek's server default (enabled at
+	// "high") applied. This is the same failure the test above already records, one step along:
+	// the control exists now, but the field it depends on was still never written.
+	test("the handler treats a chosen effort as intent to think", () => {
+		const handler = fs.readFileSync(HANDLER, "utf8")
+		assert.ok(
+			/const wantsThinking = \(budget \?\? 0\) > 0 \|\| \(budget === undefined && Boolean\(effort\)\)/.test(handler),
+			"an effort with no budget must count as thinking on, or a stored Low is silently dropped",
+		)
+		assert.ok(
+			/isV4 && \(budget !== undefined \|\| effort\)/.test(handler),
+			"thinking must go on the wire when the developer has expressed either signal",
+		)
+	})
+
+	test("the settings panel decides 'enabled' by the same rule the handler uses", () => {
+		const panel = fs.readFileSync(PANEL, "utf8")
+		assert.ok(
+			/\(thinkingBudgetTokens \?\? 0\) > 0 \|\| \(thinkingBudgetTokens === undefined && Boolean\(reasoningEffort\)\)/.test(
+				panel,
+			),
+			"panel and handler must agree on what 'thinking is on' means, or the UI lies about the request",
+		)
+		assert.ok(
+			!/currentValue=\{reasoningEffort/.test(panel),
+			"the effort dropdown must bind with `value`, like every other provider panel",
+		)
 	})
 })
