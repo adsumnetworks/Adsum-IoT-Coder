@@ -506,6 +506,8 @@
 		"test:ncs-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/kbit/ncsGate.test.ts",
 		"test:deepseek-thinking": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/api/providers/__tests__/deepseekThinking.node-test.ts",
 		"test:classifier-refresh": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/platform/workspaceClassifierRefresh.node-test.ts",
+		"entry:shots": "cd webview-ui && npm run build-storybook >/dev/null && cd .. && node scripts/entry-screenshots.cjs webview-ui/storybook-static ../adsum-planning/lab-bench/screenshots/cockpit-impl",
+		"entry:keyboard": "cd webview-ui && npm run build-storybook >/dev/null && cd .. && node scripts/entry-keyboard-check.cjs webview-ui/storybook-static",
 		"test:platform-roots": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/platformRoots.node-test.ts",
 		"test:board-routing": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/boardRouting.node-test.ts",
 		"test:announcements": "ts-node --transpile-only -P tsconfig.unit-test.json src/utils/__tests__/announcementSurfaces.node-test.ts",
