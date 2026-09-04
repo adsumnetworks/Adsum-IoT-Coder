@@ -239,6 +239,16 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			    questions a developer asks on opening it. Devices are stated as detected facts, never
 			    a verdict: "no boards detected" is true, useful, and is not a fault. */}
 			<div className="mb-3 flex flex-col gap-0.5">
+				{/* The heading sits ABOVE the folder, not between it and the strip: folder and detected
+				    hardware are one answer to one question — what am I working on and with — and a
+				    heading that only covered the second half left the first half captionless. */}
+				{!isColdStart && (
+					<div
+						className="uppercase"
+						style={{ fontSize: "10px", letterSpacing: "0.08em", color: "var(--vscode-descriptionForeground)" }}>
+						Environment
+					</div>
+				)}
 				<div className="flex items-baseline gap-1.5">
 					<span aria-hidden="true" className="codicon codicon-folder" style={{ fontSize: "12px", opacity: 0.75 }} />
 					<span
@@ -260,13 +270,28 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				    `entry-devices` survives as an empty landmark so the header's tests keep a stable
 				    hook and nothing re-grows a second device line here by accident. */}
 				<div className="hidden" data-testid="entry-devices" />
-				<div
-					className="mt-1.5 uppercase"
-					style={{ fontSize: "10px", letterSpacing: "0.08em", color: "var(--vscode-descriptionForeground)" }}>
-					Your setup
-				</div>
-				<EnvStrip />
+				{/* Suppressed on a cold start. [SCREENSHOT 2026-09-04] A first-time user was met by
+				    "No folder open", then "YOUR SETUP", then "No SDK detected" — three lines, all of
+				    them absence, above the one thing that works with nothing installed. The samples
+				    card below already promises "no hardware, nothing installed", so the SDK line does
+				    not just discourage, it argues with the reassurance beside it. With a folder open
+				    the strip is orientation and earns the top slot; with nothing at all it is a list
+				    of what you do not have. (I suppressed the old header device line for this exact
+				    reason, then reintroduced it by moving the strip up unconditionally — the condition
+				    has to travel with it.) */}
+				{!isColdStart && (
+					<>
+						<EnvStrip />
+					</>
+				)}
 			</div>
+
+			{/* [OPERATOR 2026-09-04] Moved back to the top, on their call. It was below the content
+			    because as a bordered card with a lightbulb it out-shouted the resume; now that it is a
+			    single quiet line the objection is spent, and one line above the fold is what a
+			    dismissible one-time hint is supposed to cost. It sits under the environment group so
+			    it reads as chrome rather than as the first suggestion. */}
+			<DockCoachMark hasProject={signals.hasWorkspace} />
 
 			{/* One block, flowing from the top, with the composer pinned below by the chat layout and a
 			    single space between. Two earlier attempts moved that space around — first stranding the
@@ -298,24 +323,24 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				{expanded ? (
 					<>
 						<div>
-							<div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--vscode-foreground)" }}>
-								{isColdStart
-									? "See it work first."
-									: mode.reason === "lapsed"
-										? "Welcome back."
-										: "Let's get your board talking."}
-							</div>
+							{/* [OPERATOR 2026-09-04] "remove 'Let's get your board talking' — stay dev oriented
+							    and pro". A headline that greets rather than informs is the wrong register for
+							    someone who opened the panel to do work, and in the ordinary case it also said
+							    nothing the row of cards underneath did not already say. Two states keep a
+							    headline because it carries information the cards cannot: the cold start states
+							    what these samples are FOR, and a lapsed return explains why the cards came back
+							    after a month away. */}
+							{(isColdStart || mode.reason === "lapsed") && (
+								<div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--vscode-foreground)" }}>
+									{isColdStart ? "See it work first." : "Welcome back."}
+								</div>
+							)}
 							<div style={{ fontSize: "11.5px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
-								{/* A folder we have never worked in gets its own line just below saying exactly that,
-								    so this one must not ALSO open with "Working on X" — two sentences about the same
-								    folder, stacked, read as a stutter. */}
+								{/* Never "Working on <folder>": the Environment group at the top of the panel
+								    already names the folder, and repeating it here read as a stutter. */}
 								{isColdStart
 									? "Pick one and watch a real session do a real job — real curated knowledge, real commands, real evidence."
-									: mode.reason === "no-resume-here"
-										? "Pick a step, or just say what you want below."
-										: projectName
-											? `Working on ${projectName} — pick a step, or just say what you want below.`
-											: "Describe what you want to build, or start from one of these."}
+									: "Pick a step, or just say what you want below."}
 							</div>
 							{/* A first visit to THIS folder by someone who has worked in others. The runs above answer
 							    what to do; this line answers where everything else went. */}
@@ -354,7 +379,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										letterSpacing: "0.06em",
 										color: "var(--vscode-descriptionForeground)",
 									}}>
-									Sample runs · about a minute each · no hardware, nothing installed
+									{/* Two lines by construction. Wrapped, this sentence put "· no hardware…" at the
+									    head of the second line, which reads as a typo rather than as a clause. */}
+									<div>Sample runs · about a minute each</div>
+									<div>No hardware, nothing installed</div>
 								</div>
 								{samples.map((s) => (
 									<button
@@ -372,9 +400,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 												{s.blurb}
 											</span>
 										</span>
-										<span style={{ fontSize: "10.5px", color: "var(--vscode-descriptionForeground)" }}>
-											~1 min
-										</span>
+										{/* No per-row duration: the header says "about a minute each", and three rows
+										    repeating "~1 min" only crowd the titles they sit beside. */}
 									</button>
 								))}
 							</div>
@@ -464,10 +491,6 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						)}
 					</div>
 				)}
-
-				{/* Below the content, not above it: a tip about docking the panel was the loudest, boxiest
-				    thing on screen and sat over the actual purpose of the surface. */}
-				<DockCoachMark hasProject={signals.hasWorkspace} />
 			</div>
 
 			<EntryDrawer

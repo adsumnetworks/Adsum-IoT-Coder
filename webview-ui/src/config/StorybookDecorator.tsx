@@ -25,6 +25,15 @@ const ThemeHandler: React.FC<{ children: React.ReactNode; theme?: string }> = ({
 			root.style.setProperty(property, value)
 		})
 
+		// The class VS Code itself stamps on <body>. Storybook was setting the colour variables and
+		// nothing else, so any rule keyed on `body.vscode-dark` — the same signal the real host
+		// gives — could never match here. The wordmark rules are exactly that, which meant the
+		// screenshot rig rendered a state the product never produces and could not have caught the
+		// bug it exists to catch. A rig that cannot reproduce the host's own signal is not checking
+		// the product.
+		const isLight = theme?.includes("light") ?? false
+		document.body.classList.toggle("vscode-light", isLight)
+		document.body.classList.toggle("vscode-dark", !isLight)
 		document.body.style.backgroundColor = styles["--vscode-editor-background"]
 		document.body.style.color = styles["--vscode-editor-foreground"]
 		document.body.style.fontFamily = styles["--vscode-font-family"]

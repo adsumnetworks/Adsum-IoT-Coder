@@ -40,7 +40,6 @@ import AgentSessionBanner from "./handover/AgentSessionBanner"
 import AgentSessionRecap from "./handover/AgentSessionRecap"
 import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
-import EntryInputLabel from "./welcome/EntryInputLabel"
 import { entryFirstPrompt } from "./welcome/entryTelemetry"
 import { handOverCard } from "./welcome/handOverCard"
 import { routeDemo, routeTypedTask } from "./welcome/runRouting"
@@ -589,10 +588,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			    With no task, THIS is the new session: handleSendMessage already calls newTask when
 			    there are no messages, so typing starts one. That is why the entry surface has no
 			    "New session" button — a button would do exactly what typing does, and two controls
-			    for one action is how a person stops trusting either. The label above says so. */}
+			    for one action is how a person stops trusting either.
+
+			    There is no label above it either, and that is the correction. [OPERATOR 2026-09-04]
+			    "NEW SESSION · ADSUM-UI-DEMO / the last one stays in the menu — what does this mean,
+			    confusing" and "I have the folder up already". Every clause of it was already on
+			    screen: the placeholder says "Enter starts a new session", the Environment group at
+			    the top names the folder, and the resume card names the last session outright when
+			    there is one. Four voices for one fact, and the vaguest of them — "the last one" —
+			    was the one that had to be decoded. */}
 			{!openedAgentSession && (
 				<footer className="bg-(--vscode-sidebar-background)" style={{ gridRow: "2" }}>
-					{!task && <EntryInputLabel />}
 					{/* Auto-approve moved into the input's bottom controls row (AutoApproveChip in ChatTextArea)
 					    — the full-width bar row here was standing clutter (operator 0707). */}
 					{task && (
