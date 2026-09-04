@@ -2930,6 +2930,9 @@ export class Task {
 			let assistantMessageId = ""
 			let assistantMessage = "" // For UI display (includes XML)
 			let assistantTextOnly = "" // For API history (text only, no tool XML)
+			// Is a reasoning block currently open (streamed partial, not yet finalized)? Per stream,
+			// because a turn can interleave reasoning and text many times. See the "text" case.
+			let reasoningOpen = false
 			let assistantTextSignature: string | undefined
 
 			this.taskState.isStreaming = true
@@ -2948,6 +2951,9 @@ export class Task {
 							taskMetrics.totalCost = chunk.totalCost ?? taskMetrics.totalCost
 							break
 						case "reasoning": {
+							// A reasoning block is now open. It stays open until the next text chunk
+							// closes it — see the "text" case.
+							reasoningOpen = true
 							// Process the reasoning delta through the handler
 							// Ensure details is always an array
 							const details = chunk.details ? (Array.isArray(chunk.details) ? chunk.details : [chunk.details]) : []
@@ -2992,11 +2998,26 @@ export class Task {
 							break
 						}
 						case "text": {
-							// If we have reasoning content, finalize it before processing text (only once)
+							// Close the open reasoning block before any text — on EVERY interleave, not
+							// only the first.
+							//
+							// [BENCH 2026-09-03, I-09] This used to finalize only when
+							// `assistantMessage.length === 0`, i.e. once per turn. A model that
+							// alternates reasoning and text (DeepSeek-flash does, constantly) then
+							// left the second reasoning block partial: `say("reasoning", …, partial)`
+							// had appended a new message, so the streaming text bubble was no longer
+							// the last one, the next text chunk could not update it, and each chunk
+							// opened a fresh bubble holding a single word. The transcript became a
+							// column of one-word fragments between "Thought for Ns" blocks.
+							//
+							// Scope was measured before changing anything: `ui_messages.json` was
+							// shredded, `api_conversation_history.json` was not — 13 clean assistant
+							// blocks, zero fragments. The model's context was always intact; this is
+							// a display defect only.
 							const currentReasoning = reasonsHandler.getCurrentReasoning()
-							if (currentReasoning?.thinking && assistantMessage.length === 0) {
-								// Complete the reasoning message (only once)
+							if (currentReasoning?.thinking && reasoningOpen) {
 								await this.say("reasoning", currentReasoning.thinking, undefined, undefined, false)
+								reasoningOpen = false
 							}
 							if (chunk.signature) {
 								assistantTextSignature = chunk.signature
