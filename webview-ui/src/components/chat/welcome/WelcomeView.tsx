@@ -33,6 +33,16 @@ import { getTenure, type IntentDef, NO_PROJECT_INTENTS, PROJECT_INTENTS, resolve
  * drawer, never both at once.
  */
 
+/**
+ * Partner devices with a guided product build. The cold-start row names the category, not a
+ * vendor — [OPERATOR 2026-09-04] "there will be non-Fanstel ones soon" — and lists these under
+ * it, so adding a partner is one line here. The prefill has to name a device (that is what routes
+ * a session to the product's own Knowledge bits), so it takes the first and stays editable.
+ */
+const PARTNER_BUILDS = [
+	{ label: "Fanstel LEW840x", opener: "I have a Fanstel LEW840x on the bench and want to start its guided gateway build" },
+] as const
+
 interface WelcomeViewProps {
 	onSelectMode: (mode: NordicModeId) => void
 	onStartTask: (text: string) => Promise<void>
@@ -119,7 +129,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			},
 			"cra-sample": {
 				title: "Example CRA run",
-				blurb: "How a readiness check works on a pre-built reference build: the SBOM, the known CVEs, and what a conformity file needs.",
+				blurb: "How a readiness check works on a pre-built gateway build: the SBOM, the known CVEs, and what a conformity file needs.",
 			},
 		}
 		const order = ["nus-uart", "hci-sniffer", "cra-sample"]
@@ -460,56 +470,93 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						</div>
 
 						{isColdStart && !sampleRun ? (
-							// The cold start. Every run below needs hardware this person may not have, and each
-							// only prefills. A sample is pre-canned and safe, so it can fire on one click — the
-							// shortest honest path to seeing anything work.
-							<div
-								className="flex flex-col gap-1.5 rounded-lg p-2"
-								data-testid="entry-samples"
-								style={{ border: `1px solid ${BRAND_CYAN_UI}` }}>
-								{/* [SWEEP 2026-09-04, F1] Tracked caps wrap badly: two caps lines became four at
+							<>
+								{/* The cold start. Every run below needs hardware this person may not have, and each
+							    only prefills. A sample is pre-canned and safe, so it can fire on one click — the
+							    shortest honest path to seeing anything work. */}
+								<div
+									className="flex flex-col gap-1.5 rounded-lg p-2"
+									data-testid="entry-samples"
+									style={{ border: `1px solid ${BRAND_CYAN_UI}` }}>
+									{/* [SWEEP 2026-09-04, F1] Tracked caps wrap badly: two caps lines became four at
 								    sidebar width. One short caps label, and the qualifier in sentence case, where
 								    wrapping costs nothing. */}
-								<div className="px-1" style={{ color: "var(--vscode-descriptionForeground)" }}>
-									<div className="uppercase" style={{ fontSize: "10px", letterSpacing: "0.08em" }}>
-										Sample runs
+									<div className="px-1" style={{ color: "var(--vscode-descriptionForeground)" }}>
+										<div className="uppercase" style={{ fontSize: "10px", letterSpacing: "0.08em" }}>
+											Sample runs
+										</div>
+										<div style={{ fontSize: "11px" }}>About a minute each · nothing to install</div>
 									</div>
-									<div style={{ fontSize: "11px" }}>About a minute each · nothing to install</div>
-								</div>
-								{samples.map((s, idx) => (
-									<button
-										className="flex items-start gap-2 rounded p-2 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
-										data-testid="entry-sample"
-										key={s.id}
-										onClick={() => {
-											entryRunStart(s.id, "sample")
-											s.onRun()
-										}}>
-										<span
-											aria-hidden="true"
-											className="codicon codicon-play"
-											style={{ fontSize: "11px", color: idx === 0 ? BRAND_CYAN_TEXT : undefined }}
-										/>
-										<span className="flex min-w-0 flex-1 flex-col">
-											{/* Wraps, never truncates. [SCREENSHOT r16] "Example debug with a radio sni…"
+									{samples.map((s, idx) => (
+										<button
+											className="flex items-start gap-2 rounded p-2 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
+											data-testid="entry-sample"
+											key={s.id}
+											onClick={() => {
+												entryRunStart(s.id, "sample")
+												s.onRun()
+											}}>
+											<span
+												aria-hidden="true"
+												className="codicon codicon-play"
+												style={{ fontSize: "11px", color: idx === 0 ? BRAND_CYAN_TEXT : undefined }}
+											/>
+											<span className="flex min-w-0 flex-1 flex-col">
+												{/* Wraps, never truncates. [SCREENSHOT r16] "Example debug with a radio sni…"
 											    on a list of three, and the first title cut to "Example debug ses…" by the cue
 											    sitting beside it. Three rows have room for two lines each. */}
-											<span style={{ fontSize: "12px", fontWeight: 600 }}>{s.title}</span>
-											<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
-												{/* [F3] Three equal rows answered nothing for the person whose one question
+												<span style={{ fontSize: "12px", fontWeight: 600 }}>{s.title}</span>
+												<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
+													{/* [F3] Three equal rows answered nothing for the person whose one question
 												    is "which do I click first". The cue leads the description of the first
 												    row — on the row, not a tag on the run, and never in the title's width. */}
-												{idx === 0 && (
-													<span style={{ fontWeight: 600, color: BRAND_CYAN_TEXT }}>Start here — </span>
-												)}
-												{s.blurb}
+													{idx === 0 && (
+														<span style={{ fontWeight: 600, color: BRAND_CYAN_TEXT }}>
+															Start here —{" "}
+														</span>
+													)}
+													{s.blurb}
+												</span>
 											</span>
-										</span>
-										{/* No per-row duration: the header says "about a minute each", and three rows
+											{/* No per-row duration: the header says "about a minute each", and three rows
 										    repeating "~1 min" only crowd the titles they sit beside. */}
-									</button>
-								))}
-							</div>
+										</button>
+									))}
+								</div>
+								{/* Outside the samples box on purpose. The box promises "no hardware, nothing to
+							    install"; a guided product build is real hardware, seven steps and half an hour,
+							    and putting it inside would make that line false the first time it was clicked.
+							    Before this row the flagship build was invisible on a cold start — it only
+							    surfaced as a suggested run once a folder was open. */}
+								<button
+									className="flex w-full items-start gap-2 rounded px-2 py-2 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
+									data-testid="entry-partner-build"
+									onClick={() => {
+										entryRunStart("partnerBuild", "card")
+										onStartTask(PARTNER_BUILDS[0].opener)
+									}}
+									title="Prefills the opener — nothing runs until you press Enter">
+									<span
+										aria-hidden="true"
+										className="codicon codicon-circuit-board shrink-0"
+										style={{ fontSize: "13px", marginTop: "2px", color: BRAND_CORAL }}
+									/>
+									<span className="flex min-w-0 flex-1 flex-col gap-0.5">
+										<span style={{ fontSize: "12px", fontWeight: 600, color: "var(--vscode-foreground)" }}>
+											Have a supported partner device on the bench?
+										</span>
+										<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
+											Start its guided build — real hardware, step by step, the parts list first. Today:{" "}
+											{PARTNER_BUILDS.map((p) => p.label).join(", ")}.
+										</span>
+									</span>
+									<span
+										aria-hidden="true"
+										className="codicon codicon-chevron-right shrink-0"
+										style={{ fontSize: "11px", opacity: 0.6, marginTop: "2px" }}
+									/>
+								</button>
+							</>
 						) : (
 							<>
 								{/* [SWEEP 2026-09-04, F9] "Pick a step, or just say what you want below." floated
