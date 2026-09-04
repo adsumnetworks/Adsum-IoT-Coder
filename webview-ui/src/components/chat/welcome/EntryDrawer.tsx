@@ -59,14 +59,23 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 	const [showAll, setShowAll] = useState(false)
 	const searchRef = useRef<HTMLInputElement>(null)
 	const panelRef = useRef<HTMLDivElement>(null)
+	/** What had focus before the drawer opened, so closing can hand it back. */
+	const returnFocusRef = useRef<HTMLElement | null>(null)
 	const now = Date.now()
 
 	// Opening resets depth and the filter: a drawer that remembers a stale search looks broken.
 	useEffect(() => {
 		if (open) {
+			// Remember where focus came from. Closing a dialog without handing it back drops the
+			// caret at the top of the document, which is disorienting exactly for the people who
+			// rely on the keyboard — the same people the trap above is for.
+			returnFocusRef.current = document.activeElement as HTMLElement | null
 			setQuery("")
 			setShowAll(false)
 			searchRef.current?.focus()
+		} else if (returnFocusRef.current) {
+			returnFocusRef.current.focus?.()
+			returnFocusRef.current = null
 		}
 	}, [open])
 
@@ -86,7 +95,12 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 			if (!panel) return
 			const stops = [
 				...panel.querySelectorAll<HTMLElement>('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])'),
-			].filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null)
+				// `offsetParent !== null` looks like the obvious visibility test and is a trap of its own:
+				// jsdom always returns null, so the guard silently empties this list and the whole focus
+				// trap becomes a no-op under test — passing while protecting nothing. This drawer never
+				// renders a hidden control anyway (rows are conditional, not hidden), so `hidden` and
+				// `disabled` are the only exclusions that can actually occur here.
+			].filter((el) => !el.hasAttribute("disabled") && !el.hasAttribute("hidden"))
 			if (stops.length === 0) return
 			const first = stops[0]
 			const last = stops[stops.length - 1]
