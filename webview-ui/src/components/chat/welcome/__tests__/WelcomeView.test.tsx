@@ -164,15 +164,24 @@ describe("a handover row resumes into the agent's session, not a task", () => {
 		render(<WelcomeView {...baseProps} />)
 		const resume = screen.getByTestId("entry-resume")
 		expect(resume.textContent).toContain("your agent's session")
-		// And not the folder line an ordinary session would carry — the destination differs, so
-		// the label has to as well.
-		expect(resume.textContent).not.toContain("gw ·")
 	})
 
-	it("an ordinary newest session keeps the folder line", () => {
+	it("an ordinary session says HOW LONG AGO, which is what tells you if it is the one you want", () => {
+		// The sub-line used to repeat the folder, which the header already names two lines above.
+		// Age is the fact that is actually missing and actually decides.
 		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/gw", 0.05), sess(2, "/w/gw", 3)] })
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.getByTestId("entry-resume").textContent).toContain("gw")
+		const text = screen.getByTestId("entry-resume").textContent ?? ""
+		expect(text).toMatch(/\d+\s*(min|h|d) ago|yesterday/)
+	})
+
+	it("a long session title is clipped by CSS, never sliced mid-word", () => {
+		const long = "Continue the LEW840x gateway build — Step 5/7 The application and everything after it"
+		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/gw", 0.05, long), sess(2, "/w/gw", 3)] })
+		render(<WelcomeView {...baseProps} />)
+		// The full string is present in the DOM; the clamp decides what is seen. A hard slice used
+		// to cut "The applicatio" mid-word, which reads as a fault rather than a long title.
+		expect(screen.getByTestId("entry-resume").textContent).toContain("everything after it")
 	})
 })
 

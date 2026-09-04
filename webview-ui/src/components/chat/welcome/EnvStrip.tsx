@@ -172,7 +172,6 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 
 const withV = (v: string) => (v.startsWith("v") ? v : `v${v}`)
 
-
 /** True when there's any nRF signal at all (toolchain, boards, or a project SDK). */
 function nrfHasAnything(env: NrfEnvironment): boolean {
 	return env.extensionPresent || env.nrfutilPresent || env.boards.length > 0 || !!env.projectSdk
@@ -230,7 +229,7 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 		const labelled = env.boards.map((b: NrfBoard) => {
 			// Resolved host-side from the board-identity bit, so a board Nordic ships between our releases
 			// can be named by a registry update rather than a reinstall. Falls back to the raw PCA.
-			const friendly = b.boardVersion ? (b.boardName ?? b.boardVersion) : undefined
+			const friendly = b.boardVersion ? (b.boardName ?? PCA_NAMES[b.boardVersion] ?? b.boardVersion) : undefined
 			// A Nordic USB device with no probe — a dongle — publishes no chip: nrfutil itself answers
 			// "not supported for this type of device". Name the CATEGORY, as every other row names a board,
 			// plus the only specific identity it does publish: the firmware it is running.
@@ -361,6 +360,29 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 // ---------------------------------------------------------------------------
 // Combined strip
 // ---------------------------------------------------------------------------
+
+/**
+ * Nordic board codes → the names people use.
+ *
+ * The strip falls back to `boardVersion` when the host cannot name a board, and that fallback put
+ * a raw `PCA10184` on screen next to three properly-named DKs — a code nobody reads as hardware.
+ * The host resolves names from the board-identity bit where it can; this is the last resort, so it
+ * only needs the DKs a bench actually has.
+ *
+ * Verified against the NCS board definitions rather than recalled — which is how PCA10100 was
+ * caught: it is the nRF52833 DK, and had been mapped to the nRF5340 DK.
+ */
+const PCA_NAMES: Record<string, string> = {
+	PCA10056: "nRF52840 DK",
+	PCA10059: "nRF52840 Dongle",
+	PCA10095: "nRF5340 DK",
+	PCA10100: "nRF52833 DK",
+	PCA10112: "nRF9160 DK",
+	PCA10153: "nRF9161 DK",
+	PCA10156: "nRF54L15 DK",
+	PCA10171: "nRF9151 DK",
+	PCA10184: "nRF54LM20 DK",
+}
 
 const EnvStrip: React.FC = () => {
 	const { nrfEnvironment, espEnvironment, openFolderPaths } = useExtensionState()

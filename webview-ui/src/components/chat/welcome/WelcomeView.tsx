@@ -90,6 +90,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			icon: "circuit-board",
 			platform: "product",
 			need: "lew840x",
+			productLabel: "Fanstel LEW840x",
 			title: "Fanstel LEW840x composable multi-radio gateway",
 			blurb: "BLE in, Ethernet / Wi-Fi / LTE out — with or without the cellular card. Seven steps.",
 			meta: "7 steps",
@@ -175,13 +176,36 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	const devices = [...signals.nrfBoards, ...signals.espDevices]
 
 	const resumeSession = mode.resume
-	const resumeTitle = resumeSession ? resumeSession.task.replace(/\s+/g, " ").slice(0, 60) : ""
+	// Two lines, clipped by CSS rather than by counting characters. A hard slice cut "The
+	// applicatio" mid-word with no ellipsis, which reads as a rendering fault rather than as a
+	// title that is simply long.
+	const resumeTitle = resumeSession ? resumeSession.task.replace(/\s+/g, " ") : ""
+	// How long ago, which is what tells you whether this is the thing you were just doing. The
+	// sub-line was spending its width repeating the folder name already in the header above.
+	const resumeAge = (() => {
+		if (!resumeSession) {
+			return ""
+		}
+		const mins = Math.max(1, Math.round((Date.now() - resumeSession.ts) / 60000))
+		if (mins < 60) {
+			return `${mins} min ago`
+		}
+		const hours = Math.round(mins / 60)
+		if (hours < 24) {
+			return `${hours} h ago`
+		}
+		const days = Math.round(hours / 24)
+		return days === 1 ? "yesterday" : `${days} d ago`
+	})()
 
 	return (
 		<div className="relative flex flex-1 flex-col px-4 pb-2 pt-3" data-testid="welcome-view" style={{ overflowY: "auto" }}>
 			{/* header: identity, and the ONE way to everything not on screen */}
 			<div className="mb-2 flex items-center gap-2">
-				<img alt="Adsum IoT Coder" src={isDark ? adsumLogoDark : adsumLogoLight} style={{ height: "18px" }} />
+				{/* The variants are named for the INK, not the background: adsumLogoDark is the dark-ink
+				    artwork, which belongs on a LIGHT panel. Pairing it with isDark put dark ink on a dark
+				    background and the mark all but disappeared. Inherited from the previous surface. */}
+				<img alt="Adsum IoT Coder" src={isDark ? adsumLogoLight : adsumLogoDark} style={{ height: "18px" }} />
 				<button
 					aria-label="Browse sessions and runs"
 					className="relative ml-auto rounded px-1.5 py-0.5 hover:bg-[var(--vscode-toolbar-hoverBackground)]"
@@ -220,9 +244,14 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						{scopeName || "No folder open"}
 					</span>
 				</div>
+				{/* On a cold start this line is suppressed. Someone opening the tool for the first time
+				    was greeted by "No folder open" followed by "no boards detected" — two statements of
+				    absence before anything they could act on. With a folder open it is orientation;
+				    with nothing at all it is just discouraging, and the samples below are the point. */}
 				<div
 					className="flex flex-wrap items-center gap-x-1.5"
 					data-testid="entry-devices"
+					hidden={isColdStart && devices.length === 0}
 					style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
 					{devices.length > 0 ? (
 						<>
@@ -243,7 +272,11 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				</div>
 			</div>
 
-			<div className="flex w-full flex-col gap-3">
+			{/* Collapsed has very little content, and top-anchoring it left a screen-high void between
+			    the resume and the composer. The resume IS an action, so it belongs next to the other
+			    action rather than a screen away from it — the header keeps the top for orientation.
+			    Expanded fills the space with cards and stays where it is. */}
+			<div className={`flex w-full flex-1 flex-col gap-3${expanded ? "" : " justify-end"}`}>
 				{upgradeShowing && <UpgradeCard onDismiss={onUpgradeDismiss} version={version ?? ""} />}
 				{!craBanner && !upgradeShowing && reviewNudgeShow && (
 					<ReviewNudge
@@ -394,12 +427,21 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							border: `1px solid ${BRAND_CYAN_600}`,
 							background: "var(--vscode-inputOption-activeBackground)",
 						}}>
-						<div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--vscode-foreground)" }}>
+						<div
+							style={{
+								fontSize: "12.5px",
+								fontWeight: 600,
+								color: "var(--vscode-foreground)",
+								display: "-webkit-box",
+								WebkitLineClamp: 2,
+								WebkitBoxOrient: "vertical",
+								overflow: "hidden",
+							}}>
 							Resume — {resumeTitle}
 						</div>
 						<div style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
-							{mode.resumeKind === "handover" ? "your agent's session" : scopeName} · every other session is in the
-							menu, top right
+							{mode.resumeKind === "handover" ? "your agent's session · " : ""}
+							{resumeAge} · every other session is in the menu, top right
 						</div>
 					</button>
 				) : (

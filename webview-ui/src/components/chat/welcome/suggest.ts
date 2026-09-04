@@ -49,6 +49,9 @@ export interface Suggestable {
 	/** Shown instead of a platform reason when nothing is detected — for runs whose requirement is
 	 *  hardware we cannot see, like a sealed product needing its own programming kit. */
 	whyNeutral?: string
+	/** How to NAME the product to a person. Without it a reason line would print the internal id
+	 *  ("this looks like a lew840x project"), and an id is not a product name. */
+	productLabel?: string
 }
 
 export interface Ranked<T> {
@@ -88,7 +91,7 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 
 	const scored: Ranked<T>[] = items.map((item) => {
 		if (item.need && s.product === item.need) {
-			return { item, score: SCORE.product, why: `this looks like a ${item.need} project` }
+			return { item, score: SCORE.product, why: `this looks like a ${item.productLabel ?? item.need} project` }
 		}
 		if (item.platform === "nrf" && hasNrf) {
 			return { item, score: SCORE.boardMatch, why: `${nrf} connected` }
@@ -102,13 +105,17 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 			return { item, score: SCORE.craGrounded, why: `${what} in this project and no SBOM yet` }
 		}
 		if (item.platform === "product" && (hasNrf || hasEsp)) {
-			return { item, score: SCORE.productPartial, why: "some of this product's silicon is on the bench" }
+			return {
+				item,
+				score: SCORE.productPartial,
+				why: `${nrf ?? esp} is connected — this build also needs the rest of the kit`,
+			}
 		}
 		if (item.whyNeutral) {
 			return { item, score: SCORE.neutralRequirement, why: item.whyNeutral }
 		}
 		if (item.platform === s.classification && s.classification !== "none") {
-			return { item, score: SCORE.boardMatch - 20, why: "matches the open project" }
+			return { item, score: SCORE.boardMatch - 20, why: "matches the project you have open" }
 		}
 		if (item.platform === "both") {
 			// A run that works on either platform is, in practice, about the board that is plugged
@@ -121,15 +128,19 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 			if (hasEsp && !hasNrf) {
 				return { item, score: SCORE.boardMatch - 5, why: `${esp} connected` }
 			}
-			return { item, score: SCORE.either, why: "works on either platform" }
+			return { item, score: SCORE.either, why: "works on nRF and on ESP32" }
 		}
 		if ((item.platform === "nrf" && s.toolchains.nrf) || (item.platform === "esp" && s.toolchains.esp)) {
-			return { item, score: SCORE.noSignal + 5, why: "its toolchain is installed here" }
+			return {
+				item,
+				score: SCORE.noSignal + 5,
+				why: `its toolchain is installed (${item.platform === "nrf" ? "nRF Connect SDK" : "ESP-IDF"})`,
+			}
 		}
 		if (nothingDetected) {
 			return { item, score: SCORE.noSignal, why: "no board detected — showing a mix" }
 		}
-		return { item, score: SCORE.noMatch, why: "no matching hardware detected" }
+		return { item, score: SCORE.noMatch, why: "no matching board connected" }
 	})
 
 	scored.sort((a, b) => b.score - a.score)
