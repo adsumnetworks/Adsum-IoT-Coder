@@ -6,7 +6,7 @@
 			"id": "adsum/agent",
 			"title": "Identity & Persona",
 			"type": "knowledge",
-			"version": "1.3.1",
+			"version": "1.4.1",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -19,7 +19,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "AGENT.md",
-			"content_hash": "15e0142fa1c5eea86e7e3ffb7fbdfafc7d4c2524893bef53d6159d301fdbfc61"
+			"content_hash": "69eab2fd1faa8b6f87972807f1ea529f4fd6b6dc7b6d77b34d9c7891bdcfeeea"
 		},
 		{
 			"id": "adsum/cra/tools/cra-action",
@@ -75,7 +75,7 @@
 			"id": "adsum/esp/platform",
 			"title": "ESP32 — Platform Index",
 			"type": "knowledge",
-			"version": "1.4.1",
+			"version": "1.5.1",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -87,7 +87,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "platforms/esp/PLATFORM.md",
-			"content_hash": "22a7abe1d3ffc6df8c52feeee178ec4bf760b5a66c28fc716f53939f55d2ce06"
+			"content_hash": "1ec092cdf42246ebd322503b72aa4730305dee84f0fed4b4356d8c0aabfaf844"
 		},
 		{
 			"id": "adsum/esp/rules/bit-loading",
@@ -306,7 +306,7 @@
 			"id": "adsum/nrf/platform",
 			"title": "Nordic nRF — Platform Index",
 			"type": "knowledge",
-			"version": "1.7.1",
+			"version": "1.8.1",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -321,7 +321,7 @@
 				"flash"
 			],
 			"path": "platforms/nrf/PLATFORM.md",
-			"content_hash": "94115fdad4c020353a4c9e699b309445478716e4ccbdb46d102ca19b60b075e8"
+			"content_hash": "49d52f0f3b2162db0cdca34a9353d142d1514a9f475882aa8b619befd30bb5e9"
 		},
 		{
 			"id": "adsum/nrf/rules/bit-loading",
