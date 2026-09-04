@@ -306,12 +306,11 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 
 				{visibleSamples.length > 0 && (
 					<>
-						<Group label="Sample runs" />
+						<Group label="Sample runs" sub="About a minute each · nothing to install" />
 						{visibleSamples.map((s) => (
 							<Row
 								icon={s.icon ?? "play-circle"}
 								key={s.id}
-								meta={s.meta ?? "~1 min · no hardware"}
 								onClick={() => run(s)}
 								testId="entry-drawer-sample"
 								title={s.title}
@@ -383,7 +382,7 @@ const SessionRow: React.FC<{
 	}
 	return (
 		<div
-			className="group flex w-full gap-2.5 px-3 py-2 text-left hover:bg-[var(--vscode-list-hoverBackground)] focus-within:bg-[var(--vscode-list-hoverBackground)]"
+			className="group relative flex w-full gap-2.5 px-3 py-2 text-left hover:bg-[var(--vscode-list-hoverBackground)] focus-within:bg-[var(--vscode-list-hoverBackground)]"
 			data-testid="entry-drawer-session">
 			<span
 				aria-hidden="true"
@@ -417,17 +416,34 @@ const SessionRow: React.FC<{
 					/>
 				) : (
 					<button
-						className="truncate border-0 bg-transparent p-0 text-left"
+						className="border-0 bg-transparent p-0 text-left"
 						data-testid="entry-drawer-session-open"
 						onClick={onOpen}
-						style={{ color: "var(--vscode-foreground)", fontSize: "12px" }}
+						// Two lines, then an ellipsis. [SCREENSHOT r16] Every title in the list was cut at
+						// about 28 characters — "Fix the assertion in zephyr/…", "Step 3/7 — the radio come…"
+						// — which is exactly the part of a title that tells two sessions apart. A session
+						// list exists to be recognised from; one truncated line defeats it.
+						style={{
+							color: "var(--vscode-foreground)",
+							fontSize: "12px",
+							display: "-webkit-box",
+							WebkitLineClamp: 2,
+							WebkitBoxOrient: "vertical",
+							overflow: "hidden",
+						}}
 						title={renamed ? "Renamed — the first prompt is still what search matches" : undefined}>
 						{name}
 					</button>
 				)}
 				<span style={{ color: "var(--vscode-descriptionForeground)", fontSize: "11px" }}>{meta}</span>
 			</div>
-			<span className="flex shrink-0 items-start gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+			{/* Overlaid, not reserved. These are hover-only, and a hover-only control that holds 44 px
+			    of every row open all the time is what was truncating the titles beside it. VS Code's
+			    own lists float row actions over the row's tail on hover; same here, on the hover
+			    background so they never sit on top of text. */}
+			<span
+				className="absolute right-2 top-1.5 flex items-start gap-1 rounded px-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+				style={{ background: "var(--vscode-list-hoverBackground)" }}>
 				<button
 					aria-label="Rename session"
 					className="codicon codicon-edit rounded border-0 bg-transparent p-0.5 hover:bg-[var(--vscode-toolbar-hoverBackground)]"
@@ -454,16 +470,18 @@ const SessionRow: React.FC<{
 
 /** A section head with a rule running off it, so the groups read as bands rather than as three
  *  more grey lines in the same flat column. `first` drops the divider above the first band. */
-const Group: React.FC<{ label: string; first?: boolean }> = ({ label, first }) => (
+const Group: React.FC<{ label: string; first?: boolean; sub?: string }> = ({ label, first, sub }) => (
 	<div
-		className={`px-3 pb-1.5 uppercase ${first ? "pt-2" : "mt-1.5 pt-2.5"}`}
+		className={`px-3 pb-1.5 ${first ? "pt-2" : "mt-1.5 pt-2.5"}`}
 		style={{
 			color: "var(--vscode-descriptionForeground)",
-			fontSize: "10px",
-			letterSpacing: "0.08em",
 			borderTop: first ? undefined : "1px solid var(--vscode-panel-border)",
 		}}>
-		{label}
+		<div className="uppercase" style={{ fontSize: "10px", letterSpacing: "0.08em" }}>
+			{label}
+		</div>
+		{/* One line for what every row in the band shares, so the rows do not each repeat it. */}
+		{sub && <div style={{ fontSize: "11px" }}>{sub}</div>}
 	</div>
 )
 
@@ -496,7 +514,15 @@ const Row: React.FC<{
 		/>
 		<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 			<span className="flex w-full items-baseline gap-2">
-				<span className="truncate" style={{ color: "var(--vscode-foreground)", fontSize: "12px" }}>
+				<span
+					style={{
+						color: "var(--vscode-foreground)",
+						fontSize: "12px",
+						display: "-webkit-box",
+						WebkitLineClamp: 2,
+						WebkitBoxOrient: "vertical",
+						overflow: "hidden",
+					}}>
 					{title}
 				</span>
 				{unseen && (

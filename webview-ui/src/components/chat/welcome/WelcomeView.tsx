@@ -89,8 +89,11 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			platform: "product",
 			need: "lew840x",
 			productLabel: "Fanstel LEW840x",
-			title: "Fanstel LEW840x composable multi-radio gateway",
-			blurb: "BLE in, Ethernet / Wi-Fi / LTE out — with or without the cellular card. Seven steps.",
+			// The card title is the thing you would say; the product's full name is where there is
+			// room for it. "Fanstel LEW840x composable multi-radio gateway" ran to three bold lines
+			// at sidebar width and pushed the card's actual content below the fold of the card.
+			title: "Build the LEW840x gateway",
+			blurb: "Fanstel's composable multi-radio gateway: BLE in, Ethernet / Wi-Fi / LTE out — with or without the cellular card. Seven steps.",
 			meta: "7 steps",
 			whyNeutral: "needs the gateway, its UART bridge board and a Nordic DK as probe — the full list comes first",
 			onRun: () =>
@@ -278,14 +281,16 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						data-testid="entry-scope-title"
 						onClick={() => void FileServiceClient.openFolder(StringRequest.create({ value: "" }))}
 						style={{ marginLeft: "-4px" }}
-						title="Open a folder">
+						title="Open a folder to work on your project">
 						<span
 							aria-hidden="true"
 							className="codicon codicon-folder-opened"
 							style={{ fontSize: "12px", opacity: 0.75 }}
 						/>
 						<span style={{ fontSize: "13px", fontWeight: 600, color: "var(--vscode-foreground)" }}>
-							Open a folder to work on your project
+							{/* Short, because at sidebar width the sentence wrapped a bold line — a heavy
+							    two-line control for a secondary act. The full sentence is the tooltip. */}
+							Open a folder
 						</span>
 						<span
 							aria-hidden="true"
@@ -434,27 +439,17 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 											style={{ fontSize: "11px", color: idx === 0 ? BRAND_CYAN_600 : undefined }}
 										/>
 										<span className="flex min-w-0 flex-1 flex-col">
-											<span
-												className="flex items-baseline gap-2"
-												style={{ fontSize: "12px", fontWeight: 600 }}>
-												<span className="truncate">{s.title}</span>
-												{/* [F3] Three equal rows answered nothing for the person whose one question
-											    is "which do I click first". The cue is on the row, not a tag on the run —
-											    the samples are equals; this is just the door. */}
-												{idx === 0 && (
-													<span
-														className="shrink-0"
-														style={{
-															fontSize: "11px",
-															fontWeight: 600,
-															color: BRAND_CYAN_600,
-															letterSpacing: "0.08em",
-														}}>
-														start here
-													</span>
-												)}
-											</span>
+											{/* Wraps, never truncates. [SCREENSHOT r16] "Example debug with a radio sni…"
+											    on a list of three, and the first title cut to "Example debug ses…" by the cue
+											    sitting beside it. Three rows have room for two lines each. */}
+											<span style={{ fontSize: "12px", fontWeight: 600 }}>{s.title}</span>
 											<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
+												{/* [F3] Three equal rows answered nothing for the person whose one question
+												    is "which do I click first". The cue leads the description of the first
+												    row — on the row, not a tag on the run, and never in the title's width. */}
+												{idx === 0 && (
+													<span style={{ fontWeight: 600, color: BRAND_CYAN_600 }}>Start here — </span>
+												)}
 												{s.blurb}
 											</span>
 										</span>
