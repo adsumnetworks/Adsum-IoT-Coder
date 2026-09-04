@@ -376,3 +376,27 @@ describe("the resume is on the surface whenever there is one", () => {
 		expect(screen.getByText(/Welcome back/)).toBeTruthy()
 	})
 })
+
+describe("the partner-device row on a cold start", () => {
+	// [OPERATOR 2026-09-04] The flagship guided build was invisible on a cold start — it only
+	// surfaced as a suggested run once a folder was open. It sits OUTSIDE the samples box because
+	// that box promises "no hardware", and names the category, not a vendor, because there will
+	// be non-Fanstel devices soon.
+	it("is there, names the category, lists what is supported today, and only prefills", () => {
+		mockState({ openFolderPaths: [], taskHistory: [] })
+		render(<WelcomeView {...baseProps} />)
+		const row = screen.getByTestId("entry-partner-build")
+		expect(row.textContent).toContain("supported partner device")
+		expect(row.textContent).toContain("Fanstel LEW840x")
+		expect(screen.getByTestId("entry-samples").contains(row)).toBe(false)
+		fireEvent.click(row)
+		// onStartTask prefills the composer; the only thing that starts a task is Enter in it.
+		expect(baseProps.onStartTask).toHaveBeenCalledWith(expect.stringContaining("LEW840x"))
+	})
+
+	it("is not on the surface once a folder is open — the gateway is a suggested run there", () => {
+		mockState({ openFolderPaths: ["/w/proj"], taskHistory: [] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.queryByTestId("entry-partner-build")).toBeNull()
+	})
+})
