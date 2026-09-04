@@ -46,10 +46,20 @@ describe("native tool calling reaches the native DeepSeek provider", () => {
 	})
 })
 
-describe("catalogue matches DeepSeek's published figures (checked 2026-08-13)", () => {
+describe("catalogue matches DeepSeek's published figures (re-read 2026-09-04)", () => {
+	// PEAK rates, which are the list price; DeepSeek halves them outside 01:00–04:00 and
+	// 06:00–10:00 UTC on weekdays, and PRICING_SCHEDULES applies that at calculation time.
+	//
+	// [OPERATOR 2026-09-04] The figures this file previously asserted — out 0.28 / 0.87, miss
+	// 0.14 / 0.435, hit 0.0028 / 0.003625 — matched nothing on the page: flash output alone was
+	// 4.7x under the peak rate and still under the off-peak one. They were pinned to a date and
+	// never re-read, which is the whole failure mode a hardcoded price table has. The numbers
+	// below were taken from api-docs.deepseek.com/quick_start/pricing on 2026-09-04, and the
+	// durable fix is the fetched overlay (refreshDirectModelPrices) that lets them change without
+	// a release; this test guards the OFFLINE fallback those prices fall back to.
 	const published = {
-		"deepseek-v4-flash": { maxTokens: 384_000, contextWindow: 1_000_000, out: 0.28, miss: 0.14, hit: 0.0028 },
-		"deepseek-v4-pro": { maxTokens: 384_000, contextWindow: 1_000_000, out: 0.87, miss: 0.435, hit: 0.003625 },
+		"deepseek-v4-flash": { maxTokens: 384_000, contextWindow: 1_000_000, out: 1.32, miss: 0.44, hit: 0.014 },
+		"deepseek-v4-pro": { maxTokens: 384_000, contextWindow: 1_000_000, out: 3.96, miss: 1.32, hit: 0.044 },
 	} as const
 
 	for (const [id, want] of Object.entries(published)) {
@@ -62,16 +72,13 @@ describe("catalogue matches DeepSeek's published figures (checked 2026-08-13)", 
 			assert.equal(m.contextWindow, want.contextWindow, "context window")
 			assert.equal(m.outputPrice, want.out, "output price")
 			assert.equal(m.cacheWritesPrice, want.miss, "cache MISS price (real input cost)")
-			assert.equal(m.cacheReadsPrice, want.hit, "cache HIT price — was 10-24x too high")
+			assert.equal(m.cacheReadsPrice, want.hit, "cache HIT price")
 		})
 	}
 
 	test("the default model is one DeepSeek still sells", () => {
 		// deepseek-chat and deepseek-reasoner no longer appear on DeepSeek's pricing page.
-		assert.ok(
-			deepSeekDefaultModelId.includes("v4"),
-			`default must be a current model, got "${deepSeekDefaultModelId}"`,
-		)
+		assert.ok(deepSeekDefaultModelId.includes("v4"), `default must be a current model, got "${deepSeekDefaultModelId}"`)
 	})
 
 	test("legacy ids remain so an existing saved configuration still resolves", () => {
@@ -83,10 +90,7 @@ describe("catalogue matches DeepSeek's published figures (checked 2026-08-13)", 
 describe("the in-chat picker offers DeepSeek", () => {
 	test("ModelPickerModal does not filter deepseek out", () => {
 		// Guards the literal cause of "DeepSeek is manual": a working provider dropped by an allowlist.
-		const src = fs.readFileSync(
-			path.join(process.cwd(), "webview-ui/src/components/chat/ModelPickerModal.tsx"),
-			"utf8",
-		)
+		const src = fs.readFileSync(path.join(process.cwd(), "webview-ui/src/components/chat/ModelPickerModal.tsx"), "utf8")
 		const filter = src.slice(src.indexOf("const configuredProviders"), src.indexOf("}, [apiConfiguration"))
 		assert.match(filter, /p === "deepseek"/, "deepseek must survive the provider filter")
 	})
