@@ -408,7 +408,7 @@ const SessionRow: React.FC<{
 						}}
 						ref={inputRef}
 						style={{
-							fontSize: "12.5px",
+							fontSize: "12px",
 							color: "var(--vscode-input-foreground)",
 							background: "var(--vscode-input-background)",
 							border: `1px solid ${BRAND_CYAN_600}`,
@@ -420,7 +420,7 @@ const SessionRow: React.FC<{
 						className="truncate border-0 bg-transparent p-0 text-left"
 						data-testid="entry-drawer-session-open"
 						onClick={onOpen}
-						style={{ color: "var(--vscode-foreground)", fontSize: "12.5px" }}
+						style={{ color: "var(--vscode-foreground)", fontSize: "12px" }}
 						title={renamed ? "Renamed — the first prompt is still what search matches" : undefined}>
 						{name}
 					</button>
@@ -496,14 +496,14 @@ const Row: React.FC<{
 		/>
 		<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 			<span className="flex w-full items-baseline gap-2">
-				<span className="truncate" style={{ color: "var(--vscode-foreground)", fontSize: "12.5px" }}>
+				<span className="truncate" style={{ color: "var(--vscode-foreground)", fontSize: "12px" }}>
 					{title}
 				</span>
 				{unseen && (
 					<span
 						className="shrink-0"
 						style={{
-							fontSize: "9px",
+							fontSize: "10px",
 							border: `1px solid ${BRAND_CORAL}`,
 							color: BRAND_CORAL,
 							borderRadius: "9px",
@@ -519,7 +519,7 @@ const Row: React.FC<{
 			{meta && <span style={{ color: "var(--vscode-descriptionForeground)", fontSize: "11px" }}>{meta}</span>}
 			{/* Muted, not cyan. Cyan is the action colour; spending it on explanatory text that repeats
 		    down the list made the least important words the loudest on the surface. */}
-			{why && <span style={{ color: "var(--vscode-descriptionForeground)", fontSize: "10.5px" }}>{why}</span>}
+			{why && <span style={{ color: "var(--vscode-descriptionForeground)", fontSize: "11px" }}>{why}</span>}
 		</span>
 	</button>
 )

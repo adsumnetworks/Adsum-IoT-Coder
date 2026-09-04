@@ -110,8 +110,8 @@ const IntentCard: React.FC<IntentCardProps> = ({
 			<div style={{ flex: 1, minWidth: 0 }}>
 				<div
 					style={{
-						fontSize: "13.5px",
-						fontWeight: 700,
+						fontSize: "14px",
+						fontWeight: 600,
 						color: "var(--vscode-foreground)",
 						marginBottom: "3px",
 						display: "flex",
@@ -123,8 +123,8 @@ const IntentCard: React.FC<IntentCardProps> = ({
 					{routeChip && (
 						<span
 							style={{
-								fontSize: "9px",
-								fontWeight: 700,
+								fontSize: "10px",
+								fontWeight: 600,
 								color: BRAND_CYAN_700,
 								border: `1px solid ${brandAlpha(BRAND_CYAN_600, 0.45)}`,
 								borderRadius: "9px",
@@ -137,7 +137,7 @@ const IntentCard: React.FC<IntentCardProps> = ({
 				</div>
 				<div
 					style={{
-						fontSize: "11.5px",
+						fontSize: "12px",
 						color: "var(--vscode-descriptionForeground)",
 						lineHeight: 1.45,
 					}}>
@@ -159,7 +159,7 @@ const IntentCard: React.FC<IntentCardProps> = ({
 					<div
 						data-testid={testId ? `${testId}-subline` : undefined}
 						style={{
-							fontSize: "10.5px",
+							fontSize: "11px",
 							color: sublineColor ?? "var(--vscode-descriptionForeground)",
 							opacity: sublineColor ? 1 : 0.85,
 							marginTop: "5px",
@@ -178,25 +178,25 @@ const Pill: React.FC<{ text: string; variant: "primary" | "soon" }> = ({ text, v
 		style={
 			variant === "primary"
 				? {
-						fontSize: "9px",
-						fontWeight: 700,
+						fontSize: "10px",
+						fontWeight: 600,
 						padding: "2px 7px",
 						borderRadius: "999px",
 						background: BRAND_CYAN_600,
 						color: "#04222b",
-						letterSpacing: "0.04em",
+						letterSpacing: "0.08em",
 						flexShrink: 0,
 					}
 				: {
-						fontSize: "9px",
-						fontWeight: 700,
+						fontSize: "10px",
+						fontWeight: 600,
 						padding: "2px 7px",
 						borderRadius: "999px",
 						background: "color-mix(in srgb, var(--vscode-foreground) 12%, transparent)",
 						color: "var(--vscode-descriptionForeground)",
 						border: SOON_BORDER,
 						textTransform: "uppercase",
-						letterSpacing: "0.04em",
+						letterSpacing: "0.08em",
 						flexShrink: 0,
 					}
 		}>

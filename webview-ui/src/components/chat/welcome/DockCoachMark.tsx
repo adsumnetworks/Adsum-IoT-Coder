@@ -47,7 +47,7 @@ const DockCoachMark: React.FC<DockCoachMarkProps> = ({ hasProject }) => {
 				alignItems: "flex-start",
 				gap: "6px",
 				paddingLeft: "2px",
-				marginBottom: "10px",
+				marginTop: "4px",
 			}}>
 			<span
 				aria-hidden="true"
@@ -57,7 +57,7 @@ const DockCoachMark: React.FC<DockCoachMarkProps> = ({ hasProject }) => {
 			<p
 				style={{
 					margin: 0,
-					fontSize: "10.5px",
+					fontSize: "11px",
 					color: "var(--vscode-descriptionForeground)",
 					lineHeight: 1.5,
 					flex: 1,
