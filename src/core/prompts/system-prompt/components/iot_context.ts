@@ -608,7 +608,7 @@ async function getEspPlatformContext(cwd: string, load: TrackedLoad, productRowE
 	// PLATFORM.md, so they MUST all be loaded here (mirrors the nRF rule set).
 	ctx += (await load("platforms/esp/PLATFORM.md")) + "\n\n"
 	ctx += (await load("platforms/esp/rules/esp-terminal.md")) + "\n\n"
-	ctx += (await load("platforms/esp/rules/skill-loading.md")) + "\n\n"
+	ctx += (await load("platforms/esp/rules/bit-loading.md")) + "\n\n"
 	ctx += (await load("platforms/esp/rules/device-identity.md")) + "\n\n"
 	ctx += (await load("platforms/esp/sdks/esp-idf/SDK.md")) + "\n\n"
 
@@ -773,7 +773,7 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	// here as well would advertise the same tools twice. The reasoning above still holds: the agent
 	// cannot guess a path it was never given, which is why the advertisement exists at all.
 	ctx += (await load("platforms/nrf/rules/nrf-terminal.md")) + "\n\n"
-	ctx += (await load("platforms/nrf/rules/skill-loading.md")) + "\n\n"
+	ctx += (await load("platforms/nrf/rules/bit-loading.md")) + "\n\n"
 	ctx += (await load("platforms/nrf/rules/device-identity.md")) + "\n\n"
 
 	// Always load: NCS SDK knowledge (project structure, Kconfig, build reference)
@@ -975,14 +975,17 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	// the neutral default. See routePlatform().
 	const summary = getCachedWorkspaceSummary()
 	const route = routePlatform(summary)
-	const exampleSkillPath =
-		summary === "esp" ? "platforms/esp/workflows/debug-loop.md" : "platforms/nrf/workflows/log-analyzer.md"
+	const exampleBitPath = summary === "esp" ? "platforms/esp/workflows/debug-loop.md" : "platforms/nrf/workflows/log-analyzer.md"
 
 	let iotContext = "## IoT & Embedded Context\n\n"
 
-	iotContext += `> **SKILL LIBRARY LOCATION:** In this system, "Skills" refers collectively to both Workflows (multi-step tasks) and Actions (atomic operations).\n`
-	iotContext += `> All agent skills and documentation files are physically located at \`${kbPath}\`.\n`
-	iotContext += `> **CRITICAL RULE:** When using \`read_file\` to load a skill, you MUST use the absolute path by combining this directory with the skill file's relative path. For example: \`${kbPath}/${exampleSkillPath}\`\n\n`
+	// "Knowledge bit" / "Tool bit" — never "skill". [OPERATOR 2026-09-04] The host inherits a real
+	// Skills feature from upstream (SKILL.md folders, use_skill, the toggles in settings), and the
+	// developer's own Claude Code has a native Skill tool beside Adsum's MCP tool. One word for two
+	// mechanisms in the same context is how a model calls the wrong one.
+	iotContext += `> **KNOWLEDGE BIT LOCATION:** In this system, "Knowledge bits" are the Workflows (multi-step tasks), Actions (atomic operations), rules and references under one directory; "Tool bits" are the programs among them.\n`
+	iotContext += `> All bits are physically located at \`${kbPath}\`.\n`
+	iotContext += `> **CRITICAL RULE:** When using \`read_file\` to load a bit, you MUST use the absolute path by combining this directory with the bit file's relative path. For example: \`${kbPath}/${exampleBitPath}\`\n\n`
 
 	// Track every knowledge file we pre-load so we can tell the agent NOT to
 	// re-read them (no-double-load / progressive disclosure — context optimization).
@@ -1005,9 +1008,9 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	}
 	iotContext += (await load("rules/core.md")) + "\n\n"
 	iotContext += (await load("rules/tool-routing.md")) + "\n\n"
-	// Shared skill-loading framework (Scope Gate / Command Gate / MANDATORY SKILL LOAD) — factored
+	// Shared bit-loading framework (Scope Gate / Command Gate / MANDATORY BIT LOAD) — factored
 	// out of the two per-platform copies (−3.1K chars each); the platform stubs reference it.
-	iotContext += (await load("rules/skill-loading.md")) + "\n\n"
+	iotContext += (await load("rules/bit-loading.md")) + "\n\n"
 
 	// 1b. Device tools — resolved from tool-bit descriptors, never a hard-coded path. `cwd` lets the
 	//     resolver shorten each command to a workspace-relative path for readable terminal output.
@@ -1079,7 +1082,7 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	}
 
 	// No-double-load manifest: list exactly what is already in context so the agent
-	// never wastes tokens re-reading these. Use read_file only for a skill file NOT
+	// never wastes tokens re-reading these. Use read_file only for a bit file NOT
 	// in this list (a workflow/action a rule points you to).
 	// Hand the injected bits to the credit line. Until now a bit only earned attribution when the agent
 	// READ it (ReadFileToolHandler), so workflows and actions were credited and the always-on bits —
@@ -1090,7 +1093,7 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	if (loaded.length > 0) {
 		iotContext += "\n### Knowledge Already Loaded — do NOT read these again\n\n"
 		iotContext +=
-			"The files below are ALREADY included in your context above. Do NOT call `read_file` on any of them — it only wastes context. Use `read_file` only for a skill file that is NOT in this list:\n\n"
+			"The files below are ALREADY included in your context above. Do NOT call `read_file` on any of them — it only wastes context. Use `read_file` only for a bitl file that is NOT in this list:\n\n"
 		for (const f of loaded) {
 			iotContext += `- ${f}\n`
 		}

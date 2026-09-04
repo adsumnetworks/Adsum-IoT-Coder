@@ -135,7 +135,7 @@ describe("MCP server (as a foreign agent sees it)", () => {
 			// 2. tools/list — H1 tools + the H2 t-bit slice, with schemas
 			const list = await c.call("tools/list")
 			const names = list.result.tools.map((t: any) => t.name).sort()
-			assert.deepEqual(names, ["build", "checkpoint", "exec", "inbox", "load_skill", "resume_handover"])
+			assert.deepEqual(names, ["build", "checkpoint", "exec", "inbox", "load_bit", "resume_handover"])
 			assert.ok(
 				list.result.tools.every((t: any) => t.inputSchema?.type === "object"),
 				"every tool has an object schema",
@@ -154,17 +154,17 @@ describe("MCP server (as a foreign agent sees it)", () => {
 			)
 			assert.equal(JSON.parse(fs.readFileSync(path.join(root, id, "state.json"), "utf8")).status, "active")
 
-			// 4. load_skill — exact id, keyword, and an honest miss
-			const exact = await c.call("tools/call", { name: "load_skill", arguments: { query: "adsum/nrf/actions/flash" } })
+			// 4. load_bit — exact id, keyword, and an honest miss
+			const exact = await c.call("tools/call", { name: "load_bit", arguments: { query: "adsum/nrf/actions/flash" } })
 			assert.match(
 				exact.result.content[0].text,
 				/^◆ Flash firmware v1\.1\.0 — curated by Ismail Hamdad/,
 				"credit line leads the body",
 			)
 			assert.match(exact.result.content[0].text, /west flash/, "body served")
-			const kw = await c.call("tools/call", { name: "load_skill", arguments: { query: "debug" } })
+			const kw = await c.call("tools/call", { name: "load_bit", arguments: { query: "debug" } })
 			assert.match(kw.result.content[0].text, /Debug loop/, "keyword match works")
-			const miss = await c.call("tools/call", { name: "load_skill", arguments: { query: "nonexistent-xyz" } })
+			const miss = await c.call("tools/call", { name: "load_bit", arguments: { query: "nonexistent-xyz" } })
 			assert.equal(miss.result.isError, true)
 			assert.match(miss.result.content[0].text, /adsum\/nrf\/workflows\/debug-loop/, "miss lists what IS available")
 
@@ -219,7 +219,7 @@ describe("MCP server (as a foreign agent sees it)", () => {
 				"checkpoint",
 				"exec",
 				"inbox",
-				"load_skill",
+				"load_bit",
 				"resume_handover",
 			])
 			// pending handover shows up as actionable work
@@ -327,15 +327,15 @@ describe("brief extraction from a recorded session", () => {
 })
 
 describe("dependency closure + verb bridge (H2.0 — the live-test gap)", () => {
-	// The real add-feature idiom: prose "MANDATORY SKILL LOAD: read_file → platforms/...", plus a
+	// The real add-feature idiom: prose "MANDATORY BIT LOAD: read_file → platforms/...", plus a
 	// platform-relative "actions/x.md" shorthand — NO requires: frontmatter.
 	const addFeatureBody = [
 		"# Add Feature Workflow (workflows/add-feature.md)",
 		"See prototype.md for the scaffolding pattern.",
-		"**MANDATORY SKILL LOAD:** `read_file` → `platforms/esp/actions/find-sample.md` and follow it.",
+		"**MANDATORY BIT LOAD:** `read_file` → `platforms/esp/actions/find-sample.md` and follow it.",
 		"4. **Kconfig** → only if the feature needs it (`actions/configure.md` for the sdkconfig).",
 		"read loop via `find-sample.md` — never invent register sequences.",
-		"- **MANDATORY SKILL LOAD:** if it needs debugging, `read_file` → `platforms/esp/workflows/debug-loop.md`.",
+		"- **MANDATORY BIT LOAD:** if it needs debugging, `read_file` → `platforms/esp/workflows/debug-loop.md`.",
 	].join("\n")
 
 	test("extractBitRefs: pulls full-path AND platform-relative spokes, drops self + bare filenames", () => {
@@ -348,10 +348,10 @@ describe("dependency closure + verb bridge (H2.0 — the live-test gap)", () => 
 		assert.ok(!refs.some((r) => r.endsWith("/prototype")), "bare filename not guessed")
 	})
 
-	test("bridgeLoadVerbs: rewrites the read_file→path idiom to load_skill, leaves other prose alone", () => {
+	test("bridgeLoadVerbs: rewrites the read_file→path idiom to load_bit, leaves other prose alone", () => {
 		const out = bridgeLoadVerbs("adsum/esp/workflows/add-feature", addFeatureBody)
-		assert.ok(out.includes('call `load_skill("adsum/esp/actions/find-sample")`'), "full path bridged")
-		assert.ok(out.includes('call `load_skill("adsum/esp/workflows/debug-loop")`'), "second directive bridged")
+		assert.ok(out.includes('call `load_bit("adsum/esp/actions/find-sample")`'), "full path bridged")
+		assert.ok(out.includes('call `load_bit("adsum/esp/workflows/debug-loop")`'), "second directive bridged")
 		assert.ok(!out.includes("read_file` → `platforms"), "no read_file→path directive survives")
 		assert.ok(out.includes("never invent register sequences"), "ordinary prose untouched")
 		assert.ok(out.includes("See prototype.md"), "non-directive filename mention untouched")
@@ -414,11 +414,11 @@ describe("H2.0.1 — requires: frontmatter, workflow steps, core fallback (the s
 			"prose",
 			"## Step 0.5 — front door: ONE ask, THREE options (ask FIRST, before building)",
 			"1. **Not a step** — this list is not under a sequence-announcing heading.",
-			"## The five phases (emit the `### Step N/5` banner at the start of each; MANDATORY SKILL LOAD per phase)",
+			"## The five phases (emit the `### Step N/5` banner at the start of each; MANDATORY BIT LOAD per phase)",
 			"1. **Inventory (SBOM) — the door.** `read_file` → `platforms/nrf/actions/cra-generate-sbom.md`",
 			"   continuation line, not a step",
 			"2. **Scan for CVEs.** follow cve-scan.md",
-			"5. **One concrete next step — MANDATORY SKILL LOAD.** finding-driven",
+			"5. **One concrete next step — MANDATORY BIT LOAD.** finding-driven",
 			"## Write + present (every path)",
 			"1. **Also not a step** — the announcing section was closed by the heading above.",
 		].join("\n")
@@ -428,7 +428,7 @@ describe("H2.0.1 — requires: frontmatter, workflow steps, core fallback (the s
 			"Step 0.5: front door: ONE ask, THREE options",
 			"Step 1/5: Inventory (SBOM) — the door",
 			"Step 2/5: Scan for CVEs",
-			"Step 5/5: One concrete next step — MANDATORY SKILL LOAD",
+			"Step 5/5: One concrete next step — MANDATORY BIT LOAD",
 		])
 	})
 
@@ -615,18 +615,18 @@ describe("H2.1 v1 — the milestone dialogue (interrogating responses, zero infe
 		}
 	})
 
-	test("load_skill: serves an index (non-closure) bit from disk, bridged, with credit + reminder footer", async () => {
+	test("load_bit: serves an index (non-closure) bit from disk, bridged, with credit + reminder footer", async () => {
 		const { root } = richFixture()
 		const c = mcpClient(root)
 		try {
 			await c.call("initialize", { protocolVersion: "2025-06-18" })
 			await c.call("tools/call", { name: "resume_handover", arguments: {} })
-			const r = await c.call("tools/call", { name: "load_skill", arguments: { query: "adsum/esp/rules/esp-terminal" } })
+			const r = await c.call("tools/call", { name: "load_bit", arguments: { query: "adsum/esp/rules/esp-terminal" } })
 			const text = r.result.content[0].text
 			assert.equal(r.result.isError, false)
 			assert.match(text, /^◆ ESP Terminal Rule — curated by Omar Morceli/, "credit from index metadata")
 			assert.ok(!text.includes("id: adsum/esp"), "frontmatter stripped")
-			assert.match(text, /load_skill\("adsum\/esp\/actions\/build"\)/, "read_file idiom bridged on demand")
+			assert.match(text, /load_bit\("adsum\/esp\/actions\/build"\)/, "read_file idiom bridged on demand")
 			assert.match(text, /Report back with `checkpoint`/, "reminder footer rides every serve")
 		} finally {
 			c.kill()

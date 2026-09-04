@@ -244,7 +244,7 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		}
 
 		// Recovery for a common agent mistake: the knowledge base's own cross-reference tables
-		// (skill-loading.md, PLATFORM.md, …) show skill paths RELATIVE to the iot-knowledge root
+		// (bit-loading.md, PLATFORM.md, …) show bit paths RELATIVE to the iot-knowledge root
 		// (e.g. "platforms/nrf/workflows/debug-loop.md") even though the system prompt's CRITICAL
 		// RULE asks for the full absolute path. When that happens, `relPath` resolves against the
 		// WORKSPACE cwd instead and 404s before the P2.5 un-bundled-bit fallback below even gets a
@@ -269,7 +269,7 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			displayPath = path.join("iot-knowledge", relPath)
 		}
 
-		// No-double-load guard: iot-knowledge skill files don't change during a task, and many are
+		// No-double-load guard: iot-knowledge bit files do not change during a task, and many are
 		// pre-loaded into the system prompt. If the agent re-reads one it already pulled this task
 		// (bundled OR downloaded), return a short stub instead of the full text to save context.
 		const isKnowledgeFile = absolutePath.startsWith(knowledgeRoot + path.sep)
