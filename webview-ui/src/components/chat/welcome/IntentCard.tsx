@@ -46,8 +46,13 @@ const IntentCard: React.FC<IntentCardProps> = ({
 }) => {
 	const inert = disabled || comingSoon
 
-	// Visual tier: hero (cyan) → coral (live) → neutral dashed (coming soon).
-	const border = comingSoon ? SOON_BORDER : primary ? BRAND_CYAN_600 : brandAlpha(BRAND_CORAL, 0.6)
+	// Visual tier: hero (cyan frame + cyan chip) → live (neutral frame, coral chip) → coming soon
+	// (neutral dashed). [SWEEP 2026-09-04, F8] Secondary cards had coral FRAMES as well as coral
+	// chips: coral is the identity colour and a coral frame reads as a warning in several themes,
+	// and with three coloured frames on screen the one cyan frame stopped being singular. The chip
+	// keeps the identity; the frame is the panel's own border, so exactly one card on the surface
+	// has a coloured edge and it is the one the ranking put first.
+	const border = comingSoon ? SOON_BORDER : primary ? BRAND_CYAN_600 : "var(--vscode-panel-border)"
 	const bg = comingSoon
 		? "var(--vscode-input-background)"
 		: primary

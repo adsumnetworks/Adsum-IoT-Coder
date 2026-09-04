@@ -1,5 +1,6 @@
 import type { HistoryItem } from "@shared/HistoryItem"
-import { StringRequest } from "@shared/proto/cline/common"
+import { StringArrayRequest, StringRequest } from "@shared/proto/cline/common"
+import { RenameTaskRequest } from "@shared/proto/cline/task"
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { TaskServiceClient } from "@/services/grpc-client"
 import { BRAND_CORAL, BRAND_CYAN_600 } from "../brandColors"
@@ -51,6 +52,9 @@ const ageLabel = (ts: number, now: number): string => {
 	const days = Math.round(hours / 24)
 	return days === 1 ? "yesterday" : `${days} d ago`
 }
+
+/** What a session is called: the developer's name for it if they gave one, else its first prompt. */
+const nameOf = (item: HistoryItem): string => item.title?.trim() || item.task
 
 const folderOf = (item: HistoryItem): string =>
 	item.cwdOnTaskInitialization ? (item.cwdOnTaskInitialization.split("/").pop() ?? "") : ""
@@ -125,7 +129,7 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 		() =>
 			history
 				.filter((h) => h.ts && h.task)
-				.filter((h) => match(h.task + " " + folderOf(h)))
+				.filter((h) => match(nameOf(h) + " " + h.task + " " + folderOf(h)))
 				.sort((a, b) => b.ts - a.ts),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[history, q],
@@ -142,7 +146,7 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 	// clock is what separates them; it is added only where a title actually repeats, so the common
 	// case keeps the shorter, friendlier "yesterday".
 	const titleCounts = shownSessions.reduce<Record<string, number>>((acc, h) => {
-		acc[h.task] = (acc[h.task] ?? 0) + 1
+		acc[nameOf(h)] = (acc[nameOf(h)] ?? 0) + 1
 		return acc
 	}, {})
 	const clockOf = (ts: number) => new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
@@ -164,6 +168,17 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 		r.onRun()
 		onClose()
 	}
+	// The host confirms both deletes with a modal of its own; the drawer stays open so the list can be
+	// seen to change. Rename posts state back, which re-renders the row with its new name.
+	const deleteSession = (id: string) =>
+		TaskServiceClient.deleteTasksWithIds(StringArrayRequest.create({ value: [id] })).catch((e) =>
+			console.error("Error deleting task:", e),
+		)
+	const deleteAll = () => TaskServiceClient.deleteAllTaskHistory({}).catch((e) => console.error("Error deleting history:", e))
+	const renameSession = (id: string, title: string) =>
+		TaskServiceClient.renameTask(RenameTaskRequest.create({ taskId: id, title })).catch((e) =>
+			console.error("Error renaming task:", e),
+		)
 
 	return (
 		<div
@@ -192,33 +207,50 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 				</div>
 				<button
 					aria-label="Close"
-					className="codicon codicon-close shrink-0 p-1 hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+					// [SWEEP 2026-09-04, F14] A <button> brings its own grey fill, so the icon rendered as a
+					// filled square beside the filter. Bare icon; the hover fill is the only background.
+					className="codicon codicon-close shrink-0 rounded border-0 bg-transparent p-1 hover:bg-[var(--vscode-toolbar-hoverBackground)]"
 					data-testid="entry-drawer-close"
 					onClick={onClose}
 					style={{ color: "var(--vscode-descriptionForeground)", fontSize: "13px" }}
 				/>
 			</div>
 
-			<div className="flex-1 overflow-auto rounded-md" style={{ border: "1px solid var(--vscode-panel-border)" }}>
+			{/* [F14] Sized to its rows, capped by the panel — not stretched to the panel. Three rows in a
+			    frame the height of the whole sidebar read as an empty page with a list at the top. */}
+			<div className="min-h-0 overflow-auto rounded-md" style={{ border: "1px solid var(--vscode-panel-border)" }}>
 				{shownSessions.length > 0 && (
 					<>
 						<Group first={true} label={showAll || q ? `All sessions · ${sessions.length}` : "Recent sessions"} />
 						{shownSessions.map((h) => (
-							<Row
-								icon="history"
+							<SessionRow
 								key={h.id}
 								meta={[
 									foldersDiffer ? folderOf(h) : "",
 									ageLabel(h.ts, now),
-									titleCounts[h.task] > 1 ? clockOf(h.ts) : "",
+									titleCounts[nameOf(h)] > 1 ? clockOf(h.ts) : "",
 								]
 									.filter(Boolean)
 									.join(" · ")}
-								onClick={() => openSession(h.id)}
-								testId="entry-drawer-session"
-								title={h.task}
+								name={nameOf(h)}
+								onDelete={() => deleteSession(h.id)}
+								onOpen={() => openSession(h.id)}
+								onRename={(title) => renameSession(h.id, title)}
+								renamed={!!h.title}
 							/>
 						))}
+						{/* [OPERATOR 2026-09-04] "we should be able to delete one or all, resume or rename".
+						    Delete-all lives only in the full list, never beside three recent rows, and the
+						    host asks for confirmation itself (webview confirm() is blocked). */}
+						{(showAll || q) && sessions.length > 1 && !q && (
+							<button
+								className="w-full py-2 pl-[41px] pr-3 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
+								data-testid="entry-drawer-delete-all"
+								onClick={deleteAll}
+								style={{ color: "var(--vscode-descriptionForeground)", fontSize: "11px" }}>
+								Delete all {sessions.length} sessions…
+							</button>
+						)}
 						{!q && sessions.length > RECENT && (
 							<button
 								className="flex w-full flex-col py-2 pl-[41px] pr-3 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
@@ -314,6 +346,108 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 			<div style={{ color: "var(--vscode-descriptionForeground)", fontSize: "11px" }}>
 				<kbd>Esc</kbd> closes
 			</div>
+		</div>
+	)
+}
+
+/**
+ * One session: open on click, rename and delete from the actions at its right edge.
+ *
+ * A div with a button role rather than a <button>, because a row that carries its own buttons
+ * cannot itself be one. The actions are always in the tab order and only *painted* on hover or
+ * focus, so a keyboard user reaches them and a mouse user is not shown two icons on every row.
+ * Rename is inline — the name becomes an input where it sits, Enter keeps it, Escape drops it —
+ * so the row never changes shape and nothing else on the surface moves.
+ */
+const SessionRow: React.FC<{
+	name: string
+	meta: string
+	renamed: boolean
+	onOpen: () => void
+	onRename: (title: string) => void
+	onDelete: () => void
+}> = ({ name, meta, renamed, onOpen, onRename, onDelete }) => {
+	const [editing, setEditing] = useState(false)
+	const [draft, setDraft] = useState(name)
+	const inputRef = useRef<HTMLInputElement>(null)
+	useEffect(() => {
+		if (editing) {
+			inputRef.current?.focus()
+			inputRef.current?.select()
+		}
+	}, [editing])
+	const commit = () => {
+		setEditing(false)
+		const next = draft.trim()
+		if (next !== name) onRename(next)
+	}
+	return (
+		<div
+			className="group flex w-full gap-2.5 px-3 py-2 text-left hover:bg-[var(--vscode-list-hoverBackground)] focus-within:bg-[var(--vscode-list-hoverBackground)]"
+			data-testid="entry-drawer-session">
+			<span
+				aria-hidden="true"
+				className="codicon codicon-history shrink-0"
+				style={{ fontSize: "14px", marginTop: "2px", opacity: 0.6, width: "16px" }}
+			/>
+			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+				{editing ? (
+					<input
+						aria-label="Session name"
+						className="w-full rounded px-1 outline-none"
+						data-testid="entry-drawer-session-name"
+						onBlur={commit}
+						onChange={(e) => setDraft(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") commit()
+							else if (e.key === "Escape") {
+								setDraft(name)
+								setEditing(false)
+							}
+							e.stopPropagation()
+						}}
+						ref={inputRef}
+						style={{
+							fontSize: "12.5px",
+							color: "var(--vscode-input-foreground)",
+							background: "var(--vscode-input-background)",
+							border: `1px solid ${BRAND_CYAN_600}`,
+						}}
+						value={draft}
+					/>
+				) : (
+					<button
+						className="truncate border-0 bg-transparent p-0 text-left"
+						data-testid="entry-drawer-session-open"
+						onClick={onOpen}
+						style={{ color: "var(--vscode-foreground)", fontSize: "12.5px" }}
+						title={renamed ? "Renamed — the first prompt is still what search matches" : undefined}>
+						{name}
+					</button>
+				)}
+				<span style={{ color: "var(--vscode-descriptionForeground)", fontSize: "11px" }}>{meta}</span>
+			</div>
+			<span className="flex shrink-0 items-start gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+				<button
+					aria-label="Rename session"
+					className="codicon codicon-edit rounded border-0 bg-transparent p-0.5 hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+					data-testid="entry-drawer-session-rename"
+					onClick={() => {
+						setDraft(name)
+						setEditing(true)
+					}}
+					style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)" }}
+					title="Rename"
+				/>
+				<button
+					aria-label="Delete session"
+					className="codicon codicon-trash rounded border-0 bg-transparent p-0.5 hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+					data-testid="entry-drawer-session-delete"
+					onClick={onDelete}
+					style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)" }}
+					title="Delete"
+				/>
+			</span>
 		</div>
 	)
 }

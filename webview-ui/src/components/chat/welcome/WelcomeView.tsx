@@ -2,7 +2,7 @@ import { StringRequest } from "@shared/proto/cline/common"
 import React, { useEffect, useMemo, useState } from "react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import { useExtensionState } from "@/context/ExtensionStateContext"
-import { StateServiceClient, TaskServiceClient, WebServiceClient } from "@/services/grpc-client"
+import { FileServiceClient, StateServiceClient, TaskServiceClient, WebServiceClient } from "@/services/grpc-client"
 import { BRAND_CORAL, BRAND_CYAN_600 } from "../brandColors"
 import { DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
@@ -99,6 +99,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		return rank<DrawerRun>([product, ...fromIntents], signals)
 	}, [intents, platform, projectName, signals, onSelectMode, onStartTask])
 
+	/** Does any suggestion rest on a detection? Decides whether a card may be lit as primary. */
+	const anyGrounded = runs.some((r) => r.grounded)
 	const samples: DrawerRun[] = useMemo(() => {
 		// Named for what each one SHOWS, and ordered gentlest first. The catalogue's own sort puts
 		// "new" rows on top, which is right for announcing a capability and wrong for a person who
@@ -216,7 +218,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 					onClick={openDrawer}
 					title="Browse sessions and runs">
 					<span aria-hidden="true" className="codicon codicon-menu" />
-					{unseen.length > 0 && (
+					{/* [SWEEP 2026-09-04, F4] A coral dot for "runs you have not seen" on a first visit,
+					    when nothing has been seen, is a nag rather than a signal. It appears once there is
+					    at least one run the developer HAS opened. */}
+					{unseen.length > 0 && unseen.length < runs.length && (
 						<span
 							data-testid="entry-burger-badge"
 							style={{
@@ -249,14 +254,41 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						Environment
 					</div>
 				)}
-				<div className="flex items-baseline gap-1.5">
-					<span aria-hidden="true" className="codicon codicon-folder" style={{ fontSize: "12px", opacity: 0.75 }} />
-					<span
+				{scopeName ? (
+					<div className="flex items-baseline gap-1.5">
+						<span aria-hidden="true" className="codicon codicon-folder" style={{ fontSize: "12px", opacity: 0.75 }} />
+						<span
+							data-testid="entry-scope-title"
+							style={{ fontSize: "13px", fontWeight: 600, color: "var(--vscode-foreground)" }}>
+							{scopeName}
+						</span>
+					</div>
+				) : (
+					// [SWEEP 2026-09-04, F2] "No folder open" was a dead statement at the head of the
+					// surface. The person who has a project wants to open it; the person who does not
+					// wants nothing from this line. One control serves the first and costs the second
+					// nothing. Same host call the "open a project" card already uses (runIntent.ts).
+					<button
+						className="flex items-baseline gap-1.5 rounded px-1 py-0.5 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
 						data-testid="entry-scope-title"
-						style={{ fontSize: "13px", fontWeight: 600, color: "var(--vscode-foreground)" }}>
-						{scopeName || "No folder open"}
-					</span>
-				</div>
+						onClick={() => void FileServiceClient.openFolder(StringRequest.create({ value: "" }))}
+						style={{ marginLeft: "-4px" }}
+						title="Open a folder">
+						<span
+							aria-hidden="true"
+							className="codicon codicon-folder-opened"
+							style={{ fontSize: "12px", opacity: 0.75 }}
+						/>
+						<span style={{ fontSize: "13px", fontWeight: 600, color: "var(--vscode-foreground)" }}>
+							Open a folder to work on your project
+						</span>
+						<span
+							aria-hidden="true"
+							className="codicon codicon-chevron-right"
+							style={{ fontSize: "11px", opacity: 0.6 }}
+						/>
+					</button>
+				)}
 				{/* Folder, then hardware, as ONE titled block — [OPERATOR 2026-09-04] "the current
 				    folder and detection maybe better in the top but with an appropriate title".
 				    Orientation is what you read first, so it belongs where the eye lands, and the two
@@ -338,9 +370,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							<div style={{ fontSize: "11.5px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
 								{/* Never "Working on <folder>": the Environment group at the top of the panel
 								    already names the folder, and repeating it here read as a stutter. */}
-								{isColdStart
-									? "Pick one and watch a real session do a real job — real curated knowledge, real commands, real evidence."
-									: "Pick a step, or just say what you want below."}
+								{/* [F5] The triple-"real" was marketing voice. [F9] The working-case sentence moved
+								    into the SUGGESTED RUNS row, so this line renders only when it has something
+								    of its own to say. */}
+								{isColdStart ? "Pick one and watch a real session do a real job, with nothing to install." : null}
 							</div>
 							{/* A first visit to THIS folder by someone who has worked in others. The runs above answer
 							    what to do; this line answers where everything else went. */}
@@ -372,19 +405,16 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 								className="flex flex-col gap-1.5 rounded-lg p-2"
 								data-testid="entry-samples"
 								style={{ border: `1px solid ${BRAND_CYAN_600}` }}>
-								<div
-									className="px-1 uppercase"
-									style={{
-										fontSize: "10px",
-										letterSpacing: "0.06em",
-										color: "var(--vscode-descriptionForeground)",
-									}}>
-									{/* Two lines by construction. Wrapped, this sentence put "· no hardware…" at the
-									    head of the second line, which reads as a typo rather than as a clause. */}
-									<div>Sample runs · about a minute each</div>
-									<div>No hardware, nothing installed</div>
+								{/* [SWEEP 2026-09-04, F1] Tracked caps wrap badly: two caps lines became four at
+								    sidebar width. One short caps label, and the qualifier in sentence case, where
+								    wrapping costs nothing. */}
+								<div className="px-1" style={{ color: "var(--vscode-descriptionForeground)" }}>
+									<div className="uppercase" style={{ fontSize: "10px", letterSpacing: "0.06em" }}>
+										Sample runs
+									</div>
+									<div style={{ fontSize: "11px" }}>About a minute each · nothing to install</div>
 								</div>
-								{samples.map((s) => (
+								{samples.map((s, idx) => (
 									<button
 										className="flex items-start gap-2 rounded p-2 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
 										data-testid="entry-sample"
@@ -393,9 +423,32 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 											entryRunStart(s.id, "sample")
 											s.onRun()
 										}}>
-										<span aria-hidden="true" className="codicon codicon-play" style={{ fontSize: "11px" }} />
+										<span
+											aria-hidden="true"
+											className="codicon codicon-play"
+											style={{ fontSize: "11px", color: idx === 0 ? BRAND_CYAN_600 : undefined }}
+										/>
 										<span className="flex min-w-0 flex-1 flex-col">
-											<span style={{ fontSize: "12.5px", fontWeight: 600 }}>{s.title}</span>
+											<span
+												className="flex items-baseline gap-2"
+												style={{ fontSize: "12.5px", fontWeight: 600 }}>
+												<span className="truncate">{s.title}</span>
+												{/* [F3] Three equal rows answered nothing for the person whose one question
+											    is "which do I click first". The cue is on the row, not a tag on the run —
+											    the samples are equals; this is just the door. */}
+												{idx === 0 && (
+													<span
+														className="shrink-0"
+														style={{
+															fontSize: "9.5px",
+															fontWeight: 500,
+															color: BRAND_CYAN_600,
+															letterSpacing: "0.04em",
+														}}>
+														start here
+													</span>
+												)}
+											</span>
 											<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
 												{s.blurb}
 											</span>
@@ -407,14 +460,24 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							</div>
 						) : (
 							<>
+								{/* [SWEEP 2026-09-04, F9] "Pick a step, or just say what you want below." floated
+								    as its own paragraph directly above this label, and the two said the same
+								    thing. One row: the label, and its alternative in sentence case beside it. */}
 								<div
-									className="uppercase"
-									style={{
-										fontSize: "10.5px",
-										letterSpacing: "0.09em",
-										color: "var(--vscode-descriptionForeground)",
-									}}>
-									Suggested runs
+									className="flex flex-wrap items-baseline gap-x-2"
+									style={{ fontSize: "10.5px", color: "var(--vscode-descriptionForeground)" }}>
+									<span className="uppercase" style={{ letterSpacing: "0.09em" }}>
+										Suggested runs
+									</span>
+									{/* With no detection behind any card the ranking is a shrug, and the honest
+									    thing is to say so ONCE here rather than on every card — and to light no
+									    card as primary, since a cyan frame with no reason under it is a
+									    recommendation the signals never made (colour is never a verdict). */}
+									<span style={{ fontSize: "11px" }}>
+										{anyGrounded
+											? "or describe what you want below"
+											: "no board detected — showing a mix · or describe what you want below"}
+									</span>
 								</div>
 								{runs.slice(0, CARDS).map((r, idx) => (
 									<IntentCard
@@ -428,8 +491,11 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 											entryRunStart(r.item.id, "card")
 											r.item.onRun()
 										}}
-										primary={idx === 0}
-										subline={`◆ ${r.why}`}
+										primary={idx === 0 && anyGrounded}
+										// [F7] Same rule as the drawer: a reason earns its line only when it names
+										// something detected. "works on nRF and on ESP32" on three cards in a row
+										// was the one thing every card said and the loudest text on each.
+										subline={r.grounded ? `◆ ${r.why}` : undefined}
 										sublineColor={BRAND_CYAN_600}
 										testId={`entry-run-${r.item.id}`}
 										title={r.item.title}
@@ -452,17 +518,27 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							border: `1px solid ${BRAND_CYAN_600}`,
 							background: "var(--vscode-inputOption-activeBackground)",
 						}}>
-						<div
-							style={{
-								fontSize: "12.5px",
-								fontWeight: 600,
-								color: "var(--vscode-foreground)",
-								display: "-webkit-box",
-								WebkitLineClamp: 2,
-								WebkitBoxOrient: "vertical",
-								overflow: "hidden",
-							}}>
-							Resume — {resumeTitle}
+						<div className="flex items-start gap-2">
+							<div
+								className="min-w-0 flex-1"
+								style={{
+									fontSize: "12.5px",
+									fontWeight: 600,
+									color: "var(--vscode-foreground)",
+									display: "-webkit-box",
+									WebkitLineClamp: 2,
+									WebkitBoxOrient: "vertical",
+									overflow: "hidden",
+								}}>
+								Resume — {resumeTitle}
+							</div>
+							{/* [F12] The one control on the returning surface had no affordance beyond the
+							    word "Resume" in its own title. */}
+							<span
+								aria-hidden="true"
+								className="codicon codicon-play shrink-0"
+								style={{ fontSize: "13px", color: BRAND_CYAN_600, marginTop: "1px" }}
+							/>
 						</div>
 						<div style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
 							{/* Where the others are is said once, by the composer label below. Repeating it

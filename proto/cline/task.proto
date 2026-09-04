@@ -28,6 +28,8 @@ service TaskService {
   rpc exportTaskWithId(StringRequest) returns (Empty);
   // Toggles the favorite status of a task
   rpc toggleTaskFavorite(TaskFavoriteRequest) returns (Empty);
+  // Gives a task a developer-chosen name. The original prompt is kept; only what is DISPLAYED changes.
+  rpc renameTask(RenameTaskRequest) returns (Empty);
   // Gets filtered task history
   rpc getTaskHistory(GetTaskHistoryRequest) returns (TaskHistoryArray);
   // Sends a response to a previous ask operation
@@ -62,6 +64,13 @@ message TaskFavoriteRequest {
   Metadata metadata = 1;
   string task_id = 2;
   bool is_favorited = 3;
+}
+
+message RenameTaskRequest {
+  Metadata metadata = 1;
+  string task_id = 2;
+  // Empty clears the name and the row shows its first prompt again.
+  string title = 3;
 }
 
 // Response for task details

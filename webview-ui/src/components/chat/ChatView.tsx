@@ -498,7 +498,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		// not ask the developer to pick a mode first. "Select a mode to start" turned the one
 		// control that starts everything into a control that appears to want something else.
 		if (!task) {
-			return "Describe what you want to build — Enter starts a new session…"
+			// [SWEEP 2026-09-04, F13] "what you want to build" — a daily user is here to debug as
+			// often as to build. Neutral, and shorter, so it does not wrap into a grey wall.
+			return "Describe the task — Enter starts a new session"
 		}
 		if (nordicPhase === "awaiting_mode") {
 			return "Select a mode to start..."
