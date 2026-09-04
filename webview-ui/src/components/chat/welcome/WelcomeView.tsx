@@ -4,6 +4,7 @@ import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import { StateServiceClient, TaskServiceClient, WebServiceClient } from "@/services/grpc-client"
+import { BRAND_CORAL, BRAND_CYAN_600 } from "../brandColors"
 import { DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
@@ -197,7 +198,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 								width: "7px",
 								height: "7px",
 								borderRadius: "50%",
-								background: "var(--vscode-charts-orange)",
+								background: BRAND_CORAL,
 							}}
 						/>
 					)}
@@ -251,7 +252,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							<div
 								className="flex flex-col gap-1.5 rounded-lg p-2"
 								data-testid="entry-samples"
-								style={{ border: "1px solid var(--vscode-focusBorder)" }}>
+								style={{ border: `1px solid ${BRAND_CYAN_600}` }}>
 								<div
 									className="px-1 uppercase"
 									style={{
@@ -326,7 +327,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							)
 						}}
 						style={{
-							border: "1px solid var(--vscode-focusBorder)",
+							border: `1px solid ${BRAND_CYAN_600}`,
 							background: "var(--vscode-inputOption-activeBackground)",
 						}}>
 						<div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--vscode-foreground)" }}>

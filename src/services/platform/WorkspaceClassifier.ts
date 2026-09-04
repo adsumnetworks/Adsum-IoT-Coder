@@ -531,7 +531,11 @@ export function recogniseProduct(roots: string[], fsAdapter: FsAdapter = realFsA
 				}
 				for (const sig of PRODUCT_SIGNATURES) {
 					if (sig.re.test(body)) {
-						return { id: sig.id, evidence: `${sig.label} named in ${marker}` }
+						// WHICH file, not just which name — a gateway workspace has a README at the root
+						// and another in gateway/, and "named in README.md" cannot tell you which one
+						// was read. Relative to the root so it is short but unambiguous.
+						const rel = p.startsWith(root) ? p.slice(root.length).replace(/^[/\\]/, "") : p
+						return { id: sig.id, evidence: `${sig.label} named in ${rel}` }
 					}
 				}
 			}

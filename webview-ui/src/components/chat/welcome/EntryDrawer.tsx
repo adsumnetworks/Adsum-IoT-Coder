@@ -2,6 +2,7 @@ import type { HistoryItem } from "@shared/HistoryItem"
 import { StringRequest } from "@shared/proto/cline/common"
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { TaskServiceClient } from "@/services/grpc-client"
+import { BRAND_CORAL, BRAND_CYAN_600 } from "../brandColors"
 import type { Ranked, Suggestable } from "./suggest"
 
 /**
@@ -194,7 +195,7 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 								className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
 								data-testid="entry-drawer-see-all"
 								onClick={() => setShowAll(!showAll)}
-								style={{ color: "var(--vscode-textLink-foreground)", fontSize: "12px" }}>
+								style={{ color: BRAND_CYAN_600, fontSize: "12px" }}>
 								{showAll ? `Show just the recent ${RECENT}` : `See all ${sessions.length} sessions`}
 								{!showAll && <span style={{ marginLeft: "auto", opacity: 0.65 }}>older runs, searchable</span>}
 							</button>
@@ -288,8 +289,8 @@ const Row: React.FC<{
 				<span
 					style={{
 						fontSize: "9px",
-						border: "1px solid var(--vscode-charts-orange)",
-						color: "var(--vscode-charts-orange)",
+						border: `1px solid ${BRAND_CORAL}`,
+						color: BRAND_CORAL,
 						borderRadius: "9px",
 						padding: "0 5px",
 					}}>
@@ -302,7 +303,7 @@ const Row: React.FC<{
 				</span>
 			)}
 		</span>
-		{why && <span style={{ color: "var(--vscode-charts-blue)", fontSize: "10.5px" }}>◆ {why}</span>}
+		{why && <span style={{ color: BRAND_CYAN_600, fontSize: "10.5px" }}>◆ {why}</span>}
 	</button>
 )
 
