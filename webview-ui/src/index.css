@@ -70,21 +70,37 @@
 	}
 }
 
-/* The Adsum wordmark, chosen by VS Code's own body class instead of by React state.
+/* The Adsum wordmark, chosen by VS Code's own body class rather than by React state.
  *
  * [OPERATOR 2026-09-04] "now just the waves" — in a real light-theme host the wordmark was
- * invisible and only the coral spark showed. The assets were not the problem: measured, the
- * adsumLogoDark wordmark is pure white (mean ink 255) and adsumLogoLight is near-black (10), so
+ * invisible and only the coral spark showed. The assets were not the problem: measured over the
+ * wordmark pixels alone, adsumLogoDark is pure white (255) and adsumLogoLight near-black (10), so
  * `isDark ? dark : light` is the right mapping. The DETECTION was wrong. `useVSCodeTheme` seeds
- * its state with `useState(isDark)` at first render and then watches for class mutations — if the
- * host stamps `vscode-light` between that first read and the observer attaching, no mutation ever
- * fires and the stale value sticks for the life of the panel. White ink on a white sidebar.
+ * its state with `useState(isDark)` at first render and only then attaches its observer — if the
+ * host stamps the class in that gap, no mutation fires and the stale value sticks for the life of
+ * the panel. White ink on a white sidebar.
  *
- * CSS has no such race: the class is on <body>, it is authoritative, and the rule re-evaluates
- * whenever it changes. Both images are in the DOM; exactly one is ever displayed. */
+ * Three cases, because the class is not guaranteed to be there. A context that sets neither class
+ * (Storybook did, until the decorator was fixed to stamp it) must still resolve to something
+ * legible, so the bare rules below assume a light ground and prefers-color-scheme corrects it;
+ * an explicit VS Code class then wins over both, in either direction. Getting only the first two
+ * cases right is what made the DARK renders show a black wordmark on black. */
 .adsum-wordmark-dark {
 	display: none;
 }
+.adsum-wordmark-light {
+	display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+	body:not(.vscode-light):not(.vscode-high-contrast-light) .adsum-wordmark-dark {
+		display: block;
+	}
+	body:not(.vscode-light):not(.vscode-high-contrast-light) .adsum-wordmark-light {
+		display: none;
+	}
+}
+
 body.vscode-dark .adsum-wordmark-dark,
 body.vscode-high-contrast:not(.vscode-high-contrast-light) .adsum-wordmark-dark {
 	display: block;
@@ -92,4 +108,13 @@ body.vscode-high-contrast:not(.vscode-high-contrast-light) .adsum-wordmark-dark 
 body.vscode-dark .adsum-wordmark-light,
 body.vscode-high-contrast:not(.vscode-high-contrast-light) .adsum-wordmark-light {
 	display: none;
+}
+
+body.vscode-light .adsum-wordmark-dark,
+body.vscode-high-contrast-light .adsum-wordmark-dark {
+	display: none;
+}
+body.vscode-light .adsum-wordmark-light,
+body.vscode-high-contrast-light .adsum-wordmark-light {
+	display: block;
 }
