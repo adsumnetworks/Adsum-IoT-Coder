@@ -35,7 +35,12 @@ export const DeepSeekProvider = ({ showModelOptions, isPopup, currentMode }: Dee
 	// as GLM — so thinkingBudgetTokens is reused purely as an on/off signal (>0 = on), matching DeepSeekHandler.
 	const { thinkingBudgetTokens, reasoningEffort } = getModeSpecificFields(apiConfiguration, currentMode)
 	const thinkingControl = getThinkingControl("deepseek", selectedModelId, selectedModelInfo)
-	const thinkingEnabled = (thinkingBudgetTokens ?? ANTHROPIC_MIN_THINKING_BUDGET) > 0
+	// The SAME rule as DeepSeekHandler, deliberately. [OPERATOR 2026-09-04] This used to read
+	// `?? ANTHROPIC_MIN_THINKING_BUDGET`, so an unconfigured provider showed the box ticked and the
+	// effort dropdown open — while the handler, which treats an undefined budget as "send nothing",
+	// put neither parameter on the wire and let DeepSeek's server default (enabled at "high") win.
+	// A panel that says Low while the request says high is worse than no control at all.
+	const thinkingEnabled = (thinkingBudgetTokens ?? 0) > 0 || (thinkingBudgetTokens === undefined && Boolean(reasoningEffort))
 
 	return (
 		<div>
@@ -90,7 +95,8 @@ export const DeepSeekProvider = ({ showModelOptions, isPopup, currentMode }: Dee
 										<span style={{ fontWeight: 500 }}>Thinking effort</span>
 									</label>
 									<VSCodeDropdown
-										currentValue={reasoningEffort ?? "high"}
+										// `value`, like every other provider panel. This was the only one using
+										// FAST's `currentValue`, which is not the toolkit's documented prop.
 										id="deepseek-effort-dropdown"
 										onChange={(e: any) =>
 											handleModeFieldChange(
@@ -99,7 +105,8 @@ export const DeepSeekProvider = ({ showModelOptions, isPopup, currentMode }: Dee
 												currentMode,
 											)
 										}
-										style={{ width: "100%", marginTop: 3 }}>
+										style={{ width: "100%", marginTop: 3 }}
+										value={reasoningEffort ?? "high"}>
 										{DEEPSEEK_EFFORT_LEVELS.map((level) => (
 											<VSCodeOption key={level} value={level}>
 												{EFFORT_LABELS[level]}

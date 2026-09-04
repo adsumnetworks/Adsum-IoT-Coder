@@ -90,15 +90,25 @@ export class DeepSeekHandler implements ApiHandler {
 		// forwards the unknown body field to DeepSeek. The old deepseek-reasoner keeps its R1 message format.
 		const isV4 = model.id.startsWith("deepseek-v4")
 		const budget = this.options.thinkingBudgetTokens
+		// Choosing a depth IS choosing to think. [OPERATOR 2026-09-04] "deepseek is configured with
+		// thinking = low but I see very long thinking sessions" — and it was: the panel shows the
+		// effort dropdown whenever the budget is undefined (its `thinkingEnabled` treats undefined as
+		// on), so a developer could pick Low, have `reasoningEffort` stored, and still hit BOTH of
+		// the guards below, which only fire on an explicit budget. Neither parameter went on the
+		// wire and DeepSeek's own server default — enabled at "high" — won every request. The
+		// settings panel now mirrors this rule exactly, and an effort with no budget is honoured
+		// rather than silently dropped, so a configuration made before this fix starts working
+		// without being re-toggled.
+		const effort = this.options.reasoningEffort
+		const wantsThinking = (budget ?? 0) > 0 || (budget === undefined && Boolean(effort))
 		const v4Thinking: Record<string, unknown> =
-			isV4 && budget !== undefined ? { thinking: { type: budget > 0 ? "enabled" : "disabled" } } : {}
-		const v4ThinkingOn = isV4 && (budget ?? 0) > 0
+			isV4 && (budget !== undefined || effort) ? { thinking: { type: wantsThinking ? "enabled" : "disabled" } } : {}
+		const v4ThinkingOn = isV4 && wantsThinking
 		// reasoning_effort tunes HOW DEEPLY it thinks: "low" | "high" | "max" (api-docs.deepseek.com,
 		// guides/thinking_mode, checked 2026-08-16). Both v4-flash and v4-pro support all three. It only has
 		// meaning with thinking on, and DeepSeek's own default is enabled at "high" — so send it only when the
 		// developer has chosen, and never alongside thinking disabled.
-		const v4Effort: Record<string, unknown> =
-			v4ThinkingOn && this.options.reasoningEffort ? { reasoning_effort: this.options.reasoningEffort } : {}
+		const v4Effort: Record<string, unknown> = v4ThinkingOn && effort ? { reasoning_effort: effort } : {}
 
 		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
 			{ role: "system", content: systemPrompt },
