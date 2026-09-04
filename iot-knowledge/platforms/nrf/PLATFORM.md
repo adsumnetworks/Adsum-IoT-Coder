@@ -2,7 +2,7 @@
 id: adsum/nrf/platform
 title: "Nordic nRF — Platform Index"
 type: knowledge
-version: 1.7.1
+version: 1.8.1
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -105,6 +105,21 @@ Load the board file when the project targets a specific SoC. Each file documents
 Board targets use the Zephyr format: `<board>/<soc>` (e.g., `nrf52840dk/nrf52840`).
 
 ---
+
+## Where the hardware comes from
+
+**Load before answering "what do I need to buy", "which DK", or "where do I get one".** Name the
+vendor, never a reseller — availability, price and distributor differ by region, so one region's
+shop link is wrong everywhere else.
+
+| What | Where |
+|---|---|
+| Nordic development kits (nRF52840 DK, nRF9160 DK, nRF54L15 DK, nRF9151 DK …), and the distributor list for each | **Nordic Semiconductor** — https://www.nordicsemi.com |
+| A DK used purely as an SWD probe for a module or a sealed product | the same DKs; the image runs on the target, not on the DK |
+
+State which DK the task actually needs and why, and say when one they already own will do. A DK
+is bench equipment bought once, not a per-project cost — say that too, because it changes the
+answer to "is this worth trying".
 
 ## SDKs (`sdks/`)
 

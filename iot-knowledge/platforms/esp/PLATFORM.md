@@ -2,7 +2,7 @@
 id: adsum/esp/platform
 title: "ESP32 — Platform Index"
 type: knowledge
-version: 1.4.1
+version: 1.5.1
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -82,6 +82,21 @@ Load the board file once the target chip is known (from `sdkconfig`, the build a
 Other targets (`esp32c6`, `esp32c3`, …) are supported by the toolchain; board files are added as they are validated on hardware.
 
 ---
+
+## Where the hardware comes from
+
+**Load before answering "what do I need to buy", "which board", or "where do I get one".** Name
+the vendor, never a reseller — availability, price and distributor differ by region.
+
+| What | Where |
+|---|---|
+| ESP32 development boards (DevKitC, ESP32-S3, C3, C6 …) and their documentation | **Espressif** — https://www.espressif.com |
+
+Two honest caveats worth saying unprompted. A **commercial product with an ESP32 inside is not a
+DevKit** — a sealed gateway or module usually has no USB of its own and is reached through the
+vendor's own programming adapter, so do not send someone shopping for a DevKit they cannot use.
+And where the project targets a specific module rather than a dev board, the module's vendor is
+the source, not Espressif.
 
 ## SDKs (`sdks/`)
 
