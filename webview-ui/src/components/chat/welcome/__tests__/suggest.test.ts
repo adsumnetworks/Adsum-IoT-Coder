@@ -63,7 +63,7 @@ describe("rank — the product", () => {
 
 	it("with only part of its silicon present it ranks high but says only that", () => {
 		const s = { ...base, nrfBoards: ["nRF52840 DK"], hasWorkspace: true }
-		expect(whyOf(s, "gateway")).toBe("some of this product's silicon is on the bench")
+		expect(whyOf(s, "gateway")).toContain("is connected — this build also needs the rest of the kit")
 	})
 
 	it("with nothing detected it states the requirement rather than pretending to a match", () => {
