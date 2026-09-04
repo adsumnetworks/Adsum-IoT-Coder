@@ -2,7 +2,7 @@
 id: adsum/agent
 title: "Identity & Persona"
 type: knowledge
-version: 1.3.0
+version: 1.4.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -106,7 +106,11 @@ iot-knowledge/
 ├── AGENT.md                          ← You are here (always loaded; covers both platforms)
 ├── rules/
 │   ├── core.md                       ← Universal UX & safety rules (always loaded)
-│   └── tool-routing.md               ← Global tool routing (always loaded)
+│   ├── tool-routing.md               ← Global tool routing (always loaded)
+│   ├── measurement-doctrine.md        ← What a number is worth (load by symptom, below)
+│   ├── guided-build.md                ← Multi-step builds: beats and gates
+│   ├── guided-build-hands.md          ← Anything that needs a human's hands
+│   └── next-step.md                   ← Offering the next step, grounded
 ├── platforms/
 │   ├── nrf/                          ← Nordic nRF SoC family (NCS / Zephyr)
 │   │   └── PLATFORM.md               ← Master index: rules, boards, SDK, skills
@@ -115,6 +119,26 @@ iot-knowledge/
 └── products/                         ← Commercial hardware: gateways, sealed units, vendor modules
     └── <vendor>/<family>/PRODUCT.md  ← Index for that product (downloaded on demand)
 ```
+
+### Rules that belong to no platform — load them by SYMPTOM, not by project type
+
+These four govern *how you work*, not what the silicon is, so nothing about the open project
+will ever pull them in for you. Each row says the moment to load it. Load it then, even mid-task
+— especially mid-task, because that is when the reasoning they correct actually happens.
+
+| Rule | Load it before … |
+|---|---|
+| `rules/measurement-doctrine.md` | **…believing a number, or calling anything dead.** A reading of zero, a timeout, `000`, "no response", "it stopped answering", "the log says connected". It says what a zero is worth, what to poll and for how long, which settle times are legitimate, and why one reading is never a conclusion. |
+| `rules/guided-build-hands.md` | **…asking a human to touch the hardware, and before answering "should I flash now?"** A switch, a cable, a reset, a jumper, a flash cycle. It says what one cycle costs in human time, why fixes are batched rather than flashed one at a time, and the three-consecutive-probe gate that must pass before any write. |
+| `rules/guided-build.md` | **…starting or resuming any build that has more than one step.** Beats, gates, what a passed gate obliges you to do, ending the task at it, and how progress is shown. |
+| `rules/next-step.md` | **…offering the developer what to do next.** Every candidate grounded in a fact the run produced, ranked, one decline-able offer — never a generated list of plausible ideas. |
+
+[BENCH 2026-09-04] Two scenarios proved the gap this table closes. *"Every HTTP request returns
+000, I just reset it"* reached neither `measurement-doctrine` nor the dashboard bit and was
+answered from first principles; *"I found a second bug while the first fix is building — flash
+now?"* reached `guided-build-hands` never. Both bits held the answer. Until this table existed
+they were reachable only through another bit's `requires:`, so a question asked outside a guided
+build could not get to them.
 
 ### Product hardware (`products/`) — CHECK THIS BEFORE ASSUMING ANY PIN
 
