@@ -155,6 +155,11 @@ mean a bit is unavailable, so still try the path in step 1):
 |---|---|---|
 | Fanstel | LEW840X composable gateway — LEW5x/LEW6x bases, M.2 radio cards | `products/fanstel/lew840x/PRODUCT.md` *(downloaded)* |
 
+**Load the product index before anything else when a message names the vendor or the family** —
+including a *"Continue the LEW840X gateway build — Step N/7 …"* opener. That opener is the build
+workflow's own re-entry, and the workflow lives behind the index: [BENCH 2026-09-04] a task opened
+that way in a seeded workspace probed the bench from first principles with no product bit loaded.
+
 Each platform's `PLATFORM.md` is the master index for its rules, boards, SDK reference, Workflows, and
 Actions — read it (loaded for you on detection) and follow it to load the matching Workflow.
 

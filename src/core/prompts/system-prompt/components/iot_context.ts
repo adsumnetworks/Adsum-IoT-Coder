@@ -13,6 +13,7 @@ import {
 	NRF_BLE_RE,
 	NRF_CELLULAR_RE,
 	NRF91_BOARD_RE,
+	reclassifyWorkspaceIfStale,
 } from "@/services/platform/WorkspaceClassifier"
 import { type ResolvedTool, resolveToolsAsync } from "@/services/tools/ToolResolver"
 import { fileExistsAtPath } from "@/utils/fs"
@@ -584,7 +585,8 @@ async function getEspPlatformContext(cwd: string, load: TrackedLoad, productRowE
 	// bits existed. Paths are written from the KNOWLEDGE ROOT, as the nRF table's comment explains.
 	if (!productRowEmitted) {
 		ctx += "| The developer says | Read this FIRST |\n|---|---|\n"
-		ctx += "| Fanstel, LEW840X, composable gateway, M.2 card | `products/fanstel/lew840x/PRODUCT.md` |\n\n"
+		ctx +=
+			"| Fanstel, LEW840X, composable gateway, M.2 card, or a *Continue the LEW840X gateway build — Step N/7* opener | load `products/fanstel/lew840x/PRODUCT.md` **first** — the build workflow lives behind it |\n\n"
 		ctx += "A bit already listed under *Knowledge Already Loaded* is in context — do not read it again.\n\n"
 	}
 
@@ -719,7 +721,8 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	// A product is not a platform: the Fanstel gateway is an nRF52840 BLE card, an nRF9160 LTE card and
 	// an ESP32 Ethernet host in one enclosure. Its index names which sub-bit answers which question, so
 	// one row reaches the whole family.
-	ctx += "| Fanstel, LEW840X, composable gateway, M.2 card | `products/fanstel/lew840x/PRODUCT.md` |\n\n"
+	ctx +=
+		"| Fanstel, LEW840X, composable gateway, M.2 card, or a *Continue the LEW840X gateway build — Step N/7* opener | load `products/fanstel/lew840x/PRODUCT.md` **first** — the build workflow lives behind it |\n\n"
 	ctx += "A bit already listed under *Knowledge Already Loaded* is in context — do not read it again.\n\n"
 	// The failure this paragraph exists to stop, verbatim from a 2026-08-20 transcript:
 	//   "The analyze-logs action mentioned a sdks/ncs/protocols/DECT-NR.md file. Let me load that to
@@ -1214,6 +1217,9 @@ async function statSignature(filePath: string): Promise<string> {
  *  could not be computed (caller then skips the cache and rebuilds). */
 async function computeIotContextFingerprint(cwd: string): Promise<string | null> {
 	try {
+		// A seed or a scaffold can turn an empty folder into a gateway under the agent's own hand;
+		// the summary must be read fresh or the memo serves the pre-seed prompt for the session.
+		reclassifyWorkspaceIfStale()
 		const parts: string[] = [`cwd=${cwd}`, `ext=${HostProvider.get().extensionFsPath}`, `ws=${getCachedWorkspaceSummary()}`]
 
 		// The platform blocks may be built from an application directory BELOW cwd (see
