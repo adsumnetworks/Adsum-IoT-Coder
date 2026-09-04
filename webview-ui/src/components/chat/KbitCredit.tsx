@@ -90,11 +90,11 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 					: "Knowledge bits"
 
 	return (
-		<div className="text-[11px] mt-[6px]" style={{ color: "var(--vscode-descriptionForeground)" }}>
+		<div className="text-[11px] mt-1.5" style={{ color: "var(--vscode-descriptionForeground)" }}>
 			{bits.length === 1 ? (
-				<div className="flex items-center gap-[7px] flex-wrap">
+				<div className="flex items-center gap-2 flex-wrap">
 					<KindChip kind={bits[0].kind} />
-					<span className="uppercase tracking-wide font-semibold text-[8.5px] opacity-70">
+					<span className="uppercase tracking-wide font-semibold text-[10px] opacity-70">
 						{KIND_LABEL[bits[0].kind]}
 					</span>
 					<button
@@ -108,10 +108,10 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 					</span>
 				</div>
 			) : (
-				<div className="flex flex-col gap-[4px]">
-					<div className="flex items-center gap-[7px] flex-wrap">
+				<div className="flex flex-col gap-1">
+					<div className="flex items-center gap-2 flex-wrap">
 						<KindChip kind={groupKind} />
-						<span className="uppercase tracking-wide font-semibold text-[8.5px] opacity-70">credits</span>
+						<span className="uppercase tracking-wide font-semibold text-[10px] opacity-70">credits</span>
 						{/* text-left because a <button> centres its text by default, and this one wraps.
 						    [OPERATOR 2026-09-04] "why is the text centered now, here?" — nothing centred it;
 						    the browser did, the moment the author list grew past one line. Every wrapping
@@ -125,7 +125,7 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 					</div>
 					{expanded &&
 						bits.map((b) => (
-							<div className="flex items-center gap-[7px] pl-[24px]" key={b.id}>
+							<div className="flex items-center gap-2 pl-[24px]" key={b.id}>
 								<KindChip kind={b.kind} />
 								<button
 									className="bg-transparent border-0 p-0 cursor-pointer text-left text-inherit underline decoration-dotted underline-offset-2 truncate max-w-[220px]"
@@ -211,16 +211,16 @@ export const CoAuthors = ({ bit, color }: { bit: KbitLoadedPayload; color?: stri
  */
 const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () => void }) => (
 	<div
-		className="mt-[6px] rounded-[10px] p-[11px_13px] text-[11.5px]"
+		className="mt-1.5 rounded-[10px] p-[11px_13px] text-[12px]"
 		style={{
 			border: `1px solid ${brandAlpha(BRAND_CYAN_600, 0.35)}`,
 			background: "var(--vscode-editor-background)",
 		}}>
-		<div className="flex items-start gap-[9px]">
+		<div className="flex items-start gap-2">
 			{/* 26px: above KNOT_MIN_PX, so the popover shows the real interlaced mark, not a plain diamond */}
 			<KindChip kind={bit.kind} size={26} />
 			<div className="flex-1 min-w-0">
-				<div className="font-semibold text-[12.5px]" style={{ color: "var(--vscode-foreground)" }}>
+				<div className="font-semibold text-[13px]" style={{ color: "var(--vscode-foreground)" }}>
 					{bit.title}
 				</div>
 				<div className="opacity-60 text-[10px] font-mono truncate">
@@ -241,7 +241,7 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 		{/* No prose lead. It restated CURATED BY + MAINTAINED BY directly beneath it — three renders of the
 		    author in one five-line card — and read near-identically for every bit by the same author on the
 		    same platform. Platform moved into the metadata line; everything factual is a labelled row. */}
-		<div className="mt-[10px] flex flex-col gap-[6px]">
+		<div className="mt-[10px] flex flex-col gap-1.5">
 			<ProvRow label="Curated by" muted={bit.attributed === false}>
 				{bit.attributed === false ? bit.author : <PersonLink color="inherit" links={bit.links} name={bit.author} />}
 			</ProvRow>
@@ -280,7 +280,7 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 
 const ProvRow = ({ label, children, muted }: { label: string; children: ReactNode; muted?: boolean }) => (
 	<div>
-		<div className="uppercase tracking-wide font-semibold text-[9px] opacity-55">{label}</div>
+		<div className="uppercase tracking-wide font-semibold text-[10px] opacity-55">{label}</div>
 		<div className={muted ? "opacity-60 text-[12px]" : "text-[12px]"} style={{ color: "var(--vscode-foreground)" }}>
 			{children}
 		</div>

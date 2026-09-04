@@ -60,11 +60,11 @@ const CraNudge: React.FC<CraNudgeProps> = ({ evidence, onPreview, onDismiss }) =
 					alignItems: "center",
 					justifyContent: "center",
 				}}>
-				<i className="codicon codicon-shield" style={{ fontSize: "15px" }} />
+				<i className="codicon codicon-shield" style={{ fontSize: "14px" }} />
 			</div>
 
 			<div style={{ flex: 1, minWidth: 0, paddingRight: "12px" }}>
-				<div style={{ fontSize: "13px", fontWeight: 700, color: "var(--vscode-foreground)" }}>Get ahead of the CRA</div>
+				<div style={{ fontSize: "13px", fontWeight: 600, color: "var(--vscode-foreground)" }}>Get ahead of the CRA</div>
 				<div
 					style={{
 						fontSize: "11px",
@@ -76,7 +76,7 @@ const CraNudge: React.FC<CraNudgeProps> = ({ evidence, onPreview, onDismiss }) =
 				</div>
 				<div
 					style={{
-						fontSize: "11.5px",
+						fontSize: "12px",
 						color: "var(--vscode-descriptionForeground)",
 						marginTop: "6px",
 						lineHeight: 1.45,
@@ -91,9 +91,9 @@ const CraNudge: React.FC<CraNudgeProps> = ({ evidence, onPreview, onDismiss }) =
 							border: "none",
 							padding: 0,
 							color: BRAND_CYAN_600,
-							fontWeight: 700,
+							fontWeight: 600,
 							cursor: "pointer",
-							fontSize: "11.5px",
+							fontSize: "12px",
 						}}
 						type="button">
 						Preview →

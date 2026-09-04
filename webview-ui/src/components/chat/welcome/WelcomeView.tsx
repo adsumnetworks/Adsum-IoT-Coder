@@ -243,7 +243,12 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			    connected boards were not shown at all — so the surface never answered the two
 			    questions a developer asks on opening it. Devices are stated as detected facts, never
 			    a verdict: "no boards detected" is true, useful, and is not a fault. */}
-			<div className="mb-3 flex flex-col gap-0.5">
+			{/* Band 1, one box. Inside it 4–6 px (one group); after it 16 px (the seam to the next
+			    band). Items inside band 2 sit 12 px apart, so the rhythm says which things belong
+			    together before a word is read: 4 within a group · 12 between items · 16 between
+			    bands. The tip is the band's last line and takes the band's margin, so dismissing it
+			    does not change the seam. */}
+			<div className="mb-4 flex flex-col gap-0.5">
 				{/* The heading sits ABOVE the folder, not between it and the strip: folder and detected
 				    hardware are one answer to one question — what am I working on and with — and a
 				    heading that only covered the second half left the first half captionless. */}
@@ -316,14 +321,14 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						<EnvStrip />
 					</>
 				)}
-			</div>
 
-			{/* [OPERATOR 2026-09-04] Moved back to the top, on their call. It was below the content
+				{/* [OPERATOR 2026-09-04] Moved back to the top, on their call. It was below the content
 			    because as a bordered card with a lightbulb it out-shouted the resume; now that it is a
 			    single quiet line the objection is spent, and one line above the fold is what a
 			    dismissible one-time hint is supposed to cost. It sits under the environment group so
 			    it reads as chrome rather than as the first suggestion. */}
-			<DockCoachMark hasProject={signals.hasWorkspace} />
+				<DockCoachMark hasProject={signals.hasWorkspace} />
+			</div>
 
 			{/* One block, flowing from the top, with the composer pinned below by the chat layout and a
 			    single space between. Two earlier attempts moved that space around — first stranding the
@@ -363,11 +368,11 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							    what these samples are FOR, and a lapsed return explains why the cards came back
 							    after a month away. */}
 							{(isColdStart || mode.reason === "lapsed") && (
-								<div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--vscode-foreground)" }}>
+								<div style={{ fontSize: "14px", fontWeight: 600, color: "var(--vscode-foreground)" }}>
 									{isColdStart ? "See it work first." : "Welcome back."}
 								</div>
 							)}
-							<div style={{ fontSize: "11.5px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
+							<div style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
 								{/* Never "Working on <folder>": the Environment group at the top of the panel
 								    already names the folder, and repeating it here read as a stutter. */}
 								{/* [F5] The triple-"real" was marketing voice. [F9] The working-case sentence moved
@@ -381,7 +386,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 								<div
 									data-testid="entry-orientation"
 									style={{
-										fontSize: "11.5px",
+										fontSize: "12px",
 										color: "var(--vscode-descriptionForeground)",
 										marginTop: "4px",
 									}}>
@@ -409,7 +414,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 								    sidebar width. One short caps label, and the qualifier in sentence case, where
 								    wrapping costs nothing. */}
 								<div className="px-1" style={{ color: "var(--vscode-descriptionForeground)" }}>
-									<div className="uppercase" style={{ fontSize: "10px", letterSpacing: "0.06em" }}>
+									<div className="uppercase" style={{ fontSize: "10px", letterSpacing: "0.08em" }}>
 										Sample runs
 									</div>
 									<div style={{ fontSize: "11px" }}>About a minute each · nothing to install</div>
@@ -431,7 +436,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										<span className="flex min-w-0 flex-1 flex-col">
 											<span
 												className="flex items-baseline gap-2"
-												style={{ fontSize: "12.5px", fontWeight: 600 }}>
+												style={{ fontSize: "12px", fontWeight: 600 }}>
 												<span className="truncate">{s.title}</span>
 												{/* [F3] Three equal rows answered nothing for the person whose one question
 											    is "which do I click first". The cue is on the row, not a tag on the run —
@@ -440,10 +445,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 													<span
 														className="shrink-0"
 														style={{
-															fontSize: "9.5px",
-															fontWeight: 500,
+															fontSize: "11px",
+															fontWeight: 600,
 															color: BRAND_CYAN_600,
-															letterSpacing: "0.04em",
+															letterSpacing: "0.08em",
 														}}>
 														start here
 													</span>
@@ -465,8 +470,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 								    thing. One row: the label, and its alternative in sentence case beside it. */}
 								<div
 									className="flex flex-wrap items-baseline gap-x-2"
-									style={{ fontSize: "10.5px", color: "var(--vscode-descriptionForeground)" }}>
-									<span className="uppercase" style={{ letterSpacing: "0.09em" }}>
+									style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
+									<span className="uppercase" style={{ letterSpacing: "0.08em" }}>
 										Suggested runs
 									</span>
 									{/* With no detection behind any card the ranking is a shrug, and the honest
@@ -522,7 +527,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							<div
 								className="min-w-0 flex-1"
 								style={{
-									fontSize: "12.5px",
+									fontSize: "12px",
 									fontWeight: 600,
 									color: "var(--vscode-foreground)",
 									display: "-webkit-box",
@@ -550,7 +555,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				) : (
 					<div
 						data-testid="entry-orientation"
-						style={{ fontSize: "11.5px", color: "var(--vscode-descriptionForeground)" }}>
+						style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)" }}>
 						Nothing has run in <b>{scopeName || "this window"}</b> yet — the box below starts its first session.
 						{mode.elsewhereCount > 0 && (
 							<>

@@ -65,8 +65,8 @@ const Badge: React.FC<{ text: string }> = ({ text }) => (
 	<span
 		style={{
 			fontSize: "11px",
-			fontWeight: 700,
-			letterSpacing: "0.04em",
+			fontWeight: 600,
+			letterSpacing: "0.08em",
 			color: "var(--vscode-editor-background)",
 			background: "var(--vscode-foreground)",
 			borderRadius: "4px",
