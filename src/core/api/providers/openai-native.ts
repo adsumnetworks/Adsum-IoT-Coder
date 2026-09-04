@@ -106,11 +106,15 @@ export class OpenAiNativeHandler implements ApiHandler {
 		}
 
 		const systemRole = model.info.systemRole ?? "system"
-		const includeReasoning = this.options.thinkingBudgetTokens && model.info.supportsReasoningEffort
+		// Send the effort when the developer has chosen one and the model takes one. This used to be
+		// gated on thinkingBudgetTokens as well — a field the OpenAI-native settings panel has no
+		// control for, so it was never set, and the effort that Task.startTask bridges in from the
+		// Feature Settings "OpenAI reasoning effort" dial was dropped on every request. The dial
+		// looked live, its changes were even counted by telemetry, and nothing reached the wire.
+		// [OPERATOR 2026-09-04] Found while checking whether the DeepSeek thinking bug had siblings.
+		const includeReasoning = Boolean(this.options.reasoningEffort) && model.info.supportsReasoningEffort
 		const includeTools = model.info.supportsTools ?? true
-		const reasoningEffort = includeReasoning
-			? (this.options.reasoningEffort as ChatCompletionReasoningEffort) || "medium"
-			: undefined
+		const reasoningEffort = includeReasoning ? (this.options.reasoningEffort as ChatCompletionReasoningEffort) : undefined
 
 		const stream = await client.chat.completions.create({
 			model: model.id,

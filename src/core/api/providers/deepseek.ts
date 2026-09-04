@@ -2,6 +2,7 @@ import { DeepSeekModelId, deepSeekDefaultModelId, deepSeekModels, ModelInfo } fr
 import { calculateApiCostOpenAI } from "@utils/cost"
 import OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
+import { applyPriceOverlay } from "@/core/api/pricing/priceOverlay"
 import { ClineStorageMessage } from "@/shared/messages/content"
 import { fetch } from "@/shared/net"
 import { ApiHandler, CommonApiHandlerOptions } from "../"
@@ -67,7 +68,18 @@ export class DeepSeekHandler implements ApiHandler {
 		const outputTokens = deepUsage?.completion_tokens || 0
 		const cacheReadTokens = deepUsage?.prompt_cache_hit_tokens || 0
 		const cacheWriteTokens = deepUsage?.prompt_cache_miss_tokens || 0
-		const totalCost = calculateApiCostOpenAI(info, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens)
+		// The model id carries DeepSeek's peak/off-peak schedule — half rate outside 01:00–04:00 and
+		// 06:00–10:00 UTC on weekdays, which is most of the week. Without it every cost shown here is
+		// the peak figure regardless of when the request actually ran.
+		const totalCost = calculateApiCostOpenAI(
+			info,
+			inputTokens,
+			outputTokens,
+			cacheWriteTokens,
+			cacheReadTokens,
+			undefined,
+			this.getModel().id,
+		)
 		const nonCachedInputTokens = Math.max(0, inputTokens - cacheReadTokens - cacheWriteTokens) // this will always be 0
 		yield {
 			type: "usage",
@@ -165,11 +177,11 @@ export class DeepSeekHandler implements ApiHandler {
 		const modelId = this.options.apiModelId
 		if (modelId && modelId in deepSeekModels) {
 			const id = modelId as DeepSeekModelId
-			return { id, info: deepSeekModels[id] }
+			return { id, info: applyPriceOverlay(id, deepSeekModels[id]) }
 		}
 		return {
 			id: deepSeekDefaultModelId,
-			info: deepSeekModels[deepSeekDefaultModelId],
+			info: applyPriceOverlay(deepSeekDefaultModelId, deepSeekModels[deepSeekDefaultModelId]),
 		}
 	}
 }

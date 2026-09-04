@@ -14,6 +14,7 @@ import {
 } from "@shared/api"
 import OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
+import { applyPriceOverlay } from "@/core/api/pricing/priceOverlay"
 import { ClineStorageMessage } from "@/shared/messages/content"
 import { fetch } from "@/shared/net"
 import { version as extensionVersion } from "../../../../package.json"
@@ -89,16 +90,16 @@ export class ZAiHandler implements ApiHandler {
 		if (this.isCodingPlan()) {
 			const id: zaiCodingPlanModelId =
 				modelId && modelId in zaiCodingPlanModels ? (modelId as zaiCodingPlanModelId) : zaiCodingPlanDefaultModelId
-			return { id, info: zaiCodingPlanModels[id] }
+			return { id, info: applyPriceOverlay(id, zaiCodingPlanModels[id]) }
 		}
 		if (this.useChinaApi()) {
 			const id: mainlandZAiModelId =
 				modelId && modelId in mainlandZAiModels ? (modelId as mainlandZAiModelId) : mainlandZAiDefaultModelId
-			return { id, info: mainlandZAiModels[id] }
+			return { id, info: applyPriceOverlay(id, mainlandZAiModels[id]) }
 		}
 		const id: internationalZAiModelId =
 			modelId && modelId in internationalZAiModels ? (modelId as internationalZAiModelId) : internationalZAiDefaultModelId
-		return { id, info: internationalZAiModels[id] }
+		return { id, info: applyPriceOverlay(id, internationalZAiModels[id]) }
 	}
 
 	@withRetry()
@@ -111,7 +112,15 @@ export class ZAiHandler implements ApiHandler {
 		]
 		// GLM native thinking (thinking.type): send enabled/disabled only when the user set an explicit on/off toggle;
 		// omit entirely otherwise so the model applies its own default. (z.ai devpack docs.)
+		//
+		// [OPERATOR 2026-09-04] "review if the DeepSeek thinking issue exists elsewhere" — it did, here,
+		// identically. The panel's `thinkingEnabled` read `?? ANTHROPIC_MIN_THINKING_BUDGET`, so an unset
+		// budget showed the box ticked and offered the effort dropdown; this handler required an explicit
+		// budget for both parameters. A chosen effort was stored, displayed, and never sent, and GLM's own
+		// server default won. Same rule as DeepSeekHandler now: choosing a depth IS choosing to think.
 		const thinkingBudget = this.options.thinkingBudgetTokens
+		const effort = this.options.reasoningEffort
+		const wantsThinking = (thinkingBudget ?? 0) > 0 || (thinkingBudget === undefined && Boolean(effort))
 		const stream = await client.chat.completions.create({
 			model: model.id,
 			// Cap the reply. The provider counts prompt + requested output against the window, and GLM
@@ -123,15 +132,10 @@ export class ZAiHandler implements ApiHandler {
 			stream: true,
 			stream_options: { include_usage: true },
 			...getOpenAIToolParams(tools),
-			...(thinkingBudget !== undefined ? { thinking: { type: thinkingBudget > 0 ? "enabled" : "disabled" } } : {}),
+			...(thinkingBudget !== undefined || effort ? { thinking: { type: wantsThinking ? "enabled" : "disabled" } } : {}),
 			// reasoning_effort tunes depth but only takes effect with thinking on (z.ai docs). Gated on GLM_EFFORT_MODELS
 			// (glm-5.2 only) so it's never sent to glm-5-turbo/4.7, which don't support it.
-			...(thinkingBudget !== undefined &&
-			thinkingBudget > 0 &&
-			GLM_EFFORT_MODELS.has(model.id) &&
-			this.options.reasoningEffort
-				? { reasoning_effort: this.options.reasoningEffort }
-				: {}),
+			...(wantsThinking && GLM_EFFORT_MODELS.has(model.id) && effort ? { reasoning_effort: effort } : {}),
 		} as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming)
 
 		const toolCallProcessor = new ToolCallProcessor()

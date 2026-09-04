@@ -1,4 +1,26 @@
-import { ModelInfo } from "@shared/api"
+import { ModelInfo, PRICING_SCHEDULES } from "@shared/api"
+
+/**
+ * The multiplier a vendor's clock-based discount puts on every price right now.
+ *
+ * [OPERATOR 2026-09-04] DeepSeek charges full rate only 01:00–04:00 and 06:00–10:00 UTC on
+ * weekdays and half rate the other 79% of the week, so a cost computed from the list rate alone
+ * is roughly double the truth most of the time. The windows are published and deterministic, so
+ * this needs no network — unlike the list rates themselves, which are fetched (see
+ * refreshDirectModelPrices).
+ *
+ * Exported so a test can pin a moment; `at` defaults to now.
+ */
+export function pricingMultiplier(modelId: string | undefined, at: Date = new Date()): number {
+	const schedule = modelId ? PRICING_SCHEDULES[modelId] : undefined
+	if (!schedule) {
+		return 1
+	}
+	const isPeakDay = schedule.peakDays.includes(at.getUTCDay())
+	const hour = at.getUTCHours()
+	const inPeakHour = schedule.peakUtcHours.some(([from, to]) => hour >= from && hour < to)
+	return isPeakDay && inPeakHour ? 1 : schedule.offPeakMultiplier
+}
 
 function calculateApiCostInternal(
 	modelInfo: ModelInfo,
@@ -8,6 +30,7 @@ function calculateApiCostInternal(
 	cacheReadInputTokens: number,
 	totalInputTokensForPricing?: number, // The *total* input tokens, used for tiered pricing lookup
 	thinkingBudgetTokens?: number, // Add thinking budget info
+	modelId?: string, // For clock-based vendor discounts — see pricingMultiplier
 ): number {
 	const usedThinkingBudget = thinkingBudgetTokens && thinkingBudgetTokens > 0
 
@@ -59,7 +82,8 @@ function calculateApiCostInternal(
 	const outputCost = (effectiveOutputPrice / 1_000_000) * outputTokens
 
 	const totalCost = cacheWritesCost + cacheReadsCost + baseInputCost + outputCost
-	return totalCost
+	// Applied last, to the whole bill: the vendor discounts every line by the same factor.
+	return totalCost * pricingMultiplier(modelId)
 }
 // For Anthropic compliant usage, the input tokens count does NOT include the cached tokens
 export function calculateApiCostAnthropic(
@@ -69,6 +93,7 @@ export function calculateApiCostAnthropic(
 	cacheCreationInputTokens?: number,
 	cacheReadInputTokens?: number,
 	thinkingBudgetTokens?: number,
+	modelId?: string,
 ): number {
 	const cacheCreationInputTokensNum = cacheCreationInputTokens || 0
 	const cacheReadInputTokensNum = cacheReadInputTokens || 0
@@ -83,6 +108,7 @@ export function calculateApiCostAnthropic(
 		cacheReadInputTokensNum,
 		inputTokens + cacheCreationInputTokensNum + cacheReadInputTokensNum, // used for tiered price lookup
 		thinkingBudgetTokens,
+		modelId,
 	)
 }
 
@@ -94,6 +120,7 @@ export function calculateApiCostOpenAI(
 	cacheCreationInputTokens?: number,
 	cacheReadInputTokens?: number,
 	thinkingBudgetTokens?: number, // Pass thinking budget info
+	modelId?: string,
 ): number {
 	const cacheCreationInputTokensNum = cacheCreationInputTokens || 0
 	const cacheReadInputTokensNum = cacheReadInputTokens || 0
@@ -108,6 +135,7 @@ export function calculateApiCostOpenAI(
 		cacheReadInputTokensNum,
 		inputTokens,
 		thinkingBudgetTokens,
+		modelId,
 	)
 }
 
@@ -119,6 +147,7 @@ export function calculateApiCostQwen(
 	cacheCreationInputTokens?: number,
 	cacheReadInputTokens?: number,
 	thinkingBudgetTokens?: number,
+	modelId?: string,
 ): number {
 	const cacheCreationInputTokensNum = cacheCreationInputTokens || 0
 	const cacheReadInputTokensNum = cacheReadInputTokens || 0
@@ -133,5 +162,6 @@ export function calculateApiCostQwen(
 		cacheReadInputTokensNum,
 		inputTokens,
 		thinkingBudgetTokens,
+		modelId,
 	)
 }

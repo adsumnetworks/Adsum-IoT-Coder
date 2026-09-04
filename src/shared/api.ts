@@ -128,6 +128,28 @@ export interface ModelInfo {
 	apiFormat?: ApiFormat // The API format used by this model
 }
 
+/**
+ * A vendor discount that depends on the clock rather than on the request.
+ *
+ * [OPERATOR 2026-09-04] DeepSeek bills half price outside 01:00–04:00 and 06:00–10:00 UTC on
+ * weekdays — 79% of the week — so NO single stored number is right: the peak rate overstates four
+ * days in five, and the off-peak rate understates exactly the window where a working day's spend
+ * lands. A schedule is the only honest representation.
+ *
+ * Kept OFF `ModelInfo` deliberately: that type crosses a proto boundary which rejects unknown
+ * fields, and a billing schedule is not something the webview needs. Keyed by model id instead.
+ */
+export interface PricingSchedule {
+	/** Multiplier applied to every price outside the peak windows. 0.5 = half price. */
+	offPeakMultiplier: number
+	/** Peak windows in UTC hours, [startHour, endHour) — when the FULL listed rate applies. */
+	peakUtcHours: readonly (readonly [number, number])[]
+	/** Days (0 = Sunday) on which the peak windows apply at all. */
+	peakDays: readonly number[]
+	/** Where this came from, so the next person re-checks it rather than trusting it. */
+	source: string
+}
+
 export interface OpenAiCompatibleModelInfo extends ModelInfo {
 	temperature?: number
 	isR1FormatRequired?: boolean
@@ -1684,9 +1706,9 @@ export const deepSeekModels = {
 		supportsPromptCache: true,
 		supportsReasoning: true,
 		inputPrice: 0,
-		outputPrice: 0.28,
-		cacheWritesPrice: 0.14,
-		cacheReadsPrice: 0.0028,
+		outputPrice: 1.32,
+		cacheWritesPrice: 0.44,
+		cacheReadsPrice: 0.014,
 	},
 	"deepseek-v4-pro": {
 		maxTokens: 384_000,
@@ -1695,11 +1717,36 @@ export const deepSeekModels = {
 		supportsPromptCache: true,
 		supportsReasoning: true,
 		inputPrice: 0,
-		outputPrice: 0.87,
-		cacheWritesPrice: 0.435,
-		cacheReadsPrice: 0.003625,
+		outputPrice: 3.96,
+		cacheWritesPrice: 1.32,
+		cacheReadsPrice: 0.044,
 	},
 } as const satisfies Record<string, ModelInfo>
+
+/**
+ * Clock-dependent vendor discounts, by model id. The tables above hold each vendor's LIST rate;
+ * this says when the bill is lower. Re-read the source whenever prices are checked.
+ */
+export const PRICING_SCHEDULES: Readonly<Record<string, PricingSchedule>> = {
+	"deepseek-v4-flash": {
+		offPeakMultiplier: 0.5,
+		peakUtcHours: [
+			[1, 4],
+			[6, 10],
+		],
+		peakDays: [1, 2, 3, 4, 5],
+		source: "api-docs.deepseek.com/quick_start/pricing, read 2026-09-04",
+	},
+	"deepseek-v4-pro": {
+		offPeakMultiplier: 0.5,
+		peakUtcHours: [
+			[1, 4],
+			[6, 10],
+		],
+		peakDays: [1, 2, 3, 4, 5],
+		source: "api-docs.deepseek.com/quick_start/pricing, read 2026-09-04",
+	},
+}
 
 // Hugging Face Inference Providers
 // https://huggingface.co/docs/inference-providers/en/index

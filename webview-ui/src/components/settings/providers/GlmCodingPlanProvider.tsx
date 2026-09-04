@@ -37,7 +37,9 @@ export const GlmCodingPlanProvider = ({ showModelOptions, isPopup, currentMode }
 	const { thinkingBudgetTokens, reasoningEffort } = getModeSpecificFields(apiConfiguration, currentMode)
 	// GLM controls thinking via thinking.type (on/off), not a token budget — so we reuse thinkingBudgetTokens purely as
 	// the on/off signal: >0 (or unset → the model's own default) = on, 0 = off. The zai handler maps this to thinking.type.
-	const thinkingEnabled = (thinkingBudgetTokens ?? ANTHROPIC_MIN_THINKING_BUDGET) > 0
+	// The SAME rule as ZAiHandler — see the note there. `?? ANTHROPIC_MIN_THINKING_BUDGET` made an unset
+	// budget look switched on while the handler sent nothing for it.
+	const thinkingEnabled = (thinkingBudgetTokens ?? 0) > 0 || (thinkingBudgetTokens === undefined && Boolean(reasoningEffort))
 	// Capability-driven, same helper as the other panels — GLM coding models reason via thinking.type → "onoff".
 	const thinkingControl = getThinkingControl("zai-coding-plan", selectedModelId, selectedModelInfo)
 

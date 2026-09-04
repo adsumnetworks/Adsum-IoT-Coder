@@ -4,6 +4,8 @@
 import assert from "node:assert"
 import { DIFF_VIEW_URI_SCHEME } from "@hosts/vscode/VscodeDiffViewProvider"
 import * as vscode from "vscode"
+import { type PriceOverride, setManualPrices } from "@/core/api/pricing/priceOverlay"
+import { loadCachedPrices, refreshDirectModelPrices } from "@/core/api/pricing/refreshDirectModelPrices"
 import { sendChatButtonClickedEvent } from "./core/controller/ui/subscribeToChatButtonClicked"
 import { sendHistoryButtonClickedEvent } from "./core/controller/ui/subscribeToHistoryButtonClicked"
 import { sendSettingsButtonClickedEvent } from "./core/controller/ui/subscribeToSettingsButtonClicked"
@@ -542,6 +544,21 @@ export async function activate(context: vscode.ExtensionContext) {
 	// (tree observations, snapshots) for any handover still in flight. The agent's own record never
 	// paused — its MCP server runs in the agent's process, not ours.
 	handover.resumeTrackingIfActive()
+	// Model prices: the developer's own setting first, then Adsum's curated figures in the
+	// background. Both only ever overlay the bundled table, so a failure here costs accuracy, never
+	// function — see priceOverlay.ts for why a compiled-in price table cannot stay right.
+	const readManualPrices = () =>
+		setManualPrices(vscode.workspace.getConfiguration("adsum-iot-coder").get<Record<string, PriceOverride>>("modelPricing"))
+	readManualPrices()
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((e) => {
+			if (e.affectsConfiguration("adsum-iot-coder.modelPricing")) {
+				readManualPrices()
+			}
+		}),
+	)
+	void loadCachedPrices().then(() => refreshDirectModelPrices())
+
 	handover.sweepClosedSessionsIntoHistory()
 	// The free tier appearing/running out changes the conductor verdict mid-session.
 	context.subscriptions.push({ dispose: onFreeTokensChanged(() => void handover.refreshConductorCache()) })
