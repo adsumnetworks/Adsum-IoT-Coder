@@ -23,6 +23,8 @@ const RECENT = 3
 
 export interface DrawerRun extends Suggestable {
 	title: string
+	/** The intent's own codicon, so a card is recognisable before it is read. */
+	icon?: string
 	blurb?: string
 	meta?: string
 	onRun: () => void

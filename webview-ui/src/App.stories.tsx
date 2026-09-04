@@ -1299,3 +1299,110 @@ export const DiffEditMixedFormats: Story = {
 		},
 	},
 }
+
+/* ------------------------------------------------------------------------------------------
+ * The entry cockpit.
+ *
+ * One story per state the mockup promises, so each can be screenshotted and held against it.
+ * These are the states that carry a rule: what a cold start leads with, when the cards give way
+ * to a single resume, what happens when the target folder has no history of its own, and what a
+ * detected board does to the order of the suggestions.
+ * ---------------------------------------------------------------------------------------- */
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const entrySession = (n: number, cwd: string, ageDays: number, task: string) => ({
+	id: `story-${n}`,
+	ulid: `story-${n}`,
+	ts: Date.now() - ageDays * DAY_MS,
+	task,
+	tokensIn: 1200,
+	tokensOut: 300,
+	totalCost: 0.01,
+	cwdOnTaskInitialization: cwd,
+})
+
+const GW = "/home/dev/gateway-fw"
+const SENSOR = "/home/dev/sensor-fw"
+
+const entryState = (over: Record<string, unknown>) => ({
+	welcomeViewCompleted: true,
+	showWelcome: false,
+	clineMessages: [],
+	...over,
+})
+
+/** No folder open and nothing ever run: the samples are the only sensible first offer. */
+export const EntryColdStart: Story = {
+	decorators: [createStoryDecorator(entryState({ openFolderPaths: [], taskHistory: [] }))],
+	args: {},
+}
+
+/** Firmware open, nothing run yet: their project leads, the samples step back. */
+export const EntryFirstRunWithProject: Story = {
+	decorators: [createStoryDecorator(entryState({ openFolderPaths: [GW], taskHistory: [] }))],
+	args: {},
+}
+
+/** Two fresh sessions: collapsed to the input and one named resume. */
+export const EntryReturning: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [
+					entrySession(1, GW, 0.08, "Continue the LEW840x gateway build — Step 5/7 The application"),
+					entrySession(2, GW, 3, "Check this build against the CRA"),
+				],
+			}),
+		),
+	],
+	args: {},
+}
+
+/** Away a month: the cards come back rather than making them remember. */
+export const EntryLapsed: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [entrySession(1, GW, 92, "Bring up the BLE scanner"), entrySession(2, GW, 120, "Wi-Fi join")],
+			}),
+		),
+	],
+	args: {},
+}
+
+/** Sessions exist, but none in the folder they are about to work in. Never a dead resume. */
+export const EntryNothingInThisFolder: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [
+					entrySession(1, SENSOR, 1, "sensor-fw — add a shell command"),
+					entrySession(2, SENSOR, 4, "sensor-fw — RTT is silent on the /ns build"),
+				],
+			}),
+		),
+	],
+	args: {},
+}
+
+/** A board on the desk outranks everything else, and every suggestion says so. */
+export const EntryBoardDetected: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [],
+				nrfEnvironment: {
+					status: "ready",
+					extensionPresent: true,
+					nrfutilPresent: true,
+					boards: [{ productName: "nRF52840 DK", serialNumber: "001050288730" }],
+				},
+			}),
+		),
+	],
+	args: {},
+}

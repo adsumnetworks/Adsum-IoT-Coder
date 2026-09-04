@@ -495,6 +495,12 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	}, [task])
 
 	const placeholderText = useMemo(() => {
+		// On the entry surface the box IS the new session, so it should say what typing does —
+		// not ask the developer to pick a mode first. "Select a mode to start" turned the one
+		// control that starts everything into a control that appears to want something else.
+		if (!task) {
+			return "Describe what you want to build — Enter starts a new session…"
+		}
 		if (nordicPhase === "awaiting_mode") {
 			return "Select a mode to start..."
 		}
