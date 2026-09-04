@@ -10,6 +10,10 @@ interface IntentCardProps {
 	pill?: string
 	/** Optional one-line capability sub-line under the description (e.g. the A10 deep-debug ladder). */
 	subline?: string
+	/** Colour for that sub-line. Defaults to the muted description grey; the entry surface passes
+	 *  brand cyan so the SAME fact — why this run is suggested — is not cyan in the drawer and grey
+	 *  on a card. One meaning, one colour. */
+	sublineColor?: string
 	/** Roadmap card: dashed/dimmed, non-interactive. */
 	comingSoon?: boolean
 	/** Agent-mode route marker ("→ your agent") — the run-target picker's point-of-action signal. */
@@ -32,6 +36,7 @@ const IntentCard: React.FC<IntentCardProps> = ({
 	primary = false,
 	pill,
 	subline,
+	sublineColor,
 	comingSoon = false,
 	routeChip,
 	caveat,
@@ -150,8 +155,8 @@ const IntentCard: React.FC<IntentCardProps> = ({
 						data-testid={testId ? `${testId}-subline` : undefined}
 						style={{
 							fontSize: "10.5px",
-							color: "var(--vscode-descriptionForeground)",
-							opacity: 0.85,
+							color: sublineColor ?? "var(--vscode-descriptionForeground)",
+							opacity: sublineColor ? 1 : 0.85,
 							marginTop: "5px",
 							lineHeight: 1.4,
 						}}>

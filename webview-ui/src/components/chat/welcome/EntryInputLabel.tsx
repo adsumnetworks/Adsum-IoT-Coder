@@ -49,7 +49,7 @@ const EntryInputLabel: React.FC<EntryInputLabelProps> = ({ onPickScope }) => {
 					)}
 				</>
 			)}
-			{hasEarlier && <span style={{ textTransform: "none", letterSpacing: 0 }}>· the last one stays in ☰</span>}
+			{hasEarlier && <span style={{ textTransform: "none", letterSpacing: 0 }}>· the last one stays in the menu</span>}
 		</div>
 	)
 }

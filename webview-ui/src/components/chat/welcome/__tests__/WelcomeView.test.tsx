@@ -120,11 +120,38 @@ describe("the shape rule decides what is on screen", () => {
 		expect(screen.queryByTestId("entry-resume")).toBeNull()
 	})
 
-	it("returning, but nothing in this folder — one honest line, never a dead resume", () => {
+	it("returning, but nothing in this folder — the runs come back AND the line says where the rest went", () => {
+		// [SCREENSHOT 2026-09-04] This state used to collapse: no resume existed, so the cards were
+		// removed and nothing replaced them. Someone with 52 sessions elsewhere opened a new project
+		// to an empty panel. Now it expands — and still says, reachably, where their history is.
 		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/other", 1), sess(2, "/w/other", 2)] })
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.queryByTestId("entry-resume")).toBeNull()
+		expect(screen.getByText("Suggested runs")).toBeTruthy()
 		expect(screen.getByTestId("entry-orientation").textContent).toContain("2 sessions in other folders")
+	})
+
+	it("that line is a way to reach them, not a dead end", () => {
+		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/other", 1), sess(2, "/w/other", 2)] })
+		render(<WelcomeView {...baseProps} />)
+		fireEvent.click(screen.getByTestId("entry-elsewhere"))
+		expect(screen.getByTestId("entry-drawer")).toBeTruthy()
+	})
+
+	it("the header names the folder and what is actually plugged in", () => {
+		mockState({
+			openFolderPaths: ["/w/gateway-fw"],
+			nrfEnvironment: { boards: [{ productName: "nRF52840 DK" }] },
+		})
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-scope-title").textContent).toBe("gateway-fw")
+		expect(screen.getByTestId("entry-devices").textContent).toContain("nRF52840 DK")
+	})
+
+	it("with nothing connected it says so plainly — absence is a fact, not a fault", () => {
+		mockState({ openFolderPaths: ["/w/gateway-fw"] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-devices").textContent).toContain("no boards detected")
 	})
 })
 

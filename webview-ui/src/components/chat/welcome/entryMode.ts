@@ -52,7 +52,7 @@ export interface EntryInput {
 export interface EntryMode {
 	mode: "expanded" | "collapsed"
 	/** Why, so the UI can say it and a test can assert on it rather than on the boolean. */
-	reason: "no-history" | "one-session" | "lapsed" | "returning"
+	reason: "no-history" | "one-session" | "lapsed" | "no-resume-here" | "returning"
 	/** The newest session in scope, or null — the single named action the collapsed state offers. */
 	resume: EntrySession | null
 	resumeKind: "task" | "handover" | null
@@ -92,6 +92,14 @@ export function entryMode({ history, roots, scope, now }: EntryInput): EntryMode
 	} else if (newestAgeDays > LAPSED_AFTER_DAYS) {
 		mode = "expanded"
 		reason = "lapsed"
+	} else if (!resume) {
+		// [SCREENSHOT 2026-09-04] Collapsing exists to put the input first with ONE named resume
+		// under it. In a folder the developer has never worked in there IS no resume — so
+		// collapsing removed the cards and had nothing to put in their place, and someone with 52
+		// sessions elsewhere opened a new project to an empty panel. Collapse only when there is
+		// something to collapse into.
+		mode = "expanded"
+		reason = "no-resume-here"
 	} else {
 		mode = "collapsed"
 		reason = "returning"
