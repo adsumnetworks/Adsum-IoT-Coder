@@ -141,12 +141,25 @@ describe("attribution — copy law (build-time lint)", () => {
 		assert.doesNotMatch(ui, /open bit file/i, "bit content must not be linked from the chat")
 	})
 
+	test("ownership is stated on the popover, and named from the bit rather than hard-coded", () => {
+		const ui = read("webview-ui/src/components/chat/KbitCredit.tsx")
+		assert.match(ui, /all rights reserved/i, "the popover must state the rights position")
+		assert.match(ui, /The byline above is permanent/, "…and must say credit survives it, or it reads as a warning")
+		assert.match(
+			ui,
+			/rights === "author-retained" \? bit\.author/,
+			"an independently authored bit must be able to name its own rights holder",
+		)
+	})
+
 	test("the provenance boundary is documented, and the popover links to it", () => {
 		// The "attribution is not a verdict" boundary moved out of per-popover small print and into the docs.
 		// That is only safe while BOTH hold: the popover points at the explanation, and the docs still carry it.
 		const ui = read("webview-ui/src/components/chat/KbitCredit.tsx")
 		assert.match(ui, /docs\.adsumnetworks\.com\/knowledge-bits/, "popover must link to the Knowledge bits docs")
-		assert.match(ui, /Learn more about Knowledge bits/, "the link must be discoverable copy, not a bare URL")
+		// The copy now also has to carry the RIGHTS half — the popover states who owns the bit, and the
+		// link is where that statement is explained. [OPERATOR 2026-09-04]
+		assert.match(ui, /How authorship and rights work/, "the link must be discoverable copy, not a bare URL")
 	})
 
 	test("author links never stop the click that opens them", () => {

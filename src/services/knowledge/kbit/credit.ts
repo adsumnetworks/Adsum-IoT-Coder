@@ -41,6 +41,12 @@ export interface KbitCredit {
 	license?: string
 	platform?: string
 	steward: string
+	/** Who holds the intellectual property. Read from the bit's `rights_holder`, not assumed, so a bit
+	 *  whose author retains rights can say a different name here without a code change. */
+	rightsHolder: string
+	/** `all-rights-reserved` (Adsum publishes it) or `author-retained` (an independent author's own
+	 *  bit, agreed in writing). Drives whether the Rights row names Adsum or the author. */
+	rights: "all-rights-reserved" | "author-retained"
 	witness?: KbitWitness
 	/** name → profile URL, for exactly the names on this credit line. Resolved host-side because the
 	 *  webview has no network: see kbit/people.ts. Absent when nobody on the line has a known profile. */
@@ -69,6 +75,8 @@ export interface KbitMetaLike {
 	license?: string
 	platform?: string
 	owner?: string
+	rights_holder?: string
+	rights?: string
 	/** Schema field `co_authors` (R5.x): a list of `{handle, name?}` entries. Manifest entries arrive
 	 *  parsed from YAML; the local frontmatter reader hands back display names it already extracted. Every
 	 *  shape — objects, plain names, one comma-separated string — normalises to the same string[]. */
@@ -90,6 +98,12 @@ export function creditFromMeta(meta: KbitMetaLike, fallbackId?: string): KbitCre
 		license: meta.license?.trim() || undefined,
 		platform: meta.platform?.trim() || undefined,
 		steward: STEWARD,
+		// [OPERATOR 2026-09-04] Ownership is a fact the bit carries, not a constant in the client. An
+		// engineer who authors and maintains a bit entirely on their own may hold defined rights in it,
+		// agreed in writing before publication — that bit says so here and the UI follows, rather than
+		// every bit being stamped with the house name.
+		rightsHolder: meta.rights_holder?.trim() || STEWARD,
+		rights: meta.rights?.trim() === "author-retained" ? "author-retained" : "all-rights-reserved",
 		coAuthors: normalizeCoAuthors(meta.co_authors, attributed ? raw : undefined),
 	}
 }
