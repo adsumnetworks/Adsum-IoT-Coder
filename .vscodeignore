@@ -206,7 +206,12 @@ test-results/
 # Ignore Storybook files
 **/*.stories.tsx
 *storybook.log
+# Bare `storybook-static` matches only the repo root. The build actually lands in
+# webview-ui/storybook-static, so the bare pattern missed it and 1,673 files — 11.7 MB —
+# rode into a VSIX. Anyone who runs `build-storybook` before packaging ships Storybook to
+# users, and nothing warns them, because .gitignore hides it from git status too.
 storybook-static
+**/storybook-static/**
 **/StorybookDecorator.tsx
 
 # CRA pre-built reference bundles — MUST ship: the CRA Sample run scans these (SPDX + .config + symbols.nm
