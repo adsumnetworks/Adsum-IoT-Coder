@@ -500,7 +500,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		if (!task) {
 			// [SWEEP 2026-09-04, F13] "what you want to build" — a daily user is here to debug as
 			// often as to build. Neutral, and shorter, so it does not wrap into a grey wall.
-			return "Describe the task — Enter starts a new session"
+			// Fits one line at sidebar width; "new session" made it two, which is a lot of wrapping for
+			// grey text nobody reads twice. "Starts a session" says the same thing about an empty panel.
+			return "Describe the task — Enter starts a session"
 		}
 		if (nordicPhase === "awaiting_mode") {
 			return "Select a mode to start..."

@@ -46,7 +46,7 @@ testing-platform/
   package-lock.json
   package.json
   tsconfig.json
-(91 doc file(s) omitted)
+(89 doc file(s) omitted)
 assets/branding/ — 7 more file(s) (use list_files to enumerate)
 assets/docs/ — 10 more file(s) (use list_files to enumerate)
 assets/icons/ — 38 more file(s) (use list_files to enumerate)
@@ -55,7 +55,7 @@ docs/features/ — 17 more file(s) (use list_files to enumerate)
 docs/mcp/ — 7 more file(s) (use list_files to enumerate)
 docs/provider-config/ — 22 more file(s) (use list_files to enumerate)
 ./ — 30 more file(s) (use list_files to enumerate)
-scripts/ — 56 more file(s) (use list_files to enumerate)
+scripts/ — 58 more file(s) (use list_files to enumerate)
 webview-ui/ — 11 more file(s) (use list_files to enumerate)
 (31 directories omitted)
 (walk stopped early: entry cap reached — use list_files for anything not listed)
