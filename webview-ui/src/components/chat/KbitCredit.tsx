@@ -31,6 +31,11 @@ export interface KbitLoadedPayload {
 	links?: Record<string, string>
 	version?: string
 	license?: string
+	/** Who holds the IP. Absent on a payload from an older host — the chip then falls back to the
+	 *  house name, which is true for every bit published so far. */
+	rightsHolder?: string
+	/** `author-retained` only for an independently authored bit whose terms were agreed in writing. */
+	rights?: "all-rights-reserved" | "author-retained"
 	platform?: string
 	steward?: string
 	source?: "bundled" | "registry"
@@ -64,6 +69,33 @@ function licenseLabel(license?: string): string | null {
 }
 
 const KIND_LABEL: Record<KbitLoadedPayload["kind"], string> = { knowledge: "knowledge bit", tool: "tool bit" }
+
+/** Who to name as the rights holder. Every bit published so far is Adsum's; the field exists so an
+ *  independently authored one can say otherwise without a code change. */
+const rightsHolderOf = (bit: Pick<KbitLoadedPayload, "rightsHolder" | "rights" | "author">) =>
+	bit.rights === "author-retained" ? bit.author : (bit.rightsHolder ?? "Adsum Networks")
+
+/**
+ * The ownership marker on a credit line.
+ *
+ * [OPERATOR 2026-09-04] Grey and bordered, never coral or cyan. In this product coral is identity and
+ * cyan is action; a rights marker is neither, and colouring it would make ownership shout over the
+ * person's name on every single turn — which is the opposite of the point. The line still reads
+ * "curated by <person>" first; this sits after it.
+ */
+const RightsChip = ({ bit }: { bit: Pick<KbitLoadedPayload, "rightsHolder" | "rights" | "author"> }) => (
+	<span
+		className="shrink-0 rounded-[2px] border px-[5px] py-px"
+		style={{
+			fontFamily: "var(--vscode-editor-font-family)",
+			fontSize: "10px",
+			borderColor: "var(--vscode-panel-border)",
+			color: "var(--vscode-descriptionForeground)",
+		}}
+		title={`Intellectual property of ${rightsHolderOf(bit)}. The byline is permanent.`}>
+		© {rightsHolderOf(bit)}
+	</span>
+)
 
 /** One credit line. `bits.length > 1` groups them per the credit law (expands in place, no extra line). */
 export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
@@ -104,8 +136,9 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 						{bits[0].title}
 					</button>
 					<span>
-						by <AuthorName bit={bits[0]} />
+						curated by <AuthorName bit={bits[0]} />
 					</span>
+					<RightsChip bit={bits[0]} />
 				</div>
 			) : (
 				<div className="flex flex-col gap-1">
@@ -120,8 +153,9 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 							className="bg-transparent border-0 p-0 cursor-pointer text-left"
 							onClick={() => setExpanded(!expanded)}
 							style={{ color: BRAND_CYAN_TEXT }}>
-							{bits.length} {groupNoun} · by {authors.join(" + ")} {expanded ? "▴" : "▾"}
+							{bits.length} {groupNoun} · curated by {authors.join(" + ")} {expanded ? "▴" : "▾"}
 						</button>
+						<RightsChip bit={bits[0]} />
 					</div>
 					{expanded &&
 						bits.map((b) => (
@@ -241,7 +275,13 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 		{/* No prose lead. It restated CURATED BY + MAINTAINED BY directly beneath it — three renders of the
 		    author in one five-line card — and read near-identically for every bit by the same author on the
 		    same platform. Platform moved into the metadata line; everything factual is a labelled row. */}
-		<div className="mt-[10px] flex flex-col gap-1.5">
+		{/* Two columns, not six stacked rows. [OPERATOR 2026-09-04] "distribute info horizontally
+		    including the new copyright so the card doesn't take too much vertical space" — the Rights row
+		    had just made a five-row stack into six lines in a popover that floats over the conversation.
+		    These values are two or three words each, so a label above a short value wastes the whole right
+		    half of every row. `auto-fit` collapses back to one column if the sidebar is genuinely too
+		    narrow, and the witness keeps a full row because it is a sentence, not a name. */}
+		<div className="mt-[10px] grid gap-x-3 gap-y-1.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(118px, 1fr))" }}>
 			<ProvRow label="Curated by" muted={bit.attributed === false}>
 				{bit.attributed === false ? bit.author : <PersonLink color="inherit" links={bit.links} name={bit.author} />}
 			</ProvRow>
@@ -262,8 +302,19 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 			    noise on every bit forever — it reads as a defect rather than a roadmap. Restore this row when
 			    signatures actually exist, showing the two facts separately (approved by X / signed: Adsum). */}
 			<ProvRow label="Maintained by">{bit.steward || "Adsum Networks"}</ProvRow>
+			{/* Rights, after the people and never before them. [OPERATOR 2026-09-04] The second line is
+			    what stops this reading as a warning: it costs one line and it is the whole difference
+			    between "we own this" and "we own this, and your name stays on it". Order is the design —
+			    credit first, ownership second, on every surface. */}
+			<ProvRow label="Rights">
+				© {new Date().getFullYear()} {rightsHolderOf(bit)}
+			</ProvRow>
 			{/* Hardware evidence is a FACT, so it gets a row like the others — and only when one exists. */}
-			{bit.witness && <ProvRow label="Run on">{bit.witness}</ProvRow>}
+			{bit.witness && (
+				<div style={{ gridColumn: "1 / -1" }}>
+					<ProvRow label="Run on">{bit.witness}</ProvRow>
+				</div>
+			)}
 		</div>
 		{/* The provenance boundary (attribution is credit, never a statement about YOUR device) is stated in
 		    the docs rather than as small print on every popover: nobody reads a credit card expecting a
@@ -271,8 +322,9 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 		<div
 			className="mt-[9px] pt-[8px] text-[10px] leading-[1.5]"
 			style={{ borderTop: "1px solid var(--vscode-panel-border)" }}>
+			<span className="opacity-70">All rights reserved. The byline above is permanent. </span>
 			<a href={KBIT_DOCS_URL} rel="noreferrer" style={{ color: BRAND_CYAN_TEXT }} target="_blank">
-				Learn more about Knowledge bits →
+				How authorship and rights work →
 			</a>
 		</div>
 	</div>
