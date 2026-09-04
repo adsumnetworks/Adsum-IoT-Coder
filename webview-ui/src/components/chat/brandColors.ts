@@ -38,3 +38,19 @@ export const brandAlpha = (hex: string, alpha: number) => {
 	const b = parseInt(n.slice(4, 6), 16)
 	return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
+
+/**
+ * Cyan as it may actually be used on text and on UI edges, resolved by theme in CSS.
+ *
+ * [T5, 2026-09-04] Measured: BRAND_CYAN_600 as text on VS Code's light sidebar (#F3F3F3) is
+ * 2.50:1 and on a white editor 2.78:1 — under WCAG AA's 4.5 for text and under the 3.0 floor for
+ * non-text UI. The same hue two steps darker passes on both light grounds (text #007994 →
+ * 4.55 / 5.04; edges #0099BB → 3.02 / 3.35), and on a dark ground the original 6.40:1 is fine, so
+ * the variables keep #00A9CE there. Set in index.css off VS Code's own body class, the way the
+ * wordmark is, so React state cannot leave a light host with the dark value.
+ *
+ * Use these for `color:` and `border:`; keep BRAND_CYAN_600 for fills under white text only where
+ * the fill is also the light-theme UI token's job (icon discs use BRAND_CYAN_UI).
+ */
+export const BRAND_CYAN_TEXT = "var(--adsum-cyan-text)"
+export const BRAND_CYAN_UI = "var(--adsum-cyan)"

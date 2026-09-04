@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from "react"
-import { BRAND_CORAL, BRAND_CYAN_600, brandAlpha } from "./brandColors"
+import { BRAND_CORAL, BRAND_CYAN_600, BRAND_CYAN_TEXT, brandAlpha } from "./brandColors"
 import { KbitMark, TbitMark } from "./KbitMark"
 import { authorLink } from "./kbitAuthors"
 
@@ -119,7 +119,7 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 						<button
 							className="bg-transparent border-0 p-0 cursor-pointer text-left"
 							onClick={() => setExpanded(!expanded)}
-							style={{ color: BRAND_CYAN_600 }}>
+							style={{ color: BRAND_CYAN_TEXT }}>
 							{bits.length} {groupNoun} · by {authors.join(" + ")} {expanded ? "▴" : "▾"}
 						</button>
 					</div>
@@ -271,7 +271,7 @@ const ProvenanceCard = ({ bit, onClose }: { bit: KbitLoadedPayload; onClose: () 
 		<div
 			className="mt-[9px] pt-[8px] text-[10px] leading-[1.5]"
 			style={{ borderTop: "1px solid var(--vscode-panel-border)" }}>
-			<a href={KBIT_DOCS_URL} rel="noreferrer" style={{ color: BRAND_CYAN_600 }} target="_blank">
+			<a href={KBIT_DOCS_URL} rel="noreferrer" style={{ color: BRAND_CYAN_TEXT }} target="_blank">
 				Learn more about Knowledge bits →
 			</a>
 		</div>

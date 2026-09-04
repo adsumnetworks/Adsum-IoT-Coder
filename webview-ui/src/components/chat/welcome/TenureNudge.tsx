@@ -1,5 +1,5 @@
 import React from "react"
-import { BRAND_CORAL, BRAND_CYAN_600, brandAlpha, brandSubtle } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI, brandAlpha, brandSubtle } from "../brandColors"
 
 interface TenureNudgeProps {
 	onStartDemo: () => void
@@ -38,7 +38,7 @@ const TenureNudge: React.FC<TenureNudgeProps> = ({ onStartDemo }) => {
 			<button
 				onClick={onStartDemo}
 				onMouseEnter={(e) => {
-					e.currentTarget.style.background = BRAND_CYAN_600
+					e.currentTarget.style.background = BRAND_CYAN_UI
 				}}
 				onMouseLeave={(e) => {
 					e.currentTarget.style.background = "transparent"
@@ -46,12 +46,12 @@ const TenureNudge: React.FC<TenureNudgeProps> = ({ onStartDemo }) => {
 				style={{
 					flexShrink: 0,
 					background: "transparent",
-					border: `1px solid ${BRAND_CYAN_600}`,
+					border: `1px solid ${BRAND_CYAN_UI}`,
 					borderRadius: "5px",
 					padding: "5px 10px",
 					fontSize: "12px",
 					fontWeight: 600,
-					color: BRAND_CYAN_600,
+					color: BRAND_CYAN_TEXT,
 					cursor: "pointer",
 					transition: "background 0.15s, color 0.15s",
 				}}

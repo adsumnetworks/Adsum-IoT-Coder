@@ -6,7 +6,7 @@ import Fuse from "fuse.js"
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useInterval } from "react-use"
 import styled from "styled-components"
-import { BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha } from "@/components/chat/brandColors"
+
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { PLATFORM_CONFIG, PlatformType } from "@/config/platform.config"
@@ -358,30 +358,33 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 						<ProviderDropdownList ref={dropdownListRef}>
 							{providerSearchResults.map((item, index) => (
 								<ProviderDropdownItem
+									aria-disabled={item.value === "external-agent" || undefined}
 									data-testid={`provider-option-${item.value}`}
 									isSelected={index === selectedIndex}
 									key={item.value}
-									onClick={() => handleProviderChange(item.value)}
+									// [PLAN A.0, 2026-09-04] "Bring your own agent" stays visible so people know it is
+									// coming, and does nothing when chosen. It carried a BETA badge and a warning that
+									// its faithfulness was "not yet measured" — a control that ships with a disclaimer
+									// about itself is not ready to be a control. The host-side handover code is
+									// untouched; only the door is closed until the h2.6 live re-test is in.
+									onClick={() => item.value !== "external-agent" && handleProviderChange(item.value)}
 									onMouseEnter={() => setSelectedIndex(index)}
 									ref={(el) => {
 										itemRefs.current[index] = el
-									}}>
+									}}
+									style={item.value === "external-agent" ? { opacity: 0.5, cursor: "default" } : undefined}>
 									<span>
 										{item.html}
 										{item.value === "external-agent" && (
 											<span
 												style={{
 													marginLeft: "6px",
-													fontSize: "9px",
-													fontWeight: 700,
-													letterSpacing: "0.4px",
-													padding: "1px 5px",
-													borderRadius: "8px",
-													color: BRAND_CYAN_700,
-													border: `1px solid ${brandAlpha(BRAND_CYAN_600, 0.45)}`,
-													verticalAlign: "1px",
+													fontSize: "10px",
+													letterSpacing: "0.08em",
+													textTransform: "uppercase",
+													color: "var(--vscode-descriptionForeground)",
 												}}>
-												BETA
+												Coming soon
 											</span>
 										)}
 									</span>

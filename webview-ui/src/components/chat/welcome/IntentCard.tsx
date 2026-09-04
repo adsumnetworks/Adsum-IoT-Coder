@@ -1,5 +1,5 @@
 import React from "react"
-import { BRAND_CORAL, BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha, brandSubtle } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_600, BRAND_CYAN_700, BRAND_CYAN_UI, brandAlpha, brandSubtle } from "../brandColors"
 
 interface IntentCardProps {
 	icon: string
@@ -52,7 +52,7 @@ const IntentCard: React.FC<IntentCardProps> = ({
 	// and with three coloured frames on screen the one cyan frame stopped being singular. The chip
 	// keeps the identity; the frame is the panel's own border, so exactly one card on the surface
 	// has a coloured edge and it is the one the ranking put first.
-	const border = comingSoon ? SOON_BORDER : primary ? BRAND_CYAN_600 : "var(--vscode-panel-border)"
+	const border = comingSoon ? SOON_BORDER : primary ? BRAND_CYAN_UI : "var(--vscode-panel-border)"
 	const bg = comingSoon
 		? "var(--vscode-input-background)"
 		: primary
@@ -182,7 +182,7 @@ const Pill: React.FC<{ text: string; variant: "primary" | "soon" }> = ({ text, v
 						fontWeight: 600,
 						padding: "2px 7px",
 						borderRadius: "999px",
-						background: BRAND_CYAN_600,
+						background: BRAND_CYAN_UI,
 						color: "#04222b",
 						letterSpacing: "0.08em",
 						flexShrink: 0,

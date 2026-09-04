@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient, StateServiceClient, TaskServiceClient, WebServiceClient } from "@/services/grpc-client"
-import { BRAND_CORAL, BRAND_CYAN_600 } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "../brandColors"
 import { DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
@@ -399,7 +399,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 									<button
 										data-testid="entry-elsewhere"
 										onClick={openDrawer}
-										style={{ color: BRAND_CYAN_600, textDecoration: "underline" }}>
+										style={{ color: BRAND_CYAN_TEXT, textDecoration: "underline" }}>
 										your {mode.elsewhereCount} session{mode.elsewhereCount > 1 ? "s" : ""} in other folders
 									</button>{" "}
 									are in the menu.
@@ -414,7 +414,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							<div
 								className="flex flex-col gap-1.5 rounded-lg p-2"
 								data-testid="entry-samples"
-								style={{ border: `1px solid ${BRAND_CYAN_600}` }}>
+								style={{ border: `1px solid ${BRAND_CYAN_UI}` }}>
 								{/* [SWEEP 2026-09-04, F1] Tracked caps wrap badly: two caps lines became four at
 								    sidebar width. One short caps label, and the qualifier in sentence case, where
 								    wrapping costs nothing. */}
@@ -436,7 +436,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										<span
 											aria-hidden="true"
 											className="codicon codicon-play"
-											style={{ fontSize: "11px", color: idx === 0 ? BRAND_CYAN_600 : undefined }}
+											style={{ fontSize: "11px", color: idx === 0 ? BRAND_CYAN_TEXT : undefined }}
 										/>
 										<span className="flex min-w-0 flex-1 flex-col">
 											{/* Wraps, never truncates. [SCREENSHOT r16] "Example debug with a radio sni…"
@@ -448,7 +448,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 												    is "which do I click first". The cue leads the description of the first
 												    row — on the row, not a tag on the run, and never in the title's width. */}
 												{idx === 0 && (
-													<span style={{ fontWeight: 600, color: BRAND_CYAN_600 }}>Start here — </span>
+													<span style={{ fontWeight: 600, color: BRAND_CYAN_TEXT }}>Start here — </span>
 												)}
 												{s.blurb}
 											</span>
@@ -496,7 +496,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										// something detected. "works on nRF and on ESP32" on three cards in a row
 										// was the one thing every card said and the loudest text on each.
 										subline={r.grounded ? `◆ ${r.why}` : undefined}
-										sublineColor={BRAND_CYAN_600}
+										sublineColor={BRAND_CYAN_TEXT}
 										testId={`entry-run-${r.item.id}`}
 										title={r.item.title}
 									/>
@@ -515,7 +515,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							)
 						}}
 						style={{
-							border: `1px solid ${BRAND_CYAN_600}`,
+							border: `1px solid ${BRAND_CYAN_UI}`,
 							background: "var(--vscode-inputOption-activeBackground)",
 						}}>
 						<div className="flex items-start gap-2">
@@ -537,7 +537,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							<span
 								aria-hidden="true"
 								className="codicon codicon-play shrink-0"
-								style={{ fontSize: "13px", color: BRAND_CYAN_600, marginTop: "1px" }}
+								style={{ fontSize: "13px", color: BRAND_CYAN_TEXT, marginTop: "1px" }}
 							/>
 						</div>
 						<div style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
@@ -559,7 +559,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 								<button
 									data-testid="entry-elsewhere"
 									onClick={openDrawer}
-									style={{ color: BRAND_CYAN_600, textDecoration: "underline" }}>
+									style={{ color: BRAND_CYAN_TEXT, textDecoration: "underline" }}>
 									{mode.elsewhereCount} session{mode.elsewhereCount > 1 ? "s" : ""} in other folders
 								</button>
 								.

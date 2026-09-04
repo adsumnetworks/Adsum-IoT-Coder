@@ -3,7 +3,7 @@ import { StringArrayRequest, StringRequest } from "@shared/proto/cline/common"
 import { RenameTaskRequest } from "@shared/proto/cline/task"
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { TaskServiceClient } from "@/services/grpc-client"
-import { BRAND_CORAL, BRAND_CYAN_600 } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "../brandColors"
 import type { Ranked, Suggestable } from "./suggest"
 
 /**
@@ -256,7 +256,7 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 								className="flex w-full flex-col py-2 pl-[41px] pr-3 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
 								data-testid="entry-drawer-see-all"
 								onClick={() => setShowAll(!showAll)}
-								style={{ color: BRAND_CYAN_600, fontSize: "12px" }}>
+								style={{ color: BRAND_CYAN_TEXT, fontSize: "12px" }}>
 								{showAll ? `Show just the recent ${RECENT}` : `See all ${sessions.length} sessions`}
 								{/* Under the link. Pushed to its right, it landed beside a link that had already
 								    wrapped and the two read as one garbled line. */}
@@ -335,7 +335,7 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 								setQuery("")
 								searchRef.current?.focus()
 							}}
-							style={{ color: BRAND_CYAN_600 }}>
+							style={{ color: BRAND_CYAN_TEXT }}>
 							Clear the filter
 						</button>
 					</div>
@@ -410,7 +410,7 @@ const SessionRow: React.FC<{
 							fontSize: "12px",
 							color: "var(--vscode-input-foreground)",
 							background: "var(--vscode-input-background)",
-							border: `1px solid ${BRAND_CYAN_600}`,
+							border: `1px solid ${BRAND_CYAN_UI}`,
 						}}
 						value={draft}
 					/>

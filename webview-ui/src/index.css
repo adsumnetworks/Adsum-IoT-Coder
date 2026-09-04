@@ -118,3 +118,26 @@ body.vscode-light .adsum-wordmark-light,
 body.vscode-high-contrast-light .adsum-wordmark-light {
 	display: block;
 }
+
+/* Cyan that meets AA on whichever ground the host paints. See BRAND_CYAN_TEXT / BRAND_CYAN_UI in
+ * brandColors.ts for the measurements. Dark and un-classed contexts keep the brand value. */
+:root {
+	--adsum-cyan: #00a9ce;
+	--adsum-cyan-text: #00a9ce;
+}
+@media (prefers-color-scheme: light) {
+	body:not(.vscode-dark):not(.vscode-high-contrast) {
+		--adsum-cyan: #0099bb;
+		--adsum-cyan-text: #007994;
+	}
+}
+body.vscode-light,
+body.vscode-high-contrast-light {
+	--adsum-cyan: #0099bb;
+	--adsum-cyan-text: #007994;
+}
+body.vscode-dark,
+body.vscode-high-contrast:not(.vscode-high-contrast-light) {
+	--adsum-cyan: #00a9ce;
+	--adsum-cyan-text: #00a9ce;
+}

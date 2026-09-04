@@ -1,6 +1,6 @@
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
-import { BRAND_CORAL, BRAND_CYAN_600 } from "../../chat/brandColors"
+import { BRAND_CORAL, BRAND_CYAN_TEXT } from "../../chat/brandColors"
 import { TYPE } from "../../chat/welcome/typography"
 import Section from "../Section"
 
@@ -23,9 +23,30 @@ const REPO = "https://github.com/adsumnetworks/Adsum-IoT-Coder"
 const DOCS = "https://docs.adsumnetworks.com"
 const SITE = "https://www.adsumnetworks.com"
 
-const PLATFORMS: { family: string; sdk: string; chips: string[] }[] = [
-	{ family: "Nordic", sdk: "nRF Connect SDK · Zephyr", chips: ["nRF52", "nRF53", "nRF54L"] },
-	{ family: "Espressif", sdk: "ESP-IDF", chips: ["ESP32", "ESP32-S3", "ESP32-C6"] },
+/**
+ * Kept in step with the README's "Supported platforms" table — that table is the public claim, and
+ * this page must not lag it. [OPERATOR 2026-09-04] It did: no nRF91, no cellular, no BWG840X.
+ */
+const PLATFORMS: { family: string; sdk: string; chips: string[]; protocols: string[]; note?: string }[] = [
+	{
+		family: "Nordic",
+		sdk: "nRF Connect SDK · Zephyr",
+		chips: ["nRF52", "nRF53", "nRF54L15", "nRF54LM20", "nRF9160", "nRF9161", "nRF9151"],
+		protocols: ["BLE", "NB-IoT", "LTE-M", "GNSS"],
+	},
+	{
+		family: "Espressif",
+		sdk: "ESP-IDF",
+		chips: ["ESP32", "ESP32-S3", "ESP32-C6"],
+		protocols: ["Wi-Fi", "BLE"],
+		note: "and the rest of the shipping range",
+	},
+	{
+		family: "Products",
+		sdk: "both chips, one workspace",
+		chips: ["Fanstel LEW840X", "Fanstel BWG840X"],
+		protocols: ["BLE", "Ethernet", "Wi-Fi", "LTE"],
+	},
 ]
 
 const Chip = ({ text }: { text: string }) => (
@@ -85,11 +106,11 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 							</span>
 						</div>
 						<p style={{ ...TYPE.title, margin: 0, color: "var(--vscode-foreground)" }}>
-							An open-source AI coding agent for embedded IoT firmware.
+							An IoT coding agent that works your whole firmware dev loop on Espressif ESP and Nordic nRF.
 						</p>
 						<p style={{ ...TYPE.body, margin: 0, color: "var(--vscode-descriptionForeground)" }}>
-							The whole loop on your real board — scaffold, build, flash, test, observe, fix — and one-click CRA
-							readiness.
+							Scaffold, build, flash, test, observe, fix — on your real board — and one-click EU Cyber Resilience
+							Act readiness: an SBOM plus a secure-by-design posture check.
 						</p>
 					</div>
 
@@ -127,32 +148,32 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 					<div className="flex flex-col gap-2">
 						<Label>Runs on</Label>
 						{PLATFORMS.map((p) => (
-							<div className="flex flex-wrap items-center gap-1.5" key={p.family}>
-								<span
-									style={{
-										...TYPE.body,
-										fontWeight: 600,
-										minWidth: "72px",
-										color: "var(--vscode-foreground)",
-									}}>
-									{p.family}
-								</span>
-								{p.chips.map((c) => (
-									<Chip key={c} text={c} />
-								))}
-								<span style={{ ...TYPE.meta, color: "var(--vscode-descriptionForeground)" }}>{p.sdk}</span>
+							<div className="flex flex-col gap-1" key={p.family}>
+								<div className="flex flex-wrap items-baseline gap-x-2">
+									<span style={{ ...TYPE.body, fontWeight: 600, color: "var(--vscode-foreground)" }}>
+										{p.family}
+									</span>
+									<span style={{ ...TYPE.meta, color: "var(--vscode-descriptionForeground)" }}>{p.sdk}</span>
+								</div>
+								<div className="flex flex-wrap items-center gap-1.5">
+									{p.chips.map((c) => (
+										<Chip key={c} text={c} />
+									))}
+									{p.note && (
+										<span style={{ ...TYPE.meta, color: "var(--vscode-descriptionForeground)" }}>
+											{p.note}
+										</span>
+									)}
+								</div>
+								<div style={{ ...TYPE.meta, color: "var(--vscode-descriptionForeground)" }}>
+									{p.protocols.join(" · ")}
+								</div>
 							</div>
 						))}
-						<div className="flex flex-wrap items-center gap-1.5">
-							<span style={{ ...TYPE.body, fontWeight: 600, minWidth: "72px", color: "var(--vscode-foreground)" }}>
-								Radios
-							</span>
-							<Chip text="BLE" />
-							<Chip text="Wi-Fi" />
-							<Chip text="LTE" />
-							<span style={{ ...TYPE.meta, color: "var(--vscode-descriptionForeground)" }}>
-								LTE on the LEW840x gateway
-							</span>
+						<div style={{ ...TYPE.meta, color: "var(--vscode-descriptionForeground)" }}>
+							Any board built with a supported chip — your own design, a reference board, a DK, or a product off the
+							shelf. DECT NR+ and NTN knowledge ships too (NTN needs LACA A1A silicon; DECT NR+ a modem image from
+							Nordic sales).
 						</div>
 					</div>
 
@@ -163,6 +184,8 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 							<VSCodeLink href={`${DOCS}/getting-started`}>Getting started</VSCodeLink>
 							<VSCodeLink href={`${DOCS}/knowledge-bits`}>Knowledge bits</VSCodeLink>
 							<VSCodeLink href={`${DOCS}/cra-readiness`}>CRA readiness</VSCodeLink>
+							<VSCodeLink href={`${DOCS}/supported-hardware`}>Chips and protocols</VSCodeLink>
+							<VSCodeLink href={`${DOCS}/cellular`}>Cellular on nRF91</VSCodeLink>
 						</div>
 					</div>
 					<div className="flex flex-col gap-2">
@@ -181,9 +204,9 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 							color: "var(--vscode-descriptionForeground)",
 							borderTop: "1px solid var(--vscode-panel-border)",
 						}}>
-						© Adsum Networks · open source ·{" "}
-						<VSCodeLink href={`${REPO}/blob/main/LICENSE`} style={{ color: BRAND_CYAN_600, fontSize: "inherit" }}>
-							licence
+						© Adsum Networks · open source under{" "}
+						<VSCodeLink href={`${REPO}/blob/main/LICENSE`} style={{ color: BRAND_CYAN_TEXT, fontSize: "inherit" }}>
+							Apache 2.0
 						</VSCodeLink>
 					</div>
 				</div>

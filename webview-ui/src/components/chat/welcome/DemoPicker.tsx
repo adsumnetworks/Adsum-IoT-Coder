@@ -1,5 +1,5 @@
 import React from "react"
-import { BRAND_CYAN_600, BRAND_CYAN_700, brandSubtle } from "../brandColors"
+import { BRAND_CYAN_600, BRAND_CYAN_700, BRAND_CYAN_TEXT, BRAND_CYAN_UI, brandSubtle } from "../brandColors"
 import { DEMO_SCENARIO_LIST } from "../demoScenarios"
 
 interface DemoPickerProps {
@@ -45,7 +45,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 	ranIds,
 }) => {
 	const isRerun = variant === "rerun"
-	const containerBorder = isRerun ? NEUTRAL_BORDER : BRAND_CYAN_600
+	const containerBorder = isRerun ? NEUTRAL_BORDER : BRAND_CYAN_UI
 	const containerBg = isRerun ? "transparent" : brandSubtle(BRAND_CYAN_600, 5)
 
 	return (
@@ -93,7 +93,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 					// Contour tiers: cyan (NEW/featured) → brighter grey (runnable, not NEW) → dim grey (soon/disabled).
 					// A runnable-but-not-NEW row (e.g. an already-run BLE NUS) reads as clearly active, just without
 					// the NEW cyan contour — never as dim as a "soon" row.
-					const restBorder = featured ? BRAND_CYAN_600 : rowDisabled ? NEUTRAL_BORDER : NEUTRAL_BORDER_RUNNABLE
+					const restBorder = featured ? BRAND_CYAN_UI : rowDisabled ? NEUTRAL_BORDER : NEUTRAL_BORDER_RUNNABLE
 					// Three opacity tiers in the reduced picker: runnable (featured OR not) = 80% (clearly active),
 					// "soon" = 50% (dimmed). The hero variant stays full-opacity for runnable rows.
 					const rowOpacity = rowDisabled ? 0.5 : isRerun ? 0.8 : 1
@@ -170,8 +170,8 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 												fontWeight: 700,
 												letterSpacing: "0.04em",
 												textTransform: "uppercase",
-												color: BRAND_CYAN_600,
-												border: `1px solid ${BRAND_CYAN_600}`,
+												color: BRAND_CYAN_TEXT,
+												border: `1px solid ${BRAND_CYAN_UI}`,
 												borderRadius: "4px",
 												padding: "0 4px",
 												verticalAlign: "middle",
@@ -215,7 +215,7 @@ const DemoPicker: React.FC<DemoPickerProps> = ({
 									flexShrink: 0,
 									fontSize: "10.5px",
 									fontWeight: 600,
-									color: rowDisabled ? "var(--vscode-descriptionForeground)" : BRAND_CYAN_600,
+									color: rowDisabled ? "var(--vscode-descriptionForeground)" : BRAND_CYAN_TEXT,
 								}}>
 								{runLabel}
 							</span>
