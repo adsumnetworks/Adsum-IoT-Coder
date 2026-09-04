@@ -641,7 +641,7 @@
 			"id": "adsum/rules/skill-loading",
 			"title": "Universal Rule: Skill Loading",
 			"type": "knowledge",
-			"version": "1.1.0",
+			"version": "1.2.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -650,7 +650,7 @@
 			"domain": "embedded-iot",
 			"platform": "universal",
 			"path": "rules/skill-loading.md",
-			"content_hash": "17b11264609f34a538de878331fa9eb702f20ed3f5ac70b8f803e78c1b65a714"
+			"content_hash": "3106b4db1bc0799ccedbf15dc2e791e9307f72504f71fae22bdb11367421f7cf"
 		},
 		{
 			"id": "adsum/rules/tool-routing",

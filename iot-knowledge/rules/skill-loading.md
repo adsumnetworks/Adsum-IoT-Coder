@@ -2,7 +2,7 @@
 id: adsum/rules/skill-loading
 title: "Universal Rule: Skill Loading"
 type: knowledge
-version: 1.1.0
+version: 1.2.0
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -76,6 +76,31 @@ stub's Command Gate table for the exact commands, files, and platform-specific t
 
 **Capture without analysis is an unfinished operation.** After any log capture, the analyze step (per the
 platform's `analyze-logs.md`) is part of the same operation — never end at "logs captured".
+
+---
+
+## Naming a bit is not loading it — the load happens BEFORE the next tool call
+
+**HARD RULE.** The moment you write that a bit is relevant — *"let me load X"*, *"X covers this"*,
+*"I should read X first"* — the very next thing you do is `read_file` it. Not after one more look
+at the tree, not after checking the structure, not after a quick grep to orient yourself. There is
+no step that legitimately comes between naming a bit and loading it.
+
+**Why this exists, and it is not a style preference.** [BENCH 2026-09-04] Asked to check a
+dashboard renders before a flash, an agent reasoned: *"This is a LEW840X gateway project… Let me
+load the gateway-dashboard-ui knowledge bit since I'm about to check the dashboard page
+rendering. **Actually let me first understand the structure.**"* It never came back. It then ran
+the project's own checked-in check and reported success, having never seen the render rules the
+bit exists to supply. Every part of the routing worked — the product was identified, the right
+bit was named — and the load was deferred behind one more orienting step and lost.
+
+That is the whole failure. Not a bit that could not be found; a bit that was found, named, and
+dropped. Once a turn moves on, the intention is gone: nothing in the next tool result reminds you
+of it, and the answer you produce is one an unassisted model would have produced.
+
+**So: intention and action are the same step.** "Let me load X" and the `read_file` of X are one
+move with nothing between them. If you find yourself writing *"first let me…"* after naming a bit,
+that sentence is the bug — delete it and read the file.
 
 ---
 
