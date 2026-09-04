@@ -3,19 +3,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import WelcomeView from "../WelcomeView"
 
-// Mock state + theme hooks and the noisy children that pull their own context, so the test
-// isolates WelcomeView's own decision: which demo card variant to show, and the intent cards.
+/**
+ * The entry surface.
+ *
+ * Rewritten with the cockpit. The rules carried over from the previous surface — one grounded
+ * promotion per paint, the CRA nudge's evidence grounding, and cards that route rather than just
+ * render — are still asserted here, because those were never about the layout. What is new is the
+ * shape rule, the single home for sessions, and the reason attached to every suggestion.
+ */
+
 vi.mock("@/context/ExtensionStateContext", () => ({ useExtensionState: vi.fn() }))
 vi.mock("@/hooks/useVSCodeTheme", () => ({ useVSCodeTheme: () => ({ isDark: true }) }))
-vi.mock("@/services/grpc-client", () => ({ FileServiceClient: { openFolder: vi.fn() } }))
-vi.mock("@/components/history/HistoryPreview", () => ({ default: () => null }))
+vi.mock("@/services/grpc-client", () => ({
+	FileServiceClient: { openFolder: vi.fn() },
+	StateServiceClient: { dismissBanner: vi.fn(() => Promise.resolve()) },
+	TaskServiceClient: { showTaskWithId: vi.fn(() => Promise.resolve()) },
+	WebServiceClient: { openInBrowser: vi.fn(() => Promise.resolve()) },
+}))
 vi.mock("../StatusHeader", () => ({ default: () => null }))
 vi.mock("../DockCoachMark", () => ({ default: () => null }))
-vi.mock("../TenureNudge", () => ({ default: () => null }))
 vi.mock("../../UpgradeCard", () => ({ default: () => <div data-testid="upgrade-card" /> }))
 
-// jsdom's default opaque origin doesn't expose localStorage — provide a deterministic in-memory one so the
-// nudge dismiss-persistence path is exercised (and cleared between tests).
 const _store = new Map<string, string>()
 vi.stubGlobal("localStorage", {
 	getItem: (k: string) => _store.get(k) ?? null,
@@ -30,23 +38,32 @@ vi.stubGlobal("localStorage", {
 	},
 })
 
-const DEMO_TASK = "Debug a real BLE NUS bug — Central→Peripheral works, but Peripheral→Central is silently dropped."
+const DAY = 24 * 60 * 60 * 1000
+const sess = (n: number, cwd: string, ageDays = 0.1, task = `session ${n}`) => ({
+	id: `t${n}`,
+	ts: Date.now() - ageDays * DAY,
+	task,
+	cwdOnTaskInitialization: cwd,
+})
 
 const mockState = (opts: {
 	openFolderPaths?: string[]
-	taskHistory?: { task: string }[]
-	workspaceFeatures?: { hasBle: boolean; hasComplianceArtifacts: boolean }
+	taskHistory?: unknown[]
+	workspaceFeatures?: { hasBle?: boolean; hasWifi?: boolean; hasComplianceArtifacts?: boolean }
 	workspaceClassification?: "nrf" | "esp" | "both" | "none"
-	handoverUi?: unknown
+	nrfEnvironment?: unknown
+	espEnvironment?: unknown
+	reviewNudgeShow?: boolean
 }) => {
 	vi.mocked(useExtensionState).mockReturnValue({
-		navigateToHistory: vi.fn(),
 		version: "1.0.0",
 		openFolderPaths: opts.openFolderPaths ?? [],
 		taskHistory: opts.taskHistory ?? [],
 		workspaceFeatures: opts.workspaceFeatures,
-		workspaceClassification: opts.workspaceClassification,
-		handoverUi: opts.handoverUi,
+		workspaceClassification: opts.workspaceClassification ?? "none",
+		nrfEnvironment: opts.nrfEnvironment,
+		espEnvironment: opts.espEnvironment,
+		reviewNudgeShow: opts.reviewNudgeShow,
 	} as any)
 }
 
@@ -58,205 +75,167 @@ const baseProps = {
 	showUpgradeCard: false,
 }
 
-describe("WelcomeView — sample picker hierarchy (single cyan focal point)", () => {
-	beforeEach(() => {
-		vi.mocked(useExtensionState).mockReset()
+beforeEach(() => {
+	vi.clearAllMocks()
+	_store.clear()
+})
+
+describe("the shape rule decides what is on screen", () => {
+	it("cold start — no folder, no history — leads with the sample runs and no build cards", () => {
+		mockState({})
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-samples")).toBeTruthy()
+		expect(screen.getAllByTestId("entry-sample").length).toBeGreaterThanOrEqual(2)
+		expect(screen.queryByText("Suggested runs")).toBeNull()
 	})
 
-	it("no project, first run → the sample picker is the cyan hero (sole focal), nothing demoted", () => {
-		mockState({ openFolderPaths: [], taskHistory: [] })
+	it("a sample fires on one click — it is pre-canned, so it needs no second confirming act", () => {
+		mockState({})
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.getByTestId("demo-picker")).toBeInTheDocument()
-		expect(screen.getByText("Try it on a sample project")).toBeInTheDocument()
-		expect(screen.queryByText("Try another sample project")).not.toBeInTheDocument()
+		fireEvent.click(screen.getAllByTestId("entry-sample")[0])
+		expect(baseProps.onStartDemo).toHaveBeenCalledTimes(1)
 	})
 
-	it("project open, first run → the primary intent leads; the sample demotes but does NOT say 'another'", () => {
-		// dev-as-hero: with a real project open, "Build, flash & debug" is the focal point — the sample drops to
-		// the quiet compact form (hero-only caption gone). But no sample has run yet, so the heading must read
-		// "Try it on a sample project", NOT "Try another sample project" (the first-time-with-project wording bug).
-		mockState({ openFolderPaths: ["/Users/me/central_uart"], taskHistory: [] })
+	it("first run with firmware open — the project leads with suggested runs, not the samples", () => {
+		mockState({ openFolderPaths: ["/w/gateway-fw"] })
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.getByTestId("intent-card-buildFlashDebug")).toBeInTheDocument()
-		// demoted/compact: the hero-only caption is hidden, but the picker rows are still present.
-		expect(screen.queryByText(/Run Adsum on our sample/)).not.toBeInTheDocument()
-		expect(screen.getByTestId("demo-scenario-cra-sample")).toBeInTheDocument()
-		// the fix: first-run-with-project → "Try it on a sample project", never "another".
-		expect(screen.getByText("Try it on a sample project")).toBeInTheDocument()
-		expect(screen.queryByText("Try another sample project")).not.toBeInTheDocument()
+		expect(screen.getByText("Suggested runs")).toBeTruthy()
+		expect(screen.queryByTestId("entry-samples")).toBeNull()
 	})
 
-	it("after a sample has run → it demotes regardless of project state", () => {
-		// Regression: demotion keys off task history (hasRunDemo, ANY registered scenario), not a transient flag.
-		mockState({ openFolderPaths: [], taskHistory: [{ task: DEMO_TASK }] })
+	it("two fresh sessions — collapsed: one named resume, no cards", () => {
+		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/gw", 0.1), sess(2, "/w/gw", 2)] })
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.queryByText("Try it on a sample project")).not.toBeInTheDocument()
-		expect(screen.getByText("Try another sample project")).toBeInTheDocument()
+		expect(screen.getByTestId("entry-resume")).toBeTruthy()
+		expect(screen.queryByText("Suggested runs")).toBeNull()
+	})
+
+	it("away for a month — the cards come back rather than making them remember", () => {
+		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/gw", 31), sess(2, "/w/gw", 40)] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByText("Suggested runs")).toBeTruthy()
+		expect(screen.queryByTestId("entry-resume")).toBeNull()
+	})
+
+	it("returning, but nothing in this folder — one honest line, never a dead resume", () => {
+		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/other", 1), sess(2, "/w/other", 2)] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.queryByTestId("entry-resume")).toBeNull()
+		expect(screen.getByTestId("entry-orientation").textContent).toContain("2 sessions in other folders")
 	})
 })
 
-describe("WelcomeView — context-aware intent cards", () => {
-	beforeEach(() => {
-		vi.mocked(useExtensionState).mockReset()
+describe("sessions have exactly one home", () => {
+	it("no session list is on the surface — only the drawer holds them", () => {
+		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/gw"), sess(2, "/w/gw", 1), sess(3, "/w/gw", 2)] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.queryAllByTestId("entry-drawer-session")).toHaveLength(0)
 	})
 
-	it("project open → project intents; roadmap cards hidden", () => {
-		mockState({ openFolderPaths: ["/Users/me/central_uart"], taskHistory: [] })
+	it("the drawer shows the recent few and opens onto all of them", () => {
+		const many = Array.from({ length: 6 }, (_, i) => sess(i, "/w/gw", i))
+		mockState({ openFolderPaths: ["/w/gw"], taskHistory: many })
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.getByTestId("intent-card-buildFlashDebug")).toBeInTheDocument()
-		expect(screen.getByTestId("intent-card-addFeature")).toBeInTheDocument()
-		expect(screen.queryByTestId("intent-card-sdkMigration")).not.toBeInTheDocument()
-		expect(screen.queryByTestId("intent-card-debug")).not.toBeInTheDocument()
-		expect(screen.queryByTestId("intent-card-prototype")).not.toBeInTheDocument()
+		fireEvent.click(screen.getByTestId("entry-burger"))
+		expect(screen.getAllByTestId("entry-drawer-session")).toHaveLength(3)
+		fireEvent.click(screen.getByTestId("entry-drawer-see-all"))
+		expect(screen.getAllByTestId("entry-drawer-session")).toHaveLength(6)
 	})
 
-	it("cards stay reachable while an agent session is live (the panel is never owned)", () => {
-		// Field report: with a handover in flight nothing was clickable — no cards, no sample runs, no
-		// history — because the session view replaced the whole welcome surface.
-		mockState({
-			openFolderPaths: ["/Users/me/central_uart"],
-			taskHistory: [],
-			handoverUi: {
-				conductor: { active: false, reason: "free tier active" },
-				strip: {
-					id: "t1",
-					phase: "working",
-					mission: "Build, flash and debug softAP",
-					calls: 4,
-					startedAt: new Date().toISOString(),
-					pickupPrompt: "x",
-					baseline: { created: true, snapshots: 0 },
-					packed: { bits: 12 },
-					milestones: [],
-					truncated: false,
-					liveness: { state: "working", sinceSec: 5 },
-				},
-			},
-		})
+	it("the filter searches every session, not just the visible three", () => {
+		const many = [
+			...Array.from({ length: 5 }, (_, i) => sess(i, "/w/gw", i, `recent ${i}`)),
+			sess(99, "/w/gw", 20, "the buried needle"),
+		]
+		mockState({ openFolderPaths: ["/w/gw"], taskHistory: many })
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.getByTestId("intent-card-buildFlashDebug")).toBeInTheDocument()
-		expect(screen.getByTestId("intent-card-testValidate")).toBeInTheDocument()
+		fireEvent.click(screen.getByTestId("entry-burger"))
+		fireEvent.change(screen.getByTestId("entry-drawer-filter"), { target: { value: "needle" } })
+		expect(screen.getAllByTestId("entry-drawer-session")).toHaveLength(1)
 	})
 
-	it("no project → no-project intents", () => {
-		mockState({ openFolderPaths: [], taskHistory: [] })
-		render(<WelcomeView {...baseProps} />)
-		expect(screen.getByTestId("intent-card-prototype")).toBeInTheDocument()
-		expect(screen.getByTestId("intent-card-openProject")).toBeInTheDocument()
-		expect(screen.queryByTestId("intent-card-addFeature")).not.toBeInTheDocument()
-	})
-
-	it("interpolates the project name into the Add a feature card", () => {
-		mockState({ openFolderPaths: ["/Users/me/central_uart"], taskHistory: [] })
-		render(<WelcomeView {...baseProps} />)
-		expect(screen.getByTestId("intent-card-addFeature").textContent).toContain("central_uart")
+	it("the unseen-run dot clears when the drawer opens, whether or not anything is clicked", () => {
+		mockState({ openFolderPaths: ["/w/gw"] })
+		const { rerender } = render(<WelcomeView {...baseProps} />)
+		expect(screen.queryByTestId("entry-burger-badge")).toBeTruthy()
+		fireEvent.click(screen.getByTestId("entry-burger"))
+		rerender(<WelcomeView {...baseProps} />)
+		expect(screen.queryByTestId("entry-burger-badge")).toBeNull()
 	})
 })
 
-describe("WelcomeView — grounded CRA nudge + deep-debug sub-line (A3/A10 + precedence)", () => {
-	const PROJ = ["/Users/me/peripheral_uart"]
-	const SUBLINE = "intent-card-buildFlashDebug-subline"
-
-	beforeEach(() => {
-		vi.mocked(useExtensionState).mockReset()
-		localStorage.clear() // the nudge dismiss now persists in localStorage — isolate tests
-	})
-
-	it("project + BLE + no SBOM → CRA nudge shows; the deep-debug sub-line is suppressed (one promotion)", () => {
-		mockState({ openFolderPaths: PROJ, taskHistory: [], workspaceFeatures: { hasBle: true, hasComplianceArtifacts: false } })
-		render(<WelcomeView {...baseProps} />)
-		expect(screen.getByTestId("cra-nudge")).toBeInTheDocument()
-		expect(screen.queryByTestId(SUBLINE)).not.toBeInTheDocument()
-	})
-
-	it("project + BLE + SBOM exists → nudge demotes; sub-line shows; CRA card switches to re-run copy", () => {
-		mockState({ openFolderPaths: PROJ, taskHistory: [], workspaceFeatures: { hasBle: true, hasComplianceArtifacts: true } })
-		render(<WelcomeView {...baseProps} />)
-		expect(screen.queryByTestId("cra-nudge")).not.toBeInTheDocument()
-		expect(screen.getByTestId(SUBLINE)).toBeInTheDocument()
-		const craCard = screen.getByTestId("intent-card-craCheck")
-		expect(craCard.textContent).toContain("Re-run on your build")
-		// The CRA "New" pill was retired in 0.2.0 (CRA shipped in 0.1.7) — the card no longer carries it.
-		expect(craCard.textContent).not.toContain("New")
-	})
-
-	it("project, no BLE → neither the nudge nor the sub-line", () => {
-		mockState({ openFolderPaths: PROJ, taskHistory: [], workspaceFeatures: { hasBle: false, hasComplianceArtifacts: false } })
-		render(<WelcomeView {...baseProps} />)
-		expect(screen.queryByTestId("cra-nudge")).not.toBeInTheDocument()
-		expect(screen.queryByTestId(SUBLINE)).not.toBeInTheDocument()
-	})
-
-	it("no project → no CRA nudge (project-open surface only), even if a BLE flag leaks through", () => {
-		mockState({ openFolderPaths: [], taskHistory: [], workspaceFeatures: { hasBle: true, hasComplianceArtifacts: false } })
-		render(<WelcomeView {...baseProps} />)
-		expect(screen.queryByTestId("cra-nudge")).not.toBeInTheDocument()
-	})
-
-	it("missing workspaceFeatures (pre-hydration) → degrades to no nudge, no sub-line", () => {
-		mockState({ openFolderPaths: PROJ, taskHistory: [] })
-		render(<WelcomeView {...baseProps} />)
-		expect(screen.queryByTestId("cra-nudge")).not.toBeInTheDocument()
-		expect(screen.queryByTestId(SUBLINE)).not.toBeInTheDocument()
-	})
-
-	it("nudge Preview routes to onStartTask with the CRA prompt (project name threaded; not onSelectMode)", () => {
-		const onStartTask = vi.fn()
-		const onSelectMode = vi.fn()
-		mockState({ openFolderPaths: PROJ, taskHistory: [], workspaceFeatures: { hasBle: true, hasComplianceArtifacts: false } })
-		render(<WelcomeView {...baseProps} onSelectMode={onSelectMode} onStartTask={onStartTask} />)
-		fireEvent.click(screen.getByTestId("cra-nudge-preview"))
-		expect(onStartTask).toHaveBeenCalledOnce()
-		expect(onStartTask.mock.calls[0][0]).toContain("CRA SBOM & Fix")
-		expect(onStartTask.mock.calls[0][0]).toContain("peripheral_uart")
-		expect(onSelectMode).not.toHaveBeenCalled()
-	})
-
-	it("demoted craCheck card (SBOM exists) still routes to onStartTask with the CRA prompt (copy switch ≠ routing)", () => {
-		const onStartTask = vi.fn()
-		mockState({ openFolderPaths: PROJ, taskHistory: [], workspaceFeatures: { hasBle: true, hasComplianceArtifacts: true } })
-		render(<WelcomeView {...baseProps} onStartTask={onStartTask} />)
-		fireEvent.click(screen.getByTestId("intent-card-craCheck"))
-		expect(onStartTask).toHaveBeenCalledOnce()
-		expect(onStartTask.mock.calls[0][0]).toContain("CRA SBOM & Fix")
-	})
-
-	it("dormant + CRA nudge → nudge wins, UpgradeCard suppressed (one grounded promotion)", () => {
+describe("every suggestion says why", () => {
+	it("a connected nRF board is named as the reason", () => {
 		mockState({
-			openFolderPaths: PROJ,
-			taskHistory: [{ task: "x" }],
-			workspaceFeatures: { hasBle: true, hasComplianceArtifacts: false },
+			openFolderPaths: ["/w/proj"],
+			nrfEnvironment: { boards: [{ productName: "nRF52840 DK" }] },
 		})
-		render(<WelcomeView {...baseProps} showUpgradeCard={true} />)
-		expect(screen.getByTestId("cra-nudge")).toBeInTheDocument()
-		expect(screen.queryByTestId("upgrade-card")).not.toBeInTheDocument()
+		render(<WelcomeView {...baseProps} />)
+		// Every card that could run on that board says so — the reason is per-suggestion, not a
+		// single banner, so more than one naming it is the correct outcome.
+		expect(screen.getAllByText(/nRF52840 DK connected/).length).toBeGreaterThan(0)
 	})
 
-	it("dormant + no CRA nudge (compliance present) → UpgradeCard shows", () => {
+	it("with nothing detected it says it is showing a mix, rather than implying a recommendation", () => {
+		mockState({ openFolderPaths: ["/w/proj"] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getAllByText(/◆/).length).toBeGreaterThan(0)
+	})
+
+	it("a card still routes — the reason line is decoration, the click is the point", () => {
+		mockState({ openFolderPaths: ["/w/proj"] })
+		render(<WelcomeView {...baseProps} />)
+		const cards = screen.getAllByTestId(/^entry-run-/)
+		fireEvent.click(cards[0])
+		expect(baseProps.onStartTask.mock.calls.length + baseProps.onSelectMode.mock.calls.length).toBeGreaterThan(0)
+	})
+})
+
+describe("one grounded promotion per paint — the rule that survived the rewrite", () => {
+	const withBle = { hasBle: true, hasComplianceArtifacts: false }
+
+	it("project + a connectivity stack + no SBOM → the CRA nudge, with its evidence", () => {
+		mockState({ openFolderPaths: ["/w/proj"], workspaceFeatures: withBle })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByText(/no compliance artifacts in this project yet/)).toBeTruthy()
+	})
+
+	it("once compliance artifacts exist the nudge stands down", () => {
 		mockState({
-			openFolderPaths: PROJ,
-			taskHistory: [{ task: "x" }],
+			openFolderPaths: ["/w/proj"],
 			workspaceFeatures: { hasBle: true, hasComplianceArtifacts: true },
 		})
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.queryByText(/no compliance artifacts/)).toBeNull()
+	})
+
+	it("no project → no CRA nudge, even if a feature flag leaks through", () => {
+		mockState({ workspaceFeatures: withBle })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.queryByText(/no compliance artifacts/)).toBeNull()
+	})
+
+	it("the CRA nudge outranks the dormant upgrade card — only one promotion shows", () => {
+		// The upgrade card is for a returning developer, so it needs history to be dormant at all.
+		mockState({ openFolderPaths: ["/w/proj"], workspaceFeatures: withBle, taskHistory: [sess(1, "/w/proj", 40)] })
 		render(<WelcomeView {...baseProps} showUpgradeCard={true} />)
-		expect(screen.queryByTestId("cra-nudge")).not.toBeInTheDocument()
-		expect(screen.getByTestId("upgrade-card")).toBeInTheDocument()
+		expect(screen.queryByTestId("upgrade-card")).toBeNull()
+		expect(screen.getByText(/no compliance artifacts/)).toBeTruthy()
 	})
 
-	it("ESP-classified project → Add a feature card uses ESP wording (platform threads through)", () => {
-		mockState({ openFolderPaths: ["/Users/me/esp_app"], taskHistory: [], workspaceClassification: "esp" })
-		render(<WelcomeView {...baseProps} />)
-		const addFeature = screen.getByTestId("intent-card-addFeature").textContent ?? ""
-		expect(addFeature).toContain("Wi-Fi")
-		expect(addFeature).not.toContain("Zephyr")
+	it("with no nudge to yield to, the upgrade card shows", () => {
+		mockState({
+			openFolderPaths: ["/w/proj"],
+			workspaceFeatures: { hasBle: true, hasComplianceArtifacts: true },
+			taskHistory: [sess(1, "/w/proj", 40)],
+		})
+		render(<WelcomeView {...baseProps} showUpgradeCard={true} />)
+		expect(screen.getByTestId("upgrade-card")).toBeTruthy()
 	})
 
-	it("dismissing the nudge reveals the deep-debug sub-line (precedence yields)", () => {
-		mockState({ openFolderPaths: PROJ, taskHistory: [], workspaceFeatures: { hasBle: true, hasComplianceArtifacts: false } })
+	it("missing feature probes (pre-hydration) degrade to no nudge rather than a wrong one", () => {
+		mockState({ openFolderPaths: ["/w/proj"] })
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.queryByTestId(SUBLINE)).not.toBeInTheDocument()
-		fireEvent.click(screen.getByTestId("cra-nudge-dismiss"))
-		expect(screen.queryByTestId("cra-nudge")).not.toBeInTheDocument()
-		expect(screen.getByTestId(SUBLINE)).toBeInTheDocument()
+		expect(screen.queryByText(/no compliance artifacts/)).toBeNull()
 	})
 })

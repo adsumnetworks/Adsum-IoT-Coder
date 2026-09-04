@@ -40,6 +40,7 @@ import AgentSessionBanner from "./handover/AgentSessionBanner"
 import AgentSessionRecap from "./handover/AgentSessionRecap"
 import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
+import EntryInputLabel from "./welcome/EntryInputLabel"
 import { handOverCard } from "./welcome/handOverCard"
 import { routeDemo, routeTypedTask } from "./welcome/runRouting"
 import { useRunTarget } from "./welcome/useRunTarget"
@@ -566,23 +567,31 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					/>
 				)}
 			</div>
-			{task && !openedAgentSession && (
+			{/* The composer is present whether or not a task is running.
+			    With no task, THIS is the new session: handleSendMessage already calls newTask when
+			    there are no messages, so typing starts one. That is why the entry surface has no
+			    "New session" button — a button would do exactly what typing does, and two controls
+			    for one action is how a person stops trusting either. The label above says so. */}
+			{!openedAgentSession && (
 				<footer className="bg-(--vscode-sidebar-background)" style={{ gridRow: "2" }}>
+					{!task && <EntryInputLabel />}
 					{/* Auto-approve moved into the input's bottom controls row (AutoApproveChip in ChatTextArea)
 					    — the full-width bar row here was standing clutter (operator 0707). */}
-					<ActionButtons
-						chatState={chatState}
-						messageHandlers={messageHandlers}
-						messages={messages}
-						mode={mode}
-						scrollBehavior={{
-							scrollToBottomSmooth: scrollBehavior.scrollToBottomSmooth,
-							disableAutoScrollRef: scrollBehavior.disableAutoScrollRef,
-							showScrollToBottom: scrollBehavior.showScrollToBottom,
-							virtuosoRef: scrollBehavior.virtuosoRef,
-						}}
-						task={task}
-					/>
+					{task && (
+						<ActionButtons
+							chatState={chatState}
+							messageHandlers={messageHandlers}
+							messages={messages}
+							mode={mode}
+							scrollBehavior={{
+								scrollToBottomSmooth: scrollBehavior.scrollToBottomSmooth,
+								disableAutoScrollRef: scrollBehavior.disableAutoScrollRef,
+								showScrollToBottom: scrollBehavior.showScrollToBottom,
+								virtuosoRef: scrollBehavior.virtuosoRef,
+							}}
+							task={task}
+						/>
+					)}
 					<InputSection
 						chatState={chatState}
 						messageHandlers={messageHandlers}
