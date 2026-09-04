@@ -362,6 +362,58 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 					/>
 				)}
 
+				{/* The resume, whenever there is one — not only when the surface has collapsed.
+				    [OPERATOR 2026-09-04] "why is resume previous session not showing here": after ONE
+				    session in a folder the rule keeps the cards on screen (a habit is not yet formed),
+				    and the resume was rendered only in the collapsed branch, so the one act a person
+				    most wants after their first session was the one thing missing. Cards teach; the
+				    resume continues. They are not alternatives. When both show, the resume is the
+				    cyan focal point and the first card gives its frame up — one focal point, still. */}
+				{resumeSession && (
+					<button
+						className="w-full rounded-md px-3 py-2 text-left"
+						data-testid="entry-resume"
+						onClick={() => {
+							entryFirstPrompt("resume")
+							TaskServiceClient.showTaskWithId(StringRequest.create({ value: resumeSession.id })).catch(
+								console.error,
+							)
+						}}
+						style={{
+							border: `1px solid ${BRAND_CYAN_UI}`,
+							background: "var(--vscode-inputOption-activeBackground)",
+						}}>
+						<div className="flex items-start gap-2">
+							<div
+								className="min-w-0 flex-1"
+								style={{
+									fontSize: "12px",
+									fontWeight: 600,
+									color: "var(--vscode-foreground)",
+									display: "-webkit-box",
+									WebkitLineClamp: 2,
+									WebkitBoxOrient: "vertical",
+									overflow: "hidden",
+								}}>
+								Resume — {resumeTitle}
+							</div>
+							{/* [F12] The one control on the returning surface had no affordance beyond the
+						    word "Resume" in its own title. */}
+							<span
+								aria-hidden="true"
+								className="codicon codicon-play shrink-0"
+								style={{ fontSize: "13px", color: BRAND_CYAN_TEXT, marginTop: "1px" }}
+							/>
+						</div>
+						<div style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
+							{/* Where the others are is said once, by the composer label below. Repeating it
+						    on the card spends the one line that could carry something only this card knows. */}
+							{mode.resumeKind === "handover" ? "your agent's session · " : ""}
+							{resumeAge}
+						</div>
+					</button>
+				)}
+
 				{expanded ? (
 					<>
 						<div>
@@ -491,7 +543,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 											entryRunStart(r.item.id, "card")
 											r.item.onRun()
 										}}
-										primary={idx === 0 && anyGrounded}
+										primary={idx === 0 && anyGrounded && !resumeSession}
 										// [F7] Same rule as the drawer: a reason earns its line only when it names
 										// something detected. "works on nRF and on ESP32" on three cards in a row
 										// was the one thing every card said and the loudest text on each.
@@ -504,50 +556,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							</>
 						)}
 					</>
-				) : resumeSession ? (
-					<button
-						className="w-full rounded-md px-3 py-2 text-left"
-						data-testid="entry-resume"
-						onClick={() => {
-							entryFirstPrompt("resume")
-							TaskServiceClient.showTaskWithId(StringRequest.create({ value: resumeSession.id })).catch(
-								console.error,
-							)
-						}}
-						style={{
-							border: `1px solid ${BRAND_CYAN_UI}`,
-							background: "var(--vscode-inputOption-activeBackground)",
-						}}>
-						<div className="flex items-start gap-2">
-							<div
-								className="min-w-0 flex-1"
-								style={{
-									fontSize: "12px",
-									fontWeight: 600,
-									color: "var(--vscode-foreground)",
-									display: "-webkit-box",
-									WebkitLineClamp: 2,
-									WebkitBoxOrient: "vertical",
-									overflow: "hidden",
-								}}>
-								Resume — {resumeTitle}
-							</div>
-							{/* [F12] The one control on the returning surface had no affordance beyond the
-							    word "Resume" in its own title. */}
-							<span
-								aria-hidden="true"
-								className="codicon codicon-play shrink-0"
-								style={{ fontSize: "13px", color: BRAND_CYAN_TEXT, marginTop: "1px" }}
-							/>
-						</div>
-						<div style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
-							{/* Where the others are is said once, by the composer label below. Repeating it
-							    on the card spends the one line that could carry something only this card knows. */}
-							{mode.resumeKind === "handover" ? "your agent's session · " : ""}
-							{resumeAge}
-						</div>
-					</button>
-				) : (
+				) : resumeSession ? null : (
 					<div
 						data-testid="entry-orientation"
 						style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)" }}>
