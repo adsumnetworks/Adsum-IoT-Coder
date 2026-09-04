@@ -127,6 +127,15 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 					res.end(
 						JSON.stringify({
 							state: sessionStateFrom(msgs, Boolean(task)),
+							// WHICH WINDOW IS ANSWERING. Only one extension host can bind this port; every later
+							// one logs EADDRINUSE and carries on regardless. So a developer can open a window on
+							// the workspace they mean to drive, watch it come up clean, and have every task they
+							// fire land in a different one — from outside, the seam looked identical either way.
+							// [BENCH 2026-09-04] That cost a scenario two runs sitting at state:running with zero
+							// API requests before anyone read the host log. A driver can now assert it is talking
+							// to the right window instead of inferring it from pids and log greps, which is the
+							// only version of this check that cannot quietly rot.
+							workspace: await getCwd(),
 							taskId: task?.taskId ?? null,
 							driver: currentLease?.driver ?? null,
 							ask: pendingAskFrom(msgs),
