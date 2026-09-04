@@ -40,12 +40,21 @@ export const InputSection: React.FC<InputSectionProps> = ({
 		textAreaRef,
 		handleFocusChange,
 		nordicPhase,
+		task,
 	} = chatState
 
 	const { isAtBottom, scrollToBottomAuto } = scrollBehavior
 
-	// Freeze input when awaiting mode selection
-	const isInputFrozen = nordicPhase === "awaiting_mode"
+	// Freeze input while a mode is genuinely being awaited — which can only be INSIDE a task.
+	//
+	// [OPERATOR 2026-09-04] "I still can't send any text from the main window", after the send
+	// flag was fixed. This was the second gate: `nordicPhase` starts life as "awaiting_mode" and
+	// only leaves it once a task has more than one message. On the entry surface there is no task
+	// and no message, so the composer that IS the new session sat frozen by a rule written for a
+	// mode chooser that never appears there. Same lesson as the send flag: a state with no owner
+	// in the no-task case has to be answered by the expression, not by whichever component
+	// happens to be mounted.
+	const isInputFrozen = !!task && nordicPhase === "awaiting_mode"
 	const effectiveSendingDisabled = sendingDisabled || isInputFrozen
 
 	return (
