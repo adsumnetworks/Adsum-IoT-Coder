@@ -417,10 +417,37 @@ let _cachedResult: ClassifierResult = {
 	features: { hasBle: false, hasWifi: false, hasComplianceArtifacts: false },
 }
 
+let _cachedRoots: string[] = []
+let _cachedFs: FsAdapter = realFsAdapter
+let _cachedAt = 0
+
 /** Re-run classification for the given roots and cache it. Returns the fresh result. */
-export function refreshWorkspaceClassification(roots: string[], fsAdapter: FsAdapter = realFsAdapter): ClassifierResult {
+export function refreshWorkspaceClassification(
+	roots: string[],
+	fsAdapter: FsAdapter = realFsAdapter,
+	now: number = Date.now(),
+): ClassifierResult {
+	_cachedRoots = roots
+	_cachedFs = fsAdapter
+	_cachedAt = now
 	_cachedResult = classifyWorkspace(roots, fsAdapter)
 	return _cachedResult
+}
+
+/**
+ * Re-run classification with the roots last given, if the cached result is older than `maxAgeMs`.
+ *
+ * The cache is otherwise refreshed only at activation, on a folder change and on a config save —
+ * never when files appear under a tool's hand. [BENCH 2026-09-04] A guided build opened in an
+ * empty folder seeded a whole gateway two levels down; the next task, opened the way the build
+ * asks for, was still classified `none`, so the prompt carried no platform block and no product
+ * row and the agent worked from first principles. The prompt fingerprint calls this before it
+ * reads the summary; classification is a bounded sync scan (depth 2, build dirs skipped), and the
+ * throttle keeps it off the per-request path.
+ */
+export function reclassifyWorkspaceIfStale(maxAgeMs = 15_000, now: number = Date.now()): ClassifierResult {
+	if (_cachedRoots.length === 0 || now - _cachedAt < maxAgeMs) return _cachedResult
+	return refreshWorkspaceClassification(_cachedRoots, _cachedFs, now)
 }
 
 export function getCachedWorkspaceClassification(): ClassifierResult {

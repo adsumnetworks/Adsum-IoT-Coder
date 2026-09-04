@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- A folder that was empty when the extension activated is classified again once files land in it, so a
+  guided build that seeds a gateway under the agent's own hand gets its platform knowledge and product
+  route on the next task instead of after a reload; the universal product route now says to load the
+  product index first, including on the build's own "Continue … Step N/7" opener.
+
 ### Added
 - Send a message to a session that is already working. It is queued, shown at the end of the
   conversation with a way to take it back, and delivered at the agent's next step — so a run can be
