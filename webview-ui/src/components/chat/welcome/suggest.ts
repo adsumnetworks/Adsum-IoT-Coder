@@ -59,6 +59,15 @@ export interface Ranked<T> {
 	score: number
 	/** Evidence, in the developer's language. Empty only if nothing at all could be said. */
 	why: string
+	/** Does `why` cite something actually DETECTED — a board, a product, an installed toolchain?
+	 *
+	 * [SCREENSHOT 2026-09-04] The fallback reasons ("works on nRF and on ESP32", "no board
+	 * detected — showing a mix", "no matching board connected") describe the *absence* of a
+	 * signal, so every row that reaches one prints the identical sentence. Six consecutive rows
+	 * saying "works on nRF and on ESP32" separate nothing and, in cyan, were the loudest text on
+	 * the surface. A surface can now suppress them without matching on their wording, which would
+	 * break the moment someone rephrases a string. */
+	grounded: boolean
 }
 
 const SCORE = {
@@ -91,31 +100,38 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 
 	const scored: Ranked<T>[] = items.map((item) => {
 		if (item.need && s.product === item.need) {
-			return { item, score: SCORE.product, why: `this looks like a ${item.productLabel ?? item.need} project` }
+			return {
+				item,
+				score: SCORE.product,
+				why: `this looks like a ${item.productLabel ?? item.need} project`,
+				grounded: true,
+			}
 		}
 		if (item.platform === "nrf" && hasNrf) {
-			return { item, score: SCORE.boardMatch, why: `${nrf} connected` }
+			return { item, score: SCORE.boardMatch, why: `${nrf} connected`, grounded: true }
 		}
 		if (item.platform === "esp" && hasEsp) {
-			return { item, score: SCORE.boardMatch, why: `${esp} connected` }
+			return { item, score: SCORE.boardMatch, why: `${esp} connected`, grounded: true }
 		}
 		// The CRA rule, kept verbatim in spirit: a connectivity stack present and no SBOM yet.
 		if (item.id === "craCheck" && s.hasWorkspace && (s.features.hasBle || s.features.hasWifi) && !s.features.hasCompliance) {
 			const what = s.features.hasBle && s.features.hasWifi ? "BLE and Wi-Fi" : s.features.hasWifi ? "Wi-Fi" : "BLE"
-			return { item, score: SCORE.craGrounded, why: `${what} in this project and no SBOM yet` }
+			return { item, score: SCORE.craGrounded, why: `${what} in this project and no SBOM yet`, grounded: true }
 		}
 		if (item.platform === "product" && (hasNrf || hasEsp)) {
 			return {
 				item,
 				score: SCORE.productPartial,
 				why: `${nrf ?? esp} is connected — this build also needs the rest of the kit`,
+				grounded: true,
 			}
 		}
 		if (item.whyNeutral) {
-			return { item, score: SCORE.neutralRequirement, why: item.whyNeutral }
+			// A requirements list, not a detection. True and useful on the card that leads, noise on a row.
+			return { item, score: SCORE.neutralRequirement, why: item.whyNeutral, grounded: false }
 		}
 		if (item.platform === s.classification && s.classification !== "none") {
-			return { item, score: SCORE.boardMatch - 20, why: "matches the project you have open" }
+			return { item, score: SCORE.boardMatch - 20, why: "matches the project you have open", grounded: true }
 		}
 		if (item.platform === "both") {
 			// A run that works on either platform is, in practice, about the board that is plugged
@@ -123,24 +139,25 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 			// and useless — the developer wants to know the suggestion noticed their hardware.
 			// Only when exactly one platform is present: with both, "either" is the honest answer.
 			if (hasNrf && !hasEsp) {
-				return { item, score: SCORE.boardMatch - 5, why: `${nrf} connected` }
+				return { item, score: SCORE.boardMatch - 5, why: `${nrf} connected`, grounded: true }
 			}
 			if (hasEsp && !hasNrf) {
-				return { item, score: SCORE.boardMatch - 5, why: `${esp} connected` }
+				return { item, score: SCORE.boardMatch - 5, why: `${esp} connected`, grounded: true }
 			}
-			return { item, score: SCORE.either, why: "works on nRF and on ESP32" }
+			return { item, score: SCORE.either, why: "works on nRF and on ESP32", grounded: false }
 		}
 		if ((item.platform === "nrf" && s.toolchains.nrf) || (item.platform === "esp" && s.toolchains.esp)) {
 			return {
 				item,
 				score: SCORE.noSignal + 5,
 				why: `its toolchain is installed (${item.platform === "nrf" ? "nRF Connect SDK" : "ESP-IDF"})`,
+				grounded: true,
 			}
 		}
 		if (nothingDetected) {
-			return { item, score: SCORE.noSignal, why: "no board detected — showing a mix" }
+			return { item, score: SCORE.noSignal, why: "no board detected — showing a mix", grounded: false }
 		}
-		return { item, score: SCORE.noMatch, why: "no matching board connected" }
+		return { item, score: SCORE.noMatch, why: "no matching board connected", grounded: false }
 	})
 
 	scored.sort((a, b) => b.score - a.score)

@@ -1533,10 +1533,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					)}
 					<div
 						className={cn(
-							"absolute bottom-2.5 top-2.5 whitespace-pre-wrap break-words rounded-xs overflow-hidden bg-input-background",
-							isTextAreaFocused || isVoiceRecording
-								? "left-3.5 right-3.5"
-								: "left-3.5 right-3.5 border border-input-border",
+							"absolute bottom-2.5 top-2.5 left-3.5 right-3.5 whitespace-pre-wrap break-words rounded-xs overflow-hidden bg-input-background",
 						)}
 						ref={highlightLayerRef}
 						style={{
@@ -1550,10 +1547,23 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							fontSize: "var(--vscode-editor-font-size)",
 							lineHeight: "var(--vscode-editor-line-height)",
 							borderRadius: 2,
-							borderLeft: isTextAreaFocused || isVoiceRecording ? 0 : undefined,
-							borderRight: isTextAreaFocused || isVoiceRecording ? 0 : undefined,
-							borderTop: isTextAreaFocused || isVoiceRecording ? 0 : undefined,
-							borderBottom: isTextAreaFocused || isVoiceRecording ? 0 : undefined,
+							// The RESTING frame of the composer.
+							//
+							// [OPERATOR 2026-09-04, side-by-side against Claude Code] "the chat section is
+							// almost invisible in our UI". It was: this border was `border-input-border`,
+							// and most light themes never define `input.border` at all, so VS Code emits no
+							// such variable and the border resolved to nothing. The fill underneath is
+							// `input.background` — white in those same themes, on an almost-white sidebar.
+							// A white box with no edge on a white ground is not a control anyone can see.
+							//
+							// The fallback chain ends in a literal mid-grey because it has to: the whole
+							// failure was trusting a token to exist. 35% grey reads on a white sidebar and
+							// on a dark one, and the earlier links win wherever the theme does define them.
+							//
+							// It is also drawn while focused now. Removing the frame on focus was backwards
+							// — the cyan outline sits outside it and the box lost its edge at the exact
+							// moment it became the thing being used.
+							border: `1px solid var(--vscode-input-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.35)))`,
 							padding: `9px ${dictationSettings?.dictationEnabled ? "48" : "28"}px ${9 + thumbnailsHeight}px 9px`,
 						}}
 					/>

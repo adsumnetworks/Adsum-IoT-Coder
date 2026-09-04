@@ -69,3 +69,27 @@
 		margin: calc(var(--design-unit) * 1px) 0;
 	}
 }
+
+/* The Adsum wordmark, chosen by VS Code's own body class instead of by React state.
+ *
+ * [OPERATOR 2026-09-04] "now just the waves" — in a real light-theme host the wordmark was
+ * invisible and only the coral spark showed. The assets were not the problem: measured, the
+ * adsumLogoDark wordmark is pure white (mean ink 255) and adsumLogoLight is near-black (10), so
+ * `isDark ? dark : light` is the right mapping. The DETECTION was wrong. `useVSCodeTheme` seeds
+ * its state with `useState(isDark)` at first render and then watches for class mutations — if the
+ * host stamps `vscode-light` between that first read and the observer attaching, no mutation ever
+ * fires and the stale value sticks for the life of the panel. White ink on a white sidebar.
+ *
+ * CSS has no such race: the class is on <body>, it is authoritative, and the rule re-evaluates
+ * whenever it changes. Both images are in the DOM; exactly one is ever displayed. */
+.adsum-wordmark-dark {
+	display: none;
+}
+body.vscode-dark .adsum-wordmark-dark,
+body.vscode-high-contrast:not(.vscode-high-contrast-light) .adsum-wordmark-dark {
+	display: block;
+}
+body.vscode-dark .adsum-wordmark-light,
+body.vscode-high-contrast:not(.vscode-high-contrast-light) .adsum-wordmark-light {
+	display: none;
+}

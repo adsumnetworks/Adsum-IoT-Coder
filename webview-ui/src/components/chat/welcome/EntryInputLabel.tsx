@@ -13,16 +13,15 @@ import { useEntrySignals } from "./useEntrySignals"
  * Claude Code settles the same question the same way: no session control, the composer labels
  * itself, and resuming is the explicit secondary act.
  *
- * The folder chip appears only when more than one folder is open. In a single-folder window it
- * would be a control that cannot act.
+ * There is no folder chip, and this is a correction rather than an omission. The design called for
+ * one in multi-root windows, to retarget the next session — but the webview cannot retarget
+ * anything: the host takes the FIRST workspace folder itself (`utils/path.ts:109`, `getCwd`) and
+ * stamps it on the task. A chip offering a choice the host would then ignore is worse than no chip.
+ * What a multi-root window does need is to know why one of its folders is named, so it gets a
+ * sentence instead of a control.
  */
 
-interface EntryInputLabelProps {
-	/** Multi-root only: called when the developer retargets the next session. */
-	onPickScope?: () => void
-}
-
-const EntryInputLabel: React.FC<EntryInputLabelProps> = ({ onPickScope }) => {
+const EntryInputLabel: React.FC = () => {
 	const { mode, scopeName, roots } = useEntrySignals()
 	const hasEarlier = mode.inScopeCount > 0 || mode.elsewhereCount > 0
 
@@ -35,21 +34,22 @@ const EntryInputLabel: React.FC<EntryInputLabelProps> = ({ onPickScope }) => {
 			{scopeName && (
 				<>
 					<span aria-hidden="true">·</span>
-					{roots.length > 1 && onPickScope ? (
-						<button
-							className="rounded-full px-1.5 hover:underline"
-							data-testid="entry-scope-chip"
-							onClick={onPickScope}
-							style={{ border: "1px solid var(--vscode-panel-border)", letterSpacing: 0 }}
-							title="Which folder the next session belongs to">
-							◆ {scopeName} ▾
-						</button>
-					) : (
-						<span className="uppercase">{scopeName}</span>
-					)}
+					<span className="uppercase">{scopeName}</span>
 				</>
 			)}
-			{hasEarlier && <span style={{ textTransform: "none", letterSpacing: 0 }}>· the last one stays in the menu</span>}
+			{roots.length > 1 && (
+				<span className="basis-full" style={{ textTransform: "none", letterSpacing: 0 }}>
+					first of {roots.length} folders in this window
+				</span>
+			)}
+			{/* basis-full, not another "· …" fragment. At sidebar width the tail wrapped anyway and
+			    carried its separator to the head of the new line, which reads as a typo. Its own row
+			    is what it wanted to be. */}
+			{hasEarlier && (
+				<span className="basis-full" style={{ textTransform: "none", letterSpacing: 0 }}>
+					the last one stays in the menu
+				</span>
+			)}
 		</div>
 	)
 }

@@ -2,20 +2,19 @@ import { StringRequest } from "@shared/proto/cline/common"
 import React, { useEffect, useMemo, useState } from "react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import { useExtensionState } from "@/context/ExtensionStateContext"
-import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import { StateServiceClient, TaskServiceClient, WebServiceClient } from "@/services/grpc-client"
-import { BRAND_CORAL, BRAND_CYAN_600, BRAND_SUCCESS } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_600 } from "../brandColors"
 import { DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
 import CraNudge from "./CraNudge"
 import DockCoachMark from "./DockCoachMark"
 import EntryDrawer, { type DrawerRun } from "./EntryDrawer"
+import EnvStrip from "./EnvStrip"
 import { entryDrawerOpen, entryFirstPrompt, entryRunStart, entryShown } from "./entryTelemetry"
 import IntentCard from "./IntentCard"
 import ReviewNudge from "./ReviewNudge"
 import { runIntent } from "./runIntent"
-import StatusHeader from "./StatusHeader"
 import { rank } from "./suggest"
 import { useEntrySignals } from "./useEntrySignals"
 import { getTenure, type IntentDef, NO_PROJECT_INTENTS, PROJECT_INTENTS, resolveIntentPlatform } from "./welcomeIntents"
@@ -61,7 +60,6 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	onUpgradeDismiss,
 	showUpgradeCard,
 }) => {
-	const { isDark } = useVSCodeTheme()
 	const { version, taskHistory, workspaceClassification, reviewNudgeShow } = useExtensionState()
 	const { mode, signals, scopeName, isColdStart } = useEntrySignals()
 
@@ -202,10 +200,15 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		<div className="relative flex flex-1 flex-col px-4 pb-2 pt-3" data-testid="welcome-view" style={{ overflowY: "auto" }}>
 			{/* header: identity, and the ONE way to everything not on screen */}
 			<div className="mb-2 flex items-center gap-2">
-				{/* The variants are named for the INK, not the background: adsumLogoDark is the dark-ink
-				    artwork, which belongs on a LIGHT panel. Pairing it with isDark put dark ink on a dark
-				    background and the mark all but disappeared. Inherited from the previous surface. */}
-				<img alt="Adsum IoT Coder" src={isDark ? adsumLogoLight : adsumLogoDark} style={{ height: "18px" }} />
+				{/* Named for the THEME they belong to, not the ink: adsumLogoDark is the light-ink
+				    artwork for a dark panel (measured wordmark ink 255 vs 10). I once swapped these on
+				    a filename guess after misreading a downscaled screenshot as faint, which fixed
+				    nothing and blanked the wordmark. Measure the asset, do not read its name.
+				    Which one shows is decided in CSS by VS Code's own body class, not by `isDark` —
+				    see the .adsum-wordmark rules in index.css for why the React state could go stale
+				    and leave a light-theme host showing white ink on a white sidebar. */}
+				<img alt="Adsum IoT Coder" className="adsum-wordmark-dark" src={adsumLogoDark} style={{ height: "18px" }} />
+				<img alt="" aria-hidden="true" className="adsum-wordmark-light" src={adsumLogoLight} style={{ height: "18px" }} />
 				<button
 					aria-label="Browse sessions and runs"
 					className="relative ml-auto rounded px-1.5 py-0.5 hover:bg-[var(--vscode-toolbar-hoverBackground)]"
@@ -244,39 +247,34 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						{scopeName || "No folder open"}
 					</span>
 				</div>
-				{/* On a cold start this line is suppressed. Someone opening the tool for the first time
-				    was greeted by "No folder open" followed by "no boards detected" — two statements of
-				    absence before anything they could act on. With a folder open it is orientation;
-				    with nothing at all it is just discouraging, and the samples below are the point. */}
+				{/* Folder, then hardware, as ONE titled block — [OPERATOR 2026-09-04] "the current
+				    folder and detection maybe better in the top but with an appropriate title".
+				    Orientation is what you read first, so it belongs where the eye lands, and the two
+				    halves answer one question together: where am I, and what is on my desk.
+
+				    They were already one block — StatusHeader had paired them from the start. I split
+				    them: my own folder line at the top, the strip left stranded at the bottom of the
+				    panel, and device state briefly described in both. Rejoined here, and the strip's
+				    old position below the content is gone, so this stays the single home.
+
+				    `entry-devices` survives as an empty landmark so the header's tests keep a stable
+				    hook and nothing re-grows a second device line here by accident. */}
+				<div className="hidden" data-testid="entry-devices" />
 				<div
-					className="flex flex-wrap items-center gap-x-1.5"
-					data-testid="entry-devices"
-					hidden={isColdStart && devices.length === 0}
-					style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
-					{devices.length > 0 ? (
-						<>
-							<span
-								style={{
-									width: "6px",
-									height: "6px",
-									borderRadius: "50%",
-									background: BRAND_SUCCESS,
-									display: "inline-block",
-								}}
-							/>
-							{devices.join(" · ")}
-						</>
-					) : (
-						<>no boards detected</>
-					)}
+					className="mt-1.5 uppercase"
+					style={{ fontSize: "10px", letterSpacing: "0.08em", color: "var(--vscode-descriptionForeground)" }}>
+					Your setup
 				</div>
+				<EnvStrip />
 			</div>
 
-			{/* Collapsed has very little content, and top-anchoring it left a screen-high void between
-			    the resume and the composer. The resume IS an action, so it belongs next to the other
-			    action rather than a screen away from it — the header keeps the top for orientation.
-			    Expanded fills the space with cards and stays where it is. */}
-			<div className={`flex w-full flex-1 flex-col gap-3${expanded ? "" : " justify-end"}`}>
+			{/* One block, flowing from the top, with the composer pinned below by the chat layout and a
+			    single space between. Two earlier attempts moved that space around — first stranding the
+			    content at the top of a screen-high void, then splitting it into a header up here and a
+			    cluster down there with a canyon in the middle, which reads as a layout fault. Sparse
+			    content in a tall column always leaves space somewhere; the honest place is one gap
+			    above the input, not a gap in the middle of the content. */}
+			<div className="flex w-full flex-col gap-3">
 				{upgradeShowing && <UpgradeCard onDismiss={onUpgradeDismiss} version={version ?? ""} />}
 				{!craBanner && !upgradeShowing && reviewNudgeShow && (
 					<ReviewNudge
@@ -440,8 +438,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							Resume — {resumeTitle}
 						</div>
 						<div style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
+							{/* Where the others are is said once, by the composer label below. Repeating it
+							    on the card spends the one line that could carry something only this card knows. */}
 							{mode.resumeKind === "handover" ? "your agent's session · " : ""}
-							{resumeAge} · every other session is in the menu, top right
+							{resumeAge}
 						</div>
 					</button>
 				) : (
@@ -467,15 +467,6 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 
 				{/* Below the content, not above it: a tip about docking the panel was the loudest, boxiest
 				    thing on screen and sat over the actual purpose of the surface. */}
-				{/* The header at the top now owns WHERE you are and WHAT is plugged in, so the strip must
-				    not say it again — the folder was appearing twice on one screen and the same board was
-				    described in two places. Passing null leaves the strip its own job: toolchain and build
-				    state, which the header does not cover. */}
-				<StatusHeader projectName={null} />
-				{/* The tip and the strip are the quiet tail of the surface. Pushing them down puts the
-				    empty space ABOVE them rather than below, so the panel ends near the composer instead
-				    of stranding its content at the top of a long void. */}
-				<div className="mt-auto" />
 				<DockCoachMark hasProject={signals.hasWorkspace} />
 			</div>
 

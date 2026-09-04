@@ -1406,3 +1406,34 @@ export const EntryBoardDetected: Story = {
 	],
 	args: {},
 }
+
+/**
+ * The states the rig had never rendered, and the ones most likely to break: a long history behind
+ * the drawer, more than one folder, and strings a real developer actually produces — a deep path,
+ * a pasted stack trace as a task title, a folder name with no spaces to wrap on. Every layout bug
+ * this surface has had so far was a short-string layout meeting a long string.
+ */
+const LONG_TASK =
+	"Fix the assertion in zephyr/subsys/bluetooth/host/conn.c:1284 that fires when the peripheral " +
+	"disconnects during a GATT write without response and the buffer is still queued"
+const DEEP = "/home/dev/customers/northwind/firmware/gateways/lew840x-rev-c/application-esp32-side"
+
+export const EntryHeavyHistory: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [DEEP, SENSOR, GW],
+				taskHistory: [
+					entrySession(1, DEEP, 0.02, LONG_TASK),
+					entrySession(2, DEEP, 0.5, "Step 3/7 — the radio comes up"),
+					entrySession(3, DEEP, 1.2, "CRA readiness across the whole build"),
+					entrySession(4, DEEP, 2, "esp32-provisioning-over-ble-with-a-very-long-unbroken-identifier"),
+					entrySession(5, DEEP, 5, "Why does the modem drop after exactly 30 minutes"),
+					entrySession(6, SENSOR, 6, "sensor-fw — add a shell command"),
+					entrySession(7, GW, 9, "Bring up the BLE scanner"),
+				],
+			}),
+		),
+	],
+	args: {},
+}

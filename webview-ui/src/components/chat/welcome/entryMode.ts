@@ -60,9 +60,10 @@ export interface EntryMode {
 	elsewhereCount: number
 	/** Age of the newest session anywhere, in days. 0 when there is none. */
 	newestAgeDays: number
-	/** The folder chip exists only when there is more than one folder to choose between. A chip in
-	 *  a single-folder window is a control that cannot act. */
-	showChip: boolean
+	/** More than one folder is open in this window. Not a chip: the host picks the first workspace
+	 *  folder itself (`getCwd`, utils/path.ts:109), so there is no choice to offer — only a fact to
+	 *  state, so a developer with three folders open knows why this one is named. */
+	multiRoot: boolean
 }
 
 const ageInDays = (ts: number, now: number): number => {
@@ -113,6 +114,6 @@ export function entryMode({ history, roots, scope, now }: EntryInput): EntryMode
 		inScopeCount: inScope.length,
 		elsewhereCount: elsewhere,
 		newestAgeDays,
-		showChip: roots.length > 1,
+		multiRoot: roots.length > 1,
 	}
 }

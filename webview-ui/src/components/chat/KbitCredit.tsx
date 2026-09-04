@@ -98,7 +98,7 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 						{KIND_LABEL[bits[0].kind]}
 					</span>
 					<button
-						className="bg-transparent border-0 p-0 cursor-pointer text-inherit underline decoration-dotted underline-offset-2 truncate max-w-[240px]"
+						className="bg-transparent border-0 p-0 cursor-pointer text-left text-inherit underline decoration-dotted underline-offset-2 truncate max-w-[240px]"
 						onClick={() => setDetail(detail ? null : bits[0])}
 						title="who curated this, and how it is maintained">
 						{bits[0].title}
@@ -112,8 +112,12 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 					<div className="flex items-center gap-[7px] flex-wrap">
 						<KindChip kind={groupKind} />
 						<span className="uppercase tracking-wide font-semibold text-[8.5px] opacity-70">credits</span>
+						{/* text-left because a <button> centres its text by default, and this one wraps.
+						    [OPERATOR 2026-09-04] "why is the text centered now, here?" — nothing centred it;
+						    the browser did, the moment the author list grew past one line. Every wrapping
+						    button on this surface needs the override, not just this one. */}
 						<button
-							className="bg-transparent border-0 p-0 cursor-pointer"
+							className="bg-transparent border-0 p-0 cursor-pointer text-left"
 							onClick={() => setExpanded(!expanded)}
 							style={{ color: BRAND_CYAN_600 }}>
 							{bits.length} {groupNoun} · by {authors.join(" + ")} {expanded ? "▴" : "▾"}
@@ -124,7 +128,7 @@ export const KbitCredit = ({ bits }: { bits: KbitLoadedPayload[] }) => {
 							<div className="flex items-center gap-[7px] pl-[24px]" key={b.id}>
 								<KindChip kind={b.kind} />
 								<button
-									className="bg-transparent border-0 p-0 cursor-pointer text-inherit underline decoration-dotted underline-offset-2 truncate max-w-[220px]"
+									className="bg-transparent border-0 p-0 cursor-pointer text-left text-inherit underline decoration-dotted underline-offset-2 truncate max-w-[220px]"
 									onClick={() => setDetail(detail?.id === b.id ? null : b)}>
 									{b.title}
 								</button>
