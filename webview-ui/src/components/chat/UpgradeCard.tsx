@@ -13,7 +13,7 @@ interface UpgradeCardProps {
  * (a setting, not a run). The user acts on their own; the sample stays one click away in the picker below.
  *
  * This is the ONLY "what's new" surface that reaches a user in the panel — `WhatsNewModal` is unreachable
- * (its sole parent, WelcomeSection, is imported by nothing and neither appears in the built bundle). So this
+ * (its former parent, WelcomeSection, was dead and has been deleted along with HistoryPreview). So this
  * copy and the `whatsNewToastMessage` one-liner are what must be refreshed every release.
  */
 const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
