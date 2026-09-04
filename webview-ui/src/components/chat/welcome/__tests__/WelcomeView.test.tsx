@@ -117,7 +117,9 @@ describe("the shape rule decides what is on screen", () => {
 		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/gw", 31), sess(2, "/w/gw", 40)] })
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.getByText("Suggested runs")).toBeTruthy()
-		expect(screen.queryByTestId("entry-resume")).toBeNull()
+		// The cards come back; the resume does not go away. A month-old session is still the
+		// thing they were doing, and naming it costs one card.
+		expect(screen.getByTestId("entry-resume")).toBeTruthy()
 	})
 
 	it("returning, but nothing in this folder — the runs come back AND the line says where the rest went", () => {
@@ -333,5 +335,44 @@ describe("one grounded promotion per paint — the rule that survived the rewrit
 		mockState({ openFolderPaths: ["/w/proj"] })
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.queryByText(/no compliance artifacts/)).toBeNull()
+	})
+})
+
+describe("the resume is on the surface whenever there is one", () => {
+	// [OPERATOR 2026-09-04] "why is resume previous session not showing here". After a single
+	// session the cards stay (one run is not a habit) — and the resume was only ever rendered in
+	// the collapsed branch, so the act a person most wants after their first session was missing.
+	it("one session in this folder: cards AND the resume, and the resume is the one focal point", () => {
+		mockState({
+			openFolderPaths: ["/w/proj"],
+			taskHistory: [
+				{
+					id: "only",
+					ulid: "only",
+					ts: Date.now() - 60_000,
+					task: "Bring up the BLE scanner",
+					cwdOnTaskInitialization: "/w/proj",
+				},
+			],
+		})
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-resume").textContent).toContain("Bring up the BLE scanner")
+		expect(screen.getAllByTestId(/^entry-run-/).length).toBeGreaterThan(0)
+		for (const card of screen.getAllByTestId(/^entry-run-/)) {
+			expect(card.getAttribute("style") ?? "").not.toContain("border: 2px solid var(--adsum-cyan)")
+		}
+	})
+
+	it("a month away: the cards come back and the resume is still named", () => {
+		mockState({
+			openFolderPaths: ["/w/proj"],
+			taskHistory: [
+				{ id: "a", ulid: "a", ts: Date.now() - 40 * 86_400_000, task: "old one", cwdOnTaskInitialization: "/w/proj" },
+				{ id: "b", ulid: "b", ts: Date.now() - 45 * 86_400_000, task: "older", cwdOnTaskInitialization: "/w/proj" },
+			],
+		})
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-resume").textContent).toContain("old one")
+		expect(screen.getByText(/Welcome back/)).toBeTruthy()
 	})
 })

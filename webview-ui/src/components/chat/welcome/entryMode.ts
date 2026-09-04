@@ -66,6 +66,26 @@ export interface EntryMode {
 	multiRoot: boolean
 }
 
+/**
+ * Two spellings of one folder must match. The task records `cwdOnTaskInitialization` as the host
+ * saw it at the time; the window reports `openFolderPaths` as it sees it now. A trailing slash,
+ * a doubled separator, Windows drive-letter case or a `/private/tmp` ↔ `/tmp` alias between the
+ * two would silently make every session in the folder "elsewhere" and the resume vanish. Strict
+ * equality was the comparison until [OPERATOR 2026-09-04] asked why the resume was not showing.
+ * A webview cannot resolve real paths, so this is the normalisation it CAN do.
+ */
+export const sameFolder = (a: string | undefined, b: string): boolean => {
+	if (!a || !b) return false
+	const norm = (p: string) =>
+		p
+			.replace(/\\/g, "/")
+			.replace(/\/+/g, "/")
+			.replace(/\/$/, "")
+			.replace(/^\/private(\/(?:tmp|var)\b)/, "$1")
+			.replace(/^([a-z]):/i, (m) => m.toUpperCase())
+	return norm(a) === norm(b)
+}
+
 const ageInDays = (ts: number, now: number): number => {
 	// A row stamped in the future is clock skew, not a session from tomorrow. Clamp at 0 so it
 	// reads as brand new rather than making the whole window look lapsed.
@@ -74,7 +94,7 @@ const ageInDays = (ts: number, now: number): number => {
 }
 
 export function entryMode({ history, roots, scope, now }: EntryInput): EntryMode {
-	const inScope = scope ? history.filter((s) => s.cwd === scope) : []
+	const inScope = scope ? history.filter((s) => sameFolder(s.cwd, scope)) : []
 	const elsewhere = history.length - inScope.length
 
 	const newest = history.reduce<EntrySession | null>((best, s) => (!best || s.ts > best.ts ? s : best), null)

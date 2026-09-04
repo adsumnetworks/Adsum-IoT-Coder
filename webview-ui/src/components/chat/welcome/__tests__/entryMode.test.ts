@@ -216,3 +216,23 @@ describe("entryMode — a clock that disagrees", () => {
 		expect(r.newestAgeDays).toBe(0)
 	})
 })
+
+describe("the resume is found even when the folder is spelled two ways", () => {
+	// [OPERATOR 2026-09-04] "why is resume previous session not showing here". The task stores the
+	// path the host saw when it started; the window reports the path it sees now. They must agree
+	// across the spellings a real machine produces, or every session is silently "elsewhere".
+	const now = Date.now()
+	const s = (cwd: string) => ({ id: "a", ts: now - 1000, task: "t", cwd })
+	it("trailing slash", () => {
+		expect(entryMode({ history: [s("/w/gw/"), s("/w/gw")], roots: ["/w/gw"], scope: "/w/gw", now }).inScopeCount).toBe(2)
+	})
+	it("macOS /private/tmp alias", () => {
+		expect(entryMode({ history: [s("/private/tmp/x")], roots: ["/tmp/x"], scope: "/tmp/x", now }).resume).not.toBeNull()
+	})
+	it("Windows separators and drive-letter case", () => {
+		expect(entryMode({ history: [s("c:\\\\w\\\\gw")], roots: ["C:/w/gw"], scope: "C:/w/gw", now }).resume).not.toBeNull()
+	})
+	it("but a different folder is still a different folder", () => {
+		expect(entryMode({ history: [s("/w/gw2")], roots: ["/w/gw"], scope: "/w/gw", now }).resume).toBeNull()
+	})
+})
