@@ -1,5 +1,5 @@
 import React from "react"
-import { BRAND_CORAL, BRAND_CYAN_600, brandAlpha, brandSubtle } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_TEXT, brandAlpha, brandSubtle } from "../brandColors"
 
 interface ReviewNudgeProps {
 	onReview: () => void
@@ -77,7 +77,7 @@ const ReviewNudge: React.FC<ReviewNudgeProps> = ({ onReview, onDismiss }) => {
 							background: "transparent",
 							border: "none",
 							padding: 0,
-							color: BRAND_CYAN_600,
+							color: BRAND_CYAN_TEXT,
 							fontWeight: 600,
 							cursor: "pointer",
 							fontSize: "12px",

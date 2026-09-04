@@ -255,10 +255,11 @@ describe("every suggestion says why", () => {
 		// single banner, so more than one naming it is the correct outcome.
 		expect(screen.getAllByText(/nRF52840 DK connected/).length).toBeGreaterThan(0)
 		// And exactly one card carries the cyan frame — the grounded one the ranking put first.
-		// (jsdom serialises the brand hex as rgb(0, 169, 206); the sibling test below asserts its
-		// absence, so this is the half that proves the check can see it at all.)
+		// The frame is the theme-resolved token (BRAND_CYAN_UI, a CSS variable, so light hosts get
+		// the AA-passing shade); the sibling test below asserts its absence, so this is the half
+		// that proves the check can see it at all.
 		const cards = screen.getAllByTestId(/^entry-run-/)
-		const framed = cards.filter((c) => (c.getAttribute("style") ?? "").includes("border: 2px solid rgb(0, 169, 206)"))
+		const framed = cards.filter((c) => (c.getAttribute("style") ?? "").includes("border: 2px solid var(--adsum-cyan)"))
 		expect(framed.length, cards.map((c) => `${c.getAttribute("data-testid")}: ${c.getAttribute("style")}`).join("\n")).toBe(1)
 	})
 
@@ -271,7 +272,9 @@ describe("every suggestion says why", () => {
 		// And no cyan frame: a highlighted card with no reason under it would be a recommendation
 		// the signals never made.
 		for (const card of screen.getAllByTestId(/^entry-run-/)) {
-			expect(card.getAttribute("style") ?? "").not.toContain("rgb(0, 169, 206)")
+			// The same string the positive test matches on — an absence check must look for the thing
+			// the presence check finds, or it passes forever once the thing is renamed.
+			expect(card.getAttribute("style") ?? "").not.toContain("border: 2px solid var(--adsum-cyan)")
 		}
 	})
 

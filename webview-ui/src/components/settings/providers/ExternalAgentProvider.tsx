@@ -1,5 +1,5 @@
 import type { Mode } from "@shared/storage/types"
-import { BRAND_CORAL, BRAND_CYAN_600, BRAND_CYAN_700, BRAND_WARNING, brandAlpha } from "@/components/chat/brandColors"
+import { BRAND_CORAL, BRAND_CYAN_600, brandAlpha } from "@/components/chat/brandColors"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
 
@@ -60,32 +60,12 @@ export const ExternalAgentProvider = ({ currentMode: _currentMode, isPopup: _isP
 				className="m-0 mb-1 font-semibold"
 				style={{ color: "var(--vscode-foreground)", display: "flex", alignItems: "center", gap: "7px" }}>
 				Your coding agent runs the work
-				<span
-					style={{
-						fontSize: "9px",
-						fontWeight: 700,
-						letterSpacing: "0.4px",
-						padding: "1px 6px",
-						borderRadius: "8px",
-						color: BRAND_CYAN_700,
-						border: `1px solid ${brandAlpha(BRAND_CYAN_600, 0.45)}`,
-					}}>
-					BETA
-				</span>
 			</p>
-			<p
-				className="m-0 mb-2 text-xs"
-				style={{
-					color: "var(--vscode-descriptionForeground)",
-					lineHeight: 1.5,
-					borderLeft: `2px solid ${brandAlpha(BRAND_WARNING, 0.5)}`,
-					paddingLeft: "8px",
-				}}>
-				<strong style={{ color: "var(--vscode-foreground)" }}>This path is in beta and under active testing.</strong>{" "}
-				Adsum guides your agent and records what it does, but how faithfully a given agent follows the curated workflow is{" "}
-				<strong style={{ color: "var(--vscode-foreground)" }}>not yet measured</strong> — treat its results as you would
-				any agent's, and review changes before you rely on them. Your snapshots and the session record are there for
-				exactly that.
+			{/* [PLAN A.0, 2026-09-04] One line in place of the BETA badge and the "not yet measured"
+			    warning. This panel is only reachable by a configuration that already selects the
+			    provider; the picker no longer offers it. */}
+			<p className="m-0 mb-2 text-xs" style={{ color: "var(--vscode-descriptionForeground)", lineHeight: 1.5 }}>
+				Not available yet — your own coding agent will be able to run the work here.
 			</p>
 			<p className="m-0 mb-3 text-sm" style={{ color: "var(--vscode-descriptionForeground)" }}>
 				Cards and typed tasks are handed to your agent on <strong>your</strong> subscription — no Adsum tokens. Adsum

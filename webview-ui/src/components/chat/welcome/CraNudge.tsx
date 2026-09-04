@@ -1,5 +1,5 @@
 import React from "react"
-import { BRAND_CORAL, BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha, brandSubtle } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_700, BRAND_CYAN_TEXT, brandAlpha, brandSubtle } from "../brandColors"
 
 interface CraNudgeProps {
 	/** Grounded evidence line — what was detected, NEVER a verdict (e.g. "BLE detected · no SBOM in this project yet"). */
@@ -90,7 +90,7 @@ const CraNudge: React.FC<CraNudgeProps> = ({ evidence, onPreview, onDismiss }) =
 							background: "transparent",
 							border: "none",
 							padding: 0,
-							color: BRAND_CYAN_600,
+							color: BRAND_CYAN_TEXT,
 							fontWeight: 600,
 							cursor: "pointer",
 							fontSize: "12px",
