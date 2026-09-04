@@ -152,6 +152,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	useEffect(() => {
 		entryShown({
 			mode: mode.mode,
+			reason: mode.reason,
+			hasResume: Boolean(mode.resume),
 			sessions: taskHistory?.length ?? 0,
 			newestAgeDays: mode.newestAgeDays,
 			roots: signals.hasWorkspace ? 1 : 0,
@@ -464,7 +466,12 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										style={{ color: BRAND_CYAN_TEXT, textDecoration: "underline" }}>
 										your {mode.elsewhereCount} session{mode.elsewhereCount > 1 ? "s" : ""} in other folders
 									</button>{" "}
-									are in the menu.
+									{/* [OPERATOR 2026-09-04] The glyph goes BEFORE the word, because it is the thing
+									    being named, not a decoration after it — and this is the only place the copy
+									    can teach which control it means. */}
+									are in the{" "}
+									<span aria-hidden="true" className="codicon codicon-menu" style={{ fontSize: "11px" }} />{" "}
+									menu.
 								</div>
 							)}
 						</div>

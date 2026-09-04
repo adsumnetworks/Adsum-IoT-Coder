@@ -2,6 +2,7 @@ import { ClineMessage } from "@shared/ExtensionMessage"
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
 import React, { useCallback, useLayoutEffect, useMemo, useState } from "react"
 import type { KbitLoadedPayload } from "@/components/chat/KbitCredit"
+import SessionsMenu from "@/components/chat/welcome/SessionsMenu"
 import Thumbnails from "@/components/common/Thumbnails"
 import { getModeSpecificFields, normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -188,6 +189,12 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 								<span className="text-xs sm:text-sm">${totalCost?.toFixed(4)}</span>
 							</div>
 						)}
+						{/* The door to every other session. [OPERATOR 2026-09-04] Without it, a running task
+						    was a dead end: WelcomeView owns the cockpit's ☰ and unmounts as soon as a task
+						    starts, so the screen people actually spend their time on had no way to reach
+						    their history. Beside "new task", because the two are the same question —
+						    where do I go next. */}
+						<SessionsMenu />
 						<NewTaskButton className={BUTTON_CLASS} onClick={onClose} />
 					</div>
 				</div>

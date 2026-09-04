@@ -27,7 +27,7 @@ beforeEach(() => {
 describe("entry counters", () => {
 	it("a paint is one measurement, carrying the shape it painted", async () => {
 		const t = await load()
-		t.entryShown({ mode: "collapsed", sessions: 4, newestAgeDays: 2.5, roots: 1 })
+		t.entryShown({ mode: "collapsed", reason: "returning", hasResume: true, sessions: 4, newestAgeDays: 2.5, roots: 1 })
 		expect(captureEntryEvent).toHaveBeenCalledTimes(1)
 		const sent = captureEntryEvent.mock.calls[0][0] as { event: string; properties: Record<string, string> }
 		expect(sent.event).toBe("entry_shown")
@@ -37,7 +37,7 @@ describe("entry counters", () => {
 
 	it("only the FIRST act of a paint counts as the first prompt", async () => {
 		const t = await load()
-		t.entryShown({ mode: "expanded", sessions: 0, newestAgeDays: 0, roots: 0 })
+		t.entryShown({ mode: "expanded", reason: "returning", hasResume: true, sessions: 0, newestAgeDays: 0, roots: 0 })
 		captureEntryEvent.mockClear()
 		t.entryFirstPrompt("card")
 		t.entryFirstPrompt("typed")
@@ -54,7 +54,7 @@ describe("entry counters", () => {
 
 	it("starting a run also claims the first prompt, so the two never disagree", async () => {
 		const t = await load()
-		t.entryShown({ mode: "expanded", sessions: 0, newestAgeDays: 0, roots: 1 })
+		t.entryShown({ mode: "expanded", reason: "returning", hasResume: true, sessions: 0, newestAgeDays: 0, roots: 1 })
 		captureEntryEvent.mockClear()
 		t.entryRunStart("lew840xGateway", "card")
 		const events = captureEntryEvent.mock.calls.map((c) => (c[0] as { event: string }).event)
@@ -67,7 +67,9 @@ describe("a counter never breaks the surface", () => {
 	it("a rejected send is swallowed", async () => {
 		const t = await load()
 		captureEntryEvent.mockReturnValue(Promise.reject(new Error("telemetry off")))
-		expect(() => t.entryShown({ mode: "expanded", sessions: 0, newestAgeDays: 0, roots: 0 })).not.toThrow()
+		expect(() =>
+			t.entryShown({ mode: "expanded", reason: "returning", hasResume: true, sessions: 0, newestAgeDays: 0, roots: 0 }),
+		).not.toThrow()
 	})
 
 	it("a host with no such route at all is survivable — this is the one that white-screens", async () => {
@@ -75,7 +77,9 @@ describe("a counter never breaks the surface", () => {
 		captureEntryEvent.mockImplementation(() => {
 			throw new TypeError("captureEntryEvent is not a function")
 		})
-		expect(() => t.entryShown({ mode: "expanded", sessions: 0, newestAgeDays: 0, roots: 0 })).not.toThrow()
+		expect(() =>
+			t.entryShown({ mode: "expanded", reason: "returning", hasResume: true, sessions: 0, newestAgeDays: 0, roots: 0 }),
+		).not.toThrow()
 		expect(() => t.entryDrawerOpen(true)).not.toThrow()
 	})
 })
