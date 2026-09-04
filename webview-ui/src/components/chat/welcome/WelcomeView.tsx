@@ -1,5 +1,5 @@
 import { StringRequest } from "@shared/proto/cline/common"
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
@@ -10,6 +10,7 @@ import UpgradeCard from "../UpgradeCard"
 import CraNudge from "./CraNudge"
 import DockCoachMark from "./DockCoachMark"
 import EntryDrawer, { type DrawerRun } from "./EntryDrawer"
+import { entryDrawerOpen, entryFirstPrompt, entryRunStart, entryShown } from "./entryTelemetry"
 import IntentCard from "./IntentCard"
 import ReviewNudge from "./ReviewNudge"
 import { runIntent } from "./runIntent"
@@ -111,7 +112,19 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 
 	const unseen = runs.map((r) => r.item.id).filter((id) => !seenRuns.includes(id))
 
+	// One measurement per paint. Everything else times from here.
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	useEffect(() => {
+		entryShown({
+			mode: mode.mode,
+			sessions: taskHistory?.length ?? 0,
+			newestAgeDays: mode.newestAgeDays,
+			roots: signals.hasWorkspace ? 1 : 0,
+		})
+	}, [mode.mode])
+
 	const openDrawer = () => {
+		entryDrawerOpen(unseen.length > 0)
 		setDrawerOpen(true)
 		if (unseen.length) {
 			const all = runs.map((r) => r.item.id)
@@ -230,7 +243,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										className="flex items-start gap-2 rounded p-2 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
 										data-testid="entry-sample"
 										key={s.id}
-										onClick={s.onRun}>
+										onClick={() => {
+											entryRunStart(s.id, "sample")
+											s.onRun()
+										}}>
 										<span aria-hidden="true" className="codicon codicon-play" style={{ fontSize: "11px" }} />
 										<span className="flex min-w-0 flex-1 flex-col">
 											<span style={{ fontSize: "12.5px", fontWeight: 600 }}>{s.title}</span>
@@ -260,7 +276,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										description={r.item.blurb ?? ""}
 										icon="rocket"
 										key={r.item.id}
-										onClick={r.item.onRun}
+										onClick={() => {
+											entryRunStart(r.item.id, "card")
+											r.item.onRun()
+										}}
 										subline={`◆ ${r.why}`}
 										testId={`entry-run-${r.item.id}`}
 										title={r.item.title}
@@ -273,11 +292,12 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 					<button
 						className="w-full rounded-md px-3 py-2 text-left"
 						data-testid="entry-resume"
-						onClick={() =>
+						onClick={() => {
+							entryFirstPrompt("resume")
 							TaskServiceClient.showTaskWithId(StringRequest.create({ value: resumeSession.id })).catch(
 								console.error,
 							)
-						}
+						}}
 						style={{
 							border: "1px solid var(--vscode-focusBorder)",
 							background: "var(--vscode-inputOption-activeBackground)",

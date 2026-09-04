@@ -24,6 +24,9 @@ service StateService {
   rpc updateTaskSettings(UpdateTaskSettingsRequest) returns (Empty);
   rpc updateTelemetrySetting(TelemetrySettingRequest) returns (Empty);
   rpc captureOnboardingProgress(OnboardingProgressRequest) returns (Empty);
+  // Entry-surface counters. The webview has no telemetry client of its own, so it hands the host
+  // an event name and a flat bag of strings; the host decides whether telemetry is on at all.
+  rpc captureEntryEvent(EntryEventRequest) returns (Empty);
   rpc setWelcomeViewCompleted(BooleanRequest) returns (Empty);
   rpc updateInfoBannerVersion(Int64Request) returns (Empty);
   rpc updateModelBannerVersion(Int64Request) returns (Empty);
@@ -471,6 +474,14 @@ message ProcessInfo {
   int32 process_id = 1;
   optional string version = 2;
   optional int64 uptime_ms = 3;
+}
+
+// One measurement from the entry surface. Deliberately a flat string map rather than a typed
+// message per counter: these exist to answer whether the cockpit helped or hurt, and a schema
+// change per question would make the answer arrive after the decision.
+message EntryEventRequest {
+  string event = 1;
+  map<string, string> properties = 2;
 }
 
 message OnboardingProgressRequest {
