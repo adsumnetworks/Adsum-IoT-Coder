@@ -32,11 +32,27 @@ const send = (event: string, properties: Record<string, string>) => {
 }
 
 /** The cockpit painted. Resets the clock the first-prompt timing is measured against. */
-export function entryShown(p: { mode: string; sessions: number; newestAgeDays: number; roots: number }): void {
+export function entryShown(p: {
+	mode: string
+	reason: string
+	sessions: number
+	newestAgeDays: number
+	roots: number
+	hasResume: boolean
+}): void {
 	shownAt = Date.now()
 	firstPromptSent = false
 	send("entry_shown", {
 		mode: p.mode,
+		// [POSTHOG 2026-09-04] `mode` alone cannot be acted on: "expanded" covers a first-ever
+		// visit, a single past session, a month away, and a folder never worked in, and the fix
+		// for each is different. `entryMode` already decides which, so recording it costs nothing
+		// and turns the counter from a tally into a diagnosis.
+		reason: p.reason,
+		// Whether a resume was on offer at all — the denominator for "was the named resume the
+		// thing they wanted", which `entry_first_prompt via=resume` is otherwise measured against
+		// blind.
+		has_resume: String(p.hasResume),
 		sessions: String(p.sessions),
 		newest_age_d: p.newestAgeDays ? p.newestAgeDays.toFixed(1) : "0",
 		roots: String(p.roots),
