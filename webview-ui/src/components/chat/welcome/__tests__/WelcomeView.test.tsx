@@ -16,7 +16,10 @@ vi.mock("@/context/ExtensionStateContext", () => ({ useExtensionState: vi.fn() }
 vi.mock("@/hooks/useVSCodeTheme", () => ({ useVSCodeTheme: () => ({ isDark: true }) }))
 vi.mock("@/services/grpc-client", () => ({
 	FileServiceClient: { openFolder: vi.fn() },
-	StateServiceClient: { dismissBanner: vi.fn(() => Promise.resolve()) },
+	StateServiceClient: {
+		dismissBanner: vi.fn(() => Promise.resolve()),
+		captureEntryEvent: vi.fn(() => Promise.resolve()),
+	},
 	TaskServiceClient: { showTaskWithId: vi.fn(() => Promise.resolve()) },
 	WebServiceClient: { openInBrowser: vi.fn(() => Promise.resolve()) },
 }))

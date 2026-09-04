@@ -41,6 +41,7 @@ import AgentSessionRecap from "./handover/AgentSessionRecap"
 import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
 import EntryInputLabel from "./welcome/EntryInputLabel"
+import { entryFirstPrompt } from "./welcome/entryTelemetry"
 import { handOverCard } from "./welcome/handOverCard"
 import { routeDemo, routeTypedTask } from "./welcome/runRouting"
 import { useRunTarget } from "./welcome/useRunTarget"
@@ -481,6 +482,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 
 	// Use scroll behavior hook
 	const scrollBehavior = useScrollBehavior(messages, visibleMessages, groupedMessages, expandedRows, setExpandedRows)
+
+	// The typed path. A card, a sample or a resume claims the first-prompt measurement when it is
+	// clicked; if none did and a task appears anyway, the developer typed it. entryFirstPrompt is
+	// idempotent per paint, so the first claim wins and this only ever labels genuine typing.
+	const hadTaskRef = useRef(false)
+	useEffect(() => {
+		if (task && !hadTaskRef.current) {
+			entryFirstPrompt("typed")
+		}
+		hadTaskRef.current = !!task
+	}, [task])
 
 	const placeholderText = useMemo(() => {
 		if (nordicPhase === "awaiting_mode") {
