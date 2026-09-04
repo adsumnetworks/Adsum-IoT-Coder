@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   chat box.
 
 ### Changed
+- Knowledge is loaded, not "skilled". The agent's own vocabulary now says **bit** everywhere it used
+  to say skill — the instruction it follows is `MANDATORY BIT LOAD`, and the rule that governs it is
+  `rules/bit-loading.md`. Your editor's own Skills feature is untouched; the two were colliding in one
+  place, which is how an agent reaches for the wrong one.
+- Guided builds load the measurement doctrine instead of a summary of it. A paraphrase in the workflow
+  was being read as the rule itself, so gates could report a count where they owed you evidence.
 - The About page names what Adsum runs on today — Nordic nRF52/53/54L and nRF91 with NB-IoT, LTE-M
   and GNSS, Espressif ESP32/S3/C6, and the supported partner gateways — rather than a shorter list
   that had fallen behind.
