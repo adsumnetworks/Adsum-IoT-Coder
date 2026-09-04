@@ -450,6 +450,12 @@ export function reclassifyWorkspaceIfStale(maxAgeMs = 15_000, now: number = Date
 	return refreshWorkspaceClassification(_cachedRoots, _cachedFs, now)
 }
 
+/** The roots the last classification ran over. Callers that need to re-read the disk (product
+ *  recognition) use these rather than reaching for vscode.* , which detectors may not import. */
+export function getCachedWorkspaceRoots(): string[] {
+	return _cachedRoots
+}
+
 export function getCachedWorkspaceClassification(): ClassifierResult {
 	return _cachedResult
 }
@@ -460,4 +466,76 @@ export function getCachedWorkspaceSummary(): WorkspaceSummary {
 
 export function getCachedWorkspaceFeatures(): WorkspaceFeatures {
 	return _cachedResult.features
+}
+
+// ---------------------------------------------------------------------------
+// Product recognition — is this workspace a KNOWN commercial product?
+// ---------------------------------------------------------------------------
+
+/**
+ * Does this workspace look like a known product, and which one?
+ *
+ * [BENCH 2026-09-04, I-28] The product index was consulted LESS in a real gateway workspace than
+ * in an empty one. With no platform markers, the product router in `AGENT.md` is the only routing
+ * table there is, so it gets followed; with them, the agent routes through platform knowledge and
+ * never reaches the product index. The richer the workspace, the less likely the product bit
+ * loaded — the exact opposite of what is wanted, and it made every symptom-form routing row added
+ * to `PRODUCT.md` unreachable precisely where it was needed.
+ *
+ * The row was conditional on the DEVELOPER naming the product. But the workspace itself is
+ * evidence, and reading it is a host capability — a bit cannot look at the disk. So the host
+ * recognises the product and the prompt states it as a fact rather than a condition.
+ *
+ * Deliberately narrow. It matches on a name written into the tree by the product's own template,
+ * not on a directory shape that a coincidence could satisfy: naming the wrong product would send
+ * an agent to read pin maps for hardware the developer does not have, which is worse than saying
+ * nothing at all.
+ */
+export interface RecognisedProduct {
+	/** The product's k-bit id fragment, e.g. "fanstel/lew840x". */
+	id: string
+	/** Where the evidence was found, so the prompt can say why rather than assert. */
+	evidence: string
+}
+
+/** Files a product's template writes, cheapest first. Only the root of each app dir is read. */
+const PRODUCT_MARKER_FILES = ["README.md", "BUILDLOG.md", join(".adsum", "bench.json")]
+
+/** name → the marker that must appear in one of those files. One entry per supported product. */
+const PRODUCT_SIGNATURES: Array<{ id: string; re: RegExp; label: string }> = [
+	{ id: "fanstel/lew840x", re: /\bLEW840[0-9A-Za-z]*\b/, label: "Fanstel LEW840x" },
+]
+
+export function recogniseProduct(roots: string[], fsAdapter: FsAdapter = realFsAdapter): RecognisedProduct | null {
+	for (const root of roots) {
+		// The workspace root, and one level down — a gateway is usually opened one above its tree.
+		const dirs = [root]
+		try {
+			for (const entry of fsAdapter.listDir(root)) {
+				if (SKIP_DIRS.has(entry) || isBuildDir(entry)) continue
+				const full = join(root, entry)
+				if (fsAdapter.isDir(full)) dirs.push(full)
+			}
+		} catch {
+			// unreadable root — nothing to recognise
+		}
+		for (const dir of dirs) {
+			for (const marker of PRODUCT_MARKER_FILES) {
+				const p = join(dir, marker)
+				if (!fsAdapter.exists(p)) continue
+				let body = ""
+				try {
+					body = fsAdapter.readFile(p)
+				} catch {
+					continue
+				}
+				for (const sig of PRODUCT_SIGNATURES) {
+					if (sig.re.test(body)) {
+						return { id: sig.id, evidence: `${sig.label} named in ${marker}` }
+					}
+				}
+			}
+		}
+	}
+	return null
 }

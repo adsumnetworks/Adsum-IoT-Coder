@@ -9,11 +9,13 @@ import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { routePlatform } from "@/services/platform/platformRouting"
 import {
 	getCachedWorkspaceClassification,
+	getCachedWorkspaceRoots,
 	getCachedWorkspaceSummary,
 	NRF_BLE_RE,
 	NRF_CELLULAR_RE,
 	NRF91_BOARD_RE,
 	reclassifyWorkspaceIfStale,
+	recogniseProduct,
 } from "@/services/platform/WorkspaceClassifier"
 import { type ResolvedTool, resolveToolsAsync } from "@/services/tools/ToolResolver"
 import { fileExistsAtPath } from "@/utils/fs"
@@ -568,6 +570,37 @@ export async function detectEspFeatures(cwd: string): Promise<{ hasBle: boolean;
 // `productRowEmitted` is true when the nRF block already ran in this same prompt (a `both` workspace —
 // which is exactly what a gateway looks like, two CMakeLists). The product router row must appear ONCE:
 // duplicating it wastes context and reads as a corpus bug.
+/**
+ * The product routing line.
+ *
+ * [BENCH 2026-09-04, I-28] This row used to be conditional on the DEVELOPER naming the product,
+ * and that made it least reachable where it mattered most: in an EMPTY workspace the product
+ * router is the only routing table there is and gets followed, while in a real gateway workspace
+ * the agent routes through the platform blocks and never reaches the product index. Four symptom
+ * openers in a seeded gateway loaded it zero times; the same class of opener in an empty folder
+ * loaded it three times in four.
+ *
+ * The workspace itself is the evidence, and reading the disk is a host capability — a bit cannot
+ * do it. So when the tree is recognisably the product, the prompt states that as a fact with its
+ * evidence, instead of waiting for the developer to say a word they have no reason to say when
+ * they are reporting a symptom.
+ */
+function productLine(): string {
+	const found = recogniseProduct(getCachedWorkspaceRoots())
+	if (found) {
+		return (
+			`| **This workspace is a ${found.id.split("/").pop()?.toUpperCase()} project** — ${found.evidence} | ` +
+			`load \`products/${found.id}/PRODUCT.md\` **before diagnosing anything here**: its sub-bits carry the ` +
+			`pin maps, the card rules and the fault ladders for this hardware, and general platform knowledge ` +
+			`does not. |\n\n`
+		)
+	}
+	return (
+		"| Fanstel, LEW840X, composable gateway, M.2 card, or a *Continue the LEW840X gateway build — Step N/7* opener | " +
+		"load `products/fanstel/lew840x/PRODUCT.md` **first** — the build workflow lives behind it |\n\n"
+	)
+}
+
 async function getEspPlatformContext(cwd: string, load: TrackedLoad, productRowEmitted = false): Promise<string> {
 	let ctx = "### Platform Detected: Espressif ESP32 / ESP-IDF\n\n"
 	// Always: platform index + mandatory rules + SDK reference (esp-idf auto-selected).
@@ -585,8 +618,7 @@ async function getEspPlatformContext(cwd: string, load: TrackedLoad, productRowE
 	// bits existed. Paths are written from the KNOWLEDGE ROOT, as the nRF table's comment explains.
 	if (!productRowEmitted) {
 		ctx += "| The developer says | Read this FIRST |\n|---|---|\n"
-		ctx +=
-			"| Fanstel, LEW840X, composable gateway, M.2 card, or a *Continue the LEW840X gateway build — Step N/7* opener | load `products/fanstel/lew840x/PRODUCT.md` **first** — the build workflow lives behind it |\n\n"
+		ctx += productLine()
 		ctx += "A bit already listed under *Knowledge Already Loaded* is in context — do not read it again.\n\n"
 	}
 
@@ -721,8 +753,7 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	// A product is not a platform: the Fanstel gateway is an nRF52840 BLE card, an nRF9160 LTE card and
 	// an ESP32 Ethernet host in one enclosure. Its index names which sub-bit answers which question, so
 	// one row reaches the whole family.
-	ctx +=
-		"| Fanstel, LEW840X, composable gateway, M.2 card, or a *Continue the LEW840X gateway build — Step N/7* opener | load `products/fanstel/lew840x/PRODUCT.md` **first** — the build workflow lives behind it |\n\n"
+	ctx += productLine()
 	ctx += "A bit already listed under *Knowledge Already Loaded* is in context — do not read it again.\n\n"
 	// The failure this paragraph exists to stop, verbatim from a 2026-08-20 transcript:
 	//   "The analyze-logs action mentioned a sdks/ncs/protocols/DECT-NR.md file. Let me load that to
