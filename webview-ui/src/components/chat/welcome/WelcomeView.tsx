@@ -78,6 +78,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	const runs = useMemo(() => {
 		const fromIntents: DrawerRun[] = intents.map((i) => ({
 			id: i.id,
+			icon: i.icon,
 			platform: (i.id === "craCheck" ? "both" : platform) as DrawerRun["platform"],
 			title: i.title,
 			blurb: i.description,
@@ -85,6 +86,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		}))
 		const product: DrawerRun = {
 			id: "lew840xGateway",
+			icon: "circuit-board",
 			platform: "product",
 			need: "lew840x",
 			title: "Fanstel LEW840x composable multi-radio gateway",
@@ -97,18 +99,36 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		return rank<DrawerRun>([product, ...fromIntents], signals)
 	}, [intents, platform, projectName, signals, onSelectMode, onStartTask])
 
-	const samples: DrawerRun[] = useMemo(
-		() =>
-			DEMO_SCENARIO_LIST.map((d) => ({
+	const samples: DrawerRun[] = useMemo(() => {
+		// Named for what each one SHOWS, and ordered gentlest first. The catalogue's own sort puts
+		// "new" rows on top, which is right for announcing a capability and wrong for a person who
+		// has never seen the tool work.
+		const SHOWCASE: Record<string, { title: string; blurb: string }> = {
+			"nus-uart": {
+				title: "Example debug session",
+				blurb: "A real BLE bug on real nRF source: the symptom, the evidence gathered at each step, and the fix.",
+			},
+			"hci-sniffer": {
+				title: "Example debug with a radio sniffer and HCI tracing",
+				blurb: "The same bug one layer deeper — app log, HCI bus and over-the-air capture, so you see which layer broke.",
+			},
+			"cra-sample": {
+				title: "Example CRA run",
+				blurb: "How a readiness check works on a pre-built reference build: the SBOM, the known CVEs, and what a conformity file needs.",
+			},
+		}
+		const order = ["nus-uart", "hci-sniffer", "cra-sample"]
+		return [...DEMO_SCENARIO_LIST]
+			.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
+			.map((d) => ({
 				id: d.id,
 				platform: "both" as const,
-				title: d.title,
-				blurb: d.honestLabel,
+				title: SHOWCASE[d.id]?.title ?? d.title,
+				blurb: SHOWCASE[d.id]?.blurb ?? d.honestLabel,
 				meta: "~1 min · no hardware",
 				onRun: () => onStartDemo(d.id),
-			})),
-		[onStartDemo],
-	)
+			}))
+	}, [onStartDemo])
 
 	const unseen = runs.map((r) => r.item.id).filter((id) => !seenRuns.includes(id))
 
@@ -153,7 +173,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	const resumeTitle = resumeSession ? resumeSession.task.replace(/\s+/g, " ").slice(0, 60) : ""
 
 	return (
-		<div className="relative flex flex-1 flex-col px-4 pb-2 pt-3" data-testid="welcome-view" style={{ overflowY: "auto" }}>
+		<div
+			className="relative flex flex-1 flex-col justify-start px-4 pb-2 pt-3"
+			data-testid="welcome-view"
+			style={{ overflowY: "auto" }}>
 			{/* header: identity, and the ONE way to everything not on screen */}
 			<div className="mb-2 flex items-center gap-2">
 				<img alt="Adsum IoT Coder" src={isDark ? adsumLogoDark : adsumLogoLight} style={{ height: "18px" }} />
@@ -271,15 +294,19 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 									}}>
 									Suggested runs
 								</div>
-								{runs.slice(0, CARDS).map((r) => (
+								{runs.slice(0, CARDS).map((r, idx) => (
 									<IntentCard
 										description={r.item.blurb ?? ""}
-										icon="rocket"
+										// One cyan focal point, and it is whatever the signals actually ranked
+										// first. Three cards shouting equally is the same as none of them
+										// leading — the eye has nowhere to land and the ranking is wasted.
+										icon={r.item.icon ?? "rocket"}
 										key={r.item.id}
 										onClick={() => {
 											entryRunStart(r.item.id, "card")
 											r.item.onRun()
 										}}
+										primary={idx === 0}
 										subline={`◆ ${r.why}`}
 										testId={`entry-run-${r.item.id}`}
 										title={r.item.title}
