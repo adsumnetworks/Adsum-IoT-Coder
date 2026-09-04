@@ -2,7 +2,7 @@ import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import { ApiHandler, ApiProviderInfo, buildApiHandler } from "@core/api"
 import { QuotaExhaustedError } from "@core/api/providers/adsum-free"
 import { ApiStream } from "@core/api/transform/stream"
-import { AssistantMessageContent, parseAssistantMessageV2, ToolUse } from "@core/assistant-message"
+import { parseAssistantMessageV2, ToolUse } from "@core/assistant-message"
 import { buildCompactionLedger } from "@core/context/context-management/CompactionLedger"
 import { ContextManager } from "@core/context/context-management/ContextManager"
 import { checkContextWindowExceededError } from "@core/context/context-management/context-error-handling"
@@ -120,6 +120,7 @@ import { executeHook } from "../hooks/hook-executor"
 import { StateManager } from "../storage/StateManager"
 import { FocusChainManager } from "./focus-chain"
 import { MessageStateHandler } from "./message-state"
+import { reconcileNativeToolContent } from "./nativeToolContent"
 import { StreamResponseHandler } from "./StreamResponseHandler"
 import { TaskState } from "./TaskState"
 import { ToolExecutor } from "./ToolExecutor"
@@ -3552,27 +3553,22 @@ export class Task {
 	}
 
 	processNativeToolCalls(assistantTextOnly: string, toolBlocks: ToolUse[]) {
-		if (!toolBlocks?.length) {
+		// The rebuild and the index rule live in nativeToolContent.ts so they can be tested without
+		// a Task. [U-30] The rule used to jump the index past the text block, which then was never
+		// said complete — see that file for the measurement.
+		const next = reconcileNativeToolContent({
+			assistantTextOnly,
+			toolBlocks,
+			currentIndex: this.taskState.currentStreamingContentIndex,
+		})
+		if (!next) {
 			return
 		}
-		// For native tool calls, mark all pending tool uses as complete
-		const prevLength = this.taskState.assistantMessageContent.length
-
-		// Get finalized tool uses and mark them as complete
-		const textContent = assistantTextOnly.trim()
-		const textBlocks: AssistantMessageContent[] = textContent ? [{ type: "text", content: textContent, partial: false }] : []
-
-		this.taskState.assistantMessageContent = [...textBlocks, ...toolBlocks]
-
-		// Reset index to the first tool block position so they can be executed
-		// This fixes the issue where tools remain unexecuted because the index
-		// advanced past them or was out of bounds during streaming
-		if (toolBlocks.length > 0) {
-			this.taskState.currentStreamingContentIndex = textBlocks.length
-			this.taskState.userMessageContentReady = false
-		} else if (this.taskState.assistantMessageContent.length > prevLength) {
-			this.taskState.userMessageContentReady = false
-		}
+		this.taskState.assistantMessageContent = next.content
+		this.taskState.currentStreamingContentIndex = next.index
+		// Tools are pending until presented, whatever the index was — this is what makes the read
+		// loop keep calling presentAssistantMessage until they have run.
+		this.taskState.userMessageContentReady = false
 	}
 
 	/**

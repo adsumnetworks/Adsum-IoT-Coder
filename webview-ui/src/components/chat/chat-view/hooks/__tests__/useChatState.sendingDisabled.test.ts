@@ -39,3 +39,17 @@ describe("sending is never disabled when there is no task", () => {
 		expect(result.current.sendingDisabled).toBe(true)
 	})
 })
+
+/**
+ * The second gate on the same composer. `nordicPhase` starts as "awaiting_mode" and only moves
+ * once a task has more than one message — so on the entry surface it never moves, and the
+ * input that starts every session was frozen by a rule about a mode chooser that is not there.
+ * This is the raw state; InputSection scopes the freeze to `!!task && awaiting_mode`.
+ */
+describe("the mode-chooser freeze cannot apply where there is no task", () => {
+	it("with no messages the raw phase is still awaiting_mode — the freeze must be scoped by the consumer", () => {
+		const { result } = renderHook(() => useChatState([]))
+		expect(result.current.nordicPhase).toBe("awaiting_mode")
+		expect(result.current.task).toBeUndefined()
+	})
+})
