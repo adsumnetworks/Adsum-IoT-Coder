@@ -128,6 +128,27 @@ describe("the shape rule decides what is on screen", () => {
 	})
 })
 
+describe("a handover row resumes into the agent's session, not a task", () => {
+	it("says whose session it is, because opening it lands somewhere different", () => {
+		mockState({
+			openFolderPaths: ["/w/gw"],
+			taskHistory: [{ ...sess(1, "/w/gw", 0.05, "your agent worked this"), handoverId: "h-1" }, sess(2, "/w/gw", 3)],
+		})
+		render(<WelcomeView {...baseProps} />)
+		const resume = screen.getByTestId("entry-resume")
+		expect(resume.textContent).toContain("your agent's session")
+		// And not the folder line an ordinary session would carry — the destination differs, so
+		// the label has to as well.
+		expect(resume.textContent).not.toContain("gw ·")
+	})
+
+	it("an ordinary newest session keeps the folder line", () => {
+		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/gw", 0.05), sess(2, "/w/gw", 3)] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-resume").textContent).toContain("gw")
+	})
+})
+
 describe("sessions have exactly one home", () => {
 	it("no session list is on the surface — only the drawer holds them", () => {
 		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/gw"), sess(2, "/w/gw", 1), sess(3, "/w/gw", 2)] })
