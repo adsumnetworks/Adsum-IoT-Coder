@@ -13,12 +13,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   product index first, including on the build's own "Continue … Step N/7" opener.
 
 ### Added
+- A redesigned entry surface. The panel opens on where you are and what is on your desk — folder,
+  detected boards, toolchains — then the runs worth starting, ranked by what was actually detected,
+  each saying why. Typing in the box *is* the new session; there is no separate button. One named
+  resume is always offered when there is a past session for the folder you are in.
+- A sessions menu (☰) that is the single home for past sessions: filter, rename, delete, and
+  "see all". Reachable from the entry surface and from inside a running session.
+- Guided builds for partner hardware are offered from a cold start, alongside three sample runs that
+  need no hardware and nothing installed.
+- Your own model prices. `adsum-iot-coder.modelPricing` in settings takes a price per model in USD
+  per million tokens and overrides everything else — for a negotiated rate, a regional price list, or
+  a vendor change we have not published yet.
+- Model prices can now update without an extension release, the way advisory data already does.
 - Send a message to a session that is already working. It is queued, shown at the end of the
   conversation with a way to take it back, and delivered at the agent's next step — so a run can be
   steered without cancelling it. Stop is still its own button, and returns anything undelivered to the
   chat box.
 
+### Changed
+- The About page names what Adsum runs on today — Nordic nRF52/53/54L and nRF91 with NB-IoT, LTE-M
+  and GNSS, Espressif ESP32/S3/C6, and the supported partner gateways — rather than a shorter list
+  that had fallen behind.
+- "Bring your own coding agent" is marked *Coming soon* and cannot be selected while it is unproven.
+
 ### Fixed
+- **DeepSeek and GLM ignored the thinking depth you chose.** Picking *Low* stored and displayed the
+  choice, but neither the thinking setting nor the depth reached the request, so the provider applied
+  its own default — full-depth thinking — on every call. Long, expensive thinking on routine steps.
+  A depth chosen now counts as thinking on, and a configuration made before this fix starts working
+  without being touched.
+- **The OpenAI reasoning-effort setting did nothing.** It was read, stored and even counted, but the
+  request never carried it.
+- **DeepSeek costs were understated roughly four to five times.** The built-in prices for V4 had
+  drifted far below the published ones. They have been re-read from the vendor and corrected, and
+  DeepSeek's off-peak half-price window — which covers most of the week — is now applied from the
+  clock instead of being ignored.
+- The composer could be left permanently disabled, with no way to send, after a task finished.
+- Text the agent had already finished saying could be re-rendered when a tool call followed it, and a
+  stalled reply that the host had already retried was left on screen as a stray fragment.
 - A message typed while the agent was working could be taken as the answer to a tool approval that had
   not been shown yet. The path that did this is gone; nothing typed mid-run can approve a tool.
 - A guided build's step banner was hard-coded to five steps, so a seven-beat product build rendered
