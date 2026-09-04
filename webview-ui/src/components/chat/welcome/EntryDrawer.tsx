@@ -76,6 +76,27 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 			if (e.key === "Escape") {
 				e.stopPropagation()
 				onClose()
+				return
+			}
+			// Trap the focus. This claims aria-modal, and a modal whose Tab walks out into the
+			// page behind it is worse than one that never claimed to be modal: a keyboard user is
+			// left typing into a composer they cannot see, with a dialog still covering it.
+			if (e.key !== "Tab") return
+			const panel = panelRef.current
+			if (!panel) return
+			const stops = [
+				...panel.querySelectorAll<HTMLElement>('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])'),
+			].filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null)
+			if (stops.length === 0) return
+			const first = stops[0]
+			const last = stops[stops.length - 1]
+			const active = document.activeElement as HTMLElement | null
+			if (e.shiftKey && (active === first || !panel.contains(active))) {
+				e.preventDefault()
+				last.focus()
+			} else if (!e.shiftKey && (active === last || !panel.contains(active))) {
+				e.preventDefault()
+				first.focus()
 			}
 		}
 		document.addEventListener("keydown", onKey)
