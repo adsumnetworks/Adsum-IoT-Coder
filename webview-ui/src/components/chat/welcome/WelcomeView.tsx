@@ -4,7 +4,7 @@ import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import { StateServiceClient, TaskServiceClient, WebServiceClient } from "@/services/grpc-client"
-import { BRAND_CORAL, BRAND_CYAN_600 } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_600, BRAND_SUCCESS } from "../brandColors"
 import { DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
@@ -170,6 +170,10 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		signals.features.hasBle && signals.features.hasWifi ? "BLE & Wi-Fi" : signals.features.hasWifi ? "Wi-Fi" : "BLE"
 	} detected · no compliance artifacts in this project yet`
 
+	// What the detectors actually report, named. Not a claim about what will work — a list of what
+	// answered when asked.
+	const devices = [...signals.nrfBoards, ...signals.espDevices]
+
 	const resumeSession = mode.resume
 	const resumeTitle = resumeSession ? resumeSession.task.replace(/\s+/g, " ").slice(0, 60) : ""
 
@@ -203,6 +207,43 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						/>
 					)}
 				</button>
+			</div>
+
+			{/* Where you are, and what is on the desk.
+			    [OPERATOR 2026-09-04] The folder was only named in a strip at the BOTTOM, and the
+			    connected boards were not shown at all — so the surface never answered the two
+			    questions a developer asks on opening it. Devices are stated as detected facts, never
+			    a verdict: "no boards detected" is true, useful, and is not a fault. */}
+			<div className="mb-3 flex flex-col gap-0.5">
+				<div className="flex items-baseline gap-1.5">
+					<span aria-hidden="true" className="codicon codicon-folder" style={{ fontSize: "12px", opacity: 0.75 }} />
+					<span
+						data-testid="entry-scope-title"
+						style={{ fontSize: "13px", fontWeight: 600, color: "var(--vscode-foreground)" }}>
+						{scopeName || "No folder open"}
+					</span>
+				</div>
+				<div
+					className="flex flex-wrap items-center gap-x-1.5"
+					data-testid="entry-devices"
+					style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
+					{devices.length > 0 ? (
+						<>
+							<span
+								style={{
+									width: "6px",
+									height: "6px",
+									borderRadius: "50%",
+									background: BRAND_SUCCESS,
+									display: "inline-block",
+								}}
+							/>
+							{devices.join(" · ")}
+						</>
+					) : (
+						<>no boards detected</>
+					)}
+				</div>
 			</div>
 
 			<div className="flex w-full flex-col gap-3">
@@ -243,6 +284,26 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										? `Working on ${projectName} — pick a step, or just say what you want below.`
 										: "Describe what you want to build, or start from one of these."}
 							</div>
+							{/* A first visit to THIS folder by someone who has worked in others. The runs above answer
+							    what to do; this line answers where everything else went. */}
+							{mode.reason === "no-resume-here" && mode.elsewhereCount > 0 && (
+								<div
+									data-testid="entry-orientation"
+									style={{
+										fontSize: "11.5px",
+										color: "var(--vscode-descriptionForeground)",
+										marginTop: "4px",
+									}}>
+									Nothing has run in <b>{scopeName}</b> yet —{" "}
+									<button
+										data-testid="entry-elsewhere"
+										onClick={openDrawer}
+										style={{ color: BRAND_CYAN_600, textDecoration: "underline" }}>
+										your {mode.elsewhereCount} session{mode.elsewhereCount > 1 ? "s" : ""} in other folders
+									</button>{" "}
+									are in the menu.
+								</div>
+							)}
 						</div>
 
 						{isColdStart && !sampleRun ? (
@@ -309,6 +370,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										}}
 										primary={idx === 0}
 										subline={`◆ ${r.why}`}
+										sublineColor={BRAND_CYAN_600}
 										testId={`entry-run-${r.item.id}`}
 										title={r.item.title}
 									/>
@@ -334,7 +396,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							Resume — {resumeTitle}
 						</div>
 						<div style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
-							{mode.resumeKind === "handover" ? "your agent's session" : scopeName} · every other session is in ☰
+							{mode.resumeKind === "handover" ? "your agent's session" : scopeName} · every other session is in the
+							menu, top right
 						</div>
 					</button>
 				) : (
@@ -342,13 +405,30 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						data-testid="entry-orientation"
 						style={{ fontSize: "11.5px", color: "var(--vscode-descriptionForeground)" }}>
 						Nothing has run in <b>{scopeName || "this window"}</b> yet — the box below starts its first session.
-						{mode.elsewhereCount > 0 &&
-							` Your ${mode.elsewhereCount} session${mode.elsewhereCount > 1 ? "s" : ""} in other folders are in ☰.`}
+						{mode.elsewhereCount > 0 && (
+							<>
+								{" "}
+								{/* A count with no way to reach it is a dead end; this is the way there. */}
+								<button
+									data-testid="entry-elsewhere"
+									onClick={openDrawer}
+									style={{ color: BRAND_CYAN_600, textDecoration: "underline" }}>
+									{mode.elsewhereCount} session{mode.elsewhereCount > 1 ? "s" : ""} in other folders
+								</button>
+								.
+							</>
+						)}
 					</div>
 				)}
 
+				{/* Below the content, not above it: a tip about docking the panel was the loudest, boxiest
+				    thing on screen and sat over the actual purpose of the surface. */}
+				{/* The header at the top now owns WHERE you are and WHAT is plugged in, so the strip must
+				    not say it again — the folder was appearing twice on one screen and the same board was
+				    described in two places. Passing null leaves the strip its own job: toolchain and build
+				    state, which the header does not cover. */}
+				<StatusHeader projectName={null} />
 				<DockCoachMark hasProject={signals.hasWorkspace} />
-				<StatusHeader projectName={projectName ?? null} />
 			</div>
 
 			<EntryDrawer

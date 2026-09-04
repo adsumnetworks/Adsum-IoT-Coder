@@ -78,20 +78,50 @@ describe("entryMode — expanded vs collapsed", () => {
 		expect(r.mode).toBe("collapsed")
 	})
 
-	it("the rule counts every folder — five sessions elsewhere is not a beginner", () => {
+	it("the rule counts every folder — sessions elsewhere are not a beginner's", () => {
+		// Total history decides the BEGINNER question: three runs in another folder mean this
+		// developer knows what a session is, so "one-session" must not fire. Whether the surface
+		// then collapses is a separate question, answered by whether there is a resume here.
 		const r = entryMode({
 			history: [
 				session({ id: "a", ageDays: 1, cwd: OTHER }),
 				session({ id: "b", ageDays: 2, cwd: OTHER }),
-				session({ id: "c", ageDays: 3, cwd: OTHER }),
+				session({ id: "here", ageDays: 3, cwd: ROOT }),
 			],
 			roots: [ROOT, OTHER],
 			scope: ROOT,
 			now: NOW,
 		})
+		expect(r.reason).toBe("returning")
 		expect(r.mode).toBe("collapsed")
+		expect(r.resume?.id).toBe("here")
+		expect(r.elsewhereCount).toBe(2)
+	})
+})
+
+describe("entryMode — nothing to collapse into", () => {
+	it("plenty of history but none in THIS folder: expanded, because a collapse would show nothing", () => {
+		const r = entryMode({
+			history: [session({ id: "a", ageDays: 1, cwd: OTHER }), session({ id: "b", ageDays: 2, cwd: OTHER })],
+			roots: [ROOT, OTHER],
+			scope: ROOT,
+			now: NOW,
+		})
+		expect(r.mode).toBe("expanded")
+		expect(r.reason).toBe("no-resume-here")
 		expect(r.resume).toBeNull()
-		expect(r.elsewhereCount).toBe(3)
+		expect(r.elsewhereCount).toBe(2)
+	})
+
+	it("a resume in scope still collapses — the rule has not been widened by accident", () => {
+		const r = entryMode({
+			history: [session({ id: "a", ageDays: 1, cwd: ROOT }), session({ id: "b", ageDays: 2, cwd: OTHER })],
+			roots: [ROOT, OTHER],
+			scope: ROOT,
+			now: NOW,
+		})
+		expect(r.mode).toBe("collapsed")
+		expect(r.resume?.id).toBe("a")
 	})
 })
 
