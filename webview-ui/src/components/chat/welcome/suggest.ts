@@ -106,6 +106,16 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 			return { item, score: SCORE.boardMatch - 20, why: "matches the open project" }
 		}
 		if (item.platform === "both") {
+			// A run that works on either platform is, in practice, about the board that is plugged
+			// in. Saying "works on either platform" while an nRF52840 DK sits on the desk is true
+			// and useless — the developer wants to know the suggestion noticed their hardware.
+			// Only when exactly one platform is present: with both, "either" is the honest answer.
+			if (hasNrf && !hasEsp) {
+				return { item, score: SCORE.boardMatch - 5, why: `${nrf} connected` }
+			}
+			if (hasEsp && !hasNrf) {
+				return { item, score: SCORE.boardMatch - 5, why: `${esp} connected` }
+			}
 			return { item, score: SCORE.either, why: "works on either platform" }
 		}
 		if ((item.platform === "nrf" && s.toolchains.nrf) || (item.platform === "esp" && s.toolchains.esp)) {

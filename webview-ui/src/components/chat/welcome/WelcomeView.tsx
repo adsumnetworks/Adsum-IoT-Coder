@@ -1,29 +1,36 @@
-import React, { useState } from "react"
+import { StringRequest } from "@shared/proto/cline/common"
+import React, { useMemo, useState } from "react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
-import HistoryPreview from "@/components/history/HistoryPreview"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
-import { StateServiceClient, WebServiceClient } from "@/services/grpc-client"
-import AiLimitationsFooter from "../AiLimitationsFooter"
-import DemoCard from "../DemoCard"
-import { DEMO_SCENARIO_LIST, hasRunDemo, ranScenarioIds } from "../demoScenarios"
+import { StateServiceClient, TaskServiceClient, WebServiceClient } from "@/services/grpc-client"
+import { DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
 import CraNudge from "./CraNudge"
-import DemoPicker from "./DemoPicker"
 import DockCoachMark from "./DockCoachMark"
-import IntentList from "./IntentList"
+import EntryDrawer, { type DrawerRun } from "./EntryDrawer"
+import IntentCard from "./IntentCard"
 import ReviewNudge from "./ReviewNudge"
 import { runIntent } from "./runIntent"
 import StatusHeader from "./StatusHeader"
-import {
-	DEEP_DEBUG_SUBLINE,
-	getTenure,
-	type IntentDef,
-	NO_PROJECT_INTENTS,
-	PROJECT_INTENTS,
-	resolveIntentPlatform,
-} from "./welcomeIntents"
+import { rank } from "./suggest"
+import { useEntrySignals } from "./useEntrySignals"
+import { getTenure, type IntentDef, NO_PROJECT_INTENTS, PROJECT_INTENTS, resolveIntentPlatform } from "./welcomeIntents"
+
+/**
+ * The entry surface.
+ *
+ * One rule decides its shape (`entryMode`): fewer than two sessions, or a month away, and the
+ * runs are on screen; otherwise the input leads and one named resume sits under it. The input
+ * itself is NOT here — it is the chat composer in the footer, rendered whether or not a task is
+ * running, because typing into it already starts a new task. That is the whole "new session"
+ * story: no button, because a button would do exactly what typing does.
+ *
+ * One home per feature. Past sessions live in the drawer and nowhere else — there used to be four
+ * places. The suggested runs are one ranked list shown either as cards here or as rows in the
+ * drawer, never both at once.
+ */
 
 interface WelcomeViewProps {
 	onSelectMode: (mode: NordicModeId) => void
@@ -31,6 +38,18 @@ interface WelcomeViewProps {
 	onStartDemo: (scenarioId: string) => void
 	onUpgradeDismiss: () => void
 	showUpgradeCard: boolean
+}
+
+/** How many ranked runs sit on the surface. The rest are one click away in ☰. */
+const CARDS = 3
+const SEEN_RUNS_KEY = "adsum.entry.seenRuns"
+
+const readSeen = (): string[] => {
+	try {
+		return JSON.parse(localStorage.getItem(SEEN_RUNS_KEY) ?? "[]")
+	} catch {
+		return []
+	}
 }
 
 const WelcomeView: React.FC<WelcomeViewProps> = ({
@@ -41,216 +60,258 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	showUpgradeCard,
 }) => {
 	const { isDark } = useVSCodeTheme()
-	const {
-		navigateToHistory,
-		version,
-		openFolderPaths,
-		taskHistory,
-		workspaceClassification,
-		workspaceFeatures,
-		nrfEnvironment,
-		espEnvironment,
-		reviewNudgeShow,
-	} = useExtensionState()
+	const { version, taskHistory, workspaceClassification, reviewNudgeShow } = useExtensionState()
+	const { mode, signals, scopeName, isColdStart } = useEntrySignals()
 
-	const hasWorkspace = openFolderPaths.length > 0
-	const projectName = hasWorkspace ? (openFolderPaths[0].split("/").pop() ?? null) : null
-	// Platform for the cards: the open project's classification wins; with no project,
-	// bias by the installed toolchain (else neutral "both" so the agent asks — never
-	// silently nRF). See resolveIntentPlatform.
-	const platform = resolveIntentPlatform(workspaceClassification, {
-		nrf: !!(nrfEnvironment?.extensionPresent || nrfEnvironment?.nrfutilPresent),
-		esp: !!(espEnvironment?.extensionPresent || espEnvironment?.idfPresent),
-	})
+	const [drawerOpen, setDrawerOpen] = useState(false)
+	const [seenRuns, setSeenRuns] = useState<string[]>(readSeen)
+	const [craDismissed, setCraDismissed] = useState(false)
 
-	const tenure = getTenure({
-		taskCount: taskHistory?.length ?? 0,
-		showAnnouncement: showUpgradeCard,
-	})
+	const platform = resolveIntentPlatform(workspaceClassification, signals.toolchains)
+	const projectName = scopeName || undefined
+	const expanded = mode.mode === "expanded"
+	const sampleRun = hasRunDemo(taskHistory)
 
-	const demoDone = hasRunDemo(taskHistory)
-	const ranIds = ranScenarioIds(taskHistory)
-	// ≥2 registered samples → the consolidated "Try it on a sample" picker; otherwise the single hero card.
-	const showPicker = DEMO_SCENARIO_LIST.length >= 2
-	// Exactly ONE cyan focal point per state:
-	//  - no project & no sample run yet → the sample picker IS the hero (nothing real to act on).
-	//  - project open → the primary intent (Build, flash & debug) is the hero; the sample demotes to a
-	//    quiet "Try another sample" below — your real project leads, not our sample (dev-as-hero).
-	//  - a sample already ran → it demotes regardless.
-	const heroPicker = !demoDone && !hasWorkspace
-
-	// Grounded workspace signals (A3/A10), observed by the host probe.
-	const hasBle = !!workspaceFeatures?.hasBle
-	const hasWifi = !!workspaceFeatures?.hasWifi
-	const hasCompliance = !!workspaceFeatures?.hasComplianceArtifacts
-	// Grounded connectivity label for the CRA nudge (BLE / Wi-Fi / both) — what was detected, never a verdict.
-	const craEvidence = `${hasBle && hasWifi ? "BLE & Wi-Fi" : hasWifi ? "Wi-Fi" : "BLE"} detected · no compliance artifacts in this project yet`
-	// Dismissal persists per-workspace (localStorage, like DockCoachMark) so an explicitly-closed nudge stays
-	// closed across a window reload — not just the session. Keyed by project so dismissing in one doesn't mute all.
-	const craDismissKey = `adsum.craNudgeDismissed:${openFolderPaths[0] ?? ""}`
-	const [craNudgeDismissed, setCraNudgeDismissed] = useState(() => {
-		// Guarded: some webview contexts (and jsdom's opaque origin) don't expose localStorage — fall back to
-		// a session-only dismiss rather than crashing the whole welcome screen.
-		try {
-			return typeof localStorage !== "undefined" && localStorage.getItem(craDismissKey) === "1"
-		} catch {
-			return false
+	// ---- the catalogue: the existing intents, plus the product build, ranked once ----
+	const intents: IntentDef[] = signals.hasWorkspace ? PROJECT_INTENTS : NO_PROJECT_INTENTS
+	const runs = useMemo(() => {
+		const fromIntents: DrawerRun[] = intents.map((i) => ({
+			id: i.id,
+			platform: (i.id === "craCheck" ? "both" : platform) as DrawerRun["platform"],
+			title: i.title,
+			blurb: i.description,
+			onRun: () => runIntent(i.id, { onSelectMode, onStartTask, platform, projectName }),
+		}))
+		const product: DrawerRun = {
+			id: "lew840xGateway",
+			platform: "product",
+			need: "lew840x",
+			title: "Fanstel LEW840x composable multi-radio gateway",
+			blurb: "BLE in, Ethernet / Wi-Fi / LTE out — with or without the cellular card. Seven steps.",
+			meta: "7 steps",
+			whyNeutral: "needs the gateway, its UART bridge board and a Nordic DK as probe — the full list comes first",
+			onRun: () =>
+				onStartTask("Build the LEW840x gateway: scan BLE tags and publish them to MQTT over Ethernet, Wi-Fi and LTE"),
 		}
-	})
-	const dismissCraNudge = () => {
-		try {
-			localStorage?.setItem(craDismissKey, "1")
-		} catch {
-			// storage unavailable — session-only dismiss still works via the state update below
+		return rank<DrawerRun>([product, ...fromIntents], signals)
+	}, [intents, platform, projectName, signals, onSelectMode, onStartTask])
+
+	const samples: DrawerRun[] = useMemo(
+		() =>
+			DEMO_SCENARIO_LIST.map((d) => ({
+				id: d.id,
+				platform: "both" as const,
+				title: d.title,
+				blurb: d.honestLabel,
+				meta: "~1 min · no hardware",
+				onRun: () => onStartDemo(d.id),
+			})),
+		[onStartDemo],
+	)
+
+	const unseen = runs.map((r) => r.item.id).filter((id) => !seenRuns.includes(id))
+
+	const openDrawer = () => {
+		setDrawerOpen(true)
+		if (unseen.length) {
+			const all = runs.map((r) => r.item.id)
+			setSeenRuns(all)
+			try {
+				localStorage.setItem(SEEN_RUNS_KEY, JSON.stringify(all))
+			} catch {
+				// per-viewer convenience only; a browser that refuses storage just shows the dot again
+			}
 		}
-		setCraNudgeDismissed(true)
-	}
-	// One-time "leave a review" nudge. Eligibility (a few successful completions, not yet retired) is decided
-	// host-side and arrives as reviewNudgeShow. Both actions retire it for good via the banner-dismissal ledger
-	// (id "review-nudge"), so it never nags. openReview also opens the Marketplace review page.
-	const REVIEW_NUDGE_URL =
-		"https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger&ssr=false#review-details"
-	const dismissReviewNudge = () => {
-		StateServiceClient.dismissBanner({ value: "review-nudge" }).catch(console.error)
-	}
-	const openReview = () => {
-		WebServiceClient.openInBrowser({ value: REVIEW_NUDGE_URL }).catch(console.error)
-		StateServiceClient.dismissBanner({ value: "review-nudge" }).catch(console.error)
 	}
 
-	// A3 — the grounded CRA nudge: project-open, a connectivity stack present, no SBOM yet, not dismissed.
-	const craBanner = hasWorkspace && (hasBle || hasWifi) && !hasCompliance && !craNudgeDismissed
-	// The dormant upgrade card owns the paint when it shows — the review nudge yields to it (see precedence below).
-	const upgradeCardShowing = tenure === "dormant" && showUpgradeCard && !craBanner
-	// Precedence (one grounded promotion per paint): the A10 deep-debug sub-line is suppressed while the nudge shows.
-	const showDebugSubline = hasBle && !craBanner
+	// ---- one grounded promotion per paint, precedence unchanged ----
+	const craBanner =
+		signals.hasWorkspace &&
+		(signals.features.hasBle || signals.features.hasWifi) &&
+		!signals.features.hasCompliance &&
+		!craDismissed
+	const tenure = getTenure({ taskCount: taskHistory?.length ?? 0, showAnnouncement: showUpgradeCard })
+	const upgradeShowing = tenure === "dormant" && showUpgradeCard && !craBanner
+	const craEvidence = `${
+		signals.features.hasBle && signals.features.hasWifi ? "BLE & Wi-Fi" : signals.features.hasWifi ? "Wi-Fi" : "BLE"
+	} detected · no compliance artifacts in this project yet`
 
-	// Adaptive intent set: inject the A10 sub-line on Build/flash/debug; once compliance/ exists, switch the CRA
-	// card to re-run copy. (CRA's "New" pill was retired in 0.2.0 — it shipped in 0.1.7, three releases back.)
-	// No project → the no-project set, untouched.
-	const intents: IntentDef[] = hasWorkspace
-		? PROJECT_INTENTS.map((i) => {
-				if (i.id === "buildFlashDebug" && showDebugSubline) {
-					return { ...i, subline: DEEP_DEBUG_SUBLINE }
-				}
-				if (i.id === "craCheck" && hasCompliance) {
-					return {
-						...i,
-						description: "Re-run on your build — refresh the SBOM & posture after changes.",
-					}
-				}
-				return i
-			})
-		: NO_PROJECT_INTENTS
+	const resumeSession = mode.resume
+	const resumeTitle = resumeSession ? resumeSession.task.replace(/\s+/g, " ").slice(0, 60) : ""
 
 	return (
-		<div
-			className="flex flex-col items-center flex-1 px-5 pt-6 pb-4"
-			data-testid="welcome-view"
-			style={{ overflowY: "auto" }}>
-			{/* Logo */}
-			<div className="flex justify-center w-full py-4">
-				<img
-					alt="Adsum IoT Coder"
-					src={isDark ? adsumLogoDark : adsumLogoLight}
-					style={{ maxWidth: "180px", width: "100%" }}
-				/>
+		<div className="relative flex flex-1 flex-col px-4 pb-2 pt-3" data-testid="welcome-view" style={{ overflowY: "auto" }}>
+			{/* header: identity, and the ONE way to everything not on screen */}
+			<div className="mb-2 flex items-center gap-2">
+				<img alt="Adsum IoT Coder" src={isDark ? adsumLogoDark : adsumLogoLight} style={{ height: "18px" }} />
+				<button
+					aria-label="Browse sessions and runs"
+					className="relative ml-auto rounded px-1.5 py-0.5 hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+					data-testid="entry-burger"
+					onClick={openDrawer}
+					title="Browse sessions and runs">
+					<span aria-hidden="true" className="codicon codicon-menu" />
+					{unseen.length > 0 && (
+						<span
+							data-testid="entry-burger-badge"
+							style={{
+								position: "absolute",
+								top: "-1px",
+								right: "-1px",
+								width: "7px",
+								height: "7px",
+								borderRadius: "50%",
+								background: "var(--vscode-charts-orange)",
+							}}
+						/>
+					)}
+				</button>
 			</div>
 
-			<div className="flex flex-col items-center gap-4 w-full flex-1 justify-center" style={{ maxWidth: "360px" }}>
-				{/* StatusHeader: project strip + EnvStrip seam */}
-				<StatusHeader projectName={projectName} />
-
-				{/* Dormant upgrade card (once per version). No separate "new user" nudge — the demo hero below is
-				    the single cyan focal point for first-run, so we don't stack a duplicate same-action CTA.
-				    Precedence: suppressed when the grounded CRA nudge shows (project-open → A3 owns CRA). */}
-				{upgradeCardShowing && <UpgradeCard onDismiss={onUpgradeDismiss} version={version ?? ""} />}
-
-				{/* A3 — grounded CRA nudge (project-open). The single grounded promotion for a project-open first
-				    paint: evidence-mode (what was detected, never a verdict), demotes once compliance/ exists.
-				    No-reflow note: classification is synchronous on activation, so workspaceFeatures arrives
-				    resolved before first paint — no uninitiated pop-in. The only mount/unmount is on a user-initiated
-				    change (folder add, or a save that creates compliance/ or enables CONFIG_BT), where motion is
-				    expected feedback; so we mount/unmount rather than reserve an always-empty placeholder slot. */}
-				{/* One-time "leave a review" nudge — welcome only, after a few wins. Lowest precedence of the paint's
-				    promotions: yields to both the grounded CRA nudge and the dormant upgrade card so only one shows
-				    at a time (the file's "one grounded promotion per paint" rule). Retires for good on either action. */}
-				{!craBanner && !upgradeCardShowing && reviewNudgeShow && (
-					<ReviewNudge onDismiss={dismissReviewNudge} onReview={openReview} />
+			<div className="flex w-full flex-col gap-3">
+				{upgradeShowing && <UpgradeCard onDismiss={onUpgradeDismiss} version={version ?? ""} />}
+				{!craBanner && !upgradeShowing && reviewNudgeShow && (
+					<ReviewNudge
+						onDismiss={() => StateServiceClient.dismissBanner({ value: "review-nudge" }).catch(console.error)}
+						onReview={() => {
+							WebServiceClient.openInBrowser({
+								value: "https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger&ssr=false#review-details",
+							}).catch(console.error)
+							StateServiceClient.dismissBanner({ value: "review-nudge" }).catch(console.error)
+						}}
+					/>
 				)}
-
 				{craBanner && (
 					<CraNudge
 						evidence={craEvidence}
-						onDismiss={dismissCraNudge}
-						onPreview={() =>
-							runIntent("craCheck", {
-								onSelectMode,
-								onStartTask,
-								platform,
-								projectName: projectName ?? undefined,
-							})
-						}
+						onDismiss={() => setCraDismissed(true)}
+						onPreview={() => runIntent("craCheck", { onSelectMode, onStartTask, platform, projectName })}
 					/>
 				)}
 
-				{/* Hero sample — the single cyan focal point ONLY when there's no project to act on and no sample has
-				    run yet. With a project open, the primary intent below is the hero instead. Picker when ≥2 samples
-				    are registered; single hero card otherwise (graceful fallback). */}
-				{heroPicker && (showPicker ? <DemoPicker onStartDemo={onStartDemo} /> : <DemoCard onStartDemo={onStartDemo} />)}
+				{expanded ? (
+					<>
+						<div>
+							<div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--vscode-foreground)" }}>
+								{isColdStart
+									? "See it work first."
+									: mode.reason === "lapsed"
+										? "Welcome back."
+										: "Let's get your board talking."}
+							</div>
+							<div style={{ fontSize: "11.5px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
+								{isColdStart
+									? "Pick one and watch a real session do a real job — real curated knowledge, real commands, real evidence."
+									: projectName
+										? `Working on ${projectName} — pick a step, or just say what you want below.`
+										: "Describe what you want to build, or start from one of these."}
+							</div>
+						</div>
 
-				{/* Orienting heading — ALWAYS shown; the disoriented first-timer needs the framing question most */}
-				<div className="w-full">
-					<div style={{ fontSize: "13px", fontWeight: 700, color: "var(--vscode-foreground)" }}>
-						What would you like to do?
-					</div>
-					<div style={{ fontSize: "11.5px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
-						{projectName ? (
+						{isColdStart && !sampleRun ? (
+							// The cold start. Every run below needs hardware this person may not have, and each
+							// only prefills. A sample is pre-canned and safe, so it can fire on one click — the
+							// shortest honest path to seeing anything work.
+							<div
+								className="flex flex-col gap-1.5 rounded-lg p-2"
+								data-testid="entry-samples"
+								style={{ border: "1px solid var(--vscode-focusBorder)" }}>
+								<div
+									className="px-1 uppercase"
+									style={{
+										fontSize: "10px",
+										letterSpacing: "0.06em",
+										color: "var(--vscode-descriptionForeground)",
+									}}>
+									Sample runs · about a minute each · no hardware, nothing installed
+								</div>
+								{samples.map((s) => (
+									<button
+										className="flex items-start gap-2 rounded p-2 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
+										data-testid="entry-sample"
+										key={s.id}
+										onClick={s.onRun}>
+										<span aria-hidden="true" className="codicon codicon-play" style={{ fontSize: "11px" }} />
+										<span className="flex min-w-0 flex-1 flex-col">
+											<span style={{ fontSize: "12.5px", fontWeight: 600 }}>{s.title}</span>
+											<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
+												{s.blurb}
+											</span>
+										</span>
+										<span style={{ fontSize: "10.5px", color: "var(--vscode-descriptionForeground)" }}>
+											~1 min
+										</span>
+									</button>
+								))}
+							</div>
+						) : (
 							<>
-								Working on <b>{projectName}</b> — pick a step.
+								<div
+									className="uppercase"
+									style={{
+										fontSize: "10.5px",
+										letterSpacing: "0.09em",
+										color: "var(--vscode-descriptionForeground)",
+									}}>
+									Suggested runs
+								</div>
+								{runs.slice(0, CARDS).map((r) => (
+									<IntentCard
+										description={r.item.blurb ?? ""}
+										icon="rocket"
+										key={r.item.id}
+										onClick={r.item.onRun}
+										subline={`◆ ${r.why}`}
+										testId={`entry-run-${r.item.id}`}
+										title={r.item.title}
+									/>
+								))}
 							</>
-						) : (
-							"New here? Start with a sample, or open your firmware."
 						)}
-					</div>
-				</div>
-
-				{/* Adaptive intent cards */}
-				<IntentList
-					hasBle={hasBle}
-					intents={intents}
-					onSelectMode={onSelectMode}
-					onStartDemo={onStartDemo}
-					onStartTask={onStartTask}
-					platform={platform}
-					projectName={projectName ?? undefined}
-					testIdPrefix="intent-card"
-				/>
-
-				{/* Demoted sample — compact whenever it isn't the hero (project open, or already run). The heading
-				    says "another" ONLY if a sample has actually run (demoDone), not just because a project is open. */}
-				{!heroPicker && (
-					<div className="w-full">
-						{showPicker ? (
-							<DemoPicker hasRunDemo={demoDone} onStartDemo={onStartDemo} ranIds={ranIds} variant="rerun" />
-						) : (
-							<DemoCard onStartDemo={onStartDemo} variant="rerun" />
-						)}
+					</>
+				) : resumeSession ? (
+					<button
+						className="w-full rounded-md px-3 py-2 text-left"
+						data-testid="entry-resume"
+						onClick={() =>
+							TaskServiceClient.showTaskWithId(StringRequest.create({ value: resumeSession.id })).catch(
+								console.error,
+							)
+						}
+						style={{
+							border: "1px solid var(--vscode-focusBorder)",
+							background: "var(--vscode-inputOption-activeBackground)",
+						}}>
+						<div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--vscode-foreground)" }}>
+							Resume — {resumeTitle}
+						</div>
+						<div style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", marginTop: "2px" }}>
+							{mode.resumeKind === "handover" ? "your agent's session" : scopeName} · every other session is in ☰
+						</div>
+					</button>
+				) : (
+					<div
+						data-testid="entry-orientation"
+						style={{ fontSize: "11.5px", color: "var(--vscode-descriptionForeground)" }}>
+						Nothing has run in <b>{scopeName || "this window"}</b> yet — the box below starts its first session.
+						{mode.elsewhereCount > 0 &&
+							` Your ${mode.elsewhereCount} session${mode.elsewhereCount > 1 ? "s" : ""} in other folders are in ☰.`}
 					</div>
 				)}
 
-				{/* Dock coach mark — once, when project is open */}
-				<DockCoachMark hasProject={!!hasWorkspace} />
-
-				{/* History */}
-				<div className="w-full mt-4">
-					<HistoryPreview showHistoryView={navigateToHistory} />
-				</div>
-
-				{/* AI-limitations (design/13 A6) — persistent here AND under the chat input during a task (see
-				    ChatView). Links to the live docs disclaimer page (docs.adsumnetworks.com/legal/limitations). */}
-				<AiLimitationsFooter style={{ marginTop: "6px" }} />
+				<DockCoachMark hasProject={signals.hasWorkspace} />
+				<StatusHeader projectName={projectName ?? null} />
 			</div>
+
+			<EntryDrawer
+				checks={[]}
+				history={taskHistory ?? []}
+				onClose={() => setDrawerOpen(false)}
+				open={drawerOpen}
+				runs={runs}
+				samples={samples}
+				unseenRunIds={unseen}
+			/>
 		</div>
 	)
 }
