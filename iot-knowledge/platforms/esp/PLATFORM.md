@@ -2,7 +2,7 @@
 id: adsum/esp/platform
 title: "ESP32 — Platform Index"
 type: knowledge
-version: 1.4.0
+version: 1.4.1
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -27,7 +27,7 @@ platforms/esp/
 ├── PLATFORM.md              ← You are here. Master index.
 ├── rules/
 │   ├── esp-terminal.md      ← CRITICAL: use triggerEspAction, never execute_command (always)
-│   ├── skill-loading.md     ← Workflows vs Actions hierarchy + Command Gate (always)
+│   ├── bit-loading.md     ← Workflows vs Actions hierarchy + Command Gate (always)
 │   └── device-identity.md   ← Identify chip/flash/PSRAM before building (always)
 ├── boards/                  ← Per-chip hardware constraints (load per target)
 │   ├── esp32-s3.md
@@ -56,7 +56,7 @@ platforms/esp/
 | File | Purpose |
 |---|---|
 | `rules/esp-terminal.md` | ALL idf.py/esptool commands go through `triggerEspAction`, never `execute_command`. |
-| `rules/skill-loading.md` | Workflows are entry points; Actions load only when a Workflow says so. |
+| `rules/bit-loading.md` | Workflows are entry points; Actions load only when a Workflow says so. |
 | `rules/device-identity.md` | Identify the connected chip, flash size and PSRAM before building. Never guess the target. |
 
 ## Reference (`knowledge/`)
@@ -88,7 +88,7 @@ Other targets (`esp32c6`, `esp32c3`, …) are supported by the toolchain; board 
 | SDK | File | When to Load |
 |---|---|---|
 | ESP-IDF | `sdks/esp-idf/SDK.md` | First ESP-IDF task. idf.py/CMake/FreeRTOS/sdkconfig + device introspection. |
-| Wi-Fi | `sdks/esp-idf/protocols/WIFI.md` | Project uses Wi-Fi — and **load before diagnosing any Wi-Fi problem** (Command Gate in `rules/skill-loading.md`). |
+| Wi-Fi | `sdks/esp-idf/protocols/WIFI.md` | Project uses Wi-Fi — and **load before diagnosing any Wi-Fi problem** (Command Gate in `rules/bit-loading.md`). |
 | BLE (NimBLE) | `sdks/esp-idf/protocols/BLE.md` | Project uses BLE (`CONFIG_BT_ENABLED=y`) — and **load before diagnosing any BLE problem**. |
 | Multi-bearer | `sdks/esp-idf/patterns/multi-bearer-gateway.md` | The application reaches a broker or server over **more than one interface** (Ethernet / Wi-Fi / cellular). **Load before diagnosing which uplink is carrying, any failover or reconnect question, or a server or broker that dies when a radio comes up.** Route priority, the accessor contract, where the HTTP server may be started, and what a bearer costs in heap. |
 
@@ -109,9 +109,9 @@ Your single interface to the ESP-IDF toolchain. It provides the sourced environm
 
 ---
 
-## Skill Library Index
+## Bit Index
 
-See `rules/skill-loading.md` for the mandatory loading protocol.
+See `rules/bit-loading.md` for the mandatory loading protocol.
 
 ### Primary Entry-Point Workflows (START HERE)
 
@@ -124,7 +124,7 @@ See `rules/skill-loading.md` for the mandatory loading protocol.
 | Add Feature | `workflows/add-feature.md` | Port one feature/component into an existing app, then verify via Debug Loop. |
 | Test & Validate | `workflows/test-validate.md` | Unity via host (`linux`) / QEMU / on-hardware + behavioral validation + CI offer. |
 
-### Internal Actions (loaded when a Workflow instructs, or the Command Gate in `rules/skill-loading.md` fires)
+### Internal Actions (loaded when a Workflow instructs, or the Command Gate in `rules/bit-loading.md` fires)
 
 | Action | File | Purpose |
 |---|---|---|

@@ -278,7 +278,7 @@ describe("lintBitContent", () => {
 
 describe("regression: live corpus", () => {
 	// 18 bits: the post-un-bundle core/demo bits (delivery: bundled, open). Wave 3 added
-	// `rules/skill-loading.md` — the shared Scope/Command-gate framework factored out of two
+	// `rules/bit-loading.md` — the shared Scope/Command-gate framework factored out of two
 	// near-duplicate per-platform copies. Wave 3 also briefly re-added an `analyze-logs.md` per
 	// platform, which collided with the proprietary registry ids of the same name; the doctrine
 	// was ported into the registry versions (esp 1.0.2 / nrf 1.1.2, min_ext 0.2.1) on 2026-08-17
@@ -309,7 +309,11 @@ describe("regression: live corpus", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
 		const toolFiles = files.filter((f) => f.replace(/\\/g, "/").endsWith("/TOOL.md"))
 		assert.equal(toolFiles.length, 10, "bundled tool bits")
-		assert.equal(files.length - toolFiles.length, 20, "bundled content bits — a rise here means a proprietary bit leaked in")
+		// 23 = the 20 content bits + three deprecated pointer stubs left at rules/skill-loading.md
+		// (universal, nrf, esp) after the rename to bit-loading, so a served bit cached before the
+		// rename still resolves the old path instead of 404ing. All three are open-licensed, like the
+		// rules they point at; this guard exists to catch a PROPRIETARY bit leaking into the bundle.
+		assert.equal(files.length - toolFiles.length, 23, "bundled content bits — a rise here means a proprietary bit leaked in")
 		assert.equal(migrated, files.length)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
@@ -530,7 +534,7 @@ describe("authoring", () => {
 		const wf = generateBody({ type: "workflow", title: "Add Feature" }, "add-feature.md")
 		assert.match(wf, /# Add Feature \(add-feature\.md\)/)
 		assert.match(wf, /## Steps/)
-		assert.match(wf, /MANDATORY SKILL LOAD/)
+		assert.match(wf, /MANDATORY BIT LOAD/)
 	})
 
 	test("composeBit produces a lint-clean bit", () => {

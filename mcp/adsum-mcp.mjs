@@ -135,7 +135,7 @@ function buildTools(ctx) {
 			},
 		},
 		{
-			name: "load_skill",
+			name: "load_bit",
 			description:
 				"Load a curated Adsum knowledge bit (workflow, action, or reference) by id or keyword. Call this BEFORE acting on any nRF/ESP/embedded task — these bits are hardware-verified and supersede general knowledge. The result starts with the author's credit line; surface it once in your reply.",
 			inputSchema: {
@@ -330,16 +330,16 @@ function toolResumeHandover(args) {
 				]
 			: []),
 		spokes.length
-			? `## ◆ Its knowledge closure (bodies pinned — call load_skill before acting)\n${spokes.map(bitLine).join("\n")}`
+			? `## ◆ Its knowledge closure (bodies pinned — call load_bit before acting)\n${spokes.map(bitLine).join("\n")}`
 			: null,
 		unresolved.length
 			? `## ⚠ Referenced but not bundled in this handover\n${unresolved.map((u) => `- \`${u.id}\` (referenced by ${u.via}) — on the registry; ask the developer if you need it`).join("\n")}`
 			: null,
 		index.length
-			? `## ≡ Also available (full field of view — metadata only, load_skill fetches the body)\n${index.map((e) => `- \`${e.id}\`${e.title ? ` — ${e.title}` : ""}${e.author ? ` · ${e.author}` : ""}`).join("\n")}`
+			? `## ≡ Also available (full field of view — metadata only, load_bit fetches the body)\n${index.map((e) => `- \`${e.id}\`${e.title ? ` — ${e.title}` : ""}${e.author ? ` · ${e.author}` : ""}`).join("\n")}`
 			: null,
 		"",
-		"**How to work here:** load the relevant bit with `load_skill` BEFORE acting and follow its steps rather than improvising; surface each bit's credit line once when you first use it; run every embedded command through `exec`/`build` (they carry the toolchain environment — a bare `idf.py` in your own shell will fail); call `checkpoint` at every milestone AND after any file mutation, answering what its response asks; and before you stop, send a closing checkpoint (`final: true`) with the files you touched and the honest next step.",
+		"**How to work here:** load the relevant bit with `load_bit` BEFORE acting and follow its steps rather than improvising; surface each bit's credit line once when you first use it; run every embedded command through `exec`/`build` (they carry the toolchain environment — a bare `idf.py` in your own shell will fail); call `checkpoint` at every milestone AND after any file mutation, answering what its response asks; and before you stop, send a closing checkpoint (`final: true`) with the files you touched and the honest next step.",
 	]
 	patchState(id, { status: "active", resumedAt: new Date().toISOString(), currentStepIdx: -1 })
 	ledger(id, { event: "resume", bits: bits.length, governing: brief.governing, steps: steps.length })
@@ -363,7 +363,7 @@ function toolLoadSkill(args, ctx) {
 		.toLowerCase()
 	if (!q) {
 		ledger(id, { event: "kbit_miss", query: "", reason: "empty-query" })
-		return { isError: true, text: "load_skill needs a query (a bit id or a keyword)." }
+		return { isError: true, text: "load_bit needs a query (a bit id or a keyword)." }
 	}
 
 	// exact id → id substring → keyword in title/triggers. Deterministic, cheapest-first.
@@ -410,7 +410,7 @@ function toolLoadSkill(args, ctx) {
 			body = body.replace(
 				/`?read_file`?\s*(?:→|->)\s*`?((?:platforms\/|(?:actions|workflows|rules|references|knowledges|sdks|boards|protocols)\/)[\w/-]+\.md)`?/gi,
 				(_m, p) =>
-					`call \`load_skill("adsum/${(p.startsWith("platforms/") ? p.slice(10) : `${plat}/${p}`).replace(/\.md$/i, "").toLowerCase()}")\``,
+					`call \`load_bit("adsum/${(p.startsWith("platforms/") ? p.slice(10) : `${plat}/${p}`).replace(/\.md$/i, "").toLowerCase()}")\``,
 			)
 			ledger(id, { event: "kbit_load", id: ihit.id, title: ihit.title, author: ihit.author, source: "index" })
 			patchState(id, {})
@@ -548,7 +548,7 @@ function toolCheckpoint(args, ctx) {
 		out.push("", `Per ★ ${brief.governing || "the governing workflow"} you completed **${step}**.`)
 		out.push(
 			next
-				? `Next is **${next}** — load the bit that owns it with \`load_skill\` BEFORE acting, and name it in your next checkpoint.`
+				? `Next is **${next}** — load the bit that owns it with \`load_bit\` BEFORE acting, and name it in your next checkpoint.`
 				: "That was the last parsed step — verify the workflow's summary/closing requirements before stopping, then send a closing checkpoint (final: true).",
 		)
 	} else if (step === "off-plan" || !steps.length) {
@@ -738,7 +738,7 @@ function handle(msg) {
 						send({ jsonrpc: "2.0", method: "notifications/tools/list_changed" })
 					}
 				}
-			} else if (name === "load_skill") {
+			} else if (name === "load_bit") {
 				out = toolLoadSkill(args, ctx)
 			} else if (name === "checkpoint") {
 				out = toolCheckpoint(args, ctx)

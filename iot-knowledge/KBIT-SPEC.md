@@ -37,7 +37,7 @@ Frontmatter is a **single YAML block fenced by `---` at the very top of the file
 |---|---|---|
 | `soc` | string[] | e.g. `["nrf52840","nrf5340"]`. |
 | `sdk` / `sdk_version` | string | e.g. `ncs` / `>=2.6`. Drives compatibility + retires hardcoded versions. |
-| `requires` | string[] (bit ids) | **Graph edges** — formalises `MANDATORY SKILL LOAD: read_file → …` (§3). Every target must resolve. |
+| `requires` | string[] (bit ids) | **Graph edges** — formalises `MANDATORY BIT LOAD: read_file → …` (§3). Every target must resolve. |
 | `loaded_by` | string[] (bit ids) | Informational reverse edges ("called by"). |
 | `last_verified` | `{ date: YYYY-MM-DD, env: string }` | Last real verification (e.g. `env: "NCS 3.2.1 / nrf52840dk"`). **Absent = unverified.** |
 | `safety` | safety[] | Declared dangerous ops (§5). |
@@ -81,7 +81,7 @@ status: published
 
 ## 3. The `requires` edge convention
 
-Today bits link via prose: `**MANDATORY SKILL LOAD:** read_file → platforms/nrf/actions/find-sample.md`. That stays in the body (it's the agent instruction), **and** the relationship is declared in frontmatter as a resolvable id:
+Today bits link via prose: `**MANDATORY BIT LOAD:** read_file → platforms/nrf/actions/find-sample.md`. That stays in the body (it's the agent instruction), **and** the relationship is declared in frontmatter as a resolvable id:
 
 ```yaml
 requires:
@@ -126,7 +126,7 @@ The linter scans for the obvious markers (`west flash`, `--erase`, `pkill`/`task
 id: adsum/nrf/workflows/add-feature
 title: Add Feature
 type: workflow
-version: 1.0.0
+version: 1.0.1
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0

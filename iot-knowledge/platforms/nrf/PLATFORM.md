@@ -2,7 +2,7 @@
 id: adsum/nrf/platform
 title: "Nordic nRF — Platform Index"
 type: knowledge
-version: 1.7.0
+version: 1.7.1
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -28,7 +28,7 @@ platforms/nrf/
 ├── PLATFORM.md              ← You are here. Master index for the nRF platform.
 ├── rules/
 │   ├── nrf-terminal.md      ← CRITICAL: Terminal routing rules (when to read: always)
-│   ├── skill-loading.md     ← Skill discovery & loading rules (when to read: always)
+│   ├── bit-loading.md     ← Bit discovery & loading rules (when to read: always)
 │   └── device-identity.md   ← MANDATORY: Device role assignment (never guess roles)
 ├── boards/
 │   ├── nrf52832.md          ← nRF52832 hardware specs & constraints
@@ -72,12 +72,12 @@ platforms/nrf/
 
 ## Rules (`rules/`)
 
-Rules are platform-specific constraints that override the agent's default behavior. See `rules/skill-loading.md` for the full Skill Discovery Protocol.
+Rules are platform-specific constraints that override the agent's default behavior. See `rules/bit-loading.md` for the full Bit Discovery Protocol.
 
 | File | When to Load | Purpose |
 |---|---|---|
 | `rules/nrf-terminal.md` | **Always.** | ALL NCS/SDK commands must use `triggerNordicAction`, never `execute_command`. |
-| `rules/skill-loading.md` | **Always.** | Skill hierarchy: Workflows are entry points, Actions are internal subroutines. |
+| `rules/bit-loading.md` | **Always.** | Bit hierarchy: Workflows are entry points, Actions are internal subroutines. |
 | `rules/device-identity.md` | **Always.** | NEVER guess device roles. Use `device1`/`device2` until confirmed by config or logs. |
 
 ## Reference (`knowledge/`)
@@ -175,9 +175,9 @@ triggerNordicAction: action="log_device", operation="capture", transport="rtt", 
 
 ---
 
-## Skill Library Index
+## Bit Index
 
-The workflows and actions below are strict, custom-built skills. See `rules/skill-loading.md` for the mandatory loading protocol.
+The workflows and actions below are strict, custom-built bits. See `rules/bit-loading.md` for the mandatory loading protocol.
 
 ### Primary Entry-Point Workflows (START HERE)
 
@@ -194,7 +194,7 @@ When starting a new task, load one of these Workflows first.
 | Add Feature | `workflows/add-feature.md` | Port one feature into an existing project, then verify via Debug Loop |
 | Test & Validate | `workflows/test-validate.md` | ztest via simulator/on-hardware Twister + behavioral validation + CI offer |
 
-### Internal Actions (loaded when a Workflow instructs, or the Command Gate in `rules/skill-loading.md` fires)
+### Internal Actions (loaded when a Workflow instructs, or the Command Gate in `rules/bit-loading.md` fires)
 
 | Action | File | Purpose |
 |---|---|---|

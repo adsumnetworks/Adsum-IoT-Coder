@@ -106,7 +106,7 @@ export class VscodeHandoverService {
 	 *  downloaded body carries no frontmatter, since the publisher strips it before hashing). `creditFor`
 	 *  applies the honest-fallback rule so a placeholder `author` becomes the authoring team, never a fake
 	 *  person. The body is verb-bridged so its "read_file → platforms/X" directives instruct the tool the
-	 *  foreign agent actually has (load_skill) — see HandoverBrief.bridgeLoadVerbs. */
+	 *  foreign agent actually has (load_bit) — see HandoverBrief.bridgeLoadVerbs. */
 	private async loadOneBit(id: string): Promise<BriefBit | null> {
 		let body = ""
 		try {
@@ -249,7 +249,7 @@ export class VscodeHandoverService {
 	 * A bundled bit already carries one. A DOWNLOADED bit deliberately has none: its body lives in a
 	 * hash-keyed blob cache behind the entitlement-aware loader, "not at a stable path"
 	 * (KnowledgeResolver). A plain-Node server can neither open that cache nor fetch with entitlement —
-	 * so on the softAP run 23 of 31 index rows came back `path: null` and every `load_skill` for them
+	 * so on the softAP run 23 of 31 index rows came back `path: null` and every `load_bit` for them
 	 * answered "not available offline", including all four mandatory `cra/*` bits.
 	 *
 	 * So resolve them HERE, where the registry and entitlement are reachable, and write the bodies into
@@ -588,14 +588,14 @@ export class VscodeHandoverService {
 		// A handover with no prior session is legitimate (hand over a fresh card) — the brief is just thinner.
 		const { bits, unresolved } = await this.collectBits(parts.kbitRelPaths)
 		// The three-layer payload: ★ governing (marked, steps parsed) · ◆ closure (bodies, hop/via) ·
-		// ≡ manifest index (metadata-only field of view; bodies on demand via load_skill).
+		// ≡ manifest index (metadata-only field of view; bodies on demand via load_bit).
 		const governing = this.governingOf(bits)
 		const steps = governing ? parseWorkflowSteps(governing.body) : []
 		const inClosure = new Set(bits.map((b) => b.id))
 		// Field of view, not the whole warehouse: a live ESP pickup listed 62 rows of which 38 were nRF
 		// boards, BLE sniffers and NCS SDK bits — ~1.3k tokens of noise before the agent read a word of
 		// the mission. Keep this workspace's platform plus the cross-platform corpus; the rest stays one
-		// load_skill away and the count of what was set aside is stated honestly.
+		// load_bit away and the count of what was set aside is stated honestly.
 		const plat = getCachedWorkspaceSummary()
 		const keepPlatform = (id: string) => {
 			const seg = id.replace(/^adsum\//, "").split("/")[0]
@@ -628,7 +628,7 @@ export class VscodeHandoverService {
 		const dir = path.join(HANDOVER_ROOT, id)
 		fs.mkdirSync(dir, { recursive: true })
 		// Downloaded bits carry no readable path — resolve their bodies into the handover folder so the
-		// server can actually serve a load_skill for them (see materialiseIndexBodies).
+		// server can actually serve a load_bit for them (see materialiseIndexBodies).
 		await this.materialiseIndexBodies(dir, index)
 		fs.writeFileSync(
 			path.join(dir, "brief.json"),
