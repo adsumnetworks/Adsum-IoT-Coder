@@ -159,18 +159,18 @@ describe("entryMode — scope", () => {
 	})
 })
 
-describe("entryMode — the folder chip", () => {
-	it("one folder open: no chip, the foot line carries the name", () => {
-		expect(entryMode({ history: [], roots: [ROOT], scope: ROOT, now: NOW }).showChip).toBe(false)
+describe("entryMode — more than one folder open", () => {
+	it("one folder open: nothing to say about it", () => {
+		expect(entryMode({ history: [], roots: [ROOT], scope: ROOT, now: NOW }).multiRoot).toBe(false)
 	})
 
-	it("more than one folder open: the chip appears", () => {
-		expect(entryMode({ history: [], roots: [ROOT, OTHER], scope: ROOT, now: NOW }).showChip).toBe(true)
+	it("more than one folder open: the surface may say which one it picked", () => {
+		expect(entryMode({ history: [], roots: [ROOT, OTHER], scope: ROOT, now: NOW }).multiRoot).toBe(true)
 	})
 
-	it("no folder open at all: no chip, and no scope to resume", () => {
+	it("no folder open at all: nothing to say, and no scope to resume", () => {
 		const r = entryMode({ history: [session({ id: "a", ageDays: 1, cwd: ROOT })], roots: [], scope: "", now: NOW })
-		expect(r.showChip).toBe(false)
+		expect(r.multiRoot).toBe(false)
 		expect(r.resume).toBeNull()
 	})
 })

@@ -83,7 +83,20 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 		setSelectedImages,
 		selectedFiles,
 		setSelectedFiles,
-		sendingDisabled,
+		// Derived, not the raw flag. With no task there is nothing in flight, so sending CANNOT be
+		// disabled — and the raw flag has no owner in that state to say so.
+		//
+		// [OPERATOR 2026-09-04] "there is like a no parking sign when I try to hit send", and there
+		// was: `cursor: not-allowed` on a send button whose `disabled` was stuck true. The only
+		// writer of this flag is ActionButtons, which renders ONLY while a task exists. Finish a
+		// task, return to the entry surface, and the writer has already unmounted holding the last
+		// value it set — nothing left to reset it, and the composer is dead until a reload.
+		//
+		// This was latent until the composer began rendering without a task; before that the flag
+		// was only ever read in the same condition that mounted its writer. Deriving it means the
+		// invariant cannot rot again: the no-task case is answered by the expression, not by
+		// whichever component happens to still be mounted.
+		sendingDisabled: task ? sendingDisabled : false,
 		setSendingDisabled,
 		enableButtons,
 		setEnableButtons,

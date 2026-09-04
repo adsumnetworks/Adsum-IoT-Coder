@@ -138,20 +138,32 @@ describe("the shape rule decides what is on screen", () => {
 		expect(screen.getByTestId("entry-drawer")).toBeTruthy()
 	})
 
-	it("the header names the folder and what is actually plugged in", () => {
+	it("the header names the folder, and only the folder", () => {
+		mockState({ openFolderPaths: ["/w/gateway-fw"] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-scope-title").textContent).toBe("gateway-fw")
+	})
+
+	/**
+	 * [OPERATOR 2026-09-04] These two tests used to assert the opposite — that the header names the
+	 * connected boards. It did, and EnvStrip named them again a few rows below, in more detail and
+	 * with a rescan control. Device state was the one thing on this surface with two homes, which is
+	 * the rule the whole redesign exists to enforce, broken by the redesign itself. The header owns
+	 * the folder; the strip owns the hardware. Asserting the absence is what stops it growing back.
+	 */
+	it("a connected board is named by the strip, not a second time in the header", () => {
 		mockState({
 			openFolderPaths: ["/w/gateway-fw"],
 			nrfEnvironment: { boards: [{ productName: "nRF52840 DK" }] },
 		})
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.getByTestId("entry-scope-title").textContent).toBe("gateway-fw")
-		expect(screen.getByTestId("entry-devices").textContent).toContain("nRF52840 DK")
+		expect(screen.getByTestId("entry-devices").textContent).toBe("")
 	})
 
-	it("with nothing connected it says so plainly — absence is a fact, not a fault", () => {
+	it("and an empty desk is not announced in the header either", () => {
 		mockState({ openFolderPaths: ["/w/gateway-fw"] })
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.getByTestId("entry-devices").textContent).toContain("no boards detected")
+		expect(screen.getByTestId("entry-devices").textContent).not.toContain("no boards detected")
 	})
 })
 

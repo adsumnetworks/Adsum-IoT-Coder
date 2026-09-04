@@ -497,7 +497,11 @@ const EnvStrip: React.FC = () => {
 						onClick={() => setExpanded(true)}
 						style={{
 							display: "flex",
-							alignItems: "center",
+							// flex-start, not center. [OPERATOR 2026-09-04] With two rows in the strip the
+							// chevron centred itself between them while the rescan button beside it pinned
+							// to the top — two controls on one row sitting at two different heights, which
+							// is what made the block read as unaligned. Both now hang off the first row.
+							alignItems: "flex-start",
 							gap: "8px",
 							width: "100%",
 							background: "none",
@@ -538,7 +542,10 @@ const EnvStrip: React.FC = () => {
 								</span>
 							)}
 						</div>
-						<i className="codicon codicon-chevron-right" style={{ fontSize: "11px", color: MUTED, flexShrink: 0 }} />
+						<i
+							className="codicon codicon-chevron-right"
+							style={{ fontSize: "11px", color: MUTED, flexShrink: 0, marginTop: "2px" }}
+						/>
 					</button>
 				)}
 			</div>

@@ -133,6 +133,19 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 	// A filter that searched only the visible three would answer "nothing matches" while the match
 	// sat one row below the fold.
 	const shownSessions = showAll || q ? sessions : sessions.slice(0, RECENT)
+	// Repeating one folder name down the list costs the width the task title needs and tells the
+	// reader nothing. It earns its place only when the rows actually come from different folders.
+	const foldersDiffer = new Set(shownSessions.map(folderOf)).size > 1
+	// [OPERATOR 2026-09-04] Three rows read "Debug a real BLE NUS bug — Central→Peripheral works,
+	// b… · Desktop · yesterday", identically, and nothing on screen could tell them apart — the one
+	// job a session list has. Sessions started from the same opener share a title by design, so the
+	// clock is what separates them; it is added only where a title actually repeats, so the common
+	// case keeps the shorter, friendlier "yesterday".
+	const titleCounts = shownSessions.reduce<Record<string, number>>((acc, h) => {
+		acc[h.task] = (acc[h.task] ?? 0) + 1
+		return acc
+	}, {})
+	const clockOf = (ts: number) => new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
 
 	const visibleRuns = runs.filter((r) => match(r.item.title + " " + (r.item.blurb ?? "")))
 	const visibleChecks = checks.filter((c) => match(c.title + " " + (c.blurb ?? "")))
@@ -161,30 +174,46 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 			ref={panelRef}
 			role="dialog"
 			style={{ background: "var(--vscode-sideBar-background)" }}>
-			<div
-				className="flex items-center gap-2 rounded-md px-2 py-1"
-				style={{ border: "1px solid var(--vscode-panel-border)", background: "var(--vscode-input-background)" }}>
-				<span aria-hidden="true" className="codicon codicon-search" style={{ fontSize: "12px", opacity: 0.7 }} />
-				<input
-					aria-label="Filter sessions and runs"
-					className="flex-1 bg-transparent outline-none"
-					data-testid="entry-drawer-filter"
-					onChange={(e) => setQuery(e.target.value)}
-					placeholder="Filter sessions, runs, checks…"
-					ref={searchRef}
-					style={{ color: "var(--vscode-foreground)", fontSize: "12px" }}
-					value={query}
+			<div className="flex items-center gap-2">
+				<div
+					className="flex flex-1 items-center gap-2 rounded-md px-2 py-1"
+					style={{ border: "1px solid var(--vscode-panel-border)", background: "var(--vscode-input-background)" }}>
+					<span aria-hidden="true" className="codicon codicon-search" style={{ fontSize: "12px", opacity: 0.7 }} />
+					<input
+						aria-label="Filter sessions and runs"
+						className="flex-1 bg-transparent outline-none"
+						data-testid="entry-drawer-filter"
+						onChange={(e) => setQuery(e.target.value)}
+						placeholder="Filter sessions, runs, checks…"
+						ref={searchRef}
+						style={{ color: "var(--vscode-foreground)", fontSize: "12px" }}
+						value={query}
+					/>
+				</div>
+				<button
+					aria-label="Close"
+					className="codicon codicon-close shrink-0 p-1 hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+					data-testid="entry-drawer-close"
+					onClick={onClose}
+					style={{ color: "var(--vscode-descriptionForeground)", fontSize: "13px" }}
 				/>
 			</div>
 
 			<div className="flex-1 overflow-auto rounded-md" style={{ border: "1px solid var(--vscode-panel-border)" }}>
 				{shownSessions.length > 0 && (
 					<>
-						<Group label={showAll || q ? `All sessions · ${sessions.length}` : "Recent sessions"} />
+						<Group first={true} label={showAll || q ? `All sessions · ${sessions.length}` : "Recent sessions"} />
 						{shownSessions.map((h) => (
 							<Row
+								icon="history"
 								key={h.id}
-								meta={`${folderOf(h)} · ${ageLabel(h.ts, now)}`}
+								meta={[
+									foldersDiffer ? folderOf(h) : "",
+									ageLabel(h.ts, now),
+									titleCounts[h.task] > 1 ? clockOf(h.ts) : "",
+								]
+									.filter(Boolean)
+									.join(" · ")}
 								onClick={() => openSession(h.id)}
 								testId="entry-drawer-session"
 								title={h.task}
@@ -192,12 +221,18 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 						))}
 						{!q && sessions.length > RECENT && (
 							<button
-								className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
+								className="flex w-full flex-col py-2 pl-[41px] pr-3 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
 								data-testid="entry-drawer-see-all"
 								onClick={() => setShowAll(!showAll)}
 								style={{ color: BRAND_CYAN_600, fontSize: "12px" }}>
 								{showAll ? `Show just the recent ${RECENT}` : `See all ${sessions.length} sessions`}
-								{!showAll && <span style={{ marginLeft: "auto", opacity: 0.65 }}>older runs, searchable</span>}
+								{/* Under the link. Pushed to its right, it landed beside a link that had already
+								    wrapped and the two read as one garbled line. */}
+								{!showAll && (
+									<span style={{ color: "var(--vscode-descriptionForeground)", fontSize: "11px" }}>
+										older runs, searchable
+									</span>
+								)}
 							</button>
 						)}
 					</>
@@ -205,16 +240,17 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 
 				{visibleRuns.length > 0 && (
 					<>
-						<Group label="Suggested runs" />
+						<Group first={!shownSessions.length} label="Suggested runs" />
 						{visibleRuns.map((r) => (
 							<Row
+								icon={r.item.icon ?? "rocket"}
 								key={r.item.id}
 								meta={r.item.meta}
 								onClick={() => run(r.item)}
 								testId="entry-drawer-run"
 								title={r.item.title}
 								unseen={unseenRunIds.includes(r.item.id)}
-								why={r.why}
+								why={r.grounded ? r.why : undefined}
 							/>
 						))}
 					</>
@@ -224,7 +260,14 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 					<>
 						<Group label="Checks" />
 						{visibleChecks.map((c) => (
-							<Row key={c.id} meta={c.meta} onClick={() => run(c)} testId="entry-drawer-check" title={c.title} />
+							<Row
+								icon={c.icon ?? "shield"}
+								key={c.id}
+								meta={c.meta}
+								onClick={() => run(c)}
+								testId="entry-drawer-check"
+								title={c.title}
+							/>
 						))}
 					</>
 				)}
@@ -234,6 +277,7 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 						<Group label="Sample runs" />
 						{visibleSamples.map((s) => (
 							<Row
+								icon={s.icon ?? "play-circle"}
 								key={s.id}
 								meta={s.meta ?? "~1 min · no hardware"}
 								onClick={() => run(s)}
@@ -244,66 +288,105 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 					</>
 				)}
 
+				{/* An empty result has to offer the way out. [SCREENSHOT 2026-09-04] It said
+				    'Nothing matches "zzzz".' into a panel-high empty box and stopped there: the only
+				    escape was to go back and clear the field by hand, which is work the screen could
+				    have done. It also now says WHAT was searched, so a miss reads as a real absence
+				    rather than as a filter that might only cover the visible rows. */}
 				{nothing && (
-					<div className="px-3 py-4" style={{ color: "var(--vscode-descriptionForeground)", fontSize: "12px" }}>
-						Nothing matches “{query}”.
+					<div
+						className="flex flex-col items-start gap-2 px-3 py-4"
+						style={{ color: "var(--vscode-descriptionForeground)", fontSize: "12px" }}>
+						<span>No session, run or check matches “{query}”.</span>
+						<button
+							className="underline"
+							onClick={() => {
+								setQuery("")
+								searchRef.current?.focus()
+							}}
+							style={{ color: BRAND_CYAN_600 }}>
+							Clear the filter
+						</button>
 					</div>
 				)}
 			</div>
 
-			<div className="flex items-center gap-2" style={{ color: "var(--vscode-descriptionForeground)", fontSize: "11px" }}>
+			<div style={{ color: "var(--vscode-descriptionForeground)", fontSize: "11px" }}>
 				<kbd>Esc</kbd> closes
-				<button className="ml-auto underline" data-testid="entry-drawer-close" onClick={onClose}>
-					Close
-				</button>
 			</div>
 		</div>
 	)
 }
 
-const Group: React.FC<{ label: string }> = ({ label }) => (
+/** A section head with a rule running off it, so the groups read as bands rather than as three
+ *  more grey lines in the same flat column. `first` drops the divider above the first band. */
+const Group: React.FC<{ label: string; first?: boolean }> = ({ label, first }) => (
 	<div
-		className="px-3 pb-1 pt-2 uppercase"
-		style={{ color: "var(--vscode-descriptionForeground)", fontSize: "10px", letterSpacing: "0.08em" }}>
+		className={`px-3 pb-1.5 uppercase ${first ? "pt-2" : "mt-1.5 pt-2.5"}`}
+		style={{
+			color: "var(--vscode-descriptionForeground)",
+			fontSize: "10px",
+			letterSpacing: "0.08em",
+			borderTop: first ? undefined : "1px solid var(--vscode-panel-border)",
+		}}>
 		{label}
 	</div>
 )
 
+/**
+ * One row. An icon gutter, a title, and whatever is worth saying underneath.
+ *
+ * [OPERATOR 2026-09-04] "this looks unstructured and a plain list" — it was. Thirteen rows of the
+ * same weight with no left edge to scan down, and `DrawerRun` had carried an `icon` from the start
+ * ("so a card is recognisable before it is read") that this component never rendered. The gutter
+ * is what turns a list into something you can skim: the eye tracks one column and the row types
+ * separate themselves before any word is read.
+ */
 const Row: React.FC<{
 	title: string
+	icon?: string
 	meta?: string
 	why?: string
 	unseen?: boolean
 	onClick: () => void
 	testId: string
-}> = ({ title, meta, why, unseen, onClick, testId }) => (
+}> = ({ title, icon, meta, why, unseen, onClick, testId }) => (
 	<button
-		className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
+		className="flex w-full gap-2.5 px-3 py-2 text-left hover:bg-[var(--vscode-list-hoverBackground)]"
 		data-testid={testId}
 		onClick={onClick}>
-		<span className="flex w-full items-baseline gap-2">
-			<span className="truncate" style={{ color: "var(--vscode-foreground)", fontSize: "12.5px" }}>
-				{title}
+		<span
+			aria-hidden="true"
+			className={`codicon codicon-${icon ?? "circle-small-filled"} shrink-0`}
+			style={{ fontSize: "14px", marginTop: "2px", opacity: 0.6, width: "16px" }}
+		/>
+		<span className="flex min-w-0 flex-1 flex-col gap-0.5">
+			<span className="flex w-full items-baseline gap-2">
+				<span className="truncate" style={{ color: "var(--vscode-foreground)", fontSize: "12.5px" }}>
+					{title}
+				</span>
+				{unseen && (
+					<span
+						className="shrink-0"
+						style={{
+							fontSize: "9px",
+							border: `1px solid ${BRAND_CORAL}`,
+							color: BRAND_CORAL,
+							borderRadius: "9px",
+							padding: "0 5px",
+						}}>
+						new
+					</span>
+				)}
 			</span>
-			{unseen && (
-				<span
-					style={{
-						fontSize: "9px",
-						border: `1px solid ${BRAND_CORAL}`,
-						color: BRAND_CORAL,
-						borderRadius: "9px",
-						padding: "0 5px",
-					}}>
-					new
-				</span>
-			)}
-			{meta && (
-				<span className="ml-auto shrink-0" style={{ color: "var(--vscode-descriptionForeground)", fontSize: "11px" }}>
-					{meta}
-				</span>
-			)}
+			{/* Under the title, never beside it. [SCREENSHOT 2026-09-04] Sharing a baseline row with a
+		    shrink-0 metadata column, the title took the whole squeeze and the sidebar showed three
+		    sessions called "Fix …", "Step …" and "CRA…". */}
+			{meta && <span style={{ color: "var(--vscode-descriptionForeground)", fontSize: "11px" }}>{meta}</span>}
+			{/* Muted, not cyan. Cyan is the action colour; spending it on explanatory text that repeats
+		    down the list made the least important words the loudest on the surface. */}
+			{why && <span style={{ color: "var(--vscode-descriptionForeground)", fontSize: "10.5px" }}>{why}</span>}
 		</span>
-		{why && <span style={{ color: BRAND_CYAN_600, fontSize: "10.5px" }}>◆ {why}</span>}
 	</button>
 )
 
