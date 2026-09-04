@@ -538,7 +538,10 @@ const EnvStrip: React.FC = () => {
 								))
 							) : (
 								<span style={{ color: MUTED, fontSize: "11px" }}>
-									{detecting ? "detecting…" : "No SDK detected — click to set up"}
+									{/* [SWEEP 2026-09-04, F10] "click to set up" promised an action the click
+									    does not perform — it expands the detail, where the setup links live.
+									    Say what the click does. */}
+									{detecting ? "detecting…" : "No SDK detected — details"}
 								</span>
 							)}
 						</div>

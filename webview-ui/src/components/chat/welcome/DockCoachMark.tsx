@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react"
+import { getCurrentPlatform } from "@/utils/platformUtils"
 
 const DISMISSED_KEY = "adsum.dockCoachMarkDismissed"
 
@@ -35,22 +36,36 @@ const DockCoachMark: React.FC<DockCoachMarkProps> = ({ hasProject }) => {
 
 	return (
 		<div
+			// Chrome, not content. [SWEEP 2026-09-04, F6] Placed above the cards at the same size as
+			// the instruction line it read as the first paragraph of the surface, and in the
+			// returning state it sat flush against the resume card. A lightbulb glyph, a smaller
+			// size and a bottom margin make it read as the last line of the environment band —
+			// something the panel says about itself, not something it wants you to do next.
 			style={{
 				width: "100%",
 				display: "flex",
 				alignItems: "flex-start",
 				gap: "6px",
 				paddingLeft: "2px",
+				marginBottom: "10px",
 			}}>
+			<span
+				aria-hidden="true"
+				className="codicon codicon-lightbulb"
+				style={{ fontSize: "11px", marginTop: "2px", color: "var(--vscode-descriptionForeground)", opacity: 0.8 }}
+			/>
 			<p
 				style={{
 					margin: 0,
-					fontSize: "11px",
+					fontSize: "10.5px",
 					color: "var(--vscode-descriptionForeground)",
 					lineHeight: 1.5,
 					flex: 1,
 				}}>
-				Drag Adsum to the right side bar to see your files, code, and chat together (⌘⌥B / Ctrl+Alt+B).
+				{/* [F11] The host knows which OS it is on; showing both shortcuts made the line half
+				    noise on every machine. */}
+				Drag Adsum to the right side bar to see files, code and chat together (
+				{getCurrentPlatform() === "windows" ? "Ctrl+Alt+B" : "⌘⌥B"}).
 			</p>
 			<button
 				aria-label="Dismiss"

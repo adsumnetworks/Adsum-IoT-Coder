@@ -3,6 +3,10 @@ export type HistoryItem = {
 	ulid?: string // ULID for better tracking and metrics
 	ts: number
 	task: string
+	/** A name the developer gave the session. Display only — `task` stays the first prompt, which is
+	 *  what the model saw and what search still matches. [OPERATOR 2026-09-04] "rename the sessions":
+	 *  a session titled by its first prompt ("xcxc", "dsdsd") is not a title anyone can find again. */
+	title?: string
 	tokensIn: number
 	tokensOut: number
 	cacheWrites?: number

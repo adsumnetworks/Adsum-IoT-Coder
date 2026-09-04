@@ -226,8 +226,16 @@ describe("sessions have exactly one home", () => {
 		expect(screen.getAllByTestId("entry-drawer-session")).toHaveLength(1)
 	})
 
+	it("on a first visit, when every run is unseen, there is no dot — it would be a nag, not a signal", () => {
+		mockState({ openFolderPaths: ["/w/gw"] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.queryByTestId("entry-burger-badge")).toBeNull()
+	})
+
 	it("the unseen-run dot clears when the drawer opens, whether or not anything is clicked", () => {
 		mockState({ openFolderPaths: ["/w/gw"] })
+		// One run already opened: now a dot for the others means something.
+		localStorage.setItem("adsum.entry.seenRuns", JSON.stringify(["buildFlashDebug"]))
 		const { rerender } = render(<WelcomeView {...baseProps} />)
 		expect(screen.queryByTestId("entry-burger-badge")).toBeTruthy()
 		fireEvent.click(screen.getByTestId("entry-burger"))
@@ -246,12 +254,25 @@ describe("every suggestion says why", () => {
 		// Every card that could run on that board says so — the reason is per-suggestion, not a
 		// single banner, so more than one naming it is the correct outcome.
 		expect(screen.getAllByText(/nRF52840 DK connected/).length).toBeGreaterThan(0)
+		// And exactly one card carries the cyan frame — the grounded one the ranking put first.
+		// (jsdom serialises the brand hex as rgb(0, 169, 206); the sibling test below asserts its
+		// absence, so this is the half that proves the check can see it at all.)
+		const cards = screen.getAllByTestId(/^entry-run-/)
+		const framed = cards.filter((c) => (c.getAttribute("style") ?? "").includes("border: 2px solid rgb(0, 169, 206)"))
+		expect(framed.length, cards.map((c) => `${c.getAttribute("data-testid")}: ${c.getAttribute("style")}`).join("\n")).toBe(1)
 	})
 
-	it("with nothing detected it says it is showing a mix, rather than implying a recommendation", () => {
+	it("with nothing detected it says it is showing a mix — once, and lights no card as primary", () => {
 		mockState({ openFolderPaths: ["/w/proj"] })
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.getAllByText(/◆/).length).toBeGreaterThan(0)
+		// Said once, in the section row, not repeated under every card as it used to be.
+		expect(screen.getAllByText(/showing a mix/).length).toBe(1)
+		expect(screen.queryByText(/◆/)).toBeNull()
+		// And no cyan frame: a highlighted card with no reason under it would be a recommendation
+		// the signals never made.
+		for (const card of screen.getAllByTestId(/^entry-run-/)) {
+			expect(card.getAttribute("style") ?? "").not.toContain("rgb(0, 169, 206)")
+		}
 	})
 
 	it("a card still routes — the reason line is decoration, the click is the point", () => {

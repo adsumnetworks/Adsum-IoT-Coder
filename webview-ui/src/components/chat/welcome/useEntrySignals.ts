@@ -42,7 +42,8 @@ export function useEntrySignals(): EntryContext {
 			.map((h) => ({
 				id: h.id,
 				ts: h.ts,
-				task: h.task,
+				// The developer's name for it when they gave one — the resume card says what they call it.
+				task: h.title?.trim() || h.task,
 				cwd: h.cwdOnTaskInitialization,
 				handoverId: h.handoverId,
 			}))
