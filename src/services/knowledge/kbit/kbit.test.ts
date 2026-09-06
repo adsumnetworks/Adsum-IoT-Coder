@@ -785,6 +785,49 @@ describe("kbit schema — tool bits", () => {
 		assert.equal(ok({ ...validAction, artifacts: [{ path: "x.py", sha256: HASH_A }] }), false)
 	})
 
+	// ── entitlement groups (R-01…R-04) ──────────────────────────────────────────────────────────
+	// `group` is the ENTITLEMENT axis: which grant unlocks a bit. It is deliberately not `access`
+	// (commercial), not `delivery` (distribution) and not `min_ext` (compatibility) — conflating any
+	// two of those is how a gate ends up paywalling the wrong thing or hiding a bit from a client
+	// that could have shown a locked card.
+	const gatedProse = { ...validAction, delivery: "downloaded", license: "LicenseRef-Adsum-Proprietary" }
+
+	test("R-01 group is optional, from the vocabulary, and absent means free", () => {
+		assert.equal(ok(validAction), true) // no group at all — the pre-existing corpus
+		assert.equal(ok({ ...gatedProse, group: "cellular-advanced", min_ext: "0.4.0" }), true)
+		assert.equal(ok({ ...gatedProse, group: "all", min_ext: "0.4.0" }), true)
+		assert.equal(ok({ ...gatedProse, group: "cellular_advanced", min_ext: "0.4.0" }), false)
+		assert.equal(ok({ ...gatedProse, group: "whatever-i-like", min_ext: "0.4.0" }), false)
+		assert.equal(ok({ ...gatedProse, group: "", min_ext: "0.4.0" }), false)
+	})
+
+	test('R-02 R3 — a gated bit must not reach a client that reads a 402 as "bit missing"', () => {
+		assert.equal(ok({ ...gatedProse, group: "cellular-advanced" }), false) // no min_ext
+		assert.equal(ok({ ...gatedProse, group: "cellular-advanced", min_ext: "0.3.1" }), false)
+		assert.equal(ok({ ...gatedProse, group: "cellular-advanced", min_ext: "0.4.0" }), true)
+	})
+
+	test("R-03 a gated bit is fetched, never bundled — a bundled one is already on disk", () => {
+		assert.equal(ok({ ...validAction, group: "cellular-advanced", min_ext: "0.4.0" }), false) // delivery: bundled
+		assert.equal(ok({ ...gatedProse, group: "cellular-advanced", min_ext: "0.4.0" }), true)
+	})
+
+	test("R-04 a member may carry its own group, so one bundle can mix free and gated payloads", () => {
+		const mixed = {
+			...validTool,
+			min_ext: "0.4.0",
+			entry: "seed.mjs",
+			artifacts: [
+				{ path: "seed.mjs", sha256: HASH_A },
+				{ path: "with-lte.json.gz", sha256: HASH_B, group: "lew840x-demo-hex" },
+			],
+		}
+		assert.equal(ok(mixed), true)
+		// The member's group gates the bit just as the bit's own would, so the same floor applies.
+		assert.equal(ok({ ...mixed, min_ext: "0.3.0" }), false)
+		assert.equal(ok({ ...mixed, artifacts: [{ path: "seed.mjs", sha256: HASH_A, group: "nope" }] }), false)
+	})
+
 	test("a native tool must tag every artifact with its platform", () => {
 		assert.equal(ok({ ...validTool, runtime: "native", entry: "t", artifacts: [{ path: "t", sha256: HASH_A }] }), false)
 		assert.equal(

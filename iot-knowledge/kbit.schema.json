@@ -159,6 +159,24 @@
 						"pro"
 					]
 				},
+				"group": {
+					"type": "string",
+					"enum": [
+						"cellular-advanced",
+						"edge-ai-advanced",
+						"lew840x-demo-hex",
+						"lew840x-prod-hex",
+						"lew840x-ble-src",
+						"lew840x-esp-src",
+						"lew840x-9160-src",
+						"blg20-demo-hex",
+						"blg20-prod-hex",
+						"blg20-ble-src",
+						"blg20-esp-src",
+						"blg20-9151-src",
+						"all"
+					]
+				},
 				"runtime": {
 					"type": "string",
 					"enum": [
@@ -202,6 +220,24 @@
 									"linux-x64",
 									"linux-arm64",
 									"win32-x64"
+								]
+							},
+							"group": {
+								"type": "string",
+								"enum": [
+									"cellular-advanced",
+									"edge-ai-advanced",
+									"lew840x-demo-hex",
+									"lew840x-prod-hex",
+									"lew840x-ble-src",
+									"lew840x-esp-src",
+									"lew840x-9160-src",
+									"blg20-demo-hex",
+									"blg20-prod-hex",
+									"blg20-ble-src",
+									"blg20-esp-src",
+									"blg20-9151-src",
+									"all"
 								]
 							}
 						},
