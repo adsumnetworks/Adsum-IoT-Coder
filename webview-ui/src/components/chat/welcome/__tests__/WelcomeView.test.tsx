@@ -57,6 +57,7 @@ const mockState = (opts: {
 	nrfEnvironment?: unknown
 	espEnvironment?: unknown
 	reviewNudgeShow?: boolean
+	adsumUnlockedShow?: boolean
 }) => {
 	vi.mocked(useExtensionState).mockReturnValue({
 		version: "1.0.0",
@@ -67,6 +68,7 @@ const mockState = (opts: {
 		nrfEnvironment: opts.nrfEnvironment,
 		espEnvironment: opts.espEnvironment,
 		reviewNudgeShow: opts.reviewNudgeShow,
+		adsumUnlockedShow: opts.adsumUnlockedShow,
 	} as any)
 }
 
@@ -90,6 +92,22 @@ describe("the shape rule decides what is on screen", () => {
 		expect(screen.getByTestId("entry-samples")).toBeTruthy()
 		expect(screen.getAllByTestId("entry-sample").length).toBeGreaterThanOrEqual(2)
 		expect(screen.queryByText("Suggested runs")).toBeNull()
+	})
+
+	it("the registered receipt is the FIRST thing in the panel, above the suggested runs", () => {
+		// [OPERATOR 2026-09-06] Read in a real editor a second after the sign-in callback landed: the
+		// "You're registered — cellular is unlocked" card sat below three suggested runs. It is the
+		// answer to an action the developer just took, and an answer three cards down is not one.
+		mockState({ openFolderPaths: ["/w/gateway-fw"], adsumUnlockedShow: true })
+		const { container } = render(<WelcomeView {...baseProps} />)
+		const receipt = screen.getByTestId("unlocked-card")
+		const firstRun = screen.getAllByTestId(/^entry-run-/)[0]
+		const group = screen.getByTestId("cellular-group")
+		// DOCUMENT_POSITION_FOLLOWING: the receipt comes first in the document, so everything the
+		// developer would have had to scroll past to find it now comes after it.
+		expect(receipt.compareDocumentPosition(firstRun) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+		expect(receipt.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+		expect(container.querySelector('[data-testid="unlocked-dismiss"]')).toBeTruthy()
 	})
 
 	it("a sample fires on one click — it is pre-canned, so it needs no second confirming act", () => {
