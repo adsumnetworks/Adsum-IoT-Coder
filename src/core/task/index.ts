@@ -905,6 +905,10 @@ export class Task {
 				continue
 			}
 			this.taskState.creditedKbits.add(id)
+			// One per bit per task, deduped against the same set as the credits: this counts the moments
+			// the gate cost a developer something, which is the only number that says whether the line
+			// is drawn in the right place.
+			telemetryService.captureEntitlementDenied({ bit: id, group })
 			const credit = creditFor(id)
 			await this.say(
 				"kbit_locked",

@@ -2,6 +2,7 @@ import { String as ProtoString, StringRequest } from "@shared/proto/cline/common
 import { openExternal } from "@utils/env"
 import { buildSignInUrl } from "@/services/adsum/AccountState"
 import { Logger } from "@/services/logging/Logger"
+import { telemetryService } from "@/services/telemetry"
 import { getEditorIdentity } from "@/services/telemetry/editorIdentity"
 import type { Controller } from ".."
 
@@ -25,6 +26,7 @@ export async function startSignIn(controller: Controller, request: StringRequest
 	// developer in a browser tab holding a link that does nothing.
 	const scheme = getEditorIdentity()?.scheme || "vscode"
 	const url = buildSignInUrl(provider, scheme)
+	telemetryService.captureSignInStarted({ provider })
 	try {
 		await openExternal(url)
 	} catch (e) {

@@ -2,6 +2,7 @@ import { String as ProtoString, StringRequest } from "@shared/proto/cline/common
 import { ClineEnv } from "@/config"
 import { getSessionToken } from "@/services/adsum/AccountState"
 import { Logger } from "@/services/logging/Logger"
+import { telemetryService } from "@/services/telemetry"
 import type { Controller } from ".."
 
 /**
@@ -37,6 +38,7 @@ export async function requestAccess(controller: Controller, request: StringReque
 		if (!res.ok) {
 			return reply({ ok: false, reason: `http_${res.status}` })
 		}
+		telemetryService.captureAccessRequested({ family: String(body.family ?? ""), chips: (body.chips ?? []).join(",") })
 		await controller.postStateToWebview()
 		return reply({ ok: true })
 	} catch (e) {

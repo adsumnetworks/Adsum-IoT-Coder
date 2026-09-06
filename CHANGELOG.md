@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   product index first, including on the build's own "Continue … Step N/7" opener.
 
 ### Added
+- Cellular, NTN and edge-AI knowledge now needs a free registered account. BLE, Wi-Fi and Ethernet are
+  unchanged and need nothing — the work you did yesterday still runs today with no account. A card that
+  needs one says so, says what registering unlocks, and takes you there in your browser: free, no card,
+  and your projects and logs stay on your machine.
+- An Account section in Settings: what your account has unlocked, in words; a way to ask for the
+  prebuilt gateway template source; sign out; and delete your account, which removes everything keyed
+  on you and leaves this machine's projects, logs and free-tier allowance untouched.
+- A task that needs a bit your account cannot open keeps going and says which bit it went without —
+  and still credits whoever curated it.
 - A redesigned entry surface. The panel opens on where you are and what is on your desk — folder,
   detected boards, toolchains — then the runs worth starting, ranked by what was actually detected,
   each saying why. Typing in the box *is* the new session; there is no separate button. One named
@@ -31,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   chat box.
 
 ### Changed
+- Session handover to an external coding agent is not offered in this release.
 - Knowledge is loaded, not "skilled". The agent's own vocabulary now says **bit** everywhere it used
   to say skill — the instruction it follows is `MANDATORY BIT LOAD`, and the rule that governs it is
   `rules/bit-loading.md`. Your editor's own Skills feature is untouched; the two were colliding in one
