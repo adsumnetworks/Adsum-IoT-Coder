@@ -1,4 +1,5 @@
 import { WebviewProvider } from "@/core/webview"
+import { completeSignIn } from "@/services/adsum/AccountState"
 import { Logger } from "../logging/Logger"
 
 /**
@@ -67,6 +68,25 @@ export class SharedUriHandler {
 					}
 					Logger.warn("SharedUriHandler: Missing idToken parameter for auth callback")
 					return false
+				}
+				// The Adsum account callback. Deliberately its own path rather than a branch inside `/auth`:
+				// that case belongs to a different sign-in with a different token shape, and quietly sharing
+				// it would make both harder to reason about.
+				case "/auth/callback": {
+					const code = query.get("code")
+					const state = query.get("state")
+					if (!code || !state) {
+						Logger.warn("SharedUriHandler: Adsum auth callback missing code or state")
+						return false
+					}
+					const ok = await completeSignIn(code, state)
+					// The webview is what tells the developer either way — the panel is where they clicked
+					// "Register", so it is where the answer belongs.
+					await visibleWebview.controller.postStateToWebview()
+					if (!ok) {
+						Logger.warn("SharedUriHandler: Adsum sign-in could not be completed")
+					}
+					return ok
 				}
 				case "/auth/oca": {
 					console.log("SharedUriHandler: Oca Auth callback received:", { path: path })
