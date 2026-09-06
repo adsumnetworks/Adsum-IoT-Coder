@@ -18,6 +18,7 @@ import { initDemoManager } from "./core/demos/DemoManager"
 import { StateManager } from "./core/storage/StateManager"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { ExtensionRegistryInfo } from "./registry"
+import { initAccountState } from "./services/adsum/AccountState"
 import { loadCachedQuota, registerInstallIfNeeded } from "./services/adsum/FreeTierService"
 import { initFreeTierPersistence, setFreeTierActive } from "./services/adsum/FreeTierState"
 import { initializeInstallId } from "./services/adsum/InstallIdentity"
@@ -64,6 +65,9 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 
 	// Initialize stable anonymous install ID for Adsum free-tier proxy
 	const installId = await initializeInstallId(context)
+	// The signed-in account, if there is one. Seeded from the keychain and refreshed in the background:
+	// the panel must be able to paint a locked card on the first frame, before any network call.
+	initAccountState()
 
 	// Unify the telemetry/feature-flag person key on the Adsum install_id so the host
 	// client funnel joins the backend's install_id person-space in PostHog. Host events

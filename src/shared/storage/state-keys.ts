@@ -73,6 +73,14 @@ const GLOBAL_STATE_FIELDS = {
 		default: "vscodeTerminal" as "vscodeTerminal" | "backgroundExec",
 	},
 	isNewUser: { default: true as boolean },
+	// The signed-in developer's profile and entitlement groups. Not secret — it is a display name and
+	// a list of group ids — and needed on the first paint, so it sits here rather than in the keychain
+	// beside the bearer that goes with it.
+	adsumAccountProfile: {
+		default: undefined as
+			| { email: string; name: string; emailVerified: boolean; groups: string[]; fetchedAt: number }
+			| undefined,
+	},
 	welcomeViewCompleted: { default: undefined as boolean | undefined },
 	mcpDisplayMode: { default: DEFAULT_MCP_DISPLAY_MODE as McpDisplayMode },
 	workspaceRoots: { default: undefined as WorkspaceRoot[] | undefined },
@@ -335,6 +343,8 @@ const GLOBAL_STATE_AND_SETTINGS_FIELDS = { ...GLOBAL_STATE_FIELDS, ...SETTINGS_F
 
 // Secret keys used in Api Configuration
 const SECRETS_KEYS = [
+	// The Adsum account bearer. A live credential, so the OS keychain rather than globalState.
+	"adsumSessionToken",
 	"apiKey",
 	"clineAccountId", // Cline Account ID for Firebase
 	"cline:clineAccountId",
