@@ -836,6 +836,23 @@ export async function loadBitByRel(rel: string): Promise<string | null> {
 	return body || null
 }
 
+/**
+ * The account changed — sign-in, sign-out, or a group granted or revoked.
+ *
+ * The manifest is fetched once per session and is now filtered by entitlement server-side, so a
+ * session that started signed out is holding a catalog with no gated bits in it, and one whose grant
+ * was revoked is holding a catalog that still lists them. Neither corrects itself until a restart,
+ * which is exactly long enough to be wrong.
+ *
+ * Dropping the memo is all it takes: the next resolve revalidates, and `reconcileCache` purges every
+ * blob whose hash the new catalog no longer contains — which is precisely the set that was revoked.
+ * The purge is therefore not new code, it is a consequence of the manifest being the authority.
+ */
+export function invalidateForAccountChange(): void {
+	downloadedMap = null
+	manifestRevalidated = false
+}
+
 /** Test-only: inject cache/registry doubles for the downloaded tier (no network). */
 export function __setRegistryHooks(hooks: { cache?: BitCache; registry?: RegistryClient }): void {
 	injectedCache = hooks.cache ?? null
