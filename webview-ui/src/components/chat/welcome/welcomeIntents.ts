@@ -29,6 +29,10 @@ export type IntentId =
 	| "craCheck"
 	| "sdkMigration"
 	| "boardBringUp"
+	| "cellularGateway"
+	| "ntnBringUp"
+	| "nrf91BringUp"
+	| "edgeAi"
 
 export interface IntentDef {
 	id: IntentId
@@ -49,6 +53,9 @@ export interface IntentDef {
 	/** Shown under the card when it routes to the agent — a capability caveat we can state honestly
 	 *  (e.g. CRA quality is model-dependent). Never a blocker; the developer decides. */
 	agentCaveat?: string
+	/** The entitlement group that opens this card. Absent ⇒ free to everyone, which is every card that
+	 *  existed before this field did — the no-rug-pull rule holds by construction. */
+	group?: string
 }
 
 /**
@@ -105,6 +112,30 @@ export function buildIntentPrompt(
 			return `Test and validate ${proj} — host tests with native_sim, on-hardware checks when boards are connected.`
 		case "craCheck":
 			return `Run CRA SBOM & Fix on ${proj} — pull together my SBOM from my real build, preview my secure-by-design posture against the EU Cyber Resilience Act, and surface the top gap so I can decide what to change.`
+		case "cellularGateway":
+			return (
+				"Bring up a BLE-to-cellular gateway on a Fanstel board (LEW840x or BLG20). " +
+				"Ask me which board and which uplink I have, then LOAD the curated gateway workflow before " +
+				"you answer — the routing between the nRF52/nRF54 BLE side, the ESP32 host and the nRF91 " +
+				"modem is the part I need to get right, not a sketch of it."
+			)
+		case "ntnBringUp":
+			return (
+				"Bring up NB-NTN on an nRF9151. Ask me what SIM and satellite plan I have, then LOAD the " +
+				"curated NTN workflow first — attach timing, the tracking-area behaviour and what a " +
+				"satellite link actually costs in power are exactly what I do not want improvised."
+			)
+		case "nrf91BringUp":
+			return (
+				"Bring up the modem on my nRF91. Ask me for my SIM, APN and network, then LOAD the curated " +
+				"nRF91 attach workflow before answering — AT recipes, PSM and eDRX tuning come from the bits, " +
+				"not from memory."
+			)
+		case "edgeAi":
+			return (
+				"Run a model on-device on nRF54 using the Axon NPU. Ask me what I want to infer and what " +
+				"my power budget is, then LOAD the curated edge-AI workflow first."
+			)
 		case "demo":
 			return "Demo: BLE NUS one-directional bug — no setup needed\n\n[ADSUM_DEMO:nus-uart]"
 		case "openProject":
@@ -256,3 +287,73 @@ export const PROJECT_INTENTS: IntentDef[] = [
 		comingSoon: true,
 	},
 ]
+
+/**
+ * Cellular & gateways — the group behind the register gate.
+ *
+ * Order and copy are the approved mockup's (screen 1), verbatim. Each card names its entitlement
+ * group so the lock is derived from the SAME string the bits carry — the card and the knowledge it
+ * opens can never disagree about which grant unlocks them.
+ *
+ * Locking here is presentation, not enforcement: the registry decides what may be read. A developer
+ * who edits this array sees four unlocked pictures and still gets a 402 on the first fetch.
+ */
+export const CELLULAR_INTENTS: IntentDef[] = [
+	{
+		id: "cellularGateway",
+		icon: "radio-tower",
+		title: "LTE-M / NB-IoT gateway",
+		description: "Fanstel LEW840x or BLG20: BLE in, cellular out, one code base.",
+		group: "cellular-advanced",
+	},
+	{
+		id: "ntnBringUp",
+		icon: "globe",
+		title: "Satellite NB-NTN bring-up",
+		description: "nRF9151 over NTN: attach, timing, what a satellite link costs you.",
+		group: "cellular-advanced",
+	},
+	{
+		id: "nrf91BringUp",
+		icon: "chip",
+		title: "nRF91 modem bring-up",
+		description: "Attach on your SIM and APN, AT recipes, PSM and eDRX tuning.",
+		group: "cellular-advanced",
+	},
+	{
+		id: "edgeAi",
+		icon: "lightbulb-sparkle",
+		title: "On-device inference",
+		description: "nRF54 Axon NPU: models on the gateway, not in the cloud.",
+		group: "edge-ai-advanced",
+	},
+]
+
+/** Board names that make the cellular group relevant enough to say so above the cards. */
+const CELLULAR_BOARDS = /nrf91|9160|9151|9161|thingy:?91|lew840|blg20/i
+
+/**
+ * The one-line hint above the locked group when the developer's own hardware is already the reason
+ * to register. Absent when nothing cellular is detected — a hint that names no detected thing is an
+ * advertisement, and the surface's rule is that a reason earns its line only when it names something
+ * real.
+ */
+export function cellularHint(boards: readonly string[]): string | undefined {
+	const match = boards.find((b) => CELLULAR_BOARDS.test(b))
+	return match ? `Your ${match} is detected — register to unlock its attach and APN recipes.` : undefined
+}
+
+/**
+ * What the demo-hex card runs.
+ *
+ * A prompt, not a direct flash call, because flashing three boards is a conversation: which ports,
+ * which order, what to do when nrfutil is missing. The tool bit carries the hexes and their hashes;
+ * the agent carries the developer through it and says honestly when the machine is not ready.
+ */
+export const DEMO_HEX_PROMPT =
+	"Flash the Fanstel LEW840x demo. LOAD the lew840x demo-hex tool bit first — it carries the three " +
+	"signed hexes and their hashes, and I want the ones you verify, not ones you build. Then walk me " +
+	"through it: check nrfutil and esptool are on this machine and say plainly if they are not, ask me " +
+	"which serial port is which, and flash the BLE scanner, the ESP32 uplink and the nRF9160 bearer in " +
+	"that order. Tell me the cellular bearer is capped at 60-minute sessions in this build before I " +
+	"start, not after."

@@ -114,6 +114,9 @@ function convertClineSayToProtoEnum(say: AppClineSay | undefined): ClineSay | un
 		// Attribution credit row — rides the INFO proto slot like cve_scan_progress; the webview
 		// discriminates on the `say` string, so no proto enum change is needed.
 		kbit_loaded: ClineSay.INFO,
+		// Rides INFO on the wire like the credit line it sits beside; the webview branches on the app-side
+		// say, so the two stay visually distinct where it matters.
+		kbit_locked: ClineSay.INFO,
 	}
 
 	const result = mapping[say]

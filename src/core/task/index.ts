@@ -97,7 +97,7 @@ import {
 } from "@/integrations/terminal"
 import { consumeQuotaExhausted } from "@/services/adsum/FreeTierState"
 import { ClineError, ClineErrorType, ErrorService } from "@/services/error"
-import { creditFor, deriveIdFromRel, hasBit, provenanceOf } from "@/services/knowledge/KnowledgeResolver"
+import { creditFor, deriveIdFromRel, hasBit, lockedBits, provenanceOf } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import {
 	ClineAssistantContent,
@@ -883,8 +883,43 @@ export class Task {
 					}),
 				)
 			}
+			await this.reportLockedKbits()
 		} catch (e) {
 			console.error("kbit credit for injected bits failed", e)
+		}
+	}
+
+	/**
+	 * One row per bit the registry refused this session for want of an entitlement.
+	 *
+	 * A locked bit must never read as a missing one. Without this the agent quietly runs without
+	 * knowledge it was supposed to have, the developer sees no reason why, and the one action open to
+	 * them — register, which is free — is never offered. The author is still named: they did the work
+	 * whether or not this account may read it.
+	 *
+	 * Deduped against the same set as the credits, so a long session never repeats a row.
+	 */
+	private async reportLockedKbits(): Promise<void> {
+		for (const [id, group] of lockedBits()) {
+			if (this.taskState.creditedKbits.has(id)) {
+				continue
+			}
+			this.taskState.creditedKbits.add(id)
+			// One per bit per task, deduped against the same set as the credits: this counts the moments
+			// the gate cost a developer something, which is the only number that says whether the line
+			// is drawn in the right place.
+			telemetryService.captureEntitlementDenied({ bit: id, group })
+			const credit = creditFor(id)
+			await this.say(
+				"kbit_locked",
+				JSON.stringify({
+					id,
+					group,
+					title: credit?.title ?? id.split("/").pop(),
+					author: credit?.author,
+					links: credit ? withLinks(credit).links : undefined,
+				}),
+			)
 		}
 	}
 

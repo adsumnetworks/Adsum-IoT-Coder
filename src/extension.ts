@@ -72,6 +72,7 @@ import { telemetryService } from "./services/telemetry"
 import { setEditorIdentity } from "./services/telemetry/editorIdentity"
 import { ClineTempManager } from "./services/temp"
 import { SharedUriHandler } from "./services/uri/SharedUriHandler"
+import { AGENT_HANDOVER_ENABLED } from "./shared/handover"
 import { ShowMessageType } from "./shared/proto/host/window"
 import { fileExistsAtPath } from "./utils/fs"
 /*
@@ -292,6 +293,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(...testModeWatchers)
 
 	vscode.commands.executeCommand("setContext", "cline.isDevMode", IS_DEV && IS_DEV === "true")
+	// Hides the four handover commands from the palette while the feature is off. The commands stay
+	// REGISTERED so an old keybinding or a `vscode://` link resolves to a no-op with a clear message
+	// instead of "command not found".
+	vscode.commands.executeCommand("setContext", "adsum.agentHandover", AGENT_HANDOVER_ENABLED)
 
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(VscodeWebviewProvider.SIDEBAR_ID, webview, {

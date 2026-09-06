@@ -13,6 +13,7 @@ import {
 } from "@/services/knowledge/registry/RegistryClient"
 import { fileExistsAtPath } from "@/utils/fs"
 import { refreshPeopleIndex } from "./kbit/people"
+import { RegistryLockedError } from "./registry/RegistryClient"
 
 /**
  * KnowledgeResolver — resolves a K-bit by its stable `id` to its on-disk location/content.
@@ -148,6 +149,20 @@ function recordCredit(id: string, meta: KbitMetaLike): void {
 function recordCreditFromText(id: string, text: string): void {
 	const fm = extractFrontmatter(text)
 	recordCredit(id, fm.found && fm.closed ? creditFieldsFromYaml(fm.yaml) : {})
+}
+
+/**
+ * Bits the registry refused this session for want of an entitlement, and which group each needs.
+ *
+ * Kept beside the credit map because it is the same question asked the other way round: that one is
+ * "who do we thank for what we used", this one is "what did we not get, and what would have opened
+ * it". The task drains it into one row per bit per task.
+ */
+const lockedById = new Map<string, string>()
+
+/** Bits refused this session for want of an entitlement: id → the group that would unlock it. */
+export function lockedBits(): ReadonlyMap<string, string> {
+	return lockedById
 }
 
 /** Attribution facts for a bit that resolved this session, or null if it never loaded. */
@@ -481,7 +496,22 @@ async function registryBody(
 		kbitTelemetry.downloadedResolved?.({ id, source: "cache", override, version: entry.version })
 		return { body: cached }
 	}
-	const fetched = await registry().fetchBlob(hash)
+	let fetched: string | null
+	try {
+		fetched = await registry().fetchBlob(hash)
+	} catch (e) {
+		// 402 — the bit is real and simply not this account's yet. There is no older copy to fall back
+		// to and nothing is wrong with the network, so it gets its own reason and its own surface.
+		if (e instanceof RegistryLockedError) {
+			// Remember WHICH bit, and who curated it, so the task can say so with the author named.
+			// Credit is never withheld with the bytes: the person did the work either way, and a locked
+			// row that says "some bit" teaches the developer nothing about what they are missing.
+			recordCredit(id, entry)
+			lockedById.set(id, entry.group ?? "cellular-advanced")
+			return { reason: "locked" }
+		}
+		throw e
+	}
 	if (fetched === null) {
 		kbitTelemetry.registryUnreachable?.({ id })
 		// A proprietary bit is never written to disk, so offline it can never be served — a distinct
@@ -804,6 +834,23 @@ export async function loadBitByRel(rel: string): Promise<string | null> {
 	const norm = rel.replace(/\\/g, "/").replace(/^\.\//, "")
 	const body = await loadBit(deriveIdFromRel(norm))
 	return body || null
+}
+
+/**
+ * The account changed — sign-in, sign-out, or a group granted or revoked.
+ *
+ * The manifest is fetched once per session and is now filtered by entitlement server-side, so a
+ * session that started signed out is holding a catalog with no gated bits in it, and one whose grant
+ * was revoked is holding a catalog that still lists them. Neither corrects itself until a restart,
+ * which is exactly long enough to be wrong.
+ *
+ * Dropping the memo is all it takes: the next resolve revalidates, and `reconcileCache` purges every
+ * blob whose hash the new catalog no longer contains — which is precisely the set that was revoked.
+ * The purge is therefore not new code, it is a consequence of the manifest being the authority.
+ */
+export function invalidateForAccountChange(): void {
+	downloadedMap = null
+	manifestRevalidated = false
 }
 
 /** Test-only: inject cache/registry doubles for the downloaded tier (no network). */

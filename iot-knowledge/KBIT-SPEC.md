@@ -47,7 +47,15 @@ Frontmatter is a **single YAML block fenced by `---` at the very top of the file
 | `endorsers` | `{handle, name?, affiliation?, version, date, verified?, statement?}[]` | Named experts who **reviewed & vouch** for a **specific `version`** (R5.x). `verified` stays `false` until the P2 registry authenticates the identity — display unverified ones as such. |
 | `supporters` | `{handle, name?, affiliation?, kind?}[]` | Backers/sponsors. `kind` ∈ `sponsor\|backer` (default `sponsor`). |
 | `status` | `draft\|published\|deprecated\|revoked` | Lifecycle (R4.1). Absent ⇒ `published`. Bundled bits can't be independently revoked (linter warns). |
+| `access` | `free\|pro` | **Commercial** axis, separate from `delivery`. Absent ⇒ `free`, so every bit published before the field existed stays free by construction. |
+| `group` | entitlement group | **Entitlement** axis: WHICH grant unlocks this bit. Absent ⇒ nobody needs anything. Requires `delivery: downloaded` and `min_ext >= 0.4.0` (an older client reports a 402 as "bit missing"). A member of `artifacts[]` may carry its own `group`, so one bundle can mix a free payload with a gated one; absent on a member ⇒ the bit's own `group`. Vocabulary: `cellular-advanced`, `edge-ai-advanced`, `lew840x-demo-hex`, `lew840x-prod-hex`, `lew840x-{ble,esp,9160}-src`, the `blg20-*` equivalents, and `all` (holding it satisfies every other group). |
 | `created` / `updated` | YYYY-MM-DD | Author hints. **Git history is authoritative for bundled bits**; `kbit show` derives these from git, the manifest does not persist them (determinism). |
+
+> **Three axes, never conflated.** `delivery` is *distribution* (is it in the VSIX or fetched);
+> `access` is *commercial* (is it part of a paid line); `group` is *entitlement* (whose grant opens it).
+> `min_ext` is none of the three — it is a *compatibility floor*, set so a gated bit never reaches a
+> client that would render the gate as an error. Who may read a bit is an assignment made to an
+> account, never something derived from a version.
 
 > `rules` and `index` files map to `type: knowledge` with `platform` set appropriately (a rule is reference knowledge the loader always injects; the platform index is a generated artifact in P0b).
 

@@ -8,6 +8,7 @@ import { RemoteConfigFields } from "@shared/storage/state-keys"
 import type { WorkspaceFeatures } from "@shared/workspace-features"
 import type { Environment } from "../config"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
+import type { AdsumAccountState } from "./adsumAccount"
 import { ApiConfiguration } from "./api"
 import { BrowserSettings } from "./BrowserSettings"
 import { ClineFeatureSetting } from "./ClineFeatureSetting"
@@ -144,6 +145,12 @@ export interface ExtensionState {
 	/** After a few successful task completions, show the one-time "leave a review" nudge. Retired for good via the
 	 *  banner-dismissal ledger (id "review-nudge"), so it never nags. */
 	reviewNudgeShow?: boolean
+	/** The signed-in developer and the entitlement groups they hold. Absent ⇒ nobody is signed in, which
+	 *  is what puts the cellular cards behind the register gate. Never carries the session bearer: the
+	 *  webview renders a lock, the registry enforces it. */
+	adsumAccount?: AdsumAccountState
+	/** Show the one-time "what you unlocked" card: signed in, and never dismissed. */
+	adsumUnlockedShow?: boolean
 }
 
 export interface ClineMessage {
@@ -225,6 +232,10 @@ export type ClineSay =
 	| "hook_output_stream"
 	| "cve_scan_progress" // liveness row while the blocking host CVE scan queries EUVD/NVD/OSV (spinner + elapsed in the webview)
 	| "kbit_loaded" // a Knowledge/Tool bit resolved — the webview renders it as a credit line (design/01 attribution)
+	// A bit the registry refused for want of an entitlement. Its own say rather than a variant of
+	// kbit_loaded because the two say opposite things and the UI must not merge them: one is "this is
+	// what we stood on", the other is "this exists and is not yours yet — here is how to open it".
+	| "kbit_locked"
 
 export interface ClineSayTool {
 	tool:

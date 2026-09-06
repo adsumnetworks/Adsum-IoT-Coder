@@ -387,6 +387,19 @@ export class TelemetryService {
 			// "not_in_registry" (unknown id / wrong path), "registry_unreachable". `afterRetry` = the outer 3s
 			// retry already ran. Reason enum + bit id only — never file/user paths.
 			KBIT_LOAD_FAILED: "kbit.load_failed",
+			/**
+			 * The register funnel. Four events, and deliberately no fifth: this measures whether the gate
+			 * is asking at the right moment, not who is behind it. NEVER an email, a name, a provider id
+			 * or a token — the provider NAME is a choice ("github"), not an identity.
+			 *   account.signin_started    → a provider button was pressed and the browser opened
+			 *   account.signin_completed  → the one-time code came back and a session exists
+			 *   account.entitlement_denied→ a task went without a bit; bit id + group, once per task
+			 *   account.access_requested  → the template-source form was sent
+			 */
+			ACCOUNT_SIGNIN_STARTED: "account.signin_started",
+			ACCOUNT_SIGNIN_COMPLETED: "account.signin_completed",
+			ACCOUNT_ENTITLEMENT_DENIED: "account.entitlement_denied",
+			ACCOUNT_ACCESS_REQUESTED: "account.access_requested",
 			/** A session was handed to the developer's own coding agent. Source + intent enums only, never the
 			 *  prompt, the brief, or any path. The feature shipped in beta with no measurement at all. */
 			HANDOVER_STARTED: "task.handover_started",
@@ -2480,6 +2493,27 @@ export class TelemetryService {
 		version?: string
 	}) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.KBIT_DOWNLOADED_RESOLVED, properties: { ...props } })
+	}
+
+	/**
+	 * The register funnel — the four host-side halves of it. `gate_shown` is the webview's, fired where
+	 * the gate actually opens.
+	 *
+	 * Every one of these is a COUNT, never a person: the provider name is a choice, the bit id is a
+	 * catalog entry, the family and group are our own vocabulary. Nothing here identifies the developer,
+	 * which is what lets the funnel exist at all under a telemetry opt-out that most embedded shops take.
+	 */
+	public captureSignInStarted(props: { provider: string }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.ACCOUNT_SIGNIN_STARTED, properties: { ...props } })
+	}
+	public captureSignInCompleted(props: { groups: number } = { groups: 0 }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.ACCOUNT_SIGNIN_COMPLETED, properties: { ...props } })
+	}
+	public captureEntitlementDenied(props: { bit: string; group?: string }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.ACCOUNT_ENTITLEMENT_DENIED, properties: { ...props } })
+	}
+	public captureAccessRequested(props: { family: string; chips?: string }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.ACCOUNT_ACCESS_REQUESTED, properties: { ...props } })
 	}
 
 	/** CRA Readiness Check started (the cra-readiness workflow loaded). `iot_platform` is the CORRECT

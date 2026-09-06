@@ -1,3 +1,4 @@
+import { AGENT_HANDOVER_ENABLED } from "@shared/handover"
 import { StringRequest } from "@shared/proto/cline/common"
 import PROVIDERS from "@shared/providers/providers.json"
 import { Mode } from "@shared/storage/types"
@@ -6,7 +7,6 @@ import Fuse from "fuse.js"
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useInterval } from "react-use"
 import styled from "styled-components"
-
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { PLATFORM_CONFIG, PlatformType } from "@/config/platform.config"
@@ -157,6 +157,12 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 			"openai",
 			"anthropic-compatible",
 		]
+			// "external-agent" — handing a session to your own coding agent is off for this release
+			// (AGENT_HANDOVER_ENABLED). Listing a provider that no longer routes anywhere would strand
+			// whoever picked it; a workspace already set to it still opens, and useRunTarget sends the
+			// work to Adsum. Filtered rather than removed from the literal above, because that literal is
+			// the curated ladder itself and providerLadder.test.ts reads it as a flat list of strings.
+			.filter((p) => p !== "external-agent" || AGENT_HANDOVER_ENABLED)
 		let providers = allowedProviders.flatMap((value) => {
 			const entry = PROVIDERS.list.find((p) => p.value === value)
 			return entry ? [entry] : []
@@ -398,7 +404,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 			{apiConfiguration && selectedProvider === "adsum-free" && (
 				<AdsumFreeProvider currentMode={currentMode} isPopup={isPopup} />
 			)}
-			{apiConfiguration && selectedProvider === "external-agent" && (
+			{AGENT_HANDOVER_ENABLED && apiConfiguration && selectedProvider === "external-agent" && (
 				<ExternalAgentProvider currentMode={currentMode} isPopup={isPopup} />
 			)}
 			{apiConfiguration && selectedProvider === "hicap" && (

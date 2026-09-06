@@ -1,0 +1,329 @@
+import type { AdsumAccountState } from "@shared/adsumAccount"
+import { StringRequest } from "@shared/proto/cline/common"
+import React, { useEffect, useRef, useState } from "react"
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import { AdsumServiceClient } from "@/services/grpc-client"
+import { BRAND_CYAN_UI } from "../brandColors"
+
+/**
+ * "Request template source access" — the one thing a free account does not open.
+ *
+ * It is a form and not a button because the answer depends on what they are building: a pilot of a
+ * hundred units and a hobby port get different answers, and asking here is cheaper for both sides
+ * than a refusal later. Never "open source": these templates are licensed source, and calling them
+ * anything else would be a promise we cannot keep.
+ *
+ * One open request per family, enforced by the database's partial unique index — so two tabs cannot
+ * open two, and the second is told which case it hit rather than shown a generic failure.
+ */
+
+export const FAMILIES = [
+	{ id: "lew840x", label: "Fanstel LEW840x" },
+	{ id: "blg20", label: "Fanstel BLG20" },
+] as const
+
+export const CHIPS = [
+	{ id: "ble-src", label: "BLE (nRF52840)" },
+	{ id: "esp-src", label: "ESP32" },
+	{ id: "9160-src", label: "nRF9160" },
+] as const
+
+export type RequestState = "none" | "sent" | "granted"
+
+interface RequestAccessFormProps {
+	open: boolean
+	onClose: () => void
+	/** Told when a request lands, so the card sub-line and the Account tab can say so at once. */
+	onSent?: (family: string) => void
+	/** Pre-selects the family when the form is opened from a specific card. */
+	family?: string
+}
+
+const NEUTRAL_EDGE = "color-mix(in srgb, var(--vscode-foreground) 22%, transparent)"
+
+const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, onSent, family: initialFamily }) => {
+	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
+	const [family, setFamily] = useState<string>(initialFamily ?? FAMILIES[0].id)
+	const [chips, setChips] = useState<string[]>(["ble-src"])
+	const [message, setMessage] = useState("")
+	const [sending, setSending] = useState(false)
+	const [sent, setSent] = useState(false)
+	const [error, setError] = useState<string | null>(null)
+	const dialogRef = useRef<HTMLDivElement>(null)
+
+	useEffect(() => {
+		if (!open) {
+			return
+		}
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				e.stopPropagation()
+				onClose()
+			}
+		}
+		window.addEventListener("keydown", onKey, true)
+		dialogRef.current?.querySelector<HTMLElement>("select, button")?.focus()
+		return () => window.removeEventListener("keydown", onKey, true)
+	}, [open, onClose])
+
+	if (!open) {
+		return null
+	}
+
+	const toggle = (chip: string) => setChips((prev) => (prev.includes(chip) ? prev.filter((c) => c !== chip) : [...prev, chip]))
+
+	const send = async () => {
+		setSending(true)
+		setError(null)
+		try {
+			const res = await AdsumServiceClient.requestAccess(
+				StringRequest.create({ value: JSON.stringify({ family, chips, message }) }),
+			)
+			const out = JSON.parse(res.value || "{}") as { ok?: boolean; reason?: string }
+			if (out.ok) {
+				setSent(true)
+				onSent?.(family)
+			} else {
+				setError(
+					out.reason === "already_open"
+						? "You already have an open request for this family — we are still on it."
+						: out.reason === "offline"
+							? "Adsum can’t be reached right now. Your request has not been sent."
+							: "That didn’t send. Try again in a moment.",
+				)
+			}
+		} catch {
+			setError("That didn’t send. Try again in a moment.")
+		} finally {
+			setSending(false)
+		}
+	}
+
+	const familyLabel = FAMILIES.find((f) => f.id === family)?.label ?? family
+
+	return (
+		// biome-ignore lint/a11y/useKeyWithClickEvents: the scrim is a dismissal affordance; Esc is handled above.
+		<div
+			data-testid="request-scrim"
+			onClick={onClose}
+			style={{
+				// fixed, not absolute: this modal is opened from the welcome surface AND from a row deep in
+				// a scrolled transcript, and an absolute scrim there anchors to whatever happens to be
+				// positioned above it — which is how a modal ends up half off-screen.
+				position: "fixed",
+				inset: 0,
+				background: "color-mix(in srgb, var(--vscode-editor-background) 72%, transparent)",
+				backdropFilter: "blur(2px)",
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				padding: "16px",
+				zIndex: 40,
+			}}>
+			{/* biome-ignore lint/a11y/useKeyWithClickEvents: stops the scrim's dismissal, no behaviour of its own. */}
+			<div
+				aria-modal="true"
+				data-testid="request-form"
+				onClick={(e) => e.stopPropagation()}
+				ref={dialogRef}
+				role="dialog"
+				style={{
+					width: "100%",
+					maxWidth: "400px",
+					background: "var(--vscode-editor-background)",
+					border: `1px solid ${NEUTRAL_EDGE}`,
+					borderRadius: "12px",
+					padding: "18px 18px 16px",
+					position: "relative",
+					boxShadow: "0 12px 32px rgba(0,0,0,0.28)",
+				}}>
+				<button
+					aria-label="Close"
+					data-testid="request-close"
+					onClick={onClose}
+					style={{
+						position: "absolute",
+						top: "10px",
+						right: "10px",
+						background: "none",
+						border: "none",
+						cursor: "pointer",
+						color: "var(--vscode-descriptionForeground)",
+						fontSize: "15px",
+						lineHeight: 1,
+						padding: "2px 6px",
+					}}
+					type="button">
+					×
+				</button>
+
+				{sent ? (
+					<>
+						<Title>Request sent</Title>
+						<Lead>
+							We reply within a business day to{" "}
+							<b style={{ color: "var(--vscode-foreground)" }}>{adsumAccount?.email}</b>. When access is granted the{" "}
+							{familyLabel.replace("Fanstel ", "")} card will say so, and the source will resolve in your next run.
+						</Lead>
+						<Row>
+							<Secondary onClick={onClose} testId="request-done">
+								Done
+							</Secondary>
+						</Row>
+					</>
+				) : (
+					<>
+						<Title>Request template source access</Title>
+						<Lead>
+							The prebuilt gateway templates are licensed source. Tell us what you’re building and which chips you
+							need to customise.
+						</Lead>
+						<Field label="Gateway family">
+							<select
+								data-testid="request-family"
+								onChange={(e) => setFamily(e.target.value)}
+								style={inputStyle}
+								value={family}>
+								{FAMILIES.map((f) => (
+									<option key={f.id} value={f.id}>
+										{f.label}
+									</option>
+								))}
+							</select>
+						</Field>
+						<Field label="Chips you need as source">
+							<div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+								{CHIPS.map((c) => (
+									<label
+										key={c.id}
+										style={{
+											display: "inline-flex",
+											alignItems: "center",
+											gap: "5px",
+											fontSize: "12px",
+											color: "var(--vscode-foreground)",
+										}}>
+										<input
+											checked={chips.includes(c.id)}
+											data-testid={`request-chip-${c.id}`}
+											onChange={() => toggle(c.id)}
+											type="checkbox"
+										/>
+										{c.label}
+									</label>
+								))}
+							</div>
+						</Field>
+						<Field label="What are you building?">
+							<textarea
+								data-testid="request-message"
+								onChange={(e) => setMessage(e.target.value)}
+								placeholder="A few lines is enough — product, volume, when you need it."
+								rows={3}
+								style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+								value={message}
+							/>
+						</Field>
+						{error && (
+							<div data-testid="request-error" style={{ fontSize: "11px", color: "var(--vscode-errorForeground)" }}>
+								{error}
+							</div>
+						)}
+						<Row>
+							<button
+								data-testid="request-send"
+								disabled={sending || chips.length === 0}
+								onClick={send}
+								style={{
+									padding: "6px 12px",
+									borderRadius: "6px",
+									fontSize: "12px",
+									fontWeight: 600,
+									cursor: sending || chips.length === 0 ? "default" : "pointer",
+									border: `1px solid ${BRAND_CYAN_UI}`,
+									background: BRAND_CYAN_UI,
+									color: "#04222b",
+									opacity: sending || chips.length === 0 ? 0.6 : 1,
+								}}
+								type="button">
+								{sending ? "Sending…" : "Send request"}
+							</button>
+							<Ghost onClick={onClose}>Cancel</Ghost>
+						</Row>
+						<Fine>Sent as {adsumAccount?.email} · one open request per family.</Fine>
+					</>
+				)}
+			</div>
+		</div>
+	)
+}
+
+const inputStyle: React.CSSProperties = {
+	width: "100%",
+	fontSize: "12px",
+	padding: "5px 7px",
+	borderRadius: "5px",
+	border: `1px solid ${NEUTRAL_EDGE}`,
+	background: "var(--vscode-input-background)",
+	color: "var(--vscode-foreground)",
+}
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+	<div style={{ marginTop: "11px" }}>
+		<div style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", marginBottom: "4px" }}>{label}</div>
+		{children}
+	</div>
+)
+const Title: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+	<div style={{ fontSize: "14px", fontWeight: 600, color: "var(--vscode-foreground)", marginBottom: "5px" }}>{children}</div>
+)
+const Lead: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+	<div style={{ fontSize: "12px", lineHeight: 1.5, color: "var(--vscode-descriptionForeground)" }}>{children}</div>
+)
+const Row: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+	<div style={{ display: "flex", gap: "8px", marginTop: "13px", alignItems: "center" }}>{children}</div>
+)
+const Fine: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+	<div style={{ fontSize: "10.5px", lineHeight: 1.5, color: "var(--vscode-descriptionForeground)", marginTop: "10px" }}>
+		{children}
+	</div>
+)
+const Secondary: React.FC<{ children: React.ReactNode; onClick: () => void; testId?: string }> = ({
+	children,
+	onClick,
+	testId,
+}) => (
+	<button
+		data-testid={testId}
+		onClick={onClick}
+		style={{
+			padding: "6px 12px",
+			borderRadius: "6px",
+			fontSize: "12px",
+			cursor: "pointer",
+			border: `1px solid ${NEUTRAL_EDGE}`,
+			background: "var(--vscode-input-background)",
+			color: "var(--vscode-foreground)",
+		}}
+		type="button">
+		{children}
+	</button>
+)
+const Ghost: React.FC<{ children: React.ReactNode; onClick: () => void }> = ({ children, onClick }) => (
+	<button
+		onClick={onClick}
+		style={{
+			padding: "6px 10px",
+			borderRadius: "6px",
+			fontSize: "12px",
+			cursor: "pointer",
+			border: "none",
+			background: "none",
+			color: "var(--vscode-descriptionForeground)",
+		}}
+		type="button">
+		{children}
+	</button>
+)
+
+export default RequestAccessForm

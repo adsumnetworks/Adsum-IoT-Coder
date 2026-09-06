@@ -1,3 +1,4 @@
+import { ADSUM_REGISTERED_BANNER } from "@shared/adsumAccount"
 import { StringRequest } from "@shared/proto/cline/common"
 import React, { useEffect, useMemo, useState } from "react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
@@ -7,7 +8,10 @@ import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "../brandColors"
 import { DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
+import AccountChip from "./AccountChip"
+import CellularGroup from "./CellularGroup"
 import CraNudge from "./CraNudge"
+import DemoHexCard from "./DemoHexCard"
 import DockCoachMark from "./DockCoachMark"
 import EntryDrawer, { type DrawerRun } from "./EntryDrawer"
 import EnvStrip from "./EnvStrip"
@@ -16,8 +20,16 @@ import IntentCard from "./IntentCard"
 import ReviewNudge from "./ReviewNudge"
 import { runIntent } from "./runIntent"
 import { rank } from "./suggest"
+import UnlockedCard from "./UnlockedCard"
 import { useEntrySignals } from "./useEntrySignals"
-import { getTenure, type IntentDef, NO_PROJECT_INTENTS, PROJECT_INTENTS, resolveIntentPlatform } from "./welcomeIntents"
+import {
+	DEMO_HEX_PROMPT,
+	getTenure,
+	type IntentDef,
+	NO_PROJECT_INTENTS,
+	PROJECT_INTENTS,
+	resolveIntentPlatform,
+} from "./welcomeIntents"
 
 /**
  * The entry surface.
@@ -70,7 +82,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	onUpgradeDismiss,
 	showUpgradeCard,
 }) => {
-	const { version, taskHistory, workspaceClassification, reviewNudgeShow } = useExtensionState()
+	const { version, taskHistory, workspaceClassification, reviewNudgeShow, adsumUnlockedShow } = useExtensionState()
 	const { mode, signals, scopeName, isColdStart } = useEntrySignals()
 
 	const [drawerOpen, setDrawerOpen] = useState(false)
@@ -269,9 +281,11 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				    heading that only covered the second half left the first half captionless. */}
 				{!isColdStart && (
 					<div
-						className="uppercase"
+						className="flex flex-wrap items-center gap-x-2 gap-y-1 uppercase"
 						style={{ fontSize: "10px", letterSpacing: "0.08em", color: "var(--vscode-descriptionForeground)" }}>
-						Environment
+						<span>Environment</span>
+						{/* Who is signed in belongs with what this window IS, not with what it can do. */}
+						<AccountChip />
 					</div>
 				)}
 				{scopeName ? (
@@ -609,6 +623,29 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 								))}
 							</>
 						)}
+						{/* Cellular & gateways, always present — locked until the developer registers, live after.
+						    It sits AFTER the suggested runs because it is a second offer, not a competing one:
+						    everything above works today with no account at all, and this group says plainly what
+						    a free account adds. Hiding it until sign-in would mean nobody ever learns it exists. */}
+						{/* The order is the answer to "what did registering get me?": first the words, then
+						    the one thing they can run right now, then the four cards that are no longer
+						    locked. A developer who dismisses the first two still has the third. */}
+						{adsumUnlockedShow && (
+							<UnlockedCard
+								onDismiss={() =>
+									StateServiceClient.dismissBanner({ value: ADSUM_REGISTERED_BANNER }).catch(console.error)
+								}
+							/>
+						)}
+						<DemoHexCard onFlash={() => void onStartTask(DEMO_HEX_PROMPT)} />
+						<CellularGroup
+							boards={signals.nrfBoards}
+							hasBle={signals.features.hasBle}
+							onSelectMode={onSelectMode}
+							onStartTask={onStartTask}
+							platform={platform}
+							projectName={projectName}
+						/>
 					</>
 				) : resumeSession ? null : (
 					<div
