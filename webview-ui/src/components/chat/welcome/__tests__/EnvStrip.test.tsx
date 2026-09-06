@@ -1,4 +1,4 @@
-import { classifyEspProbeFailure, describeSerialBridge, espProbeAdvice, espUnresolvedDeviceLabel } from "@shared/esp"
+import { describeSerialBridge, espUnresolvedDeviceLabel } from "@shared/esp"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -79,8 +79,8 @@ describe("EnvStrip — compact / expand (A5)", () => {
 		const text = document.getElementById("envstrip-detail")?.textContent ?? ""
 		expect(text).toContain("ESP32-S3 (v0.2)")
 		expect(text).toContain("ESP (model unknown)")
-		// The bridge is named — the CABLE, which the USB ids DO prove — and the chip is still not claimed.
-		expect(text).toContain("CH340 USB-UART bridge · chip unconfirmed")
+		// The bridge is named — the CABLE, which the USB ids DO prove — and nothing beyond it.
+		expect(text).toContain("CH340 USB-UART bridge")
 		// A VID we cannot name keeps the old wording. Losing that would mean the label had started guessing.
 		expect(text).toContain("unidentified serial device")
 		expect(text).not.toContain("ESP32-family")
@@ -90,9 +90,9 @@ describe("EnvStrip — compact / expand (A5)", () => {
 		expect(espUnresolvedDeviceLabel(0x303a)).toBe("ESP (model unknown)")
 		// MEASURED on the operator's LEW840x with the Fanstel IOT-UART-ESP32-V1 bridge card, 6 Sep:
 		// idVendor 0x10C4, idProduct 0xEA60, "CP2102 USB to UART Bridge Controller", serial "0001".
-		expect(espUnresolvedDeviceLabel(0x10c4, 0xea60)).toBe("CP2102 USB-UART bridge · chip unconfirmed")
-		expect(espUnresolvedDeviceLabel(0x1a86, 0x7523)).toBe("CH340 USB-UART bridge · chip unconfirmed")
-		expect(espUnresolvedDeviceLabel(0x0403)).toBe("FTDI USB-UART bridge · chip unconfirmed")
+		expect(espUnresolvedDeviceLabel(0x10c4, 0xea60)).toBe("CP2102 USB-UART bridge")
+		expect(espUnresolvedDeviceLabel(0x1a86, 0x7523)).toBe("CH340 USB-UART bridge")
+		expect(espUnresolvedDeviceLabel(0x0403)).toBe("FTDI USB-UART bridge")
 		// The canary: a VID we do not recognise must NOT acquire a name.
 		expect(espUnresolvedDeviceLabel(0x2e8a)).toBe("unidentified serial device")
 		expect(espUnresolvedDeviceLabel(undefined)).toBe("unidentified serial device")
@@ -107,84 +107,16 @@ describe("EnvStrip — compact / expand (A5)", () => {
 		// The plan assumed Fanstel's IOT-UART-ESP32-V1 was nameable from USB alone. It is not: the board
 		// presents Silicon Labs' stock 0x10C4/0xEA60 with the default serial "0001" and nothing else, so
 		// naming it here would put a guess on every CP2102 in the world. This case is what stops that.
+		// Ruled on by the operator, 7 Sep: the bridge name alone. "(PK-BWG840)" — Fanstel's name for the
+		// programming kit this card is sold as — would land on every DevKit, NodeMCU and Arduino clone
+		// carrying the same chip.
 		for (const [vid, pid] of [
 			[0x10c4, 0xea60],
 			[0x1a86, 0x7523],
 			[0x0403, 0x6001],
 		] as const) {
-			expect(describeSerialBridge(vid, pid)).not.toMatch(/fanstel|lew840|iot-uart/i)
+			expect(describeSerialBridge(vid, pid)).not.toMatch(/fanstel|lew840|iot-uart|pk-bwg/i)
 		}
-	})
-
-	it("classifyEspProbeFailure reads esptool's own words — v5's and v4's", () => {
-		// CAPTURED, not invented: esptool v5.3.1 against the operator's board, 6 Sep.
-		expect(
-			classifyEspProbeFailure("A fatal error occurred: Failed to connect to Espressif device: No serial data received."),
-		).toBe("no-serial-data")
-		// The wording the bench doc recorded from esptool v4. Both must classify the same, or an esptool
-		// upgrade silently turns the advice off.
-		expect(classifyEspProbeFailure("A fatal error occurred: Failed to connect to ESP32: No serial data received.")).toBe(
-			"no-serial-data",
-		)
-		expect(classifyEspProbeFailure("could not open port /dev/cu.usbserial-0001: Resource busy")).toBe("port-busy")
-		expect(classifyEspProbeFailure("Wrong boot mode detected (0x13)!")).toBe("wrong-boot-mode")
-		expect(classifyEspProbeFailure("Timed out waiting for packet header")).toBe("timeout")
-		expect(classifyEspProbeFailure("something nobody has seen yet")).toBe("unknown")
-		expect(classifyEspProbeFailure(undefined)).toBe("unknown")
-		expect(classifyEspProbeFailure("   ")).toBe("unknown")
-		// Nothing to say is better than a wrong thing to say.
-		expect(espProbeAdvice("unknown")).toBeUndefined()
-	})
-
-	it("the strip says WHY the ESP is not answering, in bench order", () => {
-		mockState({
-			espEnvironment: {
-				status: "ready",
-				extensionPresent: true,
-				idfPresent: true,
-				projectDetected: true,
-				espDevices: [
-					{
-						port: "/dev/cu.usbserial-0001",
-						vid: 0x10c4,
-						pid: 0xea60,
-						serialNumber: "0001",
-						probeError: "A fatal error occurred: Failed to connect to Espressif device: No serial data received.",
-					},
-				],
-			},
-		})
-		render(<EnvStrip />)
-		fireEvent.click(screen.getByTestId("envstrip-summary"))
-		const why = screen.getByTestId("esp-probe-why")
-		const text = why.textContent ?? ""
-		// The three causes, in the order the bench found them — selector first, because that is the one
-		// that cost hours and the one no amount of retrying fixes.
-		const order = ["selector", "switch", "GPIO2"].map((k) => text.indexOf(k))
-		expect(order.every((i) => i >= 0)).toBe(true)
-		expect(order).toEqual([...order].sort((a, b) => a - b))
-		expect(text).toContain("TO WIFI (ESP)")
-
-		// COPY LINT: this board has a mode switch and a three-position selector. It has no BOOT button,
-		// and telling someone to hold one is how a confident hint wastes an afternoon.
-		const strip = document.getElementById("envstrip-detail")?.textContent ?? ""
-		expect(strip).not.toMatch(/boot button/i)
-		expect(text).not.toMatch(/boot button/i)
-	})
-
-	it("no probe error means no note — the strip does not invent a problem", () => {
-		mockState({
-			espEnvironment: {
-				status: "ready",
-				extensionPresent: true,
-				idfPresent: true,
-				projectDetected: true,
-				espDevices: [{ port: "/dev/cu.a", vid: 0x303a, chip: "ESP32-S3", chipRevision: "v0.2" }],
-			},
-		})
-		render(<EnvStrip />)
-		fireEvent.click(screen.getByTestId("envstrip-summary"))
-		expect(screen.queryByTestId("esp-probe-why")).not.toBeInTheDocument()
 	})
 
 	// A bench with four DKs attached rendered "nRF9161 DK, nRF5340 DK, PCA10184, nRF52840 DK" — one

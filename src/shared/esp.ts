@@ -102,15 +102,16 @@ export function espUnresolvedDeviceLabel(vid: number | undefined, pid?: number):
 	if (vid === ESP_NATIVE_USB_VID) {
 		return "ESP (model unknown)"
 	}
-	const bridge = describeSerialBridge(vid, pid)
-	return bridge ? `${bridge} · chip unconfirmed` : "unidentified serial device"
+	// The bridge name alone. It claims exactly what the USB ids prove — a USB-UART bridge of a known
+	// kind — and nothing about what is on the other side of it, so it needs no qualifier to stay honest.
+	return describeSerialBridge(vid, pid) ?? "unidentified serial device"
 }
 
 /**
  * The USB-serial bridge chip, named from its VID/PID — or undefined when we do not recognise it.
  *
  * This names the CABLE, never the board. Measured on the operator's own LEW840x with the Fanstel
- * `IOT-UART-ESP32-V1` bridge card attached, 6 Sep:
+ * bridge card (sold as the PK-BWG840 programming kit) attached, 6 Sep:
  *
  *     idVendor 0x10C4  idProduct 0xEA60  "CP2102 USB to UART Bridge Controller"  serial "0001"
  *
@@ -118,7 +119,9 @@ export function espUnresolvedDeviceLabel(vid: number | undefined, pid?: number):
  * and "0001" is the default serial. There is nothing Fanstel-specific in the descriptors at all — so
  * the plan's assumption that the bridge board is "nameable from USB alone" is simply false, and no
  * row here claims a product name. Saying "CP2102 USB-UART bridge" is the most this evidence supports;
- * saying "Fanstel IOT-UART-ESP32-V1" would be a guess dressed as a fact on every CP2102 on earth.
+ * adding "(PK-BWG840)" would put Fanstel's programming kit on every ESP32 DevKit, NodeMCU and Arduino
+ * clone in the world, since they all ship this same chip. Ruled on by the operator, 7 Sep: the bridge
+ * name alone.
  */
 export function describeSerialBridge(vid: number | undefined, pid?: number): string | undefined {
 	switch (vid) {
@@ -130,107 +133,6 @@ export function describeSerialBridge(vid: number | undefined, pid?: number): str
 			return "CH34x USB-UART bridge"
 		case 0x0403:
 			return "FTDI USB-UART bridge"
-		default:
-			return undefined
-	}
-}
-
-/**
- * What esptool's failure MEANS, keyed on its own words.
- *
- * The kinds are symptoms, not causes, and that is deliberate. "No serial data received" has three
- * known causes on this hardware and the string cannot tell them apart — picking one would be the
- * confident-and-wrong answer the strip exists to avoid. The symptom is what we know; the causes are
- * listed, in the order the bench found them.
- */
-export type EspProbeFailure = "no-serial-data" | "port-busy" | "wrong-boot-mode" | "timeout" | "unknown"
-
-export function classifyEspProbeFailure(stderr: string | undefined): EspProbeFailure {
-	const t = (stderr ?? "").toLowerCase()
-	if (!t.trim()) {
-		return "unknown"
-	}
-	// esptool v5 says "Espressif device", v4 said "ESP32" — both are the same failure, and a pin on
-	// either wording alone would go quiet the next time the tool is upgraded.
-	if (t.includes("no serial data received")) {
-		return "no-serial-data"
-	}
-	if (/could not open|access is denied|resource busy|permission denied|device or resource busy/.test(t)) {
-		return "port-busy"
-	}
-	if (t.includes("wrong boot mode")) {
-		return "wrong-boot-mode"
-	}
-	if (/timed out|timeout/.test(t)) {
-		return "timeout"
-	}
-	return "unknown"
-}
-
-/** One cause and the thing to do about it. */
-export interface EspProbeCause {
-	what: string
-	fix: string
-}
-
-/**
- * What to tell the developer, in the order the bench actually found these.
- *
- * Every line is from `products/fanstel/lew840x/uart-bridge-board.md`, which is bench-verified on real
- * hardware. Note what is NOT here: the words "BOOT button". This board has a mode SWITCH and a
- * separate three-position selector; telling someone to hold a button they do not have is how an
- * honest-looking hint wastes an afternoon. There is a copy lint for exactly that.
- */
-export function espProbeAdvice(kind: EspProbeFailure): { headline: string; causes: EspProbeCause[] } | undefined {
-	switch (kind) {
-		case "no-serial-data":
-			return {
-				headline: "The port opened, but the chip never answered. Three things do this, in this order:",
-				causes: [
-					{
-						what: "The bridge board's selector is not on TO WIFI (ESP).",
-						fix: "Only that position wires DTR and RTS through to EN and IO0. In TO LOG or TO BLE no probe can ever connect, however long it retries.",
-					},
-					{
-						what: "The mode switch is set to run, not flash.",
-						fix: "The strap is only sampled at reset — set the switch first, then press RESET. A chip that is silent is usually in flash mode, not broken.",
-					},
-					{
-						what: "A running nRF52840 is driving the ESP's GPIO2.",
-						fix: "GPIO2 is a download-boot strap; the nRF holds it and blocks the bootloader even with the switch set correctly. Silence the nRF first.",
-					},
-				],
-			}
-		case "port-busy":
-			return {
-				headline: "Something else is holding the port.",
-				causes: [
-					{
-						what: "A monitor, terminal or another editor has it open.",
-						fix: "Close the other reader and try again — two programs cannot share one serial port.",
-					},
-				],
-			}
-		case "wrong-boot-mode":
-			return {
-				headline: "The chip answered, but it is not in the bootloader.",
-				causes: [
-					{
-						what: "The mode switch is set to run.",
-						fix: "Set the switch to flash, then press RESET — the strap is only read at reset.",
-					},
-				],
-			}
-		case "timeout":
-			return {
-				headline: "The chip started to answer and stopped.",
-				causes: [
-					{
-						what: "An unreliable cable or an underpowered hub.",
-						fix: "Try a different cable and a port on the machine rather than through a hub.",
-					},
-				],
-			}
 		default:
 			return undefined
 	}
