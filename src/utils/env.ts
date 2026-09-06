@@ -40,7 +40,41 @@ export async function readTextFromClipboard(): Promise<string> {
  */
 export async function openExternal(url: string): Promise<void> {
 	console.log("Opening browser:", url)
-	await open(url)
+
+	/**
+	 * [BENCH 2026-09-06, I-55] Ask the EDITOR to open the link, not this process.
+	 *
+	 * The npm `open` package launches a browser on the machine the Node process runs on. Inside a
+	 * Remote-SSH window, a codespace or a dev container, that machine is the REMOTE — so the
+	 * sign-in page opened on a lab bench's own display, at a login screen nobody was sitting at,
+	 * while the developer watched a button do nothing on their laptop. Twice.
+	 *
+	 * It fails silently, which is the worst part: the button looks inert, so the conclusion is
+	 * "sign-in is broken" and the funnel ends there. For embedded work, remote windows are the
+	 * normal setup rather than an edge case, so this was most of the affected population.
+	 *
+	 * `vscode.env.openExternal` exists for exactly this: the editor forwards the URL to wherever
+	 * the human actually is. The import is dynamic and guarded because this module is also bundled
+	 * into the standalone core, where `vscode` does not resolve — there, opening locally IS right,
+	 * and that is what the fall-through does.
+	 */
+	try {
+		const vscode = await import("vscode")
+		if (await vscode.env.openExternal(vscode.Uri.parse(url))) {
+			return
+		}
+		// Resolved false: the editor declined (an unhandled scheme, or the user said no). Falling
+		// through would open a second browser behind their back, so stop and say so.
+		throw new Error("the editor declined to open the link")
+	} catch (e) {
+		const why = e instanceof Error ? e.message : String(e)
+		// Not running inside VS Code — the standalone core, where this process IS the local machine.
+		if (/Cannot find module|Dynamic require|not defined/i.test(why)) {
+			await open(url)
+			return
+		}
+		throw new Error(`Could not open ${url}: ${why}`)
+	}
 }
 
 /**
