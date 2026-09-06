@@ -76,6 +76,40 @@ describe("X — the account, extension side", () => {
 		assert.equal(account.getAccount()?.groups.length, 1)
 	})
 
+	test("X-09 an open access request survives sign-in and refresh", async () => {
+		// The backend has always sent `open_requests`; neither completeSignIn nor refresh read it, so
+		// `openRequests` was permanently [] and the card that offers "request template source" could
+		// never show that one had been sent. A person asked, saw nothing change, and asked again.
+		account.__setForTest({ token: undefined, profile: null, state: "nonce-req" })
+		await withFetch(
+			(async () =>
+				json({
+					token: "adu_req",
+					email: "dev@example.com",
+					name: "Dev",
+					email_verified: true,
+					groups: ["cellular-advanced"],
+					open_requests: ["lew840x"],
+				})) as typeof fetch,
+			() => account.completeSignIn("code-r", "nonce-req"),
+		)
+		assert.deepEqual(account.getAccount()?.openRequests, ["lew840x"], "the exchange carries it")
+
+		await withFetch(
+			(async () =>
+				json({
+					email: "dev@example.com",
+					name: "Dev",
+					email_verified: true,
+					groups: [],
+					open_requests: ["lew840x", "blg20"],
+				})) as typeof fetch,
+			// force: the profile was cached a millisecond ago and refresh rightly short-circuits on that.
+			() => account.refresh(true),
+		)
+		assert.deepEqual(account.getAccount()?.openRequests, ["lew840x", "blg20"], "and the hourly refresh keeps it current")
+	})
+
 	test("X-04 one callback per attempt — a replayed URL cannot mint a second session", async () => {
 		account.__setForTest({ token: undefined, profile: null, state: "nonce-once" })
 		const call = () =>
