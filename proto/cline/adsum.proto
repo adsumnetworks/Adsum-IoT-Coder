@@ -26,6 +26,10 @@ service AdsumService {
   // Re-reads the profile now (the panel does this when it is shown, and after a grant is expected).
   rpc refreshAccount(EmptyRequest) returns (Empty);
 
+  // Deletes the account and everything keyed on the person, then signs out locally.
+  // Irreversible; the panel confirms before calling it. Response value is "" on success.
+  rpc deleteAccount(EmptyRequest) returns (String);
+
   // Asks for access to a template-source family. Request value is JSON {family, chips[], message}.
   // Response value is JSON {ok} or {ok:false, reason}.
   rpc requestAccess(StringRequest) returns (String);

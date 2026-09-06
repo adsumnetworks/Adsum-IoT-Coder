@@ -13,6 +13,8 @@ export interface AdsumAccountState {
 	emailVerified: boolean
 	/** Entitlement groups held. `all` satisfies every group. */
 	groups: string[]
+	/** Families with a template-source request still open, as the server sees it. */
+	openRequests: string[]
 }
 
 /** True when this account opens a bit in `group`. No group ⇒ free to everyone, signed in or not. */

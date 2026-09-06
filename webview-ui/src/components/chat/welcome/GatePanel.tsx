@@ -100,7 +100,10 @@ const GatePanel: React.FC<GatePanelProps> = ({ open, variant = "default", email,
 			data-testid="gate-scrim"
 			onClick={onClose}
 			style={{
-				position: "absolute",
+				// fixed, not absolute: this modal is opened from the welcome surface AND from a row deep in
+				// a scrolled transcript, and an absolute scrim there anchors to whatever happens to be
+				// positioned above it — which is how a modal ends up half off-screen.
+				position: "fixed",
 				inset: 0,
 				background: "color-mix(in srgb, var(--vscode-editor-background) 72%, transparent)",
 				backdropFilter: "blur(2px)",

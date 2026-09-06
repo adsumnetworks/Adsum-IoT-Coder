@@ -9,6 +9,7 @@ import {
 	SlidersHorizontal,
 	SquareMousePointer,
 	SquareTerminal,
+	UserRound,
 	Wrench,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -22,6 +23,7 @@ import { IS_DEV } from "@/utils/isDev"
 import { Tab, TabContent, TabHeader, TabList, TabTrigger } from "../common/Tab"
 import SectionHeader from "./SectionHeader"
 import AboutSection from "./sections/AboutSection"
+import AccountSection from "./sections/AccountSection"
 import ApiConfigurationSection from "./sections/ApiConfigurationSection"
 import BrowserSettingsSection from "./sections/BrowserSettingsSection"
 import DebugSection from "./sections/DebugSection"
@@ -54,6 +56,13 @@ export const SETTINGS_TABS: SettingsTab[] = [
 		headerText: "Feature Settings",
 		icon: CheckCheck,
 		hidden: true,
+	},
+	{
+		id: "account",
+		name: "Account",
+		tooltipText: "Your Adsum account",
+		headerText: "Account",
+		icon: UserRound,
 	},
 	{
 		id: "browser",
@@ -126,6 +135,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 			"api-config": ApiConfigurationSection,
 			general: GeneralSettingsSection,
 			features: FeatureSettingsSection,
+			account: AccountSection,
 			browser: BrowserSettingsSection,
 			terminal: TerminalSettingsSection,
 			about: AboutSection,

@@ -1039,7 +1039,15 @@ export class Controller {
 			// the keychain: the panel is told WHAT is unlocked, never given the means to unlock it.
 			adsumAccount: (() => {
 				const a = getAccount()
-				return a ? { email: a.email, name: a.name, emailVerified: a.emailVerified, groups: a.groups } : undefined
+				return a
+					? {
+							email: a.email,
+							name: a.name,
+							emailVerified: a.emailVerified,
+							groups: a.groups,
+							openRequests: a.openRequests ?? [],
+						}
+					: undefined
 			})(),
 			// The one-time "what you unlocked" card. Computed here, not in the panel, so it uses the same
 			// dismissal ledger every other one-time card uses — and so a dismissal survives a reload
