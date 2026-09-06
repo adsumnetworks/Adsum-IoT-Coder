@@ -542,6 +542,8 @@
 		"test:account": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/adsum/account.node-test.ts",
 		"test:entitlement-cache": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/entitlementCache.node-test.ts",
 		"test:terminal-identity": "ts-node --transpile-only -P tsconfig.unit-test.json src/hosts/vscode/terminal/terminalIdentity.node-test.ts",
+		"test:deepseek-reasoning": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/api/providers/deepseekReasoning.node-test.ts",
+		"test:deepseek-pricing": "ts-node --transpile-only -P tsconfig.unit-test.json src/utils/__tests__/deepseekPricing.node-test.ts",
 		"test:host-e2e": "CLINE_ENVIRONMENT=local ts-node --transpile-only -P tsconfig.unit-test.json src/services/adsum/hostE2e.node-test.ts",
 		"test:provider": "ts-node --transpile-only -P tsconfig.unit-test.json src/shared/proto-conversions/models/api-configuration-conversion.test.ts",
 		"test:session-export": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/session-export/sessionExport.test.ts",
