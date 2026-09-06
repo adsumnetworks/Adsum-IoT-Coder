@@ -129,6 +129,27 @@ describe("W — the register gate", () => {
 		expect(screen.getByTestId("gate-panel")).toBeTruthy()
 	})
 
+	it("W-02c the ACTUAL free tier unlocks all four — the state the operator was in when none of them did", () => {
+		// Not ["all"] (a steward) and not a partial grant (W-02b) — this is the literal list
+		// REGISTERED_TIER hands every account the moment it exists, and it is the shape that was
+		// broken: the chip said Registered, the card said "cellular is unlocked", and all four stayed
+		// locked because registering wrote no entitlement row at all.
+		const h = handlers()
+		state.current = signedIn(["cellular-advanced", "edge-ai-advanced", "lew840x-demo-hex", "blg20-demo-hex"])
+		render(<CellularGroup {...h} />)
+
+		expect(screen.queryAllByText("Register")).toHaveLength(0)
+		expect(screen.queryByTestId("gate-panel")).toBeNull()
+		expect(screen.queryByTestId("cellular-note")).toBeNull()
+
+		// Every one of the four runs its work rather than reopening the panel they just completed.
+		for (const id of ["cellularGateway", "ntnBringUp", "nrf91BringUp", "edgeAi"]) {
+			fireEvent.click(screen.getByTestId(`cellular-card-${id}`))
+		}
+		expect(h.onStartTask).toHaveBeenCalledTimes(4)
+		expect(screen.queryByTestId("gate-panel")).toBeNull()
+	})
+
 	it("W-03 a detected cellular board earns a hint line; anything else earns none", () => {
 		expect(cellularHint(["nRF9160 DK"])).toBe("Your nRF9160 DK is detected — register to unlock its attach and APN recipes.")
 		expect(cellularHint(["nRF52840 DK"])).toBeUndefined()
