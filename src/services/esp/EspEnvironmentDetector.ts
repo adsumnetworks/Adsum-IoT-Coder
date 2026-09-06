@@ -386,8 +386,12 @@ async function resolveEspChips(devices: EspDevice[]): Promise<void> {
 				d.chipRevision = result.chipRevision
 				d.mac = result.mac
 			} else {
+				// The device stays unresolved AND says why. Not cached: the reason is a fact about this
+				// moment (a selector position, another program holding the port), not about the silicon,
+				// and remembering it would outlive the flick of a switch.
+				d.probeError = result.stderr
 				console.info(
-					`[esp-detect] esptool found no chip on ${d.port} — staying unresolved (port busy? board not in download mode?)`,
+					`[esp-detect] esptool found no chip on ${d.port} — staying unresolved${result.stderr ? `: ${result.stderr.split("\n").slice(-2).join(" ")}` : " (no output captured)"}`,
 				)
 			}
 		}),
