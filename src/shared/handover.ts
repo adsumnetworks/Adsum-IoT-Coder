@@ -68,6 +68,21 @@ export interface HandoverStrip {
 	}
 }
 
+/**
+ * Master switch for handing a session to the developer's own coding agent ("conductor mode").
+ *
+ * OFF for the 0.4.0 release (operator, 2026-09-06): we are not launching the product that way. The
+ * feature is kept whole — types, service, webview components and their tests all still build and run
+ * with this flipped — so re-enabling is this one line plus a changelog entry, not an archaeology dig.
+ *
+ * Everything downstream reads it in exactly two places, so there is no third path to forget:
+ *   • host — `VscodeHandoverService.detectConductorMode()` / `handOver()`, and the controller stops
+ *     sending `handoverUi` at all;
+ *   • webview — `useRunTarget()`, which is what every card, the composer and the demo picker derive
+ *     their run target from.
+ */
+export const AGENT_HANDOVER_ENABLED = false
+
 export interface HandoverUiState {
 	/** Conductor mode = Adsum has no model of its own, so handing over IS the execution path. */
 	conductor: { active: boolean; reason: string }
