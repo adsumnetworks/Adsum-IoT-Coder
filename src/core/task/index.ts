@@ -1,6 +1,7 @@
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import { ApiHandler, ApiProviderInfo, buildApiHandler } from "@core/api"
 import { QuotaExhaustedError } from "@core/api/providers/adsum-free"
+import { guardStream } from "@core/api/stream-watchdog"
 import { ApiStream } from "@core/api/transform/stream"
 import { parseAssistantMessageV2, ToolUse } from "@core/assistant-message"
 import { buildCompactionLedger } from "@core/context/context-management/CompactionLedger"
@@ -2134,7 +2135,17 @@ export class Task {
 		// Response API requires native tool calls to be enabled
 		const stream = this.api.createMessage(systemPrompt, historyWithState, tools)
 
-		const iterator = stream[Symbol.asyncIterator]()
+		// [BENCH 2026-09-07, I-62] Guard the stream against silence. Without this, a provider that
+		// stops sending without erroring and without closing parks `await iterator.next()` and
+		// `yield* iterator` for ever: nothing throws, so the catch below and the auto-retry ladder
+		// in recursivelyMakeClineRequests are never entered, and the task sits at state:running
+		// with a half-written sentence. Measured at 9 of 80 bench tasks. The wrapper turns that
+		// silence into the ordinary streaming error both paths already know how to recover from.
+		const iterator = guardStream(stream[Symbol.asyncIterator](), {
+			abort: () => this.api.abort?.(),
+			isCancelled: () => this.taskState.abort,
+			onStall: (error) => Logger.warn(`[Task ${this.taskId}] ${error.message}`),
+		})
 
 		try {
 			// awaiting first chunk to see if it will throw an error
