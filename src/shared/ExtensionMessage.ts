@@ -8,6 +8,7 @@ import { RemoteConfigFields } from "@shared/storage/state-keys"
 import type { WorkspaceFeatures } from "@shared/workspace-features"
 import type { Environment } from "../config"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
+import type { AdsumAccountState } from "./adsumAccount"
 import { ApiConfiguration } from "./api"
 import { BrowserSettings } from "./BrowserSettings"
 import { ClineFeatureSetting } from "./ClineFeatureSetting"
@@ -144,6 +145,10 @@ export interface ExtensionState {
 	/** After a few successful task completions, show the one-time "leave a review" nudge. Retired for good via the
 	 *  banner-dismissal ledger (id "review-nudge"), so it never nags. */
 	reviewNudgeShow?: boolean
+	/** The signed-in developer and the entitlement groups they hold. Absent ⇒ nobody is signed in, which
+	 *  is what puts the cellular cards behind the register gate. Never carries the session bearer: the
+	 *  webview renders a lock, the registry enforces it. */
+	adsumAccount?: AdsumAccountState
 }
 
 export interface ClineMessage {

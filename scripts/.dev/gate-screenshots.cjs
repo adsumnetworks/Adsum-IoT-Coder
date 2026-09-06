@@ -1,8 +1,20 @@
+/**
+ * Contact sheet for the register gate — the real components, not a re-drawing of them.
+ *
+ *   npm --prefix webview-ui run build-storybook -- --quiet -o /tmp/sb-out
+ *   node scripts/.dev/gate-screenshots.cjs /tmp/sb-out <out-dir>
+ *
+ * Every story is rendered in both themes at sidebar and editor width, because the two bugs this
+ * surface actually has are a colour defined for one theme only and a short string meeting a narrow
+ * column. Page errors are collected and printed: a story that throws must never pass as a screenshot
+ * of a working screen.
+ */
 const { chromium } = require("@playwright/test")
 const http = require("http"),
 	fs = require("fs"),
 	path = require("path"),
 	url = require("url")
+
 const ROOT = process.argv[2],
 	OUT = process.argv[3]
 const MIME = {
@@ -26,16 +38,20 @@ const server = http.createServer((req, res) => {
 	res.writeHead(200, { "Content-Type": MIME[path.extname(p)] || "application/octet-stream" })
 	fs.createReadStream(p).pipe(res)
 })
+
 const STORIES = [
-	["views-chat--entry-cold-start", "01-cold-start"],
-	["views-chat--entry-first-run-with-project", "02-first-run-project"],
-	["views-chat--entry-returning", "03-returning"],
-	["views-chat--entry-lapsed", "04-lapsed"],
-	["views-chat--entry-nothing-in-this-folder", "05-nothing-in-folder"],
-	["views-chat--entry-board-detected", "06-board-detected"],
+	["views-chat--entry-cellular-locked", "01-welcome-anonymous"],
+	["views-chat--entry-cellular-board-hint", "02-welcome-board-hint"],
+	["views-chat--entry-gate-open", "03-gate-open"],
+	["views-chat--entry-cellular-unlocked", "05-cellular-unlocked"],
+	["adsum-gatepanel--default", "03b-gate-default"],
+	["adsum-gatepanel--offline", "10a-gate-offline"],
+	["adsum-gatepanel--verify-pending", "10b-gate-verify"],
 ]
+
 ;(async () => {
-	await new Promise((r) => server.listen(6199, r))
+	fs.mkdirSync(OUT, { recursive: true })
+	await new Promise((r) => server.listen(6198, r))
 	const b = await chromium.launch()
 	const errs = []
 	for (const [id, name] of STORIES) {
@@ -45,17 +61,17 @@ const STORIES = [
 				[900, "editor"],
 			]) {
 				// The theme is a Storybook GLOBAL, not the browser's colour-scheme preference: the webview
-				// paints from --vscode-* variables the preview decorator sets. Passing colorScheme alone
-				// rendered dark twice and filed one of them as "light", which is worse than not checking.
-				const p = await b.newPage({ viewport: { width: w, height: 820 }, colorScheme: theme })
+				// paints from --vscode-* variables the preview decorator sets. colorScheme alone renders
+				// dark twice and files one of them as "light", which is worse than not checking at all.
+				const p = await b.newPage({ viewport: { width: w, height: 900 }, colorScheme: theme, deviceScaleFactor: 2 })
 				p.on("pageerror", (e) => errs.push(`${name}/${theme}/${label}: ${e.message}`))
 				await p.goto(
-					`http://127.0.0.1:6199/iframe.html?id=${id}&viewMode=story&globals=theme:${theme === "dark" ? "vs_dark" : "vs_light"}`,
+					`http://127.0.0.1:6198/iframe.html?id=${id}&viewMode=story&globals=theme:${theme === "dark" ? "vs_dark" : "vs_light"}`,
 					{
 						waitUntil: "networkidle",
 					},
 				)
-				await p.waitForTimeout(700)
+				await p.waitForTimeout(800)
 				await p.screenshot({ path: `${OUT}/${name}-${theme}-${label}.png` })
 				await p.close()
 			}

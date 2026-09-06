@@ -77,3 +77,13 @@ export function entryRunStart(runId: string, via: "card" | "drawer" | "sample"):
 	entryFirstPrompt(via === "sample" ? "sample" : "card")
 	send("entry_build_start", { build_id: runId, via })
 }
+
+/**
+ * The register funnel: which surface asked, and for which card.
+ *
+ * One event per OPEN, not per render — the panel re-renders on every keystroke behind it, and a
+ * gate counted per paint would make the funnel's denominator meaningless.
+ */
+export function gateShown(surface: string, intent?: string): void {
+	send("gate_shown", { surface, ...(intent ? { intent } : {}) })
+}

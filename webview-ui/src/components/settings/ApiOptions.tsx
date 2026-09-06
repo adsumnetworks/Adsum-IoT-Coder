@@ -149,11 +149,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 		// already knows. Fixing the plumbing in 0.2.1 changed nothing user-visible while this list omitted it.
 		const allowedProviders = [
 			"adsum-free",
-			// "external-agent" — handing a session to your own coding agent is off for this release
-			// (AGENT_HANDOVER_ENABLED). Listing a provider that no longer routes anywhere would strand
-			// whoever picked it; a workspace already set to it still opens, and useRunTarget sends the
-			// work to Adsum.
-			...(AGENT_HANDOVER_ENABLED ? ["external-agent"] : []),
+			"external-agent",
 			"zai-coding-plan",
 			"anthropic",
 			"deepseek",
@@ -161,6 +157,12 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 			"openai",
 			"anthropic-compatible",
 		]
+			// "external-agent" — handing a session to your own coding agent is off for this release
+			// (AGENT_HANDOVER_ENABLED). Listing a provider that no longer routes anywhere would strand
+			// whoever picked it; a workspace already set to it still opens, and useRunTarget sends the
+			// work to Adsum. Filtered rather than removed from the literal above, because that literal is
+			// the curated ladder itself and providerLadder.test.ts reads it as a flat list of strings.
+			.filter((p) => p !== "external-agent" || AGENT_HANDOVER_ENABLED)
 		let providers = allowedProviders.flatMap((value) => {
 			const entry = PROVIDERS.list.find((p) => p.value === value)
 			return entry ? [entry] : []
