@@ -243,6 +243,25 @@ describe("W — the register gate", () => {
 		expect(h.onStartTask).not.toHaveBeenCalled()
 	})
 
+	it("W-07b the account arriving closes the gate — the sign-in it was asking for is done", () => {
+		// Watched on a real desk with the shipped build: the callback lands, the four cards unlock, and
+		// the scrim stays up still saying "Register to unlock cellular" over them. The developer did the
+		// thing and the panel kept asking.
+		const h = handlers()
+		const { rerender } = render(<CellularGroup {...h} />)
+		fireEvent.click(screen.getByTestId("cellular-card-cellularGateway"))
+		expect(screen.getByTestId("gate-panel")).toBeTruthy()
+
+		state.current = signedIn(["cellular-advanced", "edge-ai-advanced", "lew840x-demo-hex", "blg20-demo-hex"])
+		act(() => {
+			rerender(<CellularGroup {...h} />)
+		})
+		expect(screen.queryByTestId("gate-panel")).toBeNull()
+		expect(screen.queryByTestId("gate-scrim")).toBeNull()
+		// And it closed because the sign-in finished, not because the card went away.
+		expect(screen.getByTestId("cellular-card-cellularGateway")).toBeTruthy()
+	})
+
 	it("W-08 the funnel counts one gate_shown per open, naming the surface and the card", () => {
 		render(<CellularGroup {...handlers()} />)
 		fireEvent.click(screen.getByTestId("cellular-card-ntnBringUp"))

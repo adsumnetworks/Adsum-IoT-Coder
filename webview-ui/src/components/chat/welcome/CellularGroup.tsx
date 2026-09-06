@@ -41,6 +41,11 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 	const anonymous = !adsumAccount
 	const hint = anonymous ? cellularHint(boards) : undefined
 
+	// The gate is open for ONE card. It has nothing left to ask the moment that card's group arrives —
+	// which is what sign-in does, and is not the same as "this developer has an account" (W-02b).
+	const gateIntent = gate ? CELLULAR_INTENTS.find((i) => i.id === gate.intent) : undefined
+	const gateSatisfied = !!gateIntent && accountHasGroup(adsumAccount, gateIntent.group)
+
 	const openGate = (intent: IntentDef) => {
 		gateShown("card", intent.id)
 		setGate({ intent: intent.id })
@@ -92,6 +97,7 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 				email={adsumAccount?.email}
 				onClose={() => setGate(null)}
 				open={gate !== null}
+				satisfied={gateSatisfied}
 				surface="card"
 				variant={adsumAccount && !adsumAccount.emailVerified ? "verify" : "default"}
 			/>

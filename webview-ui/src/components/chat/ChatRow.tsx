@@ -1,3 +1,4 @@
+import { type AdsumAccountState, accountHasGroup } from "@shared/adsumAccount"
 import { COMMAND_OUTPUT_STRING } from "@shared/combineCommandSequences"
 import {
 	ClineApiReqInfo,
@@ -166,7 +167,8 @@ export const ChatRowContent = memo(
 			onRelinquishControl,
 			vscodeTerminalExecutionMode,
 			clineMessages,
-		} = useExtensionState()
+			adsumAccount,
+		} = useExtensionState() as ReturnType<typeof useExtensionState> & { adsumAccount?: AdsumAccountState }
 		const [seeNewChangesDisabled, setSeeNewChangesDisabled] = useState(false)
 		const [explainChangesDisabled, setExplainChangesDisabled] = useState(false)
 		const [quoteButtonState, setQuoteButtonState] = useState<QuoteButtonState>({
@@ -991,7 +993,12 @@ export const ChatRowContent = memo(
 									onRegister={() => setGateOpen(true)}
 									onRequestAccess={() => setGateOpen(true)}
 								/>
-								<GatePanel onClose={() => setGateOpen(false)} open={gateOpen} surface="chat" />
+								<GatePanel
+									onClose={() => setGateOpen(false)}
+									open={gateOpen}
+									satisfied={accountHasGroup(adsumAccount, locked.group)}
+									surface="chat"
+								/>
 							</>
 						) : null
 					}
