@@ -9,6 +9,7 @@ import { cleanupLegacyCheckpoints } from "@integrations/checkpoints/CheckpointMi
 import { isCheckpointsNotApplicableMessage } from "@integrations/checkpoints/CheckpointUtils"
 import { ClineAccountService } from "@services/account/ClineAccountService"
 import { McpHub } from "@services/mcp/McpHub"
+import { ADSUM_REGISTERED_BANNER } from "@shared/adsumAccount"
 import type { ApiProvider, ModelInfo } from "@shared/api"
 import type { ChatContent } from "@shared/ChatContent"
 import type { ExtensionState, Platform } from "@shared/ExtensionMessage"
@@ -1040,6 +1041,10 @@ export class Controller {
 				const a = getAccount()
 				return a ? { email: a.email, name: a.name, emailVerified: a.emailVerified, groups: a.groups } : undefined
 			})(),
+			// The one-time "what you unlocked" card. Computed here, not in the panel, so it uses the same
+			// dismissal ledger every other one-time card uses — and so a dismissal survives a reload
+			// rather than coming back on the next paint.
+			adsumUnlockedShow: !!getAccount() && !BannerService.get().isBannerDismissed(ADSUM_REGISTERED_BANNER),
 			queuedUserMessages: this.task?.noteQueue.snapshot(),
 			// One-time "leave a review" nudge — three independent gates must ALL hold:
 			//   1. flag: dark-launched, default OFF (src/shared/services/feature-flags) — flipped on remotely once a

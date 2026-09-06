@@ -1461,13 +1461,37 @@ export const EntryGateOpen: Story = {
 	},
 }
 
-/** Registered — the same four cards, live, and no note telling them to do what they have done. */
+/**
+ * Screen 5 — the minute after signing in: what you unlocked, the one thing you can run now, then the
+ * four cards that are no longer locked, and the account chip beside Environment.
+ */
 export const EntryCellularUnlocked: Story = {
 	decorators: [
 		createStoryDecorator(
 			entryState({
 				openFolderPaths: [GW],
 				taskHistory: [],
+				adsumUnlockedShow: true,
+				adsumAccount: {
+					email: "ismail@adsumnetworks.com",
+					name: "Ismail",
+					emailVerified: true,
+					groups: ["cellular-advanced", "edge-ai-advanced", "lew840x-demo-hex"],
+				},
+			}),
+		),
+	],
+	args: {},
+}
+
+/** The same person a week later: the one-time card is gone, the demo card and the live cards remain. */
+export const EntryRegisteredSettled: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [],
+				adsumUnlockedShow: false,
 				adsumAccount: {
 					email: "ismail@adsumnetworks.com",
 					name: "Ismail",
