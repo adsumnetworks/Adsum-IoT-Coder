@@ -1,10 +1,4 @@
-import {
-	classifyEspProbeFailure,
-	type EspDevice,
-	type EspEnvironment,
-	espProbeAdvice,
-	espUnresolvedDeviceLabel,
-} from "@shared/esp"
+import { type EspDevice, type EspEnvironment, espUnresolvedDeviceLabel } from "@shared/esp"
 import type { NrfBoard, NrfEnvironment } from "@shared/nrf"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import React, { useState } from "react"
@@ -27,8 +21,6 @@ import { FileServiceClient } from "@/services/grpc-client"
 //   no project          → "installed" (toolchain present) / "not detected"
 // ---------------------------------------------------------------------------
 
-import { BRAND_CYAN_TEXT } from "../brandColors"
-
 const MUTED = "var(--vscode-descriptionForeground)"
 const FG = "var(--vscode-foreground)"
 // "There's more on hover" affordance: a small muted ⓘ after the bit that carries a tooltip (the
@@ -50,9 +42,6 @@ interface BlockFacts {
 	sdkMuted: boolean
 	devices: string
 	devicesMuted: boolean
-	/** Optional line UNDER the device list: why a device is not answering, and what to do. Kept separate
-	 *  from `devices` so the one-line compact form stays a list of device names. */
-	devicesNote?: React.ReactNode
 	detecting: boolean
 }
 
@@ -124,7 +113,6 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 	sdkMuted,
 	devices,
 	devicesMuted,
-	devicesNote,
 }) => {
 	// Not detected → one dimmed line (badge + setup nudge), reusing the inactive-card opacity. The badge
 	// stays neutral; detected-vs-not is shown by opacity, not colour (cyan stays "primary action" only).
@@ -174,9 +162,6 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 				<i className="codicon codicon-plug" style={FACT_ICON} />
 				<span>{devices}</span>
 			</div>
-			{/* Line 3, only when there is something true to say: WHY the device did not answer. Folded shut,
-			    because a strip is read at a glance and this is read once, on the day it goes wrong. */}
-			{devicesNote}
 		</div>
 	)
 }
@@ -335,7 +320,6 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 
 	let devices: string
 	let devicesMuted = false
-	let devicesNote: React.ReactNode
 	if (env.status === "unknown" || env.status === "detecting") {
 		devices = "detecting…"
 		devicesMuted = true
@@ -358,40 +342,9 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 				return d.chip && d.chipRevision ? `${name} (${d.chipRevision})` : name
 			})
 			.join(", ")
-
-		/**
-		 * The route, not just the chip.
-		 *
-		 * "unidentified serial device" was honest and useless: it named nothing the developer could act
-		 * on. The line above now names the BRIDGE from its USB ids — the cable, never the board, because
-		 * the descriptors carry no product identity (see describeSerialBridge). This adds the other half:
-		 * esptool's own reason, turned into the things that actually cause it, in bench order.
-		 */
-		const stuck = env.espDevices.find((d: EspDevice) => !d.chip && d.probeError)
-		const advice = stuck ? espProbeAdvice(classifyEspProbeFailure(stuck.probeError)) : undefined
-		if (advice) {
-			devicesNote = (
-				<details data-testid="esp-probe-why" style={{ fontSize: "11px", marginLeft: "17px" }}>
-					<summary style={{ cursor: "pointer", color: BRAND_CYAN_TEXT, listStyle: "revert" }}>
-						the ESP is not answering — why, and how to fix it
-					</summary>
-					<div style={{ color: MUTED, marginTop: "3px", display: "flex", flexDirection: "column", gap: "4px" }}>
-						<span>{advice.headline}</span>
-						<ol style={{ margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "4px" }}>
-							{advice.causes.map((c) => (
-								<li key={c.what}>
-									<span style={{ color: FG }}>{c.what}</span> {c.fix}
-								</li>
-							))}
-						</ol>
-					</div>
-				</details>
-			)
-		}
 	}
 
 	return {
-		devicesNote,
 		toolchain,
 		toolchainMuted: !env.extensionPresent && !env.idfPresent,
 		toolchainTitle,
