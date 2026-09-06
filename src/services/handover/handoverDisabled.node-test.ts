@@ -86,7 +86,15 @@ describe("S0 — agent handover is off for this release", () => {
 
 	test("S0-06 the provider picker no longer offers external-agent", () => {
 		const src = read("webview-ui/src/components/settings/ApiOptions.tsx")
-		assert.match(src, /AGENT_HANDOVER_ENABLED \? \["external-agent"\] : \[\]/)
+		// Assert the GUARANTEE, not the shape of the expression that provides it. The first version of
+		// this case pinned an exact ternary, and the day the list had to stay a flat literal (so that
+		// providerLadder.test.ts could still read it) a correct change turned this red.
+		const list = src.match(/const allowedProviders = \[([\s\S]*?)\n\t*\]([\s\S]{0,600}?)\n\s*let providers/)
+		assert.ok(list, "found the curated provider list")
+		assert.ok(list![1].includes('"external-agent"'), "it is still in the literal, so re-enabling is one flag")
+		// …and it is removed unless the flag is on.
+		assert.match(list![2], /AGENT_HANDOVER_ENABLED/)
+		assert.match(list![2], /external-agent/)
 		// The panel is guarded too, so a workspace persisted on that provider opens without a dead panel.
 		assert.match(src, /AGENT_HANDOVER_ENABLED && apiConfiguration && selectedProvider === "external-agent"/)
 	})

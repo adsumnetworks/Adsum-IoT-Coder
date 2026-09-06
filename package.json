@@ -540,6 +540,7 @@
 		"test:handover": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/handover/handover.test.ts",
 		"test:handover-disabled": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/handover/handoverDisabled.node-test.ts",
 		"test:account": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/adsum/account.node-test.ts",
+		"test:entitlement-cache": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/entitlementCache.node-test.ts",
 		"test:provider": "ts-node --transpile-only -P tsconfig.unit-test.json src/shared/proto-conversions/models/api-configuration-conversion.test.ts",
 		"test:session-export": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/session-export/sessionExport.test.ts",
 		"test:usage-split": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/api/transform/openai-usage.test.ts",
