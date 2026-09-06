@@ -1,6 +1,7 @@
 import { String as ProtoString, StringRequest } from "@shared/proto/cline/common"
 import { openExternal } from "@utils/env"
 import { buildSignInUrl } from "@/services/adsum/AccountState"
+import { getEditorWindowId } from "@/services/adsum/editorWindow"
 import { Logger } from "@/services/logging/Logger"
 import { telemetryService } from "@/services/telemetry"
 import { getEditorIdentity } from "@/services/telemetry/editorIdentity"
@@ -25,7 +26,9 @@ export async function startSignIn(controller: Controller, request: StringRequest
 	// right editor. VS Code, Cursor and Windsurf each have their own, and guessing wrong strands the
 	// developer in a browser tab holding a link that does nothing.
 	const scheme = getEditorIdentity()?.scheme || "vscode"
-	const url = buildSignInUrl(provider, scheme)
+	// And which of that editor's windows, so the callback returns HERE rather than to whichever window
+	// the OS happens to hand a `vscode://` URL to.
+	const url = buildSignInUrl(provider, scheme, await getEditorWindowId())
 	telemetryService.captureSignInStarted({ provider })
 	try {
 		await openExternal(url)
