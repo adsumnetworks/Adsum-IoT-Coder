@@ -75,6 +75,7 @@ import { SharedUriHandler } from "./services/uri/SharedUriHandler"
 import { AGENT_HANDOVER_ENABLED } from "./shared/handover"
 import { ShowMessageType } from "./shared/proto/host/window"
 import { fileExistsAtPath } from "./utils/fs"
+
 /*
 Built using https://github.com/microsoft/vscode-webview-ui-toolkit
 
@@ -85,6 +86,7 @@ https://github.com/microsoft/vscode-webview-ui-toolkit-samples/tree/main/framewo
 */
 
 import { TerminalRegistry } from "./hosts/vscode/terminal/VscodeTerminalRegistry"
+import { setEditorWindowResolver } from "./services/adsum/editorWindow"
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -95,6 +97,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Record which editor we're in (VS Code / Cursor / Windsurf / VSCodium / Code-OSS) so telemetry and backend
 	// reach can be split by editor — the only way to size the Open VSX audience. Set here because env.* is host-only.
 	setEditorIdentity({ name: vscode.env.appName, scheme: vscode.env.uriScheme || "vscode" })
+
+	// Which window we are. `asExternalUri` on our own `vscode://` URI is the supported way to ask: the
+	// desktop implementation appends `windowId=<n>`, and the main process routes an incoming URL that
+	// carries it to that window. Registered as a resolver rather than called here so activation pays
+	// nothing and a click cannot race it.
+	setEditorWindowResolver(async () => {
+		const scheme = vscode.env.uriScheme || "vscode"
+		const external = await vscode.env.asExternalUri(vscode.Uri.parse(`${scheme}://${context.extension.id}/auth/callback`))
+		return new URLSearchParams(external.query).get("windowId") ?? undefined
+	})
 
 	// Initialize hook discovery cache for performance optimization
 	HookDiscoveryCache.getInstance().initialize(

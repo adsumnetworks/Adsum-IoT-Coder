@@ -232,4 +232,31 @@ describe("X — the account, extension side", () => {
 		assert.equal(account.getSessionToken(), undefined)
 		assert.equal(account.getAccount(), null)
 	})
+
+	/**
+	 * X-11 — the sign-in URL says which WINDOW to come back to.
+	 *
+	 * Reported from a real desk, twice: the hand-off opened in a different VS Code window from the one
+	 * the developer pressed Register in. `vscode://` names an application, not a window; VS Code routes
+	 * on a `windowId` it will only see if we send one. This is the editor's half — the id goes out on
+	 * `/auth/start` as `window`, and the backend puts it back on the callback (backend A-23).
+	 */
+	test("X-11 the sign-in URL carries this window, and refuses anything that is not one", () => {
+		const withWindow = new URL(account.buildSignInUrl("email", "vscode", "3"))
+		assert.equal(withWindow.searchParams.get("window"), "3")
+
+		// No id is a legitimate answer — a host that cannot say (or an older editor) still signs in, and
+		// completeSignIn survives the callback landing elsewhere because the pending nonce is shared.
+		assert.equal(new URL(account.buildSignInUrl("email", "vscode")).searchParams.get("window"), null)
+
+		// A window id is pasted into a URL the browser follows. Anything that is not plain digits is
+		// dropped rather than escaped, so there is no encoding to get wrong later.
+		for (const bad of ["3&code=stolen", "../..", "", "1e3", "99999999999"]) {
+			assert.equal(
+				new URL(account.buildSignInUrl("email", "vscode", bad)).searchParams.get("window"),
+				null,
+				`"${bad}" must not travel as a window id`,
+			)
+		}
+	})
 })

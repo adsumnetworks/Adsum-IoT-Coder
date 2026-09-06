@@ -148,11 +148,17 @@ export function hasGroup(group: string | undefined): boolean {
  * The editor scheme travels with it so the "Open …" button at the far end names the right editor —
  * VS Code, Cursor and Windsurf all have their own, and guessing wrong strands the developer in a tab.
  */
-export function buildSignInUrl(provider: "github" | "google" | "email", editorScheme: string): string {
+export function buildSignInUrl(provider: "github" | "google" | "email", editorScheme: string, windowId?: string): string {
 	const nonce = randomBytes(24).toString("base64url")
 	writePendingState({ nonce, at: Date.now() })
 	const base = ClineEnv.config().adsumApiBaseUrl.replace(/\/$/, "")
 	const q = new URLSearchParams({ provider, redirect: editorScheme, state: nonce })
+	// Which window to come back to. `vscode://` names the application only, so without this the editor
+	// delivers the callback to whichever window it likes — which is not, in general, the one the
+	// developer pressed the button in. The backend puts it back as `windowId` on the callback URL.
+	if (windowId && /^\d{1,10}$/.test(windowId)) {
+		q.set("window", windowId)
+	}
 	try {
 		q.set("install_id", getInstallId())
 	} catch {
