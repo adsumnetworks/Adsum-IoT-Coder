@@ -47,6 +47,7 @@ import {
 import { ATTRIBUTION_FALLBACK, type KbitKind } from "@/services/knowledge/kbit/credit"
 import { extractFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
+import { AGENT_HANDOVER_ENABLED } from "@/shared/handover"
 
 const HANDOVER_ROOT = path.join(os.homedir(), ".adsum", "handovers")
 
@@ -561,6 +562,15 @@ export class VscodeHandoverService {
 
 	// ── the command: hand over ───────────────────────────────────────────────
 	async handOver(cardPayload?: string): Promise<void> {
+		// One gate for every door into a handover: the palette command, the webview's HandoverActions
+		// registry, `handOverCard(...)` from the quota card and the composer, and the demo card. Guarding
+		// here rather than at each caller means a new caller cannot miss it.
+		if (!AGENT_HANDOVER_ENABLED) {
+			vscode.window.showInformationMessage(
+				"Adsum: handing a session to your own coding agent is not available in this release.",
+			)
+			return
+		}
 		// A CARD started this handover: its prompt IS the mission, and its workflow seeds the closure.
 		// Without this, a card click inherited the newest session's mission and bits — the "Test &
 		// validate" door could post a "debug BLE" brief (seen live on the F5 strip). A SAMPLE card also
@@ -1122,6 +1132,11 @@ export class VscodeHandoverService {
 	 * calls an inference API — a hard invariant, enforced by test — so this mode needs zero tokens.
 	 */
 	async detectConductorMode(): Promise<{ conductor: boolean; reason: string }> {
+		// Feature off for this release — decided before any setting is read, so `conductorMode: always`
+		// in a leftover workspace config cannot resurrect it. See AGENT_HANDOVER_ENABLED.
+		if (!AGENT_HANDOVER_ENABLED) {
+			return { conductor: false, reason: "not available in this release" }
+		}
 		const override = vscode.workspace.getConfiguration("adsum-iot-coder").get<string>("conductorMode", "auto")
 		if (override === "always") {
 			return { conductor: true, reason: "set by you (conductorMode: always)" }

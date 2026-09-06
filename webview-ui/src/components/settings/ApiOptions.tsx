@@ -1,3 +1,4 @@
+import { AGENT_HANDOVER_ENABLED } from "@shared/handover"
 import { StringRequest } from "@shared/proto/cline/common"
 import PROVIDERS from "@shared/providers/providers.json"
 import { Mode } from "@shared/storage/types"
@@ -6,7 +7,6 @@ import Fuse from "fuse.js"
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useInterval } from "react-use"
 import styled from "styled-components"
-
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { PLATFORM_CONFIG, PlatformType } from "@/config/platform.config"
@@ -149,7 +149,11 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 		// already knows. Fixing the plumbing in 0.2.1 changed nothing user-visible while this list omitted it.
 		const allowedProviders = [
 			"adsum-free",
-			"external-agent",
+			// "external-agent" — handing a session to your own coding agent is off for this release
+			// (AGENT_HANDOVER_ENABLED). Listing a provider that no longer routes anywhere would strand
+			// whoever picked it; a workspace already set to it still opens, and useRunTarget sends the
+			// work to Adsum.
+			...(AGENT_HANDOVER_ENABLED ? ["external-agent"] : []),
 			"zai-coding-plan",
 			"anthropic",
 			"deepseek",
@@ -398,7 +402,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 			{apiConfiguration && selectedProvider === "adsum-free" && (
 				<AdsumFreeProvider currentMode={currentMode} isPopup={isPopup} />
 			)}
-			{apiConfiguration && selectedProvider === "external-agent" && (
+			{AGENT_HANDOVER_ENABLED && apiConfiguration && selectedProvider === "external-agent" && (
 				<ExternalAgentProvider currentMode={currentMode} isPopup={isPopup} />
 			)}
 			{apiConfiguration && selectedProvider === "hicap" && (

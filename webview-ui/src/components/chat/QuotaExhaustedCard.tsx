@@ -1,3 +1,4 @@
+import { AGENT_HANDOVER_ENABLED } from "@shared/handover"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { ArrowRightLeftIcon, KeyRoundIcon } from "lucide-react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -37,17 +38,25 @@ const QuotaExhaustedCard = () => {
 			</VSCodeButton>
 
 			{/* The escape hatch that costs nothing: their Claude Code subscription already runs models.
-			    Adsum keeps conducting — knowledge, toolchain, tracking, snapshots — on zero Adsum tokens. */}
-			<VSCodeButton
-				appearance="secondary"
-				className="w-full mt-2"
-				onClick={() => handOverCard({ intentId: "buildFlashDebug", platform: "both", prompt: "", source: "quota_card" })}>
-				<ArrowRightLeftIcon className="mr-2" size={14} />
-				Continue on my coding agent
-			</VSCodeButton>
-			<p className="m-0 mt-1 text-xs" style={{ color: "var(--vscode-descriptionForeground)" }}>
-				Claude Code runs it on your subscription · no Adsum tokens
-			</p>
+			    Adsum keeps conducting — knowledge, toolchain, tracking, snapshots — on zero Adsum tokens.
+			    Off for this release (AGENT_HANDOVER_ENABLED): an offer we cannot honour is worse than no
+			    offer, so the card falls back to BYOK and the invite code. */}
+			{AGENT_HANDOVER_ENABLED && (
+				<>
+					<VSCodeButton
+						appearance="secondary"
+						className="w-full mt-2"
+						onClick={() =>
+							handOverCard({ intentId: "buildFlashDebug", platform: "both", prompt: "", source: "quota_card" })
+						}>
+						<ArrowRightLeftIcon className="mr-2" size={14} />
+						Continue on my coding agent
+					</VSCodeButton>
+					<p className="m-0 mt-1 text-xs" style={{ color: "var(--vscode-descriptionForeground)" }}>
+						Claude Code runs it on your subscription · no Adsum tokens
+					</p>
+				</>
+			)}
 
 			<InviteCodeField />
 		</div>

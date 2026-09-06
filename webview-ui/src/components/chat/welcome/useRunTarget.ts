@@ -1,3 +1,4 @@
+import { AGENT_HANDOVER_ENABLED } from "@shared/handover"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 
 export type RunTarget = "adsum" | "agent"
@@ -12,6 +13,13 @@ export type RunTarget = "adsum" | "agent"
  */
 export function useRunTarget(): { target: RunTarget; conducting: boolean } {
 	const { handoverUi, apiConfiguration, mode } = useExtensionState()
+	// Feature off for this release (AGENT_HANDOVER_ENABLED). Every card, the composer, the demo picker
+	// and the quota card derive their route from here, so one early return retires all of them at once —
+	// and a workspace left on `apiProvider: external-agent` from the beta cannot strand the developer on
+	// a provider that no longer routes anywhere.
+	if (!AGENT_HANDOVER_ENABLED) {
+		return { target: "adsum", conducting: false }
+	}
 	const conducting = !!handoverUi?.conductor.active
 	const provider = mode === "plan" ? apiConfiguration?.planModeApiProvider : apiConfiguration?.actModeApiProvider
 	const target: RunTarget = conducting || provider === "external-agent" ? "agent" : "adsum"

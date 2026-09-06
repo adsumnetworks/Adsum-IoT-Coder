@@ -45,6 +45,7 @@ import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { getCachedWorkspaceFeatures, getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { telemetryService } from "@/services/telemetry"
 import { BannerCardData } from "@/shared/cline/banner"
+import { AGENT_HANDOVER_ENABLED } from "@/shared/handover"
 import { getAxiosSettings } from "@/shared/net"
 import { ShowMessageType } from "@/shared/proto/host/window"
 import { FeatureFlag } from "@/shared/services/feature-flags/feature-flags"
@@ -1017,7 +1018,10 @@ export class Controller {
 			espEnvironment: getCachedEspEnvironment(),
 			workspaceClassification: getCachedWorkspaceSummary(),
 			workspaceFeatures: getCachedWorkspaceFeatures(),
-			handoverUi: getHandoverUiState(),
+			// Feature off for this release (AGENT_HANDOVER_ENABLED): sending nothing is what makes every
+			// webview surface that keys on `handoverUi` inert — the banner, the session view, the recap,
+			// and `useRunTarget`'s conductor overlay — without a guard in each of them.
+			handoverUi: AGENT_HANDOVER_ENABLED ? getHandoverUiState() : undefined,
 			queuedUserMessages: this.task?.noteQueue.snapshot(),
 			// One-time "leave a review" nudge — three independent gates must ALL hold:
 			//   1. flag: dark-launched, default OFF (src/shared/services/feature-flags) — flipped on remotely once a
