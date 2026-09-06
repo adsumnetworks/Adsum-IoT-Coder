@@ -1418,6 +1418,92 @@ const LONG_TASK =
 	"disconnects during a GATT write without response and the buffer is still queued"
 const DEEP = "/home/dev/customers/northwind/firmware/gateways/lew840x-rev-c/application-esp32-side"
 
+/**
+ * The register gate, screens 1–3 of the approved mockup.
+ *
+ * Anonymous is the default state of this surface, so these are what most people actually see the
+ * first time: everything above the cellular group works with no account at all, and the group below
+ * says plainly what a free one adds.
+ */
+export const EntryCellularLocked: Story = {
+	decorators: [createStoryDecorator(entryState({ openFolderPaths: [], taskHistory: [], adsumAccount: undefined }))],
+	args: {},
+}
+
+/** Screen 2 — their own nRF9160 is the reason, so the hint names it rather than advertising. */
+export const EntryCellularBoardHint: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [],
+				adsumAccount: undefined,
+				nrfEnvironment: {
+					status: "ready",
+					extensionPresent: true,
+					nrfutilPresent: true,
+					boards: [{ productName: "nRF9160 DK", serialNumber: "960044501234" }],
+				},
+			}),
+		),
+	],
+	args: {},
+}
+
+/** Screen 3 — the gate itself, opened from the first locked card. */
+export const EntryGateOpen: Story = {
+	decorators: [createStoryDecorator(entryState({ openFolderPaths: [], taskHistory: [], adsumAccount: undefined }))],
+	args: {},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement)
+		await userEvent.click(await canvas.findByTestId("cellular-card-cellularGateway"))
+		await expect(await canvas.findByTestId("gate-panel")).toBeTruthy()
+	},
+}
+
+/**
+ * Screen 5 — the minute after signing in: what you unlocked, the one thing you can run now, then the
+ * four cards that are no longer locked, and the account chip beside Environment.
+ */
+export const EntryCellularUnlocked: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [],
+				adsumUnlockedShow: true,
+				adsumAccount: {
+					email: "ismail@adsumnetworks.com",
+					name: "Ismail",
+					emailVerified: true,
+					groups: ["cellular-advanced", "edge-ai-advanced", "lew840x-demo-hex"],
+				},
+			}),
+		),
+	],
+	args: {},
+}
+
+/** The same person a week later: the one-time card is gone, the demo card and the live cards remain. */
+export const EntryRegisteredSettled: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [],
+				adsumUnlockedShow: false,
+				adsumAccount: {
+					email: "ismail@adsumnetworks.com",
+					name: "Ismail",
+					emailVerified: true,
+					groups: ["cellular-advanced", "edge-ai-advanced", "lew840x-demo-hex"],
+				},
+			}),
+		),
+	],
+	args: {},
+}
+
 export const EntryHeavyHistory: Story = {
 	decorators: [
 		createStoryDecorator(

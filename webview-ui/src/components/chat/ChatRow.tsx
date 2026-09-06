@@ -35,7 +35,9 @@ import {
 import { MouseEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSize } from "react-use"
 import { KbitCredit, parseKbitPayload } from "@/components/chat/KbitCredit"
+import { KbitLockedRow, parseKbitLockedPayload } from "@/components/chat/KbitLockedRow"
 import { OptionsButtons } from "@/components/chat/OptionsButtons"
+import GatePanel from "@/components/chat/welcome/GatePanel"
 import { CheckmarkControl } from "@/components/common/CheckmarkControl"
 import { WithCopyButton } from "@/components/common/CopyButton"
 import McpResponseDisplay from "@/components/mcp/chat-display/McpResponseDisplay"
@@ -177,6 +179,10 @@ export const ChatRowContent = memo(
 
 		// Command output expansion state (for all messages, but only used by command messages)
 		const [isOutputFullyExpanded, setIsOutputFullyExpanded] = useState(false)
+		// The register gate, opened from a locked-bit row. It lives here rather than at the view level so
+		// the panel appears over the conversation the developer is looking at, next to the row that
+		// prompted it — a modal that opens somewhere else reads as a different question.
+		const [gateOpen, setGateOpen] = useState(false)
 		const prevCommandExecutingRef = useRef<boolean>(false)
 
 		const hasAutoExpandedRef = useRef(false)
@@ -972,6 +978,22 @@ export const ChatRowContent = memo(
 						// by KbitGroupRenderer, so this single-message path only ever renders one bit.
 						const bit = parseKbitPayload(message.text)
 						return bit ? <KbitCredit bits={[bit]} /> : null
+					}
+					case "kbit_locked": {
+						// A bit the registry refused. The task kept going — this row says what it went without,
+						// and credits whoever curated it exactly as a loaded bit would: gating access is a
+						// commercial decision, taking the byline off would be a different and worse one.
+						const locked = parseKbitLockedPayload(message.text)
+						return locked ? (
+							<>
+								<KbitLockedRow
+									bit={locked}
+									onRegister={() => setGateOpen(true)}
+									onRequestAccess={() => setGateOpen(true)}
+								/>
+								<GatePanel onClose={() => setGateOpen(false)} open={gateOpen} surface="chat" />
+							</>
+						) : null
 					}
 					case "cve_scan_progress": {
 						// Animated liveness row for the blocking CVE scan (prominent spinner + live elapsed timer

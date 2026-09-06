@@ -53,6 +53,14 @@ export type PrecedenceReason =
 	| "offline-uncached"
 	/** The bundled copy itself could not be read — reported so a caller can log it. */
 	| "unreadable"
+	/**
+	 * The registry answered 402: this bit exists and is not this account's yet.
+	 *
+	 * Distinct from every other reason here because it is the only one the developer can DO something
+	 * about, and the only one where falling back silently would be a lie — there is no older copy to
+	 * serve, and reporting it as "fetch-failed" would blame the network for a gate.
+	 */
+	| "locked"
 
 export type PrecedenceChoice<B, R> =
 	/** A dev-only local file (`ADSUM_KBIT_LOCAL`) — an author editing a bit under F5. */
@@ -239,6 +247,8 @@ export function reasonText(reason: PrecedenceReason): string {
 			return "registry copy failed hash verification"
 		case "parse-failed":
 			return "registry copy could not be parsed"
+		case "locked":
+			return "this account does not hold the entitlement for it"
 		case "offline-uncached":
 			return "registry override unavailable offline"
 		case "unreadable":

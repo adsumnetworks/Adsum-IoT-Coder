@@ -26,6 +26,35 @@ export const KBIT_STATUS = ["draft", "published", "deprecated", "revoked"] as co
 // so every bit published before this field existed stays free by construction — the no-rug-pull rule
 // enforced by the default rather than by an audit.
 export const KBIT_ACCESS = ["free", "pro"] as const
+// Entitlement groups — the ENTITLEMENT axis, separate again from `access` and `delivery`.
+//
+// `access` says a bit is commercial; `group` says WHICH entitlement unlocks it, and entitlements are
+// granted to accounts, never derived from a version. That distinction is the whole design: `min_ext`
+// remains a compatibility floor (a client older than 0.4.0 reports a 402 as "bit missing", so a gated
+// bit must not reach one), and who may read a bit is an assignment the operator makes — by hand from
+// the admin page today, by a purchase webhook later, writing the same row either way.
+//
+// ABSENT ⇒ free to everyone, which keeps the no-rug-pull rule true by construction for every bit
+// published before this field existed.
+export const KBIT_GROUPS = [
+	// knowledge
+	"cellular-advanced", // LTE-M / NB-IoT / NTN / DECT NR+ beyond chip-and-DK basics
+	"edge-ai-advanced", // on-device inference (nRF54 Axon)
+	// Fanstel LEW840x gateway artefacts
+	"lew840x-demo-hex", // the three signed demo hexes (cellular capped at 60 min per boot)
+	"lew840x-prod-hex", // the same builds without the cap — granted by hand for pilots
+	"lew840x-ble-src",
+	"lew840x-esp-src",
+	"lew840x-9160-src",
+	// Fanstel BLG20 gateway artefacts (same ladder, published as the port lands)
+	"blg20-demo-hex",
+	"blg20-prod-hex",
+	"blg20-ble-src",
+	"blg20-esp-src",
+	"blg20-9151-src",
+	// staff / partner catch-all: holding it satisfies every other group
+	"all",
+] as const
 // How a tool bit's entry point is executed. `node` runs under VS Code's own Node (process.execPath),
 // so it needs nothing installed — the default choice for new tools. `python3` needs a system
 // interpreter (probed at resolve time, and said so in the advertisement when missing).
@@ -100,6 +129,10 @@ const artifactEntry = z
 		sha256: z.string().regex(/^[0-9a-f]{64}$/, "sha256 must be 64 lowercase hex characters"),
 		// Only for `runtime: native`, where one bundle carries a build per platform.
 		platform: z.enum(["darwin-arm64", "darwin-x64", "linux-x64", "linux-arm64", "win32-x64"]).optional(),
+		// Entitlement for THIS member, when a bundle mixes payloads: the gateway seeds ship a free
+		// no-LTE variant beside a demo hex and licensed source, and they are one bit with one history.
+		// Absent ⇒ the bit's own `group` applies, and if that is absent too, the member is free.
+		group: z.enum(KBIT_GROUPS).optional(),
 	})
 	.strict()
 
@@ -146,6 +179,8 @@ export const kbitMetaSchema = z
 		// ── commercial + executable fields ───────────────────────────────────────────────────────
 		// Absent ⇒ free. See KBIT_ACCESS.
 		access: z.enum(KBIT_ACCESS).optional(),
+		// Which entitlement unlocks this bit. Absent ⇒ nobody needs anything. See KBIT_GROUPS.
+		group: z.enum(KBIT_GROUPS).optional(),
 		// ── tool bits (`type: tool`) ─────────────────────────────────────────────────────────────
 		// A tool bit is this descriptor plus a bundle of files. The host materialises the bundle,
 		// writes a launcher, and advertises `<launcher> <usage>` in the prompt; the model runs it with
@@ -259,11 +294,29 @@ export const kbitMetaSchema = z
 		message: `a pro bit must declare min_ext >= ${PRO_AWARE_MIN_EXT} (older clients report a paywall as "registry unreachable")`,
 		path: ["min_ext"],
 	})
+	// R3 — an entitled bit is gated the same way, so it needs the same 402-aware floor. Without this a
+	// 0.3.x client would report "bit missing" for a bit that exists and is simply not theirs yet.
+	.refine(
+		(d) => {
+			const gated = !!d.group || !!d.artifacts?.some((a) => !!a.group)
+			return !gated || (!!d.min_ext && !semverLt(d.min_ext, PRO_AWARE_MIN_EXT))
+		},
+		{
+			message: `a bit with an entitlement group must declare min_ext >= ${PRO_AWARE_MIN_EXT} (older clients report a gate as "bit missing")`,
+			path: ["min_ext"],
+		},
+	)
+	// A gated bit must be fetched, not shipped: a bundled bit is already on the developer's disk.
+	.refine((d) => !d.group || d.delivery === "downloaded", {
+		message: "an entitlement group requires delivery: downloaded (a bundled bit is already on disk)",
+		path: ["group"],
+	})
 
 export type KBitMeta = z.infer<typeof kbitMetaSchema>
 export type KBitType = (typeof KBIT_TYPES)[number]
 export type KBitSafety = (typeof KBIT_SAFETY)[number]
 export type KBitAccess = (typeof KBIT_ACCESS)[number]
+export type KBitGroup = (typeof KBIT_GROUPS)[number]
 export type KBitRuntime = (typeof KBIT_RUNTIMES)[number]
 export type KBitArtifact = z.infer<typeof artifactEntry>
 export type KBitStatus = (typeof KBIT_STATUS)[number]

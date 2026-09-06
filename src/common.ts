@@ -18,6 +18,7 @@ import { initDemoManager } from "./core/demos/DemoManager"
 import { StateManager } from "./core/storage/StateManager"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { ExtensionRegistryInfo } from "./registry"
+import { initAccountState, onAccountChanged } from "./services/adsum/AccountState"
 import { loadCachedQuota, registerInstallIfNeeded } from "./services/adsum/FreeTierService"
 import { initFreeTierPersistence, setFreeTierActive } from "./services/adsum/FreeTierState"
 import { initializeInstallId } from "./services/adsum/InstallIdentity"
@@ -26,7 +27,7 @@ import { BannerService } from "./services/banner/BannerService"
 import { audioRecordingService } from "./services/dictation/AudioRecordingService"
 import { ErrorService } from "./services/error"
 import { featureFlagsService } from "./services/feature-flags"
-import { __setKbitTelemetry, setPrecedenceEnv } from "./services/knowledge/KnowledgeResolver"
+import { __setKbitTelemetry, invalidateForAccountChange, setPrecedenceEnv } from "./services/knowledge/KnowledgeResolver"
 import { getDistinctId, initializeDistinctId, setDistinctId } from "./services/logging/distinctId"
 import { getCachedWorkspaceFeatures, getCachedWorkspaceSummary } from "./services/platform/WorkspaceClassifier"
 import { telemetryService } from "./services/telemetry"
@@ -64,6 +65,13 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 
 	// Initialize stable anonymous install ID for Adsum free-tier proxy
 	const installId = await initializeInstallId(context)
+	// The signed-in account, if there is one. Seeded from the keychain and refreshed in the background:
+	// the panel must be able to paint a locked card on the first frame, before any network call.
+	initAccountState()
+	// A grant that lands (or is revoked) has to reach the knowledge tier without a restart. The manifest
+	// is now entitlement-filtered server-side, so dropping the memo is the whole fix: the next resolve
+	// revalidates and the reconcile purges exactly the blobs the new catalog no longer lists.
+	onAccountChanged(() => invalidateForAccountChange())
 
 	// Unify the telemetry/feature-flag person key on the Adsum install_id so the host
 	// client funnel joins the backend's install_id person-space in PostHog. Host events

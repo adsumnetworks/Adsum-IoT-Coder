@@ -21,6 +21,22 @@ export class TerminalRegistry {
 	private static nextTerminalId = 1
 	private static extensionUri: vscode.Uri | undefined
 
+	/**
+	 * The terminal tab's name and icon, in ONE place. Both paths that create a terminal read this, so
+	 * they cannot drift again — they had, and a command run through the hostbridge opened a tab
+	 * labelled "Cline" beside tabs labelled "Adsum IoT Coder".
+	 *
+	 * The mark, never a wordmark: a tab renders this at 16 px, where lettering is a smudge.
+	 */
+	static terminalIdentity(): { name: string; iconPath: vscode.Uri | vscode.ThemeIcon } {
+		return {
+			name: "Adsum IoT Coder",
+			iconPath: TerminalRegistry.extensionUri
+				? vscode.Uri.joinPath(TerminalRegistry.extensionUri, "assets", "icons", "icon.svg")
+				: new vscode.ThemeIcon("adsum-iot-coder-icon"),
+		}
+	}
+
 	static setExtensionUri(uri: vscode.Uri) {
 		TerminalRegistry.extensionUri = uri
 	}
@@ -28,10 +44,7 @@ export class TerminalRegistry {
 	static createTerminal(cwd?: string | vscode.Uri | undefined, shellPath?: string): TerminalInfo {
 		const terminalOptions: vscode.TerminalOptions = {
 			cwd,
-			name: "Adsum IoT Coder",
-			iconPath: TerminalRegistry.extensionUri
-				? vscode.Uri.joinPath(TerminalRegistry.extensionUri, "assets", "icons", "icon.svg")
-				: new vscode.ThemeIcon("adsum-iot-coder-icon"),
+			...TerminalRegistry.terminalIdentity(),
 			env: {
 				CLINE_ACTIVE: "true",
 			},

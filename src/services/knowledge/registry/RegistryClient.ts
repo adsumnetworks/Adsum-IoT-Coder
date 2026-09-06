@@ -3,6 +3,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { ClineEnv } from "@/config"
 import { ExtensionRegistryInfo } from "@/registry"
+import { getSessionToken } from "@/services/adsum/AccountState"
 import { getInstallId } from "@/services/adsum/InstallIdentity"
 import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { getEditorIdentity } from "@/services/telemetry/editorIdentity"
@@ -66,6 +67,8 @@ export interface DownloadedManifestEntry {
 	author?: string
 	platform?: string
 	owner?: string
+	/** The entitlement group this bit needs, when it has one. Absent ⇒ free to everyone. */
+	group?: string
 	[k: string]: unknown
 }
 
@@ -82,6 +85,18 @@ type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
  * (a rolled-back backend, say) which must stay silent.
  */
 export type ArtifactFetch = { kind: "ok"; bytes: Buffer } | { kind: "locked" } | { kind: "absent" } | { kind: "unreachable" }
+
+/**
+ * Thrown by the text path when the registry answers 402: the bit exists and is simply not this
+ * account's yet. An exception rather than a null because every existing caller of `get()` already
+ * reads null as "no such bit", and those two must never be confused at any of those call sites.
+ */
+export class RegistryLockedError extends Error {
+	constructor(public readonly path: string) {
+		super(`registry: entitlement required for ${path}`)
+		this.name = "RegistryLockedError"
+	}
+}
 
 export class RegistryClient {
 	constructor(
@@ -196,6 +211,15 @@ export class RegistryClient {
 				// token-holder's own drafts, never anyone else's.
 				if (this.authorToken) {
 					headers.Authorization = `Bearer ${this.authorToken}`
+				} else {
+					// The signed-in developer's own bearer, when there is one. It is what decides which
+					// entitlement groups the registry will serve — and so what turns a locked bit into a
+					// readable one. The author token wins where both exist: that is a curator inspecting
+					// their own drafts, which is a different question from what this account may read.
+					const session = getSessionToken()
+					if (session) {
+						headers.Authorization = `Bearer ${session}`
+					}
 				}
 				const res = await this.fetchImpl(url, {
 					method: "GET",
@@ -204,6 +228,12 @@ export class RegistryClient {
 				})
 				if (res.ok) {
 					return await res.text()
+				}
+				// 402 is not "missing" — it is "not yours yet", and the difference is the whole gate. Read
+				// as absent, a locked bit looks to the developer (and to the agent) like a broken registry,
+				// and the one thing they could do about it — register — is never offered.
+				if (res.status === 402) {
+					throw new RegistryLockedError(path)
 				}
 				// 4xx = permanent (bit genuinely absent / bad request) → fail fast, no retry.
 				// 5xx = transient server error → fall through to retry.
@@ -242,6 +272,15 @@ export class RegistryClient {
 				const headers: Record<string, string> = { Accept: "application/octet-stream", ...this.identityHeaders() }
 				if (this.authorToken) {
 					headers.Authorization = `Bearer ${this.authorToken}`
+				} else {
+					// The signed-in developer's own bearer, when there is one. It is what decides which
+					// entitlement groups the registry will serve — and so what turns a locked bit into a
+					// readable one. The author token wins where both exist: that is a curator inspecting
+					// their own drafts, which is a different question from what this account may read.
+					const session = getSessionToken()
+					if (session) {
+						headers.Authorization = `Bearer ${session}`
+					}
 				}
 				const res = await this.fetchImpl(url, { method: "GET", headers, signal: controller.signal })
 				if (res.ok) {

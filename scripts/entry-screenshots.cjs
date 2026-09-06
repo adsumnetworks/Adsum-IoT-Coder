@@ -39,17 +39,22 @@ const STORIES = [
 	const b = await chromium.launch()
 	const errs = []
 	for (const [id, name] of STORIES) {
-		for (const [theme, cls] of [
-			["dark", "dark"],
-			["light", "light"],
-		]) {
+		for (const theme of ["dark", "light"]) {
 			for (const [w, label] of [
 				[420, "sidebar"],
 				[900, "editor"],
 			]) {
+				// The theme is a Storybook GLOBAL, not the browser's colour-scheme preference: the webview
+				// paints from --vscode-* variables the preview decorator sets. Passing colorScheme alone
+				// rendered dark twice and filed one of them as "light", which is worse than not checking.
 				const p = await b.newPage({ viewport: { width: w, height: 820 }, colorScheme: theme })
 				p.on("pageerror", (e) => errs.push(`${name}/${theme}/${label}: ${e.message}`))
-				await p.goto(`http://127.0.0.1:6199/iframe.html?id=${id}&viewMode=story`, { waitUntil: "networkidle" })
+				await p.goto(
+					`http://127.0.0.1:6199/iframe.html?id=${id}&viewMode=story&globals=theme:${theme === "dark" ? "vs_dark" : "vs_light"}`,
+					{
+						waitUntil: "networkidle",
+					},
+				)
 				await p.waitForTimeout(700)
 				await p.screenshot({ path: `${OUT}/${name}-${theme}-${label}.png` })
 				await p.close()

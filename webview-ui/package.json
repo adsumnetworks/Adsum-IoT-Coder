@@ -13,7 +13,8 @@
 		"test:watch": "vitest dev",
 		"test:coverage": "vitest run --coverage",
 		"storybook": "storybook dev -p 6006",
-		"build-storybook": "storybook build"
+		"build-storybook": "storybook build",
+		"screens": "node scripts/screens.mjs"
 	},
 	"dependencies": {
 		"@floating-ui/react": "^0.27.4",

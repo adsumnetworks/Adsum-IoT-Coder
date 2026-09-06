@@ -9,6 +9,7 @@ import { cleanupLegacyCheckpoints } from "@integrations/checkpoints/CheckpointMi
 import { isCheckpointsNotApplicableMessage } from "@integrations/checkpoints/CheckpointUtils"
 import { ClineAccountService } from "@services/account/ClineAccountService"
 import { McpHub } from "@services/mcp/McpHub"
+import { ADSUM_REGISTERED_BANNER } from "@shared/adsumAccount"
 import type { ApiProvider, ModelInfo } from "@shared/api"
 import type { ChatContent } from "@shared/ChatContent"
 import type { ExtensionState, Platform } from "@shared/ExtensionMessage"
@@ -30,6 +31,7 @@ import type * as vscode from "vscode"
 import { ClineEnv } from "@/config"
 import { HostProvider } from "@/hosts/host-provider"
 import { ExtensionRegistryInfo } from "@/registry"
+import { getAccount, onAccountChanged } from "@/services/adsum/AccountState"
 import { getFreeTierTokensForDisplay } from "@/services/adsum/FreeTierState"
 import { AuthService } from "@/services/auth/AuthService"
 import { OcaAuthService } from "@/services/auth/oca/OcaAuthService"
@@ -45,6 +47,7 @@ import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { getCachedWorkspaceFeatures, getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { telemetryService } from "@/services/telemetry"
 import { BannerCardData } from "@/shared/cline/banner"
+import { AGENT_HANDOVER_ENABLED } from "@/shared/handover"
 import { getAxiosSettings } from "@/shared/net"
 import { ShowMessageType } from "@/shared/proto/host/window"
 import { FeatureFlag } from "@/shared/services/feature-flags/feature-flags"
@@ -119,6 +122,10 @@ export class Controller {
 	 * Starts the periodic remote config fetching timer
 	 * Fetches immediately and then every hour
 	 */
+	/** Stops the account listener when the panel goes away — a listener on a dead controller would
+	 *  post state into nothing every hour. */
+	private unsubscribeAccount?: () => void
+
 	private startRemoteConfigTimer() {
 		// Initial fetch
 		fetchRemoteConfig(this)
@@ -141,6 +148,10 @@ export class Controller {
 				await this.postStateToWebview()
 			},
 		})
+		// The account can change without anyone clicking: the hourly refresh may pick up a group granted
+		// in the admin page, or find the session revoked. Either way the panel has to repaint, or a card
+		// stays locked (or unlocked) against the truth until the next restart.
+		this.unsubscribeAccount = onAccountChanged(() => void this.postStateToWebview())
 		this.authService = AuthService.getInstance(this)
 		this.ocaAuthService = OcaAuthService.initialize(this)
 		this.accountService = ClineAccountService.getInstance()
@@ -176,6 +187,9 @@ export class Controller {
 			clearInterval(this.remoteConfigTimer)
 			this.remoteConfigTimer = undefined
 		}
+
+		this.unsubscribeAccount?.()
+		this.unsubscribeAccount = undefined
 
 		await this.clearTask()
 		this.mcpHub.dispose()
@@ -1017,7 +1031,28 @@ export class Controller {
 			espEnvironment: getCachedEspEnvironment(),
 			workspaceClassification: getCachedWorkspaceSummary(),
 			workspaceFeatures: getCachedWorkspaceFeatures(),
-			handoverUi: getHandoverUiState(),
+			// Feature off for this release (AGENT_HANDOVER_ENABLED): sending nothing is what makes every
+			// webview surface that keys on `handoverUi` inert — the banner, the session view, the recap,
+			// and `useRunTarget`'s conductor overlay — without a guard in each of them.
+			handoverUi: AGENT_HANDOVER_ENABLED ? getHandoverUiState() : undefined,
+			// Absent ⇒ nobody is signed in, which is what locks the cellular cards. The bearer stays in
+			// the keychain: the panel is told WHAT is unlocked, never given the means to unlock it.
+			adsumAccount: (() => {
+				const a = getAccount()
+				return a
+					? {
+							email: a.email,
+							name: a.name,
+							emailVerified: a.emailVerified,
+							groups: a.groups,
+							openRequests: a.openRequests ?? [],
+						}
+					: undefined
+			})(),
+			// The one-time "what you unlocked" card. Computed here, not in the panel, so it uses the same
+			// dismissal ledger every other one-time card uses — and so a dismissal survives a reload
+			// rather than coming back on the next paint.
+			adsumUnlockedShow: !!getAccount() && !BannerService.get().isBannerDismissed(ADSUM_REGISTERED_BANNER),
 			queuedUserMessages: this.task?.noteQueue.snapshot(),
 			// One-time "leave a review" nudge — three independent gates must ALL hold:
 			//   1. flag: dark-launched, default OFF (src/shared/services/feature-flags) — flipped on remotely once a

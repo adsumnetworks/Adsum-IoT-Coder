@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.3.2",
+	"version": "0.4.0",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.84.0"
@@ -322,6 +322,22 @@
 			],
 			"commandPalette": [
 				{
+					"command": "adsum-iot-coder.handoverToAgent",
+					"when": "adsum.agentHandover"
+				},
+				{
+					"command": "adsum-iot-coder.continueHandoverHere",
+					"when": "adsum.agentHandover"
+				},
+				{
+					"command": "adsum-iot-coder.watchHandover",
+					"when": "adsum.agentHandover"
+				},
+				{
+					"command": "adsum-iot-coder.showHandoverWorklog",
+					"when": "adsum.agentHandover"
+				},
+				{
 					"command": "adsum-iot-coder.generateGitCommitMessage",
 					"when": "config.git.enabled && !adsum-iot-coder.isGeneratingCommit"
 				},
@@ -373,8 +389,8 @@
 						"always",
 						"off"
 					],
-					"default": "auto",
-					"markdownDescription": "How Adsum behaves when no inference model is configured. `auto`: if no provider/key is set, card execution defaults to handing over to your own coding agent (Adsum conducts: knowledge, toolchain commands, tracking, snapshots — zero Adsum tokens). `always`: conductor mode even when a provider is configured. `off`: never suggest conductor mode."
+					"default": "off",
+					"markdownDescription": "**(Not available in this release.)** How Adsum behaves when no inference model is configured. `auto`: if no provider/key is set, card execution defaults to handing over to your own coding agent (Adsum conducts: knowledge, toolchain commands, tracking, snapshots — zero Adsum tokens). `always`: conductor mode even when a provider is configured. `off`: never suggest conductor mode."
 				},
 				"adsum-iot-coder.modelPricing": {
 					"type": "object",
@@ -522,6 +538,11 @@
 		"report-issue": "node scripts/report-issue.js",
 		"storybook": "cd webview-ui && npm run storybook",
 		"test:handover": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/handover/handover.test.ts",
+		"test:handover-disabled": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/handover/handoverDisabled.node-test.ts",
+		"test:account": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/adsum/account.node-test.ts",
+		"test:entitlement-cache": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/entitlementCache.node-test.ts",
+		"test:terminal-identity": "ts-node --transpile-only -P tsconfig.unit-test.json src/hosts/vscode/terminal/terminalIdentity.node-test.ts",
+		"test:host-e2e": "CLINE_ENVIRONMENT=local ts-node --transpile-only -P tsconfig.unit-test.json src/services/adsum/hostE2e.node-test.ts",
 		"test:provider": "ts-node --transpile-only -P tsconfig.unit-test.json src/shared/proto-conversions/models/api-configuration-conversion.test.ts",
 		"test:session-export": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/session-export/sessionExport.test.ts",
 		"test:usage-split": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/api/transform/openai-usage.test.ts",
