@@ -1,5 +1,6 @@
 import { ExecuteCommandInTerminalRequest, ExecuteCommandInTerminalResponse } from "@shared/proto/host/workspace"
 import * as vscode from "vscode"
+import { TerminalRegistry } from "@/hosts/vscode/terminal/VscodeTerminalRegistry"
 
 /**
  * Executes a command in a new terminal
@@ -10,10 +11,15 @@ export async function executeCommandInTerminal(
 	request: ExecuteCommandInTerminalRequest,
 ): Promise<ExecuteCommandInTerminalResponse> {
 	try {
-		// Create terminal with fixed options
+		// The SAME name and icon TerminalRegistry uses. These two are the only places a terminal is
+		// created, and they disagreed: a command run through this path opened a tab labelled "Cline"
+		// with Cline's robot, beside tabs from the other path labelled "Adsum IoT Coder". The developer
+		// sees one product; the tab strip should not say otherwise.
+		//
+		// The mark, never a wordmark: a terminal tab renders this at 16 px, where anything with
+		// lettering in it is a smudge.
 		const terminalOptions: vscode.TerminalOptions = {
-			name: "Cline",
-			iconPath: new vscode.ThemeIcon("cline-icon"),
+			...TerminalRegistry.terminalIdentity(),
 			env: {
 				CLINE_ACTIVE: "true",
 			},
