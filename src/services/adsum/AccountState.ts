@@ -28,6 +28,12 @@ export interface AccountProfile {
 	emailVerified: boolean
 	/** Entitlement groups this account holds. `all` satisfies every group. */
 	groups: string[]
+	/** Families with a template-source request still open, as the SERVER sees it. Rendering "request
+	 *  sent" from this rather than from a local flag is what makes a second machine agree, and what
+	 *  makes a decided request stop showing as pending without anyone clicking.
+	 *  OPTIONAL: a profile cached before this field existed must still load, and an older backend
+	 *  simply does not send it — neither is a reason to sign anyone out. */
+	openRequests?: string[]
 	/** When this snapshot was taken (ms since epoch) — drives the hourly refresh, not the UI. */
 	fetchedAt: number
 }
