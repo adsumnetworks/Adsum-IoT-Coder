@@ -239,7 +239,7 @@ const AccountSection: React.FC<AccountSectionProps> = ({ renderSectionHeader }) 
 				</div>
 			)}
 
-			<GatePanel onClose={() => setGate(false)} open={gate} surface="settings" />
+			<GatePanel onClose={() => setGate(false)} open={gate} satisfied={!!adsumAccount} surface="settings" />
 			<RequestAccessForm onClose={() => setRequesting(false)} open={requesting} />
 		</div>
 	)

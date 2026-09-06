@@ -18,6 +18,8 @@ export type GateVariant = "default" | "offline" | "verify"
 
 interface GatePanelProps {
 	open: boolean
+	/** What this gate was opened to get. Once it is true, the gate has nothing left to ask and closes. */
+	satisfied?: boolean
 	variant?: GateVariant
 	/** Shown in the verify state so the developer can see WHICH address to go and open. */
 	email?: string
@@ -48,12 +50,30 @@ const PROVIDERS: { id: "github" | "email"; label: string; icon: string; primary?
 	{ id: "email", label: "Continue with email", icon: "mail" },
 ]
 
-const GatePanel: React.FC<GatePanelProps> = ({ open, variant = "default", email, onClose, surface }) => {
+const GatePanel: React.FC<GatePanelProps> = ({ open, satisfied = false, variant = "default", email, onClose, surface }) => {
 	const dialogRef = useRef<HTMLDivElement>(null)
 	const [busy, setBusy] = useState<string | null>(null)
 	// If the browser could not be opened, the URL is the fallback — a link the developer can copy is
 	// a better answer than a toast that says it failed.
 	const [manualUrl, setManualUrl] = useState<string | null>(null)
+
+	/**
+	 * Getting what it asked for closes the gate.
+	 *
+	 * Watched on a real desk with the shipped build: sign-in completes in the browser, the callback
+	 * lands, the four cards behind unlock — and the scrim is still up, still saying "Register to unlock
+	 * cellular" over them. The developer did the thing and the panel kept asking for it.
+	 *
+	 * `satisfied` is the CALLER's condition, not "an account exists". A signed-in developer whose
+	 * account is missing one group still meets this panel at that card, and closing it under them
+	 * because they hold *some* account would take away the only route they have to ask for the one
+	 * they do not.
+	 */
+	useEffect(() => {
+		if (open && satisfied) {
+			onClose()
+		}
+	}, [open, satisfied, onClose])
 
 	// Esc closes, and focus lands inside the dialog so the keyboard is not stranded behind the scrim.
 	useEffect(() => {
