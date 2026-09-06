@@ -24,7 +24,15 @@ export class SharedUriHandler {
 			"SharedUriHandler: Processing URI:" +
 				JSON.stringify({
 					path: path,
-					query: query,
+					// The KEYS, never the values: a sign-in callback carries a one-time code and a nonce,
+					// and neither belongs in a log file. Spelling out the keys is what makes "the callback
+					// arrived but carried nothing" distinguishable from "it carried the wrong thing".
+					//
+					// This was `query: query` — a URLSearchParams, which JSON.stringify renders as `{}`
+					// whatever it holds, because it has no enumerable own properties. Every callback
+					// therefore logged an empty query and looked like it had lost its parameters. That
+					// cost real time chasing a parsing bug that was never there.
+					queryKeys: [...query.keys()],
 					scheme: parsedUrl.protocol,
 				}),
 		)

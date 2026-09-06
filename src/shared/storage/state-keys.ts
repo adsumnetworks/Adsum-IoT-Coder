@@ -81,6 +81,21 @@ const GLOBAL_STATE_FIELDS = {
 			| { email: string; name: string; emailVerified: boolean; groups: string[]; fetchedAt: number }
 			| undefined,
 	},
+	/**
+	 * The one-time nonce for a sign-in currently in flight.
+	 *
+	 * It lives HERE, in globalState, rather than in the extension host's memory, because the window
+	 * that starts a sign-in is frequently not the window that finishes it. The browser hands the
+	 * callback back through a `vscode://` URL, and the OS routes that to whichever window it picks —
+	 * with more than one open, usually not the one holding the nonce. That window then had nothing to
+	 * match against and refused a callback that was entirely legitimate, and the developer watched a
+	 * completed browser sign-in do nothing at all. globalState is shared by every window of the
+	 * install, so whichever one receives the callback can check the nonce and finish the exchange.
+	 *
+	 * Not secret: a nonce is a CSRF binding, not a credential. It is single-use, it expires with the
+	 * one-time code it is bound to, and the bearer it becomes is in the keychain.
+	 */
+	adsumPendingSignIn: { default: undefined as { nonce: string; at: number } | undefined },
 	welcomeViewCompleted: { default: undefined as boolean | undefined },
 	mcpDisplayMode: { default: DEFAULT_MCP_DISPLAY_MODE as McpDisplayMode },
 	workspaceRoots: { default: undefined as WorkspaceRoot[] | undefined },
