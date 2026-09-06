@@ -192,14 +192,26 @@ describe("EnvStrip — compact / expand (A5)", () => {
 	// Codes verified against the NCS board definitions, not from memory; that also caught PCA10100,
 	// which was mapped to "nRF5340 DK" and is the nRF52833 DK.
 	it("names every Nordic DK the bench reports — no raw PCA codes leak to the strip", () => {
+		// Every pair verified against Nordic's own tables (nRF91 device guide, board-support list,
+		// Programmer supported-hardware) — never from memory, which is what put the two wrong rows here.
 		const expected: Record<string, string> = {
+			PCA10040: "nRF52 DK",
 			PCA10056: "nRF52840 DK",
+			PCA10090: "nRF9160 DK", // the REAL nRF9160 DK code
 			PCA10095: "nRF5340 DK",
 			PCA10100: "nRF52833 DK", // was wrong: mapped to nRF5340 DK
+			PCA10112: "nRF21540 DK", // was wrong: mapped to nRF9160 DK — this is the FEM kit
+			PCA10121: "nRF5340 Audio DK",
 			PCA10153: "nRF9161 DK",
 			PCA10156: "nRF54L15 DK",
 			PCA10171: "nRF9151 DK",
+			PCA10175: "nRF54H20 DK",
 			PCA10184: "nRF54LM20 DK", // the one the bench surfaced
+			PCA10188: "nRF54LV10 DK",
+			PCA10201: "nRF9151 SMA DK", // read off the operator's own kit via nrfutil, 6 Sep
+			PCA10214: "nRF54LS05 DK",
+			PCA10226: "nRF54LC10 DK",
+			PCA20065: "Nordic Thingy:91 X",
 		}
 		mockState({
 			nrfEnvironment: {
