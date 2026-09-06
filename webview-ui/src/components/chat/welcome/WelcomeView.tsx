@@ -7,6 +7,7 @@ import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "../brandColors"
 import { DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
+import CellularGroup from "./CellularGroup"
 import CraNudge from "./CraNudge"
 import DockCoachMark from "./DockCoachMark"
 import EntryDrawer, { type DrawerRun } from "./EntryDrawer"
@@ -609,6 +610,18 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 								))}
 							</>
 						)}
+						{/* Cellular & gateways, always present — locked until the developer registers, live after.
+						    It sits AFTER the suggested runs because it is a second offer, not a competing one:
+						    everything above works today with no account at all, and this group says plainly what
+						    a free account adds. Hiding it until sign-in would mean nobody ever learns it exists. */}
+						<CellularGroup
+							boards={signals.nrfBoards}
+							hasBle={signals.features.hasBle}
+							onSelectMode={onSelectMode}
+							onStartTask={onStartTask}
+							platform={platform}
+							projectName={projectName}
+						/>
 					</>
 				) : resumeSession ? null : (
 					<div

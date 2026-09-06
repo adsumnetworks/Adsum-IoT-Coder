@@ -14,4 +14,19 @@ service AdsumService {
   // Request value is the raw code; response value is a JSON-encoded
   // { grantedTokens, newQuota, sourceLabel }.
   rpc redeemInviteCode(StringRequest) returns (String);
+
+  // Opens the browser at the sign-in page for a provider ("github" | "google" | "email").
+  // The one-time code comes back through the vscode:// URI handler, never through this call.
+  // Response value is "" on success, or a short reason the browser could not be opened.
+  rpc startSignIn(StringRequest) returns (String);
+
+  // Ends the session here and on the server, so a lost machine actually loses access.
+  rpc signOutAccount(EmptyRequest) returns (Empty);
+
+  // Re-reads the profile now (the panel does this when it is shown, and after a grant is expected).
+  rpc refreshAccount(EmptyRequest) returns (Empty);
+
+  // Asks for access to a template-source family. Request value is JSON {family, chips[], message}.
+  // Response value is JSON {ok} or {ok:false, reason}.
+  rpc requestAccess(StringRequest) returns (String);
 }

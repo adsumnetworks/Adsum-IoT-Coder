@@ -30,6 +30,7 @@ import type * as vscode from "vscode"
 import { ClineEnv } from "@/config"
 import { HostProvider } from "@/hosts/host-provider"
 import { ExtensionRegistryInfo } from "@/registry"
+import { getAccount, onAccountChanged } from "@/services/adsum/AccountState"
 import { getFreeTierTokensForDisplay } from "@/services/adsum/FreeTierState"
 import { AuthService } from "@/services/auth/AuthService"
 import { OcaAuthService } from "@/services/auth/oca/OcaAuthService"
@@ -120,6 +121,10 @@ export class Controller {
 	 * Starts the periodic remote config fetching timer
 	 * Fetches immediately and then every hour
 	 */
+	/** Stops the account listener when the panel goes away — a listener on a dead controller would
+	 *  post state into nothing every hour. */
+	private unsubscribeAccount?: () => void
+
 	private startRemoteConfigTimer() {
 		// Initial fetch
 		fetchRemoteConfig(this)
@@ -142,6 +147,10 @@ export class Controller {
 				await this.postStateToWebview()
 			},
 		})
+		// The account can change without anyone clicking: the hourly refresh may pick up a group granted
+		// in the admin page, or find the session revoked. Either way the panel has to repaint, or a card
+		// stays locked (or unlocked) against the truth until the next restart.
+		this.unsubscribeAccount = onAccountChanged(() => void this.postStateToWebview())
 		this.authService = AuthService.getInstance(this)
 		this.ocaAuthService = OcaAuthService.initialize(this)
 		this.accountService = ClineAccountService.getInstance()
@@ -177,6 +186,9 @@ export class Controller {
 			clearInterval(this.remoteConfigTimer)
 			this.remoteConfigTimer = undefined
 		}
+
+		this.unsubscribeAccount?.()
+		this.unsubscribeAccount = undefined
 
 		await this.clearTask()
 		this.mcpHub.dispose()
@@ -1022,6 +1034,12 @@ export class Controller {
 			// webview surface that keys on `handoverUi` inert — the banner, the session view, the recap,
 			// and `useRunTarget`'s conductor overlay — without a guard in each of them.
 			handoverUi: AGENT_HANDOVER_ENABLED ? getHandoverUiState() : undefined,
+			// Absent ⇒ nobody is signed in, which is what locks the cellular cards. The bearer stays in
+			// the keychain: the panel is told WHAT is unlocked, never given the means to unlock it.
+			adsumAccount: (() => {
+				const a = getAccount()
+				return a ? { email: a.email, name: a.name, emailVerified: a.emailVerified, groups: a.groups } : undefined
+			})(),
 			queuedUserMessages: this.task?.noteQueue.snapshot(),
 			// One-time "leave a review" nudge — three independent gates must ALL hold:
 			//   1. flag: dark-launched, default OFF (src/shared/services/feature-flags) — flipped on remotely once a
