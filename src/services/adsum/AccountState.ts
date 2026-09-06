@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto"
 import { ClineEnv } from "@/config"
 import { StateManager } from "@/core/storage/StateManager"
 import { Logger } from "@/services/logging/Logger"
+import { telemetryService } from "@/services/telemetry"
 import { getInstallId } from "./InstallIdentity"
 
 /**
@@ -174,6 +175,10 @@ export async function completeSignIn(code: string, state: string): Promise<boole
 			fetchedAt: Date.now(),
 		}
 		persistProfile(cached)
+		// The far end of the funnel: gate_shown → signin_started → HERE. `groups` is a count, not a
+		// list — how much a new account opens is the interesting number; which grants they hold is not
+		// telemetry's business.
+		telemetryService.captureSignInCompleted({ groups: cached.groups.length })
 		notify()
 		return true
 	} catch (e) {
