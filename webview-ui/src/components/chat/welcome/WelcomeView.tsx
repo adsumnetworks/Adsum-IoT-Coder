@@ -490,6 +490,21 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							)}
 						</div>
 
+						{/* The receipt for the thing the developer just did, at the TOP.
+						    [OPERATOR 2026-09-06] It used to sit below the three suggested runs, next to the
+						    demo hex and the four cards it describes — the reasoning being "first the words,
+						    then the one thing they can run right now". Read in a real editor a second after
+						    the callback landed, that reasoning is wrong: this is not an offer competing with
+						    the runs, it is the ANSWER to an action, and an answer three cards down is not one.
+						    Dismissible, and once dismissed the panel is exactly what it was. */}
+						{adsumUnlockedShow && (
+							<UnlockedCard
+								onDismiss={() =>
+									StateServiceClient.dismissBanner({ value: ADSUM_REGISTERED_BANNER }).catch(console.error)
+								}
+							/>
+						)}
+
 						{isColdStart && !sampleRun ? (
 							<>
 								{/* The cold start. Every run below needs hardware this person may not have, and each
@@ -627,16 +642,6 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						    It sits AFTER the suggested runs because it is a second offer, not a competing one:
 						    everything above works today with no account at all, and this group says plainly what
 						    a free account adds. Hiding it until sign-in would mean nobody ever learns it exists. */}
-						{/* The order is the answer to "what did registering get me?": first the words, then
-						    the one thing they can run right now, then the four cards that are no longer
-						    locked. A developer who dismisses the first two still has the third. */}
-						{adsumUnlockedShow && (
-							<UnlockedCard
-								onDismiss={() =>
-									StateServiceClient.dismissBanner({ value: ADSUM_REGISTERED_BANNER }).catch(console.error)
-								}
-							/>
-						)}
 						<DemoHexCard onFlash={() => void onStartTask(DEMO_HEX_PROMPT)} />
 						<CellularGroup
 							boards={signals.nrfBoards}
