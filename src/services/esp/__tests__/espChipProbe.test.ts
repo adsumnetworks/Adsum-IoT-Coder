@@ -1,5 +1,6 @@
 import { describe, it } from "mocha"
 import "should"
+import { classifyEspProbeFailure, describeSerialBridge, espProbeAdvice, espUnresolvedDeviceLabel } from "@shared/esp"
 import { join } from "path"
 import { type IdfPythonDeps, idfToolsPath, parseEsptoolChip, parseEsptoolMac, resolveIdfPython } from "../espChipProbe"
 
@@ -225,5 +226,45 @@ describe("espChipProbe — resolveIdfPython", () => {
 	it("returns undefined when python_env is missing everywhere", () => {
 		const deps = make("linux", [], {})
 		;(resolveIdfPython(deps) === undefined).should.be.true()
+	})
+})
+
+/**
+ * The route, not just the chip — measured on the operator's own bench, 6 Sep.
+ *
+ * The board: a Fanstel LEW840x with the IOT-UART-ESP32-V1 bridge card on JS1. What the Mac saw:
+ *
+ *     /dev/cu.usbserial-0001
+ *     idVendor 0x10C4  idProduct 0xEA60  "CP2102 USB to UART Bridge Controller"  serial "0001"
+ *
+ * and what esptool v5.3.1 said to it:
+ *
+ *     A fatal error occurred: Failed to connect to Espressif device: No serial data received.
+ *
+ * A DTR/RTS-safe read of the same port returned 0 bytes in 2.5 s — no application banner either.
+ * Every string below is one of those, not an invention.
+ */
+describe("the ESP route — from the values the bench actually produced", () => {
+	it("names the bridge the board really presents, and refuses to name the board", () => {
+		describeSerialBridge(0x10c4, 0xea60)!.should.equal("CP2102 USB-UART bridge")
+		espUnresolvedDeviceLabel(0x10c4, 0xea60).should.equal("CP2102 USB-UART bridge · chip unconfirmed")
+		// The descriptors are Silicon Labs' stock ids with the default serial "0001" — shipped on
+		// thousands of unrelated boards. Nothing in them is Fanstel's, so nothing here may say so.
+		describeSerialBridge(0x10c4, 0xea60)!.should.not.match(/fanstel|lew840|iot-uart/i)
+	})
+
+	it("reads the real failure, and offers the selector before anything else", () => {
+		const said = "A fatal error occurred: Failed to connect to Espressif device: No serial data received."
+		classifyEspProbeFailure(said).should.equal("no-serial-data")
+		const advice = espProbeAdvice(classifyEspProbeFailure(said))!
+		advice.causes.length.should.equal(3)
+		advice.causes[0].what.should.match(/selector/i)
+		// The position by its silkscreen name — the developer is looking at the board, not at our prose.
+		advice.causes[0].what.should.match(/TO WIFI \(ESP\)/)
+		advice.causes[0].fix.should.match(/TO LOG|TO BLE/)
+		advice.causes[1].what.should.match(/switch/i)
+		advice.causes[2].what.should.match(/GPIO2/)
+		// No BOOT button on this board. Saying so is how a confident hint wastes an afternoon.
+		JSON.stringify(advice).should.not.match(/boot button/i)
 	})
 })

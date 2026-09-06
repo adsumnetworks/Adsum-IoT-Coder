@@ -32,6 +32,8 @@ export interface ChipResult {
 	chipRevision?: string
 	/** Chip base MAC (6 octets, e.g. "ac:eb:e6:0c:f8:c0"), parsed from esptool's connect banner when present. */
 	mac?: string
+	/** esptool's own words when nothing could be resolved — the only thing that can say WHY. */
+	stderr?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -263,7 +265,12 @@ export async function probeChip(idfPython: string, port: string, timeoutMs = 120
 				return salvaged
 			}
 		}
-		return {}
+		// Keep WHY. This used to return {} and throw esptool's own diagnosis away, which is why the strip
+		// could say a device was unidentified but never say what it had tried or what went wrong. esptool
+		// writes the fatal line to stdout on some versions and stderr on others; take both.
+		const e = err as { stdout?: string; stderr?: string; message?: string }
+		const said = [e?.stderr, e?.stdout, e?.message].filter((x): x is string => typeof x === "string" && !!x.trim())
+		return said.length > 0 ? { stderr: said.join("\n").trim().slice(0, 2000) } : {}
 	}
 }
 
