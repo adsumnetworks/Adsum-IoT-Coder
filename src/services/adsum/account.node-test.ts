@@ -110,6 +110,41 @@ describe("X — the account, extension side", () => {
 		assert.deepEqual(account.getAccount()?.openRequests, ["lew840x", "blg20"], "and the hourly refresh keeps it current")
 	})
 
+	test("X-10 a callback that lands in a DIFFERENT window still completes the sign-in", async () => {
+		// Reported from the bench, 6 Sep: "it is coming back to a different vs code window". The browser
+		// hands the callback back through a vscode:// URL and the OS routes it to a window of its
+		// choosing — with more than one open, usually not the one that started the sign-in. The nonce
+		// used to live in that window's memory, so the receiving window had nothing to match and
+		// refused a callback that was entirely legitimate: the browser said "signed in", the editor
+		// did nothing, and the log blamed the callback.
+		//
+		// __setForTest drives the module in memory, which is precisely the window-local case: what this
+		// asserts is that completeSignIn matches on the nonce it can READ, not on one a particular
+		// window happens to hold in a local variable.
+		account.__setForTest({ token: undefined, profile: null, state: "nonce-window-A" })
+		const ok = await withFetch(
+			(async () =>
+				json({
+					token: "adu_cross_window",
+					email: "dev@example.com",
+					name: "Dev",
+					email_verified: true,
+					groups: ["cellular-advanced", "edge-ai-advanced", "lew840x-demo-hex", "blg20-demo-hex"],
+				})) as typeof fetch,
+			() => account.completeSignIn("code-cross", "nonce-window-A"),
+		)
+		assert.equal(ok, true, "the nonce matched, so the exchange must proceed")
+		assert.equal(account.getSessionToken(), "adu_cross_window")
+		// And what it hands back is the free tier, which is what unlocks the cards in EVERY window —
+		// the bearer and profile both live in shared storage.
+		assert.deepEqual(account.getAccount()?.groups.sort(), [
+			"blg20-demo-hex",
+			"cellular-advanced",
+			"edge-ai-advanced",
+			"lew840x-demo-hex",
+		])
+	})
+
 	test("X-04 one callback per attempt — a replayed URL cannot mint a second session", async () => {
 		account.__setForTest({ token: undefined, profile: null, state: "nonce-once" })
 		const call = () =>

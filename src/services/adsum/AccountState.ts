@@ -43,7 +43,41 @@ type Listener = (profile: AccountProfile | null) => void
 
 let cached: AccountProfile | null = null
 let token: string | undefined
+/**
+ * The sign-in in flight. Held in globalState (shared by every window) with this as a local mirror,
+ * because the window that STARTS a sign-in is frequently not the one that finishes it: the browser
+ * hands the callback back through a `vscode://` URL and the OS routes that to a window of its
+ * choosing. With more than one open — the normal case — the receiving window had no nonce to match
+ * and refused a callback that was perfectly legitimate, so a completed browser sign-in did nothing.
+ * Reported from the bench, 6 Sep: "it is coming back to a different vs code window".
+ */
 let pendingState: { nonce: string; at: number } | undefined
+
+/** Read the pending sign-in, preferring the shared store so ANY window can complete the round trip. */
+function readPendingState(): { nonce: string; at: number } | undefined {
+	if (!ready) {
+		return pendingState
+	}
+	try {
+		return store().getGlobalStateKey("adsumPendingSignIn") ?? pendingState
+	} catch {
+		return pendingState
+	}
+}
+
+function writePendingState(next: { nonce: string; at: number } | undefined): void {
+	pendingState = next
+	if (!ready) {
+		return
+	}
+	try {
+		store().setGlobalState("adsumPendingSignIn", next)
+	} catch (e) {
+		// A sign-in that cannot record its nonce still works in the window that started it; it just
+		// loses the cross-window hand-back. Never fail the sign-in over it.
+		Logger.warn(`[account] could not persist the pending sign-in: ${e instanceof Error ? e.message : String(e)}`)
+	}
+}
 let ready = false
 const listeners: Listener[] = []
 
@@ -116,7 +150,7 @@ export function hasGroup(group: string | undefined): boolean {
  */
 export function buildSignInUrl(provider: "github" | "google" | "email", editorScheme: string): string {
 	const nonce = randomBytes(24).toString("base64url")
-	pendingState = { nonce, at: Date.now() }
+	writePendingState({ nonce, at: Date.now() })
 	const base = ClineEnv.config().adsumApiBaseUrl.replace(/\/$/, "")
 	const q = new URLSearchParams({ provider, redirect: editorScheme, state: nonce })
 	try {
@@ -132,12 +166,14 @@ export function buildSignInUrl(provider: "github" | "google" | "email", editorSc
  * because the caller is a URI handler and a thrown error there is invisible to the developer.
  */
 export async function completeSignIn(code: string, state: string): Promise<boolean> {
-	if (!pendingState || pendingState.nonce !== state) {
-		Logger.warn("[account] sign-in callback did not match a sign-in this window started — ignoring")
+	const pending = readPendingState()
+	if (!pending || pending.nonce !== state) {
+		Logger.warn("[account] sign-in callback did not match any sign-in in flight — ignoring")
 		return false
 	}
-	// One callback per attempt: a replayed URL must not mint a second session.
-	pendingState = undefined
+	// One callback per attempt: a replayed URL must not mint a second session. Cleared in the SHARED
+	// store, so a replay cannot be spent again by a different window either.
+	writePendingState(undefined)
 	try {
 		const base = ClineEnv.config().adsumApiBaseUrl.replace(/\/$/, "")
 		const body: Record<string, string> = { code, state }
@@ -256,7 +292,9 @@ export async function signOut(): Promise<void> {
 async function clear(): Promise<void> {
 	token = undefined
 	cached = null
-	pendingState = undefined
+	// Through the shared store: a nonce left behind in globalState would outlive the sign-out and let
+	// a stale callback land in any window afterwards.
+	writePendingState(undefined)
 	persistToken(undefined)
 	persistProfile(undefined)
 	notify()
