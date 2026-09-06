@@ -43,6 +43,10 @@ export const AdsumFreeProvider = ({ currentMode: _currentMode, isPopup: _isPopup
 				No API key required — inference is provided by Adsum Networks. When your free usage runs out, you can add your own
 				API key (any provider) for unlimited access.
 			</p>
+			<p className="m-0 mt-2 text-sm" style={{ color: "var(--vscode-descriptionForeground)" }}>
+				Adsum also chooses the model and how hard it thinks on this tier, so the thinking controls shown for other
+				providers do not apply here. Add your own key to set them yourself.
+			</p>
 			<InviteCodeField />
 		</div>
 	)
