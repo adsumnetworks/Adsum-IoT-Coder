@@ -161,6 +161,7 @@ export async function completeSignIn(code: string, state: string): Promise<boole
 			name?: string
 			email_verified?: boolean
 			groups?: string[]
+			open_requests?: string[]
 		}
 		if (!data.token) {
 			return false
@@ -172,6 +173,10 @@ export async function completeSignIn(code: string, state: string): Promise<boole
 			name: data.name ?? "",
 			emailVerified: !!data.email_verified,
 			groups: Array.isArray(data.groups) ? data.groups : [],
+			// The backend has always sent this; nobody read it, so "request sent" could never render on
+			// the card that offers the request. An open request is the one piece of account state a
+			// developer looks for after they ask for source.
+			openRequests: Array.isArray(data.open_requests) ? data.open_requests : [],
 			fetchedAt: Date.now(),
 		}
 		persistProfile(cached)
@@ -211,12 +216,19 @@ export async function refresh(force = false): Promise<void> {
 		if (!res.ok) {
 			return
 		}
-		const data = (await res.json()) as { email?: string; name?: string; email_verified?: boolean; groups?: string[] }
+		const data = (await res.json()) as {
+			email?: string
+			name?: string
+			email_verified?: boolean
+			groups?: string[]
+			open_requests?: string[]
+		}
 		cached = {
 			email: data.email ?? cached?.email ?? "",
 			name: data.name ?? cached?.name ?? "",
 			emailVerified: !!data.email_verified,
 			groups: Array.isArray(data.groups) ? data.groups : [],
+			openRequests: Array.isArray(data.open_requests) ? data.open_requests : [],
 			fetchedAt: Date.now(),
 		}
 		persistProfile(cached)
