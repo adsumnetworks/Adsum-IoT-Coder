@@ -149,6 +149,8 @@ export interface ExtensionState {
 	 *  is what puts the cellular cards behind the register gate. Never carries the session bearer: the
 	 *  webview renders a lock, the registry enforces it. */
 	adsumAccount?: AdsumAccountState
+	/** Show the one-time "what you unlocked" card: signed in, and never dismissed. */
+	adsumUnlockedShow?: boolean
 }
 
 export interface ClineMessage {

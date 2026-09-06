@@ -342,3 +342,18 @@ export function cellularHint(boards: readonly string[]): string | undefined {
 	const match = boards.find((b) => CELLULAR_BOARDS.test(b))
 	return match ? `Your ${match} is detected — register to unlock its attach and APN recipes.` : undefined
 }
+
+/**
+ * What the demo-hex card runs.
+ *
+ * A prompt, not a direct flash call, because flashing three boards is a conversation: which ports,
+ * which order, what to do when nrfutil is missing. The tool bit carries the hexes and their hashes;
+ * the agent carries the developer through it and says honestly when the machine is not ready.
+ */
+export const DEMO_HEX_PROMPT =
+	"Flash the Fanstel LEW840x demo. LOAD the lew840x demo-hex tool bit first — it carries the three " +
+	"signed hexes and their hashes, and I want the ones you verify, not ones you build. Then walk me " +
+	"through it: check nrfutil and esptool are on this machine and say plainly if they are not, ask me " +
+	"which serial port is which, and flash the BLE scanner, the ESP32 uplink and the nRF9160 bearer in " +
+	"that order. Tell me the cellular bearer is capped at 60-minute sessions in this build before I " +
+	"start, not after."

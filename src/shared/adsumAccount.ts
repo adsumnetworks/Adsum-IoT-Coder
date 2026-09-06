@@ -24,6 +24,13 @@ export function accountHasGroup(account: AdsumAccountState | undefined | null, g
 	return groups.includes("all") || groups.includes(group)
 }
 
+/**
+ * Dismissal id for the one-time "you're registered" card, in the same ledger as every other one-time
+ * card. Shared so the panel that dismisses it and the controller that decides to show it cannot
+ * disagree about the key.
+ */
+export const ADSUM_REGISTERED_BANNER = "adsum-registered"
+
 /** The entitlement that opens the four cellular cards. One name, used by the card and by the bits. */
 export const CELLULAR_GROUP = "cellular-advanced"
 export const EDGE_AI_GROUP = "edge-ai-advanced"
