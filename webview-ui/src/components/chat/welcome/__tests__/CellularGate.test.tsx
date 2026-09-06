@@ -159,8 +159,13 @@ describe("W — the register gate", () => {
 			expect(screen.getByText(bullet)).toBeTruthy()
 		}
 		expect(screen.getByTestId("gate-provider-github").textContent).toContain("Continue with GitHub")
-		expect(screen.getByTestId("gate-provider-google").textContent).toContain("Continue with Google")
 		expect(screen.getByTestId("gate-provider-email").textContent).toContain("Continue with email")
+		// Every provider offered here must be one that actually works. Google is parked until it has an
+		// OAuth app (operator, 2026-09-06): the backend answers /auth/unavailable for it, so a button
+		// would teach a developer only that we are broken. This is the guarantee, not the list —
+		// re-adding Google is fine the day the credentials exist.
+		expect(screen.queryByTestId("gate-provider-google")).toBeNull()
+		expect(document.body.textContent).not.toMatch(/Google/i)
 		expect(screen.getByText(/Free\. No card\. You sign in in your browser and come straight back here\./)).toBeTruthy()
 		expect(document.body.textContent).not.toMatch(/\bPro\b/)
 

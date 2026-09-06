@@ -35,9 +35,16 @@ interface GatePanelProps {
  */
 const NEUTRAL_EDGE = "color-mix(in srgb, var(--vscode-foreground) 22%, transparent)"
 
-const PROVIDERS: { id: "github" | "google" | "email"; label: string; icon: string; primary?: boolean }[] = [
+/**
+ * GitHub and email only. Google is parked (operator, 2026-09-06).
+ *
+ * It is not commented out for tidiness: an offered button that cannot work is worse than a missing
+ * one. Google has no OAuth app, so the backend answers `/auth/unavailable`, and a developer who
+ * clicks it learns only that something is broken. Re-add the row when the credentials exist — the
+ * backend already routes `provider=google` and refuses it honestly until then.
+ */
+const PROVIDERS: { id: "github" | "email"; label: string; icon: string; primary?: boolean }[] = [
 	{ id: "github", label: "Continue with GitHub", icon: "github", primary: true },
-	{ id: "google", label: "Continue with Google", icon: "globe" },
 	{ id: "email", label: "Continue with email", icon: "mail" },
 ]
 
