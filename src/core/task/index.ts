@@ -96,7 +96,7 @@ import {
 	FullCommandExecutorConfig,
 	StandaloneTerminalManager,
 } from "@/integrations/terminal"
-import { consumeQuotaExhausted } from "@/services/adsum/FreeTierState"
+import { consumeQuotaExhausted, getCachedFreeTokensRemaining, isQuotaExhaustionEvidenced } from "@/services/adsum/FreeTierState"
 import { ClineError, ClineErrorType, ErrorService } from "@/services/error"
 import { creditFor, deriveIdFromRel, hasBit, lockedBits, provenanceOf } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
@@ -3344,13 +3344,19 @@ export class Task {
 
 				const recDidEndLoop = await this.recursivelyMakeClineRequests(this.taskState.userMessageContent)
 				didEndLoop = recDidEndLoop
-			} else if (consumeQuotaExhausted() || this.api.getModel().id === "free-default") {
+			} else if (isQuotaExhaustionEvidenced(consumeQuotaExhausted(), getCachedFreeTokensRemaining())) {
 				// Free-tier quota exhausted: the backend returned 402, which the OpenAI SDK
-				// surfaces as an empty (but successful) stream here rather than throwing.
-				// We detect this two ways, both bundle-safe (no instanceof across the esbuild
-				// boundary): the module-level flag, OR the adsum-free model id "free-default".
-				// For the free tier an empty response always means quota — show the card.
-				consumeQuotaExhausted() // clear flag if it was set, so it can't stale-trigger later
+				// surfaces as an empty (but successful) stream here rather than throwing. The
+				// module-level flag is what carries that across the esbuild bundle boundary
+				// (no instanceof, no error-cause chain).
+				//
+				// The second arm used to be `this.api.getModel().id === "free-default"` — any empty
+				// response on the free tier. That is what put "quota exhausted" in front of a
+				// developer with 6.6M tokens left. See isQuotaExhaustionEvidenced for the full note.
+				//
+				// consumeQuotaExhausted() is called ONCE, in the condition; it has consume-once
+				// semantics, so the old second call in this body was already a no-op reading as a
+				// safeguard.
 				// Set the quota marker on the api_req_started message so ErrorRow renders the
 				// QuotaExhaustedCard, then end the task cleanly — no retry, no error noise.
 				const quotaReqIndex = findLastIndex(
