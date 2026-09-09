@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions
+    about: Ask, compare notes, or propose something before it becomes an issue.
+  - name: Troubleshooting guide
+    url: https://docs.adsumnetworks.com/troubleshooting
+    about: The known causes for "nRF Connect SDK not detected", "no serial data received" and the other first-hour problems.
+  - name: Security report
+    url: https://github.com/adsumnetworks/Adsum-IoT-Coder/security/policy
+    about: Report a vulnerability privately, not as a public issue.

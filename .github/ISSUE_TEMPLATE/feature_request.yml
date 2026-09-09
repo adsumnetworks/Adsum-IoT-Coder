@@ -1,0 +1,24 @@
+name: Feature request
+description: A chip, board, protocol, tool or workflow the agent should handle.
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: building
+    attributes:
+      label: What you are building
+      description: The device or product, the chips and radios, and the toolchains.
+    validations:
+      required: true
+  - type: textarea
+    id: missing
+    attributes:
+      label: What the agent cannot do today
+      description: The step you have to do by hand, or the answer it gets wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: What done looks like
+      description: The command, output or behaviour you would accept as fixed.
