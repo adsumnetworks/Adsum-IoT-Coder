@@ -15,9 +15,10 @@ import DynamicTextArea from "react-textarea-autosize"
 import { useWindowSize } from "react-use"
 import styled from "styled-components"
 import AutoApproveChip from "@/components/chat/auto-approve-menu/AutoApproveChip"
-import { BRAND_CYAN_600, BRAND_CYAN_UI, brandAlpha } from "@/components/chat/brandColors"
+import { BRAND_CYAN_600, BRAND_CYAN_TEXT, BRAND_CYAN_UI, brandAlpha } from "@/components/chat/brandColors"
 import ContextMenu from "@/components/chat/ContextMenu"
 import { CHAT_CONSTANTS } from "@/components/chat/chat-view/constants"
+import { formatTokens } from "@/components/chat/FreeTierStrip"
 import ModelPickerModal from "@/components/chat/ModelPickerModal"
 import SlashCommandMenu from "@/components/chat/SlashCommandMenu"
 import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
@@ -243,6 +244,39 @@ const ModelButtonContent = styled.div`
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+`
+
+/**
+ * The free tier is a courtesy, and the chip says so. The strip retires after the first task, so
+ * from then on this chip is the ONE place the panel says the inference is free, how much is left
+ * and who provides it — the mockup (ui-launch-sweep-v3, "Free tier · 6.6M", cyan edge and text)
+ * made it read as a courtesy line, and the first cut shipped it as the host's grey model label.
+ * OPERATOR 2026-09-09: "supposed to be highlighted as a courtesy of Adsum Networks, now it is
+ * almost hidden." Cyan here is the theme-resolved TEXT token (contrast-safe on both grounds); the
+ * courtesy suffix is the part that gives way when the row is narrow — the tier and the balance
+ * never truncate.
+ */
+const FreeTierChip = styled.div`
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	max-width: 100%;
+	padding: 0 6px;
+	border: 1px solid ${brandAlpha(BRAND_CYAN_600, 0.55)};
+	border-radius: 4px;
+	line-height: 16px;
+	color: ${BRAND_CYAN_TEXT};
+	white-space: nowrap;
+	.tier {
+		flex: none;
+		font-weight: 600;
+	}
+	.courtesy {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		opacity: 0.85;
+	}
 `
 
 const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
@@ -1855,9 +1889,21 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 													onClick={handleModelButtonClick}
 													role="button"
 													tabIndex={0}>
-													<ModelButtonContent className="text-xs">
-														{modelDisplayName}
-													</ModelButtonContent>
+													{modelDisplayName === "Free tier" ? (
+														<FreeTierChip className="text-xs" data-testid="free-tier-chip">
+															<span className="tier">
+																Free tier
+																{freeTierRemainingTokens !== undefined
+																	? ` · ${formatTokens(freeTierRemainingTokens)}`
+																	: ""}
+															</span>
+															<span className="courtesy">&nbsp;· courtesy of Adsum Networks</span>
+														</FreeTierChip>
+													) : (
+														<ModelButtonContent className="text-xs">
+															{modelDisplayName}
+														</ModelButtonContent>
+													)}
 												</ModelDisplayButton>
 											</ModelButtonWrapper>
 										</TooltipTrigger>

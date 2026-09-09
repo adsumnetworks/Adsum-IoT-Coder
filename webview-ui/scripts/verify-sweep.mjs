@@ -164,6 +164,43 @@ function check(name, ok, detail) {
 		.innerText()
 		.catch(() => "")
 	check("06 and the chip carries the tier on a settled install", /^Free tier/.test(chip.trim()), chip.trim())
+	// The chip is the courtesy line once the strip has retired: balance, provider, and it READS as
+	// Adsum's — cyan, not the host's grey. [OPERATOR 2026-09-09: "almost hidden, not like the mockup".]
+	const chipFacts = await page
+		.getByTestId("free-tier-chip")
+		.evaluate((el) => {
+			const cs = getComputedStyle(el)
+			const tier = el.querySelector(".tier")
+			// read the token where the chip reads it: the light value is set below the root, not on it
+			const want = cs.getPropertyValue("--adsum-cyan-text").trim()
+			const probe = document.createElement("span")
+			probe.style.color = want
+			document.body.appendChild(probe)
+			const wantRgb = getComputedStyle(probe).color
+			probe.remove()
+			return {
+				color: cs.color,
+				wantRgb,
+				edge: cs.borderTopColor,
+				text: el.innerText.replace(/\s+/g, " ").trim(),
+				tierClipped: tier ? tier.scrollWidth > tier.clientWidth + 1 : true,
+			}
+		})
+		.catch((e) => ({ err: String(e) }))
+	check(
+		"06 the chip reads the balance — Free tier · 6.6M",
+		/^Free tier · 6\.6M/.test(chipFacts.text ?? ""),
+		chipFacts.text ?? chipFacts.err,
+	)
+	check("06 the chip names the courtesy", /courtesy of Adsum Networks/.test(chipFacts.text ?? ""), chipFacts.text)
+	check(
+		"06 the chip is in the brand's cyan TEXT token, not the host's grey",
+		!!chipFacts.color && chipFacts.color === chipFacts.wantRgb,
+		`${chipFacts.color} vs ${chipFacts.wantRgb}`,
+	)
+	check("06 the chip has a cyan edge", /rgba?\(0, 169, 206/.test(chipFacts.edge ?? ""), chipFacts.edge)
+	check("06 the tier and balance never truncate at 420 px", chipFacts.tierClipped === false, JSON.stringify(chipFacts))
+	await shot(page, "06-chip-courtesy")
 	check("06 no page errors", errors.length === 0, errors[0])
 	await shot(page, "06-strip-settled")
 	await page.close()
