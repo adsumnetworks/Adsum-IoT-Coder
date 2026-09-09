@@ -293,6 +293,42 @@ describe("the shape rule decides what is on screen", () => {
 		mockState({ openFolderPaths: ["/w/gateway-fw"] })
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.getByTestId("entry-scope-title").textContent).toBe("gateway-fw")
+		// once — it moved up into the wordmark row and the Environment band does not repeat it
+		expect(screen.getAllByTestId("entry-scope-title")).toHaveLength(1)
+	})
+
+	// [OPERATOR 2026-09-09, approved mockup pin 4] "lew840x-free · nRF ✓ · ESP ✓" at the right of the
+	// wordmark: the folder and a tick per platform whose toolchain is present, from the strip's own
+	// detection, so the row can never disagree with the strip.
+	it("the desk line says the folder and a ✓ per platform whose toolchain is present", () => {
+		mockState({
+			openFolderPaths: ["/w/lew840x-free"],
+			nrfEnvironment: { extensionPresent: true, boards: [] },
+			espEnvironment: { extensionPresent: false, idfPresent: true, espDevices: [] },
+		})
+		render(<WelcomeView {...baseProps} />)
+		const line = screen.getByTestId("entry-desk-line").textContent?.replace(/\s+/g, " ")
+		expect(line).toContain("lew840x-free")
+		expect(line).toContain("nRF ✓")
+		expect(line).toContain("ESP ✓")
+	})
+
+	it("a platform the strip would not show is not on the desk line either; a detected one without its toolchain is a dash, not a tick", () => {
+		mockState({
+			openFolderPaths: ["/w/gw"],
+			nrfEnvironment: { extensionPresent: false, nrfutilPresent: false, boards: [{ productName: "nRF52840 DK" }] },
+		})
+		render(<WelcomeView {...baseProps} />)
+		const line = screen.getByTestId("entry-desk-line").textContent?.replace(/\s+/g, " ")
+		expect(line).toContain("nRF —")
+		expect(line).not.toContain("ESP")
+	})
+
+	it("with no folder the row still reports the desk, and the band keeps the way to open one", () => {
+		mockState({ nrfEnvironment: { extensionPresent: true, boards: [] } })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-desk-line").textContent).toContain("nRF ✓")
+		expect(screen.getByTestId("entry-scope-title").textContent).toContain("Open a folder")
 	})
 
 	/**
