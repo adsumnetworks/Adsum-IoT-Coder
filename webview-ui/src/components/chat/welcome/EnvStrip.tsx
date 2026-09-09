@@ -264,7 +264,9 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 			const usbOnly = b.nordicUsb && !b.deviceName && !b.deviceFamily && !b.boardVersion
 			const name = usbOnly
 				? (b.boardName ?? "Nordic USB device")
-				: (b.deviceName ?? friendly ?? b.deviceFamily ?? b.serialNumber)
+				: // [SWEEP 2026-09-09] productName sits before the serial: a board the cards call "nRF52840 DK"
+					// was reading as "001050288730" here — same detection, two names for one board.
+					(b.deviceName ?? friendly ?? b.productName ?? b.deviceFamily ?? b.serialNumber)
 			return { board: b, label: b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name }
 		})
 		// Two boards of the same kind render identically — the bench has two nRF9161 DKs, both reporting
