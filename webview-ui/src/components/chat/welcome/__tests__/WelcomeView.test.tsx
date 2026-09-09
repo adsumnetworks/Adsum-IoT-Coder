@@ -297,35 +297,108 @@ describe("the shape rule decides what is on screen", () => {
 		expect(screen.getAllByTestId("entry-scope-title")).toHaveLength(1)
 	})
 
-	// [OPERATOR 2026-09-09, approved mockup pin 4] "lew840x-free · nRF ✓ · ESP ✓" at the right of the
-	// wordmark: the folder and a tick per platform whose toolchain is present, from the strip's own
-	// detection, so the row can never disagree with the strip.
-	it("the desk line says the folder and a ✓ per platform whose toolchain is present", () => {
+	// [OPERATOR 2026-09-09, approved v2] The row IS the collapsed environment: folder, and per platform
+	// the strip's OWN verdict (✓ ready, — toolchain missing, ⚠ exception) plus the board's name. The full
+	// view opens under it on a click and closes on the next arrival. Mockup environment-two-densities-v2.
+	it("the row says the folder, a ✓ per platform the strip calls ready, and the one board by name", () => {
 		mockState({
 			openFolderPaths: ["/w/lew840x-free"],
-			nrfEnvironment: { extensionPresent: true, boards: [] },
-			espEnvironment: { extensionPresent: false, idfPresent: true, espDevices: [] },
+			nrfEnvironment: {
+				status: "ready",
+				extensionPresent: true,
+				nrfutilPresent: true,
+				boards: [{ productName: "nRF52840 DK" }],
+			},
+			espEnvironment: {
+				status: "ready",
+				extensionPresent: false,
+				idfPresent: true,
+				espDevices: [],
+				projectDetected: false,
+			},
 		})
 		render(<WelcomeView {...baseProps} />)
 		const line = screen.getByTestId("entry-desk-line").textContent?.replace(/\s+/g, " ")
 		expect(line).toContain("lew840x-free")
-		expect(line).toContain("nRF ✓")
+		expect(line).toContain("nRF ✓ nRF52840 DK")
 		expect(line).toContain("ESP ✓")
 	})
 
-	it("a platform the strip would not show is not on the desk line either; a detected one without its toolchain is a dash, not a tick", () => {
+	it("— is the strip's verdict, never a second computation: nrfutil alone is not a ✓", () => {
+		// [OPERATOR 2026-09-09] The first cut said nRF ✓ while the band said "nRF Connect not detected".
 		mockState({
 			openFolderPaths: ["/w/gw"],
-			nrfEnvironment: { extensionPresent: false, nrfutilPresent: false, boards: [{ productName: "nRF52840 DK" }] },
+			nrfEnvironment: {
+				status: "ready",
+				extensionPresent: false,
+				nrfutilPresent: true,
+				boards: [{ productName: "nRF52840 DK" }, { productName: "nRF5340 DK" }],
+			},
 		})
 		render(<WelcomeView {...baseProps} />)
 		const line = screen.getByTestId("entry-desk-line").textContent?.replace(/\s+/g, " ")
 		expect(line).toContain("nRF —")
+		expect(line).toContain("2 boards")
+		expect(line).not.toContain("✓")
 		expect(line).not.toContain("ESP")
 	})
 
+	it("an exception is carried by the row itself — ⚠, the words, and why → — and nowhere else on the surface", () => {
+		mockState({
+			openFolderPaths: ["/w/gw"],
+			espEnvironment: {
+				status: "ready",
+				extensionPresent: true,
+				idfPresent: true,
+				projectDetected: true,
+				espDevices: [{ vid: 0x10c4, pid: 0xea60, probeError: "No serial data received" }],
+			},
+		})
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-desk-exception").textContent).toMatch(/⚠ a serial device is not answering/)
+		expect(screen.queryByTestId("envstrip-exception")).toBeNull()
+		expect(screen.queryByTestId("env-band")).toBeNull()
+		fireEvent.click(screen.getByTestId("entry-desk-why"))
+		expect(screen.getByTestId("env-band")).toBeTruthy()
+	})
+
+	it("nothing detected: the row names the next act instead of going blank", () => {
+		mockState({ openFolderPaths: ["/w/gw"] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-desk-none").textContent).toMatch(/no toolchain yet · what to install →/)
+	})
+
+	it("the full view is behind the row: absent by default, one click opens it, one closes it", () => {
+		mockState({
+			openFolderPaths: ["/w/gw"],
+			nrfEnvironment: { status: "ready", extensionPresent: true, nrfutilPresent: true, boards: [] },
+		})
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.queryByTestId("env-band")).toBeNull()
+		expect(screen.queryByText("Environment")).toBeNull()
+		fireEvent.click(screen.getByTestId("entry-desk-line"))
+		expect(screen.getByTestId("env-band")).toBeTruthy()
+		expect(screen.getByText("Environment")).toBeTruthy()
+		expect(screen.getByTestId("entry-desk-line").getAttribute("aria-expanded")).toBe("true")
+		fireEvent.click(screen.getByTestId("entry-desk-line"))
+		expect(screen.queryByTestId("env-band")).toBeNull()
+	})
+
+	it("'always open' keeps the full view on every arrival — the bench's setting", () => {
+		mockState({
+			openFolderPaths: ["/w/gw"],
+			nrfEnvironment: { status: "ready", extensionPresent: true, nrfutilPresent: true, boards: [] },
+		})
+		const first = render(<WelcomeView {...baseProps} />)
+		fireEvent.click(screen.getByTestId("entry-desk-line"))
+		fireEvent.click(screen.getByTestId("env-always-open"))
+		first.unmount()
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("env-band")).toBeTruthy()
+	})
+
 	it("with no folder the row still reports the desk, and the band keeps the way to open one", () => {
-		mockState({ nrfEnvironment: { extensionPresent: true, boards: [] } })
+		mockState({ nrfEnvironment: { status: "ready", extensionPresent: true, nrfutilPresent: true, boards: [] } })
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.getByTestId("entry-desk-line").textContent).toContain("nRF ✓")
 		expect(screen.getByTestId("entry-scope-title").textContent).toContain("Open a folder")
