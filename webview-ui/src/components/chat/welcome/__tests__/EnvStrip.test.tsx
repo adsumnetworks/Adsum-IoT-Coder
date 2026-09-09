@@ -119,52 +119,39 @@ describe("EnvStrip — compact / expand (A5)", () => {
 		}
 	})
 
-	// A bench with four DKs attached rendered "nRF9161 DK, nRF5340 DK, PCA10184, nRF52840 DK" — one
-	// board showing a raw code because PCA_NAMES stopped at the boards that existed when it was written.
-	// Codes verified against the NCS board definitions, not from memory; that also caught PCA10100,
-	// which was mapped to "nRF5340 DK" and is the nRF52833 DK.
-	it("names every Nordic DK the bench reports — no raw PCA codes leak to the strip", () => {
-		// Every pair verified against Nordic's own tables (nRF91 device guide, board-support list,
-		// Programmer supported-hardware) — never from memory, which is what put the two wrong rows here.
-		const expected: Record<string, string> = {
-			PCA10040: "nRF52 DK",
-			PCA10056: "nRF52840 DK",
-			PCA10090: "nRF9160 DK", // the REAL nRF9160 DK code
-			PCA10095: "nRF5340 DK",
-			PCA10100: "nRF52833 DK", // was wrong: mapped to nRF5340 DK
-			PCA10112: "nRF21540 DK", // was wrong: mapped to nRF9160 DK — this is the FEM kit
-			PCA10121: "nRF5340 Audio DK",
-			PCA10153: "nRF9161 DK",
-			PCA10156: "nRF54L15 DK",
-			PCA10171: "nRF9151 DK",
-			PCA10175: "nRF54H20 DK",
-			PCA10184: "nRF54LM20 DK", // the one the bench surfaced
-			PCA10188: "nRF54LV10 DK",
-			PCA10201: "nRF9151 SMA DK", // read off the operator's own kit via nrfutil, 6 Sep
-			PCA10214: "nRF54LS05 DK",
-			PCA10226: "nRF54LC10 DK",
-			PCA20065: "Nordic Thingy:91 X",
+	// A bench with four DKs attached once rendered "nRF9161 DK, nRF5340 DK, PCA10184, nRF52840 DK": the
+	// webview held its own PCA table and it stopped at the boards that existed when it was written. The
+	// table now lives in the board-identity bit and the HOST resolves `boardName`; the strip renders
+	// that and never a second copy. (dataBits.node-test.ts holds the rows and the two codes that were
+	// once wrong — PCA10100, PCA10112 — next to the bit itself.)
+	it("renders the host-resolved boardName and never the raw code beside it", () => {
+		const boards = [
+			{ boardVersion: "PCA10153", boardName: "nRF9161 DK", serialNumber: "0" },
+			{ boardVersion: "PCA10184", boardName: "nRF54LM20 DK", serialNumber: "1" }, // the one the bench surfaced
+			{ boardVersion: "PCA10201", boardName: "nRF9151 SMA DK", serialNumber: "2" }, // the operator's own kit
+		]
+		mockState({ nrfEnvironment: { status: "ready", extensionPresent: true, nrfutilPresent: true, boards } })
+		render(<EnvStrip />)
+		fireEvent.click(screen.getByTestId("envstrip-summary"))
+		for (const b of boards) {
+			expect(screen.queryByText(new RegExp(b.boardVersion))).toBeNull()
+			expect(screen.getByText(new RegExp(b.boardName))).toBeInTheDocument()
 		}
+	})
+
+	// …and when the host could not name it, the code shows — honestly, not as a blank.
+	it("falls back to the raw PCA when the host resolved no name", () => {
 		mockState({
 			nrfEnvironment: {
 				status: "ready",
 				extensionPresent: true,
 				nrfutilPresent: true,
-				// deviceName deliberately ABSENT — that is the real case. The strip renders
-				// `deviceName ?? PCA_NAMES[boardVersion] ?? …`, so the map is the fallback that was
-				// leaking raw codes. With a deviceName present the map is never consulted at all.
-				boards: Object.keys(expected).map((boardVersion, i) => ({
-					boardVersion,
-					serialNumber: String(i),
-				})),
+				boards: [{ boardVersion: "PCA99999", serialNumber: "0" }],
 			},
 		})
 		render(<EnvStrip />)
 		fireEvent.click(screen.getByTestId("envstrip-summary"))
-		for (const [code, name] of Object.entries(expected)) {
-			expect(screen.queryByText(new RegExp(code))).toBeNull() // the raw code must never render
-			expect(screen.getByText(new RegExp(name))).toBeInTheDocument()
-		}
+		expect(screen.getByText(/PCA99999/)).toBeInTheDocument()
 	})
 
 	// The bench runs two nRF9161 DKs. Both report PCA10153, so both render as "nRF9161 DK" and the
@@ -175,10 +162,10 @@ describe("EnvStrip — compact / expand (A5)", () => {
 				status: "ready",
 				extensionPresent: true,
 				nrfutilPresent: true,
-				// No deviceName — same as the real nrfutil payload, so PCA_NAMES is what names them.
+				// No deviceName — same as the real nrfutil payload; boardName is what the host resolved.
 				boards: [
-					{ boardVersion: "PCA10153", serialNumber: "001050992288" },
-					{ boardVersion: "PCA10153", serialNumber: "001050924638" },
+					{ boardVersion: "PCA10153", boardName: "nRF9161 DK", serialNumber: "001050992288" },
+					{ boardVersion: "PCA10153", boardName: "nRF9161 DK", serialNumber: "001050924638" },
 				],
 			},
 		})
@@ -197,8 +184,8 @@ describe("EnvStrip — compact / expand (A5)", () => {
 				extensionPresent: true,
 				nrfutilPresent: true,
 				boards: [
-					{ boardVersion: "PCA10153", serialNumber: "001050992288" },
-					{ boardVersion: "PCA10056", serialNumber: "001050256273" },
+					{ boardVersion: "PCA10153", boardName: "nRF9161 DK", serialNumber: "001050992288" },
+					{ boardVersion: "PCA10056", boardName: "nRF52840 DK", serialNumber: "001050256273" },
 				],
 			},
 		})
