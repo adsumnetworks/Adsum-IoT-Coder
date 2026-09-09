@@ -47,7 +47,7 @@ A home that reads your desk, cellular and satellite work behind a free account, 
 
 <img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**A home that reads your desk.** Your folder, the boards it detects and the toolchains it finds, then the runs worth starting, ranked, each saying why. Typing in the box is the new session; a named resume is offered whenever the folder has one, and every other session is one click away in the editor's History. [Getting started](https://docs.adsumnetworks.com/getting-started)
 
-<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Gateway firmware you can flash and license.** Signed images and licensed source for the Fanstel LEW840x on BLE, Ethernet and Wi-Fi; a cellular demo on LTE-M / NB-IoT; satellite NB-NTN and nRF54 edge AI with a free account (GitHub or email, no card). A BLE 6 terrestrial + non-terrestrial gateway with on-device inference is next. [Gateway firmware](https://docs.adsumnetworks.com/gateway-firmware)
+<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Gateway firmware you can flash and license.** Signed images and licensed source for the Fanstel LEW840x on BLE, Ethernet and Wi-Fi; a cellular demo on LTE-M / NB-IoT; satellite NB-NTN and nRF54 edge AI with a free account (GitHub or email, no card). The Fanstel BLG20, a BLE 6 terrestrial + non-terrestrial gateway with on-device inference, is next. [Gateway firmware](https://docs.adsumnetworks.com/gateway-firmware)
 
 <img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Steer a run without stopping it.** A message sent to a working session lands at its next step. The thinking depth you set for DeepSeek and GLM now reaches the request, DeepSeek prices match the vendor's, and `modelPricing` takes your own rate. [Models](https://docs.adsumnetworks.com/models)
 
@@ -93,7 +93,8 @@ Working firmware for the Fanstel composable LEW gateway, two ways: **signed imag
 | **LEW840x** · cellular | + LTE-M, NB-IoT (nRF9160 / 9161) | **Demo**: cellular bearer, 60-minute sessions | On request | + LTE M.2 card, SIM |
 | Satellite **NB-NTN** on nRF9151 | NB-NTN | Bring-up run + knowledge | · | nRF9151 DK (LACA A1A) |
 | **Edge AI** on nRF54 | On-device inference basics | Knowledge + guided run | · | An nRF54 board |
-| **Next**: BLE 6 terrestrial + non-terrestrial gateway | BLE 6; LTE-M, NB-IoT, NB-NTN; edge-AI inference on the nRF54 NPU | Soon | Soon | Early access, by request |
+| **BWG840X** · BLE to Wi-Fi | BLE in; Wi-Fi out | Soon (moving onto the LEW840x code base) | Soon | BWG840X |
+| **Next**: Fanstel **BLG20**, BLE 6 terrestrial + non-terrestrial gateway | BLE 6; LTE-M, NB-IoT, NB-NTN; edge-AI inference on the nRF54 NPU | Soon | Soon | Early access, by request |
 
 - **Flash to judge**: register (free), flash, watch tags reach your broker. Wi-Fi and Ethernet unlimited; cellular in 60-minute sessions; needs `nrfutil` and `esptool`.
 - **License to ship**: ask for the modules you need from *Settings › Account › Request template source*, or write to support@adsumnetworks.com. Per module, production use, your modifications stay yours; the images are for evaluation.
@@ -144,7 +145,7 @@ Methodology, per-task results and limitations: [benchmark report](./docs/benchma
 
 ## Roadmap
 
-**Next:** nRF7x Wi-Fi; the on-device AI features of nRF54 and ESP32 in the same build, flash, observe, fix loop; Linux devices (NVIDIA Jetson, Raspberry Pi) with cellular hats beside nRF and ESP radios; a BLE 6 terrestrial + non-terrestrial gateway (LTE-M, NB-IoT, NB-NTN) with edge-AI inference on the nRF54's NPU, early access by request, and open-hardware designs adding LoRa and battery backup in an IP67 enclosure; and Adsum working inside your own coding agent. Shaped by what the community asks for and contributes. [Full roadmap](https://docs.adsumnetworks.com/platforms-and-roadmap)
+**Next:** nRF7x Wi-Fi; the on-device AI features of nRF54 and ESP32 in the same build, flash, observe, fix loop; Linux devices (NVIDIA Jetson, Raspberry Pi) with cellular hats beside nRF and ESP radios; the Fanstel BLG20, a BLE 6 terrestrial + non-terrestrial gateway (LTE-M, NB-IoT, NB-NTN) with edge-AI inference on the nRF54's NPU, early access by request, and open-hardware designs adding LoRa and battery backup in an IP67 enclosure; and Adsum working inside your own coding agent. Shaped by what the community asks for and contributes. [Full roadmap](https://docs.adsumnetworks.com/platforms-and-roadmap)
 
 ## Contributing
 
