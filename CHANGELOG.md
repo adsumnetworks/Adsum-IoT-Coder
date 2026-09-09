@@ -7,76 +7,113 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- A folder that was empty when the extension activated is classified again once files land in it, so a
-  guided build that seeds a gateway under the agent's own hand gets its platform knowledge and product
-  route on the next task instead of after a reload; the universal product route now says to load the
-  product index first, including on the build's own "Continue … Step N/7" opener.
+## [0.4.0] - 2026-09-09
+
+*0.3.2 and 0.3.3 were bench pre-releases and were never published; their work ships here.*
 
 ### Added
-- Cellular, NTN and edge-AI knowledge now needs a free registered account. BLE, Wi-Fi and Ethernet are
-  unchanged and need nothing — the work you did yesterday still runs today with no account. A card that
-  needs one says so, says what registering unlocks, and takes you there in your browser: free, no card,
-  and your projects and logs stay on your machine.
-- An Account section in Settings: what your account has unlocked, in words; a way to ask for the
-  prebuilt gateway template source; sign out; and delete your account, which removes everything keyed
-  on you and leaves this machine's projects, logs and free-tier allowance untouched.
-- A task that needs a bit your account cannot open keeps going and says which bit it went without —
-  and still credits whoever curated it.
-- A redesigned entry surface. The panel opens on where you are and what is on your desk — folder,
-  detected boards, toolchains — then the runs worth starting, ranked by what was actually detected,
-  each saying why. Typing in the box *is* the new session; there is no separate button. One named
-  resume is always offered when there is a past session for the folder you are in.
+- A redesigned entry surface. The panel opens on where you are and what is on your desk (folder,
+  detected boards, toolchains), then the runs worth starting, ranked by what was actually detected,
+  each saying why. Typing in the box *is* the new session. One named resume is always offered when
+  there is a past session for the folder you are in.
 - A sessions menu (☰) that is the single home for past sessions: filter, rename, delete, and
   "see all". Reachable from the entry surface and from inside a running session.
 - Guided builds for partner hardware are offered from a cold start, alongside three sample runs that
   need no hardware and nothing installed.
-- Your own model prices. `adsum-iot-coder.modelPricing` in settings takes a price per model in USD
-  per million tokens and overrides everything else — for a negotiated rate, a regional price list, or
-  a vendor change we have not published yet.
-- Model prices can now update without an extension release, the way advisory data already does.
+- A free registered account (GitHub or email, no card) unlocks cellular, satellite NB-NTN and
+  nRF54 edge-AI basics, and the signed LEW840x demo firmware (BLE scanner, ESP32 uplink, nRF9160
+  bearer), free to flash and evaluate, with licensed source per module available on request from
+  Settings. BLE, Wi-Fi and Ethernet are
+  unchanged and need nothing. A card that needs an account says so, says what registering unlocks,
+  and takes you there in your browser; the extension never sees a password, and your projects and
+  logs stay on your machine.
+- An Account section in Settings: what your account has unlocked, in words; a way to ask for the
+  prebuilt gateway template source; sign out; and delete your account, which removes everything keyed
+  on you and leaves this machine's projects, logs and free-tier allowance untouched.
+- A task that needs a bit your account cannot open keeps going and says which bit it went without,
+  and still credits whoever curated it.
 - Send a message to a session that is already working. It is queued, shown at the end of the
-  conversation with a way to take it back, and delivered at the agent's next step — so a run can be
-  steered without cancelling it. Stop is still its own button, and returns anything undelivered to the
-  chat box.
+  conversation with a way to take it back, and delivered at the agent's next step, so a run can be
+  steered without cancelling it. Stop is still its own button, and returns anything undelivered to
+  the chat box.
+- Your own model prices. `adsum-iot-coder.modelPricing` takes a price per model in USD per million
+  tokens and overrides everything else. Built-in prices can also update without an extension
+  release, the way advisory data already does.
+- The board on your desk is named from the connected hardware, including the nRF9151 SMA DK; on ESP
+  the USB-UART bridge is named and esptool's own reason for a silent chip is reported.
+- A pre-flash check on nRF reads the reset vector first, so an image that would flash clean and never
+  execute is caught before it is written.
+- Contributor profiles come from the registry, so a new co-author is credited with a link without
+  waiting for a release.
 
 ### Changed
 - Session handover to an external coding agent is not offered in this release.
 - Knowledge is loaded, not "skilled". The agent's own vocabulary now says **bit** everywhere it used
-  to say skill — the instruction it follows is `MANDATORY BIT LOAD`, and the rule that governs it is
-  `rules/bit-loading.md`. Your editor's own Skills feature is untouched; the two were colliding in one
-  place, which is how an agent reaches for the wrong one.
-- Guided builds load the measurement doctrine instead of a summary of it. A paraphrase in the workflow
-  was being read as the rule itself, so gates could report a count where they owed you evidence.
-- The About page names what Adsum runs on today — Nordic nRF52/53/54L and nRF91 with NB-IoT, LTE-M
-  and GNSS, Espressif ESP32/S3/C6, and the supported partner gateways — rather than a shorter list
-  that had fallen behind.
+  to say skill: the instruction it follows is `MANDATORY BIT LOAD`, governed by `rules/bit-loading.md`.
+  Your editor's own Skills feature is untouched; the two were colliding in one place.
+- One notice at a time. The CRA finding, the registered receipt, the layout tip, the upgrade card and
+  the review nudge no longer stack; the review nudge is last, because a favour must never interrupt
+  work. The free-tier strip is dismissible and the account chip lives in the sessions menu.
+- The environment line reports the exception when there is one (a serial device that will not
+  answer, nrfutil missing beside the nRF extension) instead of the same line every day.
+- Guided builds load the measurement doctrine instead of a summary of it, so gates report evidence
+  where they owe you evidence.
+- A tool's own limit is reported as a limit, not as a fact about the device: the board shell waits
+  for a cellular round trip, and the loggers fail on a zero capture instead of summarising it.
+- The About page names what Adsum runs on today: Nordic nRF52/53/54L and nRF91 with NB-IoT, LTE-M
+  and GNSS, Espressif ESP32/S3/C6, and the supported partner gateways.
+- The message shown when a run is stuck says what unsticks it (narrow the step, name the file, give
+  the command) rather than recommending a different vendor's model.
+- Bench guidance no longer tells the agent to kill every J-Link process on a shared bench; it
+  identifies its own probe first.
 - "Bring your own coding agent" is marked *Coming soon* and cannot be selected while it is unproven.
 
 ### Fixed
 - **DeepSeek and GLM ignored the thinking depth you chose.** Picking *Low* stored and displayed the
-  choice, but neither the thinking setting nor the depth reached the request, so the provider applied
-  its own default — full-depth thinking — on every call. Long, expensive thinking on routine steps.
-  A depth chosen now counts as thinking on, and a configuration made before this fix starts working
-  without being touched.
-- **The OpenAI reasoning-effort setting did nothing.** It was read, stored and even counted, but the
+  choice, but neither the setting nor the depth reached the request, so the provider applied
+  full-depth thinking on every call. A depth chosen now counts as thinking on, and an existing
+  configuration starts working without being touched.
+- **The OpenAI reasoning-effort setting did nothing.** It was read, stored and counted, but the
   request never carried it.
-- **DeepSeek costs were understated roughly four to five times.** The built-in prices for V4 had
-  drifted far below the published ones. They have been re-read from the vendor and corrected, and
-  DeepSeek's off-peak half-price window — which covers most of the week — is now applied from the
-  clock instead of being ignored.
+- **DeepSeek costs were understated four to five times.** Built-in prices are re-read from the
+  vendor, and DeepSeek's off-peak half-price window is applied from the clock.
+- A provider stream that went silent without erroring left the task running forever with a
+  half-written sentence (11% of bench runs). A stalled stream is now aborted and retried like any
+  other stream error.
+- "Free tier quota exhausted" was shown for any empty reply, including provider hiccups, while the
+  strip above it still showed tokens left. Exhaustion is now reported only on the backend's word.
+- Sign-in from a Remote-SSH window, a codespace or a dev container opened the browser on the remote
+  machine, so the button looked dead. The editor now opens the link where you are.
+- Sign-in with more than one editor window open could land in a window that refused it. The
+  round trip now completes in whichever window receives it, and says which window to return to.
+- The four cellular cards stayed behind the "Register to unlock" panel after a successful sign-in.
+- The registered receipt appeared below the suggested runs; it is now at the top of the panel.
+- A request for template source never showed as sent, so people asked twice.
+- Two board-name rows were wrong: PCA10112 is the nRF21540 DK, not the nRF9160 DK (PCA10090), which
+  was missing. Every row is now read from Nordic's own tables, and the name has one home, the
+  board-identity bit.
+- A Node-based tool bit could not run on Windows (the advertised command opened a cache file in the
+  editor); tools now ship a launcher, and product knowledge paths resolve as bits.
 - The composer could be left permanently disabled, with no way to send, after a task finished.
-- Text the agent had already finished saying could be re-rendered when a tool call followed it, and a
-  stalled reply that the host had already retried was left on screen as a stray fragment.
-- A message typed while the agent was working could be taken as the answer to a tool approval that had
-  not been shown yet. The path that did this is gone; nothing typed mid-run can approve a tool.
-- A guided build's step banner was hard-coded to five steps, so a seven-beat product build rendered
-  "Step 4/7" as a plain heading instead of a banner.
-- A workspace whose applications sit in subfolders — a gateway with its ESP app in `esp32/` and its
-  Zephyr apps beside it — loaded no platform knowledge and no product knowledge at all. The heavy
-  blocks probed only the workspace root for `sdkconfig` / `prj.conf`, while the classifier had already
-  scanned deeper and correctly called it a mixed workspace; the two disagreed, and with no board
-  plugged in nothing rescued it. Each platform's knowledge is now built from the application folder
-  the classifier found.
+- Text the agent had already finished saying could be re-rendered when a tool call followed it, and
+  a stalled reply that the host had already retried was left on screen as a stray fragment.
+- A message typed while the agent was working could be taken as the answer to a tool approval that
+  had not been shown yet. Nothing typed mid-run can approve a tool.
+- A guided build's step banner was hard-coded to five steps, so a seven-step product build rendered
+  "Step 4/7" as a plain heading.
+- A workspace whose applications sit in subfolders (a gateway with its ESP app in `esp32/` and its
+  Zephyr apps beside it) loaded no platform or product knowledge at all. Each platform's knowledge is
+  now built from the application folder the classifier found, and a folder that was empty when the
+  extension activated is classified again once files land in it.
+- A compound terminal command (`a; b; c`) waited out the four-minute silence backstop instead of
+  completing when its last sub-command did.
+- GNSS knowledge was gated on NTN, so a GNSS task on an nRF9161 could never load it.
+- The agent could invent a `load_skill` call against an `iot-knowledge` MCP server that does not
+  exist; both rule bits now refuse the whole class and say the paths are files.
+- The terminal tab was named for the upstream project in one of the two places that create it.
+- The bits roster scrolls and says how many bits there are.
+- 93 reference screenshots used only by the visual tests were shipping inside the package; it is
+  10 MB smaller.
 
 ## [0.3.1] - 2026-08-26
 
@@ -333,7 +370,8 @@ The first release built around the **skill-first architecture**: domain expertis
 - Seamless integration with the nRF Connect SDK terminal in VS Code.
 - AI-powered assistant for Zephyr-based projects capable of automatically analyzing UAR/RTT logs, executing Nordic toolchain commands, and debugging code.
 
-[Unreleased]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.2.1...v0.3.1
 [0.2.1]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.1.8...v0.2.0
