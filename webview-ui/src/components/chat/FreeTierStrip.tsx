@@ -65,11 +65,14 @@ const FreeTierStrip = () => {
 		}
 	})
 
-	if (!freeTierStripVisible(freeTierRemainingTokens, dismissed)) {
+	// Bound to a local so the type narrows with the guard: the rule already returns false for
+	// undefined, but TypeScript cannot see through the function call.
+	const remaining = freeTierRemainingTokens
+	if (remaining === undefined || !freeTierStripVisible(remaining, dismissed)) {
 		return null
 	}
 
-	const tokensLabel = formatTokens(freeTierRemainingTokens)
+	const tokensLabel = formatTokens(remaining)
 	// Light cyan reads well on dark panels but washes out on a near-white light-theme bg;
 	// fall to the darker "text-on-fill safe" cyan in light mode. Dark mode unchanged.
 	const cyanText = isDark ? BRAND_CYAN_300 : BRAND_CYAN_700
@@ -114,7 +117,7 @@ const FreeTierStrip = () => {
 			{/* Dismissible, but only while there is nothing to act on: below LOW_BALANCE_TOKENS the
 			    strip returns whatever was dismissed, because then it is not a disclosure any more, it
 			    is a warning with an action attached. */}
-			{freeTierRemainingTokens > LOW_BALANCE_TOKENS && (
+			{remaining > LOW_BALANCE_TOKENS && (
 				<button
 					aria-label="Hide the free tier banner"
 					className="codicon codicon-close"
