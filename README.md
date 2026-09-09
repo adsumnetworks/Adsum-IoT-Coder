@@ -45,7 +45,7 @@ A home that reads your desk, cellular and satellite work behind a free account, 
 <tr>
 <td width="58%" valign="top">
 
-<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**A home that reads your desk.** Your folder, the boards it detects and the toolchains it finds, then the runs worth starting, ranked, each saying why. Typing in the box is the new session; a named resume is offered whenever the folder has one; a sessions menu (☰) holds the rest. [Getting started](https://docs.adsumnetworks.com/getting-started)
+<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**A home that reads your desk.** Your folder, the boards it detects and the toolchains it finds, then the runs worth starting, ranked, each saying why. Typing in the box is the new session; a named resume is offered whenever the folder has one, and every other session is one click away in the editor's History. [Getting started](https://docs.adsumnetworks.com/getting-started)
 
 <img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Cellular, satellite and edge AI with a free account.** Register with GitHub or email, no card: an LTE-M / NB-IoT gateway, NB-NTN bring-up on the nRF9151, nRF91 modem bring-up, nRF54 edge-AI basics, and the signed LEW840x demo firmware: flash it, watch tags reach your broker, then ask for licensed source per module when it fits. Your projects and logs stay on your machine. [Cellular on nRF91](https://docs.adsumnetworks.com/cellular)
 
