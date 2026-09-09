@@ -961,7 +961,10 @@ function renderDeviceTools(tools: ResolvedTool[]): string {
 		out += "\n"
 	}
 	out +=
-		"\nRun these with `execute_command`. Do not reimplement them: a hand-rolled serial or capture " +
+		"\nRun these with `execute_command`, using exactly the path shown. Never build the interpreter call " +
+		"yourself — not `node …`, not `python …`, and never the editor's own binary: the advertised launcher " +
+		"already carries the environment the tool needs, and the editor binary handed a script opens it " +
+		"instead of running it. Do not reimplement them either: a hand-rolled serial or capture " +
 		"script is platform-specific and loses the handling these already carry.\n\n"
 	return out
 }

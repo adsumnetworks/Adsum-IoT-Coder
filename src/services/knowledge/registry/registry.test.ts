@@ -316,6 +316,23 @@ describe("loadBitByRel / isBareBitPath (bare bundled-tree path via read_file —
 		assert.equal(isBareBitPath(undefined), false)
 	})
 
+	test("the namespaces AGENT.md tells the agent to read by relative path are bit roots (Omar, 0.4.0 round 2)", () => {
+		// AGENT.md: "the product path is predictable: products/<vendor>/<family>/PRODUCT.md". That path
+		// fell through to an ordinary file read and missed, because `products/` was not a bit root.
+		assert.equal(isBareBitPath("products/fanstel/bwg840/PRODUCT.md"), true)
+		assert.equal(isBareBitPath("sensors/analog/ky-037.md"), true)
+		assert.equal(isBareBitPath("edge-ai/nordic/axon-npu.md"), true)
+		assert.equal(isBareBitPath("products\\fanstel\\lew840x\\PRODUCT.md"), true) // Windows, where it was found
+	})
+
+	test("a product bit resolves by its relative path → the registry id the backend publishes it under", async () => {
+		// The backend publishes kbits/products/fanstel/lew840x/PRODUCT.md as adsum/products/fanstel/lew840x/product.
+		const { content, hash } = bit("adsum/products/fanstel/lew840x/product", "# LEW840X (PRODUCT.md)")
+		hook("adsum/products/fanstel/lew840x/product", content, hash, await tmp())
+		assert.equal(await loadBitByRel("products/fanstel/lew840x/PRODUCT.md"), "# LEW840X (PRODUCT.md)")
+		__resetManifestCache()
+	})
+
 	test("maps a bare tree-relative path → id → registry → stripped body", async () => {
 		const { content, hash } = bit("adsum/nrf/workflows/debug-loop", "# Debug Loop (debug-loop.md)")
 		hook("adsum/nrf/workflows/debug-loop", content, hash, await tmp())
