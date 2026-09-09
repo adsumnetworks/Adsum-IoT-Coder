@@ -256,13 +256,32 @@ function check(name, ok, detail) {
 		.getByText(/Registered/)
 		.count()
 	check("01 the account chip is NOT inside the Environment caption", inEnv === 0, `${inEnv} found`)
-	await page.getByTestId("entry-burger").click()
+	// ── one door ── [OPERATOR 2026-09-09, approved] no ☰ under the host's ＋ ↺ ⚙; the "All runs"
+	// line is the only way into the drawer, and the drawer holds no session list (the host's ↺ does).
+	check("07 there is no ☰ on the entry surface", (await page.getByTestId("entry-burger").count()) === 0)
+	const doors = await page.getByTestId("entry-more-runs").count()
+	const doorText = doors ? await page.getByTestId("entry-more-runs").innerText() : ""
+	check(
+		"07 exactly ONE door to the drawer, and it says All runs",
+		doors === 1 && /^All runs/.test(doorText),
+		doorText || `${doors} doors`,
+	)
+	await page.getByTestId("entry-more-runs").click()
 	await page.waitForTimeout(400)
 	const inDrawer = await page
 		.getByTestId("entry-drawer")
 		.getByText(/Registered/)
 		.count()
 	check("01 the account chip IS in the drawer", inDrawer >= 1, `${inDrawer} found`)
+	check(
+		"07 the drawer lists no sessions — those are the host's",
+		(await page.getByTestId("entry-drawer-session").count()) === 0,
+	)
+	check(
+		"07 the drawer's filter names what it filters",
+		/runs and checks/.test(await page.getByTestId("entry-drawer-filter").getAttribute("placeholder")),
+	)
+	await shot(page, "07-one-door-drawer")
 	check("01 no page errors", errors.length === 0, errors[0])
 	await shot(page, "01-account-in-drawer")
 	await page.close()
@@ -329,6 +348,10 @@ function check(name, ok, detail) {
 	check("T1 Approve is brand cyan 700, not the host's blue", bg === "rgb(0, 137, 168)", bg)
 	check("T1 Reject stays the host's secondary", other !== "rgb(0, 137, 168)", other)
 	check("T1 no page errors", errors.length === 0, errors[0])
+	check(
+		"07 no ☰ in the task header either — the host's ↺ is the door mid-task",
+		(await page.getByTestId("session-burger").count()) === 0,
+	)
 	await shot(page, "T1-approve-cyan")
 	await page.close()
 }

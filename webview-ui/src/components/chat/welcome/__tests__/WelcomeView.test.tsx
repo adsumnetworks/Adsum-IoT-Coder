@@ -61,6 +61,7 @@ const mockState = (opts: {
 	reviewNudgeShow?: boolean
 	adsumUnlockedShow?: boolean
 	adsumAccount?: unknown
+	navigateToHistory?: () => void
 }) => {
 	vi.mocked(useExtensionState).mockReturnValue({
 		version: "1.0.0",
@@ -73,6 +74,7 @@ const mockState = (opts: {
 		reviewNudgeShow: opts.reviewNudgeShow,
 		adsumUnlockedShow: opts.adsumUnlockedShow,
 		adsumAccount: opts.adsumAccount,
+		navigateToHistory: opts.navigateToHistory ?? vi.fn(),
 	} as any)
 }
 
@@ -261,11 +263,30 @@ describe("the shape rule decides what is on screen", () => {
 		expect(screen.getByTestId("entry-orientation").textContent).toContain("2 sessions in other folders")
 	})
 
-	it("that line is a way to reach them, not a dead end", () => {
-		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/other", 1), sess(2, "/w/other", 2)] })
+	it("that line is a way to reach them, not a dead end — it opens the host's History", () => {
+		// [2026-09-09] It used to open the drawer's session list; that list is gone, and the host's
+		// ↺ view (which filters by workspace) is where sessions from other folders actually are.
+		const navigateToHistory = vi.fn()
+		mockState({
+			openFolderPaths: ["/w/gw"],
+			taskHistory: [sess(1, "/w/other", 1), sess(2, "/w/other", 2)],
+			navigateToHistory,
+		})
 		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-orientation").textContent).toContain("are in")
+		expect(screen.getByTestId("entry-orientation").textContent).toContain("History")
 		fireEvent.click(screen.getByTestId("entry-elsewhere"))
-		expect(screen.getByTestId("entry-drawer")).toBeTruthy()
+		expect(navigateToHistory).toHaveBeenCalledTimes(1)
+		expect(screen.queryByTestId("entry-drawer")).toBeNull()
+	})
+
+	it("collapsed — resume, no cards — still has the one door to the drawer", () => {
+		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/gw", 0.1), sess(2, "/w/gw", 2)] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-resume")).toBeTruthy()
+		expect(screen.getAllByTestId("entry-more-runs")).toHaveLength(1)
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
+		expect(screen.getAllByTestId("entry-drawer-run").length).toBeGreaterThan(0)
 	})
 
 	it("the header names the folder, and only the folder", () => {
@@ -327,50 +348,67 @@ describe("a handover row resumes into the agent's session, not a task", () => {
 	})
 })
 
-describe("sessions have exactly one home", () => {
-	it("no session list is on the surface — only the drawer holds them", () => {
+describe("sessions have exactly one home — the host's history, not ours", () => {
+	// [OPERATOR 2026-09-09, approved] The drawer used to carry a second session list behind a ☰
+	// that sat 30 px under the host's own ＋ ↺ ⚙. The ↺ opens HistoryView on the entry surface
+	// (clicked and read in the sandbox), so the list and the ☰ are gone.
+	it("no session list on the surface, and none in the drawer either", () => {
 		mockState({ openFolderPaths: ["/w/gw"], taskHistory: [sess(1, "/w/gw"), sess(2, "/w/gw", 1), sess(3, "/w/gw", 2)] })
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.queryAllByTestId("entry-drawer-session")).toHaveLength(0)
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
+		expect(screen.getByTestId("entry-drawer")).toBeTruthy()
+		expect(screen.queryAllByTestId("entry-drawer-session")).toHaveLength(0)
+		expect(screen.queryByTestId("entry-drawer-see-all")).toBeNull()
 	})
 
-	it("the drawer shows the recent few and opens onto all of them", () => {
-		const many = Array.from({ length: 6 }, (_, i) => sess(i, "/w/gw", i))
-		mockState({ openFolderPaths: ["/w/gw"], taskHistory: many })
+	it("there is no ☰ — the 'All runs' line is the one door to the drawer", () => {
+		mockState({ openFolderPaths: ["/w/gw"] })
 		render(<WelcomeView {...baseProps} />)
-		fireEvent.click(screen.getByTestId("entry-burger"))
-		expect(screen.getAllByTestId("entry-drawer-session")).toHaveLength(3)
-		fireEvent.click(screen.getByTestId("entry-drawer-see-all"))
-		expect(screen.getAllByTestId("entry-drawer-session")).toHaveLength(6)
+		expect(screen.queryByTestId("entry-burger")).toBeNull()
+		expect(screen.queryByTestId("session-burger")).toBeNull()
+		expect(screen.getAllByTestId("entry-more-runs")).toHaveLength(1)
+		expect(screen.getByTestId("entry-more-runs").textContent).toMatch(/^All runs/)
 	})
 
-	it("the filter searches every session, not just the visible three", () => {
-		const many = [
-			...Array.from({ length: 5 }, (_, i) => sess(i, "/w/gw", i, `recent ${i}`)),
-			sess(99, "/w/gw", 20, "the buried needle"),
-		]
-		mockState({ openFolderPaths: ["/w/gw"], taskHistory: many })
+	it("the door is there even when no run is past the cap, because the samples are only in the drawer", () => {
+		// Just one folder, few runs — still "All runs →", still opens.
+		mockState({ openFolderPaths: ["/w/gw"] })
 		render(<WelcomeView {...baseProps} />)
-		fireEvent.click(screen.getByTestId("entry-burger"))
-		fireEvent.change(screen.getByTestId("entry-drawer-filter"), { target: { value: "needle" } })
-		expect(screen.getAllByTestId("entry-drawer-session")).toHaveLength(1)
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
+		expect(screen.getAllByTestId("entry-drawer-sample").length).toBeGreaterThan(0)
+	})
+
+	it("a cold start hides nothing — the samples are on the surface — so it has no door", () => {
+		mockState({})
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("entry-samples")).toBeTruthy()
+		expect(screen.queryByTestId("entry-more-runs")).toBeNull()
+	})
+
+	it("the filter searches runs and checks; a miss says so and offers the way out", () => {
+		mockState({ openFolderPaths: ["/w/gw"] })
+		render(<WelcomeView {...baseProps} />)
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
+		fireEvent.change(screen.getByTestId("entry-drawer-filter"), { target: { value: "zzzz" } })
+		expect(screen.getByText(/No run or check matches/)).toBeTruthy()
 	})
 
 	it("on a first visit, when every run is unseen, there is no dot — it would be a nag, not a signal", () => {
 		mockState({ openFolderPaths: ["/w/gw"] })
 		render(<WelcomeView {...baseProps} />)
-		expect(screen.queryByTestId("entry-burger-badge")).toBeNull()
+		expect(screen.queryByTestId("entry-more-runs-badge")).toBeNull()
 	})
 
-	it("the unseen-run dot clears when the drawer opens, whether or not anything is clicked", () => {
+	it("the unseen-run dot sits on the door and clears when the drawer opens, whether or not anything is clicked", () => {
 		mockState({ openFolderPaths: ["/w/gw"] })
 		// One run already opened: now a dot for the others means something.
 		localStorage.setItem("adsum.entry.seenRuns", JSON.stringify(["buildFlashDebug"]))
 		const { rerender } = render(<WelcomeView {...baseProps} />)
-		expect(screen.queryByTestId("entry-burger-badge")).toBeTruthy()
-		fireEvent.click(screen.getByTestId("entry-burger"))
+		expect(screen.queryByTestId("entry-more-runs-badge")).toBeTruthy()
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
 		rerender(<WelcomeView {...baseProps} />)
-		expect(screen.queryByTestId("entry-burger-badge")).toBeNull()
+		expect(screen.queryByTestId("entry-more-runs-badge")).toBeNull()
 	})
 })
 

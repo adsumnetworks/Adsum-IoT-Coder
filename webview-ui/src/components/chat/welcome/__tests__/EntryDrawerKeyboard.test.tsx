@@ -81,20 +81,20 @@ const focusables = () =>
 describe("the drawer by keyboard", () => {
 	it("opening moves focus to the filter — the first thing you would want to type into", () => {
 		render(<WelcomeView {...props} />)
-		fireEvent.click(screen.getByTestId("entry-burger"))
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
 		expect(document.activeElement).toBe(screen.getByTestId("entry-drawer-filter"))
 	})
 
 	it("Escape closes it", () => {
 		render(<WelcomeView {...props} />)
-		fireEvent.click(screen.getByTestId("entry-burger"))
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
 		fireEvent.keyDown(document, { key: "Escape" })
 		expect(screen.queryByTestId("entry-drawer")).toBeNull()
 	})
 
 	it("Tab off the last control wraps to the first instead of leaving the dialog", () => {
 		render(<WelcomeView {...props} />)
-		fireEvent.click(screen.getByTestId("entry-burger"))
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
 		const stops = focusables()
 		stops[stops.length - 1].focus()
 		fireEvent.keyDown(document, { key: "Tab" })
@@ -103,7 +103,7 @@ describe("the drawer by keyboard", () => {
 
 	it("Shift+Tab off the first wraps to the last, the same way round", () => {
 		render(<WelcomeView {...props} />)
-		fireEvent.click(screen.getByTestId("entry-burger"))
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
 		const stops = focusables()
 		stops[0].focus()
 		fireEvent.keyDown(document, { key: "Tab", shiftKey: true })
@@ -112,20 +112,20 @@ describe("the drawer by keyboard", () => {
 
 	it("focus that has escaped to the page behind is pulled back in", () => {
 		render(<WelcomeView {...props} />)
-		const burger = screen.getByTestId("entry-burger")
-		fireEvent.click(burger)
+		const door = screen.getByTestId("entry-more-runs")
+		fireEvent.click(door)
 		// Something outside took focus — a click-through, or a stray programmatic focus.
-		burger.focus()
+		door.focus()
 		fireEvent.keyDown(document, { key: "Tab" })
 		expect(screen.getByTestId("entry-drawer").contains(document.activeElement)).toBe(true)
 	})
 
-	it("closing hands focus back to the control that opened it", () => {
+	it("closing hands focus back to the control that opened it — the All runs line", () => {
 		render(<WelcomeView {...props} />)
-		const burger = screen.getByTestId("entry-burger")
-		burger.focus()
-		fireEvent.click(burger)
+		const door = screen.getByTestId("entry-more-runs")
+		door.focus()
+		fireEvent.click(door)
 		fireEvent.keyDown(document, { key: "Escape" })
-		expect(document.activeElement).toBe(burger)
+		expect(document.activeElement).toBe(door)
 	})
 })

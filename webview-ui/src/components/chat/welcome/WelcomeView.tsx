@@ -86,11 +86,18 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	onUpgradeDismiss,
 	showUpgradeCard,
 }) => {
-	const { taskHistory, workspaceClassification, reviewNudgeShow, adsumUnlockedShow, adsumAccount, announcementRequested } =
-		useExtensionState() as ReturnType<typeof useExtensionState> & {
-			adsumAccount?: AdsumAccountState
-			announcementRequested?: boolean
-		}
+	const {
+		navigateToHistory,
+		taskHistory,
+		workspaceClassification,
+		reviewNudgeShow,
+		adsumUnlockedShow,
+		adsumAccount,
+		announcementRequested,
+	} = useExtensionState() as ReturnType<typeof useExtensionState> & {
+		adsumAccount?: AdsumAccountState
+		announcementRequested?: boolean
+	}
 	// A locked card opens ONE of two doors. Signed out: the register gate (the tier opens on
 	// registration). Signed in but without a by-request group: the request form for that family.
 	const [gateFor, setGateFor] = useState<IntentDef | null>(null)
@@ -332,31 +339,9 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				    and leave a light-theme host showing white ink on a white sidebar. */}
 				<img alt="Adsum IoT Coder" className="adsum-wordmark-dark" src={adsumLogoDark} style={{ height: "18px" }} />
 				<img alt="" aria-hidden="true" className="adsum-wordmark-light" src={adsumLogoLight} style={{ height: "18px" }} />
-				<button
-					aria-label="Browse sessions and runs"
-					className="relative ml-auto rounded px-1.5 py-0.5 hover:bg-[var(--vscode-toolbar-hoverBackground)]"
-					data-testid="entry-burger"
-					onClick={openDrawer}
-					title="Browse sessions and runs">
-					<span aria-hidden="true" className="codicon codicon-menu" />
-					{/* [SWEEP 2026-09-04, F4] A coral dot for "runs you have not seen" on a first visit,
-					    when nothing has been seen, is a nag rather than a signal. It appears once there is
-					    at least one run the developer HAS opened. */}
-					{unseen.length > 0 && unseen.length < runs.length && (
-						<span
-							data-testid="entry-burger-badge"
-							style={{
-								position: "absolute",
-								top: "-1px",
-								right: "-1px",
-								width: "7px",
-								height: "7px",
-								borderRadius: "50%",
-								background: BRAND_CORAL,
-							}}
-						/>
-					)}
-				</button>
+				{/* No ☰. [OPERATOR 2026-09-09, approved] It sat 30 px under the host's own ＋ ↺ ⚙ and read as
+				    a second menu; what it opened is one click away at the "All runs" line under the cards,
+				    and the sessions it listed live in the host's ↺ (HistoryView). */}
 			</div>
 
 			{/* Where you are, and what is on the desk.
@@ -580,16 +565,17 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 									Nothing has run in <b>{scopeName}</b> yet —{" "}
 									<button
 										data-testid="entry-elsewhere"
-										onClick={openDrawer}
+										onClick={() => navigateToHistory()}
 										style={{ color: BRAND_CYAN_TEXT, textDecoration: "underline" }}>
 										your {mode.elsewhereCount} session{mode.elsewhereCount > 1 ? "s" : ""} in other folders
 									</button>{" "}
 									{/* [OPERATOR 2026-09-04] The glyph goes BEFORE the word, because it is the thing
 									    being named, not a decoration after it — and this is the only place the copy
-									    can teach which control it means. */}
-									are in the{" "}
-									<span aria-hidden="true" className="codicon codicon-menu" style={{ fontSize: "11px" }} />{" "}
-									menu.
+									    can teach which control it means. [2026-09-09] That control is now the host's
+									    own ↺ History in the title bar: the drawer no longer lists sessions. */}
+									are in{" "}
+									<span aria-hidden="true" className="codicon codicon-history" style={{ fontSize: "11px" }} />{" "}
+									History.
 								</div>
 							)}
 						</div>
@@ -750,19 +736,37 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										)}
 									</React.Fragment>
 								))}
-								{/* Everything past the third card is one click away, in the drawer that already
-								    lists every run — cap 3 is what puts the first card and the resume above the
-								    fold on an 800 px panel. */}
-								{runs.length > CARDS && (
-									<button
-										className="self-start bg-transparent border-0 p-0 text-left"
-										data-testid="entry-more-runs"
-										onClick={openDrawer}
-										style={{ fontSize: "11px", color: BRAND_CYAN_TEXT, cursor: "pointer" }}
-										type="button">
-										{runs.length - CARDS} more{hasHistory ? ", and the demo flash" : ""} →
-									</button>
-								)}
+								{/* The ONE door to the drawer, and it is always here in this branch: the sample
+								    runs and every run past the third card live only in the drawer once a folder is
+								    open, so there is always something behind it. (A cold start shows the samples
+								    on the surface itself and hides nothing, so it has no door — nothing to reach.)
+								    [OPERATOR 2026-09-09, approved] The ☰ that used to duplicate this is gone; its
+								    coral "unseen runs" dot moved here, same rule: only once at least one run has
+								    been opened, never as a nag on a first visit. */}
+								<button
+									className="relative self-start bg-transparent border-0 p-0 text-left"
+									data-testid="entry-more-runs"
+									onClick={openDrawer}
+									style={{ fontSize: "11px", color: BRAND_CYAN_TEXT, cursor: "pointer", fontWeight: 600 }}
+									type="button">
+									All runs
+									{runs.length > CARDS ? ` · ${runs.length - CARDS} more` : ""}
+									{hasHistory ? ", and the demo flash" : ""} →
+									{unseen.length > 0 && unseen.length < runs.length && (
+										<span
+											data-testid="entry-more-runs-badge"
+											style={{
+												position: "absolute",
+												top: "-2px",
+												right: "-9px",
+												width: "7px",
+												height: "7px",
+												borderRadius: "50%",
+												background: BRAND_CORAL,
+											}}
+										/>
+									)}
+								</button>
 							</>
 						)}
 						{/* Cellular & gateways, always present — locked until the developer registers, live after.
@@ -784,7 +788,19 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							variant={adsumAccount && !adsumAccount.emailVerified ? "verify" : "default"}
 						/>
 					</>
-				) : resumeSession ? null : (
+				) : resumeSession ? (
+					/* Collapsed: the resume and the composer, nothing else — except the one door. The
+					   runs, checks and samples are all still in the drawer, and this shape's only way
+					   in used to be the ☰. [OPERATOR 2026-09-09, approved] One quiet line instead. */
+					<button
+						className="self-start bg-transparent border-0 p-0 text-left"
+						data-testid="entry-more-runs"
+						onClick={openDrawer}
+						style={{ fontSize: "11px", color: BRAND_CYAN_TEXT, cursor: "pointer", fontWeight: 600 }}
+						type="button">
+						All runs{hasHistory ? ", and the demo flash" : ""} →
+					</button>
+				) : (
 					<div
 						data-testid="entry-orientation"
 						style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)" }}>
@@ -795,7 +811,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 								{/* A count with no way to reach it is a dead end; this is the way there. */}
 								<button
 									data-testid="entry-elsewhere"
-									onClick={openDrawer}
+									onClick={() => navigateToHistory()}
 									style={{ color: BRAND_CYAN_TEXT, textDecoration: "underline" }}>
 									{mode.elsewhereCount} session{mode.elsewhereCount > 1 ? "s" : ""} in other folders
 								</button>
@@ -808,7 +824,6 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 
 			<EntryDrawer
 				checks={[]}
-				history={taskHistory ?? []}
 				onClose={() => setDrawerOpen(false)}
 				open={drawerOpen}
 				runs={drawerRuns}

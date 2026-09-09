@@ -186,7 +186,8 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 
 	const fuse = useMemo(() => {
 		return new Fuse(tasks, {
-			keys: ["task"],
+			// The developer's own name for a session (rename) and its first prompt both find it.
+			keys: ["task", "title"],
 			threshold: 0.6,
 			shouldSort: true,
 			isCaseSensitive: false,
