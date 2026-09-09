@@ -49,7 +49,8 @@ const WARNING = "rgb(210, 153, 34)" // BRAND_WARNING #D29922
 const browser = await chromium.launch()
 const results = []
 
-async function story(id, theme = "vs_dark") {
+const THEME = process.env.THEME ?? "vs_dark"
+async function story(id, theme = THEME) {
 	const page = await browser.newPage({ viewport: { width: 420, height: 900 }, deviceScaleFactor: 2 })
 	const errors = []
 	page.on("pageerror", (e) => errors.push(String(e)))
@@ -58,7 +59,7 @@ async function story(id, theme = "vs_dark") {
 	return { page, errors }
 }
 async function shot(page, name) {
-	await page.screenshot({ path: path.join(OUT, `${name}.png`), fullPage: false })
+	await page.screenshot({ path: path.join(OUT, `${name}-${THEME}.png`), fullPage: false })
 }
 function check(name, ok, detail) {
 	results.push({ name, ok, detail })
