@@ -20,7 +20,8 @@
 		"type": "git",
 		"url": "https://github.com/adsumnetworks/Adsum-IoT-Coder"
 	},
-	"homepage": "https://github.com/adsumnetworks/Adsum-IoT-Coder",
+	"homepage": "https://www.adsumnetworks.com",
+	"pricing": "Free",
 	"bugs": {
 		"url": "https://github.com/adsumnetworks/Adsum-IoT-Coder/issues"
 	},
@@ -44,7 +45,6 @@
 		"fanstel",
 		"wifi",
 		"firmware",
-		"firmware-debugging",
 		"embedded",
 		"iot",
 		"debugger",
@@ -59,7 +59,12 @@
 		"nrf91",
 		"cellular",
 		"nb-iot",
-		"lte-m"
+		"lte-m",
+		"zephyr-rtos",
+		"nrf52840",
+		"nrf9160",
+		"sniffer",
+		"ntn"
 	],
 	"activationEvents": [
 		"onLanguage",

@@ -60,7 +60,7 @@ A home that reads your desk, cellular and satellite work behind a free account, 
 
 ## Getting Started
 
-Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) or [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) (Cursor, Windsurf, VSCodium). **No key, no account, no card**: the free tier is on by default and is a real working tier, enough to scaffold a project and run a full debug loop.
+Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) or [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) (Cursor, Windsurf, VSCodium), on Windows, macOS and Linux. **No key, no account, no card**: the free tier is on by default and is a real working tier, enough to scaffold a project and run a full debug loop.
 
 **Prerequisites:** the [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) for nRF, or an ESP-IDF installation for ESP. nRF54LM20 needs nRF Connect SDK 3.3.0 or newer; cellular needs an nRF91 DK and a SIM. [Full requirements](https://docs.adsumnetworks.com/getting-started)
 
@@ -68,7 +68,7 @@ Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the 
 2. Open your **nRF or ESP project**. The home detects your boards and toolchains and ranks the runs worth starting: *Build, flash & debug*, *Add a feature*, *Test & validate*, *CRA SBOM & Fix*, or a guided partner-gateway build.
 3. **Describe the task** or pick a run. Enter starts the session; a message sent while it works lands at the next step.
 4. **Register (free, no card)** when you reach cellular, satellite or edge AI. Everything else keeps working without it.
-5. **Bring your own model** whenever you want: the GLM Coding Plan, Claude, DeepSeek, or any OpenAI- or Anthropic-compatible endpoint, cloud or local, switched instantly on a running task.
+5. **Bring your own model** whenever you want: the GLM Coding Plan, Claude, DeepSeek, or any OpenAI- or Anthropic-compatible endpoint, cloud or local (Ollama, LM Studio), switched instantly on a running task.
 
 Field-tested on our own builds: the budget tiers handle routine work with thinking on; the full models can switch it off, which is where the token saving lives. [Free tier →](https://docs.adsumnetworks.com/free-tier) · [Models →](https://docs.adsumnetworks.com/models)
 
@@ -106,8 +106,8 @@ Fanstel makes and sells the hardware; Adsum writes, signs and licenses the firmw
 
 - **Tells you what is on your desk.** Names your board, says which toolchain is missing and what to install, and when a serial device will not answer it says so in the header, with the why one click away.
 - **Carries a full product build.** One spec to a working two-chip gateway, across both toolchains, in under 30 minutes, you approving each step. [Walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway)
-- **Builds, flashes and debugs on real hardware.** Live RTT and UART logs on nRF, serial on ESP, read against your source. The reset vector is checked before an image is flashed.
-- **Debugs across three layers.** App log, HCI bus and over-the-air radio, correlated. [A real one](https://docs.adsumnetworks.com/ble-wifi-gateway/troubleshooting): 36 advertisements on the air, 0 received, a radio front end never switched on.
+- **Builds, flashes and debugs on real hardware.** Live RTT (J-Link) and UART logs on nRF, serial on ESP, read against your source. The reset vector is checked before an image is flashed.
+- **Debugs across three layers.** App log, HCI bus and over-the-air radio (an nRF52840 dongle the agent flashes as an nRF Sniffer for Bluetooth LE), correlated. [A real one](https://docs.adsumnetworks.com/ble-wifi-gateway/troubleshooting): 36 advertisements on the air, 0 received, a radio front end never switched on.
 - **Talks to the board.** AT and Zephyr shell commands, and a modem trace with the network's own reason for refusing a connection.
 - **Scaffolds, extends, tests.** A new project, or a BLE service, sensor, shell or storage wired into yours; host tests and on-hardware checks.
 - **Remembers and can be steered.** An `.adsum/` project memory read at the start of every task; a message mid-run lands at the next step; any session exports as one redacted file.
@@ -162,6 +162,36 @@ The runtime runs on your machine, and so does your project memory: `.adsum/` liv
 [Limitations in full](https://docs.adsumnetworks.com/legal/limitations) · [privacy and security](https://docs.adsumnetworks.com/privacy-and-security)
 
 nRF, nRF Connect SDK and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA; ESP32 and ESP-IDF are trademarks of Espressif Systems; Zephyr is a trademark of the Linux Foundation; Visual Studio Code is a trademark of Microsoft. This is an independent project, not affiliated with or endorsed by any of them.
+
+## FAQ: editors, boards, accounts, SDK versions
+
+### Does it work in Cursor, Windsurf or VSCodium?
+
+Yes. Install from [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) in those editors and from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) in VS Code, on Windows, macOS and Linux.
+
+### Which boards does it support?
+
+Any board built on a supported chip: nRF52, nRF53, nRF54L and nRF91 on nRF Connect SDK; ESP32, ESP32-S3 and ESP32-C6 on ESP-IDF. A development kit, your own design, or a product off the shelf. There is no list your board has to be on.
+
+### Do I need an API key or an account?
+
+No. The free tier is on by default, with no key and no card. A free account (GitHub or email) is needed only for cellular, satellite NB-NTN, nRF54 edge AI and the gateway firmware images.
+
+### Does it replace the nRF Connect for VS Code or ESP-IDF extensions?
+
+No. It works beside them: it needs the nRF Connect Extension Pack for nRF and an ESP-IDF installation for ESP, and drives `west`, `nrfutil`, `idf.py` and `esptool` through those toolchains.
+
+### Can it run with a local model?
+
+Yes. Any OpenAI- or Anthropic-compatible endpoint works, including a local Ollama or LM Studio server, as long as the model handles native tool calling well. Your code and logs then stay on your machine.
+
+### Is the CRA check a conformity assessment?
+
+No. It is a readiness aid for the EU Cyber Resilience Act: an SBOM (SPDX) from your real build, a known-CVE scan and a secure-by-design posture check. Not a certification and not legal advice.
+
+### Which SDK versions are verified?
+
+The gateway builds are verified with nRF Connect SDK 3.2.1 and ESP-IDF 5.5 on extension 0.4.0; nRF54LM20 needs nRF Connect SDK 3.3.0 or newer. [Getting started](https://docs.adsumnetworks.com/getting-started)
 
 ## About
 

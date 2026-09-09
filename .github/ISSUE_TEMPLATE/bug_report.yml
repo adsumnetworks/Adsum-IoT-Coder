@@ -1,0 +1,42 @@
+name: Bug report
+description: Something the extension did wrong on your board, toolchain or editor.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you asked for, what the agent did, and what you expected instead.
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Chip and board
+      placeholder: "nRF52840 DK · ESP32-S3 DevKitC · Fanstel LEW840x · your own design"
+    validations:
+      required: true
+  - type: input
+    id: sdk
+    attributes:
+      label: SDK and version
+      placeholder: "nRF Connect SDK 3.2.1 · ESP-IDF 5.5"
+  - type: input
+    id: editor
+    attributes:
+      label: Editor, OS and extension version
+      placeholder: "VS Code 1.13x on Windows 11 · Adsum IoT Coder 0.4.0"
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Provider and model
+      placeholder: "free tier · GLM Coding Plan glm-5.2 · Claude Sonnet 5 · local Ollama"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or session export
+      description: Paste the relevant log lines, or attach the session export (one redacted file, from the session menu). Remove anything private first.
+      render: text

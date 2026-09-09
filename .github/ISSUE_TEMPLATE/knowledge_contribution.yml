@@ -1,0 +1,31 @@
+name: Knowledge contribution
+description: A fix, idiom or bring-up detail you learned on real nRF or ESP hardware, credited to you in every session that loads it.
+title: "[knowledge] "
+labels: ["knowledge"]
+body:
+  - type: input
+    id: scope
+    attributes:
+      label: Chip, board and SDK version
+      placeholder: "nRF9160 DK · nRF Connect SDK 3.2.1"
+    validations:
+      required: true
+  - type: textarea
+    id: rule
+    attributes:
+      label: The knowledge
+      description: The symptom, the cause, and the fix or idiom. Concrete commands and config beat prose.
+    validations:
+      required: true
+  - type: textarea
+    id: verified
+    attributes:
+      label: How you verified it on hardware
+      description: What you ran, what you saw before and after.
+    validations:
+      required: true
+  - type: input
+    id: credit
+    attributes:
+      label: How to credit you
+      placeholder: "GitHub handle or profile link shown in the credit line"
