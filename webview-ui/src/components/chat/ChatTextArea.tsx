@@ -277,6 +277,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			showChatModelSelector: showModelSelector,
 			setShowChatModelSelector: setShowModelSelector,
 			dictationSettings,
+			freeTierRemainingTokens,
 		} = useExtensionState()
 		const { clineUser } = useClineAuth()
 		const [isTextAreaFocused, setIsTextAreaFocused] = useState(false)
@@ -1838,7 +1839,13 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									{/* App Tooltip (instant), not the native title= (browser-delayed/flaky) —
 									    matches the @ button so all three controls feel identical. */}
 									<Tooltip>
-										<TooltipContent>Select model / API provider</TooltipContent>
+										{/* The strip retires once the install has history; from then on THIS is where the
+										    free tier says who pays and how much is left. Relocated, never dropped. */}
+										<TooltipContent>
+											{modelDisplayName === "Free tier" && freeTierRemainingTokens !== undefined
+												? `Free tier · ${freeTierRemainingTokens.toLocaleString()} tokens left — inference provided by Adsum Networks. Click to change model or add your own key.`
+												: "Select model / API provider"}
+										</TooltipContent>
 										<TooltipTrigger>
 											<ModelButtonWrapper ref={buttonRef}>
 												<ModelDisplayButton
