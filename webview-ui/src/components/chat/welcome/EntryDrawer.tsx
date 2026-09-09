@@ -31,6 +31,10 @@ export interface DrawerRun extends Suggestable {
 	blurb?: string
 	meta?: string
 	onRun: () => void
+	/** Held behind an entitlement the account does not have. Rendered with a lock and the pill's
+	 *  words ("Register" / "Request access"); running it opens the gate instead of the run. */
+	locked?: boolean
+	lockPill?: string
 }
 
 interface EntryDrawerProps {
@@ -283,11 +287,11 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 						<Group first={!shownSessions.length} label="Suggested runs" />
 						{visibleRuns.map((r) => (
 							<Row
-								icon={r.item.icon ?? "rocket"}
+								icon={r.item.locked ? "lock" : (r.item.icon ?? "rocket")}
 								key={r.item.id}
-								meta={r.item.meta}
+								meta={r.item.locked ? (r.item.lockPill ?? "Register") : r.item.meta}
 								onClick={() => run(r.item)}
-								testId="entry-drawer-run"
+								testId={r.item.locked ? "entry-drawer-run-locked" : "entry-drawer-run"}
 								title={r.item.title}
 								unseen={unseenRunIds.includes(r.item.id)}
 								why={r.grounded ? r.why : undefined}

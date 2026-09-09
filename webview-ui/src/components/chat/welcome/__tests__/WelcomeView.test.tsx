@@ -60,6 +60,7 @@ const mockState = (opts: {
 	espEnvironment?: unknown
 	reviewNudgeShow?: boolean
 	adsumUnlockedShow?: boolean
+	adsumAccount?: unknown
 }) => {
 	vi.mocked(useExtensionState).mockReturnValue({
 		version: "1.0.0",
@@ -71,6 +72,7 @@ const mockState = (opts: {
 		espEnvironment: opts.espEnvironment,
 		reviewNudgeShow: opts.reviewNudgeShow,
 		adsumUnlockedShow: opts.adsumUnlockedShow,
+		adsumAccount: opts.adsumAccount,
 	} as any)
 }
 
@@ -104,11 +106,9 @@ describe("the shape rule decides what is on screen", () => {
 		const { container } = render(<WelcomeView {...baseProps} />)
 		const receipt = screen.getByTestId("unlocked-card")
 		const firstRun = screen.getAllByTestId(/^entry-run-/)[0]
-		const group = screen.getByTestId("cellular-group")
 		// DOCUMENT_POSITION_FOLLOWING: the receipt comes first in the document, so everything the
 		// developer would have had to scroll past to find it now comes after it.
 		expect(receipt.compareDocumentPosition(firstRun) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-		expect(receipt.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 		expect(container.querySelector('[data-testid="unlocked-dismiss"]')).toBeTruthy()
 	})
 
@@ -136,6 +136,88 @@ describe("the shape rule decides what is on screen", () => {
 		for (const t of ["cra-nudge", "unlocked-card", "upgrade-card", "review-nudge"]) {
 			expect(screen.queryByTestId(t)).toBeNull()
 		}
+	})
+
+	/* ------------------------------------------------------------------------------------------
+	 * One ranked home, cap 3 — [SWEEP 2026-09-09, moves 03 and 04, operator: "do what you recommend"].
+	 * The cellular cards used to be a group of their own below the runs: 596 px, 43% of the surface.
+	 * ---------------------------------------------------------------------------------------- */
+	// IntentCard also renders `<testId>-subline`; count CARDS, not their reason lines.
+	const cards = () => screen.getAllByTestId(/^entry-run-/).filter((e) => !e.getAttribute("data-testid")!.endsWith("-subline"))
+	const REGISTERED = {
+		email: "dev@example.com",
+		name: "Dev",
+		emailVerified: true,
+		groups: ["cellular-advanced", "edge-ai-advanced", "lew840x-demo-hex", "blg20-demo-hex"],
+	}
+
+	it("shows at most THREE cards, and the rest are one click away in the drawer", () => {
+		mockState({ openFolderPaths: ["/w/gateway-fw"] })
+		render(<WelcomeView {...baseProps} />)
+		expect(cards().length).toBeLessThanOrEqual(3)
+		const more = screen.getByTestId("entry-more-runs")
+		expect(more.textContent).toMatch(/\d+ more/)
+		fireEvent.click(more)
+		expect(screen.getByTestId("entry-drawer")).toBeTruthy()
+		// the drawer lists what the surface did not: more runs than the surface showed
+		expect(screen.getAllByTestId(/^entry-drawer-run/).length).toBeGreaterThan(3)
+	})
+
+	it("there is no separate cellular group any more — one home", () => {
+		mockState({ openFolderPaths: ["/w/gateway-fw"] })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.queryByTestId("cellular-group")).toBeNull()
+		expect(screen.queryByTestId("cellular-note")).toBeNull()
+	})
+
+	it("a detected nRF91 board ranks its card to the top, on the ranking's own terms", () => {
+		// A folder that is NOT the LEW840x product: in a product workspace the product build outranks a
+		// board match on purpose (score 100 vs 80), which is a different rule and its own case.
+		mockState({
+			openFolderPaths: ["/w/sensor-fw"],
+			nrfEnvironment: {
+				status: "ready",
+				extensionPresent: true,
+				nrfutilPresent: true,
+				boards: [{ deviceName: "nRF9151 DK", boardVersion: "PCA10171", serialNumber: "1" }],
+			},
+		})
+		render(<WelcomeView {...baseProps} />)
+		const first = cards()[0]
+		expect(first.textContent).toMatch(/nRF9151 DK connected/)
+	})
+
+	it("signed out: a gated card is locked, says Register, and opens the gate", () => {
+		mockState({ openFolderPaths: ["/w/gateway-fw"], adsumAccount: undefined })
+		render(<WelcomeView {...baseProps} />)
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
+		// every cellular run is behind a lock for a signed-out developer
+		expect(screen.getAllByTestId("entry-drawer-run-locked").length).toBeGreaterThanOrEqual(4)
+	})
+
+	it("registered: the tier cards open, and the BLG20 card stays locked behind 'Request access'", () => {
+		mockState({ openFolderPaths: ["/w/gateway-fw"], adsumAccount: REGISTERED })
+		render(<WelcomeView {...baseProps} />)
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
+		const locked = screen.getAllByTestId("entry-drawer-run-locked")
+		// exactly ONE run is still locked for a registered account — the by-request BLG20 card
+		expect(locked).toHaveLength(1)
+		expect(locked[0].textContent).toMatch(/BLG20/)
+		expect(locked[0].textContent).toMatch(/Request access/)
+	})
+
+	it("the demo card holds the surface until the install has a task, then moves to the drawer", () => {
+		// The demo card is itself tier-gated (lew840x-demo-hex), so the developer is registered here.
+		mockState({ openFolderPaths: ["/w/gateway-fw"], taskHistory: [], adsumAccount: REGISTERED })
+		const { unmount } = render(<WelcomeView {...baseProps} />)
+		expect(screen.getByTestId("demo-hex-card")).toBeTruthy()
+		unmount()
+		mockState({ openFolderPaths: ["/w/gateway-fw"], taskHistory: [sess(1, "/w/gateway-fw", 0.1)], adsumAccount: REGISTERED })
+		render(<WelcomeView {...baseProps} />)
+		expect(screen.queryByTestId("demo-hex-card")).toBeNull()
+		expect(screen.getByTestId("entry-more-runs").textContent).toMatch(/demo flash/)
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
+		expect(screen.getByTestId("entry-drawer").textContent).toMatch(/Flash the LEW840x demo/)
 	})
 
 	it("a sample fires on one click — it is pre-canned, so it needs no second confirming act", () => {

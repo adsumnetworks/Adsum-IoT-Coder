@@ -52,6 +52,8 @@ export const KBIT_GROUPS = [
 	"blg20-ble-src",
 	"blg20-esp-src",
 	"blg20-9151-src",
+	// opens the BLG20 gateway card; by request, unlocked per developer as certification lands
+	"blg20-early-access",
 	// staff / partner catch-all: holding it satisfies every other group
 	"all",
 ] as const

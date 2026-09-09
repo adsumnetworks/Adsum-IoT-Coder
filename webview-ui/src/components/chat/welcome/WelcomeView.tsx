@@ -1,4 +1,4 @@
-import { ADSUM_REGISTERED_BANNER } from "@shared/adsumAccount"
+import { ADSUM_REGISTERED_BANNER, type AdsumAccountState, accountHasGroup } from "@shared/adsumAccount"
 import { StringRequest } from "@shared/proto/cline/common"
 import React, { useEffect, useMemo, useState } from "react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
@@ -8,21 +8,25 @@ import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "../brandColors"
 import { DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
-import CellularGroup from "./CellularGroup"
+import { SourceLine } from "./CellularGroup"
 import CraNudge from "./CraNudge"
 import DemoHexCard from "./DemoHexCard"
 import DockCoachMark, { dockCoachEligible } from "./DockCoachMark"
 import EntryDrawer, { type DrawerRun } from "./EntryDrawer"
 import EnvStrip from "./EnvStrip"
-import { entryDrawerOpen, entryFirstPrompt, entryRunStart, entryShown } from "./entryTelemetry"
+import { entryDrawerOpen, entryFirstPrompt, entryRunStart, entryShown, gateShown } from "./entryTelemetry"
+import GatePanel from "./GatePanel"
 import IntentCard from "./IntentCard"
 import { oneNotice } from "./notices"
+import RequestAccessForm from "./RequestAccessForm"
 import ReviewNudge from "./ReviewNudge"
 import { runIntent } from "./runIntent"
 import { rank } from "./suggest"
 import UnlockedCard from "./UnlockedCard"
 import { useEntrySignals } from "./useEntrySignals"
 import {
+	CELLULAR_BOARDS,
+	CELLULAR_INTENTS,
 	DEMO_HEX_PROMPT,
 	getTenure,
 	type IntentDef,
@@ -82,7 +86,13 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	onUpgradeDismiss,
 	showUpgradeCard,
 }) => {
-	const { version, taskHistory, workspaceClassification, reviewNudgeShow, adsumUnlockedShow } = useExtensionState()
+	const { version, taskHistory, workspaceClassification, reviewNudgeShow, adsumUnlockedShow, adsumAccount } =
+		useExtensionState() as ReturnType<typeof useExtensionState> & { adsumAccount?: AdsumAccountState }
+	// A locked card opens ONE of two doors. Signed out: the register gate (the tier opens on
+	// registration). Signed in but without a by-request group: the request form for that family.
+	const [gateFor, setGateFor] = useState<IntentDef | null>(null)
+	const [requesting, setRequesting] = useState<"lew840x" | "blg20" | null>(null)
+	const hasHistory = (taskHistory?.length ?? 0) > 0
 	const { mode, signals, scopeName, isColdStart } = useEntrySignals()
 
 	const [drawerOpen, setDrawerOpen] = useState(false)
@@ -121,8 +131,71 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			onRun: () =>
 				onStartTask("Build the LEW840x gateway: scan BLE tags and publish them to MQTT over Ethernet, Wi-Fi and LTE"),
 		}
-		return rank<DrawerRun>([product, ...fromIntents], signals)
-	}, [intents, platform, projectName, signals, onSelectMode, onStartTask])
+		/**
+		 * ONE home. The cellular and edge-AI cards used to live in a group of their own, below the
+		 * suggested runs, with their own note, their own hint line and their own rule — 596 px, 43% of
+		 * the entry surface, whatever was on the desk. They rank with everything else now: a card
+		 * whose board is connected earns the top of the list on the ranking's own terms, and one whose
+		 * board is not sits below what the developer can start today. The lock travels with the card.
+		 * [SWEEP 2026-09-09, move 03 — OPERATOR: "do what you recommend"]
+		 */
+		const handlers = { onSelectMode, onStartTask, platform, projectName }
+		const cellular: DrawerRun[] = CELLULAR_INTENTS.map((i) => {
+			const locked = !!i.group && !accountHasGroup(adsumAccount, i.group)
+			return {
+				id: i.id,
+				icon: i.icon,
+				platform: "product",
+				need: i.id === "blg20Gateway" ? "blg20" : "cellular",
+				productLabel: i.id === "blg20Gateway" ? "Fanstel BLG20" : undefined,
+				boardMatch: CELLULAR_BOARDS,
+				whyNeutral:
+					i.id === "edgeAi" ? "needs an nRF54 with the Axon NPU" : "needs an nRF91-family board or a Fanstel gateway",
+				title: i.title,
+				blurb: i.description,
+				locked,
+				lockPill: locked ? (adsumAccount ? "Request access" : "Register") : undefined,
+				onRun: () => {
+					if (!locked) {
+						runIntent(i.id, handlers)
+						return
+					}
+					if (!adsumAccount) {
+						gateShown("card", i.id)
+						setGateFor(i)
+						return
+					}
+					setRequesting(i.id === "blg20Gateway" ? "blg20" : "lew840x")
+				},
+			}
+		})
+		return rank<DrawerRun>([product, ...fromIntents, ...cellular], signals)
+	}, [intents, platform, projectName, signals, onSelectMode, onStartTask, adsumAccount])
+
+	/**
+	 * The demo flash is the strongest one-click proof the product has — and only while there is
+	 * nothing else to show. It holds a card on the surface until the install has a task, then it
+	 * lives in the drawer with everything else. [SWEEP 2026-09-09, move 04]
+	 */
+	const demoRun: DrawerRun = useMemo(
+		() => ({
+			id: "demoHex",
+			icon: "rocket",
+			platform: "product",
+			need: "lew840x",
+			productLabel: "Fanstel LEW840x",
+			whyNeutral: "needs the LEW840x and its programming kit; nrfutil and esptool on this machine",
+			title: "Flash the LEW840x demo",
+			blurb: "Three signed hexes: BLE scanner, ESP32 uplink, nRF9160 bearer. About three minutes.",
+			meta: "≈ 3 min",
+			onRun: () => void onStartTask(DEMO_HEX_PROMPT),
+		}),
+		[onStartTask],
+	)
+	const drawerRuns = useMemo(
+		() => (hasHistory ? [...runs, { item: demoRun, score: 0, why: "", grounded: false }] : runs),
+		[runs, demoRun, hasHistory],
+	)
 
 	/** Does any suggestion rest on a detection? Decides whether a card may be lit as primary. */
 	const anyGrounded = runs.some((r) => r.grounded)
@@ -628,41 +701,69 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 									</span>
 								</div>
 								{runs.slice(0, CARDS).map((r, idx) => (
-									<IntentCard
-										description={r.item.blurb ?? ""}
-										// One cyan focal point, and it is whatever the signals actually ranked
-										// first. Three cards shouting equally is the same as none of them
-										// leading — the eye has nowhere to land and the ranking is wasted.
-										icon={r.item.icon ?? "rocket"}
-										key={r.item.id}
-										onClick={() => {
-											entryRunStart(r.item.id, "card")
-											r.item.onRun()
-										}}
-										primary={idx === 0 && anyGrounded && !resumeSession}
-										// [F7] Same rule as the drawer: a reason earns its line only when it names
-										// something detected. "works on nRF and on ESP32" on three cards in a row
-										// was the one thing every card said and the loudest text on each.
-										subline={r.grounded ? `◆ ${r.why}` : undefined}
-										sublineColor={BRAND_CYAN_TEXT}
-										testId={`entry-run-${r.item.id}`}
-										title={r.item.title}
-									/>
+									<React.Fragment key={r.item.id}>
+										<IntentCard
+											description={r.item.blurb ?? ""}
+											// One cyan focal point, and it is whatever the signals actually ranked
+											// first. Three cards shouting equally is the same as none of them
+											// leading — the eye has nowhere to land and the ranking is wasted.
+											icon={r.item.icon ?? "rocket"}
+											locked={r.item.locked}
+											onClick={() => {
+												entryRunStart(r.item.id, "card")
+												r.item.onRun()
+											}}
+											onLocked={r.item.locked ? r.item.onRun : undefined}
+											pill={r.item.locked ? r.item.lockPill : undefined}
+											primary={idx === 0 && anyGrounded && !resumeSession && !r.item.locked}
+											// [F7] Same rule as the drawer: a reason earns its line only when it names
+											// something detected. "works on nRF and on ESP32" on three cards in a row
+											// was the one thing every card said and the loudest text on each.
+											subline={r.grounded ? `◆ ${r.why}` : undefined}
+											sublineColor={BRAND_CYAN_TEXT}
+											testId={`entry-run-${r.item.id}`}
+											title={r.item.title}
+										/>
+										{/* The template-source request belongs to the LEW840x card and reads as its
+										    sub-line. A sibling, not a child: the card is a button, and a control
+										    inside a button is unreachable by keyboard. */}
+										{r.item.id === "cellularGateway" && !r.item.locked && (
+											<SourceLine onRequest={() => setRequesting("lew840x")} />
+										)}
+									</React.Fragment>
 								))}
+								{/* Everything past the third card is one click away, in the drawer that already
+								    lists every run — cap 3 is what puts the first card and the resume above the
+								    fold on an 800 px panel. */}
+								{runs.length > CARDS && (
+									<button
+										className="self-start bg-transparent border-0 p-0 text-left"
+										data-testid="entry-more-runs"
+										onClick={openDrawer}
+										style={{ fontSize: "11px", color: BRAND_CYAN_TEXT, cursor: "pointer" }}
+										type="button">
+										{runs.length - CARDS} more{hasHistory ? ", and the demo flash" : ""} →
+									</button>
+								)}
 							</>
 						)}
 						{/* Cellular & gateways, always present — locked until the developer registers, live after.
 						    It sits AFTER the suggested runs because it is a second offer, not a competing one:
 						    everything above works today with no account at all, and this group says plainly what
 						    a free account adds. Hiding it until sign-in would mean nobody ever learns it exists. */}
-						<DemoHexCard onFlash={() => void onStartTask(DEMO_HEX_PROMPT)} />
-						<CellularGroup
-							boards={signals.nrfBoards}
-							hasBle={signals.features.hasBle}
-							onSelectMode={onSelectMode}
-							onStartTask={onStartTask}
-							platform={platform}
-							projectName={projectName}
+						{!hasHistory && <DemoHexCard onFlash={() => void onStartTask(DEMO_HEX_PROMPT)} />}
+						<RequestAccessForm
+							family={requesting ?? undefined}
+							onClose={() => setRequesting(null)}
+							open={requesting !== null}
+						/>
+						<GatePanel
+							email={adsumAccount?.email}
+							onClose={() => setGateFor(null)}
+							open={gateFor !== null}
+							satisfied={!!gateFor?.group && accountHasGroup(adsumAccount, gateFor.group)}
+							surface="card"
+							variant={adsumAccount && !adsumAccount.emailVerified ? "verify" : "default"}
 						/>
 					</>
 				) : resumeSession ? null : (
@@ -692,7 +793,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				history={taskHistory ?? []}
 				onClose={() => setDrawerOpen(false)}
 				open={drawerOpen}
-				runs={runs}
+				runs={drawerRuns}
 				samples={samples}
 				unseenRunIds={unseen}
 			/>
