@@ -498,7 +498,7 @@
 		"test:memory": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/memory.test.ts",
 		"test:memory-migrate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/migrate.test.ts",
 		"test:sniffer-payload": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/nrf/payloadHex.node-test.ts",
-		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:stream-watchdog test:workspace test:cve test:engine-config test:ask-bridge test:chip-identity test:standalone-package test:session-lease test:platform-roots test:classifier-refresh test:product-recognition test:inject-queue test:queued-messages test:native-tool-text test:terminal-events test:gnss-gate",
+		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:stream-watchdog test:telemetry-events test:workspace test:cve test:engine-config test:ask-bridge test:chip-identity test:standalone-package test:session-lease test:platform-roots test:classifier-refresh test:product-recognition test:inject-queue test:queued-messages test:native-tool-text test:terminal-events test:gnss-gate",
 		"kbit": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit.ts",
 		"qa": "bash qa/regression/run.sh",
 		"format": "biome format --changed --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error",
@@ -585,6 +585,7 @@
 		"test:ask-bridge": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/askBridge.node-test.ts",
 		"test:session-lease": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/sessionLease.node-test.ts",
 		"test:inject-queue": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/injectQueue.node-test.ts",
+		"test:telemetry-events": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/telemetry/__tests__/telemetryEvents040.node-test.ts",
 		"test:terminal-events": "ts-node --transpile-only -P tsconfig.unit-test.json src/hosts/vscode/terminal/terminalEndEvents.node-test.ts",
 		"test:gnss-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/gnssGate.node-test.ts",
 		"test:logger-tools": "python3 -m unittest discover -s iot-knowledge/platforms/nrf/tools/rtt-logger -p 'test_*.py'"

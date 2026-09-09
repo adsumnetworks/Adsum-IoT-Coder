@@ -45,7 +45,8 @@ export class PostHogFeatureFlagsProvider implements IFeatureFlagsProvider {
 		}
 
 		try {
-			return await this.client.getFeatureFlag(flagName, this.distinctId)
+			// No $feature_flag_called event: it fired once per flag per activation and nothing reads it.
+			return await this.client.getFeatureFlag(flagName, this.distinctId, { sendFeatureFlagEvents: false })
 		} catch (error) {
 			console.error(`Error getting feature flag ${flagName}:`, error)
 			return undefined
@@ -58,7 +59,7 @@ export class PostHogFeatureFlagsProvider implements IFeatureFlagsProvider {
 		}
 
 		try {
-			return (await this.client.getFeatureFlagPayload(flagName, this.distinctId)) ?? null
+			return (await this.client.getFeatureFlagPayload(flagName, this.distinctId, undefined, { sendFeatureFlagEvents: false })) ?? null
 		} catch (error) {
 			console.error(`Error getting feature flag payload for ${flagName}:`, error)
 			return null

@@ -400,6 +400,13 @@ export class TelemetryService {
 			ACCOUNT_SIGNIN_COMPLETED: "account.signin_completed",
 			ACCOUNT_ENTITLEMENT_DENIED: "account.entitlement_denied",
 			ACCOUNT_ACCESS_REQUESTED: "account.access_requested",
+			/** Signed out from the Account section. A count of a choice, nothing about the person. */
+			ACCOUNT_SIGNED_OUT: "account.signed_out",
+			/** The account was deleted from the Account section and the server confirmed. A count only. */
+			ACCOUNT_DELETED: "account.deleted",
+			/** The stream watchdog gave up on a silent model reply. Provider, model, phase and the silence
+			 *  in ms — the only numbers that say whether the budgets are drawn in the right place. */
+			STREAM_STALLED: "task.stream_stalled",
 			/** A session was handed to the developer's own coding agent. Source + intent enums only, never the
 			 *  prompt, the brief, or any path. The feature shipped in beta with no measurement at all. */
 			HANDOVER_STARTED: "task.handover_started",
@@ -434,6 +441,9 @@ export class TelemetryService {
 			MODEL_FAVORITE_TOGGLED: "ui.model_favorite_toggled",
 			// Tracks when a button is clicked
 			BUTTON_CLICKED: "ui.button_clicked",
+			/** `adsum-iot-coder.modelPricing` carries at least one price. Once per activation, a count of
+			 *  models overridden — never the prices. */
+			MODEL_PRICING_OVERRIDDEN: "ui.model_pricing_overridden",
 			// Tracks when the rules menu button is clicked
 			RULES_MENU_OPENED: "ui.rules_menu_opened",
 		},
@@ -2514,6 +2524,27 @@ export class TelemetryService {
 	}
 	public captureAccessRequested(props: { family: string; chips?: string }) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.ACCOUNT_ACCESS_REQUESTED, properties: { ...props } })
+	}
+	/** The two exits from an account. Both are counts of a deliberate act in the Account section. */
+	public captureAccountSignedOut() {
+		this.capture({ event: TelemetryService.EVENTS.TASK.ACCOUNT_SIGNED_OUT, properties: {} })
+	}
+	public captureAccountDeleted() {
+		this.capture({ event: TelemetryService.EVENTS.TASK.ACCOUNT_DELETED, properties: {} })
+	}
+
+	/**
+	 * The stream watchdog fired. `phase` says whether the model never answered (first chunk) or went
+	 * quiet mid-reply; `silentMs` is how long the host waited before calling it dead. Read beside
+	 * `task.provider_api_error`: a provider that stalls often is a provider to move the budget for.
+	 */
+	public captureStreamStalled(props: { provider: string; model: string; phase: "first_chunk" | "mid_stream"; silentMs: number }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.STREAM_STALLED, properties: { ...props } })
+	}
+
+	/** Own model prices are in use. Fired once per activation with how many models carry one. */
+	public captureModelPricingOverridden(props: { models: number }) {
+		this.capture({ event: TelemetryService.EVENTS.UI.MODEL_PRICING_OVERRIDDEN, properties: { ...props } })
 	}
 
 	/** CRA Readiness Check started (the cra-readiness workflow loaded). `iot_platform` is the CORRECT

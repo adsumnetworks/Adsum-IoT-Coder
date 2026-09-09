@@ -567,6 +567,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	const readManualPrices = () =>
 		setManualPrices(vscode.workspace.getConfiguration("adsum-iot-coder").get<Record<string, PriceOverride>>("modelPricing"))
 	readManualPrices()
+	{
+		// Once per activation: how many models carry the developer's own price. Never the prices.
+		const manual = vscode.workspace.getConfiguration("adsum-iot-coder").get<Record<string, PriceOverride>>("modelPricing")
+		const models = manual && typeof manual === "object" ? Object.keys(manual).length : 0
+		if (models > 0) {
+			telemetryService.captureModelPricingOverridden({ models })
+		}
+	}
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeConfiguration((e) => {
 			if (e.affectsConfiguration("adsum-iot-coder.modelPricing")) {
