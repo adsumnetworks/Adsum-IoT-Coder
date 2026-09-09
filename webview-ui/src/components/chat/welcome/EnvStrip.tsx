@@ -5,6 +5,8 @@ import React, { useState } from "react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient } from "@/services/grpc-client"
+import { BRAND_WARNING } from "../brandColors"
+import { envException } from "./envException"
 
 // ---------------------------------------------------------------------------
 // Each platform = a 2-line status row: line 1 = badge + extension · SDK, line 2 =
@@ -421,6 +423,9 @@ const EnvStrip: React.FC = () => {
 		summaryRows.push({ label: "ESP", text: compact(esp) })
 	}
 	const detecting = nrf.detecting || esp.detecting
+	// The one thing worth interrupting for, or nothing. See envException.ts for why "no boards
+	// connected" deliberately does not qualify.
+	const exception = envException(nrfEnvironment, espEnvironment)
 
 	const collapseLinkStyle: React.CSSProperties = {
 		display: "inline-flex",
@@ -491,7 +496,30 @@ const EnvStrip: React.FC = () => {
 						title="Show environment detail"
 						type="button">
 						<div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1, minWidth: 0 }}>
-							{summaryRows.length > 0 ? (
+							{exception ? (
+								<span
+									data-testid="envstrip-exception"
+									style={{
+										display: "inline-flex",
+										alignItems: "center",
+										gap: "6px",
+										fontSize: "11px",
+										minWidth: 0,
+									}}>
+									<Badge text={exception.label} />
+									{/* Semantic colour, status only — the golden rules allow it here precisely because
+									    this is a state of the machine, not a judgement about the developer's work. */}
+									<span
+										style={{
+											color: BRAND_WARNING,
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+											whiteSpace: "nowrap",
+										}}>
+										{exception.text}
+									</span>
+								</span>
+							) : summaryRows.length > 0 ? (
 								summaryRows.map((r) => (
 									<span
 										key={r.label}
