@@ -23,9 +23,9 @@
 
 **[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[CRA readiness →](#cra-readiness-sbom-cve-and-secure-by-design)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
 
-<a href="https://www.youtube.com/playlist?list=PLYh65pF22Elk" target="_blank" rel="noopener noreferrer"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder building and debugging ESP32 and nRF firmware in VS Code" /></a>
+<a href="https://docs.adsumnetworks.com/supported-hardware/fanstel/lew840x" target="_blank" rel="noopener noreferrer"><img src="assets/docs/hero.gif" width="100%" alt="Adsum IoT Coder planning, building, flashing and reading a Fanstel LEW840x gateway (ESP32 base and nRF52840 card) from a written spec and a few answers to live BLE data on the broker, in under an hour" /></a>
 
-**[▶ Watch an industrial dual-chip gateway (BLE + Wi-Fi) built, debugged, and CRA-checked in under 30 minutes →](https://www.youtube.com/playlist?list=PLYh65pF22Elk)** · **[Read the walkthrough →](https://docs.adsumnetworks.com/ble-wifi-gateway)**
+*Above: the documented LEW840x run, frame by frame: a written spec, a few questions answered, a running gateway in under an hour.* **[Read that run →](https://docs.adsumnetworks.com/supported-hardware/fanstel/lew840x)** · **[▶ Watch a dual-chip gateway built, debugged and CRA-checked in under 30 minutes →](https://www.youtube.com/playlist?list=PLYh65pF22Elk)**
 
 **No key, no account, no card.** The free tier is on by default: install and see it work on a real bug in your first minute.
 
