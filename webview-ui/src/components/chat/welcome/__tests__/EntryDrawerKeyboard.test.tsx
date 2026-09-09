@@ -25,7 +25,9 @@ vi.mock("@/services/grpc-client", () => ({
 	WebServiceClient: { openInBrowser: vi.fn(() => Promise.resolve()) },
 }))
 vi.mock("../StatusHeader", () => ({ default: () => null }))
-vi.mock("../DockCoachMark", () => ({ default: () => null }))
+// The coach mark is stubbed out, but its ELIGIBILITY is what the notice queue reads — stub both,
+// or WelcomeView throws on a missing export the moment it asks which notice wins.
+vi.mock("../DockCoachMark", () => ({ default: () => null, dockCoachEligible: () => false }))
 vi.mock("../../UpgradeCard", () => ({ default: () => null }))
 
 const _store = new Map<string, string>()

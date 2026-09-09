@@ -84,6 +84,32 @@ export function consumeQuotaExhausted(): boolean {
 }
 
 /**
+ * Whether an EMPTY model response should be reported to the developer as "free tier quota exhausted".
+ *
+ * The rule used to be `flag || model.id === "free-default"` — on the free tier, ANY empty response
+ * was reported as an exhausted quota, justified by a comment reading "for the free tier an empty
+ * response always means quota". It does not. A provider hiccup, a filtered completion, a stream that
+ * yields no content blocks and a turn whose tool calls could not be parsed all arrive here too, and
+ * every one of them told the developer their quota was gone.
+ *
+ * Reported from the desk, 8 Sep 2026: the card said the free tier was exhausted while the strip above
+ * it said 6.6M tokens left. The strip was right. Nothing had been exhausted; the response was empty
+ * for some other reason, and the only branch that zeroes the counter is the real 402 — which never
+ * ran, which is exactly why the two disagreed.
+ *
+ * Exhaustion must now be EVIDENCED: either the backend actually answered 402 (the flag, set in the
+ * fetch interceptor and deliberately module-level so it survives the bundle boundary), or the
+ * remaining balance we hold is genuinely zero. An empty response with tokens left is a provider
+ * error, and the caller says so instead.
+ */
+export function isQuotaExhaustionEvidenced(sawQuotaResponse: boolean, cachedRemaining: number | undefined): boolean {
+	if (sawQuotaResponse) {
+		return true
+	}
+	return cachedRemaining !== undefined && cachedRemaining <= 0
+}
+
+/**
  * Persisted, once-ever guard for the `free_tier.first_run_started` funnel-entry
  * event. Without this the event fires on every createMessage call (every agent
  * step, every session restart), inflating funnel-entry counts massively.

@@ -37,6 +37,7 @@ function getShellRules(shell: string): string {
 SHELL SYNTAX RULES (PowerShell)
 The active shell is PowerShell, which rejects cmd.exe-style syntax. Use these rules for every \`execute_command\` invocation:
 - Chain commands with \`;\`, not \`&\` (PowerShell reserves \`&\` as the call operator).
+- Invoke a QUOTED executable path with that call operator: \`& "C:\\path with spaces\\tool.bat" --flag\`. A bare quoted string on its own is a ParserError, not a command.
 - Redirect stderr with \`2>$null\`, not \`2>nul\`.
 - Use \`Write-Host\`, not \`echo\` (echo is aliased but causes confusion in pipelines).
 - To kill processes: \`Get-Process -Name JLink, nrfutil -ErrorAction SilentlyContinue | Stop-Process -Force\` — not \`taskkill /F /IM ... & ...\`.

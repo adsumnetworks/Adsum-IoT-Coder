@@ -284,7 +284,7 @@
 			"id": "adsum/nrf/knowledge/board-identity",
 			"title": "Reference: Nordic Board Identity",
 			"type": "knowledge",
-			"version": "1.1.0",
+			"version": "1.2.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -300,7 +300,7 @@
 				}
 			],
 			"path": "platforms/nrf/knowledge/board-identity.md",
-			"content_hash": "74730a5e20b6c716c03268b52e20e7932f1179ff1c87fb4b12912eb7819eede0"
+			"content_hash": "2276ed61fc9167b6b51f828f1195a66bc1a95fe5049401e5b5e7e404bf1f080f"
 		},
 		{
 			"id": "adsum/nrf/platform",

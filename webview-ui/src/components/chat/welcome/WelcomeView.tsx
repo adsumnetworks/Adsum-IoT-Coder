@@ -8,15 +8,15 @@ import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "../brandColors"
 import { DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
-import AccountChip from "./AccountChip"
 import CellularGroup from "./CellularGroup"
 import CraNudge from "./CraNudge"
 import DemoHexCard from "./DemoHexCard"
-import DockCoachMark from "./DockCoachMark"
+import DockCoachMark, { dockCoachEligible } from "./DockCoachMark"
 import EntryDrawer, { type DrawerRun } from "./EntryDrawer"
 import EnvStrip from "./EnvStrip"
 import { entryDrawerOpen, entryFirstPrompt, entryRunStart, entryShown } from "./entryTelemetry"
 import IntentCard from "./IntentCard"
+import { oneNotice } from "./notices"
 import ReviewNudge from "./ReviewNudge"
 import { runIntent } from "./runIntent"
 import { rank } from "./suggest"
@@ -193,7 +193,22 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 		!signals.features.hasCompliance &&
 		!craDismissed
 	const tenure = getTenure({ taskCount: taskHistory?.length ?? 0, showAnnouncement: showUpgradeCard })
-	const upgradeShowing = tenure === "dormant" && showUpgradeCard && !craBanner
+	const upgradeShowing = tenure === "dormant" && showUpgradeCard
+	/**
+	 * ONE notice, chosen by priority — see notices.ts for the order and the reasoning.
+	 *
+	 * These were five independent booleans with a single guard between two of them, so three could
+	 * stack; on the operator's own screen two did. The ad-hoc `!craBanner && !upgradeShowing` guards
+	 * that used to sit in the JSX are gone with it: the queue is the only thing that decides now, and
+	 * there is one place to read the policy instead of four conditions to reconcile.
+	 */
+	const notice = oneNotice({
+		cra: craBanner,
+		dock: dockCoachEligible(signals.hasWorkspace),
+		registered: !!adsumUnlockedShow,
+		upgrade: upgradeShowing,
+		review: !!reviewNudgeShow,
+	})
 	const craEvidence = `${
 		signals.features.hasBle && signals.features.hasWifi ? "BLE & Wi-Fi" : signals.features.hasWifi ? "Wi-Fi" : "BLE"
 	} detected · no compliance artifacts in this project yet`
@@ -284,8 +299,6 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						className="flex flex-wrap items-center gap-x-2 gap-y-1 uppercase"
 						style={{ fontSize: "10px", letterSpacing: "0.08em", color: "var(--vscode-descriptionForeground)" }}>
 						<span>Environment</span>
-						{/* Who is signed in belongs with what this window IS, not with what it can do. */}
-						<AccountChip />
 					</div>
 				)}
 				{scopeName ? (
@@ -358,7 +371,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			    single quiet line the objection is spent, and one line above the fold is what a
 			    dismissible one-time hint is supposed to cost. It sits under the environment group so
 			    it reads as chrome rather than as the first suggestion. */}
-				<DockCoachMark hasProject={signals.hasWorkspace} />
+				{notice === "dock" && <DockCoachMark hasProject={signals.hasWorkspace} />}
 			</div>
 
 			{/* One block, flowing from the top, with the composer pinned below by the chat layout and a
@@ -368,8 +381,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			    content in a tall column always leaves space somewhere; the honest place is one gap
 			    above the input, not a gap in the middle of the content. */}
 			<div className="flex w-full flex-col gap-3">
-				{upgradeShowing && <UpgradeCard onDismiss={onUpgradeDismiss} version={version ?? ""} />}
-				{!craBanner && !upgradeShowing && reviewNudgeShow && (
+				{notice === "upgrade" && <UpgradeCard onDismiss={onUpgradeDismiss} version={version ?? ""} />}
+				{notice === "review" && (
 					<ReviewNudge
 						onDismiss={() => StateServiceClient.dismissBanner({ value: "review-nudge" }).catch(console.error)}
 						onReview={() => {
@@ -380,7 +393,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						}}
 					/>
 				)}
-				{craBanner && (
+				{notice === "cra" && (
 					<CraNudge
 						evidence={craEvidence}
 						onDismiss={() => setCraDismissed(true)}
@@ -497,7 +510,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						    the callback landed, that reasoning is wrong: this is not an offer competing with
 						    the runs, it is the ANSWER to an action, and an answer three cards down is not one.
 						    Dismissible, and once dismissed the panel is exactly what it was. */}
-						{adsumUnlockedShow && (
+						{notice === "registered" && (
 							<UnlockedCard
 								onDismiss={() =>
 									StateServiceClient.dismissBanner({ value: ADSUM_REGISTERED_BANNER }).catch(console.error)

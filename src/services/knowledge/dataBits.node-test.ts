@@ -48,17 +48,53 @@ describe("U14 — the bit carries a well-formed table", () => {
 		assert.equal(new Map(rows().map((r) => [r.pca, r.name])).get("PCA10100"), "nRF52833 DK")
 	})
 
+	test("the operator's nRF9151 SMA DK is named — PCA10201 shares a board target with PCA10171 but is its own kit", () => {
+		const byPca = new Map(rows().map((r) => [r.pca, r.name]))
+		assert.equal(byPca.get("PCA10201"), "nRF9151 SMA DK")
+		assert.equal(byPca.get("PCA10171"), "nRF9151 DK")
+	})
+
 	test("the table the webview used to hold is fully carried over — nothing was dropped in the move", () => {
 		// The constant that used to live in EnvStrip.tsx, verbatim. If a row went missing during the
 		// migration a board would silently show as a bare PCA again, which is exactly the regression
 		// this bit exists to end.
 		const wasInTheWebview = [
-			"PCA10028", "PCA10031", "PCA10040", "PCA10056", "PCA10059", "PCA10090", "PCA10095", "PCA10100",
-			"PCA10112", "PCA10121", "PCA10143", "PCA10153", "PCA10156", "PCA10165", "PCA10171", "PCA10184",
-			"PCA20020", "PCA20035",
+			"PCA10028",
+			"PCA10031",
+			"PCA10040",
+			"PCA10056",
+			"PCA10059",
+			"PCA10090",
+			"PCA10095",
+			"PCA10100",
+			"PCA10112",
+			"PCA10121",
+			"PCA10143",
+			"PCA10153",
+			"PCA10156",
+			"PCA10165",
+			"PCA10171",
+			"PCA10184",
+			"PCA20020",
+			"PCA20035",
+			// Added to the webview table on 2026-09-06 (b7883cee) — after the bit was first cut, which is
+			// how the two copies drifted: the host could not name the operator's own nRF9151 SMA DK
+			// while the webview's fallback could. Carried into the bit with the webview's removal.
+			"PCA10175",
+			"PCA10188",
+			"PCA10195",
+			"PCA10201",
+			"PCA10208",
+			"PCA10214",
+			"PCA10226",
+			"PCA20053",
+			"PCA20065",
 		]
 		const have = new Set(rows().map((r) => r.pca))
-		assert.deepEqual(wasInTheWebview.filter((p) => !have.has(p)), [])
+		assert.deepEqual(
+			wasInTheWebview.filter((p) => !have.has(p)),
+			[],
+		)
 	})
 })
 

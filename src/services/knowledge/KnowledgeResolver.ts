@@ -808,8 +808,14 @@ export async function suggestNearMissBits(requestedRelOrAbs: string): Promise<st
 /**
  * Top-level dirs under `iot-knowledge/` whose files are bits. Used to recognise a bundled-tree
  * RELATIVE path (no `iot-knowledge/` prefix) so ordinary missing project files fall through.
+ *
+ * `products/`, `sensors/` and `edge-ai/` were missing while AGENT.md was telling the agent the
+ * product path is predictable and giving it in relative form — so `read_file
+ * products/fanstel/bwg840/PRODUCT.md`, exactly what the corpus asks for, fell through to an ordinary
+ * file read and missed. It only ever worked when the agent happened to build the absolute path,
+ * which takes `loadBitByKbPath` and is not gated here. Add a root whenever a namespace is added.
  */
-const BIT_ROOTS = ["platforms/", "cra/", "rules/", "tools/"]
+const BIT_ROOTS = ["platforms/", "cra/", "rules/", "tools/", "products/", "sensors/", "edge-ai/"]
 
 /** True if `rel` looks like a bundled-tree relative path to a bit (e.g. `platforms/nrf/…/x.md`). */
 export function isBareBitPath(rel: string | undefined | null): boolean {

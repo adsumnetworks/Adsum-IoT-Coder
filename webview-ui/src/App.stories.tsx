@@ -1504,6 +1504,101 @@ export const EntryRegisteredSettled: Story = {
 	args: {},
 }
 
+/* ------------------------------------------------------------------------------------------
+ * The launch sweep, 9 Sep 2026 — one story per rule it introduced, so each is a permanent render
+ * in the contact sheet and not a claim in a commit message.
+ * ---------------------------------------------------------------------------------------- */
+
+const REGISTERED = {
+	email: "ismail@adsumnetworks.com",
+	name: "Ismail",
+	emailVerified: true,
+	groups: ["cellular-advanced", "edge-ai-advanced", "lew840x-demo-hex"],
+}
+
+/**
+ * The environment line reports the EXCEPTION. A CP2102 bridge is plugged in and esptool got nothing
+ * back — the collapsed line must say so in the warning colour, and say nothing else.
+ */
+export const EntryEspNotAnswering: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [entrySession(1, GW, 0.1, "Bring up the LEW840x gateway")],
+				espEnvironment: {
+					status: "ready",
+					extensionPresent: true,
+					idfPresent: true,
+					idfVersion: "6.0.2",
+					projectDetected: true,
+					espDevices: [
+						{
+							port: "/dev/cu.usbserial-0001",
+							vid: 0x10c4,
+							pid: 0xea60,
+							serialNumber: "0001",
+							probeError: "A fatal error occurred: Failed to connect to Espressif device: No serial data received.",
+						},
+					],
+				},
+			}),
+		),
+	],
+	args: {},
+}
+
+/**
+ * Three notices eligible at once — the receipt, the upgrade card and the review nudge. Exactly ONE
+ * may render, and it must be the receipt: it is the answer to something the developer just did.
+ * This is the state the operator photographed with two of them stacked.
+ */
+export const EntryNoticesStacked: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [],
+				adsumAccount: REGISTERED,
+				adsumUnlockedShow: true,
+				reviewNudgeShow: true,
+				showAnnouncement: true,
+			}),
+		),
+	],
+	args: {},
+}
+
+/** Plenty left: the strip shows once (it discloses who pays) and can be dismissed. */
+export const EntryFreeTierHealthy: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [],
+				freeTierRemainingTokens: 6_600_000,
+				apiConfiguration: createApiConfig({ actModeApiProvider: "adsum-free", planModeApiProvider: "adsum-free" }),
+			}),
+		),
+	],
+	args: {},
+}
+
+/** Nearly out: the strip is back whatever was dismissed, because now there is something to do. */
+export const EntryFreeTierLow: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [],
+				freeTierRemainingTokens: 40_000,
+				apiConfiguration: createApiConfig({ actModeApiProvider: "adsum-free", planModeApiProvider: "adsum-free" }),
+			}),
+		),
+	],
+	args: {},
+}
+
 export const EntryHeavyHistory: Story = {
 	decorators: [
 		createStoryDecorator(

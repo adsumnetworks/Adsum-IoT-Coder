@@ -1,6 +1,40 @@
+import { useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useVSCodeTheme } from "@/hooks/useVSCodeTheme"
 import { BRAND_CORAL, BRAND_CYAN_300, BRAND_CYAN_600, BRAND_CYAN_700, brandAlpha } from "./brandColors"
+
+/**
+ * Below this, the strip comes back whatever the developer has dismissed.
+ *
+ * The default free grant is 500,000 tokens (backend `config.stage0Quota`), so 100k is roughly the
+ * last session or two — late enough that the strip is not nagging, early enough that "add a key" is
+ * still something you can do BEFORE you are blocked rather than after.
+ *
+ * Note what this rule is NOT keyed on: being signed out. Registering grants entitlement groups, not
+ * tokens — only a voucher raises the quota — so "register for more" would have been a false promise.
+ */
+export const LOW_BALANCE_TOKENS = 100_000
+
+const DISMISSED_KEY = "adsum.freeTierStripDismissed"
+
+/**
+ * Whether the full-width strip earns its row.
+ *
+ * It does three jobs: it discloses who pays for the inference, it reports the balance, and it offers
+ * the way out. The disclosure has to land at least once — so the strip shows until it is dismissed.
+ * The other two only matter when the balance is low — so it returns then, and dismissal cannot bury
+ * it. In between, the chip beside the composer carries the number, where the developer's eye already
+ * is while the agent works.
+ */
+export function freeTierStripVisible(remaining: number | undefined, dismissed: boolean): boolean {
+	if (remaining === undefined) {
+		return false
+	}
+	if (remaining <= LOW_BALANCE_TOKENS) {
+		return true
+	}
+	return !dismissed
+}
 
 /** Compact token label: ≥1M → one decimal (e.g. 1.3M), ≥1K → rounded K, else raw. */
 const formatTokens = (n: number): string => {
@@ -23,8 +57,15 @@ const formatTokens = (n: number): string => {
 const FreeTierStrip = () => {
 	const { freeTierRemainingTokens, navigateToSettings } = useExtensionState()
 	const { isDark } = useVSCodeTheme()
+	const [dismissed, setDismissed] = useState(() => {
+		try {
+			return localStorage.getItem(DISMISSED_KEY) === "1"
+		} catch {
+			return false
+		}
+	})
 
-	if (freeTierRemainingTokens === undefined) {
+	if (!freeTierStripVisible(freeTierRemainingTokens, dismissed)) {
 		return null
 	}
 
@@ -35,6 +76,7 @@ const FreeTierStrip = () => {
 
 	return (
 		<div
+			data-testid="free-tier-strip"
 			style={{
 				display: "flex",
 				alignItems: "center",
@@ -69,6 +111,35 @@ const FreeTierStrip = () => {
 				type="button">
 				Add key
 			</button>
+			{/* Dismissible, but only while there is nothing to act on: below LOW_BALANCE_TOKENS the
+			    strip returns whatever was dismissed, because then it is not a disclosure any more, it
+			    is a warning with an action attached. */}
+			{freeTierRemainingTokens > LOW_BALANCE_TOKENS && (
+				<button
+					aria-label="Hide the free tier banner"
+					className="codicon codicon-close"
+					data-testid="free-tier-strip-dismiss"
+					onClick={() => {
+						try {
+							localStorage.setItem(DISMISSED_KEY, "1")
+						} catch {
+							/* storage blocked — it still goes away for this session */
+						}
+						setDismissed(true)
+					}}
+					style={{
+						background: "none",
+						border: "none",
+						padding: 0,
+						cursor: "pointer",
+						color: "var(--vscode-descriptionForeground)",
+						fontSize: "11px",
+						opacity: 0.7,
+					}}
+					title="Hide — the balance stays on the model chip below"
+					type="button"
+				/>
+			)}
 		</div>
 	)
 }
