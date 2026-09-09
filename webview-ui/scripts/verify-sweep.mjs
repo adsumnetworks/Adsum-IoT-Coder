@@ -69,28 +69,33 @@ function check(name, ok, detail) {
 // ── 1. the exception line ──────────────────────────────────────────────────────────────────
 {
 	const { page, errors } = await story("views-chat--entry-esp-not-answering")
-	const ex = page.getByTestId("envstrip-exception")
+	// [v2 2026-09-09] The row IS the collapsed environment, and the exception is carried by the row.
+	const ex = page.getByTestId("entry-desk-exception")
 	const visible = await ex.isVisible().catch(() => false)
 	const text = visible ? await ex.innerText() : ""
-	const color = visible
-		? await ex
-				.locator("span")
-				.last()
-				.evaluate((el) => getComputedStyle(el).color)
-		: ""
+	const color = visible ? await ex.evaluate((el) => getComputedStyle(el).color) : ""
 	check("01 exception line renders when a device will not answer", visible && /not answering/.test(text), text.trim())
 	check("01 exception line is in the semantic warning colour", color === WARNING, color)
-	// and the ordinary summary rows are NOT also shown — the exception replaces them
-	const summaryBadges = await page.locator('[data-testid="envstrip-summary"] >> text=/^(nRF|ESP)$/').count()
-	check("01 the exception REPLACES the summary rather than stacking on it", summaryBadges <= 1, `${summaryBadges} badge(s)`)
-	// [pin 4] with an ESP on the desk, the wordmark row says so — from the same detection as the strip
+	// and it is NOT also stacked in a band under the row — the band is closed until asked for
+	check(
+		"01 the exception REPLACES the summary rather than stacking on it",
+		(await page.getByTestId("env-band").count()) === 0 && (await page.getByTestId("envstrip-exception").count()) === 0,
+	)
+	const why = page.getByTestId("entry-desk-why")
+	check("01 and the row offers the way to the why", await why.isVisible().catch(() => false))
+	await why.click()
+	await page.waitForTimeout(700)
+	check(
+		"01 why → opens the full view with the strip's detail",
+		(await page.getByTestId("env-band").count()) === 1 && (await page.locator("#envstrip-detail").count()) === 1,
+	)
 	const deskEsp = (
 		await page
 			.getByTestId("entry-desk-line")
 			.innerText()
 			.catch(() => "")
 	).replace(/\s+/g, " ")
-	check("07 the desk line reports the ESP the strip is talking about", /ESP [✓—]/.test(deskEsp), deskEsp.trim())
+	check("07 the desk line reports the ESP the strip is talking about", /ESP ⚠/.test(deskEsp), deskEsp.trim())
 	check("01 no page errors", errors.length === 0, errors[0])
 	await shot(page, "01-exception-line")
 	await page.close()
@@ -267,8 +272,7 @@ function check(name, ok, detail) {
 	// ── one door ── [OPERATOR 2026-09-09, approved] no ☰ under the host's ＋ ↺ ⚙; the "All runs"
 	// line is the only way into the drawer, and the drawer holds no session list (the host's ↺ does).
 	check("07 there is no ☰ on the entry surface", (await page.getByTestId("entry-burger").count()) === 0)
-	// [mockup entry-one-door, pin 4] the slot the ☰ held reads "folder · nRF ✓ · ESP ✓" — and it ticks
-	// exactly the platforms the strip detects, never one more (one detection, two densities).
+	// [v2 2026-09-09] the row is the collapsed environment; the full view is behind it, closed by default
 	const desk = (
 		await page
 			.getByTestId("entry-desk-line")
@@ -278,19 +282,55 @@ function check(name, ok, detail) {
 		.replace(/\s+/g, " ")
 		.trim()
 	const scopeCount = await page.getByTestId("entry-scope-title").count()
-	const stripText = await page
-		.getByTestId("envstrip-summary")
-		.innerText()
-		.catch(() => "")
-	const platforms = ["nRF", "ESP"].filter((l) => new RegExp(`\\b${l}\\b`).test(stripText))
-	const ticked = platforms.every((l) => new RegExp(`${l} [✓—]`).test(desk))
-	const extra = ["nRF", "ESP"].some((l) => !platforms.includes(l) && new RegExp(`${l} [✓—]`).test(desk))
-	check("07 the desk line names the folder once, in the wordmark row", scopeCount === 1 && /^gateway-fw/.test(desk), desk)
+	check("07 the desk line names the folder once, in the wordmark row", scopeCount === 1 && /gateway-fw/.test(desk), desk)
 	check(
-		"07 and ticks exactly the platforms the strip detects",
-		ticked && !extra,
-		`${desk} | strip: ${platforms.join(",") || "none"}`,
+		"07 the full environment is NOT on the surface by default",
+		(await page.getByTestId("env-band").count()) === 0 && (await page.getByTestId("envstrip-summary").count()) === 0,
 	)
+	const clipped = await page
+		.getByTestId("entry-desk-line")
+		.evaluate((el) =>
+			[...el.querySelectorAll("span")].some(
+				(s) => s.scrollWidth > s.clientWidth + 1 && getComputedStyle(s).textOverflow !== "ellipsis",
+			),
+		)
+	check("07 nothing in the row is clipped at 420 px", !clipped)
+	await page.getByTestId("entry-desk-line").click()
+	await page.waitForTimeout(700)
+	check(
+		"07 one click opens the full view in place, with the Environment caption",
+		(await page.getByTestId("env-band").count()) === 1 && /environment/i.test(await page.getByTestId("env-band").innerText()),
+	)
+	// the row's verdict equals the strip's: a platform the strip calls "not detected"/"not found" is never ✓
+	const detail = (
+		await page
+			.locator("#envstrip-detail")
+			.innerText()
+			.catch(() => "")
+	).replace(/\s+/g, " ")
+	const rowNrf = (
+		await page
+			.getByTestId("entry-desk-nRF")
+			.innerText()
+			.catch(() => "")
+	).trim()
+	const rowEsp = (
+		await page
+			.getByTestId("entry-desk-ESP")
+			.innerText()
+			.catch(() => "")
+	).trim()
+	const contradiction =
+		(/nRF Connect not detected/.test(detail) && /✓/.test(rowNrf)) ||
+		(/Espressif ext not found/.test(detail) && /ESP-IDF not/.test(detail) && /✓/.test(rowEsp))
+	check(
+		"07 the row never ticks a platform the strip calls not detected",
+		!contradiction,
+		`${rowNrf} | ${rowEsp} | ${detail.slice(0, 80)}`,
+	)
+	await page.getByTestId("entry-desk-line").click()
+	await page.waitForTimeout(200)
+	check("07 and a second click closes it", (await page.getByTestId("env-band").count()) === 0)
 	const doors = await page.getByTestId("entry-more-runs").count()
 	const doorText = doors ? await page.getByTestId("entry-more-runs").innerText() : ""
 	check(

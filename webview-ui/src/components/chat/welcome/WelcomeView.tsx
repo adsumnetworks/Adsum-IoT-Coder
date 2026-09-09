@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient, StateServiceClient, TaskServiceClient, WebServiceClient } from "@/services/grpc-client"
-import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "../brandColors"
+import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI, BRAND_WARNING } from "../brandColors"
 import { DEMO_SCENARIO_LIST, hasRunDemo } from "../demoScenarios"
 import type { NordicModeId } from "../nordicModes"
 import UpgradeCard from "../UpgradeCard"
@@ -13,8 +13,8 @@ import CraNudge from "./CraNudge"
 import DemoHexCard from "./DemoHexCard"
 import DockCoachMark, { dockCoachEligible } from "./DockCoachMark"
 import EntryDrawer, { type DrawerRun } from "./EntryDrawer"
-import EnvStrip, { platformTicks } from "./EnvStrip"
-import { entryDrawerOpen, entryFirstPrompt, entryRunStart, entryShown, gateShown } from "./entryTelemetry"
+import EnvStrip, { platformVerdicts, useEnvRefresh } from "./EnvStrip"
+import { entryDrawerOpen, entryEnvOpen, entryFirstPrompt, entryRunStart, entryShown, gateShown } from "./entryTelemetry"
 import GatePanel from "./GatePanel"
 import IntentCard from "./IntentCard"
 import { oneNotice } from "./notices"
@@ -69,6 +69,7 @@ interface WelcomeViewProps {
 
 /** How many ranked runs sit on the surface. The rest are one click away in ☰. */
 const CARDS = 3
+const ENV_ALWAYS_OPEN_KEY = "adsum.env.alwaysOpen"
 const SEEN_RUNS_KEY = "adsum.entry.seenRuns"
 
 const readSeen = (): string[] => {
@@ -87,6 +88,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	showUpgradeCard,
 }) => {
 	const {
+		version,
 		navigateToHistory,
 		nrfEnvironment,
 		espEnvironment,
@@ -244,6 +246,35 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 
 	const unseen = runs.map((r) => r.item.id).filter((id) => !seenRuns.includes(id))
 
+	// The environment, two densities. [OPERATOR 2026-09-09, approved v2] The header row IS the
+	// collapsed environment; the full view opens under it for the sitting (React state, so a task
+	// start closes it) — or always, for the bench, via the checkbox in the band (localStorage).
+	const verdicts = platformVerdicts(nrfEnvironment, espEnvironment, !!scopeName)
+	const [envOpen, setEnvOpen] = useState<boolean>(() => {
+		try {
+			return localStorage.getItem(ENV_ALWAYS_OPEN_KEY) === "1"
+		} catch {
+			return false
+		}
+	})
+	const [envAlwaysOpen, setEnvAlwaysOpen] = useState<boolean>(envOpen)
+	const { refresh: refreshEnv, busy: envBusy } = useEnvRefresh()
+	const openEnv = (via: "row" | "why") => {
+		if (!envOpen) {
+			entryEnvOpen(via)
+		}
+		setEnvOpen(true)
+	}
+	const exception = verdicts.find((v) => v.state === "exception")
+	const envName = verdicts.length
+		? verdicts
+				.map(
+					(v) =>
+						`${v.label} ${v.state === "ready" ? "ready" : v.state === "missing" ? "toolchain missing" : v.state === "detecting" ? "detecting" : (v.exception ?? "problem")}`,
+				)
+				.join(", ")
+		: "no toolchain detected"
+
 	// One measurement per paint. Everything else times from here.
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	useEffect(() => {
@@ -347,25 +378,99 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				    the one-line answer to "where am I, and with what": the folder, and a ✓ per platform
 				    whose toolchain is present — MOVED up from the Environment band, not copied (the band
 				    keeps the strip, which says the same thing in more detail). Mockup entry-one-door, pin 4. */}
-				<span
-					className="ml-auto flex min-w-0 items-baseline gap-1.5"
-					data-testid="entry-desk-line"
-					style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", whiteSpace: "nowrap" }}>
-					{scopeName && (
+				<div className="group ml-auto flex min-w-0 items-baseline gap-1">
+					<button
+						aria-expanded={envOpen}
+						aria-label={`Environment: ${scopeName ? `${scopeName}, ` : ""}${envName}. ${envOpen ? "Hide" : "Show"} the full view`}
+						className="flex min-w-0 flex-wrap items-baseline justify-end gap-x-1.5 rounded border border-transparent bg-transparent px-1.5 py-0.5 text-right hover:border-[var(--vscode-input-border)] hover:bg-[var(--vscode-input-background)] focus-visible:border-[var(--vscode-focusBorder)]"
+						data-testid="entry-desk-line"
+						onClick={() => (envOpen ? setEnvOpen(false) : openEnv("row"))}
+						style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", cursor: "pointer" }}
+						title="Environment — click for the full view"
+						type="button">
+						{scopeName && (
+							<span className="flex min-w-0 items-baseline gap-1" style={{ whiteSpace: "nowrap" }}>
+								<span
+									aria-hidden="true"
+									className="codicon codicon-folder"
+									style={{ fontSize: "11px", opacity: 0.75 }}
+								/>
+								<span
+									data-testid="entry-scope-title"
+									style={{
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										color: "var(--vscode-foreground)",
+										maxWidth: "12em",
+									}}
+									title={scopeName}>
+									{scopeName}
+								</span>
+							</span>
+						)}
+						{verdicts.length === 0 && (
+							<span data-testid="entry-desk-none" style={{ whiteSpace: "nowrap" }}>
+								{scopeName ? " · " : ""}
+								no toolchain yet · <span style={{ color: BRAND_CYAN_TEXT }}>what to install →</span>
+							</span>
+						)}
+						{verdicts.map((v) => (
+							<span
+								data-testid={`entry-desk-${v.label}`}
+								key={v.label}
+								style={{ whiteSpace: "nowrap", minWidth: "4.5em" }}>
+								{" · "}
+								{v.label} {v.state === "ready" && <span style={{ color: "var(--vscode-foreground)" }}>✓</span>}
+								{v.state === "missing" && <span title={v.toolchain}>—</span>}
+								{v.state === "detecting" && <span>…</span>}
+								{v.state === "exception" && (
+									<span
+										data-testid="entry-desk-exception"
+										style={{ color: BRAND_WARNING, whiteSpace: "normal" }}>
+										⚠ {v.exception?.replace(/ — open for detail$/, "")}
+									</span>
+								)}
+								{v.state === "ready" && v.boards.length === 1 && (
+									<span style={{ color: "var(--vscode-foreground)" }}> {v.boards[0]}</span>
+								)}
+								{v.state !== "exception" && v.boards.length > 1 && <span> {v.boards.length} boards</span>}
+							</span>
+						))}
+						{exception && (
+							<span style={{ whiteSpace: "nowrap" }}>
+								{" — "}
+								<span
+									data-testid="entry-desk-why"
+									onClick={(e) => {
+										e.stopPropagation()
+										openEnv("why")
+									}}
+									style={{ color: BRAND_CYAN_TEXT }}>
+									why →
+								</span>
+							</span>
+						)}
 						<span
-							data-testid="entry-scope-title"
-							style={{ overflow: "hidden", textOverflow: "ellipsis", color: "var(--vscode-foreground)" }}
-							title={scopeName}>
-							{scopeName}
-						</span>
-					)}
-					{platformTicks(nrfEnvironment, espEnvironment).map((t) => (
-						<span key={t.label} style={{ flex: "none" }}>
-							{" · "}
-							{t.label} {t.ok ? "✓" : "—"}
-						</span>
-					))}
-				</span>
+							aria-hidden="true"
+							className={`codicon ${envOpen ? "codicon-chevron-up" : "codicon-chevron-right"}`}
+							style={{ fontSize: "9px", opacity: 0.6 }}
+						/>
+					</button>
+					<button
+						aria-label="Re-probe detected platforms"
+						className="codicon codicon-refresh shrink-0 border-0 bg-transparent p-0.5 opacity-0 group-hover:opacity-70 focus-visible:opacity-70"
+						data-testid="entry-env-refresh"
+						disabled={envBusy}
+						onClick={refreshEnv}
+						style={{
+							fontSize: "11px",
+							color: "var(--vscode-descriptionForeground)",
+							cursor: envBusy ? "default" : "pointer",
+						}}
+						title="Re-probe detected platforms"
+						type="button"
+					/>
+				</div>
 			</div>
 
 			{/* Where you are, and what is on the desk.
@@ -382,13 +487,6 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				{/* The heading sits ABOVE the folder, not between it and the strip: folder and detected
 				    hardware are one answer to one question — what am I working on and with — and a
 				    heading that only covered the second half left the first half captionless. */}
-				{!isColdStart && (
-					<div
-						className="flex flex-wrap items-center gap-x-2 gap-y-1 uppercase"
-						style={{ fontSize: "10px", letterSpacing: "0.08em", color: "var(--vscode-descriptionForeground)" }}>
-						<span>Environment</span>
-					</div>
-				)}
 				{/* The folder line moved UP into the wordmark row (2026-09-09); what stays here is the
 				    way to get a folder when there is none. */}
 				{scopeName ? null : (
@@ -441,10 +539,43 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				    of what you do not have. (I suppressed the old header device line for this exact
 				    reason, then reintroduced it by moving the strip up unconditionally — the condition
 				    has to travel with it.) */}
-				{!isColdStart && (
-					<>
-						<EnvStrip />
-					</>
+				{/* The full view — everything the strip knows — under the row that opened it. Closed on
+				    every arrival (a task start unmounts this surface); "always open" is the bench's
+				    setting. The exception is NOT repeated here on the surface: the row carries it. */}
+				{envOpen && (
+					<div className="mt-1 flex flex-col gap-1" data-testid="env-band">
+						<div
+							className="flex flex-wrap items-center justify-between gap-x-2 uppercase"
+							style={{ fontSize: "10px", letterSpacing: "0.08em", color: "var(--vscode-descriptionForeground)" }}>
+							<span>Environment</span>
+							<span className="flex items-center gap-2 normal-case" style={{ letterSpacing: 0 }}>
+								<span title="Extension version — the field support asks for">Adsum {version}</span>
+								<label
+									className="flex items-center gap-1"
+									style={{ cursor: "pointer" }}
+									title="Keep the full view open on every visit (the bench's setting)">
+									<input
+										checked={envAlwaysOpen}
+										data-testid="env-always-open"
+										onChange={(e) => {
+											setEnvAlwaysOpen(e.target.checked)
+											try {
+												if (e.target.checked) {
+													localStorage.setItem(ENV_ALWAYS_OPEN_KEY, "1")
+													entryEnvOpen("always")
+												} else {
+													localStorage.removeItem(ENV_ALWAYS_OPEN_KEY)
+												}
+											} catch {}
+										}}
+										type="checkbox"
+									/>
+									always open
+								</label>
+							</span>
+						</div>
+						<EnvStrip forceExpanded />
+					</div>
 				)}
 
 				{/* [OPERATOR 2026-09-04] Moved back to the top, on their call. It was below the content

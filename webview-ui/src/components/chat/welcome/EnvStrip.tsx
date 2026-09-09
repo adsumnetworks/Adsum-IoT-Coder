@@ -176,28 +176,107 @@ const withV = (v: string) => (v.startsWith("v") ? v : `v${v}`)
 
 /** True when there's any nRF signal at all (toolchain, boards, or a project SDK). */
 /**
- * The header row's one-line summary of the desk: each platform the strip would show, with a ✓
- * when its toolchain is present. [OPERATOR 2026-09-09, approved mockup entry-one-door pin 4]
- * "lew840x-free · nRF ✓ · ESP ✓" at the right of the wordmark, in the slot the ☰ vacated. The
- * SAME detection the strip uses — one source, two densities — so the row can never say ✓ for a
- * platform the strip calls not detected.
+ * One fact, two densities, ONE verdict. The header row (the collapsed environment) and the full
+ * view render from this — never from a second computation. [OPERATOR 2026-09-09] The first cut
+ * ticked nRF ✓ in the row while the band said "nRF Connect not detected", because the row counted
+ * nrfutil as a toolchain and the strip did not. `ready` here IS the strip's toolchain verdict
+ * (its un-muted line); `exception` is envException's; boards are the strip's own labels.
+ * Mockup: prototypes/environment-two-densities-v2.html.
  */
-export function platformTicks(
+export interface PlatformVerdict {
+	label: "nRF" | "ESP"
+	state: "ready" | "missing" | "exception" | "detecting"
+	/** The strip's own words for the toolchain line, e.g. "nRF Connect not detected". */
+	toolchain: string
+	boards: string[]
+	exception?: string
+}
+export function platformVerdicts(
 	nrf: NrfEnvironment | undefined,
 	esp: EspEnvironment | undefined,
-): Array<{ label: "nRF" | "ESP"; ok: boolean }> {
-	const out: Array<{ label: "nRF" | "ESP"; ok: boolean }> = []
+	hasWorkspace: boolean,
+): PlatformVerdict[] {
+	const out: PlatformVerdict[] = []
+	const ex = envException(nrf, esp)
 	if (nrf && nrfHasAnything(nrf)) {
-		out.push({ label: "nRF", ok: nrf.extensionPresent || !!nrf.nrfutilPresent })
+		const f = nrfFacts(nrf, hasWorkspace)
+		out.push({
+			label: "nRF",
+			state: ex?.label === "nRF" ? "exception" : f.detecting ? "detecting" : f.toolchainMuted ? "missing" : "ready",
+			toolchain: f.toolchain,
+			boards: nrfBoardLabels(nrf),
+			exception: ex?.label === "nRF" ? ex.text : undefined,
+		})
 	}
 	if (esp && espHasAnything(esp)) {
-		out.push({ label: "ESP", ok: esp.extensionPresent || !!esp.idfPresent })
+		const f = espFacts(esp, hasWorkspace)
+		out.push({
+			label: "ESP",
+			state: ex?.label === "ESP" ? "exception" : f.detecting ? "detecting" : f.toolchainMuted ? "missing" : "ready",
+			toolchain: f.toolchain,
+			boards: espDeviceLabels(esp),
+			exception: ex?.label === "ESP" ? ex.text : undefined,
+		})
 	}
 	return out
 }
 
+/** The one re-probe, shared by the strip's ↻ and the header row's. */
+export function useEnvRefresh(): { refresh: () => void; busy: boolean } {
+	const { nrfEnvironment, espEnvironment } = useExtensionState()
+	const [refreshing, setRefreshing] = useState(false)
+	const refresh = () => {
+		if (refreshing) {
+			return
+		}
+		setRefreshing(true)
+		FileServiceClient.refreshNrfEnvironment(EmptyRequest.create())
+			.catch(() => {})
+			.finally(() => setRefreshing(false))
+	}
+	return { refresh, busy: refreshing || nrfEnvironment?.status === "detecting" || espEnvironment?.status === "detecting" }
+}
+
 function nrfHasAnything(env: NrfEnvironment): boolean {
 	return env.extensionPresent || env.nrfutilPresent || env.boards.length > 0 || !!env.projectSdk
+}
+
+/** Every connected nRF board by name — the strip's rows and the header row read the same list. */
+export function nrfBoardLabels(env: NrfEnvironment): string[] {
+	if (env.status === "unknown" || env.status === "detecting" || !env.nrfutilPresent) {
+		return []
+	}
+	const labelled = env.boards.map((b: NrfBoard) => {
+		// Named host-side from the board-identity bit, so a board Nordic ships between our releases is
+		// named by a registry update rather than a reinstall. The webview holds no second table: two
+		// copies of one mapping drift, and this one had already acquired two wrong rows. Raw PCA otherwise.
+		const friendly = b.boardVersion ? (b.boardName ?? b.boardVersion) : undefined
+		// A Nordic USB device with no probe — a dongle — publishes no chip: nrfutil itself answers
+		// "not supported for this type of device". Name the CATEGORY, as every other row names a board,
+		// plus the only specific identity it does publish: the firmware it is running.
+		// This line answers "what boards and DKs are detected" — hardware, not what is running on it.
+		// A dongle has no PCA, so its board comes from the board-identity bit, which knows which board
+		// Nordic's own firmware images ship for; when the bit cannot name it we say what we do know
+		// rather than reporting the firmware string as if it were a model.
+		const usbOnly = b.nordicUsb && !b.deviceName && !b.deviceFamily && !b.boardVersion
+		const name = usbOnly
+			? (b.boardName ?? "Nordic USB device")
+			: // [SWEEP 2026-09-09] productName sits before the serial: a board the cards call "nRF52840 DK"
+				// was reading as "001050288730" here — same detection, two names for one board.
+				(b.deviceName ?? friendly ?? b.productName ?? b.deviceFamily ?? b.serialNumber)
+		return { board: b, label: b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name }
+	})
+	// Two boards of the same kind render identically — the bench has two nRF9161 DKs, both reporting
+	// PCA10153 — and the developer then has no way to tell from the strip which one a command will
+	// reach. Disambiguate with the tail of the serial, but ONLY where a label actually repeats: a
+	// suffix on every board would be noise on the common single-board setup.
+	const seen = new Map<string, number>()
+	for (const { label } of labelled) {
+		seen.set(label, (seen.get(label) ?? 0) + 1)
+	}
+	return labelled.map(({ board, label }) =>
+		(seen.get(label) ?? 0) > 1 && board.serialNumber ? `${label} ·${board.serialNumber.slice(-4)}` : label,
+	)
 }
 
 function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
@@ -249,39 +328,7 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 		devices = "no boards connected"
 		devicesMuted = true
 	} else {
-		const labelled = env.boards.map((b: NrfBoard) => {
-			// Named host-side from the board-identity bit, so a board Nordic ships between our releases is
-			// named by a registry update rather than a reinstall. The webview holds no second table: two
-			// copies of one mapping drift, and this one had already acquired two wrong rows. Raw PCA otherwise.
-			const friendly = b.boardVersion ? (b.boardName ?? b.boardVersion) : undefined
-			// A Nordic USB device with no probe — a dongle — publishes no chip: nrfutil itself answers
-			// "not supported for this type of device". Name the CATEGORY, as every other row names a board,
-			// plus the only specific identity it does publish: the firmware it is running.
-			// This line answers "what boards and DKs are detected" — hardware, not what is running on it.
-			// A dongle has no PCA, so its board comes from the board-identity bit, which knows which board
-			// Nordic's own firmware images ship for; when the bit cannot name it we say what we do know
-			// rather than reporting the firmware string as if it were a model.
-			const usbOnly = b.nordicUsb && !b.deviceName && !b.deviceFamily && !b.boardVersion
-			const name = usbOnly
-				? (b.boardName ?? "Nordic USB device")
-				: // [SWEEP 2026-09-09] productName sits before the serial: a board the cards call "nRF52840 DK"
-					// was reading as "001050288730" here — same detection, two names for one board.
-					(b.deviceName ?? friendly ?? b.productName ?? b.deviceFamily ?? b.serialNumber)
-			return { board: b, label: b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name }
-		})
-		// Two boards of the same kind render identically — the bench has two nRF9161 DKs, both reporting
-		// PCA10153 — and the developer then has no way to tell from the strip which one a command will
-		// reach. Disambiguate with the tail of the serial, but ONLY where a label actually repeats: a
-		// suffix on every board would be noise on the common single-board setup.
-		const seen = new Map<string, number>()
-		for (const { label } of labelled) {
-			seen.set(label, (seen.get(label) ?? 0) + 1)
-		}
-		devices = labelled
-			.map(({ board, label }) =>
-				(seen.get(label) ?? 0) > 1 && board.serialNumber ? `${label} ·${board.serialNumber.slice(-4)}` : label,
-			)
-			.join(", ")
+		devices = nrfBoardLabels(env).join(", ")
 	}
 
 	return {
@@ -300,6 +347,23 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 /** True when there's any ESP signal at all (toolchain, device, or an ESP project). */
 function espHasAnything(env: EspEnvironment): boolean {
 	return env.extensionPresent || env.idfPresent || env.espDevices.length > 0 || env.projectDetected
+}
+
+/** Every ESP device by name — resolved chip or the honest unresolved label. Shared with the header row. */
+export function espDeviceLabels(env: EspEnvironment): string[] {
+	if (env.status === "unknown" || env.status === "detecting") {
+		return []
+	}
+	return env.espDevices.map((d: EspDevice) => {
+		// This row lists DEVICES, so it stays a list of device names. A second entry that is really
+		// one board's other USB interface is folded upstream where that can be PROVEN — same USB
+		// serial, or same base MAC — and left alone where it cannot: the only other signal is a
+		// shared USB hub, and two separate boards in a desk hub share one too, so folding on it
+		// would make a real board vanish. An extra row beats a missing one, and it does not need a
+		// sentence of explanation inside a device list to earn its place.
+		const name = d.chip ?? espUnresolvedDeviceLabel(d.vid, d.pid)
+		return d.chip && d.chipRevision ? `${name} (${d.chipRevision})` : name
+	})
 }
 
 function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
@@ -356,18 +420,7 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 		// Show the exact chip once esptool resolved it; otherwise an HONEST unresolved label — "ESP (model
 		// unknown)" only for Espressif's own VID, "unidentified serial device" for a generic bridge we never
 		// confirmed (never claim "ESP32-family" off an unconfirmed CH34x/CP210x/FTDI device).
-		devices = env.espDevices
-			.map((d: EspDevice) => {
-				// This row lists DEVICES, so it stays a list of device names. A second entry that is really
-				// one board's other USB interface is folded upstream where that can be PROVEN — same USB
-				// serial, or same base MAC — and left alone where it cannot: the only other signal is a
-				// shared USB hub, and two separate boards in a desk hub share one too, so folding on it
-				// would make a real board vanish. An extra row beats a missing one, and it does not need a
-				// sentence of explanation inside a device list to earn its place.
-				const name = d.chip ?? espUnresolvedDeviceLabel(d.vid, d.pid)
-				return d.chip && d.chipRevision ? `${name} (${d.chipRevision})` : name
-			})
-			.join(", ")
+		devices = espDeviceLabels(env).join(", ")
 	}
 
 	return {
@@ -387,19 +440,14 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 // Combined strip
 // ---------------------------------------------------------------------------
 
-const EnvStrip: React.FC = () => {
+/** `forceExpanded`: hosted in the header row's band (2026-09-09), the strip IS the full view — always
+ *  open, no "less" of its own; the row closes it. Standalone (tests, older hosts) it keeps A5's
+ *  compact-by-default behaviour. */
+const EnvStrip: React.FC<{ forceExpanded?: boolean }> = ({ forceExpanded = false }) => {
 	const { nrfEnvironment, espEnvironment, openFolderPaths } = useExtensionState()
-	const [refreshing, setRefreshing] = useState(false)
+	const { refresh: handleRefresh, busy: refreshing } = useEnvRefresh()
 	// A5 — compact by default (one line per detected platform), expand for the full per-platform detail.
-	const [expanded, setExpanded] = useState(false)
-
-	const handleRefresh = () => {
-		if (refreshing) return
-		setRefreshing(true)
-		FileServiceClient.refreshNrfEnvironment(EmptyRequest.create())
-			.catch(() => {})
-			.finally(() => setRefreshing(false))
-	}
+	const [expanded, setExpanded] = useState(forceExpanded)
 
 	const nrfEnv = nrfEnvironment ?? { status: "unknown" as const, extensionPresent: false, nrfutilPresent: false, boards: [] }
 	const espEnv = espEnvironment ?? {
@@ -483,16 +531,18 @@ const EnvStrip: React.FC = () => {
 							notDetectedHint="not detected — install ESP-IDF to enable"
 							{...esp}
 						/>
-						<button
-							aria-controls="envstrip-detail"
-							aria-expanded={expanded}
-							aria-label="Hide environment detail"
-							data-testid="envstrip-collapse"
-							onClick={() => setExpanded(false)}
-							style={collapseLinkStyle}
-							type="button">
-							<i className="codicon codicon-chevron-up" style={{ fontSize: "11px" }} /> less
-						</button>
+						{!forceExpanded && (
+							<button
+								aria-controls="envstrip-detail"
+								aria-expanded={expanded}
+								aria-label="Hide environment detail"
+								data-testid="envstrip-collapse"
+								onClick={() => setExpanded(false)}
+								style={collapseLinkStyle}
+								type="button">
+								<i className="codicon codicon-chevron-up" style={{ fontSize: "11px" }} /> less
+							</button>
+						)}
 					</>
 				) : (
 					<button

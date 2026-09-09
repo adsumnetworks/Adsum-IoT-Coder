@@ -88,3 +88,8 @@ export function entryRunStart(runId: string, via: "card" | "drawer" | "sample"):
 export function gateShown(surface: string, intent?: string): void {
 	send("gate_shown", { surface, ...(intent ? { intent } : {}) })
 }
+
+/** The full environment view opened — from the row itself, or from an exception's "why →". */
+export function entryEnvOpen(via: "row" | "why" | "always"): void {
+	send("entry_env_open", { via })
+}
