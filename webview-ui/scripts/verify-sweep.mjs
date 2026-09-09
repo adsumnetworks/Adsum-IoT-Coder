@@ -51,7 +51,9 @@ const results = []
 
 const THEME = process.env.THEME ?? "vs_dark"
 async function story(id, theme = THEME) {
-	const page = await browser.newPage({ viewport: { width: 420, height: 900 }, deviceScaleFactor: 2 })
+	// PANEL width 420: the story decorator nests the view in 80 % of 80 % of the viewport (found 2026-09-09 —
+	// every earlier "420" check ran on a 269 px panel, harsher than any real sidebar).
+	const page = await browser.newPage({ viewport: { width: Math.round(420 / 0.64), height: 900 }, deviceScaleFactor: 2 })
 	const errors = []
 	page.on("pageerror", (e) => errors.push(String(e)))
 	await page.goto(`http://127.0.0.1:${port}/iframe.html?id=${id}&globals=theme:${theme}`, { waitUntil: "networkidle" })
