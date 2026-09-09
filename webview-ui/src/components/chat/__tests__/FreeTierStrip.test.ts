@@ -7,29 +7,35 @@ import { freeTierStripVisible, LOW_BALANCE_TOKENS } from "../FreeTierStrip"
  * balance is low enough that the other two matter.
  */
 describe("the free tier strip earns its row", () => {
-	it("shows before it has been dismissed", () => {
-		expect(freeTierStripVisible(6_600_000, false)).toBe(true)
+	it("shows on a fresh install, before the first task — the disclosure lands before the first inference", () => {
+		expect(freeTierStripVisible(6_600_000, false, false)).toBe(true)
 	})
 
-	it("stays away once dismissed, while there is nothing to act on", () => {
-		expect(freeTierStripVisible(6_600_000, true)).toBe(false)
+	it("RETIRES BY ITSELF once the install has any task history", () => {
+		// The operator opened a fresh window and saw the strip the mockup had shown gone. The first rule
+		// needed a click to get there; the event the developer performs anyway is the better boundary.
+		expect(freeTierStripVisible(6_600_000, false, true)).toBe(false)
 	})
 
-	it("COMES BACK when the balance is low, whatever was dismissed", () => {
-		// The point of the whole rule: a dismissal is about a disclosure, not about a warning.
-		expect(freeTierStripVisible(LOW_BALANCE_TOKENS, true)).toBe(true)
-		expect(freeTierStripVisible(1_000, true)).toBe(true)
-		expect(freeTierStripVisible(0, true)).toBe(true)
+	it("a manual dismiss still works before the first task", () => {
+		expect(freeTierStripVisible(6_600_000, true, false)).toBe(false)
+	})
+
+	it("COMES BACK when the balance is low, whatever history or dismissal says", () => {
+		// The point of the whole rule: history and dismissal are about a disclosure, not a warning.
+		expect(freeTierStripVisible(LOW_BALANCE_TOKENS, true, true)).toBe(true)
+		expect(freeTierStripVisible(1_000, true, true)).toBe(true)
+		expect(freeTierStripVisible(0, false, true)).toBe(true)
 	})
 
 	it("the threshold is a floor, not a ceiling — one token above it is still quiet", () => {
-		expect(freeTierStripVisible(LOW_BALANCE_TOKENS + 1, true)).toBe(false)
+		expect(freeTierStripVisible(LOW_BALANCE_TOKENS + 1, false, true)).toBe(false)
 	})
 
 	it("renders nothing at all when the developer is not on the free tier", () => {
 		// undefined means BYOK: never show a credit number to someone paying their own provider.
-		expect(freeTierStripVisible(undefined, false)).toBe(false)
-		expect(freeTierStripVisible(undefined, true)).toBe(false)
+		expect(freeTierStripVisible(undefined, false, false)).toBe(false)
+		expect(freeTierStripVisible(undefined, true, true)).toBe(false)
 	})
 
 	it("the floor is set against the real default grant", () => {

@@ -151,6 +151,24 @@ function check(name, ok, detail) {
 	await page.close()
 }
 {
+	const { page, errors } = await story("views-chat--entry-free-tier-settled")
+	check(
+		"06 the strip has RETIRED once the install has task history",
+		!(await page
+			.getByTestId("free-tier-strip")
+			.isVisible()
+			.catch(() => false)),
+	)
+	const chip = await page
+		.getByTestId("model-chip")
+		.innerText()
+		.catch(() => "")
+	check("06 and the chip carries the tier on a settled install", /^Free tier/.test(chip.trim()), chip.trim())
+	check("06 no page errors", errors.length === 0, errors[0])
+	await shot(page, "06-strip-settled")
+	await page.close()
+}
+{
 	const { page, errors } = await story("views-chat--entry-free-tier-low")
 	// simulate the dismissal having happened earlier
 	await page.evaluate(() => {

@@ -21,19 +21,27 @@ const DISMISSED_KEY = "adsum.freeTierStripDismissed"
  * Whether the full-width strip earns its row.
  *
  * It does three jobs: it discloses who pays for the inference, it reports the balance, and it offers
- * the way out. The disclosure has to land at least once — so the strip shows until it is dismissed.
- * The other two only matter when the balance is low — so it returns then, and dismissal cannot bury
- * it. In between, the chip beside the composer carries the number, where the developer's eye already
- * is while the agent works.
+ * the way out. The disclosure has to be on screen BEFORE the first free inference — so the strip
+ * shows while the install has no task history yet, which is exactly the window in which someone is
+ * about to use it for the first time. Once a task exists the disclosure has landed, and the chip
+ * beside the composer carries the number from then on, where the eye already is while the agent
+ * works. The balance and the way out only matter when the balance is low — so it returns then, and
+ * neither history nor dismissal can bury it.
+ *
+ * The first version of this rule was "show until dismissed". The operator opened a fresh window,
+ * saw the strip at the top, and asked whether I had changed my mind about the mockup — which showed
+ * it gone. I had not; the mockup showed the post-dismissal state and the rule needed a click to get
+ * there. Requiring a × to reach the default was a chore, and an event the developer performs anyway
+ * (starting their first task) is a better boundary than one they have to go looking for.
  */
-export function freeTierStripVisible(remaining: number | undefined, dismissed: boolean): boolean {
+export function freeTierStripVisible(remaining: number | undefined, dismissed: boolean, hasHistory: boolean): boolean {
 	if (remaining === undefined) {
 		return false
 	}
 	if (remaining <= LOW_BALANCE_TOKENS) {
 		return true
 	}
-	return !dismissed
+	return !dismissed && !hasHistory
 }
 
 /** Compact token label: ≥1M → one decimal (e.g. 1.3M), ≥1K → rounded K, else raw. */
@@ -55,7 +63,8 @@ const formatTokens = (n: number): string => {
  * Renders nothing when the user is not on the free tier (freeTierRemainingTokens undefined).
  */
 const FreeTierStrip = () => {
-	const { freeTierRemainingTokens, navigateToSettings } = useExtensionState()
+	const { freeTierRemainingTokens, navigateToSettings, taskHistory } = useExtensionState()
+	const hasHistory = (taskHistory?.length ?? 0) > 0
 	const { isDark } = useVSCodeTheme()
 	const [dismissed, setDismissed] = useState(() => {
 		try {
@@ -68,7 +77,7 @@ const FreeTierStrip = () => {
 	// Bound to a local so the type narrows with the guard: the rule already returns false for
 	// undefined, but TypeScript cannot see through the function call.
 	const remaining = freeTierRemainingTokens
-	if (remaining === undefined || !freeTierStripVisible(remaining, dismissed)) {
+	if (remaining === undefined || !freeTierStripVisible(remaining, dismissed, hasHistory)) {
 		return null
 	}
 

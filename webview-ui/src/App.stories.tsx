@@ -1584,6 +1584,21 @@ export const EntryFreeTierHealthy: Story = {
 	args: {},
 }
 
+/** The same install after its first task: the strip has retired and the chip carries the tier. */
+export const EntryFreeTierSettled: Story = {
+	decorators: [
+		createStoryDecorator(
+			entryState({
+				openFolderPaths: [GW],
+				taskHistory: [entrySession(1, GW, 0.3, "Bring up the LEW840x gateway")],
+				freeTierRemainingTokens: 6_600_000,
+				apiConfiguration: createApiConfig({ actModeApiProvider: "adsum-free", planModeApiProvider: "adsum-free" }),
+			}),
+		),
+	],
+	args: {},
+}
+
 /** Nearly out: the strip is back whatever was dismissed, because now there is something to do. */
 export const EntryFreeTierLow: Story = {
 	decorators: [
