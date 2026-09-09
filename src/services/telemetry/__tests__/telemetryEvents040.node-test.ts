@@ -62,7 +62,7 @@ function own(props: Record<string, unknown>): Record<string, unknown> {
 
 describe("EVENTS", () => {
 	it("every event name is unique — two constants with one string would merge two series", () => {
-		const names = flatten(TelemetryService.EVENTS)
+		const names = flatten(TelemetryService["EVENTS"])
 		const seen = new Map<string, number>()
 		for (const n of names) {
 			seen.set(n, (seen.get(n) ?? 0) + 1)
@@ -73,7 +73,7 @@ describe("EVENTS", () => {
 	})
 
 	it("the 0.4.0 names are the ones the dashboard tiles were built on", () => {
-		const names = new Set(flatten(TelemetryService.EVENTS))
+		const names = new Set(flatten(TelemetryService["EVENTS"]))
 		for (const n of ["task.stream_stalled", "account.signed_out", "account.deleted", "ui.model_pricing_overridden"]) {
 			assert.ok(names.has(n), n)
 		}
