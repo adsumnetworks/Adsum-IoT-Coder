@@ -102,7 +102,7 @@ describe("W — the register gate", () => {
 		expect(titles).toEqual([
 			"LTE-M / NB-IoT gateway",
 			// [OPERATOR 2026-09-09] The BLG20 is mentioned, locked, and opened per person later.
-			"BLG20 / BLC gateways · nRF9151",
+			"BLG20Bx / LBG20Bx gateways · nRF9151",
 			"Satellite NB-NTN bring-up",
 			"nRF91 modem bring-up",
 			"On-device inference",

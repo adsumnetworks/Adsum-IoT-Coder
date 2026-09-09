@@ -319,9 +319,12 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 		// certain developers as the board's certification lands. [OPERATOR 2026-09-09]
 		id: "blg20Gateway",
 		icon: "circuit-board",
-		// Names both lines the operator listed (BLC spelled as given, 2026-09-09). One card, one lock.
-		title: "BLG20 / BLC gateways · nRF9151",
-		description: "Fanstel's next gateways: nRF54 BLE in, nRF9151 LTE-M / NB-IoT / NTN out, edge AI on board.",
+		title: "BLG20Bx / LBG20Bx gateways · nRF9151",
+		// Names as Fanstel writes them (fanstel.com/blg20cbwg20c, /lbg51e20c, checked 2026-09-09): the IP51
+		// BLG20BC / BLG20BF / BLG20XE line and the IP67 LBG20BC / LBG20BXE / LBG20BC02C line, all nRF9151 +
+		// nRF54LM20B. "BLC" was a mishearing; BWG20BF is the WiFi-only sibling with no nRF9151 and is not here.
+		description:
+			"Fanstel's next gateways: nRF54LM20B BLE 6.0 in, nRF9151 LTE-M / NB-IoT / NTN out — IP51 indoor and IP67 outdoor, WiFi 6 on the 02C builds.",
 		group: "blg20-early-access",
 	},
 	{
