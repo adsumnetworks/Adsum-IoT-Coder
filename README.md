@@ -45,7 +45,7 @@ A home that reads your desk, cellular and satellite work behind a free account, 
 <tr>
 <td width="58%" valign="top">
 
-<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**A home that reads your desk.** Your folder, the boards it detects and the toolchains it finds, then the runs worth starting, ranked, each saying why. Typing in the box is the new session; a named resume is offered whenever the folder has one, and every other session is one click away in the editor's History. [Getting started](https://docs.adsumnetworks.com/getting-started)
+<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**A home that reads your desk.** One row says what is on it and what is missing (*nRF ✓ nRF52840 DK*, or *no toolchain yet · what to install →*); a device that will not answer is reported there, with *why →*. Then the runs worth starting, ranked, each saying why. Typing in the box is the new session; a named resume is offered whenever the folder has one, and every other session is one click away in the editor's History. [Getting started](https://docs.adsumnetworks.com/getting-started)
 
 <img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Gateway firmware you can flash and license.** Signed images and licensed source for the Fanstel LEW840x on BLE, Ethernet and Wi-Fi; a cellular demo on LTE-M / NB-IoT; satellite NB-NTN and nRF54 edge AI with a free account (GitHub or email, no card). The Fanstel BLG20, a BLE 6 terrestrial + non-terrestrial gateway with on-device inference, is next. [Gateway firmware](https://docs.adsumnetworks.com/gateway-firmware)
 
@@ -104,7 +104,7 @@ Fanstel makes and sells the hardware; Adsum writes, signs and licenses the firmw
 
 ## What it does: debug, build, and prototype ESP and nRF firmware
 
-- **Detects your platform and names your board.** nRF, ESP, both, or a fresh start; on ESP it names the USB bridge and says why a chip is silent.
+- **Tells you what is on your desk.** Names your board, says which toolchain is missing and what to install, and when a serial device will not answer it says so in the header, with the why one click away.
 - **Carries a full product build.** One spec to a working two-chip gateway, across both toolchains, in under 30 minutes, you approving each step. [Walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway)
 - **Builds, flashes and debugs on real hardware.** Live RTT and UART logs on nRF, serial on ESP, read against your source. The reset vector is checked before an image is flashed.
 - **Debugs across three layers.** App log, HCI bus and over-the-air radio, correlated. [A real one](https://docs.adsumnetworks.com/ble-wifi-gateway/troubleshooting): 36 advertisements on the air, 0 received, a radio front end never switched on.
