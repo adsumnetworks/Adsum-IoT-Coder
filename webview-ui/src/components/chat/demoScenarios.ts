@@ -9,6 +9,8 @@
  * the only demo path is through the real-workspace flow.
  */
 
+import { isNewSample } from "@shared/releaseNotes"
+
 export interface DemoScenario {
 	/** True when the materialized sample can genuinely be worked by an EXTERNAL coding agent (the
 	 *  workspace is self-contained). Drives whether the run-target routes this sample to the agent. */
@@ -35,7 +37,7 @@ export interface DemoScenario {
 	 * as a roadmap promise but can't be clicked into a dead end.
 	 */
 	comingSoon?: boolean
-	/** Show a "New" badge on the picker row — used for the CRA + the new BLE-observability (Omar) samples. */
+	/** Show a "New" badge on the picker row. Decided per release by RELEASE_NOTES.newSamples, never set by hand. */
 	isNew?: boolean
 	/**
 	 * Brief one-line description shown INSTEAD of honestLabel while the row is `comingSoon` — a dimmed roadmap
@@ -73,7 +75,7 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		historyMatch: "Run CRA SBOM & Fix on a pre-built reference sample",
 		platform: "nrf",
 		icon: "shield",
-		isNew: true, // operator 0707: CRA keeps the New flag AND stays on top (defined before hci-sniffer; the stable sort preserves this order among New rows).
+		isNew: isNewSample("cra-sample"),
 	},
 	// HCI + Sniffer (v5): ACTIVE ON THIS BRANCH ONLY for Omar's full hardware-matrix test (all option/DK/dongle
 	// combos) — do NOT merge to a release until that gate passes (registry-mode F5 + `kbit:check-drift` first).
@@ -87,7 +89,7 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
 		historyMatch: "Debug a BLE bug across all 3 layers",
 		platform: "nrf",
 		icon: "radio-tower",
-		isNew: true,
+		isNew: isNewSample("hci-sniffer"),
 		teaser: "BLE, debugged at every layer — app, bus, radio.",
 	},
 	// NOTE: the "esp-wifi" coming-soon placeholder was removed from the picker in 0.2.0 — we don't ship a greyed,

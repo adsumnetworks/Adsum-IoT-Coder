@@ -86,8 +86,11 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	onUpgradeDismiss,
 	showUpgradeCard,
 }) => {
-	const { version, taskHistory, workspaceClassification, reviewNudgeShow, adsumUnlockedShow, adsumAccount } =
-		useExtensionState() as ReturnType<typeof useExtensionState> & { adsumAccount?: AdsumAccountState }
+	const { taskHistory, workspaceClassification, reviewNudgeShow, adsumUnlockedShow, adsumAccount, announcementRequested } =
+		useExtensionState() as ReturnType<typeof useExtensionState> & {
+			adsumAccount?: AdsumAccountState
+			announcementRequested?: boolean
+		}
 	// A locked card opens ONE of two doors. Signed out: the register gate (the tier opens on
 	// registration). Signed in but without a by-request group: the request form for that family.
 	const [gateFor, setGateFor] = useState<IntentDef | null>(null)
@@ -275,13 +278,16 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	 * that used to sit in the JSX are gone with it: the queue is the only thing that decides now, and
 	 * there is one place to read the policy instead of four conditions to reconcile.
 	 */
-	const notice = oneNotice({
-		cra: craBanner,
-		dock: dockCoachEligible(signals.hasWorkspace),
-		registered: !!adsumUnlockedShow,
-		upgrade: upgradeShowing,
-		review: !!reviewNudgeShow,
-	})
+	const notice = oneNotice(
+		{
+			cra: craBanner,
+			dock: dockCoachEligible(signals.hasWorkspace),
+			registered: !!adsumUnlockedShow,
+			upgrade: upgradeShowing,
+			review: !!reviewNudgeShow,
+		},
+		announcementRequested ? "upgrade" : undefined,
+	)
 	const craEvidence = `${
 		signals.features.hasBle && signals.features.hasWifi ? "BLE & Wi-Fi" : signals.features.hasWifi ? "Wi-Fi" : "BLE"
 	} detected · no compliance artifacts in this project yet`
@@ -454,7 +460,19 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			    content in a tall column always leaves space somewhere; the honest place is one gap
 			    above the input, not a gap in the middle of the content. */}
 			<div className="flex w-full flex-col gap-3">
-				{notice === "upgrade" && <UpgradeCard onDismiss={onUpgradeDismiss} version={version ?? ""} />}
+				{notice === "upgrade" && (
+					<UpgradeCard
+						onAction={
+							adsumAccount
+								? undefined
+								: () => {
+										gateShown("card", CELLULAR_INTENTS[0].id)
+										setGateFor(CELLULAR_INTENTS[0])
+									}
+						}
+						onDismiss={onUpgradeDismiss}
+					/>
+				)}
 				{notice === "review" && (
 					<ReviewNudge
 						onDismiss={() => StateServiceClient.dismissBanner({ value: "review-nudge" }).catch(console.error)}

@@ -2692,6 +2692,8 @@ export class TelemetryService {
 		targeted: boolean
 		relevant: "cra" | "generic"
 		surface?: "upgrade" | "project_open"
+		/** RELEASE_NOTES.version: which release's copy was on screen, so click-through compares across releases. */
+		release?: string
 	}) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.UPGRADE_TOAST_SHOWN, properties: { ...props } })
 	}
@@ -2701,6 +2703,8 @@ export class TelemetryService {
 		targeted: boolean
 		relevant: "cra" | "generic"
 		surface?: "upgrade" | "project_open"
+		/** RELEASE_NOTES.version: which release's copy was on screen, so click-through compares across releases. */
+		release?: string
 	}) {
 		this.capture({ event: TelemetryService.EVENTS.TASK.UPGRADE_TOAST_CLICKED, properties: { ...props } })
 	}

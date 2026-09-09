@@ -114,6 +114,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The bits roster scrolls and says how many bits there are.
 - 93 reference screenshots used only by the visual tests were shipping inside the package; it is
   10 MB smaller.
+- The update card and toast describe this release, and the "New" badges two sample runs had carried
+  since 0.1.7 are gone. Release messages now live in one place, so a version bump without a copy
+  review fails the build.
 
 ## [0.3.1] - 2026-08-26
 

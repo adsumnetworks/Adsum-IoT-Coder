@@ -50,6 +50,8 @@ export interface ExtensionState {
 	/** When set (a demo scenario id), the webview auto-starts that demo once — e.g. from the
 	 *  first-run announcement toast CTA. Cleared host-side when the demo task fires. */
 	demoAutoStart?: string
+	/** One-shot from the update toast's CTA: show the What's new card first on this paint. */
+	announcementRequested?: boolean
 	onboardingModels: OnboardingModelGroup | undefined
 	apiConfiguration?: ApiConfiguration
 	autoApprovalSettings: AutoApprovalSettings

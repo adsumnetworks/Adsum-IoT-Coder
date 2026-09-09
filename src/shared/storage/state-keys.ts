@@ -113,6 +113,8 @@ const GLOBAL_STATE_FIELDS = {
 	// Set before a demo-triggered workspace reload; checkDemoAutoStart reads and clears it on activation.
 	// Shape: { scenarioId, capability, workspacePath } serialised as JSON string.
 	demoAutoStart: { default: undefined as string | undefined },
+	/** One-shot set by the update toast's CTA; cleared when the What's new card is acknowledged. */
+	announcementRequested: { default: undefined as boolean | undefined },
 	// Unix-ms timestamp of the last re-engagement nudge shown to a dormant user.
 	reengagementNudgeLastShown: { default: undefined as number | undefined },
 	// Consecutive times a re-engagement nudge was ignored (dismissed without acting). Reset to 0 on

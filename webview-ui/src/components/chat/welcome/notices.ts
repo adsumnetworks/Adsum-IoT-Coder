@@ -25,6 +25,14 @@ export type NoticeId = "cra" | "dock" | "registered" | "upgrade" | "review"
 /** Highest priority first. The array IS the policy — there is no second place that encodes it. */
 export const NOTICE_ORDER: readonly NoticeId[] = ["cra", "registered", "dock", "upgrade", "review"] as const
 
-export function oneNotice(eligible: Partial<Record<NoticeId, boolean>>): NoticeId | undefined {
+/**
+ * `pin` is the one exception to the order: the update toast's CTA promised "See what's new", so on the
+ * paint it opens the upgrade card takes the slot ahead of everything else, if it is eligible at all.
+ * A pin that is not eligible is ignored, never invented.
+ */
+export function oneNotice(eligible: Partial<Record<NoticeId, boolean>>, pin?: NoticeId): NoticeId | undefined {
+	if (pin && eligible[pin] === true) {
+		return pin
+	}
 	return NOTICE_ORDER.find((id) => eligible[id] === true)
 }
