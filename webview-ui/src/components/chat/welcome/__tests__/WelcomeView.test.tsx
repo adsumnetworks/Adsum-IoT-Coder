@@ -391,7 +391,10 @@ describe("the shape rule decides what is on screen", () => {
 		})
 		const first = render(<WelcomeView {...baseProps} />)
 		fireEvent.click(screen.getByTestId("entry-desk-line"))
-		fireEvent.click(screen.getByTestId("env-always-open"))
+		// a toolkit checkbox: jsdom does not upgrade the custom element, so set and fire what the wrapper listens for
+		const cb = screen.getByTestId("env-always-open") as any
+		cb.checked = true
+		fireEvent(cb, new Event("change", { bubbles: true }))
 		first.unmount()
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.getByTestId("env-band")).toBeTruthy()
