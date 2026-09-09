@@ -175,6 +175,27 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 const withV = (v: string) => (v.startsWith("v") ? v : `v${v}`)
 
 /** True when there's any nRF signal at all (toolchain, boards, or a project SDK). */
+/**
+ * The header row's one-line summary of the desk: each platform the strip would show, with a ✓
+ * when its toolchain is present. [OPERATOR 2026-09-09, approved mockup entry-one-door pin 4]
+ * "lew840x-free · nRF ✓ · ESP ✓" at the right of the wordmark, in the slot the ☰ vacated. The
+ * SAME detection the strip uses — one source, two densities — so the row can never say ✓ for a
+ * platform the strip calls not detected.
+ */
+export function platformTicks(
+	nrf: NrfEnvironment | undefined,
+	esp: EspEnvironment | undefined,
+): Array<{ label: "nRF" | "ESP"; ok: boolean }> {
+	const out: Array<{ label: "nRF" | "ESP"; ok: boolean }> = []
+	if (nrf && nrfHasAnything(nrf)) {
+		out.push({ label: "nRF", ok: nrf.extensionPresent || !!nrf.nrfutilPresent })
+	}
+	if (esp && espHasAnything(esp)) {
+		out.push({ label: "ESP", ok: esp.extensionPresent || !!esp.idfPresent })
+	}
+	return out
+}
+
 function nrfHasAnything(env: NrfEnvironment): boolean {
 	return env.extensionPresent || env.nrfutilPresent || env.boards.length > 0 || !!env.projectSdk
 }
