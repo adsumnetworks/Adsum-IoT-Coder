@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   detected boards, toolchains), then the runs worth starting, ranked by what was actually detected,
   each saying why. Typing in the box *is* the new session. One named resume is always offered when
   there is a past session for the folder you are in.
+- The environment in two densities. A header row carries the folder and one verdict per platform
+  from the toolchain check itself (the board by name; *no toolchain yet, what to install*; a serial
+  device that will not answer, in the warning colour, with *why*), and one click opens the full view
+  in place. The row can never tick a platform the check calls missing.
 - Past sessions have one home, the editor's History: search by a session's given name, rename,
   delete. The entry surface offers one named resume and one door to every other run.
 - Guided builds for partner hardware are offered from a cold start, alongside three sample runs that
