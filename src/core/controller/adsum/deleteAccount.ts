@@ -2,6 +2,7 @@ import { EmptyRequest, String as ProtoString } from "@shared/proto/cline/common"
 import { ClineEnv } from "@/config"
 import { getSessionToken, signOut } from "@/services/adsum/AccountState"
 import { Logger } from "@/services/logging/Logger"
+import { telemetryService } from "@/services/telemetry"
 import type { Controller } from ".."
 
 /**
@@ -28,6 +29,8 @@ export async function deleteAccount(controller: Controller, _request: EmptyReque
 		Logger.warn(`[account] delete threw: ${e instanceof Error ? e.message : String(e)}`)
 		return ProtoString.create({ value: "Adsum can’t be reached right now. Nothing was deleted." })
 	}
+	// Counted only once the server has confirmed: a refused delete is not a deletion.
+	telemetryService.captureAccountDeleted()
 	await signOut()
 	await controller.postStateToWebview()
 	return ProtoString.create({ value: "" })
