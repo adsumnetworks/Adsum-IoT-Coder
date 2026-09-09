@@ -61,7 +61,7 @@ export const RELEASE_NOTES = {
 			},
 			{
 				head: "Account",
-				body: "free, GitHub or email, no card. Unlocks LTE-M / NB-IoT, satellite NB-NTN, nRF91 modem bring-up, nRF54 edge-AI basics and the LEW840x demo firmware.",
+				body: "free, GitHub or email, no card. Unlocks gateway firmware to flash and license: the LEW840x on BLE, Ethernet, Wi-Fi and cellular; satellite NB-NTN on the nRF9151; nRF54 edge-AI basics.",
 			},
 			{
 				head: "Runs",
