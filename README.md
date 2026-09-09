@@ -47,7 +47,7 @@ A home that reads your desk, cellular and satellite work behind a free account, 
 
 <img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**A home that reads your desk.** Your folder, the boards it detects and the toolchains it finds, then the runs worth starting, ranked, each saying why. Typing in the box is the new session; a named resume is offered whenever the folder has one, and every other session is one click away in the editor's History. [Getting started](https://docs.adsumnetworks.com/getting-started)
 
-<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Cellular, satellite and edge AI with a free account.** Register with GitHub or email, no card: an LTE-M / NB-IoT gateway, NB-NTN bring-up on the nRF9151, nRF91 modem bring-up, nRF54 edge-AI basics, and the signed LEW840x demo firmware: flash it, watch tags reach your broker, then ask for licensed source per module when it fits. Your projects and logs stay on your machine. [Cellular on nRF91](https://docs.adsumnetworks.com/cellular)
+<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Gateway firmware you can flash and license.** Signed images and licensed source for the Fanstel LEW840x on BLE, Ethernet and Wi-Fi; a cellular demo on LTE-M / NB-IoT; satellite NB-NTN and nRF54 edge AI with a free account (GitHub or email, no card). A BLE 6 terrestrial + non-terrestrial gateway with on-device inference is next. [Gateway firmware](https://docs.adsumnetworks.com/gateway-firmware)
 
 <img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Steer a run without stopping it.** A message sent to a working session lands at its next step. The thinking depth you set for DeepSeek and GLM now reaches the request, DeepSeek prices match the vendor's, and `modelPricing` takes your own rate. [Models](https://docs.adsumnetworks.com/models)
 
@@ -81,13 +81,25 @@ Field-tested on our own builds: the budget tiers handle routine work with thinki
 | **Products** | **Fanstel LEW840X, BWG840X** gateways, with their own product knowledge | both, one workspace | BLE, Ethernet, Wi-Fi, cellular |
 | **Roadmap** | nRF7x (Wi-Fi), on-device AI on nRF54 / ESP32, Linux devices (NVIDIA Jetson, Raspberry Pi) | | LoRa, 5G / 5G RedCap via hats |
 
-Adsum works on **any board built with a supported chip**: your own design, a reference board, a development kit, or a product off the shelf. There is no list your board has to be on. Cellular, NB-NTN and edge-AI runs, and the LEW840x demo firmware below, need a free registered account; nothing else does. NTN firmware is a public download but runs only on an nRF9151 of the LACA A1A revision; DECT NR+ knowledge ships and needs a modem image from Nordic sales. [Chips and protocols](https://docs.adsumnetworks.com/supported-hardware) · [cellular](https://docs.adsumnetworks.com/cellular) · [partner open hardware](https://docs.adsumnetworks.com/supported-hardware/partner-open-hardware)
+Adsum works on **any board built with a supported chip**: your own design, a reference board, a development kit, or a product off the shelf. There is no list your board has to be on. Cellular, NB-NTN and edge-AI runs, and the gateway firmware below, need a free registered account; nothing else does. NTN firmware is a public download but runs only on an nRF9151 of the LACA A1A revision; DECT NR+ knowledge ships and needs a modem image from Nordic sales. [Chips and protocols](https://docs.adsumnetworks.com/supported-hardware) · [cellular](https://docs.adsumnetworks.com/cellular) · [partner open hardware](https://docs.adsumnetworks.com/supported-hardware/partner-open-hardware)
 
-## Demo firmware for the Fanstel LEW840x: test the gateway before you build on it
+## Gateway firmware: flash it, license it, extend it
 
-Have an LEW840x on the bench? Register (free) and flash three signed images the agent already knows: a **BLE scanner** on the nRF52840, a **Wi-Fi / Ethernet uplink** on the ESP32, and a **cellular bearer** on the nRF9160. Tags advertising nearby reach your MQTT broker within minutes, so you judge the hardware and the firmware on your own network before writing a line. Wi-Fi and Ethernet run without limit; cellular runs in 60-minute sessions. Needs `nrfutil` and `esptool` on this machine.
+Working firmware for the Fanstel composable LEW gateway, two ways: **signed images** you flash to judge it on your own network, and **licensed source, per module**, so your team owns what it ships. The agent already knows these boards, so extending either is a task, not a project.
 
-The demo images are free to flash today. When the gateway does what you need, the same firmware is available as **licensed source, per module**, so your team can extend the scanner, the uplink or the bearer on its own: ask from *Settings › Account › Request template source*. [LEW840X guide](https://docs.adsumnetworks.com/supported-hardware/fanstel/lew840x)
+| Gateway | Radios | Signed images | Licensed source | You need |
+|:---|:---|:---|:---|:---|
+| **LEW840x** · BLE to Ethernet / Wi-Fi | BLE in; Ethernet, Wi-Fi out | **Available**: scanner + uplink, unlimited | **Available**, on request | LEW840x · free account |
+| **LEW840x** · cellular | + LTE-M, NB-IoT (nRF9160 / 9161) | **Demo**: cellular bearer, 60-minute sessions | On request | + LTE M.2 card, SIM |
+| Satellite **NB-NTN** on nRF9151 | NB-NTN | Bring-up run + knowledge | · | nRF9151 DK (LACA A1A) |
+| **Edge AI** on nRF54 | On-device inference basics | Knowledge + guided run | · | An nRF54 board |
+| **Next**: BLE 6 terrestrial + non-terrestrial gateway | BLE 6; LTE-M, NB-IoT, NB-NTN; edge-AI inference on the nRF54 NPU | Soon | Soon | Early access, by request |
+
+- **Flash to judge**: register (free), flash, watch tags reach your broker. Wi-Fi and Ethernet unlimited; cellular in 60-minute sessions; needs `nrfutil` and `esptool`.
+- **License to ship**: ask for the modules you need from *Settings › Account › Request template source*, or write to support@adsumnetworks.com. Per module, production use, your modifications stay yours; the images are for evaluation.
+- **Extend with the agent**: it holds the LEW840x pinouts, connectors and M.2 cards, and runs the CRA check on every build. Verified with nRF Connect SDK 3.2.1, ESP-IDF 5.5, extension 0.4.0.
+
+Fanstel makes and sells the hardware; Adsum writes, signs and licenses the firmware. [Gateway firmware →](https://docs.adsumnetworks.com/gateway-firmware) · [LEW840x walkthrough →](https://docs.adsumnetworks.com/supported-hardware/fanstel/lew840x)
 
 ## What it does: debug, build, and prototype ESP and nRF firmware
 
@@ -132,7 +144,7 @@ Methodology, per-task results and limitations: [benchmark report](./docs/benchma
 
 ## Roadmap
 
-**Next:** nRF7x Wi-Fi; the on-device AI features of nRF54 and ESP32 in the same build, flash, observe, fix loop; Linux devices (NVIDIA Jetson, Raspberry Pi) with cellular hats beside nRF and ESP radios; more composable gateways pairing BLE 6.0 with LTE-M and NTN, and open-hardware designs adding LoRa and battery backup in an IP67 enclosure; and Adsum working inside your own coding agent. Shaped by what the community asks for and contributes. [Full roadmap](https://docs.adsumnetworks.com/platforms-and-roadmap)
+**Next:** nRF7x Wi-Fi; the on-device AI features of nRF54 and ESP32 in the same build, flash, observe, fix loop; Linux devices (NVIDIA Jetson, Raspberry Pi) with cellular hats beside nRF and ESP radios; a BLE 6 terrestrial + non-terrestrial gateway (LTE-M, NB-IoT, NB-NTN) with edge-AI inference on the nRF54's NPU, early access by request, and open-hardware designs adding LoRa and battery backup in an IP67 enclosure; and Adsum working inside your own coding agent. Shaped by what the community asks for and contributes. [Full roadmap](https://docs.adsumnetworks.com/platforms-and-roadmap)
 
 ## Contributing
 
@@ -158,7 +170,7 @@ nRF, nRF Connect SDK and Nordic Semiconductor are trademarks of Nordic Semicondu
 
 ## License
 
-Open-core. The extension is Apache-2.0 © 2026 Adsum Networks, a derivative of [Cline](https://github.com/cline/cline) (see [NOTICE](NOTICE)). Bundled knowledge is CC-BY-SA-4.0 (see [iot-knowledge/LICENSE](iot-knowledge/LICENSE)). Bits delivered from the registry carry their own licence, named in the credit line when they load.
+Open-core. The extension is Apache-2.0 © 2026 Adsum Networks, a derivative of [Cline](https://github.com/cline/cline) (see [NOTICE](NOTICE)). Bundled knowledge is CC-BY-SA-4.0 (see [iot-knowledge/LICENSE](iot-knowledge/LICENSE)). Bits delivered from the registry carry their own licence, named in the credit line when they load. Gateway firmware images and source for partner hardware are licensed separately; the images are free to evaluate.
 
 ---
 
