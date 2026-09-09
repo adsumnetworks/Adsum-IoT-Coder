@@ -24,7 +24,9 @@ vi.mock("@/services/grpc-client", () => ({
 	WebServiceClient: { openInBrowser: vi.fn(() => Promise.resolve()) },
 }))
 vi.mock("../StatusHeader", () => ({ default: () => null }))
-vi.mock("../DockCoachMark", () => ({ default: () => null }))
+// The coach mark is stubbed out, but its ELIGIBILITY is what the notice queue reads — stub both,
+// or WelcomeView throws on a missing export the moment it asks which notice wins.
+vi.mock("../DockCoachMark", () => ({ default: () => null, dockCoachEligible: () => false }))
 vi.mock("../../UpgradeCard", () => ({ default: () => <div data-testid="upgrade-card" /> }))
 
 const _store = new Map<string, string>()
@@ -108,6 +110,32 @@ describe("the shape rule decides what is on screen", () => {
 		expect(receipt.compareDocumentPosition(firstRun) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 		expect(receipt.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 		expect(container.querySelector('[data-testid="unlocked-dismiss"]')).toBeTruthy()
+	})
+
+	it("shows AT MOST ONE notice, however many are eligible", () => {
+		// [OPERATOR 2026-09-09] Reported from their own screen: the registered receipt and the dock
+		// coach mark on at once. Five one-time messages were five independent booleans with a single
+		// guard between two of them, so three could stack. The queue in notices.ts is the only thing
+		// that decides now, and this is the guarantee it exists to give.
+		const NOTICES = ["cra-nudge", "unlocked-card", "upgrade-card", "review-nudge"]
+		mockState({
+			openFolderPaths: ["/w/gateway-fw"],
+			adsumUnlockedShow: true,
+			reviewNudgeShow: true,
+		})
+		render(<WelcomeView {...baseProps} showUpgradeCard={true} />)
+		const shown = NOTICES.filter((t) => screen.queryByTestId(t) !== null)
+		expect(shown.length).toBeLessThanOrEqual(1)
+		// And it is the highest-priority one that is eligible, not an arbitrary survivor.
+		expect(shown).toEqual(["unlocked-card"])
+	})
+
+	it("with nothing eligible, no notice renders at all", () => {
+		mockState({ openFolderPaths: ["/w/gateway-fw"] })
+		render(<WelcomeView {...baseProps} showUpgradeCard={false} />)
+		for (const t of ["cra-nudge", "unlocked-card", "upgrade-card", "review-nudge"]) {
+			expect(screen.queryByTestId(t)).toBeNull()
+		}
 	})
 
 	it("a sample fires on one click — it is pre-canned, so it needs no second confirming act", () => {

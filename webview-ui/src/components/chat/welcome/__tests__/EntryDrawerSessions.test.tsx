@@ -40,6 +40,10 @@ const draw = (history: any[]) =>
 
 beforeEach(() => vi.clearAllMocks())
 
+// The drawer now carries the account chip, which reads extension state. These cases render the
+// drawer alone, so the chip is stubbed the way the other stateful children already are.
+vi.mock("../AccountChip", () => ({ default: () => null }))
+
 describe("naming a session", () => {
 	it("a renamed session shows its name, and the filter still finds it by its first prompt", () => {
 		draw([sess("a", "dsdsd", "Gateway bring-up, day 1")])

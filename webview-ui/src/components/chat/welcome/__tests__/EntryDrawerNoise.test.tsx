@@ -23,6 +23,10 @@ const run = (id: string, title: string): DrawerRun => ({ id, title, platform: "b
 const draw = (over: Partial<React.ComponentProps<typeof EntryDrawer>> = {}) =>
 	render(<EntryDrawer checks={[]} history={[]} onClose={vi.fn()} open={true} runs={[]} samples={[]} {...(over as any)} />)
 
+// The drawer now carries the account chip, which reads extension state. These cases render the
+// drawer alone, so the chip is stubbed the way the other stateful children already are.
+vi.mock("../AccountChip", () => ({ default: () => null }))
+
 describe("the drawer drops what every row already says", () => {
 	it("one folder behind all the sessions: the age is enough", () => {
 		draw({ history: [withCwd("a", "/w/gw"), withCwd("b", "/w/gw")] })
