@@ -16,8 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   detected boards, toolchains), then the runs worth starting, ranked by what was actually detected,
   each saying why. Typing in the box *is* the new session. One named resume is always offered when
   there is a past session for the folder you are in.
-- A sessions menu (☰) that is the single home for past sessions: filter, rename, delete, and
-  "see all". Reachable from the entry surface and from inside a running session.
+- Past sessions have one home, the editor's History: search by a session's given name, rename,
+  delete. The entry surface offers one named resume and one door to every other run.
 - Guided builds for partner hardware are offered from a cold start, alongside three sample runs that
   need no hardware and nothing installed.
 - A free registered account (GitHub or email, no card) unlocks cellular, satellite NB-NTN and
@@ -53,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Your editor's own Skills feature is untouched; the two were colliding in one place.
 - One notice at a time. The CRA finding, the registered receipt, the layout tip, the upgrade card and
   the review nudge no longer stack; the review nudge is last, because a favour must never interrupt
-  work. The free-tier strip is dismissible and the account chip lives in the sessions menu.
+  work. The free-tier strip is dismissible and the account chip lives in the runs drawer.
 - The environment line reports the exception when there is one (a serial device that will not
   answer, nrfutil missing beside the nRF extension) instead of the same line every day.
 - Guided builds load the measurement doctrine instead of a summary of it, so gates report evidence
