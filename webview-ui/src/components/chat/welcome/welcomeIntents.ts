@@ -30,6 +30,7 @@ export type IntentId =
 	| "sdkMigration"
 	| "boardBringUp"
 	| "cellularGateway"
+	| "blg20Gateway"
 	| "ntnBringUp"
 	| "nrf91BringUp"
 	| "edgeAi"
@@ -114,10 +115,16 @@ export function buildIntentPrompt(
 			return `Run CRA SBOM & Fix on ${proj} — pull together my SBOM from my real build, preview my secure-by-design posture against the EU Cyber Resilience Act, and surface the top gap so I can decide what to change.`
 		case "cellularGateway":
 			return (
-				"Bring up a BLE-to-cellular gateway on a Fanstel board (LEW840x or BLG20). " +
-				"Ask me which board and which uplink I have, then LOAD the curated gateway workflow before " +
-				"you answer — the routing between the nRF52/nRF54 BLE side, the ESP32 host and the nRF91 " +
-				"modem is the part I need to get right, not a sketch of it."
+				"Bring up a BLE-to-cellular gateway on a Fanstel LEW840x. " +
+				"Ask me which uplink I have, then LOAD the curated gateway workflow before you answer — the " +
+				"routing between the nRF52840 BLE side, the ESP32 host and the nRF9160 modem is the part I " +
+				"need to get right, not a sketch of it."
+			)
+		case "blg20Gateway":
+			return (
+				"Bring up the Fanstel BLG20 gateway on its nRF9151. Ask me which uplink and which SIM I have, " +
+				"then LOAD the curated BLG20 workflow before you answer — the nRF54 BLE side, the ESP32 host " +
+				"and the nRF9151 modem each have their own bring-up order, and I want the one that was measured."
 			)
 		case "ntnBringUp":
 			return (
@@ -303,8 +310,19 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 		id: "cellularGateway",
 		icon: "radio-tower",
 		title: "LTE-M / NB-IoT gateway",
-		description: "Fanstel LEW840x or BLG20: BLE in, cellular out, one code base.",
+		description: "Fanstel LEW840x: BLE in, cellular out, one code base.",
 		group: "cellular-advanced",
+	},
+	{
+		// The next-generation Fanstel gateway. Mentioned, locked, and opened per person — a
+		// by-request group rather than the registered tier, because the operator unlocks it for
+		// certain developers as the board's certification lands. [OPERATOR 2026-09-09]
+		id: "blg20Gateway",
+		icon: "circuit-board",
+		// Names both lines the operator listed (BLC spelled as given, 2026-09-09). One card, one lock.
+		title: "BLG20 / BLC gateways · nRF9151",
+		description: "Fanstel's next gateways: nRF54 BLE in, nRF9151 LTE-M / NB-IoT / NTN out, edge AI on board.",
+		group: "blg20-early-access",
 	},
 	{
 		id: "ntnBringUp",
@@ -330,7 +348,7 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 ]
 
 /** Board names that make the cellular group relevant enough to say so above the cards. */
-const CELLULAR_BOARDS = /nrf91|9160|9151|9161|thingy:?91|lew840|blg20/i
+export const CELLULAR_BOARDS = /nrf91|9160|9151|9161|thingy:?91|lew840|blg20/i
 
 /**
  * The one-line hint above the locked group when the developer's own hardware is already the reason

@@ -52,6 +52,15 @@ export interface Suggestable {
 	/** How to NAME the product to a person. Without it a reason line would print the internal id
 	 *  ("this looks like a lew840x project"), and an id is not a product name. */
 	productLabel?: string
+	/** Held behind an entitlement the account does not have. Ranking treats it as a tiebreak only:
+	 *  a locked card never LOSES the evidence that ranked it, it just yields to an equal card the
+	 *  developer can start right now. [SWEEP 2026-09-09] Measured before this: a signed-out
+	 *  developer with an nRF9160 DK saw the locked BLG card above "Build, flash & debug". */
+	locked?: boolean
+	/** Board names that make this run a BOARD MATCH — for runs that need one particular family, not
+	 *  "any nRF". A modem bring-up ranked as a match because an nRF52840 DK is on the desk would be
+	 *  the ranking lying; this lets it say "nRF9151 DK connected" and mean it. */
+	boardMatch?: RegExp
 }
 
 export interface Ranked<T> {
@@ -99,6 +108,12 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 	const nothingDetected = !hasNrf && !hasEsp && !s.hasWorkspace
 
 	const scored: Ranked<T>[] = items.map((item) => {
+		if (item.boardMatch) {
+			const hit = [...s.nrfBoards, ...s.espDevices].find((b) => item.boardMatch!.test(b))
+			if (hit) {
+				return { item, score: SCORE.boardMatch, why: `${hit} connected`, grounded: true }
+			}
+		}
 		if (item.need && s.product === item.need) {
 			return {
 				item,
@@ -174,6 +189,11 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 	for (let i = 0; i < Math.max(nrfs.length, esps.length); i++) {
 		if (nrfs[i]) mixed.push(nrfs[i])
 		if (esps[i]) mixed.push(esps[i])
+	}
+	for (const r of scored) {
+		if (r.item.locked) {
+			r.score -= 1
+		}
 	}
 	return [...products, ...mixed, ...rest]
 }

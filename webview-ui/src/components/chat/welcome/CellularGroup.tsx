@@ -47,6 +47,12 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 	const gateSatisfied = !!gateIntent && accountHasGroup(adsumAccount, gateIntent.group)
 
 	const openGate = (intent: IntentDef) => {
+		// Signed in and still locked means a BY-REQUEST group (the tier opens on registration), so
+		// the honest door is the request form, not a register panel for someone already registered.
+		if (adsumAccount) {
+			setRequesting(intent.id === "blg20Gateway" ? "blg20" : "lew840x")
+			return
+		}
 		gateShown("card", intent.id)
 		setGate({ intent: intent.id })
 	}
@@ -79,7 +85,7 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 								runIntent(intent.id, handlers)
 							}}
 							onLocked={() => openGate(intent)}
-							pill={locked ? "Register" : undefined}
+							pill={locked ? (adsumAccount ? "Request access" : "Register") : undefined}
 							testId={`cellular-card-${intent.id}`}
 							title={intent.title}
 						/>
@@ -112,7 +118,7 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
  * machine shows here too, and one the operator has decided stops showing as pending on the next
  * refresh without anyone clicking anything.
  */
-const SourceLine: React.FC<{ onRequest: () => void }> = ({ onRequest }) => {
+export const SourceLine: React.FC<{ onRequest: () => void }> = ({ onRequest }) => {
 	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
 	const granted = !!adsumAccount?.groups.some((g) => g.startsWith("lew840x-") && g.endsWith("-src"))
 	const pending = (adsumAccount?.openRequests ?? []).includes("lew840x")

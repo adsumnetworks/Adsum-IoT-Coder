@@ -93,7 +93,7 @@ describe("W — the register gate", () => {
 		expect(container.querySelector(".codicon-radio-tower")).not.toBeNull()
 	})
 
-	it("W-02 anonymous: the group label carries the note and all four cards are locked, in order", () => {
+	it("W-02 anonymous: the group label carries the note and all five cards are locked, in order", () => {
 		render(<CellularGroup {...handlers()} />)
 		expect(screen.getByText("Cellular & gateways")).toBeTruthy()
 		expect(screen.getByTestId("cellular-note").textContent).toBe("· free account · no card")
@@ -101,6 +101,8 @@ describe("W — the register gate", () => {
 		const titles = CELLULAR_INTENTS.map((i) => i.title)
 		expect(titles).toEqual([
 			"LTE-M / NB-IoT gateway",
+			// [OPERATOR 2026-09-09] The BLG20 is mentioned, locked, and opened per person later.
+			"BLG20 / BLC gateways · nRF9151",
 			"Satellite NB-NTN bring-up",
 			"nRF91 modem bring-up",
 			"On-device inference",
@@ -108,28 +110,33 @@ describe("W — the register gate", () => {
 		for (const intent of CELLULAR_INTENTS) {
 			expect(screen.getByTestId(`cellular-card-${intent.id}`)).toBeTruthy()
 		}
-		expect(screen.getAllByText("Register")).toHaveLength(4)
+		// Signed out, every lock says the one thing that opens the tier.
+		expect(screen.getAllByText("Register")).toHaveLength(5)
 	})
 
 	it("W-02b registered: the note is gone, the cards run, and a partial grant locks only what it must", () => {
 		const h = handlers()
 		state.current = signedIn(["cellular-advanced"])
 		render(<CellularGroup {...h} />)
-		// cellular-advanced opens three; edge-ai-advanced is a separate grant and stays locked.
-		expect(screen.getAllByText("Register")).toHaveLength(1)
+		// cellular-advanced opens three; edge-ai-advanced and blg20-early-access stay locked — and for
+		// someone SIGNED IN a lock is a grant question, so the pill says so instead of "Register".
+		expect(screen.queryAllByText("Register")).toHaveLength(0)
+		expect(screen.getAllByText("Request access")).toHaveLength(2)
 		expect(screen.queryByTestId("cellular-note")).toBeNull()
 
 		fireEvent.click(screen.getByTestId("cellular-card-nrf91BringUp"))
 		expect(h.onStartTask).toHaveBeenCalledTimes(1)
 		expect(String(h.onStartTask.mock.calls[0][0])).toContain("nRF91")
 
-		// The one still locked opens the gate instead of running.
+		// A locked card for a signed-in developer opens the REQUEST form, not a register panel for
+		// someone who has already registered.
 		fireEvent.click(screen.getByTestId("cellular-card-edgeAi"))
 		expect(h.onStartTask).toHaveBeenCalledTimes(1)
-		expect(screen.getByTestId("gate-panel")).toBeTruthy()
+		expect(screen.queryByTestId("gate-panel")).toBeNull()
+		expect(screen.getByTestId("request-form")).toBeTruthy()
 	})
 
-	it("W-02c the ACTUAL free tier unlocks all four — the state the operator was in when none of them did", () => {
+	it("W-02c the ACTUAL free tier unlocks the four tier cards; the BLG20 stays by request", () => {
 		// Not ["all"] (a steward) and not a partial grant (W-02b) — this is the literal list
 		// REGISTERED_TIER hands every account the moment it exists, and it is the shape that was
 		// broken: the chip said Registered, the card said "cellular is unlocked", and all four stayed
@@ -148,6 +155,10 @@ describe("W — the register gate", () => {
 		}
 		expect(h.onStartTask).toHaveBeenCalledTimes(4)
 		expect(screen.queryByTestId("gate-panel")).toBeNull()
+		// And the one card the tier does NOT open is still there, honest about what opens it.
+		expect(screen.getAllByText("Request access")).toHaveLength(1)
+		fireEvent.click(screen.getByTestId("cellular-card-blg20Gateway"))
+		expect(h.onStartTask).toHaveBeenCalledTimes(4)
 	})
 
 	it("W-03 a detected cellular board earns a hint line; anything else earns none", () => {

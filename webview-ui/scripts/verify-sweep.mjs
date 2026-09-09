@@ -213,8 +213,74 @@ function check(name, ok, detail) {
 	await page.close()
 }
 
+// ── 03 / 04 — one ranked home, cap 3, demo card until history ──────────────────────────────
+{
+	const { page, errors } = await story("views-chat--entry-registered-settled")
+	const cards = await page.locator('[data-testid^="entry-run-"]:not([data-testid$="-subline"])').count()
+	check("03 the surface shows at most three cards", cards <= 3, `${cards} cards`)
+	check("03 there is no separate cellular group", (await page.getByTestId("cellular-group").count()) === 0)
+	const more = page.getByTestId("entry-more-runs")
+	check("03 the overflow link is there", await more.isVisible().catch(() => false), await more.innerText().catch(() => ""))
+	check(
+		"04 the demo card holds the surface while there is no history",
+		await page
+			.getByTestId("demo-hex-card")
+			.isVisible()
+			.catch(() => false),
+	)
+	await shot(page, "03-ranked-home")
+	await more.click()
+	await page.waitForTimeout(400)
+	const locked = page.getByTestId("entry-drawer-run-locked")
+	const n = await locked.count()
+	const lockedText = n ? await locked.first().innerText() : ""
+	check(
+		"03 a registered account has exactly ONE locked run — the by-request BLG card",
+		n === 1,
+		`${n}: ${lockedText.replace(/\n/g, " ").slice(0, 60)}`,
+	)
+	check("03 and it says Request access, not Register", /Request access/.test(lockedText) && /BLG20/.test(lockedText))
+	check("03 no page errors", errors.length === 0, errors[0])
+	await shot(page, "03-drawer-locked-blg")
+	await page.close()
+}
+{
+	const { page, errors } = await story("views-chat--entry-free-tier-settled")
+	check(
+		"04 with history the demo card has left the surface",
+		!(await page
+			.getByTestId("demo-hex-card")
+			.isVisible()
+			.catch(() => false)),
+	)
+	const more = await page
+		.getByTestId("entry-more-runs")
+		.innerText()
+		.catch(() => "")
+	check("04 and the overflow link says where it went", /demo flash/.test(more), more)
+	check("04 no page errors", errors.length === 0, errors[0])
+	await page.close()
+}
+// ── T1 — the focal action of a running task wears the brand's action colour ──────────────
+{
+	const { page, errors } = await story("views-chat--tool-approval")
+	const colourOf = (name) =>
+		page
+			.locator("vscode-button", { hasText: name })
+			.evaluate((el) => getComputedStyle(el).backgroundColor)
+			.catch(() => "")
+	const bg = await colourOf("Approve")
+	const other = await colourOf("Reject")
+	check("T1 Approve is brand cyan 700, not the host's blue", bg === "rgb(0, 137, 168)", bg)
+	check("T1 Reject stays the host's secondary", other !== "rgb(0, 137, 168)", other)
+	check("T1 no page errors", errors.length === 0, errors[0])
+	await shot(page, "T1-approve-cyan")
+	await page.close()
+}
+
 await browser.close()
 server.close()
+
 const failed = results.filter((r) => !r.ok)
 console.log(`\n${results.length - failed.length}/${results.length} render checks passed → ${OUT}`)
 if (failed.length) {

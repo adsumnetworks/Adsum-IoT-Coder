@@ -4,6 +4,7 @@ import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { VirtuosoHandle } from "react-virtuoso"
+import { BRAND_CYAN_600, BRAND_CYAN_700 } from "@/components/chat/brandColors"
 import { ButtonActionType, getButtonConfig } from "../../shared/buttonConfig"
 import type { ChatState, MessageHandlers } from "../../types/chatTypes"
 
@@ -177,7 +178,23 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 	const opacity = canInteract || isStreaming ? 1 : 0.5
 
 	return (
-		<div className="flex px-3.5" style={{ opacity }}>
+		<div
+			className="flex px-3.5"
+			style={{
+				opacity,
+				// The focal action of a running task wears the brand's action colour, like the focal
+				// action on the entry surface does. Scoped HERE, not at the root, so Approve is recoloured
+				// and every other host button in the panel stays native. The token is the TOOLKIT's, not
+				// VS Code's: <vscode-button> derives --button-primary-background from
+				// --vscode-button-background once, when the theme is applied, and paints with its own
+				// variable from then on — a cascade override of the VS Code name never reaches it.
+				// [SWEEP 2026-09-09: the render check caught exactly that; the first cut set the wrong
+				// name and Approve stayed host-blue.] 700 is the text-on-fill-safe weight for white
+				// text; 600 is the hover. [UI golden rules: one feature = one action colour across ALL
+				// surfaces. OPERATOR 2026-09-09: apply it.]
+				["--button-primary-background" as string]: BRAND_CYAN_700,
+				["--button-primary-hover-background" as string]: BRAND_CYAN_600,
+			}}>
 			{primaryText && primaryAction && (
 				<VSCodeButton
 					appearance="primary"
