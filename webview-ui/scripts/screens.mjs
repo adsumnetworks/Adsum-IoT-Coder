@@ -115,7 +115,7 @@ figcaption{font:.7rem/1.8 ui-monospace,Menlo,monospace;color:var(--muted)}
 .errs{border:1px solid #F85149;border-radius:8px;padding:.7rem .9rem;margin-bottom:1.6rem;font-size:.85rem}
 </style></head><body><main>
 <h1>Screens · Phase 1 Registered</h1>
-<p class="sub">${byStory.size} stories · ${shots.length} renders · vs_dark and vs_light at 420 px and 820 px · generated ${new Date().toISOString().slice(0, 16).replace("T", " ")}</p>
+<p class="sub">${byStory.size} stories · ${shots.length} renders · vs_dark and vs_light at PANEL widths 420 px and 820 px (viewport ÷ 0.64 — the story decorator nests the view in 80 % of 80 %) · generated ${new Date().toISOString().slice(0, 16).replace("T", " ")}</p>
 ${errors.length ? `<div class="errs"><b>${errors.length} page error(s)</b><br>${errors.map(escapeHtml).join("<br>")}</div>` : ""}
 ${rows}
 </main></body></html>`
@@ -142,9 +142,10 @@ const shots = []
 
 for (const story of stories()) {
 	for (const theme of ["vs_dark", "vs_light"]) {
+		// Story decorator = 80% of 80% of the viewport; name by PANEL width, size the viewport to reach it.
 		for (const width of [420, 820]) {
 			const page = await browser.newPage({
-				viewport: { width, height: 900 },
+				viewport: { width: Math.round(width / 0.64), height: 900 },
 				colorScheme: theme === "vs_dark" ? "dark" : "light",
 				deviceScaleFactor: 2,
 			})
