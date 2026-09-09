@@ -21,9 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Guided builds for partner hardware are offered from a cold start, alongside three sample runs that
   need no hardware and nothing installed.
 - A free registered account (GitHub or email, no card) unlocks cellular, satellite NB-NTN and
-  nRF54 edge-AI basics, and the signed LEW840x demo firmware (BLE scanner, ESP32 uplink, nRF9160
-  bearer), free to flash and evaluate, with licensed source per module available on request from
-  Settings. BLE, Wi-Fi and Ethernet are
+  nRF54 edge-AI basics, and the LEW840x gateway firmware as signed images (BLE scanner, ESP32 uplink,
+  nRF9160 bearer), free to flash and evaluate, with licensed source per module available on request
+  from Settings. BLE, Wi-Fi and Ethernet are
   unchanged and need nothing. A card that needs an account says so, says what registering unlocks,
   and takes you there in your browser; the extension never sees a password, and your projects and
   logs stay on your machine.
