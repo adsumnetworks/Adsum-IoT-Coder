@@ -63,7 +63,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 					currentWorkspaceOnly: showCurrentWorkspaceOnly,
 				}),
 			)
-			setTasks(response.tasks || [])
+			setTasks(withGivenNames(response.tasks || [], taskHistory))
 		} catch (error) {
 			console.error("Error loading task history:", error)
 		}
@@ -470,6 +470,22 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 }
 
 // https://gist.github.com/evenfrost/1ba123656ded32fb7a0cd4651efd4db0
+/**
+ * The given name of a session rides on extension state, not on the history RPC: `getTaskHistory`
+ * maps `task` and never `title`, so a rename that the host has already stored and posted would
+ * still repaint here as the first prompt. [2026-09-09] Seen live in the sandbox the first time a
+ * rename was driven from this view — the RPC was sent, the row did not change. The state is the
+ * home of record for `title` (display only, `task` stays what the model was asked), so it is
+ * merged in by id here, and this effect re-runs on every state post.
+ */
+export const withGivenNames = <T extends { id: string }>(tasks: T[], history: { id: string; title?: string }[]): T[] => {
+	const titles = new Map(history.filter((h) => h.title).map((h) => [h.id, h.title]))
+	return tasks.map((t) => {
+		const title = titles.get(t.id)
+		return title ? { ...t, title } : t
+	})
+}
+
 export const highlight = (fuseSearchResult: FuseResult<any>[], highlightClassName: string = "history-item-highlight") => {
 	const set = (obj: Record<string, any>, path: string, value: any) => {
 		const pathValue = path.split(".")
