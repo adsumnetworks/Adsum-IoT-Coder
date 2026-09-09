@@ -1,5 +1,6 @@
 import { ADSUM_REGISTERED_BANNER, type AdsumAccountState, accountHasGroup } from "@shared/adsumAccount"
 import { StringRequest } from "@shared/proto/cline/common"
+import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import React, { useEffect, useMemo, useState } from "react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -550,28 +551,29 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							<span>Environment</span>
 							<span className="flex items-center gap-2 normal-case" style={{ letterSpacing: 0 }}>
 								<span title="Extension version — the field support asks for">Adsum {version}</span>
-								<label
-									className="flex items-center gap-1"
-									style={{ cursor: "pointer" }}
-									title="Keep the full view open on every visit (the bench's setting)">
-									<input
-										checked={envAlwaysOpen}
-										data-testid="env-always-open"
-										onChange={(e) => {
-											setEnvAlwaysOpen(e.target.checked)
-											try {
-												if (e.target.checked) {
-													localStorage.setItem(ENV_ALWAYS_OPEN_KEY, "1")
-													entryEnvOpen("always")
-												} else {
-													localStorage.removeItem(ENV_ALWAYS_OPEN_KEY)
-												}
-											} catch {}
-										}}
-										type="checkbox"
-									/>
+								{/* [OPERATOR 2026-09-09] "what is that always open check box?" — the bench's switch
+								    (v2, cut 3): the full view closes on every arrival by design; this pins it open
+								    for the people who live in the board list. It was a raw browser checkbox and
+								    looked it; the toolkit's control matches the panel. */}
+								<VSCodeCheckbox
+									checked={envAlwaysOpen}
+									data-testid="env-always-open"
+									onChange={(e: any) => {
+										const on = !!e.target?.checked
+										setEnvAlwaysOpen(on)
+										try {
+											if (on) {
+												localStorage.setItem(ENV_ALWAYS_OPEN_KEY, "1")
+												entryEnvOpen("always")
+											} else {
+												localStorage.removeItem(ENV_ALWAYS_OPEN_KEY)
+											}
+										} catch {}
+									}}
+									style={{ fontSize: "10px" }}
+									title="Keep the full view open on every visit — the bench's setting">
 									always open
-								</label>
+								</VSCodeCheckbox>
 							</span>
 						</div>
 						<EnvStrip forceExpanded />
