@@ -1,3 +1,4 @@
+import { toastCta } from "@shared/releaseNotes"
 import { basename } from "path"
 import { HostProvider } from "@/hosts/host-provider"
 import { ExtensionRegistryInfo } from "@/registry"
@@ -105,11 +106,11 @@ export function buildReengagementMessage(ctx: {
 	if (ctx.craRelevant) {
 		return {
 			message: `A connected product likely falls under the EU Cyber Resilience Act — preview ${ctx.projectName ?? "your project"}'s CRA readiness from your build.${quotaHint}`,
-			cta: "Show me",
+			cta: toastCta("cra"),
 		}
 	}
 	// Not CRA-relevant (no project / not connected / already compliant) → the same 3-pillar pitch as a fresh install.
-	return { message: whatsNewToastMessage(ctx.version), cta: "See what's new" }
+	return { message: whatsNewToastMessage(ctx.version), cta: toastCta("update") }
 }
 
 /**

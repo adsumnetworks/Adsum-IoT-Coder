@@ -100,7 +100,7 @@ describe("announcement surfaces reach a user", () => {
 	// The failure this catches: an announcement component that renders perfectly in isolation, is imported
 	// by a barrel, and is never mounted — so editing its copy changes nothing anyone sees.
 	test('every component with a "What\'s new" headline is reachable from App.tsx', () => {
-		const announcers = files.filter((f) => /What's new in v/.test(fs.readFileSync(f, "utf8")))
+		const announcers = files.filter((f) => /What's new in v|cardTitle\(\)/.test(fs.readFileSync(f, "utf8")))
 		assert.ok(announcers.length > 0, "no announcement surface found at all — this search is wrong")
 
 		const live = reachableFromApp(files)
@@ -158,13 +158,14 @@ describe("announcement copy names the shipping release", () => {
 	// vocabulary with everything the upgrading user has not been told about yet.
 	test("the live surfaces share vocabulary with what an upgrading user has not seen", () => {
 		const entry = unseenChangelog().toLowerCase()
+		// Since 0.4.0 both live surfaces (the panel card and the update toast) read RELEASE_NOTES, so that
+		// file is the surface. The reachability test above still proves the card is mounted.
 		const surfaces: Array<[string, string]> = [
-			["UpgradeCard", fs.readFileSync(path.join(WEBVIEW_SRC, "components", "chat", "UpgradeCard.tsx"), "utf8")],
-			["update toast", fs.readFileSync(path.join(REPO_ROOT, "src", "utils", "announcements.ts"), "utf8")],
+			["RELEASE_NOTES", fs.readFileSync(path.join(REPO_ROOT, "src", "shared", "releaseNotes.ts"), "utf8")],
 		]
 		// Distinctive nouns from the release, not filler. Each must appear in the changelog (proving it is
 		// really this release's story) and in at least one live surface (proving users are told).
-		const themes = ["cellular", "modem", "tool bit", "product"]
+		const themes = ["account", "cellular", "session", "message"]
 		for (const theme of themes) {
 			assert.ok(
 				entry.includes(theme),
@@ -184,9 +185,11 @@ describe("announcement copy names the shipping release", () => {
 	test("the returning-user toast is not the first-install welcome", () => {
 		const body = fs.readFileSync(path.join(REPO_ROOT, "src", "utils", "announcements.ts"), "utf8")
 		assert.match(body, /isNewInstall/, "the toast must still split by audience")
-		assert.ok(
-			!/What's new in Adsum IoT Coder v\$\{version\}[^`]*no key needed/.test(body),
-			"the returning-user line must not carry the first-install free-tier framing",
-		)
+		const notes = fs.readFileSync(path.join(REPO_ROOT, "src", "shared", "releaseNotes.ts"), "utf8")
+		const welcome = /welcome:\s*"([^"]+)"/.exec(notes)?.[1] ?? ""
+		const update = /update: "([^"]+)"/.exec(notes)?.[1] ?? ""
+		assert.ok(welcome.length > 0 && update.length > 0, "RELEASE_NOTES.toast must define welcome and update")
+		assert.ok(!/what's new/i.test(welcome), "the first-install welcome must not say what's new; nothing is old for them")
+		assert.ok(!/no key needed/i.test(update), "the returning-user line must not carry the first-install free-tier framing")
 	})
 })

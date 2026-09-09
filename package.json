@@ -572,6 +572,7 @@
 		"test:platform-roots": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/platformRoots.node-test.ts",
 		"test:board-routing": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/boardRouting.node-test.ts",
 		"test:announcements": "ts-node --transpile-only -P tsconfig.unit-test.json src/utils/__tests__/announcementSurfaces.node-test.ts",
+		"test:release-notes": "ts-node --transpile-only -P tsconfig.unit-test.json src/shared/__tests__/releaseNotes.node-test.ts",
 		"test:tools": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/tools/toolResolver.node-test.ts",
 		"test:hil-tools": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-tools.ts",
 		"test:engine-config": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/headless/engineConfigExport.test.ts",

@@ -42,4 +42,12 @@ describe("the entry surface shows one notice at a time", () => {
 		// they were in. The receipt is bound to the moment; the tip can wait one dismissal.
 		expect(oneNotice({ dock: true, registered: true })).toBe("registered")
 	})
+	it("a pin takes the slot ahead of the order when it is eligible", () => {
+		expect(oneNotice({ cra: true, upgrade: true }, "upgrade")).toBe("upgrade")
+	})
+
+	it("a pin that is not eligible is ignored, never invented", () => {
+		expect(oneNotice({ cra: true, review: true }, "upgrade")).toBe("cra")
+		expect(oneNotice({}, "upgrade")).toBeUndefined()
+	})
 })

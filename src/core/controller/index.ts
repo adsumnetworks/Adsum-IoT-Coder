@@ -884,6 +884,7 @@ export class Controller {
 		// Can be undefined but is set to either true or false by the migration that runs on extension launch in extension.ts
 		const welcomeViewCompleted = !!this.stateManager.getGlobalStateKey("welcomeViewCompleted")
 		const demoAutoStart = this.stateManager.getGlobalStateKey("demoAutoStart")
+		const announcementRequested = this.stateManager.getGlobalStateKey("announcementRequested")
 
 		const customPrompt = this.stateManager.getGlobalSettingsKey("customPrompt")
 		const mcpResponsesCollapsed = this.stateManager.getGlobalStateKey("mcpResponsesCollapsed")
@@ -981,6 +982,7 @@ export class Controller {
 			isNewUser,
 			welcomeViewCompleted,
 			demoAutoStart,
+			announcementRequested,
 			onboardingModels,
 			mcpResponsesCollapsed,
 			terminalOutputLineLimit,

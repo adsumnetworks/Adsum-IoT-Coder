@@ -12,6 +12,7 @@ import { WebviewProvider } from "./core/webview"
 import { Logger } from "./services/logging/Logger"
 import "./utils/path" // necessary to have access to String.prototype.toPosix
 
+import { RELEASE_NOTES, toastCta, toastText } from "@shared/releaseNotes"
 import { HostProvider } from "@/hosts/host-provider"
 import { FileContextTracker } from "./core/context/context-tracking/FileContextTracker"
 import { initDemoManager } from "./core/demos/DemoManager"
@@ -257,12 +258,10 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext): 
 				// CRA-relevant UPDATE → the personalized CRA line; fresh installs + generic updates → the shared
 				// 3-pillar "what's new" (CRA readiness · hardware-in-the-loop debug · expert know-how augmenting the AI).
 				const targetedCra = !isNewInstall && craRelevant
-				const message = targetedCra
-					? `Adsum IoT Coder v${currentVersion} — preview your project's CRA readiness from your build.`
-					: whatsNewToastMessage(currentVersion, isNewInstall)
-				const cta = targetedCra ? "Show me →" : "See what's new →"
+				const message = targetedCra ? toastText("cra") : whatsNewToastMessage(latestAnnouncementId, isNewInstall)
+				const cta = targetedCra ? toastCta("cra") : isNewInstall ? toastCta("welcome") : toastCta("update")
 				const relevant = craRelevant ? "cra" : "generic"
-				telemetryService.captureUpgradeToastShown({ targeted: targetedCra, relevant })
+				telemetryService.captureUpgradeToastShown({ targeted: targetedCra, relevant, release: RELEASE_NOTES.version })
 				// Fire-and-forget: do NOT await the toast (it resolves only on user action; this function is awaited
 				// in activate(), so awaiting here would block activation + the version-tracker write below).
 				void HostProvider.window
@@ -275,12 +274,19 @@ async function showVersionUpdateAnnouncement(context: vscode.ExtensionContext): 
 						if (selectedOption !== cta) {
 							return
 						}
-						telemetryService.captureUpgradeToastClicked({ targeted: targetedCra, relevant })
+						telemetryService.captureUpgradeToastClicked({
+							targeted: targetedCra,
+							relevant,
+							release: RELEASE_NOTES.version,
+						})
 						// Route into the panel and let the dev choose — NEVER auto-stream text. The welcome shows the
 						// grounded CRA nudge (project-open + connectivity) or the CRA-focused What's-new card / sample
 						// picker. Fresh installs no longer auto-run the NUS demo (it didn't drive activation).
 						await HostProvider.workspace.openClineSidebarPanel({})
 						try {
+							// One-shot: the panel gives the What's new card the notice slot on this paint, so the button
+							// keeps its promise even when a CRA finding or the registered receipt would otherwise win it.
+							WebviewProvider.getInstance().controller.stateManager.setGlobalState("announcementRequested", true)
 							await WebviewProvider.getInstance().controller.postStateToWebview()
 						} catch {
 							// Webview not ready yet — it will pick up the welcome state on its next sync.

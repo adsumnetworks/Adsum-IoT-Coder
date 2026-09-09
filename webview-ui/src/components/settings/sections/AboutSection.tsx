@@ -1,3 +1,4 @@
+import { RELEASE_NOTES } from "@shared/releaseNotes"
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import { BRAND_CORAL, BRAND_CYAN_TEXT } from "../../chat/brandColors"
@@ -23,32 +24,7 @@ const REPO = "https://github.com/adsumnetworks/Adsum-IoT-Coder"
 const DOCS = "https://docs.adsumnetworks.com"
 const SITE = "https://www.adsumnetworks.com"
 
-/**
- * Kept in step with the README's "Supported platforms" table — that table is the public claim, and
- * this page must not lag it. [OPERATOR 2026-09-04] It did: no nRF91, no cellular, no BWG840X.
- */
-const PLATFORMS: { family: string; sdk: string; chips: string[]; protocols: string[]; note?: string }[] = [
-	{
-		family: "Nordic",
-		sdk: "nRF Connect SDK · Zephyr",
-		chips: ["nRF52", "nRF53", "nRF54L15", "nRF54LM20", "nRF9160", "nRF9161", "nRF9151"],
-		protocols: ["BLE", "NB-IoT", "LTE-M", "GNSS"],
-	},
-	{
-		family: "Espressif",
-		sdk: "ESP-IDF",
-		chips: ["ESP32", "ESP32-S3", "ESP32-C6"],
-		protocols: ["Wi-Fi", "BLE"],
-		note: "and the rest of the shipping range",
-	},
-	{
-		family: "Products",
-		sdk: "both chips, one workspace",
-		chips: ["Fanstel LEW840X", "Fanstel BWG840X"],
-		protocols: ["BLE", "Ethernet", "Wi-Fi", "LTE"],
-	},
-]
-
+/** The platform table is a release-reviewed claim, so it lives in RELEASE_NOTES.claims beside the release copy. */
 const Chip = ({ text }: { text: string }) => (
 	<span
 		className="rounded px-1.5 py-0.5"
@@ -147,7 +123,7 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 					{/* Platforms as chips, grouped by SDK — the shape of the question ("does it do my chip?"). */}
 					<div className="flex flex-col gap-2">
 						<Label>Runs on</Label>
-						{PLATFORMS.map((p) => (
+						{RELEASE_NOTES.claims.runsOn.map((p) => (
 							<div className="flex flex-col gap-1" key={p.family}>
 								<div className="flex flex-wrap items-baseline gap-x-2">
 									<span style={{ ...TYPE.body, fontWeight: 600, color: "var(--vscode-foreground)" }}>
@@ -171,9 +147,7 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 							</div>
 						))}
 						<div style={{ ...TYPE.meta, color: "var(--vscode-descriptionForeground)" }}>
-							Any board built with a supported chip — your own design, a reference board, a DK, or a product off the
-							shelf. DECT NR+ and NTN knowledge ships too (NTN needs LACA A1A silicon; DECT NR+ a modem image from
-							Nordic sales).
+							{RELEASE_NOTES.claims.runsOnNote}
 						</div>
 					</div>
 

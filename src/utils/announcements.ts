@@ -1,30 +1,22 @@
-import { ExtensionRegistryInfo } from "@/registry"
+import { announcementId, toastText } from "@shared/releaseNotes"
 
 /**
- * Gets the latest announcement ID based on the extension version.
- * Uses the FULL version (major.minor.patch, e.g. "0.1.5") so every release — including patch bumps
- * like 0.1.3 → 0.1.5 — counts as a new announcement and the "what's new" card/toast re-shows to
- * existing users. (Previously major.minor only, which treated all 0.1.x releases as one announcement,
- * so a 0.1.3 → 0.1.5 bump never re-appeared for users who'd already seen 0.1.x.)
- *
- * @returns The announcement ID string (full version) or empty string if unavailable
+ * The announcement id: the release RELEASE_NOTES announces, not the package version. A hotfix that is
+ * acknowledged as silent keeps the id, so it does not re-toast everyone who already saw the release.
+ * (Before 0.4.0 the id was the full package version, and every patch bump re-showed the card.)
  */
 export function getLatestAnnouncementId(): string {
-	return ExtensionRegistryInfo.version
+	return announcementId()
 }
 
 /**
- * The "what's new" one-liner. Single source of truth for the generic (non-CRA) update toast AND the recurring
- * nudge's fallback — so those surfaces never drift. A feature announcement, honest regardless of the open project.
+ * The "what's new" one-liner: the generic update toast AND the recurring nudge's fallback, so those
+ * surfaces never drift. Split by audience (`isNewInstall`): a returning user hears what changed for THEM;
+ * a first-timer gets a Welcome that leads with the free tier, because telling a brand-new user to wire in
+ * a key contradicts "no key, no account", and a "what's new" line is odd when nothing is old for them yet.
  *
- * Split by audience (`isNewInstall`): a returning user hears what changed for THEM — 0.3.0 is nRF91
- * cellular, tools that interrogate a board instead of guessing, and device tools credited to their
- * authors; a first-timer instead gets a Welcome that
- * leads with the free tier, because telling a brand-new user to wire in a key contradicts "no key, no account"
- * — and a "what's new in v…" line is odd when nothing is old for them yet.
+ * The words live in RELEASE_NOTES; this only picks the audience.
  */
 export function whatsNewToastMessage(version: string, isNewInstall = false): string {
-	return isNewInstall
-		? `✦ Welcome to Adsum IoT Coder — the free tier is on, no key needed · curated firmware expertise, credited to the engineers who wrote it.`
-		: `✦ What's new in Adsum IoT Coder v${version} — nRF91 cellular · talk to your board, don't guess at it · Tool bits credited to the engineers who wrote them.`
+	return isNewInstall ? toastText("welcome") : toastText("update", version)
 }

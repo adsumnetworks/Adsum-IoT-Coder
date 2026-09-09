@@ -1,3 +1,4 @@
+import { RELEASE_NOTES } from "@shared/releaseNotes"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { DEMO_SCENARIO_LIST } from "../../demoScenarios"
@@ -29,11 +30,13 @@ describe("DemoPicker", () => {
 		expect(screen.queryByText("nrf")).not.toBeInTheDocument()
 	})
 
-	it("shows a 'New' badge on the CRA + Omar (isNew) sample rows", () => {
+	it("shows a 'New' badge on exactly the rows RELEASE_NOTES.newSamples names this release", () => {
 		render(<DemoPicker onStartDemo={vi.fn()} />)
-		const newCount = DEMO_SCENARIO_LIST.filter((s) => s.isNew).length
-		expect(newCount).toBeGreaterThanOrEqual(1)
-		expect(screen.getAllByText("New").length).toBe(newCount)
+		// The badge is decided per release in one place (RELEASE_NOTES.newSamples), never set by hand on a
+		// row: two rows had carried it from 0.1.7 to 0.4.0 because nothing ever took it off.
+		const expected = DEMO_SCENARIO_LIST.filter((s) => RELEASE_NOTES.newSamples.includes(s.id)).length
+		expect(DEMO_SCENARIO_LIST.filter((s) => s.isNew).length).toBe(expected)
+		expect(screen.queryAllByText("New").length).toBe(expected)
 	})
 
 	it("every 'coming soon' placeholder row is disabled, shows 'soon', and never fires onStartDemo (A8/A9 — Omar wires them later)", () => {

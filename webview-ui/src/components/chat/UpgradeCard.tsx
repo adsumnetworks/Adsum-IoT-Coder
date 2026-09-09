@@ -1,24 +1,32 @@
+import { cardTitle, RELEASE_NOTES } from "@shared/releaseNotes"
+import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import React from "react"
-import { BRAND_CORAL, brandAlpha, brandSubtle } from "./brandColors"
+import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI, brandAlpha, brandSubtle } from "./brandColors"
 
 interface UpgradeCardProps {
-	version: string
 	onDismiss: () => void
+	/**
+	 * The one thing this release's card may start (RELEASE_NOTES.card.action). Omitted when it no longer
+	 * applies to this user, e.g. "Register free" for someone already registered; the card is then
+	 * dismiss-only, as it always was.
+	 */
+	onAction?: () => void
 }
 
 /**
- * Shown once per version update to a returning user who has not activated this version. An informational
- * "what's new" notice — dismiss is the only action. No CTA button: the only demo it could launch (the CRA
- * sample) duplicates the demo already on the welcome screen, and no one click can show the model picker
- * (a setting, not a run). The user acts on their own; the sample stays one click away in the picker below.
+ * Shown once per announced version to a returning user who has not activated it. Every word here comes
+ * from RELEASE_NOTES: the title, the three lines, the action label and the changelog link. This file owns
+ * the shape only, so a release review never has to open it.
  *
- * This is the ONLY "what's new" surface that reaches a user in the panel — `WhatsNewModal` is unreachable
- * (its former parent, WelcomeSection, was dead and has been deleted along with HistoryPreview). So this
- * copy and the `whatsNewToastMessage` one-liner are what must be refreshed every release.
+ * Colour keeps one meaning each: the coral frame is identity ("this is from us"), the cyan button is the
+ * action, the link is cyan because it goes somewhere. The action is optional by design: a release with
+ * nothing worth a click ships without a button rather than with a button that does nothing.
  */
-const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
+const UpgradeCard: React.FC<UpgradeCardProps> = ({ onDismiss, onAction }) => {
+	const { lines, action, link } = RELEASE_NOTES.card
 	return (
 		<div
+			data-testid="upgrade-card"
 			style={{
 				width: "100%",
 				marginBottom: "20px",
@@ -28,9 +36,9 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
 				padding: "14px 16px",
 				position: "relative",
 			}}>
-			{/* Dismiss button */}
 			<button
 				aria-label="Dismiss"
+				data-testid="upgrade-card-dismiss"
 				onClick={onDismiss}
 				style={{
 					position: "absolute",
@@ -54,27 +62,72 @@ const UpgradeCard: React.FC<UpgradeCardProps> = ({ version, onDismiss }) => {
 					fontSize: "13px",
 					fontWeight: 700,
 					color: "var(--vscode-foreground)",
-					marginBottom: "4px",
 					paddingRight: "24px",
 					display: "flex",
 					alignItems: "center",
 					gap: "7px",
 				}}>
-				{/* Coral rocket = identity/"what's new" framing on this coral nudge (on-palette). */}
 				<i className="codicon codicon-rocket" style={{ fontSize: "14px", color: BRAND_CORAL, flexShrink: 0 }} />
-				What's new in v{version} — cellular, partner open hardware, and downloadable Tool bits
+				{cardTitle()}
+			</div>
+
+			<div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "8px" }}>
+				{lines.map((line) => (
+					<div
+						key={line.head}
+						style={{
+							display: "grid",
+							gridTemplateColumns: "64px 1fr",
+							gap: "8px",
+							fontSize: "12px",
+							lineHeight: 1.45,
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						<span style={{ fontWeight: 600, color: "var(--vscode-foreground)" }}>{line.head}</span>
+						<span>{line.body}</span>
+					</div>
+				))}
 			</div>
 
 			<div
 				style={{
-					fontSize: "12px",
-					color: "var(--vscode-descriptionForeground)",
-					marginBottom: 0,
-					lineHeight: 1.5,
+					display: "flex",
+					justifyContent: "space-between",
+					alignItems: "center",
+					gap: "10px",
+					marginTop: "10px",
 				}}>
-				nRF9160, nRF9161 and nRF9151 with NB-IoT, LTE-M and GNSS, plus a board shell and a modem trace for bringing one
-				up. On a Fanstel gateway the product knowledge already holds the pinouts. And the loggers, sniffer and scan
-				engines are Tool bits now: downloaded on demand, credited, and hash-verified before they run.
+				<VSCodeLink href={link.href} style={{ color: BRAND_CYAN_TEXT, fontSize: "12px" }}>
+					{link.label}
+				</VSCodeLink>
+				{action && onAction && (
+					<button
+						data-testid="upgrade-card-action"
+						onClick={onAction}
+						onMouseEnter={(e) => {
+							e.currentTarget.style.background = BRAND_CYAN_UI
+							e.currentTarget.style.color = "#fff"
+						}}
+						onMouseLeave={(e) => {
+							e.currentTarget.style.background = "transparent"
+							e.currentTarget.style.color = BRAND_CYAN_TEXT
+						}}
+						style={{
+							flexShrink: 0,
+							background: "transparent",
+							border: `1px solid ${BRAND_CYAN_UI}`,
+							borderRadius: "5px",
+							padding: "4px 10px",
+							fontSize: "12px",
+							fontWeight: 600,
+							color: BRAND_CYAN_TEXT,
+							cursor: "pointer",
+							transition: "background 0.15s, color 0.15s",
+						}}
+						type="button">
+						{action.label} ›
+					</button>
+				)}
 			</div>
 		</div>
 	)
