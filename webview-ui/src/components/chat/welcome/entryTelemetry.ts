@@ -69,7 +69,8 @@ export function entryFirstPrompt(via: "typed" | "card" | "resume" | "sample"): v
 }
 
 export function entryDrawerOpen(hadNewRun: boolean): void {
-	send("entry_drawer_open", { via: "burger", had_new_build: String(hadNewRun) })
+	// via: the "All runs" line under the cards — the ☰ that used to open it is gone (2026-09-09).
+	send("entry_drawer_open", { via: "all-runs", had_new_build: String(hadNewRun) })
 }
 
 /** A run was started — the number the reversal rule reads. */

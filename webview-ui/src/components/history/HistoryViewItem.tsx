@@ -1,5 +1,6 @@
 import { HistoryItem } from "@shared/HistoryItem"
 import { StringRequest } from "@shared/proto/cline/common"
+import { RenameTaskRequest } from "@shared/proto/cline/task"
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import {
 	ArrowDownIcon,
@@ -9,10 +10,11 @@ import {
 	ChevronsDownUpIcon,
 	ChevronsUpDownIcon,
 	DownloadIcon,
+	PencilIcon,
 	StarIcon,
 	TrashIcon,
 } from "lucide-react"
-import { memo, useCallback, useState } from "react"
+import { memo, useCallback, useEffect, useRef, useState } from "react"
 import { BRAND_CYAN_700 } from "@/components/chat/brandColors"
 import { Button } from "@/components/ui/button"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -40,6 +42,32 @@ const HistoryViewItem = ({
 }: HistoryViewItemProps) => {
 	const [expanded, setExpanded] = useState(false)
 	const { openAgentSession } = useExtensionState()
+
+	// What the session is called: the developer's name for it if they gave one, else its first
+	// prompt. [OPERATOR 2026-09-04] "we should be able to delete one or all, resume or rename the
+	// sessions." Rename lived in the entry drawer's session list; that list is gone (2026-09-09,
+	// the host's history is the one home), so rename comes here with it. Inline: the name becomes
+	// an input where it sits, Enter keeps it, Escape drops it, and the row never changes shape.
+	// `title` is display only — `task` stays what the model was asked and what search matches.
+	const name = item.title?.trim() || item.task
+	const [editing, setEditing] = useState(false)
+	const [draft, setDraft] = useState(name)
+	const nameInputRef = useRef<HTMLInputElement>(null)
+	useEffect(() => {
+		if (editing) {
+			nameInputRef.current?.focus()
+			nameInputRef.current?.select()
+		}
+	}, [editing])
+	const commitRename = () => {
+		setEditing(false)
+		const next = draft.trim()
+		if (next && next !== name) {
+			TaskServiceClient.renameTask(RenameTaskRequest.create({ taskId: item.id, title: next })).catch((error) =>
+				console.error("Error renaming task:", error),
+			)
+		}
+	}
 
 	// A session worked by the developer's own coding agent has no task behind it — its record is the
 	// handover on disk. Fetch that record and render it read-only; loading it into the engine would mean
@@ -86,7 +114,10 @@ const HistoryViewItem = ({
 	}, [])
 
 	return (
-		<div className="history-item cursor-pointer flex group mb-1 hover:bg-list-hover border-b border-accent/10" key={item.id}>
+		<div
+			className="history-item cursor-pointer flex group mb-1 hover:bg-list-hover border-b border-accent/10"
+			data-testid="history-item"
+			key={item.id}>
 			<VSCodeCheckbox
 				checked={selectedItems.includes(item.id)}
 				className="pl-3 pr-1 py-auto self-start mt-3"
@@ -115,9 +146,55 @@ const HistoryViewItem = ({
 								⇄
 							</span>
 						) : null}
-						<span className="ph-no-capture">{item.task}</span>
+						{editing ? (
+							<input
+								aria-label="Session name"
+								className="w-full bg-transparent outline-none"
+								data-testid="history-item-name"
+								onBlur={commitRename}
+								onChange={(e) => setDraft(e.target.value)}
+								onClick={(e) => e.stopPropagation()}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										commitRename()
+									} else if (e.key === "Escape") {
+										e.stopPropagation()
+										setDraft(name)
+										setEditing(false)
+									}
+								}}
+								ref={nameInputRef}
+								style={{
+									color: "var(--vscode-foreground)",
+									borderBottom: "1px solid var(--vscode-focusBorder)",
+									font: "inherit",
+								}}
+								value={draft}
+							/>
+						) : (
+							<span
+								className="ph-no-capture"
+								data-testid="history-item-title"
+								title={item.title ? item.task : undefined}>
+								{name}
+							</span>
+						)}
 					</div>
 					<div className="flex gap-2">
+						<Button
+							aria-label="Rename"
+							className="p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+							data-testid="history-item-rename"
+							onClick={(e) => {
+								e.stopPropagation()
+								setDraft(name)
+								setEditing(true)
+							}}
+							variant="ghost">
+							<span className="flex items-center gap-1 text-xs">
+								<PencilIcon className="stroke-1" />
+							</span>
+						</Button>
 						<Button
 							aria-label="Delete"
 							className="p-0 opacity-0 group-hover:opacity-100 transition-opacity"
