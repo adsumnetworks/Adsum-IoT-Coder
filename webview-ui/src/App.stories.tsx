@@ -1456,7 +1456,10 @@ export const EntryGateOpen: Story = {
 	args: {},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement)
-		await userEvent.click(await canvas.findByTestId("cellular-card-cellularGateway"))
+		// [2026-09-09] The cellular cards joined the one ranked list; on a cold start they are in the
+		// drawer, behind the one door. Signed out, a locked run opens the gate.
+		await userEvent.click(await canvas.findByTestId("entry-more-runs"))
+		await userEvent.click((await canvas.findAllByTestId("entry-drawer-run-locked"))[0])
 		await expect(await canvas.findByTestId("gate-panel")).toBeTruthy()
 	},
 }

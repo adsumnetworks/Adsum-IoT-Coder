@@ -415,11 +415,17 @@ describe("sessions have exactly one home — the host's history, not ours", () =
 		expect(screen.getAllByTestId("entry-drawer-sample").length).toBeGreaterThan(0)
 	})
 
-	it("a cold start hides nothing — the samples are on the surface — so it has no door", () => {
+	it("a cold start keeps its door — the suggested runs and the locked cellular offer live only in the drawer there", () => {
+		// [SWEEP 2026-09-09] The first cut gave the cold start no door ("hides nothing"), which was
+		// wrong: with no folder the runs are not on the surface, and the Register gate behind the
+		// locked cellular runs became unreachable for exactly the person it exists for.
 		mockState({})
 		render(<WelcomeView {...baseProps} />)
 		expect(screen.getByTestId("entry-samples")).toBeTruthy()
-		expect(screen.queryByTestId("entry-more-runs")).toBeNull()
+		fireEvent.click(screen.getByTestId("entry-more-runs"))
+		expect(screen.getAllByTestId("entry-drawer-run-locked").length).toBeGreaterThan(0)
+		fireEvent.click(screen.getAllByTestId("entry-drawer-run-locked")[0])
+		expect(screen.getByTestId("gate-panel")).toBeTruthy()
 	})
 
 	it("the filter searches runs and checks; a miss says so and offers the way out", () => {

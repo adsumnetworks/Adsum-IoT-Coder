@@ -579,7 +579,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										color: "var(--vscode-descriptionForeground)",
 										marginTop: "4px",
 									}}>
-									Nothing has run in <b>{scopeName}</b> yet —{" "}
+									{/* [SWEEP 2026-09-09, return-user] With no folder this read "Nothing has run in  yet". */}
+									Nothing has run in <b>{scopeName || "this window"}</b> yet —{" "}
 									<button
 										data-testid="entry-elsewhere"
 										onClick={() => navigateToHistory()}
@@ -698,6 +699,20 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 										className="codicon codicon-chevron-right shrink-0"
 										style={{ fontSize: "11px", opacity: 0.6, marginTop: "2px" }}
 									/>
+								</button>
+								{/* The cold start's door. [SWEEP 2026-09-09, screenshot vs mockup v4.7 "Browse suggested
+								    runs"] Cutting the ☰ left this shape with NO way into the drawer, and the drawer is
+								    where the suggested runs — and the locked cellular offer with its Register gate —
+								    live when there is no folder. "Hiding it until sign-in would mean nobody ever learns
+								    it exists" (CellularGroup, 09-06) applied here too, and the cut had silently undone it.
+								    Same name as everywhere else: one door, one name. */}
+								<button
+									className="self-start bg-transparent border-0 p-0 text-left"
+									data-testid="entry-more-runs"
+									onClick={openDrawer}
+									style={{ fontSize: "11px", color: BRAND_CYAN_TEXT, cursor: "pointer", fontWeight: 600 }}
+									type="button">
+									All runs →
 								</button>
 							</>
 						) : (
