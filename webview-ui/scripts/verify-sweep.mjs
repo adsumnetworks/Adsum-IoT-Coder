@@ -83,6 +83,14 @@ function check(name, ok, detail) {
 	// and the ordinary summary rows are NOT also shown — the exception replaces them
 	const summaryBadges = await page.locator('[data-testid="envstrip-summary"] >> text=/^(nRF|ESP)$/').count()
 	check("01 the exception REPLACES the summary rather than stacking on it", summaryBadges <= 1, `${summaryBadges} badge(s)`)
+	// [pin 4] with an ESP on the desk, the wordmark row says so — from the same detection as the strip
+	const deskEsp = (
+		await page
+			.getByTestId("entry-desk-line")
+			.innerText()
+			.catch(() => "")
+	).replace(/\s+/g, " ")
+	check("07 the desk line reports the ESP the strip is talking about", /ESP [✓—]/.test(deskEsp), deskEsp.trim())
 	check("01 no page errors", errors.length === 0, errors[0])
 	await shot(page, "01-exception-line")
 	await page.close()
@@ -259,6 +267,30 @@ function check(name, ok, detail) {
 	// ── one door ── [OPERATOR 2026-09-09, approved] no ☰ under the host's ＋ ↺ ⚙; the "All runs"
 	// line is the only way into the drawer, and the drawer holds no session list (the host's ↺ does).
 	check("07 there is no ☰ on the entry surface", (await page.getByTestId("entry-burger").count()) === 0)
+	// [mockup entry-one-door, pin 4] the slot the ☰ held reads "folder · nRF ✓ · ESP ✓" — and it ticks
+	// exactly the platforms the strip detects, never one more (one detection, two densities).
+	const desk = (
+		await page
+			.getByTestId("entry-desk-line")
+			.innerText()
+			.catch(() => "")
+	)
+		.replace(/\s+/g, " ")
+		.trim()
+	const scopeCount = await page.getByTestId("entry-scope-title").count()
+	const stripText = await page
+		.getByTestId("envstrip-summary")
+		.innerText()
+		.catch(() => "")
+	const platforms = ["nRF", "ESP"].filter((l) => new RegExp(`\\b${l}\\b`).test(stripText))
+	const ticked = platforms.every((l) => new RegExp(`${l} [✓—]`).test(desk))
+	const extra = ["nRF", "ESP"].some((l) => !platforms.includes(l) && new RegExp(`${l} [✓—]`).test(desk))
+	check("07 the desk line names the folder once, in the wordmark row", scopeCount === 1 && /^gateway-fw/.test(desk), desk)
+	check(
+		"07 and ticks exactly the platforms the strip detects",
+		ticked && !extra,
+		`${desk} | strip: ${platforms.join(",") || "none"}`,
+	)
 	const doors = await page.getByTestId("entry-more-runs").count()
 	const doorText = doors ? await page.getByTestId("entry-more-runs").innerText() : ""
 	check(

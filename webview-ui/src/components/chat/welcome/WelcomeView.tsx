@@ -13,7 +13,7 @@ import CraNudge from "./CraNudge"
 import DemoHexCard from "./DemoHexCard"
 import DockCoachMark, { dockCoachEligible } from "./DockCoachMark"
 import EntryDrawer, { type DrawerRun } from "./EntryDrawer"
-import EnvStrip from "./EnvStrip"
+import EnvStrip, { platformTicks } from "./EnvStrip"
 import { entryDrawerOpen, entryFirstPrompt, entryRunStart, entryShown, gateShown } from "./entryTelemetry"
 import GatePanel from "./GatePanel"
 import IntentCard from "./IntentCard"
@@ -88,6 +88,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 }) => {
 	const {
 		navigateToHistory,
+		nrfEnvironment,
+		espEnvironment,
 		taskHistory,
 		workspaceClassification,
 		reviewNudgeShow,
@@ -341,7 +343,29 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				<img alt="" aria-hidden="true" className="adsum-wordmark-light" src={adsumLogoLight} style={{ height: "18px" }} />
 				{/* No ☰. [OPERATOR 2026-09-09, approved] It sat 30 px under the host's own ＋ ↺ ⚙ and read as
 				    a second menu; what it opened is one click away at the "All runs" line under the cards,
-				    and the sessions it listed live in the host's ↺ (HistoryView). */}
+				    and the sessions it listed live in the host's ↺ (HistoryView). The slot it held carries
+				    the one-line answer to "where am I, and with what": the folder, and a ✓ per platform
+				    whose toolchain is present — MOVED up from the Environment band, not copied (the band
+				    keeps the strip, which says the same thing in more detail). Mockup entry-one-door, pin 4. */}
+				<span
+					className="ml-auto flex min-w-0 items-baseline gap-1.5"
+					data-testid="entry-desk-line"
+					style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)", whiteSpace: "nowrap" }}>
+					{scopeName && (
+						<span
+							data-testid="entry-scope-title"
+							style={{ overflow: "hidden", textOverflow: "ellipsis", color: "var(--vscode-foreground)" }}
+							title={scopeName}>
+							{scopeName}
+						</span>
+					)}
+					{platformTicks(nrfEnvironment, espEnvironment).map((t) => (
+						<span key={t.label} style={{ flex: "none" }}>
+							{" · "}
+							{t.label} {t.ok ? "✓" : "—"}
+						</span>
+					))}
+				</span>
 			</div>
 
 			{/* Where you are, and what is on the desk.
@@ -365,16 +389,9 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						<span>Environment</span>
 					</div>
 				)}
-				{scopeName ? (
-					<div className="flex items-baseline gap-1.5">
-						<span aria-hidden="true" className="codicon codicon-folder" style={{ fontSize: "12px", opacity: 0.75 }} />
-						<span
-							data-testid="entry-scope-title"
-							style={{ fontSize: "13px", fontWeight: 600, color: "var(--vscode-foreground)" }}>
-							{scopeName}
-						</span>
-					</div>
-				) : (
+				{/* The folder line moved UP into the wordmark row (2026-09-09); what stays here is the
+				    way to get a folder when there is none. */}
+				{scopeName ? null : (
 					// [SWEEP 2026-09-04, F2] "No folder open" was a dead statement at the head of the
 					// surface. The person who has a project wants to open it; the person who does not
 					// wants nothing from this line. One control serves the first and costs the second
