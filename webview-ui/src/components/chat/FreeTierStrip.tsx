@@ -45,7 +45,7 @@ export function freeTierStripVisible(remaining: number | undefined, dismissed: b
 }
 
 /** Compact token label: ≥1M → one decimal (e.g. 1.3M), ≥1K → rounded K, else raw. */
-const formatTokens = (n: number): string => {
+export const formatTokens = (n: number): string => {
 	if (n >= 1_000_000) {
 		return `${Math.round(n / 100_000) / 10}M`
 	}
