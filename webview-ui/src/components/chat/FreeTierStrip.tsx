@@ -76,6 +76,7 @@ const FreeTierStrip = () => {
 
 	return (
 		<div
+			data-testid="free-tier-strip"
 			style={{
 				display: "flex",
 				alignItems: "center",
@@ -117,6 +118,7 @@ const FreeTierStrip = () => {
 				<button
 					aria-label="Hide the free tier banner"
 					className="codicon codicon-close"
+					data-testid="free-tier-strip-dismiss"
 					onClick={() => {
 						try {
 							localStorage.setItem(DISMISSED_KEY, "1")

@@ -1842,6 +1842,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										<TooltipTrigger>
 											<ModelButtonWrapper ref={buttonRef}>
 												<ModelDisplayButton
+													data-testid="model-chip"
 													disabled={false}
 													isActive={showModelSelector}
 													onClick={handleModelButtonClick}
