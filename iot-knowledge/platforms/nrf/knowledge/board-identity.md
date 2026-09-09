@@ -2,7 +2,7 @@
 id: adsum/nrf/knowledge/board-identity
 title: "Reference: Nordic Board Identity"
 type: knowledge
-version: 1.1.0
+version: 1.2.0
 owner: adsum-core
 author: Omar Morceli
 co_authors:
@@ -70,6 +70,28 @@ boards:
     name: "Thingy:52"
   - pca: PCA20035
     name: "Thingy:91"
+  # Rows below were added to the extension on 2026-09-06 from Nordic's own tables (nRF91 device
+  # guide, board-support list, Programmer supported-hardware) and moved here when the extension
+  # stopped carrying a second copy. PCA10201 shares the nrf9151dk board target with PCA10171 but is
+  # a different kit with a different user guide — it is what nrfutil reports for the SMA variant.
+  - pca: PCA10175
+    name: nRF54H20 DK
+  - pca: PCA10188
+    name: nRF54LV10 DK
+  - pca: PCA10195
+    name: nPM1304 EK
+  - pca: PCA10201
+    name: nRF9151 SMA DK
+  - pca: PCA10208
+    name: nRF54LM20 Dongle
+  - pca: PCA10214
+    name: nRF54LS05 DK
+  - pca: PCA10226
+    name: nRF54LC10 DK
+  - pca: PCA20053
+    name: "Thingy:53"
+  - pca: PCA20065
+    name: "Thingy:91 X"
 ```
 
 ## A device with no debugger: name it from the firmware Nordic itself ships

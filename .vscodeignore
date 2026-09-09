@@ -213,6 +213,12 @@ test-results/
 storybook-static
 **/storybook-static/**
 **/StorybookDecorator.tsx
+# The same bug, a second time, in a different directory. webview-ui/screens holds the reference
+# screenshots the visual tests compare against — 93 PNGs, 10 MB — and nothing loads them at runtime.
+# They rode into 0.4.0 and took it from 24.1 MB to 33.3 MB, over the 26 MB budget the packaging test
+# enforces. Committed and therefore not hidden by .gitignore, which is why the storybook-static
+# lesson did not cover them.
+**/webview-ui/screens/**
 
 # CRA pre-built reference bundles — MUST ship: the CRA Sample run scans these (SPDX + .config + symbols.nm
 # + version.h) with NO local build. Explicit keep-rule so a future broad ignore can't silently drop them.

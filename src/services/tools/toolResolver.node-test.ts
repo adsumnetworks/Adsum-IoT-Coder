@@ -482,7 +482,6 @@ test("the reason names the specific capability, and is absent when nothing is as
 	assert.match(approvalReason(ap({ unavailable: "nrfutil not found on PATH" })) ?? "", /nrfutil/)
 })
 
-
 // ── U9: the override rule as the tool resolver applies it ────────────────────
 
 describe("U9 — an override may never widen what the developer already agreed to", () => {
@@ -517,7 +516,10 @@ describe("U9 — a python override must carry the launcher for the platform it w
 	})
 
 	test("posix: the bare launcher name is required", () => {
-		assert.equal(bundleHasPlatformLauncher("adsum/nrf/tools/board-shell", row(["board_shell.py", "board-shell"]), "darwin"), true)
+		assert.equal(
+			bundleHasPlatformLauncher("adsum/nrf/tools/board-shell", row(["board_shell.py", "board-shell"]), "darwin"),
+			true,
+		)
 		assert.equal(bundleHasPlatformLauncher("adsum/nrf/tools/board-shell", row(["board_shell.py"]), "darwin"), false)
 	})
 
@@ -532,7 +534,7 @@ describe("U9 — a python override must carry the launcher for the platform it w
 		)
 	})
 
-	test("a node tool needs no launcher at all — it runs under the editor's own binary", () => {
+	test("a node tool needs no launcher FROM THE BUNDLE — the host generates one at resolve time", () => {
 		assert.equal(bundleHasPlatformLauncher("adsum/tools/log-shape", row(["log_shape.mjs"], "node"), "win32"), true)
 	})
 })
@@ -548,7 +550,6 @@ describe("U9 — provenance is separate from delivery", () => {
 		assert.equal(overridden.provenance, "override")
 	})
 })
-
 
 // ── U4: the built-in doors are visible in the graph, never in the advertisement ──
 
@@ -587,5 +588,99 @@ describe("U4 — a runtime: host tool resolves for credit but is never advertise
 
 	test("a host tool carries the registered name the model actually has", () => {
 		assert.equal(host("adsum/cra/tools/cra-action", "triggerCveScan").hostTool, "triggerCveScan")
+	})
+})
+
+// ── generated launchers: a node tool never advertises the editor binary bare ──────────────────────
+//
+// [Omar, 0.4.0 round 2] `runtime: node` tools ran under `process.execPath`, which on Windows is
+// Code.exe. `Code.exe seed.mjs` opens the file in the editor. The host now writes a launcher that sets
+// ELECTRON_RUN_AS_NODE=1, named after the tool, so the advertised command is the name the bits use.
+
+import { readFileSync as readFileSync2, statSync } from "node:fs"
+import { ensureGeneratedLauncher, generatedLauncherText } from "./generatedLauncher"
+
+describe("generated launchers for node tools", () => {
+	const NODE_META = { runtime: "node", entry: "seed.mjs", usage: "--into <dir>" }
+	const nodeBase = {
+		...base,
+		id: "adsum/tools/lew840x-gateway-seeds",
+		meta: NODE_META,
+		fileExists: exists(path.join(DIR, "seed.mjs")),
+	}
+
+	test("the launcher text carries the environment the editor binary needs, on both platforms", () => {
+		const win = generatedLauncherText({ entryPath: "C:\\c\\seed.mjs", nodePath: "C:\\Code.exe", platform: "win32" })
+		assert.match(win, /^@echo off\r\n/)
+		assert.match(win, /set ELECTRON_RUN_AS_NODE=1/)
+		assert.match(win, /"C:\\Code\.exe" "C:\\c\\seed\.mjs" %\*/)
+		assert.match(win, /setlocal/) // the variable must not leak into the developer's shell
+		const posix = generatedLauncherText({ entryPath: "/c/seed.mjs", nodePath: "/n", platform: "darwin" })
+		assert.match(posix, /^#!\/bin\/sh\n/)
+		assert.match(posix, /exec env ELECTRON_RUN_AS_NODE=1 "\/n" "\/c\/seed\.mjs" "\$@"/)
+	})
+
+	test("windows: a node tool with no launcher is advertised as <name>.bat, never as the editor binary", () => {
+		const dir = mkdtempSync(path.join(tmpdir(), "adsum-launcher-"))
+		const t = buildResolvedTool({ ...nodeBase, platform: "win32", generatedLauncherDir: dir })!
+		assert.equal(path.basename(t.launcherPath ?? ""), "lew840x-gateway-seeds.bat")
+		assert.equal(t.command.includes(process.execPath), false)
+		assert.match(t.command, /lew840x-gateway-seeds\.bat/)
+		const text = readFileSync2(t.launcherPath!, "utf8")
+		assert.match(text, /ELECTRON_RUN_AS_NODE=1/)
+		assert.equal(text.includes(process.execPath), true) // the binary lives INSIDE the launcher
+		assert.equal(text.includes(path.join(DIR, "seed.mjs")), true)
+	})
+
+	test("posix: the generated launcher is executable and named after the tool", () => {
+		const dir = mkdtempSync(path.join(tmpdir(), "adsum-launcher-"))
+		const t = buildResolvedTool({ ...nodeBase, platform: "darwin", generatedLauncherDir: dir })!
+		assert.equal(path.basename(t.launcherPath ?? ""), "lew840x-gateway-seeds")
+		assert.notEqual(statSync(t.launcherPath!).mode & 0o111, 0)
+		assert.equal(t.command.includes(process.execPath), false)
+	})
+
+	test("writing is idempotent — a second resolve neither rewrites nor duplicates", () => {
+		const dir = mkdtempSync(path.join(tmpdir(), "adsum-launcher-"))
+		const first = ensureGeneratedLauncher({ toolName: "x", entryPath: "/e/x.mjs", dir, platform: "darwin", nodePath: "/n" })!
+		const mtime = statSync(first).mtimeMs
+		const second = ensureGeneratedLauncher({ toolName: "x", entryPath: "/e/x.mjs", dir, platform: "darwin", nodePath: "/n" })
+		assert.equal(second, first)
+		assert.equal(statSync(first).mtimeMs, mtime)
+	})
+
+	test("a launcher the bundle ships still wins over a generated one", () => {
+		const dir = mkdtempSync(path.join(tmpdir(), "adsum-launcher-"))
+		const t = buildResolvedTool({
+			...nodeBase,
+			platform: "darwin",
+			generatedLauncherDir: dir,
+			fileExists: exists(path.join(DIR, "seed.mjs"), path.join(DIR, "lew840x-gateway-seeds")),
+		})!
+		assert.equal(t.launcherPath, path.join(DIR, "lew840x-gateway-seeds"))
+	})
+
+	test("with nowhere to write, or a writer that fails, the bare form is the honest fallback", () => {
+		const none = buildResolvedTool({ ...nodeBase, platform: "win32" })!
+		assert.equal(none.launcherPath, undefined)
+		assert.equal(none.command.includes("seed.mjs"), true)
+		const failed = buildResolvedTool({
+			...nodeBase,
+			platform: "win32",
+			generatedLauncherDir: "/x",
+			writeLauncher: () => null,
+		})!
+		assert.equal(failed.launcherPath, undefined)
+	})
+
+	test("python tools are untouched — they already ship their own launchers, and get none generated", () => {
+		const dir = mkdtempSync(path.join(tmpdir(), "adsum-launcher-"))
+		const t = buildResolvedTool({
+			...base,
+			generatedLauncherDir: dir,
+			fileExists: exists(path.join(DIR, "nrf_rtt_logger.py")),
+		})!
+		assert.equal(t.launcherPath, undefined)
+		assert.equal(t.command, `python3 ${path.join(DIR, "nrf_rtt_logger.py")}`)
 	})
 })

@@ -1168,6 +1168,12 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				return unknownModel
 			}
 			switch (selectedProvider) {
+				// The free tier is the one provider a developer did not choose by name, and
+				// "adsum-free:free-default" is an internal identifier — provider slug plus model key —
+				// on the surface they look at most. It reads as a bug the first time you see it.
+				// The chip says what they picked; the id stays one hover away in the tooltip.
+				case "adsum-free":
+					return "Free tier"
 				case "cline":
 					return `${selectedProvider}:${selectedModelId}`
 				case "openai":
@@ -1836,6 +1842,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										<TooltipTrigger>
 											<ModelButtonWrapper ref={buttonRef}>
 												<ModelDisplayButton
+													data-testid="model-chip"
 													disabled={false}
 													isActive={showModelSelector}
 													onClick={handleModelButtonClick}

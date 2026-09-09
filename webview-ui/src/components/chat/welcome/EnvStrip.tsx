@@ -5,6 +5,8 @@ import React, { useState } from "react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient } from "@/services/grpc-client"
+import { BRAND_WARNING } from "../brandColors"
+import { envException } from "./envException"
 
 // ---------------------------------------------------------------------------
 // Each platform = a 2-line status row: line 1 = badge + extension · SDK, line 2 =
@@ -227,9 +229,10 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 		devicesMuted = true
 	} else {
 		const labelled = env.boards.map((b: NrfBoard) => {
-			// Resolved host-side from the board-identity bit, so a board Nordic ships between our releases
-			// can be named by a registry update rather than a reinstall. Falls back to the raw PCA.
-			const friendly = b.boardVersion ? (b.boardName ?? PCA_NAMES[b.boardVersion] ?? b.boardVersion) : undefined
+			// Named host-side from the board-identity bit, so a board Nordic ships between our releases is
+			// named by a registry update rather than a reinstall. The webview holds no second table: two
+			// copies of one mapping drift, and this one had already acquired two wrong rows. Raw PCA otherwise.
+			const friendly = b.boardVersion ? (b.boardName ?? b.boardVersion) : undefined
 			// A Nordic USB device with no probe — a dongle — publishes no chip: nrfutil itself answers
 			// "not supported for this type of device". Name the CATEGORY, as every other row names a board,
 			// plus the only specific identity it does publish: the firmware it is running.
@@ -361,59 +364,6 @@ function espFacts(env: EspEnvironment, hasWorkspace: boolean): BlockFacts {
 // Combined strip
 // ---------------------------------------------------------------------------
 
-/**
- * Nordic board codes → the names people use.
- *
- * The strip falls back to `boardVersion` when the host cannot name a board, and that fallback put
- * a raw `PCA10184` on screen next to three properly-named DKs — a code nobody reads as hardware.
- * The host resolves names from the board-identity bit where it can; this is the last resort, so it
- * only needs the DKs a bench actually has.
- *
- * Verified against the NCS board definitions rather than recalled — which is how PCA10100 was
- * caught: it is the nRF52833 DK, and had been mapped to the nRF5340 DK.
- */
-/**
- * PCA code → the name on the box. The fallback when nrfutil reports a board version but no device
- * name, which is the ordinary case for an nRF91.
- *
- * Every row below is read out of Nordic's own tables — the nRF91 device guide, the board-support
- * list, and the Programmer app's supported-hardware table — not from memory. Memory is exactly how
- * this map acquired two wrong rows: PCA10100 was "nRF5340 DK" (it is the nRF52833 DK), and PCA10112
- * was "nRF9160 DK" when PCA10112 is the **nRF21540 DK** and the nRF9160 DK is PCA10090. A bench with
- * a 21540 attached was told, confidently, that it had a cellular kit.
- */
-const PCA_NAMES: Record<string, string> = {
-	PCA10040: "nRF52 DK",
-	PCA10056: "nRF52840 DK",
-	PCA10059: "nRF52840 Dongle",
-	PCA10090: "nRF9160 DK",
-	PCA10095: "nRF5340 DK",
-	PCA10100: "nRF52833 DK",
-	PCA10112: "nRF21540 DK",
-	PCA10121: "nRF5340 Audio DK",
-	PCA10147: "nRF9131 DK",
-	PCA10152: "nPM1300 EK",
-	PCA10153: "nRF9161 DK",
-	PCA10156: "nRF54L15 DK",
-	PCA10165: "nRF9131 EK",
-	PCA10170: "nPM2100 EK",
-	PCA10171: "nRF9151 DK",
-	PCA10175: "nRF54H20 DK",
-	PCA10184: "nRF54LM20 DK",
-	PCA10188: "nRF54LV10 DK",
-	PCA10195: "nPM1304 EK",
-	// The SMA-connector variant of the nRF9151 DK. It shares the nrf9151dk board target with PCA10171
-	// but is a different board and a different user guide, so it gets its own name — read off the
-	// operator's own kit, which nrfutil reports as PCA10201.
-	PCA10201: "nRF9151 SMA DK",
-	PCA10208: "nRF54LM20 Dongle",
-	PCA10214: "nRF54LS05 DK",
-	PCA10226: "nRF54LC10 DK",
-	PCA20035: "Nordic Thingy:91",
-	PCA20053: "Nordic Thingy:53",
-	PCA20065: "Nordic Thingy:91 X",
-}
-
 const EnvStrip: React.FC = () => {
 	const { nrfEnvironment, espEnvironment, openFolderPaths } = useExtensionState()
 	const [refreshing, setRefreshing] = useState(false)
@@ -473,6 +423,9 @@ const EnvStrip: React.FC = () => {
 		summaryRows.push({ label: "ESP", text: compact(esp) })
 	}
 	const detecting = nrf.detecting || esp.detecting
+	// The one thing worth interrupting for, or nothing. See envException.ts for why "no boards
+	// connected" deliberately does not qualify.
+	const exception = envException(nrfEnvironment, espEnvironment)
 
 	const collapseLinkStyle: React.CSSProperties = {
 		display: "inline-flex",
@@ -543,7 +496,30 @@ const EnvStrip: React.FC = () => {
 						title="Show environment detail"
 						type="button">
 						<div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1, minWidth: 0 }}>
-							{summaryRows.length > 0 ? (
+							{exception ? (
+								<span
+									data-testid="envstrip-exception"
+									style={{
+										display: "inline-flex",
+										alignItems: "center",
+										gap: "6px",
+										fontSize: "11px",
+										minWidth: 0,
+									}}>
+									<Badge text={exception.label} />
+									{/* Semantic colour, status only — the golden rules allow it here precisely because
+									    this is a state of the machine, not a judgement about the developer's work. */}
+									<span
+										style={{
+											color: BRAND_WARNING,
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+											whiteSpace: "nowrap",
+										}}>
+										{exception.text}
+									</span>
+								</span>
+							) : summaryRows.length > 0 ? (
 								summaryRows.map((r) => (
 									<span
 										key={r.label}

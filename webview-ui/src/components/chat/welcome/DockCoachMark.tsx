@@ -3,6 +3,25 @@ import { getCurrentPlatform } from "@/utils/platformUtils"
 
 const DISMISSED_KEY = "adsum.dockCoachMarkDismissed"
 
+/**
+ * Whether this tip would show, asked from outside.
+ *
+ * The rule used to live only inside the effect below, which meant the entry surface could not queue
+ * this notice against the other four — it could only render it and hope. Exported so `oneNotice`
+ * can consider it like everything else. localStorage can throw in a locked-down webview, so a
+ * failure to read is treated as "do not show" rather than as an exception.
+ */
+export function dockCoachEligible(hasProject: boolean): boolean {
+	if (!hasProject) {
+		return false
+	}
+	try {
+		return localStorage.getItem(DISMISSED_KEY) !== "1"
+	} catch {
+		return false
+	}
+}
+
 interface DockCoachMarkProps {
 	hasProject: boolean
 }
@@ -20,7 +39,7 @@ const DockCoachMark: React.FC<DockCoachMarkProps> = ({ hasProject }) => {
 	const [visible, setVisible] = useState(false)
 
 	useEffect(() => {
-		if (hasProject && localStorage.getItem(DISMISSED_KEY) !== "1") {
+		if (dockCoachEligible(hasProject)) {
 			setVisible(true)
 		}
 	}, [hasProject])
@@ -30,12 +49,17 @@ const DockCoachMark: React.FC<DockCoachMarkProps> = ({ hasProject }) => {
 	}
 
 	const dismiss = () => {
-		localStorage.setItem(DISMISSED_KEY, "1")
+		try {
+			localStorage.setItem(DISMISSED_KEY, "1")
+		} catch {
+			/* a webview with storage blocked still gets to dismiss it for this session */
+		}
 		setVisible(false)
 	}
 
 	return (
 		<div
+			data-testid="dock-coach-mark"
 			// Chrome, not content. [SWEEP 2026-09-04, F6] Placed above the cards at the same size as
 			// the instruction line it read as the first paragraph of the surface, and in the
 			// returning state it sat flush against the resume card. A lightbulb glyph, a smaller

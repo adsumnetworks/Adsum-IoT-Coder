@@ -4,6 +4,7 @@ import { RenameTaskRequest } from "@shared/proto/cline/task"
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { TaskServiceClient } from "@/services/grpc-client"
 import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "../brandColors"
+import AccountChip from "./AccountChip"
 import type { Ranked, Suggestable } from "./suggest"
 
 /**
@@ -205,6 +206,13 @@ const EntryDrawer: React.FC<EntryDrawerProps> = ({ open, onClose, history, runs,
 						value={query}
 					/>
 				</div>
+				{/* Who is signed in.
+				    [SWEEP 2026-09-09] It used to sit inside the ENVIRONMENT caption on the entry
+				    surface. Environment is what this MACHINE has — toolchains, boards, the folder — and
+				    an account is not any of those; it is who you are, checked rarely, and it was taking
+				    a permanent slot in the one band a developer reads for hardware. Here it is beside
+				    the other things you go looking for rather than read. */}
+				<AccountChip />
 				<button
 					aria-label="Close"
 					// [SWEEP 2026-09-04, F14] A <button> brings its own grey fill, so the icon rendered as a
