@@ -57,7 +57,7 @@ export const RELEASE_NOTES = {
 		lines: [
 			{
 				head: "Home",
-				body: "opens on your folder, your boards and your toolchains, then ranks the runs worth starting. Typing is the new session; every other session is in the editor's History.",
+				body: "one row says what is on your desk and what is missing, then ranks the runs worth starting. Typing is the new session; every other session is in the editor's History.",
 			},
 			{
 				head: "Account",
