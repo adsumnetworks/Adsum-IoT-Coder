@@ -93,7 +93,7 @@ Working firmware for the Fanstel composable LEW gateway, two ways: **signed imag
 | **LEW840x** · cellular | + LTE-M, NB-IoT (nRF9160 / 9161) | **Demo**: cellular bearer, 60-minute sessions | On request | + LTE M.2 card, SIM |
 | Satellite **NB-NTN** on nRF9151 | NB-NTN | Bring-up run + knowledge | · | nRF9151 DK (LACA A1A) |
 | **Edge AI** on nRF54 | On-device inference basics | Knowledge + guided run | · | An nRF54 board |
-| **BWG840X** · BLE to Wi-Fi | BLE in; Wi-Fi out | Soon (moving onto the LEW840x code base) | Soon | BWG840X |
+| **BWG840X** · BLE to Wi-Fi | BLE in; Wi-Fi out | Build it from a prompt today; curated images soon | Soon | BWG840X |
 | **Next**: Fanstel **BLG20**, BLE 6 terrestrial + non-terrestrial gateway | BLE 6; LTE-M, NB-IoT, NB-NTN; edge-AI inference on the nRF54 NPU | Soon | Soon | Early access, by request |
 
 - **Flash to judge**: register (free), flash, watch tags reach your broker. Wi-Fi and Ethernet unlimited; cellular in 60-minute sessions; needs `nrfutil` and `esptool`.
