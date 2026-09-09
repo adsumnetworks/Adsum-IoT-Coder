@@ -2144,7 +2144,17 @@ export class Task {
 		const iterator = guardStream(stream[Symbol.asyncIterator](), {
 			abort: () => this.api.abort?.(),
 			isCancelled: () => this.taskState.abort,
-			onStall: (error) => Logger.warn(`[Task ${this.taskId}] ${error.message}`),
+			onStall: (error) => {
+				Logger.warn(`[Task ${this.taskId}] ${error.message}`)
+				// The count that says whether the budgets are drawn right, per provider and model.
+				const { model, providerId } = this.getCurrentProviderInfo()
+				telemetryService.captureStreamStalled({
+					provider: providerId,
+					model: model.id,
+					phase: error.beforeFirstChunk ? "first_chunk" : "mid_stream",
+					silentMs: error.silentMs,
+				})
+			},
 		})
 
 		try {

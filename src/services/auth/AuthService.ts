@@ -316,15 +316,22 @@ export class AuthService {
 				await this.sendAuthStatusUpdate()
 			} else {
 				console.warn("No user found after restoring auth token")
+				// A logout is only an event when there was a session to lose. Most installs never sign in
+				// to a Cline account, and restore finding nothing fired user.auth_logged_out on every
+				// activation — one for one with extension_activated, 3,200 a month that meant nothing.
+				if (this._authenticated) {
+					telemetryService.captureAuthLoggedOut(this._provider.name, LogoutReason.ERROR_RECOVERY)
+				}
 				this._authenticated = false
 				this._clineAuthInfo = null
-				telemetryService.captureAuthLoggedOut(this._provider.name, LogoutReason.ERROR_RECOVERY)
 			}
 		} catch (error) {
 			console.error("Error restoring auth token:", error)
+			if (this._authenticated) {
+				telemetryService.captureAuthLoggedOut(this._provider.name, LogoutReason.ERROR_RECOVERY)
+			}
 			this._authenticated = false
 			this._clineAuthInfo = null
-			telemetryService.captureAuthLoggedOut(this._provider.name, LogoutReason.ERROR_RECOVERY)
 			return
 		}
 	}

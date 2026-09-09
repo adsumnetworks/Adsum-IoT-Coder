@@ -97,6 +97,8 @@ export async function orchestrateCommandExecution(
 
 	// Track if buffer gets stuck
 	let bufferStuckTimer: NodeJS.Timeout | null = null
+	// One task.terminal_hang per command, whichever stage trips first.
+	let hangReported = false
 
 	/**
 	 * Flush buffered output to the UI using ask() which waits for user response.
@@ -114,7 +116,13 @@ export async function orchestrateCommandExecution(
 		if (!didContinue) {
 			// Start timer to detect if buffer gets stuck
 			bufferStuckTimer = setTimeout(() => {
-				telemetryService.captureTerminalHang(TerminalHangStage.BUFFER_STUCK, terminalType)
+				// Once per command: this timer is armed for every chunk the developer has not yet
+				// acknowledged, and a long build used to report one hang per chunk — hundreds a day
+				// from a single install, which is not a count of hung commands.
+				if (!hangReported) {
+					hangReported = true
+					telemetryService.captureTerminalHang(TerminalHangStage.BUFFER_STUCK, terminalType)
+				}
 				bufferStuckTimer = null
 			}, BUFFER_STUCK_TIMEOUT_MS)
 
@@ -356,10 +364,11 @@ export async function orchestrateCommandExecution(
 
 	// Start timer to detect if waiting for completion takes too long
 	completionTimer = setTimeout(() => {
-		if (!completed) {
+		if (!completed && !hangReported) {
+			hangReported = true
 			telemetryService.captureTerminalHang(TerminalHangStage.WAITING_FOR_COMPLETION, terminalType)
-			completionTimer = null
 		}
+		completionTimer = null
 	}, COMPLETION_TIMEOUT_MS)
 
 	process.once("completed", async () => {
