@@ -9,9 +9,12 @@
  * The order is "what changes the most about the next hour", highest first:
  *
  *   cra         a compliance finding on their own code — about their work, not about us
+ *   registered  the answer to something they JUST DID. Time-bound: shown a session later it is
+ *               noise, shown now it is confirmation. The first render of this queue had the dock
+ *               tip above it, and the screenshot of a freshly registered developer showed a layout
+ *               tip where their receipt should have been. Fixed on sight, 9 Sep 2026.
  *   dock        changes the shape of every session after it, so it is worth the slot early and
- *               worth nothing late
- *   registered  the answer to something they just did
+ *               worth nothing late — but it is not tied to a moment, so it waits one dismissal
  *   upgrade     a standing offer; it can wait a session
  *   review      asks the developer for a favour, so it goes last, always
  *
@@ -20,7 +23,7 @@
 export type NoticeId = "cra" | "dock" | "registered" | "upgrade" | "review"
 
 /** Highest priority first. The array IS the policy — there is no second place that encodes it. */
-export const NOTICE_ORDER: readonly NoticeId[] = ["cra", "dock", "registered", "upgrade", "review"] as const
+export const NOTICE_ORDER: readonly NoticeId[] = ["cra", "registered", "dock", "upgrade", "review"] as const
 
 export function oneNotice(eligible: Partial<Record<NoticeId, boolean>>): NoticeId | undefined {
 	return NOTICE_ORDER.find((id) => eligible[id] === true)

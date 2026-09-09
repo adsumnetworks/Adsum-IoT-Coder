@@ -59,6 +59,7 @@ const DockCoachMark: React.FC<DockCoachMarkProps> = ({ hasProject }) => {
 
 	return (
 		<div
+			data-testid="dock-coach-mark"
 			// Chrome, not content. [SWEEP 2026-09-04, F6] Placed above the cards at the same size as
 			// the instruction line it read as the first paragraph of the surface, and in the
 			// returning state it sat flush against the resume card. A lightbulb glyph, a smaller
