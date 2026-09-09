@@ -201,6 +201,24 @@ function check(name, ok, detail) {
 	check("06 the chip has a cyan edge", /rgba?\(0, 169, 206/.test(chipFacts.edge ?? ""), chipFacts.edge)
 	check("06 the tier and balance never truncate at 420 px", chipFacts.tierClipped === false, JSON.stringify(chipFacts))
 	await shot(page, "06-chip-courtesy")
+	// The mockup draws the send arrow in cyan with the composer EMPTY ("Type a message…") — the
+	// composer's own action, always there. Derived from the mockup's drawn ↑, not from a move; a
+	// first cut asserted "muted while empty", which was my assumption and the product rightly failed it.
+	const strokeOf = () =>
+		page
+			.getByTestId("send-button")
+			.locator("svg")
+			.evaluate((el) => getComputedStyle(el).stroke)
+			.catch(() => "")
+	const emptyStroke = await strokeOf()
+	const ta = page.getByTestId("chat-input")
+	await ta.click()
+	await ta.pressSequentially("bring up the gateway")
+	await page.waitForTimeout(300)
+	const typedStroke = await strokeOf()
+	check("06 send arrow is brand cyan on an empty composer, as drawn", emptyStroke === "rgb(0, 169, 206)", emptyStroke)
+	check("06 and stays cyan with something to send", typedStroke === "rgb(0, 169, 206)", typedStroke)
+	await shot(page, "06-send-cyan")
 	check("06 no page errors", errors.length === 0, errors[0])
 	await shot(page, "06-strip-settled")
 	await page.close()
