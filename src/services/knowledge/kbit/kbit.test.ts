@@ -944,3 +944,58 @@ describe("lint — licence follows delivery AND type", () => {
 		)
 	})
 })
+
+// ── a bit must demonstrate a tool by its advertised NAME, never by its entry file ──────────────────
+//
+// [Omar, 0.4.0 round 2] A node tool documented as a bare name that is not on PATH sent the agent
+// improvising `Code.exe …\seed.mjs` on Windows, which opens the file instead of running it. The host
+// now generates a launcher named after every node tool, so the bare-name demonstration the runnable
+// lint asks for is a REAL command. The one form a bit could still teach wrongly is the interpreter
+// call — and that is what this refuses.
+
+import { directEntryInvocations } from "./lint"
+
+describe("lint — direct tool-entry invocations", () => {
+	const lintOne = (meta: Record<string, unknown>, body = "# t\n") => {
+		const fm = Object.entries(meta)
+			.map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+			.join("\n")
+		return lintBitContent("x.md", `---\n${fm}\n---\n${body}`, new Set([String(meta.id)]))
+	}
+
+	test("the interpreter forms an agent could copy are all caught, inside fences only", () => {
+		const body = [
+			"```bash",
+			"node ./tbit-cache/adsum_tools_x/1.0.0/seed.mjs --list",
+			"$ python3 /tmp/tools/modem_trace.py --decode t.bin",
+			'& "C:\\Users\\o\\Code.exe" c:\\tbit-cache\\seed.mjs --list',
+			"C:\\Code.exe seed.mjs",
+			"lew840x-gateway-seeds --into . --component all",
+			"```",
+			"",
+			"Prose that mentions `node seed.mjs` outside a fence is documentation, not a command.",
+		].join("\n")
+		const hits = directEntryInvocations(body)
+		assert.equal(hits.length, 4, hits.join(" | "))
+		assert.equal(
+			hits.some((h) => h.startsWith("lew840x-gateway-seeds")),
+			false,
+		)
+	})
+
+	test("a fenced bare-name demonstration is the correct form and is not flagged", () => {
+		assert.deepEqual(directEntryInvocations("```\nlew840x-gateway-seeds --into .\nesp-flash-cycle --port COM3\n```"), [])
+		assert.deepEqual(directEntryInvocations("```\nnode --version\npython3 -m venv .venv\n```"), []) // no entry file
+	})
+
+	test("lintBitContent turns it into an error that says what to write instead", () => {
+		const issues = lintOne(validTool, "Run it:\n\n```\nnode seed.mjs --into .\n```\n")
+		const hit = issues.find((i) => /invokes a tool entry file directly/.test(i.msg))
+		assert.equal(hit?.level, "error")
+		assert.match(hit!.msg, /lew840x-gateway-seeds --into \./)
+		assert.equal(
+			lintOne(validTool, "```\nlew840x-gateway-seeds --into .\n```\n").some((i) => /entry file/.test(i.msg)),
+			false,
+		)
+	})
+})

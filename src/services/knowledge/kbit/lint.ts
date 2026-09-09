@@ -191,7 +191,40 @@ export function lintBitContent(relPath: string, text: string, knownIds: Set<stri
 		})
 	}
 
+	for (const line of directEntryInvocations(fm.body)) {
+		issues.push({
+			level: "error",
+			file: relPath,
+			msg: `body invokes a tool entry file directly (\`${line}\`) — demonstrate with the tool's NAME as the host advertises it (e.g. \`lew840x-gateway-seeds --into .\`); the launcher carries the interpreter and its environment, and on Windows the editor's own binary opens a script instead of running it`,
+		})
+	}
+
 	return issues
+}
+
+/**
+ * Fenced-block lines that run a tool's entry file through an interpreter — `node …/seed.mjs`,
+ * `python3 …/x.py`, or the editor binary itself.
+ *
+ * [Omar, 0.4.0 round 2] A downloaded node tool was documented as a bare name that is not on PATH, so
+ * the agent improvised an interpreter call from `process.execPath` — which on Windows is `Code.exe`
+ * — and opened the script in the editor instead of running it. The host now generates a launcher for
+ * every node tool, so a bare-name demonstration is a REAL command; the only wrong form is the one a
+ * bit could still teach: the interpreter call. Bare `python3 script.py` in a bit that is not about a
+ * tool is out of scope — this fires only on a *.mjs/*.cjs/*.js/*.py entry invoked by an interpreter.
+ */
+export function directEntryInvocations(body: string): string[] {
+	const hits: string[] = []
+	const re =
+		/^\s*(?:\$\s*)?(?:&\s*)?(?:"[^"]*[Cc]ode\.exe"|\S*[Cc]ode\.exe|node|nodejs|python3?|py\s+-3|\$\{?process\.execPath\}?)\s+\S*\.(?:mjs|cjs|js|py)\b/
+	for (const fence of body.match(/```[\s\S]*?```/g) ?? []) {
+		for (const line of fence.split("\n").slice(1, -1)) {
+			if (re.test(line)) {
+				hits.push(line.trim())
+			}
+		}
+	}
+	return hits
 }
 
 /** List the bit (.md) files under a knowledge root, relative + posix, excluding non-bit files. */
