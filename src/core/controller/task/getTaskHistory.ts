@@ -57,9 +57,14 @@ export async function getTaskHistory(controller: Controller, request: GetTaskHis
 
 		// Apply search if provided
 		if (searchQuery) {
-			// Simple search implementation
+			// Simple search implementation. The developer's own name for a session (`title`, set by
+			// renameTask) matches too: the history view's search runs HERE, not in the webview, so a
+			// filter on `task` alone made a renamed session unfindable by the name you gave it.
+			// [2026-09-09] Driven live in the sandbox: "renamed live" → no rows.
 			const query = searchQuery.toLowerCase()
-			filteredTasks = filteredTasks.filter((item) => item.task.toLowerCase().includes(query))
+			filteredTasks = filteredTasks.filter(
+				(item) => item.task.toLowerCase().includes(query) || (item.title ?? "").toLowerCase().includes(query),
+			)
 		}
 
 		// Calculate total count before sorting
