@@ -46,7 +46,10 @@ describe("a folder seeded after activation is classified again", () => {
 		const fresh = reclassifyWorkspaceIfStale(15_000, t0 + 16_000)
 		assert.equal(fresh.summary, "both", "the seeded gateway must be seen without a reload")
 		const apps = getCachedWorkspaceClassification()
-			.apps.map((a) => `${a.platform}:${path.relative(root, a.path)}`)
+			// `path.relative` answers in the platform separator, so this compared "gateway\esp32" against
+			// "gateway/esp32" and failed on Windows only — where ~95% of users are. The assertion is about
+			// which apps were found, not how the OS spells a path.
+			.apps.map((a) => `${a.platform}:${path.relative(root, a.path).split(path.sep).join("/")}`)
 			.sort()
 		assert.deepEqual(apps, ["esp:gateway/esp32", "nrf:gateway/ble-scanner"])
 	})

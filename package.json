@@ -590,7 +590,7 @@
 		"test:ask-bridge": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/askBridge.node-test.ts",
 		"test:session-lease": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/sessionLease.node-test.ts",
 		"test:inject-queue": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/injectQueue.node-test.ts",
-		"test:telemetry-events": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/telemetry/__tests__/telemetryEvents040.node-test.ts",
+		"test:telemetry-events": "ts-node --transpile-only -P tsconfig.unit-test.json -r ./src/test/requires.ts src/services/telemetry/__tests__/telemetryEvents040.node-test.ts",
 		"test:terminal-events": "ts-node --transpile-only -P tsconfig.unit-test.json src/hosts/vscode/terminal/terminalEndEvents.node-test.ts",
 		"test:gnss-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/gnssGate.node-test.ts",
 		"test:logger-tools": "python3 -m unittest discover -s iot-knowledge/platforms/nrf/tools/rtt-logger -p 'test_*.py'"

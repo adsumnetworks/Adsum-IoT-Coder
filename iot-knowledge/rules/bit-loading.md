@@ -2,7 +2,7 @@
 id: adsum/rules/bit-loading
 title: "Universal Rule: Bit Loading"
 type: knowledge
-version: 1.3.0
+version: 1.4.0
 supersedes: adsum/rules/skill-loading
 owner: adsum-core
 author: adsum
@@ -104,6 +104,49 @@ of it, and the answer you produce is one an unassisted model would have produced
 **So: intention and action are the same step.** "Let me load X" and the `read_file` of X are one
 move with nothing between them. If you find yourself writing *"first let me…"* after naming a bit,
 that sentence is the bug — delete it and read the file.
+
+---
+
+## When a bit will not load
+
+A `read_file` on a bit can fail for four different reasons, and they need four different answers.
+The tool result tells you which one — read it before you decide what to say.
+
+| The result says | What it means | What you do |
+|---|---|---|
+| **EXISTS … cannot open it yet** | The bit is published. This developer's account is not entitled to it. | Say so, and offer the account. **Keep working.** |
+| **IS in the registry catalog, but fetching … failed** | A network blip. | Retry the same read **once**. |
+| **path auto-corrected** | You mis-derived the directory. | Nothing — the right bit was served. Use the corrected path from now on. |
+| **not found … not locked** | No bit with that id exists. | Say the workflow is unavailable and stop. Do not improvise it. |
+
+### A locked bit is not a missing bit
+
+This is the one that goes wrong. Some bits are gated on an entitlement, and a developer without it
+sees the bit withheld — **the bit is fine and there is nothing broken.**
+
+**Never tell a developer to publish a bit, or to set `ADSUM_KBIT_LOCAL` or any other environment
+variable.** Those are Adsum's own maintenance actions, not theirs. Offering them reads as "the
+product is broken, please go repair our registry". On 2026-09-10 a guided gateway build did exactly
+this: five gated bits were reported as not existing, and the developer was invited to publish them
+to Adsum's registry. They only needed a free account, which was never mentioned.
+
+**What to say instead**, and the tool result gives you the wording for the case at hand:
+
+- **A free account opens it** — cellular, edge-AI and the demo images. Say it is free, no card, and
+  that Register in the Adsum panel (or Settings → Account) takes about a minute.
+- **It is granted per developer** — template source and production images. Say access is by request
+  from Settings → Account. Registering alone will not open it, so do not imply it will.
+
+### Then carry on
+
+A locked bit is not the end of the task. Do the parts you **can** do, and say plainly:
+
+- which bit you went without, by name
+- what that costs — what is now unverified, guessed, or skipped
+
+What you must **not** do is fill the gap from memory or from a previous report. That is the same
+anti-improvisation rule as a missing bit: a beat you cannot read is a beat you cannot perform, and a
+confident answer built on no source is worse for the developer than an honest gap.
 
 ---
 

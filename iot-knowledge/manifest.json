@@ -660,7 +660,7 @@
 			"id": "adsum/rules/bit-loading",
 			"title": "Universal Rule: Bit Loading",
 			"type": "knowledge",
-			"version": "1.3.0",
+			"version": "1.4.0",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -670,7 +670,7 @@
 			"platform": "universal",
 			"supersedes": "adsum/rules/skill-loading",
 			"path": "rules/bit-loading.md",
-			"content_hash": "c9af050505c0f6a143c270c68239ce2cfe3bf91419e4db3e978308a18c6b64de"
+			"content_hash": "55ed3e8b60d18e6dd480daf3a986ff3c490ac49c8f5bc0fab82e47d9d4e2c764"
 		},
 		{
 			"id": "adsum/rules/core",

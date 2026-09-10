@@ -5,6 +5,7 @@ import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { withLinks } from "@services/knowledge/kbit/people"
+import { tierOpens } from "@shared/adsumAccount"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
 import {
@@ -19,6 +20,7 @@ import {
 	isRegistryReachable,
 	loadBitByKbPath,
 	loadBitByRel,
+	lockedBitInfo,
 	provenanceOf,
 	suggestNearMissBits,
 } from "@/services/knowledge/KnowledgeResolver"
@@ -371,6 +373,32 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 						`and to retry in a minute.${antiImprovise}`,
 				)
 			}
+			// LOCKED, not missing. The manifest withholds a bit this account may not read, so every gated
+			// bit arrived here indistinguishable from a typo and got the "not in the registry" wording —
+			// which sent a developer off to publish it to our own registry while the actual fix was a free
+			// account (2026-09-10, an unregistered guided build: b0-pitch, b2-ble-scanner, b3-modem,
+			// b4-esp-app and multi-bearer-gateway, all `cellular-advanced`, all reported as non-existent).
+			// Asked BEFORE the near-miss rescue: a locked bit is not a mistyped one, and offering a
+			// same-named alternative would quietly answer from the wrong bit.
+			const locked = reachable && bitId !== null ? await lockedBitInfo(bitId) : null
+			if (locked) {
+				telemetryService.captureKbitLoadFailed({ reason: "locked", bitId: bitId ?? undefined, afterRetry: true })
+				// The tier is the difference between "click register" and "ask for access". Getting this
+				// wrong sends someone to a sign-up page that would not have opened the bit.
+				const how = tierOpens(locked.group)
+					? `This opens with a FREE account — no card. Tell the developer to click Register in the ` +
+						`Adsum panel (or Settings → Account) and sign in with GitHub or email, then retry this step.`
+					: `This one is not covered by registering: it is granted per developer. Tell the developer to ` +
+						`open Settings → Account and request access${locked.group ? ` to \`${locked.group}\`` : ""}.`
+				return formatResponse.toolError(
+					`Knowledge bit "${displayPath}" EXISTS and is published — this account simply cannot open it ` +
+						`yet.${locked.group ? ` It is gated on the \`${locked.group}\` entitlement.` : ""} This is NOT a ` +
+						`wrong path, NOT a missing bit, and NOTHING for the developer to publish or configure. ${how} ` +
+						`Do not offer to publish it, and do not mention environment variables — neither is theirs to do. ` +
+						`Then keep going: continue with whatever you CAN do, and say plainly which bit you went ` +
+						`without and what that costs.${antiImprovise}`,
+				)
+			}
 			// Near-miss rescue (F5 1907 field failure): a run guessed `cra/rules/core.md` for `cra/core.md`,
 			// retried the SAME wrong path twice, and dead-ended. The model can't list the catalog — the host can.
 			// Same-basename matches only, so a genuine typo gets its correction in one round.
@@ -409,10 +437,15 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			})
 			return formatResponse.toolError(
 				reachable
-					? `Knowledge bit not found: "${displayPath}". It is not bundled and not in the registry. ` +
+					? `Knowledge bit not found: "${displayPath}". It is not bundled and not in the registry, and it ` +
+							`is not locked behind an entitlement either — the registry does not know this id at all. ` +
 							pathHint +
 							`If the bit genuinely does not exist,${antiImprovise} ` +
-							`(Dev: set ADSUM_KBIT_LOCAL to load downloaded bits from disk, or publish the bit.)`
+							// Never suggest publishing it or setting ADSUM_KBIT_LOCAL. Both are OUR maintenance
+							// actions, and offering them to a developer reads as "the product is broken, please
+							// go fix our registry" — which is what happened on 2026-09-10.
+							`Do not suggest publishing the bit or setting any environment variable: neither is the ` +
+							`developer's to do.`
 					: `Could not load knowledge bit "${displayPath}": the Adsum knowledge registry is unreachable ` +
 							`and this bit is not cached locally. Check your network connection and retry.${antiImprovise} ` +
 							`(Bundled knowledge is unaffected.)`,

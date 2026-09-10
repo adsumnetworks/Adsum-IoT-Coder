@@ -3,8 +3,11 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { ClineEnv } from "@/config"
 import { ExtensionRegistryInfo } from "@/registry"
-import { getSessionToken } from "@/services/adsum/AccountState"
 import { getInstallId } from "@/services/adsum/InstallIdentity"
+// The token holder, NOT `AccountState` — importing that pulled in StateManager and through it
+// `vscode`, which killed every plain-node test that touched the resolver (and, from 2026-09-06,
+// `npm run test:kbits` in the pre-commit hook).
+import { getSessionToken } from "@/services/adsum/sessionToken"
 import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { getEditorIdentity } from "@/services/telemetry/editorIdentity"
 
@@ -126,6 +129,38 @@ export class RegistryClient {
 		try {
 			const data = JSON.parse(text) as DownloadedManifest
 			return Array.isArray(data?.bits) ? data : null
+		} catch {
+			return null
+		}
+	}
+
+	/**
+	 * Is this bit LOCKED, or does it genuinely not exist?
+	 *
+	 * The manifest cannot answer. A bit this caller may not read is left out of it entirely — correctly,
+	 * since listing it would publish its content hash — so "locked" and "never published" arrive here as
+	 * the same silence. We then said the wrong thing: on 2026-09-10 a run told a developer that
+	 * `products/fanstel/lew840x/beats/b0-pitch` was "not bundled and not in the registry", and offered
+	 * to wait while they PUBLISHED it to our own registry. The bit was fine. They had no account.
+	 *
+	 * So we ask about the one id we already tried to read. The answer carries no hash, no title and no
+	 * listing — only whether that id is locked and which grant opens it.
+	 *
+	 * Null on any doubt (unreachable, malformed, 404). The caller keeps its existing "not found"
+	 * wording in that case, which is the honest answer when we cannot establish otherwise.
+	 */
+	async fetchGateStatus(bitId: string): Promise<{ locked: boolean; group: string | null; needsExt: string | null } | null> {
+		const ext = encodeURIComponent(ExtensionRegistryInfo.version)
+		const text = await this.get(`/v1/kbits/gate?id=${encodeURIComponent(bitId)}&ext=${ext}`)
+		if (text === null) {
+			return null
+		}
+		try {
+			const d = JSON.parse(text) as { known?: boolean; locked?: boolean; group?: string | null; needsExt?: string | null }
+			if (d?.known !== true || typeof d.locked !== "boolean") {
+				return null
+			}
+			return { locked: d.locked, group: d.group ?? null, needsExt: d.needsExt ?? null }
 		} catch {
 			return null
 		}

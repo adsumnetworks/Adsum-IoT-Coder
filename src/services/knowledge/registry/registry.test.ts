@@ -105,6 +105,59 @@ describe("RegistryClient", () => {
 		assert.match(seen, /\/v1\/kbits\/manifest\?ext=\d+\.\d+\.\d+/)
 	})
 
+	/**
+	 * The gate lookup exists so a LOCKED bit stops reading as a MISSING one. Before it, both arrived as
+	 * the same silence and the extension told a developer to publish the bit to our own registry.
+	 */
+	test("fetchGateStatus reports a locked bit, its group, and asks only about the id given", async () => {
+		let seen = ""
+		const rc = new RegistryClient("http://r", async (url: string) => {
+			seen = url
+			return new Response(
+				JSON.stringify({
+					id: "adsum/products/fanstel/lew840x/beats/b0-pitch",
+					known: true,
+					locked: true,
+					group: "cellular-advanced",
+					needsExt: null,
+				}),
+				{ status: 200 },
+			)
+		})
+		const st = await rc.fetchGateStatus("adsum/products/fanstel/lew840x/beats/b0-pitch")
+		assert.deepEqual(st, { locked: true, group: "cellular-advanced", needsExt: null })
+		// One id, url-encoded, plus the app version — never a listing request.
+		assert.match(seen, /\/v1\/kbits\/gate\?id=adsum%2Fproducts%2Ffanstel%2Flew840x%2Fbeats%2Fb0-pitch&ext=\d+\.\d+\.\d+/)
+	})
+
+	test("fetchGateStatus stays silent unless it is sure: 404, unknown, malformed and offline all → null", async () => {
+		const at = (body: unknown, status = 200) =>
+			new RegistryClient(
+				"http://r",
+				async () => new Response(typeof body === "string" ? body : JSON.stringify(body), { status }),
+			)
+		// A bit that truly does not exist must NOT become "you need an account" — that would send every
+		// mistyped path to a sign-up page.
+		assert.equal(await at({ known: false }, 404).fetchGateStatus("adsum/nope"), null)
+		assert.equal(await at({ known: false }).fetchGateStatus("adsum/nope"), null)
+		assert.equal(await at("not json").fetchGateStatus("adsum/nope"), null)
+		assert.equal(
+			await new RegistryClient("http://r", async () => {
+				throw new Error("offline")
+			}).fetchGateStatus("adsum/nope"),
+			null,
+		)
+	})
+
+	test("fetchGateStatus: an unlocked bit answers locked:false, so the caller keeps its own wording", async () => {
+		const rc = new RegistryClient(
+			"http://r",
+			async () =>
+				new Response(JSON.stringify({ known: true, locked: false, group: null, needsExt: null }), { status: 200 }),
+		)
+		assert.deepEqual(await rc.fetchGateStatus("adsum/rules/core"), { locked: false, group: null, needsExt: null })
+	})
+
 	test("offline-safe: network throw → null; 404 → null; malformed manifest → null", async () => {
 		const throwing = new RegistryClient("http://r", async () => {
 			throw new Error("offline")

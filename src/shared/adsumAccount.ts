@@ -36,3 +36,20 @@ export const ADSUM_REGISTERED_BANNER = "adsum-registered"
 /** The entitlement that opens the four cellular cards. One name, used by the card and by the bits. */
 export const CELLULAR_GROUP = "cellular-advanced"
 export const EDGE_AI_GROUP = "edge-ai-advanced"
+
+/**
+ * What a free account carries the moment it exists. Mirrors the server's `REGISTERED_TIER`
+ * (`Adsum-Backend/src/services/groups.ts`), which resolves these at read time rather than writing
+ * entitlement rows for them.
+ *
+ * Repeated here for ONE purpose: telling a developer the truth about a locked bit. "Register — it's
+ * free" is right for these four and wrong for every other group, where an account exists already and
+ * the grant has to be asked for. Sending someone to a sign-up page that changes nothing is worse than
+ * saying plainly that access is by request.
+ */
+export const REGISTERED_TIER_GROUPS: readonly string[] = [CELLULAR_GROUP, EDGE_AI_GROUP, "lew840x-demo-hex", "blg20-demo-hex"]
+
+/** True when simply registering opens this group — as opposed to it needing a request. */
+export function tierOpens(group: string | null | undefined): boolean {
+	return !!group && REGISTERED_TIER_GROUPS.includes(group)
+}
