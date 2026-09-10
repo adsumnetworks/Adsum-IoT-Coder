@@ -751,6 +751,38 @@ export async function downloadedBitKnown(id: string): Promise<boolean> {
 	return (await downloadedManifest()).has(id)
 }
 
+/**
+ * Why a bit the manifest does not list is missing: locked behind an entitlement, or genuinely absent.
+ *
+ * `downloadedBitKnown` cannot tell them apart, because the manifest deliberately withholds a gated
+ * bit rather than listing a hash the caller may not fetch. That gap is what made the extension tell a
+ * developer their bit did not exist and invite them to publish it to our own registry — the one thing
+ * they could actually do, register, was never offered. So this asks the registry about the single id
+ * that just failed.
+ *
+ * Null whenever we cannot establish otherwise (offline, malformed, or a bit that really is absent).
+ * "Not found" stays the answer under doubt; it is honest, and a wrong "you need an account" would
+ * send someone to a sign-up page that fixes nothing.
+ *
+ * Cached per session per id: the answer changes only when someone registers or is granted a group,
+ * and a failing read is often retried once.
+ */
+const gateStatusCache = new Map<string, { locked: boolean; group: string | null; needsExt: string | null } | null>()
+export async function lockedBitInfo(id: string): Promise<{ group: string | null; needsExt: string | null } | null> {
+	let st = gateStatusCache.get(id)
+	if (st === undefined) {
+		st = await registry().fetchGateStatus(id)
+		gateStatusCache.set(id, st)
+	}
+	// `needsExt` without a group is an app too old to render the bit — real, but not an account problem.
+	return st && st.locked ? { group: st.group, needsExt: st.needsExt } : null
+}
+
+/** Test seam: the per-session gate answers are memoised, and a suite that grants a group must clear them. */
+export function __clearGateStatusCache(): void {
+	gateStatusCache.clear()
+}
+
 /** Display rel path for a bit id — inverse of deriveIdFromRel (platform ids regain the `platforms/` prefix). */
 export function relPathForId(id: string): string {
 	const rest = id.replace(/^adsum\//, "")

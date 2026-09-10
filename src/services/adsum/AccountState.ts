@@ -4,6 +4,7 @@ import { StateManager } from "@/core/storage/StateManager"
 import { Logger } from "@/services/logging/Logger"
 import { telemetryService } from "@/services/telemetry"
 import { getInstallId } from "./InstallIdentity"
+import { getSessionToken, setSessionToken } from "./sessionToken"
 
 /**
  * The developer's account, as the extension holds it.
@@ -42,7 +43,9 @@ export interface AccountProfile {
 type Listener = (profile: AccountProfile | null) => void
 
 let cached: AccountProfile | null = null
-let token: string | undefined
+/** The bearer now lives in `sessionToken.ts` so RegistryClient can read it without pulling in
+ *  StateManager (and through it `vscode`). This file stays its only writer. */
+const token = () => getSessionToken()
 /**
  * The sign-in in flight. Held in globalState (shared by every window) with this as a local mirror,
  * because the window that STARTS a sign-in is frequently not the one that finishes it: the browser
@@ -88,16 +91,16 @@ export function initAccountState(): void {
 	ready = true
 	try {
 		cached = store().getGlobalStateKey("adsumAccountProfile") ?? null
-		token = store().getSecretKey("adsumSessionToken") || undefined
+		setSessionToken(store().getSecretKey("adsumSessionToken") || undefined)
 	} catch {
 		// Before StateManager is initialised (a very early activation path) there is simply no account
 		// yet — never a crash on a surface that has to paint.
 		return
 	}
 	// A profile with no token is the residue of a sign-out that did not finish; the token is the truth.
-	if (!token && cached) {
+	if (!token() && cached) {
 		void clear()
-	} else if (token) {
+	} else if (token()) {
 		void refresh()
 	}
 }
@@ -127,10 +130,8 @@ export function getAccount(): AccountProfile | null {
 	return cached
 }
 
-/** The bearer for RegistryClient. undefined ⇒ send no Authorization header at all. */
-export function getSessionToken(): string | undefined {
-	return token
-}
+/** The bearer now lives in `sessionToken.ts`; re-exported so existing callers are unaffected. */
+export { getSessionToken } from "./sessionToken"
 
 /** True when the account holds this entitlement group (or `all`). Cheap; used to render locks. */
 export function hasGroup(group: string | undefined): boolean {
@@ -208,7 +209,7 @@ export async function completeSignIn(code: string, state: string): Promise<boole
 		if (!data.token) {
 			return false
 		}
-		token = data.token
+		setSessionToken(data.token)
 		persistToken(data.token)
 		cached = {
 			email: data.email ?? "",
@@ -239,7 +240,7 @@ export async function completeSignIn(code: string, state: string): Promise<boole
  * and locking their cards because the wifi dropped would be a lie about why.
  */
 export async function refresh(force = false): Promise<void> {
-	if (!token) {
+	if (!token()) {
 		return
 	}
 	if (!force && cached && Date.now() - cached.fetchedAt < REFRESH_MS) {
@@ -247,7 +248,7 @@ export async function refresh(force = false): Promise<void> {
 	}
 	try {
 		const base = ClineEnv.config().adsumApiBaseUrl.replace(/\/$/, "")
-		const res = await fetch(`${base}/v1/me`, { headers: { Authorization: `Bearer ${token}` } })
+		const res = await fetch(`${base}/v1/me`, { headers: { Authorization: `Bearer ${token()}` } })
 		if (res.status === 401) {
 			// The server revoked or expired it. That IS a sign-out, and pretending otherwise would leave
 			// cards unlocked that no longer resolve.
@@ -282,7 +283,7 @@ export async function refresh(force = false): Promise<void> {
 
 /** Sign out here AND on the server, so a lost machine actually loses access. */
 export async function signOut(): Promise<void> {
-	const had = token
+	const had = token()
 	await clear()
 	if (!had) {
 		return
@@ -296,7 +297,7 @@ export async function signOut(): Promise<void> {
 }
 
 async function clear(): Promise<void> {
-	token = undefined
+	setSessionToken(undefined)
 	cached = null
 	// Through the shared store: a nonce left behind in globalState would outlive the sign-out and let
 	// a stale callback land in any window afterwards.
@@ -337,7 +338,7 @@ function persistProfile(next: AccountProfile | undefined | null): void {
 export function __setForTest(next: { token?: string; profile?: AccountProfile | null; state?: string }): void {
 	ready = false // a unit test drives the module in memory; nothing reaches StateManager
 	if ("token" in next) {
-		token = next.token
+		setSessionToken(next.token)
 	}
 	if ("profile" in next) {
 		cached = next.profile ?? null
