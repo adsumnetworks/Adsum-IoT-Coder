@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import AccountSection from "../../../settings/sections/AccountSection"
 import { KbitLockedRow } from "../../KbitLockedRow"
 import CellularGroup from "../CellularGroup"
-import RequestAccessForm from "../RequestAccessForm"
+import RequestAccessForm, { chipsFor, FAMILIES } from "../RequestAccessForm"
 
 /**
  * W-14…W-21 — asking for what a free account does not give you, and the two doors out.
@@ -237,5 +237,26 @@ describe("W — asking, and the account tab", () => {
 		})
 		expect(screen.queryByTestId("delete-confirm")).toBeNull()
 		expect(rpc.deleteAccount).toHaveBeenCalledTimes(2)
+	})
+
+	it("the chips a family offers are that family's real silicon, and every family has some", () => {
+		// The point of the change: a BLG20's halves are an nRF54 and an nRF9151, so offering
+		// "nRF9160" against one files a request nobody can grant.
+		const blg20 = chipsFor("blg20").map((c) => c.id)
+		expect(blg20).toEqual(["demo-hex", "prod-hex", "ble-src", "9151-src", "adv-ble", "adv-full"])
+		expect(chipsFor("blg20").find((c) => c.id === "9151-src")?.label).toContain("nRF9151")
+		expect(blg20).not.toContain("esp-src")
+		expect(blg20).not.toContain("9160-src")
+
+		// The other family is untouched.
+		expect(chipsFor("lew840x").map((c) => c.id)).toEqual(["ble-src", "esp-src", "9160-src"])
+
+		// Every family in the picker resolves to a non-empty list — a family whose chips did not
+		// resolve would render a form with nothing to tick and a Send button that never enables.
+		for (const f of FAMILIES) {
+			expect(chipsFor(f.id).length).toBeGreaterThan(0)
+		}
+		// And an unknown family falls back rather than throwing on [0].id.
+		expect(chipsFor("nope").length).toBeGreaterThan(0)
 	})
 })

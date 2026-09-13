@@ -22,11 +22,36 @@ export const FAMILIES = [
 	{ id: "blg20", label: "Fanstel BLG20" },
 ] as const
 
-export const CHIPS = [
-	{ id: "ble-src", label: "BLE (nRF52840)" },
-	{ id: "esp-src", label: "ESP32" },
-	{ id: "9160-src", label: "nRF9160" },
-] as const
+/**
+ * What a family can be asked for, per family.
+ *
+ * Per family and not one list, because the chips are the real silicon: a BLG20's BLE half is an
+ * nRF54 and its cellular half an nRF9151, and offering "nRF9160" against a board that does not
+ * carry one files a request nobody can grant. The ids are the group suffixes the steward acts on,
+ * so a label may be rewritten freely and an id may not.
+ */
+export const CHIPS_BY_FAMILY = {
+	lew840x: [
+		{ id: "ble-src", label: "BLE (nRF52840)" },
+		{ id: "esp-src", label: "ESP32" },
+		{ id: "9160-src", label: "nRF9160" },
+	],
+	blg20: [
+		{ id: "demo-hex", label: "Demo image (both halves, prebuilt)" },
+		{ id: "prod-hex", label: "Production image" },
+		{ id: "ble-src", label: "BLE source (nRF54)" },
+		{ id: "9151-src", label: "Cellular + satellite source (nRF9151)" },
+		{ id: "adv-ble", label: "Advanced BLE knowledge set" },
+		{ id: "adv-full", label: "Advanced full-gateway knowledge set" },
+	],
+} as const
+
+/** The list for a family, and never an empty one: an unknown family falls back to the first. */
+export const chipsFor = (family: string): ReadonlyArray<{ id: string; label: string }> =>
+	CHIPS_BY_FAMILY[family as keyof typeof CHIPS_BY_FAMILY] ?? CHIPS_BY_FAMILY[FAMILIES[0].id]
+
+/** The historic export, kept so nothing that imports it breaks: the LEW840x list. */
+export const CHIPS = CHIPS_BY_FAMILY.lew840x
 
 export type RequestState = "none" | "sent" | "granted"
 
@@ -45,6 +70,15 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
 	const [family, setFamily] = useState<string>(initialFamily ?? FAMILIES[0].id)
 	const [chips, setChips] = useState<string[]>(["ble-src"])
+
+	/*
+	 * A chip selected for one family is meaningless in another - "esp-src" against a BLG20 is a
+	 * request the steward cannot resolve - so changing the family resets the selection to that
+	 * family's first chip rather than carrying the old ids across.
+	 */
+	useEffect(() => {
+		setChips([chipsFor(family)[0].id])
+	}, [family])
 	const [message, setMessage] = useState("")
 	const [sending, setSending] = useState(false)
 	const [sent, setSent] = useState(false)
@@ -193,7 +227,7 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 						</Field>
 						<Field label="Chips you need as source">
 							<div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-								{CHIPS.map((c) => (
+								{chipsFor(family).map((c) => (
 									<label
 										key={c.id}
 										style={{

@@ -359,9 +359,23 @@ export const CELLULAR_BOARDS = /nrf91|9160|9151|9161|thingy:?91|lew840|blg20/i
  * advertisement, and the surface's rule is that a reason earns its line only when it names something
  * real.
  */
+/** Boards whose set registration alone does NOT reach: the ask is a request, not a sign-up. */
+const REQUEST_ONLY_BOARDS = /blg20/i
+
 export function cellularHint(boards: readonly string[]): string | undefined {
 	const match = boards.find((b) => CELLULAR_BOARDS.test(b))
-	return match ? `Your ${match} is detected — register to unlock its attach and APN recipes.` : undefined
+	if (!match) {
+		return undefined
+	}
+	/*
+	 * "Register to unlock" has to be TRUE of the board in front of them. Registering grants the
+	 * registered tier; it does not grant blg20-early-access, which a steward decides. Telling a
+	 * BLG20 owner to register would send them through a sign-up that ends where it started, and a
+	 * surface that promises an unlock it cannot deliver costs more than one that asks.
+	 */
+	return REQUEST_ONLY_BOARDS.test(match)
+		? `Your ${match} is detected — ask us to unlock its attach and APN recipes.`
+		: `Your ${match} is detected — register to unlock its attach and APN recipes.`
 }
 
 /**

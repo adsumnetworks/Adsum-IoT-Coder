@@ -93,7 +93,12 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 					    is rendered as a sibling rather than inside it: the card IS a button, and a control
 					    nested in a button is unreachable by keyboard and mis-announced by screen readers.
 					    Same place, same words, same colour — one valid control instead of two broken ones. */}
-						{!locked && intent.id === "cellularGateway" && <SourceLine onRequest={() => setRequesting("lew840x")} />}
+						{!locked && SOURCE_FAMILY[intent.id] && (
+							<SourceLine
+								family={SOURCE_FAMILY[intent.id]}
+								onRequest={() => setRequesting(SOURCE_FAMILY[intent.id])}
+							/>
+						)}
 					</React.Fragment>
 				)
 			})}
@@ -112,34 +117,56 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 }
 
 /**
+ * Which family's source rungs a card offers. A card that is not in here offers none — the map is
+ * the statement, so adding a gateway without deciding what its source is cannot silently inherit
+ * another family's.
+ */
+const SOURCE_FAMILY: Record<string, string> = {
+	cellularGateway: "lew840x",
+	blg20Gateway: "blg20",
+}
+
+/**
  * "Request template source access →", or the state of the request already made.
  *
  * Read from the account's open requests, which come from the server — so a request sent on another
  * machine shows here too, and one the operator has decided stops showing as pending on the next
  * refresh without anyone clicking anything.
  */
-export const SourceLine: React.FC<{ onRequest: () => void }> = ({ onRequest }) => {
+export const SourceLine: React.FC<{ onRequest: () => void; family?: string }> = ({ onRequest, family = "lew840x" }) => {
 	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
-	const granted = !!adsumAccount?.groups.some((g) => g.startsWith("lew840x-") && g.endsWith("-src"))
-	const pending = (adsumAccount?.openRequests ?? []).includes("lew840x")
+	/*
+	 * The group prefix is the family's own, read from the card, not the literal "lew840x" this
+	 * line carried while there was one gateway. A BLG20 holder's rungs are blg20-ble-src and
+	 * blg20-9151-src, and a check hard-coded to the other family would have shown them
+	 * "request access" for source they already hold.
+	 */
+	const granted = !!adsumAccount?.groups.some((g) => g.startsWith(`${family}-`) && g.endsWith("-src"))
+	const pending = (adsumAccount?.openRequests ?? []).includes(family)
 	const style: React.CSSProperties = { fontSize: "11px", paddingLeft: "63px", marginTop: "-6px" }
+	/*
+	 * Two gateway cards can now show this line at once, and two elements with one test id is a
+	 * rig that silently asserts about whichever came first. The historic id stays on the family
+	 * that had it, so every existing test still names the thing it was written about.
+	 */
+	const testId = family === "lew840x" ? "source-line" : `source-line-${family}`
 	if (granted) {
 		return (
-			<div data-testid="source-line" style={{ ...style, color: "var(--vscode-descriptionForeground)" }}>
+			<div data-testid={testId} style={{ ...style, color: "var(--vscode-descriptionForeground)" }}>
 				Template source: granted — it resolves in your next run
 			</div>
 		)
 	}
 	if (pending) {
 		return (
-			<div data-testid="source-line" style={{ ...style, color: "var(--vscode-descriptionForeground)" }}>
+			<div data-testid={testId} style={{ ...style, color: "var(--vscode-descriptionForeground)" }}>
 				Template source: request sent · we reply within a business day
 			</div>
 		)
 	}
 	return (
 		<button
-			data-testid="source-line"
+			data-testid={testId}
 			onClick={onRequest}
 			style={{ ...style, background: "none", border: "none", cursor: "pointer", color: BRAND_CYAN_TEXT, textAlign: "left" }}
 			type="button">

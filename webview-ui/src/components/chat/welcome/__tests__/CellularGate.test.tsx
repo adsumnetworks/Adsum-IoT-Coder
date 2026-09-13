@@ -166,6 +166,14 @@ describe("W — the register gate", () => {
 		expect(cellularHint(["nRF52840 DK"])).toBeUndefined()
 		expect(cellularHint([])).toBeUndefined()
 
+		// A BLG20 is detected the same way and asks for something else: registering grants the
+		// registered tier and does NOT grant blg20-early-access, so the hint must not promise an
+		// unlock that a sign-up cannot deliver.
+		expect(cellularHint(["Fanstel BLG20X"])).toBe(
+			"Your Fanstel BLG20X is detected — ask us to unlock its attach and APN recipes.",
+		)
+		expect(cellularHint(["blg20"])).not.toContain("register to unlock")
+
 		render(<CellularGroup {...handlers()} boards={["nRF9160 DK"]} />)
 		expect(screen.getByTestId("cellular-hint").textContent).toBe(
 			"Your nRF9160 DK is detected — register to unlock its attach and APN recipes.",
