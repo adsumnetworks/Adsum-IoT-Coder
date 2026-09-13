@@ -54,6 +54,9 @@ export const KBIT_GROUPS = [
 	"blg20-9151-src",
 	// opens the BLG20 gateway card; by request, unlocked per developer as certification lands
 	"blg20-early-access",
+	// the advanced knowledge behind each BLG20x source rung; granted with the rung [13 Sep 2026]
+	"blg20-adv-ble",
+	"blg20-adv-full",
 	// staff / partner catch-all: holding it satisfies every other group
 	"all",
 ] as const
