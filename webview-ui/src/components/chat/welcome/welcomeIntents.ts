@@ -330,8 +330,9 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 		// Names as Fanstel writes them (fanstel.com/blg20cbwg20c, /lbg51e20c, checked 2026-09-09): the IP51
 		// BLG20BC / BLG20BF / BLG20XE line and the IP67 LBG20BC / LBG20BXE / LBG20BC02C line, all nRF9151 +
 		// nRF54LM20B. "BLC" was a mishearing; BWG20BF is the WiFi-only sibling with no nRF9151 and is not here.
-		description:
-			"Fanstel's next gateways, indoor and outdoor. Two chips: an nRF54LM20B for the BLE half, an nRF9151 for cellular and satellite.",
+		// One line at panel width: what it is, then the two chips. The variants and the Wi-Fi builds
+		// are a detail for the board's own page, not for a row someone is scanning.
+		description: "Indoor and outdoor. An nRF54 for the BLE half, an nRF9151 for cellular and satellite.",
 		needsAlso: "a Fanstel BLG20x or LBG20x on the desk",
 		group: "blg20-early-access",
 	},

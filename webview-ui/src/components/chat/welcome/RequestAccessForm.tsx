@@ -203,8 +203,8 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 						<Title>Request sent</Title>
 						<Lead>
 							We reply within a business day to{" "}
-							<b style={{ color: "var(--vscode-foreground)" }}>{adsumAccount?.email}</b>. When access is granted the{" "}
-							{familyLabel.replace("Fanstel ", "")} card will say so, and the source will resolve in your next run.
+							<b style={{ color: "var(--vscode-foreground)" }}>{adsumAccount?.email}</b>. The{" "}
+							{familyLabel.replace("Fanstel ", "")} card will say so when it is yours.
 						</Lead>
 						<Row>
 							<Secondary onClick={onClose} testId="request-done">
@@ -215,10 +215,9 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 				) : (
 					<>
 						<Title>Ask for more details</Title>
-						<Lead>
-							The prebuilt gateway templates are licensed source. Tell us what you’re building and which chips you
-							need to customise.
-						</Lead>
+						{/* One line: what to do. The old lead explained our licensing before asking the
+						    question, which is our concern and not the reader's at this moment. */}
+						<Lead>Tell us what you are building. These are licensed source; we will say what covers it.</Lead>
 						<Field label="Gateway family">
 							<select
 								data-testid="request-family"

@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { KbitLockedRow } from "../../KbitLockedRow"
 import DemoHexCard from "../DemoHexCard"
-import GatewayLadder from "../GatewayLadder"
+import GatewayLadder, { LADDER_COPY } from "../GatewayLadder"
 import { CELLULAR_INTENTS } from "../welcomeIntents"
 
 /**
@@ -200,11 +200,9 @@ describe("BLG20x store bits — falsifiers", () => {
 		expect(card.textContent).not.toMatch(
 			/source is yours|yours to (build|ship)|already (included|yours)|coming to your account|almost|trial of the source|free with/i,
 		)
-		// "Yours" appears once, and it is the demo.
-		// \b, or "Build it your-self" counts as a claim of ownership.
-		const yours = (card.textContent ?? "").match(/\byours\b/gi) ?? []
-		expect(yours).toHaveLength(1)
-		expect(card.textContent).toContain("The demo is yours now")
+		// Ownership is shown, not claimed: the badge and the doing action say it, and no prose does.
+		expect(screen.getByTestId("ladder-rung-license-badge").textContent).toBe("Demo included")
+		expect(card.textContent).not.toMatch(/\byours\b/i)
 
 		// Still no price and no licence term for this account either.
 		expect(card.textContent).not.toMatch(
@@ -230,6 +228,36 @@ describe("BLG20x store bits — falsifiers", () => {
 		state.current = account(["blg20-demo-hex"])
 		render(<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onFlashDemo={vi.fn()} onStart={vi.fn()} />)
 		expect(screen.getByTestId("ladder-rung-license-badge").textContent).toBe("Demo included")
-		expect(screen.getByTestId("gateway-ladder").textContent).toContain("The demo is yours now")
+		// The doing action is the ownership signal now, not a sentence about it.
+		expect(screen.getByTestId("ladder-flash-demo").textContent).toBe("Flash the demo")
+	})
+
+	it("F10 no rung says more than a developer can take in at a glance", () => {
+		/*
+		 * 60 characters, calibrated against the rendered heights and not guessed: at 269 px the body
+		 * column is about 200 px, roughly 30 characters of the 12 px face, so two lines is 60. The
+		 * first pass used 88 and the shooting script's measurement caught a body rendering FOUR lines
+		 * at that width — which is why the number comes from the render, and the render check stays in
+		 * the shooting script (jsdom does no layout).
+		 */
+		const TWO_LINES = 60
+		for (const [key, line] of Object.entries(LADDER_COPY)) {
+			assert_length(key, line, TWO_LINES)
+		}
+		// And the card as a whole: one screen, not an essay.
+		state.current = account(["blg20-demo-hex"])
+		render(<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onFlashDemo={vi.fn()} onStart={vi.fn()} />)
+		const words = (screen.getByTestId("gateway-ladder").textContent ?? "").split(/\s+/).filter(Boolean).length
+		expect(words, `the whole card is ${words} words`).toBeLessThanOrEqual(120)
+
+		// The words that carry a commitment are still there.
+		const card = screen.getByTestId("gateway-ladder").textContent ?? ""
+		for (const kept of ["Free", "Limited use for demos", "Ask for more details", "We reply within a business day"]) {
+			expect(card, `"${kept}" is load-bearing and must survive the cut`).toContain(kept)
+		}
 	})
 })
+
+function assert_length(key: string, line: string, budget: number) {
+	expect(line.length, `LADDER_COPY.${key} is ${line.length} characters: "${line}"`).toBeLessThanOrEqual(budget)
+}

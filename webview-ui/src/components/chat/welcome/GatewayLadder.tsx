@@ -18,6 +18,33 @@ import { ASK_FOR_DETAILS } from "./welcomeIntents"
  * nothing to their account.
  */
 
+/**
+ * The words on the card, in one place so their LENGTH is a testable property.
+ *
+ * A developer with the board on the desk reads this to answer one question — what can I do in the
+ * next minute — and the first draft answered it in two paragraphs per rung, which at panel width
+ * pushed the demo button below the fold. Each rung is now a title, one plain line, and one action.
+ * The words kept are the ones that carry a commitment: Free, Registered, Licensed, "Limited use for
+ * demos", "Ask for more details", "We reply within a business day". The rest were ours enjoying
+ * themselves.
+ *
+ * The budget is 60 characters, measured and not guessed: at 269 px the body column is about 200 px
+ * wide, which is roughly 30 characters of the 12 px face, so two lines is 60. The rendered heights
+ * are printed beside every narrow shot, and that is what the number is calibrated against.
+ */
+export const LADDER_COPY = {
+	question: "How do you want the firmware?",
+	build: "Everything to build it from scratch, including the traps.",
+	advanced: "Advanced set: on request",
+	license: "Our build for this board, verified and signed.",
+	demoTerms: "Limited use for demos",
+	production: "Our build for the units you ship.",
+	source: "Our firmware's source, one half or both.",
+	built: "Tell us what it must do, how many, by when.",
+	reply: "We reply within a business day.",
+	after: "Program each half with your own probe.",
+} as const
+
 /** Boards this ladder is about. A board outside it gets no ladder, not a wrong one. */
 export const LADDER_BOARDS = /blg20|lbg20/i
 
@@ -122,18 +149,11 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onA
 				 */}
 			</div>
 			<div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--vscode-foreground)", margin: "6px 0 2px" }}>
-				How do you want the firmware?
+				{LADDER_COPY.question}
 			</div>
 
 			<Rung badge="Free" icon="tools" testId="ladder-rung-build" title="Build it yourself">
-				<Body>
-					Everything you need to build a gateway on this board from scratch: the board, the two chips, the programming
-					recipe, and the traps that cost us days.
-				</Body>
-				<Body>
-					There is an advanced set too. It knows this hardware, so you build the full gateway from scratch much faster;
-					and for a licence holder it knows the firmware, so you customise that much faster too. Provided on request.
-				</Body>
+				<Body>{LADDER_COPY.build}</Body>
 				<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "7px" }}>
 					<button
 						data-testid="ladder-start"
@@ -151,35 +171,30 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onA
 						type="button">
 						Start in the editor
 					</button>
-					<Ask label={`${ASK_FOR_DETAILS} — the advanced set`} onClick={() => onAsk("adv")} testId="ladder-ask-adv" />
+				</div>
+				{/* The advanced set is a line, not a pitch: it says what it is and offers the one action. */}
+				<div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginTop: "6px" }}>
+					<span style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>{LADDER_COPY.advanced}</span>
+					<Ask onClick={() => onAsk("adv")} testId="ladder-ask-adv" />
 				</div>
 			</Rung>
 
-			{/*
-			 * "Demo included" and "the demo is yours now" are TRUE ONLY OF SOMEONE WHO HOLDS IT. This
-			 * board's demo pair is granted per account, not by the tier, so a registered developer who
-			 * has not been granted it was being told the demo was already theirs and then offered a
-			 * request for it — the surface claiming ownership and the button denying it, one line apart.
-			 */}
 			<Rung
 				badge={hasDemo ? "Demo included" : "Licensed"}
 				icon="verified"
 				testId="ladder-rung-license"
 				title="License ours">
-				<Body>
-					Our build for this board, verified on it and signed.{" "}
-					{hasDemo ? "The demo is yours now; ask about the other two." : "Ask about any of the three ways."}
-				</Body>
-				<div style={{ marginTop: "7px", display: "flex", flexDirection: "column", gap: "9px" }}>
+				<Body>{LADDER_COPY.license}</Body>
+				<div style={{ marginTop: "7px", display: "flex", flexDirection: "column", gap: "8px" }}>
 					<div data-testid="ladder-way-demo">
-						<div style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>
-							Demo{" "}
-							<span style={{ color: "var(--vscode-descriptionForeground)" }}>
-								— included with a registered account
+						<div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+							<span style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>Demo</span>
+							<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
+								{LADDER_COPY.demoTerms}
 							</span>
+							{hasDemo ? null : <Ask onClick={() => onAsk("demo")} testId="ladder-ask-demo" />}
 						</div>
-						<Body>Limited use for demos</Body>
-						{hasDemo ? (
+						{hasDemo && (
 							<button
 								data-testid="ladder-flash-demo"
 								onClick={onFlashDemo}
@@ -197,33 +212,27 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onA
 								type="button">
 								Flash the demo
 							</button>
-						) : (
-							<Ask onClick={() => onAsk("demo")} testId="ladder-ask-demo" />
 						)}
 					</div>
 					<div data-testid="ladder-way-production">
 						<div style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>Production licence</div>
-						<Body>Our verified build for the units you ship. Ask and we will tell you what it covers.</Body>
+						<Body>{LADDER_COPY.production}</Body>
 						<Ask onClick={() => onAsk("prod-hex")} testId="ladder-ask-prod" />
 					</div>
 					<div data-testid="ladder-way-source">
 						<div style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>Source licence</div>
-						<Body>
-							The source of our firmware, for the radio half or for both halves, with the advanced knowledge to
-							build on it and customise it fast.
-						</Body>
+						<Body>{LADDER_COPY.source}</Body>
 						<Ask onClick={() => onAsk("both-src")} testId="ladder-ask-source" />
 					</div>
 				</div>
 			</Rung>
 
 			<Rung badge="By arrangement" icon="edit" testId="ladder-rung-built" title="Have it built">
-				<Body>
-					Tell us what the firmware has to do, how many units and by when. We come back with a lead time and a range,
-					and what we build is delivered on this same ladder.
-				</Body>
-				<Ask onClick={() => onAsk("built")} testId="ladder-ask-built" />
-				<Body>We reply within a business day.</Body>
+				<Body>{LADDER_COPY.built}</Body>
+				<div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
+					<Ask onClick={() => onAsk("built")} testId="ladder-ask-built" />
+					<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>{LADDER_COPY.reply}</span>
+				</div>
 			</Rung>
 
 			{onBrowse && (

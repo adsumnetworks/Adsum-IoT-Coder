@@ -58,11 +58,7 @@ describe("W — asking, and the account tab", () => {
 	it("W-14 the form says licensed source, offers both families and three chips, and never promises open source", () => {
 		render(<RequestAccessForm onClose={vi.fn()} open={true} />)
 		expect(screen.getByText("Ask for more details")).toBeTruthy()
-		expect(
-			screen.getByText(
-				/The prebuilt gateway templates are licensed source\. Tell us what you’re building and which chips you need to customise\./,
-			),
-		).toBeTruthy()
+		expect(screen.getByText(/These are licensed source; we will say what covers it\./)).toBeTruthy()
 		expect(screen.getByTestId("request-family")).toBeTruthy()
 		expect(screen.getByText("Fanstel LEW840x")).toBeTruthy()
 		expect(screen.getByText("Fanstel BLG20")).toBeTruthy()
@@ -88,7 +84,7 @@ describe("W — asking, and the account tab", () => {
 		expect(onSent).toHaveBeenCalledWith("lew840x")
 		expect(screen.getByText("Request sent")).toBeTruthy()
 		expect(screen.getByText(/We reply within a business day to/)).toBeTruthy()
-		expect(screen.getByText(/the source will resolve in your next run\./)).toBeTruthy()
+		expect(screen.getByText(/card will say so when it is yours\./)).toBeTruthy()
 	})
 
 	it("W-15b a second request for the same family says which case it hit, not a generic failure", async () => {
