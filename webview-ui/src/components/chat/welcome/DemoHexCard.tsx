@@ -32,6 +32,14 @@ interface DemoPair {
 	/** What happens after, in one line. */
 	after: string
 	/**
+	 * The licence notice that now travels with every image, in one line.
+	 *
+	 * A sentence and not a link: the document it would point at does not exist yet, and a card is
+	 * not where anyone reads licence text. It says the one operational fact — a notice is written
+	 * beside the images — so nobody is surprised by a file they did not ask for.
+	 */
+	licence?: string
+	/**
 	 * What protects the image today, in the developer's words and not in ours. The same sentence
 	 * appears in the bit's descriptor and on the datasheet's licence row; it is written once here so
 	 * the three cannot drift apart.
@@ -61,6 +69,7 @@ const DEMO_PAIRS: readonly DemoPair[] = [
 		limits: ["Limited use for demos", "Terrestrial and satellite"],
 		action: "Install into this project",
 		after: "Then program each half with your own probe. Take the serial number from the tool, never one you remember.",
+		licence: "A licence notice is written beside the images.",
 		protection:
 			"Today the demo image is protected by your account's access and a usage cap built into the image, " +
 			"nothing more. The production image is protected by account access only.",
@@ -158,6 +167,13 @@ const DemoHexCard: React.FC<DemoHexCardProps> = ({ onFlash, flashing }) => {
 					</>
 				)}
 			</div>
+			{pair.licence && (
+				<div
+					data-testid="demo-licence"
+					style={{ fontSize: "11px", marginTop: "8px", color: "var(--vscode-descriptionForeground)" }}>
+					{pair.licence}
+				</div>
+			)}
 			{pair.protection && (
 				<div
 					data-testid="demo-protection"

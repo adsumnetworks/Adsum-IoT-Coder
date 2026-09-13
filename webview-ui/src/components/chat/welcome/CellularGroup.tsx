@@ -10,9 +10,9 @@ import RequestAccessForm from "./RequestAccessForm"
 import { type IntentActionHandlers, runIntent } from "./runIntent"
 import {
 	ASK_FOR_DETAILS,
+	blg20InstallPrompt,
 	CELLULAR_INTENTS,
 	cellularHint,
-	DEMO_PAIR_PROMPT_BLG20,
 	type IntentDef,
 	isRequestOnlyGroup,
 } from "./welcomeIntents"
@@ -91,7 +91,7 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 				<GatewayLadder
 					boards={boards}
 					onAsk={() => setRequesting("blg20")}
-					onFlashDemo={() => void handlers.onStartTask(DEMO_PAIR_PROMPT_BLG20)}
+					onInstall={(way) => void handlers.onStartTask(blg20InstallPrompt(way))}
 					onStart={() => {
 						entryRunStart("blg20Gateway", "card")
 						runIntent("blg20Gateway", handlers)

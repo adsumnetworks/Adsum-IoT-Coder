@@ -129,17 +129,21 @@ const ladderFor = (groups: string[] | null) => {
 		],
 		render: () => (
 			<>
-				<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={noop} onFlashDemo={noop} onStart={noop} />
-				<KbitLockedRow
-					bit={{
-						id: "adv-full",
-						title: "The advanced set — the whole board",
-						author: "Ismail Hamdad",
-						group: "blg20-adv-full",
-						summary: "It knows this hardware, so you build the full gateway from scratch much faster.",
-					}}
-					onRequestAccess={noop}
-				/>
+				<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={noop} onInstall={noop} onStart={noop} />
+				{/* A locked row only for an account that does NOT hold the set — a holder would simply
+				    read the bit, and a story that shows them a lock teaches the reviewer the wrong thing. */}
+				{!(groups ?? []).some((g) => g === "all" || g.startsWith("blg20-adv")) && (
+					<KbitLockedRow
+						bit={{
+							id: "adv-full",
+							title: "The advanced set — the whole board",
+							author: "Ismail Hamdad",
+							group: "blg20-adv-full",
+							summary: "It knows this hardware, so you build the full gateway from scratch much faster.",
+						}}
+						onRequestAccess={noop}
+					/>
+				)}
 				{/* The register row belongs ONLY to the signed-out state: registering is all-or-nothing,
 				    so an account that exists can never be told a bit "needs a registered account". */}
 				{!groups && (
@@ -161,3 +165,8 @@ export const LadderRegistered: StoryObj = ladderFor(REGISTERED)
 export const LadderPartner: StoryObj = ladderFor(PARTNER)
 /** A holder of everything, for the contrast. */
 export const LadderEverything: StoryObj = ladderFor(["all"])
+
+/** A production-licence holder: the production rung does the thing instead of asking about it. */
+export const LadderProduction: StoryObj = ladderFor([...REGISTERED, "blg20-demo-hex", "blg20-prod-hex"])
+/** One half of the source only — the words say which half is theirs, and the other is still an ask. */
+export const LadderRadioHalf: StoryObj = ladderFor([...REGISTERED, "blg20-demo-hex", "blg20-9151-src"])

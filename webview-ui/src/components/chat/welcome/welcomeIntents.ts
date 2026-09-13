@@ -438,6 +438,31 @@ export function cellularHint(boards: readonly string[]): string | undefined {
  * half with their own probe. The words the developer reads on the card are the card's; this is what
  * the run is asked to do.
  */
+/**
+ * What the run is asked to do for each way the developer already holds.
+ *
+ * One function rather than three call sites, so a way that gains an action cannot be wired to the
+ * wrong prompt — and so the words a developer sees in their own composer stay in one place.
+ */
+export function blg20InstallPrompt(way: "demo" | "production" | "source"): string {
+	if (way === "production") {
+		return (
+			"Install the BLG20x production image into this project. Load the curated BLG20x production tool bit " +
+			"first — it carries the signed image and its hash, and I want the one you verify, not one you build. " +
+			"Verify the image against its hash, show me where the files landed, and ask me which probe is which " +
+			"before you program anything."
+		)
+	}
+	if (way === "source") {
+		return (
+			"Set up the BLG20x firmware source in this project — the halves my account holds and no others. Load " +
+			"the curated BLG20x source tool bit first, tell me plainly which halves it gave me, and show me where " +
+			"the files landed before building anything."
+		)
+	}
+	return DEMO_PAIR_PROMPT_BLG20
+}
+
 export const DEMO_PAIR_PROMPT_BLG20 =
 	"Install the BLG20x demo pair into this project. Load the curated BLG20x demo-pair tool bit first — it " +
 	"carries both signed images and their hashes, and I want the ones you verify, not ones you build. Then " +

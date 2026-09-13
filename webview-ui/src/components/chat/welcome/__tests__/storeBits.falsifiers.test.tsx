@@ -113,7 +113,7 @@ describe("BLG20x store bits — falsifiers", () => {
 		state.current = account(["blg20-demo-hex", "blg20-early-access"])
 		const onAsk = vi.fn()
 		const { container, unmount } = render(
-			<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={onAsk} onFlashDemo={vi.fn()} onStart={vi.fn()} />,
+			<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={onAsk} onInstall={vi.fn()} onStart={vi.fn()} />,
 		)
 		const card = screen.getByTestId("gateway-ladder")
 		expect(screen.getByTestId("ladder-board").textContent).toBe("Fanstel BLG20XE02C")
@@ -153,7 +153,7 @@ describe("BLG20x store bits — falsifiers", () => {
 		// An unrelated board gets no ladder — a surface that names a board must have seen one.
 		state.current = account(["blg20-demo-hex"])
 		const { container: other } = render(
-			<GatewayLadder boards={["nRF52840 DK"]} onAsk={vi.fn()} onFlashDemo={vi.fn()} onStart={vi.fn()} />,
+			<GatewayLadder boards={["nRF52840 DK"]} onAsk={vi.fn()} onInstall={vi.fn()} onStart={vi.fn()} />,
 		)
 		expect(other.querySelector("[data-testid='gateway-ladder']")).toBeNull()
 	})
@@ -179,7 +179,7 @@ describe("BLG20x store bits — falsifiers", () => {
 			"blg20-adv-ble",
 			"blg20-adv-full",
 		])
-		render(<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onFlashDemo={vi.fn()} onStart={vi.fn()} />)
+		render(<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onInstall={vi.fn()} onStart={vi.fn()} />)
 		const card = screen.getByTestId("gateway-ladder")
 
 		// The one thing they hold offers the doing action.
@@ -214,7 +214,7 @@ describe("BLG20x store bits — falsifiers", () => {
 		// Registered, but this board's demo pair is granted per account and this one has not been.
 		state.current = account(["cellular-advanced", "edge-ai-advanced", "lew840x-demo-hex"])
 		const { unmount } = render(
-			<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onFlashDemo={vi.fn()} onStart={vi.fn()} />,
+			<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onInstall={vi.fn()} onStart={vi.fn()} />,
 		)
 		const card = screen.getByTestId("gateway-ladder")
 		expect(card.textContent).not.toMatch(/\byours\b|already (yours|included)/i)
@@ -226,7 +226,7 @@ describe("BLG20x store bits — falsifiers", () => {
 
 		// And the account that DOES hold it is told so, in the badge and in the line.
 		state.current = account(["blg20-demo-hex"])
-		render(<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onFlashDemo={vi.fn()} onStart={vi.fn()} />)
+		render(<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onInstall={vi.fn()} onStart={vi.fn()} />)
 		expect(screen.getByTestId("ladder-rung-license-badge").textContent).toBe("Demo included")
 		// The doing action is the ownership signal now, not a sentence about it.
 		expect(screen.getByTestId("ladder-flash-demo").textContent).toBe("Flash the demo")
@@ -246,7 +246,7 @@ describe("BLG20x store bits — falsifiers", () => {
 		}
 		// And the card as a whole: one screen, not an essay.
 		state.current = account(["blg20-demo-hex"])
-		render(<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onFlashDemo={vi.fn()} onStart={vi.fn()} />)
+		render(<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onInstall={vi.fn()} onStart={vi.fn()} />)
 		const words = (screen.getByTestId("gateway-ladder").textContent ?? "").split(/\s+/).filter(Boolean).length
 		expect(words, `the whole card is ${words} words`).toBeLessThanOrEqual(120)
 
@@ -255,6 +255,65 @@ describe("BLG20x store bits — falsifiers", () => {
 		for (const kept of ["Free", "Limited use for demos", "Ask for more details", "We reply within a business day"]) {
 			expect(card, `"${kept}" is load-bearing and must survive the cut`).toContain(kept)
 		}
+	})
+
+	it("F11 every rung reads what the account holds, and two different accounts are two different cards", () => {
+		const ladder = (groups: string[]) => {
+			state.current = account(groups)
+			const { unmount } = render(
+				<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onInstall={vi.fn()} onStart={vi.fn()} />,
+			)
+			const text = screen.getByTestId("gateway-ladder").textContent ?? ""
+			const ids = [...screen.getByTestId("gateway-ladder").querySelectorAll("[data-testid]")].map((e) =>
+				e.getAttribute("data-testid"),
+			)
+			unmount()
+			return { text, ids }
+		}
+
+		// The partner: demo and both advanced sets, no production, no source.
+		const partner = ladder(["blg20-demo-hex", "blg20-adv-ble", "blg20-adv-full"])
+		expect(partner.ids).toContain("ladder-flash-demo")
+		expect(partner.ids).toContain("ladder-ask-prod")
+		expect(partner.ids).toContain("ladder-ask-source")
+		expect(partner.ids).not.toContain("ladder-use-prod")
+		expect(partner.ids).not.toContain("ladder-use-source")
+		// Holding the advanced sets, they are not invited to ask for them — the line is simply gone.
+		expect(partner.ids).not.toContain("ladder-advanced-line")
+		expect(partner.text).not.toContain("Advanced set: on request")
+
+		// A production licence holder does the thing rather than asking about it.
+		const production = ladder(["blg20-demo-hex", "blg20-prod-hex"])
+		expect(production.ids).toContain("ladder-use-prod")
+		expect(production.ids).not.toContain("ladder-ask-prod")
+
+		// One half of the source is not both halves, and the words say which.
+		const radioHalf = ladder(["blg20-9151-src"])
+		expect(radioHalf.text).toContain("The radio half is yours.")
+		expect(radioHalf.ids).toContain("ladder-use-source")
+		expect(radioHalf.ids).toContain("ladder-ask-source")
+		const bleHalf = ladder(["blg20-ble-src"])
+		expect(bleHalf.text).toContain("The BLE half is yours.")
+		const bothHalves = ladder(["blg20-ble-src", "blg20-9151-src"])
+		expect(bothHalves.text).toContain("Both halves are yours.")
+		expect(bothHalves.ids).not.toContain("ladder-ask-source")
+
+		// And the defect that started this: two accounts, two cards.
+		const everything = ladder(["all"])
+		expect(everything.ids).toContain("ladder-use-prod")
+		expect(everything.ids).toContain("ladder-use-source")
+		expect(partner.text).not.toEqual(everything.text)
+		expect(ladder([]).text).not.toEqual(partner.text)
+	})
+
+	it("F12 the demo card says a licence notice travels with the images, in one line", () => {
+		state.current = account(["blg20-demo-hex"])
+		render(<DemoHexCard onFlash={vi.fn()} />)
+		const line = screen.getByTestId("demo-licence").textContent ?? ""
+		expect(line).toBe("A licence notice is written beside the images.")
+		// One line at the narrow width, and no legal text or dead link on a card.
+		expect(line.length).toBeLessThanOrEqual(60)
+		expect(line).not.toMatch(/http|www\.|licen[cs]e agreement|terms and conditions|warrant|liab/i)
 	})
 })
 

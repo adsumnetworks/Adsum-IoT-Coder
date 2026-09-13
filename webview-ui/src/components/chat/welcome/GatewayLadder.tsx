@@ -40,6 +40,9 @@ export const LADDER_COPY = {
 	demoTerms: "Limited use for demos",
 	production: "Our build for the units you ship.",
 	source: "Our firmware's source, one half or both.",
+	sourceBoth: "Both halves are yours.",
+	sourceRadio: "The radio half is yours.",
+	sourceBle: "The BLE half is yours.",
 	built: "Tell us what it must do, how many, by when.",
 	reply: "We reply within a business day.",
 	after: "Program each half with your own probe.",
@@ -57,8 +60,8 @@ interface GatewayLadderProps {
 	onStart: () => void
 	/** Opens the request form for this family, for anything not already theirs. */
 	onAsk: (rung: string) => void
-	/** Installs the demo pair — only ever offered when the account holds it. */
-	onFlashDemo: () => void
+	/** Runs the way the developer already holds — only ever offered for a way they hold. */
+	onInstall: (way: "demo" | "production" | "source") => void
 	/** Opens the hardware list, for someone whose board is not this one. */
 	onBrowse?: () => void
 }
@@ -119,14 +122,50 @@ const Ask: React.FC<{ label?: string; onClick: () => void; testId: string }> = (
 	</button>
 )
 
-const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onAsk, onFlashDemo, onBrowse }) => {
+/** The action for a way the developer already holds. Cyan, like every other doing action. */
+const Doing: React.FC<{ label: string; onClick: () => void; testId: string }> = ({ label, onClick, testId }) => (
+	<button
+		data-testid={testId}
+		onClick={onClick}
+		style={{
+			marginTop: "5px",
+			padding: "3px 10px",
+			borderRadius: "6px",
+			fontSize: "11.5px",
+			fontWeight: 600,
+			cursor: "pointer",
+			border: `1px solid ${BRAND_CYAN_UI}`,
+			background: BRAND_CYAN_UI,
+			color: "#04222b",
+		}}
+		type="button">
+		{label}
+	</button>
+)
+
+const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onAsk, onInstall, onBrowse }) => {
 	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
 	const board = ladderBoard(boards)
 	// No board of this family, no ladder. A surface that names a board must have seen one.
 	if (!board) {
 		return null
 	}
-	const hasDemo = accountHasGroup(adsumAccount, "blg20-demo-hex")
+	/*
+	 * Every rung reads the SAME group facts the rest of the surface reads. Before this the card knew
+	 * only whether the demo was held, so a licence holder was invited to "Ask for more details" about
+	 * the thing they had already bought — the partner card and the holder-of-everything card were
+	 * byte-identical screenshots.
+	 */
+	const holds = (group: string) => accountHasGroup(adsumAccount, group)
+	const hasDemo = holds("blg20-demo-hex")
+	const hasProduction = holds("blg20-prod-hex")
+	const hasRadioSource = holds("blg20-9151-src")
+	const hasBleSource = holds("blg20-ble-src")
+	const hasAnySource = hasRadioSource || hasBleSource
+	const hasBothSource = hasRadioSource && hasBleSource
+	// "On request" is an invitation. Sending it to someone who already holds the set is the same
+	// mistake as the Register button, so the line simply is not there for them.
+	const hasAdvanced = holds("blg20-adv-ble") || holds("blg20-adv-full")
 	return (
 		<div
 			data-testid="gateway-ladder"
@@ -172,11 +211,15 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onA
 						Start in the editor
 					</button>
 				</div>
-				{/* The advanced set is a line, not a pitch: it says what it is and offers the one action. */}
-				<div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginTop: "6px" }}>
-					<span style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>{LADDER_COPY.advanced}</span>
-					<Ask onClick={() => onAsk("adv")} testId="ladder-ask-adv" />
-				</div>
+				{/* The advanced set is a line, not a pitch — and no line at all for someone who holds it. */}
+				{!hasAdvanced && (
+					<div
+						data-testid="ladder-advanced-line"
+						style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginTop: "6px" }}>
+						<span style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>{LADDER_COPY.advanced}</span>
+						<Ask onClick={() => onAsk("adv")} testId="ladder-ask-adv" />
+					</div>
+				)}
 			</Rung>
 
 			<Rung
@@ -197,7 +240,7 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onA
 						{hasDemo && (
 							<button
 								data-testid="ladder-flash-demo"
-								onClick={onFlashDemo}
+								onClick={() => onInstall("demo")}
 								style={{
 									marginTop: "5px",
 									padding: "3px 10px",
@@ -217,12 +260,42 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onA
 					<div data-testid="ladder-way-production">
 						<div style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>Production licence</div>
 						<Body>{LADDER_COPY.production}</Body>
-						<Ask onClick={() => onAsk("prod-hex")} testId="ladder-ask-prod" />
+						{hasProduction ? (
+							<Doing
+								label="Flash the production image"
+								onClick={() => onInstall("production")}
+								testId="ladder-use-prod"
+							/>
+						) : (
+							<Ask onClick={() => onAsk("prod-hex")} testId="ladder-ask-prod" />
+						)}
 					</div>
 					<div data-testid="ladder-way-source">
 						<div style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>Source licence</div>
-						<Body>{LADDER_COPY.source}</Body>
-						<Ask onClick={() => onAsk("both-src")} testId="ladder-ask-source" />
+						<Body>
+							{hasBothSource
+								? LADDER_COPY.sourceBoth
+								: hasRadioSource
+									? LADDER_COPY.sourceRadio
+									: hasBleSource
+										? LADDER_COPY.sourceBle
+										: LADDER_COPY.source}
+						</Body>
+						{hasAnySource && (
+							<Doing
+								label={
+									hasBothSource
+										? "Install the source"
+										: hasRadioSource
+											? "Install the radio half"
+											: "Install the BLE half"
+								}
+								onClick={() => onInstall("source")}
+								testId="ladder-use-source"
+							/>
+						)}
+						{/* One half held is still half asked-about: the other half is a real thing to ask for. */}
+						{!hasBothSource && <Ask onClick={() => onAsk("both-src")} testId="ladder-ask-source" />}
 					</div>
 				</div>
 			</Rung>

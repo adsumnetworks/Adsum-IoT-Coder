@@ -28,10 +28,10 @@ import UnlockedCard from "./UnlockedCard"
 import { useEntrySignals } from "./useEntrySignals"
 import {
 	ASK_FOR_DETAILS,
+	blg20InstallPrompt,
 	CELLULAR_BOARDS,
 	CELLULAR_INTENTS,
 	DEMO_HEX_PROMPT,
-	DEMO_PAIR_PROMPT_BLG20,
 	getTenure,
 	type IntentDef,
 	isRequestOnlyGroup,
@@ -958,7 +958,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						<GatewayLadder
 							boards={ladderBoards}
 							onAsk={() => setRequesting("blg20")}
-							onFlashDemo={() => void onStartTask(DEMO_PAIR_PROMPT_BLG20)}
+							onInstall={(way) => void onStartTask(blg20InstallPrompt(way))}
 							onStart={() => {
 								entryRunStart("blg20Gateway", "card")
 								runIntent("blg20Gateway", { onSelectMode, onStartTask, platform, projectName })
