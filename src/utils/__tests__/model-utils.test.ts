@@ -150,3 +150,23 @@ describe("GLM next-gen membership — condense on, native tools gated off", () =
 		isNativeToolCallingConfig(fakeProviderInfo("openrouter", "anthropic/claude-sonnet-4-5"), true).should.be.true()
 	})
 })
+
+describe("our own free tier — capability is a fact about the forwarder, not about a name", () => {
+	it("gets native tool calls, whatever opaque id it is serving today", () => {
+		// The failure this fixes: absent from the provider list, the free tier was prompted for XML,
+		// the served model answered in its own markup at a low thinking budget, and the run died on
+		// the mistake limit having executed nothing.
+		isNativeToolCallingConfig(fakeProviderInfo("adsum-free", "free-default"), true).should.be.true()
+		// The id is deliberately meaningless, so no id may decide this — including one that looks old.
+		isNativeToolCallingConfig(fakeProviderInfo("adsum-free", "whatever-we-serve-next"), true).should.be.true()
+		isNativeToolCallingConfig(fakeProviderInfo("adsum-free", "gpt-2"), true).should.be.true()
+	})
+
+	it("still obeys the developer's own switch", () => {
+		isNativeToolCallingConfig(fakeProviderInfo("adsum-free", "free-default"), false).should.be.false()
+	})
+
+	it("does not hand the capability to anyone else by accident", () => {
+		isNativeToolCallingConfig(fakeProviderInfo("some-other-gateway", "free-default"), true).should.be.false()
+	})
+})

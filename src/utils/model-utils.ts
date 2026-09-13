@@ -28,7 +28,24 @@ export function isNextGenModelProvider(providerInfo: ApiProviderInfo): boolean {
 		// calls (that provider is listed here, and the family check only reads the model id), so the
 		// manual workaround behaved better than the first-class provider.
 		"deepseek",
+		// OUR OWN forwarder. Absent from this list, the free tier was told to write XML tool calls,
+		// and at a low thinking budget the served model answers in its own markup instead — the
+		// engine sees no tool, says so, the model repeats the call, and the session dies on the
+		// mistake limit without executing anything. The forwarder passes tools through with
+		// tool_choice auto, so the capability was there the whole time and only this list said no.
+		"adsum-free",
 	].some((id) => providerId === id)
+}
+
+/**
+ * Our own inference, where capability is a fact about US and not about a model id.
+ *
+ * The free tier serves an opaque id ("free-default") and the model behind it changes when we change
+ * it. Every other capability test here reads a name, which cannot work for a name that deliberately
+ * says nothing: the honest test is who is serving it, because we know what our forwarder supports.
+ */
+export function isAdsumOwnProvider(providerInfo: ApiProviderInfo): boolean {
+	return normalize(providerInfo.providerId) === "adsum-free"
 }
 
 export function modelDoesntSupportWebp(apiHandlerModel: ApiHandlerModel): boolean {
@@ -263,6 +280,11 @@ export function isNativeToolCallingConfig(providerInfo: ApiProviderInfo, enableN
 	}
 	if (!isNextGenModelProvider(providerInfo)) {
 		return false
+	}
+	// Our own provider answers for itself: the id it serves is opaque on purpose, so there is no
+	// name to read and no need to read one.
+	if (isAdsumOwnProvider(providerInfo)) {
+		return true
 	}
 	const modelId = providerInfo.model.id.toLowerCase()
 	if (isGLMModelFamily(modelId) && !ENABLE_GLM_NATIVE_TOOL_CALLS) {
