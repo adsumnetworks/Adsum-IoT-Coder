@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { ASK_FOR_DETAILS, isRequestOnlyGroup } from "@/components/chat/welcome/welcomeIntents"
 import { BRAND_CYAN_UI } from "./brandColors"
 import { PersonLink } from "./KbitCredit"
 
@@ -9,7 +10,12 @@ import { PersonLink } from "./KbitCredit"
  * still curated by someone, and their name is on the row exactly as it is on a loaded one — gating
  * access is a commercial decision, and taking the byline off would be a different, worse one.
  *
- * The second: the task does not stop. The row says what is missing and the assistant carries on with
+ * The second: THE DOOR NAMED IS THE DOOR THAT OPENS. Some sets are opened by a person, one developer
+ * at a time; registering never reaches them. Offering "Register" against one of those sends someone
+ * through a sign-up that ends exactly where it started, so a by-request set says so and offers the
+ * one action the rest of the product uses — the same phrase, so it is learned once.
+ *
+ * The third: the task does not stop. The row says what is missing and the assistant carries on with
  * what it does have. A run that halts because one bit was locked would punish the developer for our
  * pricing, and the honest thing is to keep working and say what would have been better.
  */
@@ -23,6 +29,8 @@ export interface KbitLockedPayload {
 	/** True when the bit was in reach and no longer is — a revoked grant reads differently from one
 	 *  never held, and telling someone to "register" when they already have an account is nonsense. */
 	revoked?: boolean
+	/** One line on what the set does for the reader. Nothing is teased and nothing is listed. */
+	summary?: string
 }
 
 export function parseKbitLockedPayload(text: string | undefined): KbitLockedPayload | null {
@@ -41,13 +49,33 @@ interface KbitLockedRowProps {
 	bit: KbitLockedPayload
 	/** Opens the register gate. Absent ⇒ the row still renders, just without the button. */
 	onRegister?: () => void
-	/** Opens the template-source request form, for the revoked / never-granted case. */
+	/** Opens the request form — for a by-request set, and for the revoked case. */
 	onRequestAccess?: () => void
 }
 
 export const KbitLockedRow = ({ bit, onRegister, onRequestAccess }: KbitLockedRowProps) => {
 	const [hover, setHover] = useState(false)
 	const revoked = !!bit.revoked
+	const byRequest = isRequestOnlyGroup(bit.group)
+	// One action, one phrase. "Ask for more details" is what the card pill and the sub-line on the
+	// home screen say for the same thing, so the developer meets one door and not three names for it.
+	const askButton = onRequestAccess && (
+		<button
+			data-testid="kbit-locked-request"
+			onClick={onRequestAccess}
+			style={{
+				padding: "2px 8px",
+				fontSize: "11px",
+				borderRadius: "5px",
+				cursor: "pointer",
+				border: "1px solid color-mix(in srgb, var(--vscode-foreground) 22%, transparent)",
+				background: "none",
+				color: "var(--vscode-foreground)",
+			}}
+			type="button">
+			{ASK_FOR_DETAILS}
+		</button>
+	)
 	return (
 		<div
 			className="text-[11px] mt-1.5 flex items-center gap-2 flex-wrap"
@@ -59,7 +87,7 @@ export const KbitLockedRow = ({ bit, onRegister, onRequestAccess }: KbitLockedRo
 				style={{ fontSize: "13px", opacity: 0.75, width: "17px", textAlign: "center" }}
 			/>
 			<span className="uppercase tracking-wide font-semibold text-[10px] opacity-70">knowledge bit</span>
-			{/* 78%, not dimmed to nothing: reading what is missing is what makes registering worth doing. */}
+			{/* 78%, not dimmed to nothing: reading what is missing is what makes asking worth doing. */}
 			<span
 				className="truncate max-w-[240px]"
 				style={{ color: "color-mix(in srgb, var(--vscode-foreground) 78%, transparent)" }}>
@@ -70,25 +98,12 @@ export const KbitLockedRow = ({ bit, onRegister, onRequestAccess }: KbitLockedRo
 					curated by <PersonLink links={bit.links} name={bit.author} />
 				</span>
 			)}
-			<span>· {revoked ? "no longer in your account" : "needs a registered account"}</span>
-			{revoked ? (
-				onRequestAccess && (
-					<button
-						data-testid="kbit-locked-request"
-						onClick={onRequestAccess}
-						style={{
-							padding: "2px 8px",
-							fontSize: "11px",
-							borderRadius: "5px",
-							cursor: "pointer",
-							border: "1px solid color-mix(in srgb, var(--vscode-foreground) 22%, transparent)",
-							background: "none",
-							color: "var(--vscode-foreground)",
-						}}
-						type="button">
-						Request access
-					</button>
-				)
+			<span>
+				· {byRequest ? "available on request" : revoked ? "no longer in your account" : "needs a registered account"}
+			</span>
+			{bit.summary && byRequest && <span className="basis-full pl-[25px] opacity-90">{bit.summary}</span>}
+			{byRequest || revoked ? (
+				askButton
 			) : onRegister ? (
 				<button
 					data-testid="kbit-locked-register"

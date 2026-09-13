@@ -5,6 +5,7 @@ import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { withLinks } from "@services/knowledge/kbit/people"
+import { kbitUnavailableMessage } from "@services/knowledge/kbitUnavailable"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
 import {
@@ -19,6 +20,7 @@ import {
 	isRegistryReachable,
 	loadBitByKbPath,
 	loadBitByRel,
+	lockedBits,
 	provenanceOf,
 	suggestNearMissBits,
 } from "@/services/knowledge/KnowledgeResolver"
@@ -402,20 +404,26 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 					? `A bit with this FILENAME exists at a different path — you likely mis-derived the directory. ` +
 						`Retry with the exact path: ${nearMisses.join("  or  ")}. `
 					: `First re-check the path (combine the iot-knowledge directory with the bit's relative path). `
+			/*
+			 * A bit the registry refused for want of an entitlement is REAL. The resolver already knows
+			 * — it records the refusal in lockedBits() — and until this branch existed the handler threw
+			 * that knowledge away and told the developer the bit did not exist, then advised them to
+			 * publish it to our own registry and set a developer environment variable.
+			 */
+			const isLocked = bitId !== null && lockedBits().has(bitId)
 			telemetryService.captureKbitLoadFailed({
-				reason: reachable ? "not_in_registry" : "registry_unreachable",
+				reason: isLocked ? "locked" : reachable ? "not_in_registry" : "registry_unreachable",
 				bitId: bitId ?? undefined,
 				afterRetry: true,
 			})
 			return formatResponse.toolError(
-				reachable
-					? `Knowledge bit not found: "${displayPath}". It is not bundled and not in the registry. ` +
-							pathHint +
-							`If the bit genuinely does not exist,${antiImprovise} ` +
-							`(Dev: set ADSUM_KBIT_LOCAL to load downloaded bits from disk, or publish the bit.)`
-					: `Could not load knowledge bit "${displayPath}": the Adsum knowledge registry is unreachable ` +
-							`and this bit is not cached locally. Check your network connection and retry.${antiImprovise} ` +
-							`(Bundled knowledge is unaffected.)`,
+				kbitUnavailableMessage({
+					antiImprovise,
+					displayPath,
+					isDev: process.env.IS_DEV === "true",
+					pathHint,
+					reason: isLocked ? "locked" : reachable ? "not-in-registry" : "unreachable",
+				}),
 			)
 		}
 

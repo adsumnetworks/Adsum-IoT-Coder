@@ -17,6 +17,7 @@ import EntryDrawer, { type DrawerRun } from "./EntryDrawer"
 import EnvStrip, { platformVerdicts, useEnvRefresh } from "./EnvStrip"
 import { entryDrawerOpen, entryEnvOpen, entryFirstPrompt, entryRunStart, entryShown, gateShown } from "./entryTelemetry"
 import GatePanel from "./GatePanel"
+import GatewayLadder from "./GatewayLadder"
 import IntentCard from "./IntentCard"
 import { oneNotice } from "./notices"
 import RequestAccessForm from "./RequestAccessForm"
@@ -26,11 +27,14 @@ import { rank } from "./suggest"
 import UnlockedCard from "./UnlockedCard"
 import { useEntrySignals } from "./useEntrySignals"
 import {
+	ASK_FOR_DETAILS,
 	CELLULAR_BOARDS,
 	CELLULAR_INTENTS,
 	DEMO_HEX_PROMPT,
+	DEMO_PAIR_PROMPT_BLG20,
 	getTenure,
 	type IntentDef,
+	isRequestOnlyGroup,
 	NO_PROJECT_INTENTS,
 	PROJECT_INTENTS,
 	resolveIntentPlatform,
@@ -109,6 +113,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	const [requesting, setRequesting] = useState<"lew840x" | "blg20" | null>(null)
 	const hasHistory = (taskHistory?.length ?? 0) > 0
 	const { mode, signals, scopeName, isColdStart } = useEntrySignals()
+	// Everything the environment has actually seen, for the surfaces that name a board.
+	const ladderBoards = [...signals.nrfBoards, ...signals.espDevices]
 
 	const [drawerOpen, setDrawerOpen] = useState(false)
 	const [seenRuns, setSeenRuns] = useState<string[]>(readSeen)
@@ -143,6 +149,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			blurb: "Fanstel's composable multi-radio gateway: BLE in, Ethernet / Wi-Fi / LTE out — with or without the cellular card. Seven steps.",
 			meta: "7 steps",
 			whyNeutral: "needs the gateway, its UART bridge board and a Nordic DK as probe — the full list comes first",
+			needsAlso: "the LEW840x gateway, its UART bridge board and a DK as probe",
 			onRun: () =>
 				onStartTask("Build the LEW840x gateway: scan BLE tags and publish them to MQTT over Ethernet, Wi-Fi and LTE"),
 		}
@@ -166,10 +173,14 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				boardMatch: CELLULAR_BOARDS,
 				whyNeutral:
 					i.id === "edgeAi" ? "needs an nRF54 with the Axon NPU" : "needs an nRF91-family board or a Fanstel gateway",
+				// Its own gap, so five rows do not print one sentence five times.
+				needsAlso: i.needsAlso,
 				title: i.title,
 				blurb: i.description,
 				locked,
-				lockPill: locked ? (adsumAccount ? "Request access" : "Register") : undefined,
+				// The drawer is a second surface for the same cards, so it says the same thing: one
+				// phrase for the one door, and "Register" only where registering is what opens it.
+				lockPill: locked ? (adsumAccount || isRequestOnlyGroup(i.group) ? ASK_FOR_DETAILS : "Register") : undefined,
 				onRun: () => {
 					if (!locked) {
 						runIntent(i.id, handlers)
@@ -200,6 +211,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			need: "lew840x",
 			productLabel: "Fanstel LEW840x",
 			whyNeutral: "needs the LEW840x and its programming kit; nrfutil and esptool on this machine",
+			needsAlso: "the LEW840x programming kit, with nrfutil and esptool on this machine",
 			title: "Flash the LEW840x demo",
 			blurb: "Three signed hexes: BLE scanner, ESP32 uplink, nRF9160 bearer. About three minutes.",
 			meta: "≈ 3 min",
@@ -938,7 +950,21 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						    It sits AFTER the suggested runs because it is a second offer, not a competing one:
 						    everything above works today with no account at all, and this group says plainly what
 						    a free account adds. Hiding it until sign-in would mean nobody ever learns it exists. */}
-						{!hasHistory && <DemoHexCard onFlash={() => void onStartTask(DEMO_HEX_PROMPT)} />}
+						{/* The ladder for the board on the desk — history or not.
+						    It was painted only by a group this view no longer mounts, and behind the
+						    !hasHistory branch besides, so the one surface that answers "how do you want the
+						    firmware?" was invisible to exactly the developer who already has the board and has
+						    run something on it. A board on the desk is the reason to show it, and the only one. */}
+						<GatewayLadder
+							boards={ladderBoards}
+							onAsk={() => setRequesting("blg20")}
+							onFlashDemo={() => void onStartTask(DEMO_PAIR_PROMPT_BLG20)}
+							onStart={() => {
+								entryRunStart("blg20Gateway", "card")
+								runIntent("blg20Gateway", { onSelectMode, onStartTask, platform, projectName })
+							}}
+						/>
+						{!hasHistory && <DemoHexCard onFlash={(prompt) => void onStartTask(prompt)} />}
 						<RequestAccessForm
 							family={requesting ?? undefined}
 							onClose={() => setRequesting(null)}

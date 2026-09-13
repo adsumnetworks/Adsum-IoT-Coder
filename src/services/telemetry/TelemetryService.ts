@@ -2607,7 +2607,9 @@ export class TelemetryService {
 	/** K-bit: a required bit failed to load (the Omar/CRA dead-end). `reason` attributes the stage; `bitId` is the
 	 *  catalog id (safe), NOT a user/file path. Field health for the registry + the retry/attribution work. */
 	public captureKbitLoadFailed(props: {
-		reason: "transient_fetch" | "not_in_registry" | "registry_unreachable"
+		// "locked" is its own reason, and the point of the enum: a bit refused for want of an
+		// entitlement is not a missing bit, and counting the two together hid the whole gate.
+		reason: "transient_fetch" | "not_in_registry" | "registry_unreachable" | "locked"
 		bitId?: string
 		afterRetry?: boolean
 	}) {

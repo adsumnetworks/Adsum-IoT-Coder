@@ -102,7 +102,8 @@ describe("W — the register gate", () => {
 		expect(titles).toEqual([
 			"LTE-M / NB-IoT gateway",
 			// [OPERATOR 2026-09-09] The BLG20 is mentioned, locked, and opened per person later.
-			"BLG20Bx / LBG20Bx gateways · nRF9151",
+			// Titled by what the firmware does; the part numbers are one line down, in the description.
+			"BLG20x gateway: BLE 6 in, Wi-Fi, cellular, satellite out",
 			"Satellite NB-NTN bring-up",
 			"nRF91 modem bring-up",
 			"On-device inference",
@@ -110,8 +111,11 @@ describe("W — the register gate", () => {
 		for (const intent of CELLULAR_INTENTS) {
 			expect(screen.getByTestId(`cellular-card-${intent.id}`)).toBeTruthy()
 		}
-		// Signed out, every lock says the one thing that opens the tier.
-		expect(screen.getAllByText("Register")).toHaveLength(5)
+		// Signed out, the four cards registering opens say so. The fifth is opened by a person, so it
+		// says the one phrase the whole product uses for that — never "Register", which would send
+		// someone through a sign-up that ends where it started.
+		expect(screen.getAllByText("Register")).toHaveLength(4)
+		expect(screen.getAllByText("Ask for more details")).toHaveLength(1)
 	})
 
 	it("W-02b registered: the note is gone, the cards run, and a partial grant locks only what it must", () => {
@@ -121,7 +125,9 @@ describe("W — the register gate", () => {
 		// cellular-advanced opens three; edge-ai-advanced and blg20-early-access stay locked — and for
 		// someone SIGNED IN a lock is a grant question, so the pill says so instead of "Register".
 		expect(screen.queryAllByText("Register")).toHaveLength(0)
-		expect(screen.getAllByText("Request access")).toHaveLength(2)
+		// Two locked pills, plus the source sub-line under the card that IS open: one phrase for the
+		// one door, wherever it appears.
+		expect(screen.getAllByText("Ask for more details")).toHaveLength(3)
 		expect(screen.queryByTestId("cellular-note")).toBeNull()
 
 		fireEvent.click(screen.getByTestId("cellular-card-nrf91BringUp"))
@@ -155,8 +161,9 @@ describe("W — the register gate", () => {
 		}
 		expect(h.onStartTask).toHaveBeenCalledTimes(4)
 		expect(screen.queryByTestId("gate-panel")).toBeNull()
-		// And the one card the tier does NOT open is still there, honest about what opens it.
-		expect(screen.getAllByText("Request access")).toHaveLength(1)
+		// And the one card the tier does NOT open is still there, honest about what opens it — the
+		// second is the source sub-line under the open gateway card, which says the same phrase.
+		expect(screen.getAllByText("Ask for more details")).toHaveLength(2)
 		fireEvent.click(screen.getByTestId("cellular-card-blg20Gateway"))
 		expect(h.onStartTask).toHaveBeenCalledTimes(4)
 	})

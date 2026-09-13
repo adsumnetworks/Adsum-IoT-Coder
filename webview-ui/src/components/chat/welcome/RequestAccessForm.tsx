@@ -6,7 +6,8 @@ import { AdsumServiceClient } from "@/services/grpc-client"
 import { BRAND_CYAN_UI } from "../brandColors"
 
 /**
- * "Request template source access" — the one thing a free account does not open.
+ * "Ask for more details" — the one door to everything a free account does not open, under the one
+ * name the rest of the product uses for it.
  *
  * It is a form and not a button because the answer depends on what they are building: a pilot of a
  * hundred units and a hobby port get different answers, and asking here is cheaper for both sides
@@ -36,13 +37,17 @@ export const CHIPS_BY_FAMILY = {
 		{ id: "esp-src", label: "ESP32" },
 		{ id: "9160-src", label: "nRF9160" },
 	],
+	/*
+	 * The BLG20x list is the WAYS, not the parts. The demo pair is included with a registered
+	 * account, so offering it here would file a request for something the developer already has —
+	 * and the two images are not "chips" and the knowledge set is not "source", which is why the
+	 * field above them no longer says either word.
+	 */
 	blg20: [
-		{ id: "demo-hex", label: "Demo image (both halves, prebuilt)" },
-		{ id: "prod-hex", label: "Production image" },
-		{ id: "ble-src", label: "BLE source (nRF54)" },
-		{ id: "9151-src", label: "Cellular + satellite source (nRF9151)" },
-		{ id: "adv-ble", label: "Advanced BLE knowledge set" },
-		{ id: "adv-full", label: "Advanced full-gateway knowledge set" },
+		{ id: "prod-hex", label: "Production licence" },
+		{ id: "9151-src", label: "Source for the radio half (cellular and satellite)" },
+		{ id: "both-src", label: "Source for both halves" },
+		{ id: "adv", label: "The advanced knowledge set" },
 	],
 } as const
 
@@ -69,15 +74,17 @@ const NEUTRAL_EDGE = "color-mix(in srgb, var(--vscode-foreground) 22%, transpare
 const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, onSent, family: initialFamily }) => {
 	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
 	const [family, setFamily] = useState<string>(initialFamily ?? FAMILIES[0].id)
-	const [chips, setChips] = useState<string[]>(["ble-src"])
+	const [chips, setChips] = useState<string[]>([])
 
 	/*
-	 * A chip selected for one family is meaningless in another - "esp-src" against a BLG20 is a
-	 * request the steward cannot resolve - so changing the family resets the selection to that
-	 * family's first chip rather than carrying the old ids across.
+	 * A selection made for one family is meaningless in another - an ESP entry against a BLG20 is a
+	 * request nobody can answer - so changing the family clears the selection rather than carrying
+	 * the old ids across. It clears to NOTHING and never to a default: a pre-ticked box asks on the
+	 * developer's behalf for something they did not choose, and the first entry of a list is not a
+	 * guess worth making.
 	 */
 	useEffect(() => {
-		setChips([chipsFor(family)[0].id])
+		setChips([])
 	}, [family])
 	const [message, setMessage] = useState("")
 	const [sending, setSending] = useState(false)
@@ -207,7 +214,7 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 					</>
 				) : (
 					<>
-						<Title>Request template source access</Title>
+						<Title>Ask for more details</Title>
 						<Lead>
 							The prebuilt gateway templates are licensed source. Tell us what you’re building and which chips you
 							need to customise.
@@ -225,7 +232,7 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 								))}
 							</select>
 						</Field>
-						<Field label="Chips you need as source">
+						<Field label="What you are asking about">
 							<div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
 								{chipsFor(family).map((c) => (
 									<label

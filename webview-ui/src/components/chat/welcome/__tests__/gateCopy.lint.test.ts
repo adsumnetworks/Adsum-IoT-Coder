@@ -25,6 +25,7 @@ const GATE_FILES = [
 	join(dir, "CellularGroup.tsx"),
 	join(dir, "UnlockedCard.tsx"),
 	join(dir, "DemoHexCard.tsx"),
+	join(dir, "GatewayLadder.tsx"),
 	join(dir, "RequestAccessForm.tsx"),
 	join(dir, "AccountChip.tsx"),
 	join(settings, "AccountSection.tsx"),

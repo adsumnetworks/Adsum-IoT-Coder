@@ -4,10 +4,18 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { BRAND_CYAN_TEXT } from "../brandColors"
 import { entryRunStart, gateShown } from "./entryTelemetry"
 import GatePanel from "./GatePanel"
+import GatewayLadder, { ladderBoard } from "./GatewayLadder"
 import IntentCard from "./IntentCard"
 import RequestAccessForm from "./RequestAccessForm"
 import { type IntentActionHandlers, runIntent } from "./runIntent"
-import { CELLULAR_INTENTS, cellularHint, type IntentDef } from "./welcomeIntents"
+import {
+	ASK_FOR_DETAILS,
+	CELLULAR_INTENTS,
+	cellularHint,
+	DEMO_PAIR_PROMPT_BLG20,
+	type IntentDef,
+	isRequestOnlyGroup,
+} from "./welcomeIntents"
 
 /**
  * "Cellular & gateways" — the group that asks for a free account.
@@ -24,7 +32,7 @@ import { CELLULAR_INTENTS, cellularHint, type IntentDef } from "./welcomeIntents
 interface CellularGroupProps extends IntentActionHandlers {
 	/** Board names already detected — a hint earns its line only when it names one of them. */
 	boards?: readonly string[]
-	/** Rendered under the LEW840x card once registered (the template-source request states). */
+	/** Rendered under the LEW840x card once registered (the source request states). */
 	gatewaySubline?: React.ReactNode
 }
 
@@ -40,6 +48,13 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 	// would be an instruction that does nothing.
 	const anonymous = !adsumAccount
 	const hint = anonymous ? cellularHint(boards) : undefined
+	/*
+	 * With the board on the desk, the flat card for it becomes the LADDER: one card, three ways, and
+	 * which one is already theirs. The card is not shown as well as the ladder — it IS the ladder,
+	 * in the same place in the same list, or a developer would meet the same board twice and have to
+	 * work out whether the two offers were the same thing.
+	 */
+	const ladder = ladderBoard(boards)
 
 	// The gate is open for ONE card. It has nothing left to ask the moment that card's group arrives —
 	// which is what sign-in does, and is not the same as "this developer has an account" (W-02b).
@@ -49,7 +64,7 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 	const openGate = (intent: IntentDef) => {
 		// Signed in and still locked means a BY-REQUEST group (the tier opens on registration), so
 		// the honest door is the request form, not a register panel for someone already registered.
-		if (adsumAccount) {
+		if (adsumAccount || isRequestOnlyGroup(intent.group)) {
 			setRequesting(intent.id === "blg20Gateway" ? "blg20" : "lew840x")
 			return
 		}
@@ -72,7 +87,22 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 					{hint}
 				</div>
 			)}
+			{ladder && (
+				<GatewayLadder
+					boards={boards}
+					onAsk={() => setRequesting("blg20")}
+					onFlashDemo={() => void handlers.onStartTask(DEMO_PAIR_PROMPT_BLG20)}
+					onStart={() => {
+						entryRunStart("blg20Gateway", "card")
+						runIntent("blg20Gateway", handlers)
+					}}
+				/>
+			)}
 			{CELLULAR_INTENTS.map((intent) => {
+				// The ladder already IS this board's card.
+				if (ladder && intent.id === "blg20Gateway") {
+					return null
+				}
 				const locked = isLocked(intent)
 				return (
 					<React.Fragment key={intent.id}>
@@ -85,7 +115,16 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 								runIntent(intent.id, handlers)
 							}}
 							onLocked={() => openGate(intent)}
-							pill={locked ? (adsumAccount ? "Request access" : "Register") : undefined}
+							/* One phrase for the one door: the pill, the sub-line under it and the row in the
+							   transcript all say the same thing. "Register" survives only where registering
+							   is what actually opens the card — never on a set a person opens by hand. */
+							pill={
+								locked
+									? adsumAccount || isRequestOnlyGroup(intent.group)
+										? ASK_FOR_DETAILS
+										: "Register"
+									: undefined
+							}
 							testId={`cellular-card-${intent.id}`}
 							title={intent.title}
 						/>
@@ -153,14 +192,14 @@ export const SourceLine: React.FC<{ onRequest: () => void; family?: string }> = 
 	if (granted) {
 		return (
 			<div data-testid={testId} style={{ ...style, color: "var(--vscode-descriptionForeground)" }}>
-				Template source: granted — it resolves in your next run
+				Source: yours — it resolves in your next run
 			</div>
 		)
 	}
 	if (pending) {
 		return (
 			<div data-testid={testId} style={{ ...style, color: "var(--vscode-descriptionForeground)" }}>
-				Template source: request sent · we reply within a business day
+				Asked today · we reply within a business day
 			</div>
 		)
 	}
@@ -170,7 +209,7 @@ export const SourceLine: React.FC<{ onRequest: () => void; family?: string }> = 
 			onClick={onRequest}
 			style={{ ...style, background: "none", border: "none", cursor: "pointer", color: BRAND_CYAN_TEXT, textAlign: "left" }}
 			type="button">
-			Request template source access →
+			{ASK_FOR_DETAILS}
 		</button>
 	)
 }

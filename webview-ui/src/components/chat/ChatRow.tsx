@@ -39,6 +39,8 @@ import { KbitCredit, parseKbitPayload } from "@/components/chat/KbitCredit"
 import { KbitLockedRow, parseKbitLockedPayload } from "@/components/chat/KbitLockedRow"
 import { OptionsButtons } from "@/components/chat/OptionsButtons"
 import GatePanel from "@/components/chat/welcome/GatePanel"
+import RequestAccessForm from "@/components/chat/welcome/RequestAccessForm"
+import { isRequestOnlyGroup, requestFamilyFor } from "@/components/chat/welcome/welcomeIntents"
 import { CheckmarkControl } from "@/components/common/CheckmarkControl"
 import { WithCopyButton } from "@/components/common/CopyButton"
 import McpResponseDisplay from "@/components/mcp/chat-display/McpResponseDisplay"
@@ -185,6 +187,7 @@ export const ChatRowContent = memo(
 		// the panel appears over the conversation the developer is looking at, next to the row that
 		// prompted it — a modal that opens somewhere else reads as a different question.
 		const [gateOpen, setGateOpen] = useState(false)
+		const [requestOpen, setRequestOpen] = useState(false)
 		const prevCommandExecutingRef = useRef<boolean>(false)
 
 		const hasAutoExpandedRef = useRef(false)
@@ -986,19 +989,31 @@ export const ChatRowContent = memo(
 						// and credits whoever curated it exactly as a loaded bit would: gating access is a
 						// commercial decision, taking the byline off would be a different and worse one.
 						const locked = parseKbitLockedPayload(message.text)
+						// A by-request set is opened by a person, not by signing up, so its row opens the
+						// request form. Sending it to the register gate would satisfy nothing: that gate's
+						// condition is a group registration does not grant, so it could never close.
+						const byRequest = isRequestOnlyGroup(locked?.group)
 						return locked ? (
 							<>
 								<KbitLockedRow
 									bit={locked}
-									onRegister={() => setGateOpen(true)}
-									onRequestAccess={() => setGateOpen(true)}
+									onRegister={byRequest ? undefined : () => setGateOpen(true)}
+									onRequestAccess={() => (byRequest ? setRequestOpen(true) : setGateOpen(true))}
 								/>
-								<GatePanel
-									onClose={() => setGateOpen(false)}
-									open={gateOpen}
-									satisfied={accountHasGroup(adsumAccount, locked.group)}
-									surface="chat"
-								/>
+								{byRequest ? (
+									<RequestAccessForm
+										family={requestFamilyFor(locked.group)}
+										onClose={() => setRequestOpen(false)}
+										open={requestOpen}
+									/>
+								) : (
+									<GatePanel
+										onClose={() => setGateOpen(false)}
+										open={gateOpen}
+										satisfied={accountHasGroup(adsumAccount, locked.group)}
+										surface="chat"
+									/>
+								)}
 							</>
 						) : null
 					}

@@ -57,7 +57,7 @@ beforeEach(() => {
 describe("W — asking, and the account tab", () => {
 	it("W-14 the form says licensed source, offers both families and three chips, and never promises open source", () => {
 		render(<RequestAccessForm onClose={vi.fn()} open={true} />)
-		expect(screen.getByText("Request template source access")).toBeTruthy()
+		expect(screen.getByText("Ask for more details")).toBeTruthy()
 		expect(
 			screen.getByText(
 				/The prebuilt gateway templates are licensed source\. Tell us what you’re building and which chips you need to customise\./,
@@ -83,7 +83,8 @@ describe("W — asking, and the account tab", () => {
 			fireEvent.click(screen.getByTestId("request-send"))
 		})
 		const sentBody = JSON.parse(rpc.requestAccess.mock.calls[0][0].value)
-		expect(sentBody).toEqual({ family: "lew840x", chips: ["ble-src", "esp-src"], message: "100 units in Q1" })
+		// Nothing is pre-ticked, so what is posted is exactly what the developer chose.
+		expect(sentBody).toEqual({ family: "lew840x", chips: ["esp-src"], message: "100 units in Q1" })
 		expect(onSent).toHaveBeenCalledWith("lew840x")
 		expect(screen.getByText("Request sent")).toBeTruthy()
 		expect(screen.getByText(/We reply within a business day to/)).toBeTruthy()
@@ -93,6 +94,9 @@ describe("W — asking, and the account tab", () => {
 	it("W-15b a second request for the same family says which case it hit, not a generic failure", async () => {
 		rpc.requestAccess.mockResolvedValue({ value: JSON.stringify({ ok: false, reason: "already_open" }) })
 		render(<RequestAccessForm onClose={vi.fn()} open={true} />)
+		// Nothing is pre-ticked, so there is nothing to send until the developer says what they want.
+		expect((screen.getByTestId("request-send") as HTMLButtonElement).disabled).toBe(true)
+		fireEvent.click(screen.getByTestId("request-chip-ble-src"))
 		await act(async () => {
 			fireEvent.click(screen.getByTestId("request-send"))
 		})
@@ -111,19 +115,17 @@ describe("W — asking, and the account tab", () => {
 
 	it("W-16 the gateway card's source line reflects the SERVER's view of the request", () => {
 		const { unmount } = render(<CellularGroup onSelectMode={vi.fn()} onStartTask={vi.fn()} />)
-		expect(screen.getByTestId("source-line").textContent).toBe("Request template source access →")
+		expect(screen.getByTestId("source-line").textContent).toBe("Ask for more details")
 		unmount()
 
 		state.current = account({ openRequests: ["lew840x"] })
 		const second = render(<CellularGroup onSelectMode={vi.fn()} onStartTask={vi.fn()} />)
-		expect(screen.getByTestId("source-line").textContent).toBe(
-			"Template source: request sent · we reply within a business day",
-		)
+		expect(screen.getByTestId("source-line").textContent).toBe("Asked today · we reply within a business day")
 		second.unmount()
 
 		state.current = account({ groups: ["cellular-advanced", "lew840x-ble-src"] })
 		render(<CellularGroup onSelectMode={vi.fn()} onStartTask={vi.fn()} />)
-		expect(screen.getByTestId("source-line").textContent).toBe("Template source: granted — it resolves in your next run")
+		expect(screen.getByTestId("source-line").textContent).toBe("Source: yours — it resolves in your next run")
 	})
 
 	it("W-17 signed out, the Account tab says what an account is for and offers one door", () => {
@@ -243,8 +245,14 @@ describe("W — asking, and the account tab", () => {
 		// The point of the change: a BLG20's halves are an nRF54 and an nRF9151, so offering
 		// "nRF9160" against one files a request nobody can grant.
 		const blg20 = chipsFor("blg20").map((c) => c.id)
-		expect(blg20).toEqual(["demo-hex", "prod-hex", "ble-src", "9151-src", "adv-ble", "adv-full"])
-		expect(chipsFor("blg20").find((c) => c.id === "9151-src")?.label).toContain("nRF9151")
+		// THE CONTRACT. These four ids are what the backend's chip table for this family maps; the
+		// backend asserts the same four against this file, so neither side can be edited alone.
+		expect(blg20).toEqual(["prod-hex", "9151-src", "both-src", "adv"])
+		// The BLG20x list is the WAYS, in the developer's words — no part numbers to decode, and no
+		// entry for the demo pair, which a registered account already holds: a form that offers to
+		// request what you have is a form that files a request nobody needs to answer.
+		expect(chipsFor("blg20").every((c) => !/nRF|ESP|hex|image/i.test(c.label))).toBe(true)
+		expect(blg20).not.toContain("demo-hex")
 		expect(blg20).not.toContain("esp-src")
 		expect(blg20).not.toContain("9160-src")
 

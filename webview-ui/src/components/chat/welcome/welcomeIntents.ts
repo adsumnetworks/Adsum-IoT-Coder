@@ -44,6 +44,8 @@ export interface IntentDef {
 	primary?: boolean
 	/** Small pill shown next to the title (e.g. "Start here"). */
 	pill?: string
+	/** What this run needs BEYOND a board already on the desk — its own gap, in its own words. */
+	needsAlso?: string
 	/** Optional one-line capability sub-line under the description (injected conditionally, e.g. A10). */
 	subline?: string
 	/** Roadmap card — rendered disabled under an "on the roadmap" divider, never routes. */
@@ -311,6 +313,7 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 		icon: "radio-tower",
 		title: "LTE-M / NB-IoT gateway",
 		description: "Fanstel LEW840x: BLE in, cellular out, one code base.",
+		needsAlso: "a Fanstel LEW840x and its three programming headers",
 		group: "cellular-advanced",
 	},
 	{
@@ -319,12 +322,17 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 		// certain developers as the board's certification lands. [OPERATOR 2026-09-09]
 		id: "blg20Gateway",
 		icon: "circuit-board",
-		title: "BLG20Bx / LBG20Bx gateways · nRF9151",
+		// The title says what the firmware DOES. Four part numbers and two product lines in a title
+		// is an order code, not an offer: at panel width it wrapped to two lines, and a developer
+		// scanning the list is choosing what to build, not decoding a catalogue row. The numbers are
+		// still here — one line down, where someone comparing an order code will look for them.
+		title: "BLG20x gateway: BLE 6 in, Wi-Fi, cellular, satellite out",
 		// Names as Fanstel writes them (fanstel.com/blg20cbwg20c, /lbg51e20c, checked 2026-09-09): the IP51
 		// BLG20BC / BLG20BF / BLG20XE line and the IP67 LBG20BC / LBG20BXE / LBG20BC02C line, all nRF9151 +
 		// nRF54LM20B. "BLC" was a mishearing; BWG20BF is the WiFi-only sibling with no nRF9151 and is not here.
 		description:
-			"Fanstel's next gateways: nRF54LM20B BLE 6.0 in, nRF9151 LTE-M / NB-IoT / NTN out — IP51 indoor and IP67 outdoor, WiFi 6 on the 02C builds.",
+			"Fanstel's next gateways, indoor and outdoor. Two chips: an nRF54LM20B for the BLE half, an nRF9151 for cellular and satellite.",
+		needsAlso: "a Fanstel BLG20x or LBG20x on the desk",
 		group: "blg20-early-access",
 	},
 	{
@@ -332,6 +340,7 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 		icon: "globe",
 		title: "Satellite NB-NTN bring-up",
 		description: "nRF9151 over NTN: attach, timing, what a satellite link costs you.",
+		needsAlso: "an nRF9151 and a SIM with a satellite plan",
 		group: "cellular-advanced",
 	},
 	{
@@ -339,6 +348,7 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 		icon: "chip",
 		title: "nRF91 modem bring-up",
 		description: "Attach on your SIM and APN, AT recipes, PSM and eDRX tuning.",
+		needsAlso: "an nRF91-family board and a SIM",
 		group: "cellular-advanced",
 	},
 	{
@@ -346,6 +356,7 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 		icon: "lightbulb-sparkle",
 		title: "On-device inference",
 		description: "nRF54 Axon NPU: models on the gateway, not in the cloud.",
+		needsAlso: "an nRF54 with the Axon NPU",
 		group: "edge-ai-advanced",
 	},
 ]
@@ -361,6 +372,42 @@ export const CELLULAR_BOARDS = /nrf91|9160|9151|9161|thingy:?91|lew840|blg20/i
  */
 /** Boards whose set registration alone does NOT reach: the ask is a request, not a sign-up. */
 const REQUEST_ONLY_BOARDS = /blg20/i
+
+/**
+ * The one thing every not-yet-yours surface says, and the only wording for it.
+ *
+ * A developer should learn this phrase once. When the card pill, the sub-line under it and the row
+ * in the transcript each invented their own name for the same door, the three read as three
+ * different requests — and two of them ("Request access", "Request template source access") named
+ * our entitlement plumbing rather than telling anyone what would happen next.
+ */
+export const ASK_FOR_DETAILS = "Ask for more details"
+
+/**
+ * Groups a person opens by hand, one developer at a time.
+ *
+ * Registering does not reach these and never will: they are opened after a conversation. A surface
+ * that offers "Register" against one of them promises an unlock the sign-up cannot deliver — the
+ * developer signs up, comes back, and the same thing is still out of reach. Every surface that can
+ * show a locked thing asks this predicate, so the home screen and the transcript cannot drift into
+ * telling different stories about the same group again.
+ */
+export const REQUEST_ONLY_GROUPS: readonly string[] = [
+	"blg20-early-access",
+	"blg20-adv-ble",
+	"blg20-adv-full",
+	"blg20-ble-src",
+	"blg20-9151-src",
+	"blg20-prod-hex",
+]
+
+export const isRequestOnlyGroup = (group?: string): boolean => !!group && REQUEST_ONLY_GROUPS.includes(group)
+
+/**
+ * Which family's request form a group belongs to. The form is per board family, and a row in the
+ * transcript knows only its group, so the mapping lives here with the groups themselves.
+ */
+export const requestFamilyFor = (group?: string): string => (group?.startsWith("blg20") ? "blg20" : "lew840x")
 
 export function cellularHint(boards: readonly string[]): string | undefined {
 	const match = boards.find((b) => CELLULAR_BOARDS.test(b))
@@ -385,6 +432,18 @@ export function cellularHint(boards: readonly string[]): string | undefined {
  * which order, what to do when nrfutil is missing. The tool bit carries the hexes and their hashes;
  * the agent carries the developer through it and says honestly when the machine is not ready.
  */
+/**
+ * Installing the BLG20x pair: two images, one per half of the board, and the developer programs each
+ * half with their own probe. The words the developer reads on the card are the card's; this is what
+ * the run is asked to do.
+ */
+export const DEMO_PAIR_PROMPT_BLG20 =
+	"Install the BLG20x demo pair into this project. Load the curated BLG20x demo-pair tool bit first — it " +
+	"carries both signed images and their hashes, and I want the ones you verify, not ones you build. Then " +
+	"tell me plainly what is limited about this demo before anything is written, verify each image against " +
+	"its hash, and show me where the files landed. Take the serial number from the tool, never one you " +
+	"remember, and ask me which probe is which before you program anything."
+
 export const DEMO_HEX_PROMPT =
 	"Flash the Fanstel LEW840x demo. LOAD the lew840x demo-hex tool bit first — it carries the three " +
 	"signed hexes and their hashes, and I want the ones you verify, not ones you build. Then walk me " +
