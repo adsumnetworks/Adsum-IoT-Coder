@@ -29,17 +29,12 @@ describe("H — the account icon", () => {
 		assert.ok(order("adsum.account.signIn") < order("adsum-iot-coder.settingsButtonClicked"))
 	})
 
-	test("H-02 signed in: the same glyph with an identity-colour dot, shown only when signed in", () => {
+	test("H-02 signed in: the account glyph with a dot, drawn like the other header icons, shown only when signed in", () => {
 		const cmd = pkg.contributes.commands.find((c: { command: string }) => c.command === "adsum.account.menu")
 		const rows = pkg.contributes.menus["view/title"] as { command: string; when: string }[]
 		assert.match(rows.find((r) => r.command === "adsum.account.menu")?.when ?? "", /(^|&&\s*)adsum\.signedIn\b/)
-		const glyph = readFileSync(path.join(root, "node_modules/@vscode/codicons/src/icons/account.svg"), "utf8")
-		const d = /d="([^"]+)"/.exec(glyph)?.[1]
-		for (const theme of ["light", "dark"] as const) {
-			const svg = readFileSync(path.join(root, cmd.icon[theme]), "utf8")
-			assert.ok(d && svg.includes(d), `${theme}: the same account glyph as the signed-out icon`)
-			assert.match(svg, /<circle[^>]*fill="#D76947"/, `${theme}: the identity-colour dot`)
-		}
+		// A contributed font icon, not a picture: it takes the theme's icon colour and size like history and settings.
+		assert.equal(cmd.icon, "$(adsum-account-signed-in)")
 	})
 
 	test("H-03 the menu names the account, says what it opens in words, and offers settings and sign-out", () => {

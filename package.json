@@ -76,6 +76,13 @@
 					"fontCharacter": "\\e900"
 				}
 			},
+			"adsum-account-signed-in": {
+				"description": "Adsum account, signed in: the account glyph with a dot",
+				"default": {
+					"fontPath": "assets/icons/adsum-account.woff",
+					"fontCharacter": "\\e901"
+				}
+			},
 			"adsum-iot-coder-icon": {
 				"description": "Adsum IoT Coder",
 				"default": {
@@ -112,10 +119,7 @@
 			{
 				"command": "adsum.account.menu",
 				"title": "Account",
-				"icon": {
-					"light": "assets/icons/account-signed-in-light.svg",
-					"dark": "assets/icons/account-signed-in-dark.svg"
-				}
+				"icon": "$(adsum-account-signed-in)"
 			},
 			{
 				"command": "adsum.pasteSignInLink",
