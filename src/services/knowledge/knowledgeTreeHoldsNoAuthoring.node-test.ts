@@ -80,6 +80,13 @@ describe("the shipped knowledge tree holds no authoring material", () => {
 		assert.deepEqual(hits, [], "a group name in the shipped tree is authoring vocabulary an agent can repeat to a developer")
 	})
 
+	test("no bit uses the internal word for its self-test heading (B10)", () => {
+		// 14 Sep 2026: an agent told a developer "the built-in falsifier for this rule", read off a `## Falsifier`
+		// heading. The developer's words are "How to tell it failed".
+		const hits = files.filter((f) => f.endsWith(".md") && /\bfalsifier\b/i.test(readFileSync(f, "utf8"))).map(rel)
+		assert.deepEqual(hits, [])
+	})
+
 	test("the authoring documents live outside the tree, and that folder is not packaged", () => {
 		assert.ok(existsSync(path.join(AUTHORING, "KBIT-SPEC.md")), "kbit-authoring/KBIT-SPEC.md")
 		assert.ok(existsSync(path.join(AUTHORING, "kbit.schema.json")), "kbit-authoring/kbit.schema.json")
