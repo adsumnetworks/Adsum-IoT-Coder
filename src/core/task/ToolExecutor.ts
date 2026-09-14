@@ -71,7 +71,13 @@ export class ToolExecutor {
 		private context: vscode.ExtensionContext,
 		private taskState: TaskState,
 		private messageStateHandler: MessageStateHandler,
-		private api: ApiHandler,
+		/**
+		 * The task's handler, read at each use. A handler captured once went stale the moment the provider
+		 * changed under a running task: every tool-use record after the switch named the first model
+		 * (host issue H2, 14 September — `modelId: free-default` on turns served by the configured route),
+		 * and so did every decision a tool took from the model's own description.
+		 */
+		private apiSource: ApiHandler | (() => ApiHandler),
 		private diffViewProvider: DiffViewProvider,
 		private mcpHub: McpHub,
 		private fileContextTracker: FileContextTracker,
@@ -136,6 +142,11 @@ export class ToolExecutor {
 
 	// Create a properly typed TaskConfig object for handlers
 	// NOTE: modifying this object in the tool handlers is okay since these are all references to the singular ToolExecutor instance's variables. However, be careful modifying this object assuming it will update the ToolExecutor instance, e.g. config.browserSession = ... will not update the ToolExecutor.browserSession instance variable. Use applyLatestBrowserSettings() instead.
+	/** The handler serving this task right now. */
+	private get api(): ApiHandler {
+		return typeof this.apiSource === "function" ? this.apiSource() : this.apiSource
+	}
+
 	private asToolConfig(): TaskConfig {
 		const config: TaskConfig = {
 			taskId: this.taskId,

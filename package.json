@@ -594,6 +594,8 @@
 		"test:chip-identity": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/chipIdentityParity.node-test.ts",
 		"test:hil-bits": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-bits.ts",
 		"test:ask-bridge": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/askBridge.node-test.ts",
+		"test:ask-ordering": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/askOrdering.node-test.ts",
+		"test:config-readiness": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/configReadiness.node-test.ts",
 		"test:session-lease": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/sessionLease.node-test.ts",
 		"test:inject-queue": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/injectQueue.node-test.ts",
 		"test:terminal-events": "ts-node --transpile-only -P tsconfig.unit-test.json src/hosts/vscode/terminal/terminalEndEvents.node-test.ts",

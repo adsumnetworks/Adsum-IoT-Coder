@@ -210,3 +210,35 @@ describe("what a run has learned, not only what it asks", () => {
 		assert.deepEqual(messagesSince([], 0), [])
 	})
 })
+
+describe("a running command's output ask (host issue H3)", () => {
+	const say = (ts: number) => ({ type: "say", say: "command", text: "west build", ts })
+	const out = (ts: number) => ({ type: "ask", ask: "command_output", text: "[1/200] Building C object", ts })
+
+	test("it is visible on /ask, marked as raised while running", () => {
+		assert.deepEqual(pendingAskFrom([say(1), out(2)]), {
+			kind: "command_output",
+			text: "[1/200] Building C object",
+			ts: 2,
+			whileRunning: true,
+		})
+	})
+
+	test("the run is running, not awaiting a human — nobody has to answer a command's output", () => {
+		assert.equal(sessionStateFrom([say(1), out(2)], true), "running")
+	})
+
+	test("it can be answered like the panel answers it, and a stale ts is still refused", () => {
+		const pending = pendingAskFrom([say(1), out(2)])
+		const proceed = checkRespond(JSON.stringify({ responseType: "yesButtonClicked", ts: 2 }), pending)
+		assert.equal(proceed.ok, true)
+		const stale = checkRespond(JSON.stringify({ responseType: "yesButtonClicked", ts: 1 }), pending)
+		assert.equal(stale.ok, false)
+	})
+
+	test("other asks are unchanged: a followup still waits on a human and carries no running flag", () => {
+		const f = { type: "ask", ask: "followup", text: "?", ts: 3 }
+		assert.equal(sessionStateFrom([say(1), f], true), "awaiting_human")
+		assert.equal(pendingAskFrom([f])?.whileRunning, undefined)
+	})
+})

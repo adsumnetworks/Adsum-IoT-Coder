@@ -119,6 +119,7 @@ import { refreshWorkflowToggles } from "../context/instructions/user-instruction
 import { Controller } from "../controller"
 import { executeHook } from "../hooks/hook-executor"
 import { StateManager } from "../storage/StateManager"
+import { nextAskTs } from "./askOrdering"
 import { FocusChainManager } from "./focus-chain"
 import { MessageStateHandler } from "./message-state"
 import { reconcileNativeToolContent } from "./nativeToolContent"
@@ -610,7 +611,7 @@ export class Task {
 			this.controller.context,
 			this.taskState,
 			this.messageStateHandler,
-			this.api,
+			() => this.api,
 			this.diffViewProvider,
 			this.mcpHub,
 			this.fileContextTracker,
@@ -686,7 +687,12 @@ export class Task {
 					// this.askResponse = undefined
 					// this.askResponseText = undefined
 					// this.askResponseImages = undefined
-					askTs = Date.now()
+					askTs = nextAskTs(
+						Math.max(
+							this.taskState.lastMessageTs ?? 0,
+							Number(this.messageStateHandler.getClineMessages().at(-1)?.ts ?? 0),
+						),
+					)
 					this.taskState.lastMessageTs = askTs
 					await this.messageStateHandler.addToClineMessages({
 						ts: askTs,
@@ -729,7 +735,12 @@ export class Task {
 					this.taskState.askResponseText = undefined
 					this.taskState.askResponseImages = undefined
 					this.taskState.askResponseFiles = undefined
-					askTs = Date.now()
+					askTs = nextAskTs(
+						Math.max(
+							this.taskState.lastMessageTs ?? 0,
+							Number(this.messageStateHandler.getClineMessages().at(-1)?.ts ?? 0),
+						),
+					)
 					this.taskState.lastMessageTs = askTs
 					await this.messageStateHandler.addToClineMessages({
 						ts: askTs,
@@ -747,7 +758,9 @@ export class Task {
 			this.taskState.askResponseText = undefined
 			this.taskState.askResponseImages = undefined
 			this.taskState.askResponseFiles = undefined
-			askTs = Date.now()
+			askTs = nextAskTs(
+				Math.max(this.taskState.lastMessageTs ?? 0, Number(this.messageStateHandler.getClineMessages().at(-1)?.ts ?? 0)),
+			)
 			this.taskState.lastMessageTs = askTs
 			await this.messageStateHandler.addToClineMessages({
 				ts: askTs,
