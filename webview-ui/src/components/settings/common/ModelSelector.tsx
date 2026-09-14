@@ -30,6 +30,11 @@ interface ModelSelectorProps {
 	onChange: (e: any) => void
 	zIndex?: number
 	label?: string
+	/**
+	 * For a list that is the provider's own live answer: a saved model missing from it is one the provider
+	 * no longer serves, and is flagged. Off by default, because other lists can be momentarily incomplete.
+	 */
+	flagUnlisted?: boolean
 }
 
 /*
@@ -46,7 +51,17 @@ OG Saoud Note:
 /**
  * A reusable component for selecting models from a dropdown
  */
-export const ModelSelector = ({ models, selectedModelId, onChange, zIndex, label = "Model" }: ModelSelectorProps) => {
+export const ModelSelector = ({
+	models,
+	selectedModelId,
+	onChange,
+	zIndex,
+	label = "Model",
+	flagUnlisted,
+}: ModelSelectorProps) => {
+	// A model saved in settings that the provider no longer serves: keep it visible and say so plainly, rather
+	// than letting the dropdown quietly show "Select a model..." over a choice that is still in effect.
+	const noLongerOffered = !!flagUnlisted && !!selectedModelId && !(selectedModelId in models)
 	return (
 		<DropdownContainer className="dropdown-container" zIndex={zIndex}>
 			<label htmlFor="model-id">
@@ -54,12 +69,24 @@ export const ModelSelector = ({ models, selectedModelId, onChange, zIndex, label
 			</label>
 			<VSCodeDropdown className="w-full" id="model-id" onChange={onChange} value={selectedModelId}>
 				<VSCodeOption value="">Select a model...</VSCodeOption>
+				{noLongerOffered && (
+					<VSCodeOption className="break-words whitespace-normal max-w-full" value={selectedModelId}>
+						{selectedModelId} (no longer offered)
+					</VSCodeOption>
+				)}
 				{Object.keys(models).map((modelId) => (
 					<VSCodeOption className="break-words whitespace-normal max-w-full" key={modelId} value={modelId}>
 						{modelId}
 					</VSCodeOption>
 				))}
 			</VSCodeDropdown>
+			{noLongerOffered && (
+				<p
+					data-testid="model-no-longer-offered"
+					style={{ fontSize: "12px", marginTop: 3, marginBottom: 0, color: "var(--vscode-errorForeground)" }}>
+					The provider no longer lists {selectedModelId}. Choose another model.
+				</p>
+			)}
 		</DropdownContainer>
 	)
 }

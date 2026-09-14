@@ -210,8 +210,15 @@ export const hicapModelInfoSaneDefaults: HicapCompatibleModelInfo = {
 }
 
 // Anthropic
-// https://docs.anthropic.com/en/docs/about-claude/models // prices updated 2025-01-02
+// https://docs.anthropic.com/en/docs/about-claude/models
 export type AnthropicModelId = keyof typeof anthropicModels
+/**
+ * When the prices in `anthropicModels` were last checked. No dated check is recorded in this file (the old
+ * "prices updated 2025-01-02" note predates every model now in the table), so this is the date of the last
+ * commit that changed these prices: 6d29a76c5, "refresh(anthropic): current Claude catalog", 2026-07-11.
+ * Shown next to the prices in settings, so a stale figure is visible. Update it whenever the table is re-read.
+ */
+export const anthropicPricesCheckedAt = "2026-07-11"
 export const anthropicDefaultModelId: AnthropicModelId = "claude-sonnet-5"
 export const ANTHROPIC_MIN_THINKING_BUDGET = 1_024
 export const ANTHROPIC_MAX_THINKING_BUDGET = 6_000
@@ -1674,6 +1681,27 @@ export const DEEPSEEK_EFFORT_LEVELS = ["low", "high", "max"] as const
 export type DeepSeekEffortLevel = (typeof DEEPSEEK_EFFORT_LEVELS)[number]
 
 export const deepSeekDefaultModelId: DeepSeekModelId = "deepseek-v4-pro"
+/**
+ * When the prices in `deepSeekModels` were last checked against api-docs.deepseek.com/quick_start/pricing:
+ * re-read and corrected on 2026-09-04 (commit e44921f3a, and the `PRICING_SCHEDULES` sources below).
+ * Shown next to the prices in settings, so a stale figure is visible. Update it whenever the table is re-read.
+ */
+export const deepSeekPricesCheckedAt = "2026-09-04"
+/**
+ * `deepseek-flash` — what DeepSeek serves in place of `deepseek-v4-flash` (the old id is accepted but retired,
+ * billed at the Flash price). Checked against api-docs.deepseek.com/quick_start/pricing on 2026-09-14: the
+ * page now lists PEAK and OFF-PEAK rates (off-peak is half; peak 01:00–04:00 and 06:00–10:00 UTC, Mon–Fri) —
+ * Flash per 1M tokens: cache hit $0.003 / $0.006, cache miss $0.15 / $0.3, output $0.6 / $1.2 (off-peak / peak);
+ * V4 Pro: $0.022 / $0.044, $0.66 / $1.32, $1.98 / $3.96 (the table above carries the Pro peak rates).
+ * A single price per model cannot state a time-of-day rate truthfully, so `deepseek-flash` is NOT added to the
+ * table and gets no thinking controls yet; it runs as a served-but-unpriced model (see liveModels.ts) until
+ * the price model can carry two rates.
+ */
+export const deepSeekFlashPriceCheck = {
+	checkedAt: "2026-09-14",
+	source: "https://api-docs.deepseek.com/quick_start/pricing",
+	finding: "peak and off-peak rates; not representable as one price",
+} as const
 export const deepSeekModels = {
 	"deepseek-chat": {
 		maxTokens: 8_000,
@@ -4067,6 +4095,12 @@ export const internationalZAiModels = {
 // is NOT valid on the general /paas/v4 endpoint (z.ai error 1113). Source: z.ai devpack docs + z.ai's Cline page.
 export type zaiCodingPlanModelId = keyof typeof zaiCodingPlanModels
 export const zaiCodingPlanDefaultModelId: zaiCodingPlanModelId = "glm-5.2"
+/**
+ * When the (flat-rate, zero) prices in `zaiCodingPlanModels` were last checked. No dated check is recorded
+ * for them, so this is the date of the commit that set them: 5b9f184a3, "first-class GLM Coding Plan on
+ * Z.AI", 2026-07-11. Update it whenever the plan's terms are re-read.
+ */
+export const zaiCodingPlanPricesCheckedAt = "2026-07-11"
 // GLM-5.2 reasoning_effort (verified vs z.ai docs 2026-07): the full set none|minimal|low|medium|high|xhigh|max aliases
 // down to two real depths (low/medium→high, xhigh→max, none/minimal→skip thinking). On/Off already covers "skip", so the
 // UI exposes just the two real levels. Default max — z.ai recommends max for coding. glm-5.2 ONLY (turbo/4.7 don't support it).

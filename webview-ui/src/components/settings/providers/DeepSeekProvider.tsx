@@ -1,4 +1,5 @@
 import { ANTHROPIC_MIN_THINKING_BUDGET, DEEPSEEK_EFFORT_LEVELS, deepSeekModels } from "@shared/api"
+import { PRICES_CHECKED_AT } from "@shared/liveModels"
 import { Mode } from "@shared/storage/types"
 import { VSCodeCheckbox, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -8,6 +9,7 @@ import { ModelSelector } from "../common/ModelSelector"
 import { getModeSpecificFields, normalizeApiConfiguration } from "../utils/providerUtils"
 import { getThinkingControl } from "../utils/thinkingControl"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
+import { useLiveModels } from "../utils/useLiveModels"
 
 /** API values are lowercase; these are what the developer reads. */
 const EFFORT_LABELS: Record<string, string> = { low: "Low", high: "High (default)", max: "Max" }
@@ -30,6 +32,8 @@ export const DeepSeekProvider = ({ showModelOptions, isPopup, currentMode }: Dee
 
 	// Get the normalized configuration
 	const { selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, currentMode)
+	// The models DeepSeek serves now; the shipped list until the answer arrives or if the call fails.
+	const models = useLiveModels("deepseek", apiConfiguration?.deepSeekApiKey) ?? deepSeekModels
 
 	// DeepSeek V4 controls thinking via thinking.type (enabled/disabled), not a token budget — the same shape
 	// as GLM — so thinkingBudgetTokens is reused purely as an on/off signal (>0 = on), matching DeepSeekHandler.
@@ -54,8 +58,9 @@ export const DeepSeekProvider = ({ showModelOptions, isPopup, currentMode }: Dee
 			{showModelOptions && (
 				<>
 					<ModelSelector
+						flagUnlisted
 						label="Model"
-						models={deepSeekModels}
+						models={models}
 						onChange={(e: any) =>
 							handleModeFieldChange(
 								{ plan: "planModeApiModelId", act: "actModeApiModelId" },
@@ -122,7 +127,12 @@ export const DeepSeekProvider = ({ showModelOptions, isPopup, currentMode }: Dee
 						</div>
 					)}
 
-					<ModelInfoView isPopup={isPopup} modelInfo={selectedModelInfo} selectedModelId={selectedModelId} />
+					<ModelInfoView
+						isPopup={isPopup}
+						modelInfo={selectedModelInfo}
+						pricesCheckedAt={PRICES_CHECKED_AT["deepseek"]}
+						selectedModelId={selectedModelId}
+					/>
 				</>
 			)}
 		</div>

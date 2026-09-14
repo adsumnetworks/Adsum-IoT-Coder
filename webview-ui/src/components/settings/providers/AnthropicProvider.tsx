@@ -1,4 +1,5 @@
 import { ANTHROPIC_MIN_THINKING_BUDGET, anthropicModels, CLAUDE_DEFAULT_EFFORT, CLAUDE_EFFORT_LEVELS } from "@shared/api"
+import { PRICES_CHECKED_AT } from "@shared/liveModels"
 import { Mode } from "@shared/storage/types"
 import { VSCodeCheckbox, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -11,6 +12,7 @@ import ThinkingBudgetSlider from "../ThinkingBudgetSlider"
 import { getModeSpecificFields, normalizeApiConfiguration } from "../utils/providerUtils"
 import { getThinkingControl } from "../utils/thinkingControl"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
+import { useLiveModels } from "../utils/useLiveModels"
 
 // Anthropic models that support thinking/reasoning mode (adaptive OR budget). Kept for the Claude Code panel and the
 // chat model picker, which only need to know "does this model reason". AnthropicProvider itself uses getThinkingControl
@@ -35,6 +37,10 @@ export const AnthropicProvider = ({ showModelOptions, isPopup, currentMode }: An
 	const { apiConfiguration } = useExtensionState()
 	const { handleFieldChange, handleModeFieldChange } = useApiConfigurationHandlers()
 
+	// The models Anthropic serves now; the shipped list until the answer arrives or if the call fails.
+	const models =
+		useLiveModels("anthropic", `${apiConfiguration?.apiKey ?? ""}|${apiConfiguration?.anthropicBaseUrl ?? ""}`) ??
+		anthropicModels
 	// Get the normalized configuration
 	const { selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, currentMode)
 	const { thinkingBudgetTokens, reasoningEffort } = getModeSpecificFields(apiConfiguration, currentMode)
@@ -63,8 +69,9 @@ export const AnthropicProvider = ({ showModelOptions, isPopup, currentMode }: An
 			{showModelOptions && (
 				<>
 					<ModelSelector
+						flagUnlisted
 						label="Model"
-						models={anthropicModels}
+						models={models}
 						onChange={(e) =>
 							handleModeFieldChange(
 								{ plan: "planModeApiModelId", act: "actModeApiModelId" },
@@ -134,7 +141,12 @@ export const AnthropicProvider = ({ showModelOptions, isPopup, currentMode }: An
 						</div>
 					)}
 
-					<ModelInfoView isPopup={isPopup} modelInfo={selectedModelInfo} selectedModelId={selectedModelId} />
+					<ModelInfoView
+						isPopup={isPopup}
+						modelInfo={selectedModelInfo}
+						pricesCheckedAt={PRICES_CHECKED_AT["anthropic"]}
+						selectedModelId={selectedModelId}
+					/>
 				</>
 			)}
 		</div>

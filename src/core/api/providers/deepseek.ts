@@ -2,7 +2,9 @@ import { DeepSeekModelId, deepSeekDefaultModelId, deepSeekModels, ModelInfo } fr
 import { calculateApiCostOpenAI } from "@utils/cost"
 import OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
+import { isServedLiveModel } from "@/core/api/models/liveModelLists"
 import { applyPriceOverlay } from "@/core/api/pricing/priceOverlay"
+import { UNKNOWN_MODEL_INFO } from "@/shared/liveModels"
 import { ClineStorageMessage } from "@/shared/messages/content"
 import { fetch } from "@/shared/net"
 import { ApiHandler, CommonApiHandlerOptions } from "../"
@@ -173,11 +175,16 @@ export class DeepSeekHandler implements ApiHandler {
 		}
 	}
 
-	getModel(): { id: DeepSeekModelId; info: ModelInfo } {
+	getModel(): { id: string; info: ModelInfo } {
 		const modelId = this.options.apiModelId
 		if (modelId && modelId in deepSeekModels) {
 			const id = modelId as DeepSeekModelId
 			return { id, info: applyPriceOverlay(id, deepSeekModels[id]) }
+		}
+		// Served by DeepSeek but newer than the shipped table (e.g. a renamed model): send it as chosen, with
+		// conservative info and no prices, rather than quietly swapping in the default.
+		if (modelId && isServedLiveModel("deepseek", modelId)) {
+			return { id: modelId, info: applyPriceOverlay(modelId, { ...UNKNOWN_MODEL_INFO }) }
 		}
 		return {
 			id: deepSeekDefaultModelId,

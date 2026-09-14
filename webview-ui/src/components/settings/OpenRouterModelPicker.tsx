@@ -500,6 +500,7 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup, 
 
 					<ModelInfoView
 						isPopup={isPopup}
+						livePricesFrom="OpenRouter"
 						modelInfo={selectedModelInfo}
 						selectedModelId={selectedModelId}
 						showProviderRouting={false}

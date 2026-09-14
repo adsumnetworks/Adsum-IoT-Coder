@@ -1,4 +1,5 @@
 import { geminiModels, ModelInfo } from "@shared/api"
+import { hasUnknownPrices, pricesCheckedLabel } from "@shared/liveModels"
 import { VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
 import { useState } from "react"
 import styled from "styled-components"
@@ -174,6 +175,13 @@ interface ModelInfoViewProps {
 	providerSorting?: string
 	onProviderSortingChange?: (value: string) => void
 	showProviderRouting?: boolean
+	/**
+	 * ISO date the shipped prices for this provider were last checked (PRICES_CHECKED_AT). When given, the
+	 * date is shown next to the prices, so an old figure is visible rather than silent.
+	 */
+	pricesCheckedAt?: string
+	/** The provider the prices were just fetched from, for providers whose model list carries prices. */
+	livePricesFrom?: string
 }
 
 // ========== Component ==========
@@ -185,6 +193,8 @@ export const ModelInfoView = ({
 	providerSorting,
 	onProviderSortingChange,
 	showProviderRouting,
+	pricesCheckedAt,
+	livePricesFrom,
 }: ModelInfoViewProps) => {
 	const [advancedExpanded, setAdvancedExpanded] = useState(false)
 
@@ -199,6 +209,11 @@ export const ModelInfoView = ({
 
 	// Check if we have cache pricing to show in Advanced section
 	const hasCachePricing = modelInfo.supportsPromptCache && (modelInfo.cacheWritesPrice || modelInfo.cacheReadsPrice)
+
+	// Where the prices came from, and how old they are. A model the provider serves that our price list does
+	// not cover yet says so instead of showing a date that does not apply to it.
+	const checkedLabel = pricesCheckedLabel(pricesCheckedAt)
+	const pricesUnknown = pricesCheckedAt !== undefined && hasUnknownPrices(modelInfo)
 
 	return (
 		<div style={{ marginTop: 4 }}>
@@ -231,6 +246,21 @@ export const ModelInfoView = ({
 						</InfoValue>
 					</InfoItem>
 				)}
+				{pricesUnknown ? (
+					<InfoItem data-testid="prices-unknown" style={{ whiteSpace: "normal" }}>
+						<InfoLabel>Prices: not in our price list yet, see the provider's pricing page</InfoLabel>
+					</InfoItem>
+				) : checkedLabel ? (
+					<InfoItem
+						data-testid="prices-checked"
+						title="These prices ship with the extension and were correct on this date. The provider may have changed them since.">
+						<InfoLabel>{checkedLabel}</InfoLabel>
+					</InfoItem>
+				) : livePricesFrom ? (
+					<InfoItem data-testid="prices-live">
+						<InfoLabel>Live prices from {livePricesFrom}</InfoLabel>
+					</InfoItem>
+				) : null}
 			</InfoRow>
 
 			{/* Collapsible Model-info section (read-only capabilities + pricing) */}

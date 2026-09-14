@@ -26,6 +26,7 @@ import {
 	syncModeConfigurations,
 } from "@/components/settings/utils/providerUtils"
 import { useApiConfigurationHandlers } from "@/components/settings/utils/useApiConfigurationHandlers"
+import { useLiveModels } from "@/components/settings/utils/useLiveModels"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { StateServiceClient } from "@/services/grpc-client"
@@ -108,6 +109,10 @@ const ModelPickerModal: React.FC<ModelPickerModalProps> = ({ isOpen, onOpenChang
 
 	// Get current provider from config - use activeEditMode when in split mode
 	const effectiveMode = planActSeparateModelsSetting ? activeEditMode : currentMode
+	// Ask a direct provider which models it serves now, so this list matches the settings panel's.
+	const liveModels = useLiveModels(
+		(effectiveMode === "plan" ? apiConfiguration?.planModeApiProvider : apiConfiguration?.actModeApiProvider) ?? undefined,
+	)
 	const { selectedProvider, selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, effectiveMode)
 
 	// Get both Plan and Act models for split view
@@ -200,7 +205,7 @@ const ModelPickerModal: React.FC<ModelPickerModalProps> = ({ isOpen, onOpenChang
 		}
 
 		return []
-	}, [selectedProvider, openRouterModels, vercelAiGatewayModels, apiConfiguration, basetenModels, liteLlmModels])
+	}, [selectedProvider, openRouterModels, vercelAiGatewayModels, apiConfiguration, basetenModels, liteLlmModels, liveModels])
 
 	// Multi-word substring search - all words must match somewhere in id/name/provider
 	const matchesSearch = useCallback((model: ModelItem, query: string): boolean => {

@@ -74,6 +74,7 @@ import {
 	zaiCodingPlanModels,
 } from "@shared/api"
 import { Mode } from "@shared/storage/types"
+import { liveModelsFor } from "./liveModelStore"
 
 /**
  * Returns the static model list for a provider.
@@ -87,7 +88,7 @@ export function getModelsForProvider(
 ): Record<string, ModelInfo> | undefined {
 	switch (provider) {
 		case "anthropic":
-			return anthropicModels
+			return liveModelsFor("anthropic", anthropicModels)
 		case "claude-code":
 			return claudeCodeModels
 		case "bedrock":
@@ -101,7 +102,7 @@ export function getModelsForProvider(
 		case "openai-codex":
 			return openAiCodexModels
 		case "deepseek":
-			return deepSeekModels
+			return liveModelsFor("deepseek", deepSeekModels)
 		case "qwen":
 			return apiConfiguration?.qwenApiLine === "china" ? mainlandQwenModels : internationalQwenModels
 		case "qwen-code":
@@ -133,7 +134,7 @@ export function getModelsForProvider(
 		case "zai":
 			return apiConfiguration?.zaiApiLine === "china" ? mainlandZAiModels : internationalZAiModels
 		case "zai-coding-plan":
-			return zaiCodingPlanModels
+			return liveModelsFor("zai-coding-plan", zaiCodingPlanModels)
 		case "fireworks":
 			return fireworksModels
 		case "minimax":
@@ -188,9 +189,14 @@ export function normalizeApiConfiguration(
 	const getProviderData = (models: Record<string, ModelInfo>, defaultId: string) => {
 		let selectedModelId: string
 		let selectedModelInfo: ModelInfo
+		// A model the provider serves but the shipped table does not know (see liveModelStore.ts) is a real choice.
+		const live = liveModelsFor(provider, models)
 		if (modelId && modelId in models) {
 			selectedModelId = modelId
 			selectedModelInfo = models[modelId]
+		} else if (modelId && modelId in live) {
+			selectedModelId = modelId
+			selectedModelInfo = live[modelId]
 		} else {
 			selectedModelId = defaultId
 			selectedModelInfo = models[defaultId]

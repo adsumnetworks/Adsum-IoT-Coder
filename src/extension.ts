@@ -4,6 +4,7 @@
 import assert from "node:assert"
 import { DIFF_VIEW_URI_SCHEME } from "@hosts/vscode/VscodeDiffViewProvider"
 import * as vscode from "vscode"
+import { loadCachedLiveModelLists } from "@/core/api/models/liveModelLists"
 import { type PriceOverride, setManualPrices } from "@/core/api/pricing/priceOverlay"
 import { loadCachedPrices, refreshDirectModelPrices } from "@/core/api/pricing/refreshDirectModelPrices"
 import { sendChatButtonClickedEvent } from "./core/controller/ui/subscribeToChatButtonClicked"
@@ -589,6 +590,17 @@ export async function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 	void loadCachedPrices().then(() => refreshDirectModelPrices())
+	// Which models each direct provider was last seen serving, so a model newer than the shipped list that was
+	// chosen in an earlier session is sent as chosen from the first request (see liveModelLists.ts).
+	// …and ask them again now, for every provider with a saved key, so the live list is in place before the
+	// picker is first opened. The picker and the settings panel still ask on open.
+	void loadCachedLiveModelLists()
+		.then(async () => {
+			const { warmLiveModelLists } = await import("@/core/controller/models/refreshDirectProviderModels")
+			const { StateManager } = await import("@/core/storage/StateManager")
+			await warmLiveModelLists(StateManager.get())
+		})
+		.catch(() => {})
 
 	handover.sweepClosedSessionsIntoHistory()
 	// The free tier appearing/running out changes the conductor verdict mid-session.
