@@ -71,10 +71,23 @@ export class OpenRouterHandler implements ApiHandler {
 		return this.client
 	}
 
+	/**
+	 * One per request. The stall watchdog calls abort() when a stream goes silent; without a real abort the
+	 * HTTP request stayed open behind the error and the connection could be held for the next turn.
+	 */
+	private abortController?: AbortController
+
+	abort(): void {
+		this.abortController?.abort()
+	}
+
 	@withRetry()
 	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
 		const client = this.ensureClient()
 		this.lastGenerationId = undefined
+		this.abortController?.abort()
+		const controller = new AbortController()
+		this.abortController = controller
 
 		const stream = await createOpenRouterStream(
 			client,
@@ -97,6 +110,7 @@ export class OpenRouterHandler implements ApiHandler {
 					.filter(Boolean),
 				requireToolCalls: this.options.openRouterRequireToolCalls,
 			},
+			{ signal: controller.signal },
 		)
 
 		let didOutputUsage: boolean = false

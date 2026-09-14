@@ -93,8 +93,18 @@ export class DeepSeekHandler implements ApiHandler {
 		}
 	}
 
+	/** One per request, so the stall watchdog's abort() cancels the HTTP request rather than abandoning it. */
+	private abortController?: AbortController
+
+	abort(): void {
+		this.abortController?.abort()
+	}
+
 	@withRetry()
 	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
+		this.abortController?.abort()
+		const controller = new AbortController()
+		this.abortController = controller
 		const client = this.ensureClient()
 		const model = this.getModel()
 
@@ -133,19 +143,22 @@ export class DeepSeekHandler implements ApiHandler {
 			openAiMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
 		}
 
-		const stream = await client.chat.completions.create({
-			model: model.id,
-			max_completion_tokens: model.info.maxTokens,
-			messages: openAiMessages,
-			stream: true,
-			stream_options: { include_usage: true },
-			// Thinking mode ignores temperature/top_p/penalties (documented as accepted-but-inert), and R1
-			// rejects a custom temperature outright — so omit it in both cases and use 0 everywhere else.
-			...(model.id === "deepseek-reasoner" || v4ThinkingOn ? {} : { temperature: 0 }),
-			...v4Thinking,
-			...v4Effort,
-			...getOpenAIToolParams(tools),
-		})
+		const stream = await client.chat.completions.create(
+			{
+				model: model.id,
+				max_completion_tokens: model.info.maxTokens,
+				messages: openAiMessages,
+				stream: true,
+				stream_options: { include_usage: true },
+				// Thinking mode ignores temperature/top_p/penalties (documented as accepted-but-inert), and R1
+				// rejects a custom temperature outright — so omit it in both cases and use 0 everywhere else.
+				...(model.id === "deepseek-reasoner" || v4ThinkingOn ? {} : { temperature: 0 }),
+				...v4Thinking,
+				...v4Effort,
+				...getOpenAIToolParams(tools),
+			},
+			{ signal: controller.signal },
+		)
 
 		const toolCallProcessor = new ToolCallProcessor()
 

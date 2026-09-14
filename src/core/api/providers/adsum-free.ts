@@ -117,8 +117,18 @@ export class AdsumFreeHandler implements ApiHandler {
 		return this.client
 	}
 
+	/** One per request, so the stall watchdog's abort() cancels the HTTP request rather than abandoning it. */
+	private abortController?: AbortController
+
+	abort(): void {
+		this.abortController?.abort()
+	}
+
 	@withRetry()
 	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: ChatCompletionTool[]): ApiStream {
+		this.abortController?.abort()
+		const controller = new AbortController()
+		this.abortController = controller
 		// Funnel-entry event — fire exactly once per install, not on every agent
 		// step or session restart (which previously inflated it ~26x per install).
 		if (await shouldFireFirstRunStarted()) {
@@ -133,13 +143,16 @@ export class AdsumFreeHandler implements ApiHandler {
 
 		let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>
 		try {
-			stream = await client.chat.completions.create({
-				model: ADSUM_FREE_MODEL_ID,
-				messages: openAiMessages,
-				stream: true,
-				stream_options: { include_usage: true },
-				...getOpenAIToolParams(tools),
-			})
+			stream = await client.chat.completions.create(
+				{
+					model: ADSUM_FREE_MODEL_ID,
+					messages: openAiMessages,
+					stream: true,
+					stream_options: { include_usage: true },
+					...getOpenAIToolParams(tools),
+				},
+				{ signal: controller.signal },
+			)
 		} catch (err: any) {
 			// The SDK wraps errors thrown from our fetch in APIConnectionError.
 			// Check err and err.cause for our known markers as a fast path.

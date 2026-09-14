@@ -179,3 +179,81 @@ export function guardStream<T>(inner: AsyncIterator<T>, opts: StallWatchdogOptio
 	}
 	return guarded
 }
+
+/**
+ * A stall is retried once, then shown. Three retries at 2 s / 4 s / 8 s on top of a 90–120 s silence budget kept a
+ * frozen turn on screen for eight minutes before the developer saw anything; one retry covers a dropped
+ * connection, and a second silence in a row is the provider, which the developer should hear about.
+ */
+export const STALL_AUTO_RETRIES = 1
+export const DEFAULT_AUTO_RETRIES = 3
+
+export function autoRetryLimitFor(error: unknown): number {
+	return error instanceof StreamStalledError ? STALL_AUTO_RETRIES : DEFAULT_AUTO_RETRIES
+}
+
+export interface TurnWatchdog {
+	/** Call on every chunk and every completed piece of handling: this is progress. */
+	touch(): void
+	stop(): void
+	/** The stall this watchdog raised, if it fired. */
+	readonly stalled: StreamStalledError | undefined
+}
+
+/**
+ * The idle budget over the WHOLE turn, not only over `next()`.
+ *
+ * `guardStream` times the wait for the next chunk. It cannot see time spent handling a chunk: a turn parked in
+ * that handling (a delivery nobody acknowledges, a write that never returns) does not call `next()` at all, so
+ * its timer never starts. This checks from outside the loop. A turn waiting on the developer — an ask on screen —
+ * is not stalled and is never timed out.
+ */
+export function startTurnWatchdog(opts: {
+	idleMs?: number
+	isWaitingForUser: () => boolean
+	onStall: (error: StreamStalledError) => void
+	now?: () => number
+	checkEveryMs?: number
+}): TurnWatchdog {
+	const idleMs = opts.idleMs ?? STREAM_IDLE_MS
+	const now = opts.now ?? Date.now
+	let last = now()
+	let stalled: StreamStalledError | undefined
+	let timer: ReturnType<typeof setInterval> | undefined
+	if (idleMs > 0) {
+		timer = setInterval(
+			() => {
+				if (stalled) {
+					return
+				}
+				if (opts.isWaitingForUser()) {
+					last = now()
+					return
+				}
+				const silent = now() - last
+				if (silent >= idleMs) {
+					stalled = new StreamStalledError(silent, false)
+					if (timer) {
+						clearInterval(timer)
+					}
+					opts.onStall(stalled)
+				}
+			},
+			opts.checkEveryMs ?? Math.max(250, Math.min(5000, Math.floor(idleMs / 4))),
+		)
+		;(timer as { unref?: () => void }).unref?.()
+	}
+	return {
+		touch() {
+			last = now()
+		},
+		stop() {
+			if (timer) {
+				clearInterval(timer)
+			}
+		},
+		get stalled() {
+			return stalled
+		},
+	}
+}

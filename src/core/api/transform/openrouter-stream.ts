@@ -26,6 +26,8 @@ export async function createOpenRouterStream(
 	geminiThinkingLevel?: string,
 	/** What the developer asked for in the Routing block. Absent ⇒ exactly the behaviour of before. */
 	routing?: RoutingSettings,
+	/** Lets the caller cancel the HTTP request itself — a stalled stream is aborted, not abandoned. */
+	requestOptions?: { signal?: AbortSignal },
 ) {
 	// Convert Anthropic messages to OpenAI format
 	let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -234,6 +236,7 @@ export async function createOpenRouterStream(
 	// overloads by a literal), kept in one place now that the body is assembled before the call.
 	const stream = (await client.chat.completions.create(
 		mergeAdvancedBody(body as Record<string, unknown>, routing?.extraBody) as never,
+		requestOptions?.signal ? { signal: requestOptions.signal } : undefined,
 	)) as unknown as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>
 
 	return stream
