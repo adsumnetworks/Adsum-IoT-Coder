@@ -40,6 +40,20 @@ describe("pendingAskFrom", () => {
 		assert.ok(pendingAskFrom([ask({ partial: false })]))
 	})
 
+	// B24, 14 Sep: a run whose saved transcript ends reasoning → a long answer → a closing followup was recorded as a
+	// timeout. The answer-first rule puts a long text right before the ask in the same turn; the ask is still the
+	// last message and must be the pending one, in the order the task writes it (partial ask, then finalised).
+	test("a long answer followed by a closing followup in the same turn: the followup is pending", () => {
+		const answer = { type: "say", say: "text", text: "The map is a prediction. ".repeat(400), ts: 135_000, partial: false }
+		const reasoning = { type: "say", say: "reasoning", text: "thinking", ts: 120_000, partial: false }
+		const question = JSON.stringify({ question: "How would you like to proceed?", options: ["Scan", "Lock", "Explain"] })
+		const streaming = [reasoning, answer, { type: "ask", ask: "followup", text: question, ts: 193_000, partial: true }]
+		assert.equal(pendingAskFrom(streaming), null, "not while the question is still being written")
+		const final = [reasoning, answer, { type: "ask", ask: "followup", text: question, ts: 193_000, partial: false }]
+		assert.deepEqual(pendingAskFrom(final), { kind: "followup", text: question, ts: 193_000 })
+		assert.equal(sessionStateFrom(final, true), "awaiting_human")
+	})
+
 	test("a missing ask kind or text degrades to empty strings, never undefined", () => {
 		const p = pendingAskFrom([{ type: "ask", ts: 5 }])
 		assert.deepEqual(p, { kind: "", text: "", ts: 5 })
