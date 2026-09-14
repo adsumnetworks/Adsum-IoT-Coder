@@ -145,27 +145,27 @@ describe("I — icons ship", () => {
 		}
 		const packaged = new Set((await listFiles({ cwd: root, dependencies: false })).map((f) => f.replace(/\\/g, "/")))
 		const refs = referencedIconFiles(pkg)
-		assert.ok(refs.includes("assets/icons/adsum-account-outline.woff"), "the account icon font is referenced")
 		const missing = refs.filter((f) => !packaged.has(f))
 		assert.deepEqual(missing, [], `referenced by package.json but not packaged: ${missing.join(", ")}`)
 	})
 
-	test("I-02 the account icon: the outline person signed out, the same with a dot signed in, both from the packaged font", () => {
+	test("I-02 the account icon is the editor's own codicon: sign-in signed out, account signed in, no contributed font", () => {
+		// Round 22 (B26): in a Remote SSH window no extension-contributed icon font loaded — ours or a vendor's — while
+		// the editor's own codicons rendered. The header must not depend on a contributed font.
 		const cmd = (id: string) => pkg.contributes.commands.find((c: { command: string }) => c.command === id)
-		assert.equal(cmd("adsum.account.signIn").icon, "$(adsum-account)")
-		assert.equal(cmd("adsum.account.menu").icon, "$(adsum-account-signed-in)")
-		const font = "assets/icons/adsum-account-outline.woff"
-		assert.equal(pkg.contributes.icons["adsum-account-signed-in"].default.fontPath, font)
-		assert.equal(pkg.contributes.icons["adsum-account"].default.fontPath, font)
+		assert.equal(cmd("adsum.account.signIn").icon, "$(sign-in)")
+		assert.equal(cmd("adsum.account.menu").icon, "$(account)")
+		const icons = Object.keys(pkg.contributes.icons ?? {})
+		assert.ok(!icons.some((id) => id.startsWith("adsum-account")), `still contributed: ${icons.join(", ")}`)
 	})
 
-	test("I-03 every icon id the header asks for is contributed", () => {
+	test("I-03 every icon id the header asks for is a codicon or contributed", () => {
 		const contributed = new Set(Object.keys(pkg.contributes.icons ?? {}))
 		const header = headerIconIds(pkg)
 		// The header has buttons; a run that found none is a broken reader, not a clean result.
 		assert.ok(header.length >= 3, `expected the header to name icons, found ${header.length}`)
-		assert.ok(header.includes("adsum-account"), "the signed-out account icon is a header icon")
-		assert.ok(header.includes("adsum-account-signed-in"), "the signed-in account icon is a header icon")
+		assert.ok(header.includes("sign-in"), "the signed-out account item is a header icon")
+		assert.ok(header.includes("account"), "the signed-in account item is a header icon")
 		// A codicon (`$(history)`, `$(gear)`) is the editor's own and needs no contribution; anything named with our
 		// own prefix must be contributed, or the editor draws nothing where the button should be.
 		const ours = header.filter((id) => id.startsWith("adsum") || id.startsWith("cline"))

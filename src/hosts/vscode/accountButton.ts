@@ -6,9 +6,10 @@ import { accountMenuItems } from "@/services/adsum/accountMenu"
 
 /**
  * The account icon in the panel header, between history and settings. The header row is the editor's own
- * title bar, so the icon is a command whose `when` clause reads `adsum.signedIn`: the plain account glyph when
- * signed out, the same glyph with an identity-colour dot when signed in. It follows the host's account state,
- * so it changes the moment a sign-in completes and on sign-out.
+ * title bar, so the icon is a command whose `when` clause reads `adsum.signedIn`: the editor's `sign-in` codicon
+ * when signed out, its `account` codicon when signed in (codicons, not a contributed font: a Remote SSH window loads
+ * no extension icon font). It follows the host's account state — seeded from the stored session on activation, then
+ * every sign-in, sign-out and change made in another window of the profile.
  */
 export function registerAccountButton(context: vscode.ExtensionContext, revealPanel: () => Promise<void>): void {
 	const sync = (profile: AccountProfile | null) => {

@@ -94,6 +94,10 @@ export function initAccountState(): void {
 		// yet — never a crash on a surface that has to paint.
 		return
 	}
+	// Round 22 (B26): the header's signed-in state is set by a listener registered BEFORE this runs (the account
+	// button registers early in activation). Seeding the cache without telling anyone left a signed-in bench showing
+	// "Sign in" until the next refresh, which is an hour away. Tell every listener what is stored now.
+	notify()
 	// A profile with no token is the residue of a sign-out that did not finish; the token is the truth.
 	if (!token && cached) {
 		void clear()

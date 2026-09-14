@@ -17,9 +17,9 @@ const root = path.resolve(__dirname, "../../..")
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"))
 
 describe("H — the account icon", () => {
-	test("H-01 signed out: the outline account glyph, titled Sign in, between history and settings", () => {
+	test("H-01 signed out: the editor's sign-in codicon, titled Sign in, between history and settings", () => {
 		const cmd = pkg.contributes.commands.find((c: { command: string }) => c.command === "adsum.account.signIn")
-		assert.equal(cmd.icon, "$(adsum-account)")
+		assert.equal(cmd.icon, "$(sign-in)")
 		assert.equal(cmd.title, "Sign in")
 		const rows = pkg.contributes.menus["view/title"] as { command: string; group: string; when: string }[]
 		const order = (id: string) => Number(rows.find((r) => r.command === id)?.group.split("@")[1])
@@ -29,12 +29,12 @@ describe("H — the account icon", () => {
 		assert.ok(order("adsum.account.signIn") < order("adsum-iot-coder.settingsButtonClicked"))
 	})
 
-	test("H-02 signed in: the account glyph with a dot, drawn like the other header icons, shown only when signed in", () => {
+	test("H-02 signed in: the editor's account codicon, drawn like history and settings, shown only when signed in", () => {
 		const cmd = pkg.contributes.commands.find((c: { command: string }) => c.command === "adsum.account.menu")
 		const rows = pkg.contributes.menus["view/title"] as { command: string; when: string }[]
 		assert.match(rows.find((r) => r.command === "adsum.account.menu")?.when ?? "", /(^|&&\s*)adsum\.signedIn\b/)
-		// A contributed font icon, not a picture: it takes the theme's icon colour and size like history and settings.
-		assert.equal(cmd.icon, "$(adsum-account-signed-in)")
+		// The person appears only when signed in: the sign of a login. A codicon, so it renders in remote windows too.
+		assert.equal(cmd.icon, "$(account)")
 	})
 
 	test("H-03 the menu names the account, says what it opens in words, and offers settings and sign-out", () => {

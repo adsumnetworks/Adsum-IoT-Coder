@@ -76,20 +76,6 @@
 					"fontCharacter": "\\e900"
 				}
 			},
-			"adsum-account": {
-				"description": "Adsum account, signed out: an outline head and shoulders, as the Account tab in settings",
-				"default": {
-					"fontPath": "assets/icons/adsum-account-outline.woff",
-					"fontCharacter": "\\e900"
-				}
-			},
-			"adsum-account-signed-in": {
-				"description": "Adsum account, signed in: the same outline with a solid dot at the lower right",
-				"default": {
-					"fontPath": "assets/icons/adsum-account-outline.woff",
-					"fontCharacter": "\\e901"
-				}
-			},
 			"adsum-iot-coder-icon": {
 				"description": "Adsum IoT Coder",
 				"default": {
@@ -121,12 +107,12 @@
 			{
 				"command": "adsum.account.signIn",
 				"title": "Sign in",
-				"icon": "$(adsum-account)"
+				"icon": "$(sign-in)"
 			},
 			{
 				"command": "adsum.account.menu",
 				"title": "Account",
-				"icon": "$(adsum-account-signed-in)"
+				"icon": "$(account)"
 			},
 			{
 				"command": "adsum.pasteSignInLink",

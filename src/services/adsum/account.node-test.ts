@@ -46,6 +46,37 @@ const json = (body: unknown, status = 200) =>
 	new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
 
 describe("X — the account, extension side", () => {
+	test("X-23 activation with a stored session tells listeners registered before it — the header shows signed in", async () => {
+		// Round 22 (B26): the account button registers its listener early in activation, before the account state is
+		// seeded from storage. The seed must notify, or a signed-in window shows "Sign in" until the next refresh.
+		const { StateManager } = await import("@/core/storage/StateManager")
+		const profile = { email: "dev@example.com", name: "", emailVerified: true, groups: [], fetchedAt: Date.now() }
+		const fake = {
+			getGlobalStateKey: (k: string) => (k === "adsumAccountProfile" ? profile : undefined),
+			getSecretKey: (k: string) => (k === "adsumSessionToken" ? "adu_stored" : undefined),
+			setGlobalState: () => {},
+			setSecret: () => {},
+		}
+		const holder = StateManager as unknown as { instance: unknown }
+		const saved = holder.instance
+		holder.instance = fake
+		const seen: (string | null)[] = []
+		const stop = account.onAccountChanged((p) => seen.push(p?.email ?? null))
+		try {
+			account.__setForTest({ token: undefined, profile: null })
+			await withFetch((async () => json({ error: "offline in test" }, 503)) as typeof fetch, async () => {
+				account.initAccountState()
+				await settled()
+			})
+			assert.equal(seen[0], "dev@example.com", "the first notification must carry the stored account")
+			assert.equal(account.getAccount()?.email, "dev@example.com")
+		} finally {
+			stop()
+			holder.instance = saved
+			account.__setForTest({ token: undefined, profile: null })
+		}
+	})
+
 	test("X-01 the sign-in URL carries the editor and a fresh nonce every time", () => {
 		const a = account.buildSignInUrl("github", "cursor")
 		const b = account.buildSignInUrl("github", "cursor")
