@@ -127,7 +127,7 @@
 			"id": "adsum/esp/rules/esp-terminal",
 			"title": "ESP Platform Rule: The ESP-IDF Device Tool",
 			"type": "knowledge",
-			"version": "1.1.0",
+			"version": "1.1.1",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -139,7 +139,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "platforms/esp/rules/esp-terminal.md",
-			"content_hash": "b74abdc56c5f7f3772a8c5363142a2e270630fe463b55d66cb6ca108e85c199b"
+			"content_hash": "2d08d0f4636eb76599b28444802b7e27eb154fe03f4c247edc4980576cd2ef8b"
 		},
 		{
 			"id": "adsum/esp/rules/skill-loading",
@@ -204,7 +204,7 @@
 			"id": "adsum/esp/tools/esp-monitor",
 			"title": "esp-monitor",
 			"type": "tool",
-			"version": "1.3.0",
+			"version": "1.3.1",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "Apache-2.0",
@@ -230,18 +230,18 @@
 				},
 				{
 					"path": "esp_monitor_logger.py",
-					"sha256": "a3fbbcc009c6639ab4ae845a9335b62665ccc85e4e05deeffb531b76c10cb855"
+					"sha256": "f14727ef8efb0e62c4f79782c5ad19074ade1387fdbe5a99de525bece0278133"
 				}
 			],
 			"readonly": false,
 			"path": "platforms/esp/tools/esp-monitor/TOOL.md",
-			"content_hash": "ddc45af59c661611753c1cd54dad2691baa4427410de3513fde67e90d0fdf6a3"
+			"content_hash": "0ca33c545bf7fe1e45974c2b3e6877de6c3e5932c303f1aca2f6d546c93851e1"
 		},
 		{
 			"id": "adsum/nrf/actions/capture-logs",
 			"title": "Action: Capture Device Logs",
 			"type": "action",
-			"version": "1.0.1",
+			"version": "1.0.2",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -258,7 +258,7 @@
 				"process-kill"
 			],
 			"path": "platforms/nrf/actions/capture-logs.md",
-			"content_hash": "658f15286fbf00c14c3c51e2127dd44254cb44bdc7098bbc2262c5d76d6fca05"
+			"content_hash": "9483ebe16e10871ff1e14bf62933b6b80fbd82bdcb72e23b85a6ef4a77c51192"
 		},
 		{
 			"id": "adsum/nrf/actions/flash",

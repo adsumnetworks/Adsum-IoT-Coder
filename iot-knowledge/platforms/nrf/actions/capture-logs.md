@@ -2,7 +2,7 @@
 id: adsum/nrf/actions/capture-logs
 title: "Action: Capture Device Logs"
 type: action
-version: 1.0.1
+version: 1.0.2
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -77,6 +77,7 @@ triggerNordicAction: action="log_device", operation="capture", transport="rtt", 
 
 ## Recommended Capture Parameters
 - Leave `reset` unset to read the device as it is running. Pass `reset="true"` only for a boot sequence, and only on a device the developer confirmed; a capture with a reset reboots the part and is not a reading of what it was doing.
+- Right after you flashed a board in this task, that board is the confirmed one: pass `reset="true"` so the verification capture catches its boot.
 - With `reset="true"` on UART, use `pre-capture-delay="3"` so the port is listening before the reset.
 
 

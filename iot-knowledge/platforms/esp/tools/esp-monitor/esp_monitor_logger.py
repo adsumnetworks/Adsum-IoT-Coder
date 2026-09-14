@@ -551,6 +551,13 @@ def capture_one(device: dict, duration: int, output: str, no_reset: bool, chip_o
 
     if not device.get("port"):
         print(f"{prefix}auto-selected port: {port or 'none found'}")
+    if no_reset and not port:
+        # `idf.py monitor --no-reset` only holds the reset when a port is given; without one it would
+        # reset the board anyway. A capture that cannot promise not to reset does not run.
+        print(f"{prefix}no serial port found — nothing captured. Pass --port; without one the monitor would reset the board.")
+        return log_path
+    if no_reset:
+        print(f"{prefix}capturing the board as it is running; it is not reset. Pass --reset for a boot sequence.")
     print(f"{prefix}capturing {duration}s → {log_path}")
 
     def run_capture() -> None:
@@ -611,7 +618,11 @@ def capture_one(device: dict, duration: int, output: str, no_reset: bool, chip_o
                 f.write("\n# --- retry produced nothing usable; the capture above is the real device output ---\n")
             print(f"{prefix}retry gave nothing usable — kept the original capture")
 
-    if stuck_in_bootloader(log_path):
+    if stuck_in_bootloader(log_path) and no_reset:
+        # Getting it out of the ROM bootloader takes a reset, and nobody asked for one.
+        print(f"{prefix}chip is in the ROM bootloader, not the application. Not resetting it: a reset needs --reset, "
+              "on a board the developer has confirmed.")
+    elif stuck_in_bootloader(log_path):
         # A capture that lands here is not a firmware problem: the chip was put into the bootloader,
         # usually by control lines asserted on open. Re-run with a clean application reset and say so,
         # rather than handing back "waiting for download" as if it were the application's own output.
@@ -650,8 +661,12 @@ def main() -> int:
     parser.add_argument("--chip", help="Chip target for the filename (default: read from build/project_description.json)")
     parser.add_argument("--baud", type=int, default=DEFAULT_BAUD, help=f"Baud rate for the raw fallback (default: {DEFAULT_BAUD})")
     parser.add_argument("--output", default="logs", help="Output directory (default: logs/)")
-    parser.add_argument("--no-reset", action="store_true", help="Do not reset the board before capture (mid-runtime capture)")
+    # A capture reads the board; it must not reboot it. Reset is an explicit --reset. The old default (reset
+    # unless --no-reset) rebooted whatever board sat on the port, confirmed or not.
+    parser.add_argument("--reset", action="store_true", help="Reset the board before capture, to record a boot sequence. Off by default")
+    parser.add_argument("--no-reset", action="store_true", help="Do not reset (the default; kept for older callers, and it wins over --reset)")
     args = parser.parse_args()
+    args.no_reset = args.no_reset or not args.reset
 
     if args.devices:
         devices = parse_devices(args.devices, args.project if args.project != "." else None)

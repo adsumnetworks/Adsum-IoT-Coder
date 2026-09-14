@@ -33,7 +33,7 @@ CRITICAL OPERATIONAL RULES:
    - "idf.py size"  → app IRAM/DRAM/Flash usage (after a build).
 3. TARGET: A project builds for one chip (esp32, esp32s3, esp32c3, esp32c6...). Set it with action="execute" command="idf.py set-target esp32s3" before the first build if it differs from sdkconfig's CONFIG_IDF_TARGET.
 4. PORTS: take the port from "Connected ESP Devices" in your context (already discovered for you); only fall back to command="python -m serial.tools.list_ports" if it is not listed there. Then ALWAYS pass "port" to flash and monitor. A portless flash/monitor makes esptool open every serial device (/dev/ttyS0..S31 on Linux) one by one before finding the board, and picks the wrong one when two boards are attached. Linux: /dev/ttyUSB* or /dev/ttyACM*; macOS: /dev/cu.usbserial-* or /dev/cu.usbmodem*; Windows: COMx.
-5. MONITOR = log capture: action="monitor" runs idf.py monitor for "duration" seconds and SAVES the serial output (panic backtraces already decoded to file:line) to logs/uart/<name>_<chip>_<port>_<ts>.log. It resets the board first by default (set reset="false" for mid-runtime capture). This is how you capture crashes/coredumps — do NOT run "idf.py monitor" via execute (it would hang).
+5. MONITOR = log capture: action="monitor" runs idf.py monitor for "duration" seconds and SAVES the serial output (panic backtraces already decoded to file:line) to logs/uart/<name>_<chip>_<port>_<ts>.log. It does NOT reset the board: it reads the board as it runs. Pass reset="true" only to record a boot sequence, and only on a board the developer has confirmed is the one under discussion. This is how you capture crashes/coredumps — do NOT run "idf.py monitor" via execute (it would hang).
    MULTI-BOARD: pass "devices" instead of "port" to capture two or more boards CONCURRENTLY in one call (e.g. a BLE central + peripheral pair). Format: "name1:port1:/abs/path/project1,name2:port2:/abs/path/project2". Each board runs idf.py monitor inside its own project directory, in parallel, for the same "duration".
 6. CLEAN/RECONFIG: use action="execute" with command="idf.py fullclean" or "idf.py reconfigure" when the build is in a bad state.
 `
@@ -101,8 +101,8 @@ When "devices" is set, "port" and "name" parameters are ignored (name is embedde
 	{
 		name: "reset",
 		required: false,
-		instruction: `Optional for "monitor". Reset the board before capturing (DEFAULT: true — captures the full boot sequence). Set to "false" for mid-runtime capture without resetting.`,
-		usage: "true",
+		instruction: `Optional for "monitor". DEFAULT: false — a monitor capture reads the board as it runs and never resets it. Pass reset="true" only to record a boot sequence, and only on a board the developer has confirmed is the one under discussion. A capture taken with a reset reboots the board: it is not a reading of what the board was doing.`,
+		usage: "false",
 	},
 	{
 		name: "idf_version",
