@@ -30,6 +30,44 @@ export function unavailableReason(f: { locked: boolean; reachable: boolean; list
 	return f.listed ? null : "not-in-registry"
 }
 
+/**
+ * What the read tool says when a bit would not load after the near-miss rescue, decided in one place.
+ *
+ * [14 Sep 2026, B8] A developer on a free account followed an index row to a bit their account cannot
+ * open, by a path that was one folder off. The rescue found the right path, could not serve it (it is
+ * locked), and the refusal then said BOTH "could not open this for your account" and "a file with this
+ * name exists at a different path — you likely mis-derived the directory". The agent spent a turn on the
+ * contradiction and went looking for a path it could never open. So: a lock is said alone, and a path
+ * the account cannot open is never offered as a hint. A genuine near miss on an open bit keeps its hint.
+ */
+export function refusalAfterNearMiss(f: {
+	/** The id the agent asked for is known to be locked for this account. */
+	requestedLocked: boolean
+	reachable: boolean
+	/** Same-filename bits elsewhere in the catalogue, each with whether this account is locked out of it. */
+	nearMisses: Array<{ rel: string; locked: boolean }>
+}): { reason: KbitUnavailableReason; pathHint: string } {
+	const open = f.nearMisses.filter((m) => !m.locked)
+	if (f.requestedLocked || (f.nearMisses.length > 0 && open.length === 0)) {
+		return { reason: "locked", pathHint: "" }
+	}
+	if (!f.reachable) {
+		return { reason: "unreachable", pathHint: "" }
+	}
+	if (open.length > 0) {
+		return {
+			reason: "not-in-registry",
+			pathHint:
+				`A bit with this FILENAME exists at a different path — you likely mis-derived the directory. ` +
+				`Retry with the exact path: ${open.map((m) => m.rel).join("  or  ")}. `,
+		}
+	}
+	return {
+		reason: "not-in-registry",
+		pathHint: `First re-check the path (combine the iot-knowledge directory with the bit's relative path). `,
+	}
+}
+
 export interface KbitUnavailableInput {
 	reason: KbitUnavailableReason
 	/** What the agent asked for, as it asked for it. Never an id, hash or size of a locked bit. */

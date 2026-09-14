@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert"
-import { kbitUnavailableMessage } from "../kbitUnavailable"
+import { kbitUnavailableMessage, refusalAfterNearMiss } from "../kbitUnavailable"
 
 /**
  * The falsifier for the worst string in the product.
@@ -55,5 +55,64 @@ describe("a bit the account cannot open", () => {
 		const msg = kbitUnavailableMessage({ antiImprovise: ANTI, displayPath: "x.md", reason: "unreachable" })
 		assert.ok(msg.includes("unreachable"), "the network case keeps its own words")
 		assert.ok(!msg.includes("ADSUM_KBIT_LOCAL"))
+	})
+})
+
+/**
+ * B8, 14 September: a free account followed a path one folder off to a workflow it cannot open. The rescue
+ * found the right path, could not serve it, and the refusal said both "not open to your account" and "you
+ * mis-derived the directory — retry with workflows/blg20x-first-run.md". A lock is said alone.
+ */
+describe("a refusal after the near-miss rescue", () => {
+	const lockedMessage = (r: ReturnType<typeof refusalAfterNearMiss>) =>
+		kbitUnavailableMessage({
+			antiImprovise: ANTI,
+			displayPath: "iot-knowledge/products/fanstel/blg20x/workflows/blg20x-first-run.md",
+			pathHint: r.pathHint,
+			reason: r.reason,
+		})
+
+	it("a locked near miss gets the lock message alone — no path hint, no retry", () => {
+		const r = refusalAfterNearMiss({
+			requestedLocked: false,
+			reachable: true,
+			nearMisses: [{ rel: "workflows/blg20x-first-run.md", locked: true }],
+		})
+		assert.deepEqual(r, { reason: "locked", pathHint: "" })
+		const msg = lockedMessage(r)
+		assert.ok(msg.includes("not open to your account"))
+		assert.ok(!/different path|mis-derived|Retry with the exact path|workflows\/blg20x-first-run/.test(msg), msg)
+	})
+
+	it("a bit the account is locked out of by its own id is never given a hint either", () => {
+		const r = refusalAfterNearMiss({
+			requestedLocked: true,
+			reachable: true,
+			nearMisses: [{ rel: "rules/other.md", locked: false }],
+		})
+		assert.deepEqual(r, { reason: "locked", pathHint: "" })
+	})
+
+	it("a genuine near miss on an OPEN bit still gets its hint", () => {
+		const r = refusalAfterNearMiss({
+			requestedLocked: false,
+			reachable: true,
+			nearMisses: [{ rel: "cra/core.md", locked: false }],
+		})
+		assert.equal(r.reason, "not-in-registry")
+		assert.match(r.pathHint, /Retry with the exact path: cra\/core\.md/)
+	})
+
+	it("of two near misses, only the one the account can open is offered", () => {
+		const r = refusalAfterNearMiss({
+			requestedLocked: false,
+			reachable: true,
+			nearMisses: [
+				{ rel: "products/a/x.md", locked: true },
+				{ rel: "platforms/nrf/x.md", locked: false },
+			],
+		})
+		assert.match(r.pathHint, /platforms\/nrf\/x\.md/)
+		assert.doesNotMatch(r.pathHint, /products\/a\/x\.md/)
 	})
 })

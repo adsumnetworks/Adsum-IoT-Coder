@@ -2,7 +2,7 @@
 id: adsum/nrf/platform
 title: "Nordic nRF — Platform Index"
 type: knowledge
-version: 1.8.1
+version: 1.8.2
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -208,6 +208,22 @@ When starting a new task, load one of these Workflows first.
 | Prototype | `workflows/prototype.md` | Compose a new nRF project from verified Nordic samples |
 | Add Feature | `workflows/add-feature.md` | Port one feature into an existing project, then verify via Debug Loop |
 | Test & Validate | `workflows/test-validate.md` | ztest via simulator/on-hardware Twister + behavioral validation + CI offer |
+
+### When the developer's symptom is one of these — load the action before you answer *(downloaded)*
+
+These are reached from a symptom, not from a workflow: a developer rarely names a board or a product when
+they report one. Paths are from the knowledge root.
+
+| The developer says or shows | Load first |
+|---|---|
+| A log that looks cut off, has missing lines, or shows an uptime or content from before a reset they just did; "the device is hung" from a debug log | `platforms/nrf/actions/read-rtt-honestly.md` — the debug buffer survives a reset, so drain it before reading |
+| They ask to flash, program, erase or recover an nRF91 (nRF9160, nRF9161, nRF9151) | `platforms/nrf/actions/program-nrf91-safely.md` — the safe sequence, stated even when the flash cannot start yet |
+| Both debug probes stop answering after a flash, a reset or a button press, on a board with two probes | `platforms/nrf/actions/two-probes-one-reset-net.md` |
+| The image programs and verifies, and the part never boots | `platforms/nrf/actions/image-programs-never-boots.md` |
+| A cellular attach that searches forever and never registers, or a board that keeps being reset while it attaches | `platforms/nrf/actions/modem-reset-loop.md` |
+| The modem will not register anywhere and nothing else has worked | `platforms/nrf/actions/ask-the-sim.md` |
+| A bootloader that looks like it is looping | `platforms/nrf/actions/diagnose-a-bootloader.md` |
+| They want to test cloud wiring while the modem will not attach | `platforms/nrf/actions/cloud-device-before-radio.md` |
 
 ### Internal Actions (loaded when a Workflow instructs, or the Command Gate in `rules/bit-loading.md` fires)
 

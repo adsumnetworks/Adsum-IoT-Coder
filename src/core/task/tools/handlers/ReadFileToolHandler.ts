@@ -4,7 +4,7 @@ import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
-import { kbitUnavailableMessage, unavailableReason } from "@services/knowledge/kbitUnavailable"
+import { kbitUnavailableMessage, refusalAfterNearMiss, unavailableReason } from "@services/knowledge/kbitUnavailable"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
 import {
@@ -15,6 +15,7 @@ import {
 	deriveIdFromRel,
 	downloadedBitKnown,
 	isBareBitPath,
+	isLockedInManifest,
 	isOverridden,
 	isRegistryReachable,
 	loadBitByKbPath,
@@ -379,18 +380,24 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 					return served
 				}
 			}
-			const pathHint =
-				nearMisses.length > 0
-					? `A bit with this FILENAME exists at a different path — you likely mis-derived the directory. ` +
-						`Retry with the exact path: ${nearMisses.join("  or  ")}. `
-					: `First re-check the path (combine the iot-knowledge directory with the bit's relative path). `
 			/*
 			 * A bit the registry refused for want of an entitlement is REAL. The resolver already knows
-			 * — it records the refusal in lockedBits() — and until this branch existed the handler threw
-			 * that knowledge away and told the developer the bit did not exist, then advised them to
-			 * publish it to our own registry and set a developer environment variable.
+			 * — it records the refusal in lockedBits(), including for a near miss the rescue just tried —
+			 * and until this branch existed the handler threw that knowledge away and told the developer
+			 * the bit did not exist. A lock is said alone, and no path the account cannot open is hinted
+			 * (B8): see refusalAfterNearMiss.
 			 */
-			const isLocked = bitId !== null && lockedBits().has(bitId)
+			const lockedId = async (rel: string) => {
+				const id = deriveIdFromRel(rel.replace(/\\/g, "/"))
+				return lockedBits().has(id) || (await isLockedInManifest(id))
+			}
+			const refusal = refusalAfterNearMiss({
+				requestedLocked: bitId !== null && (lockedBits().has(bitId) || (await isLockedInManifest(bitId))),
+				reachable,
+				nearMisses: await Promise.all(nearMisses.map(async (rel) => ({ rel, locked: await lockedId(rel) }))),
+			})
+			const pathHint = refusal.pathHint
+			const isLocked = refusal.reason === "locked"
 			telemetryService.captureKbitLoadFailed({
 				reason: isLocked ? "locked" : reachable ? "not_in_registry" : "registry_unreachable",
 				bitId: bitId ?? undefined,
@@ -402,7 +409,7 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 					displayPath,
 					isDev: process.env.IS_DEV === "true",
 					pathHint,
-					reason: isLocked ? "locked" : reachable ? "not-in-registry" : "unreachable",
+					reason: refusal.reason,
 				}),
 			)
 		}
