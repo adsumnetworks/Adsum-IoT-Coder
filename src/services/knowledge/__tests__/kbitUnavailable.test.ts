@@ -138,7 +138,7 @@ describe("a locked bit ends the answer only when it is a workflow", () => {
 		assert.match(msg, /Do not invent what it contains/)
 		// B14: the locked topic gets no procedure from general knowledge, and the relay sentence is given verbatim.
 		assert.match(msg, /give no procedure, command, setting or value from general knowledge/)
-		assert.match(msg, /only with what the bits that did open and the developer's own project actually state/)
+		assert.match(msg, /only with what you have already read in this task and the developer's own project actually state/)
 		assert.ok(msg.includes('"The detailed steps for this are in a set that isn\'t open to your account."'), msg)
 	})
 
@@ -167,8 +167,24 @@ describe("a locked bit ends the answer only when it is a workflow", () => {
 			msg,
 			/If the developer's request cannot be answered without it, tell them the workflow is currently unavailable and stop/,
 		)
-		assert.match(msg, /If it can, answer from the bits that did open/)
+		assert.match(msg, /If it can, answer from what you have already read/)
 		assert.match(msg, /Do not reconstruct or improvise this workflow/)
+	})
+
+	// Round eleven: answers said "the bits that did open" — our own instruction, repeated to the developer.
+	it("the instruction after the lock sentence never speaks of bits, so the answer cannot repeat it", () => {
+		for (const displayPath of [
+			"iot-knowledge/products/fanstel/blg20x/satellite-on-this-gateway.md",
+			"iot-knowledge/tools/blg20-hex-demo-pair/TOOL.md",
+			"iot-knowledge/workflows/blg20x-first-run.md",
+		]) {
+			const msg = kbitUnavailableMessage({ antiImprovise: STOP, displayPath, reason: "locked" })
+			const afterLock = msg.slice(
+				msg.indexOf("nothing on this machine is broken.") + "nothing on this machine is broken.".length,
+			)
+			assert.ok(afterLock.length > 0, msg)
+			assert.ok(!/\bbits?\b/i.test(afterLock), `no "bit" after the lock sentence: ${afterLock}`)
+		}
 	})
 
 	it("the kind is read from the path", () => {

@@ -676,7 +676,7 @@
 			"id": "adsum/rules/core",
 			"title": "Universal Embedded Rules",
 			"type": "knowledge",
-			"version": "1.6.2",
+			"version": "1.6.3",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -688,7 +688,7 @@
 				"adsum/nrf/tools/nrf-action"
 			],
 			"path": "rules/core.md",
-			"content_hash": "ffcb5f0a2cc9a8594bb57d906506774ce4a8bee7846ead6c0738ce8d2062078a"
+			"content_hash": "4ae38d3707ffa29189c19dc325cae0622da94c17e61f9c13f04cc4aa9da203e5"
 		},
 		{
 			"id": "adsum/rules/skill-loading",

@@ -108,6 +108,10 @@ const LOCKED =
  * locked satellite bit ended a whole answer and the free board bit that had loaded said nothing.
  */
 /**
+ * [14 Sep 2026, round eleven] The wording after the lock sentence speaks of "what you have already read", never
+ * of "the bits that did open": answers were repeating our own instruction back to the developer.
+ */
+/**
  * For a locked WORKFLOW. It ends the answer only when the developer's request needs that workflow. On
  * 14 September a developer asked how to flash a part; the agent also tried the first-run workflow, was told
  * "tell the developer the workflow is currently unavailable and stop", and stopped — with the programming
@@ -116,12 +120,12 @@ const LOCKED =
 const LOCKED_WORKFLOW =
 	" Do not reconstruct or improvise this workflow from general knowledge, memory or a prior report. If the " +
 	"developer's request cannot be answered without it, tell them the workflow is currently unavailable and stop. " +
-	"If it can, answer from the bits that did open and do not mention this workflow again."
+	"If it can, answer from what you have already read and do not mention this workflow again."
 
 const LOCKED_CARRY_ON =
-	" Do not invent what it contains. For the topic this bit covers, give no procedure, command, setting or " +
+	" Do not invent what it contains. For the topic it covers, give no procedure, command, setting or " +
 	"value from general knowledge — not even one you are confident of: the developer would act on it. Answer " +
-	"only with what the bits that did open and the developer's own project actually state. Tell the developer, " +
+	"only with what you have already read in this task and the developer's own project actually state. Tell the developer, " +
 	'in these words: "The detailed steps for this are in a set that isn\'t open to your account."'
 
 export function kbitUnavailableMessage({
