@@ -16,10 +16,32 @@ import { toolParamNames } from "."
 // and rewritten once the closing token arrives.
 
 // Token strings use DeepSeek's fullwidth pipe characters (U+FF5C).
-const DSML_INVOKE_RE = /<｜｜DSML｜｜invoke\s+name="([^"]+)">([\s\S]*?)<\/｜｜DSML｜｜invoke>/g
-const DSML_PARAM_RE = /<｜｜DSML｜｜parameter\s+name="([^"]+)"(?:\s+string="[^"]*")?\s*>([\s\S]*?)<\/｜｜DSML｜｜parameter>/g
-const DSML_TOOL_CALLS_OPEN_RE = /<｜｜DSML｜｜tool_calls>\s*/g
-const DSML_TOOL_CALLS_CLOSE_RE = /\s*<\/｜｜DSML｜｜tool_calls>/g
+/*
+ * The markup as models actually write it, not as it is documented.
+ *
+ * A real session (bench task 1789341500200, a small model at a 1,024 thinking budget) sent this, and
+ * the tidy patterns matched none of it:
+ *
+ *   <｜｜DSML｜｜ calls>
+ *   <｜｜DSML｜｜ invoke name="list_files">
+ *   <｜｜DSML｜｜ parameter name="path" string="true">…</｜｜DSML｜｜ parameter>
+ *   <｜｜DSML｜｜ parameter name="recursive>true</｜｜DSML｜｜ parameter>
+ *   <｜｜DSML｜｜ parameter name="task_progress>…</task_progress>
+ *
+ * Three differences, all of which must be tolerated: a SPACE after the marker; the wrapper written
+ * as "calls" rather than "tool_calls"; and a name attribute that never closes its quote, once
+ * closing with the parameter's own name instead of the markup's tag. The engine saw no tool, told
+ * the model so, the model concluded our parser was broken and repeated the identical call, and the
+ * session died on the mistake limit in twenty seconds having executed nothing.
+ *
+ * Tolerated, not guessed at: the allowlists below still decide what a name MEANS, so a malformed
+ * block naming something we do not know is left alone to fail loudly rather than being relabelled.
+ */
+const DSML_INVOKE_RE = /<｜｜DSML｜｜\s*invoke\s+name="([^">]+)"?\s*>([\s\S]*?)<\/｜｜DSML｜｜\s*invoke>/g
+const DSML_PARAM_RE =
+	/<｜｜DSML｜｜\s*parameter\s+name="([^">]+)"?(?:\s+string="[^"]*")?\s*>([\s\S]*?)(?:<\/｜｜DSML｜｜\s*parameter>|<\/\1>)/g
+const DSML_TOOL_CALLS_OPEN_RE = /<｜｜DSML｜｜\s*(?:tool_)?calls>\s*/g
+const DSML_TOOL_CALLS_CLOSE_RE = /\s*<\/｜｜DSML｜｜\s*(?:tool_)?calls>/g
 
 // Markdown code fence around tool-call XML. Lazy match so we don't span fences.
 const CODE_FENCE_RE = /```(?:xml|tool|tool_use|tool_calls)?\s*\r?\n([\s\S]*?)\r?\n[ \t]*```/g

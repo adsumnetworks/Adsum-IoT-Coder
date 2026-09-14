@@ -147,6 +147,18 @@ const API_HANDLER_SETTINGS_FIELDS = {
 	openAiHeaders: { default: {} as Record<string, string> },
 	anthropicBaseUrl: { default: undefined as string | undefined },
 	openRouterProviderSorting: { default: undefined as string | undefined },
+	/*
+	 * Routing, for a developer bringing their own key: which seller serves the model, and on what
+	 * terms. Stored as separate fields rather than one blob so the picker can read and write each
+	 * control on its own, and so a future setting cannot corrupt the others by re-serialising.
+	 * Every default is undefined/off: an existing configuration behaves exactly as it did.
+	 */
+	openRouterSellerOrder: { default: undefined as string | undefined },
+	openRouterOnlyTheseSellers: { default: undefined as boolean | undefined },
+	openRouterMaxInputPrice: { default: undefined as string | undefined },
+	openRouterMaxOutputPrice: { default: undefined as string | undefined },
+	openRouterRequireToolCalls: { default: undefined as boolean | undefined },
+	openRouterExtraBody: { default: undefined as string | undefined },
 	awsRegion: { default: undefined as string | undefined },
 	awsUseCrossRegionInference: { default: undefined as boolean | undefined },
 	awsUseGlobalInference: { default: undefined as boolean | undefined },

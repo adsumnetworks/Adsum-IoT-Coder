@@ -14,6 +14,7 @@ import { ContextWindowSwitcher } from "./common/ContextWindowSwitcher"
 import { ModelInfoView } from "./common/ModelInfoView"
 import { DropdownContainer } from "./common/ModelSelector"
 import FeaturedModelCard from "./FeaturedModelCard"
+import OpenRouterRouting, { type RoutingValues } from "./OpenRouterRouting"
 import ThinkingBudgetSlider from "./ThinkingBudgetSlider"
 import { filterOpenRouterModelIds, getModeSpecificFields, normalizeApiConfiguration } from "./utils/providerUtils"
 import { useApiConfigurationHandlers } from "./utils/useApiConfigurationHandlers"
@@ -93,6 +94,17 @@ export const freeModels = [
 ]
 
 const FREE_CLINE_MODELS = freeModels.map((m) => m.id)
+
+/** The developer's words on the left, the stored field on the right. One map, so neither drifts. */
+const ROUTING_FIELDS = {
+	extraBody: "openRouterExtraBody",
+	maxInputPrice: "openRouterMaxInputPrice",
+	maxOutputPrice: "openRouterMaxOutputPrice",
+	onlyTheseSellers: "openRouterOnlyTheseSellers",
+	requireToolCalls: "openRouterRequireToolCalls",
+	sellerOrder: "openRouterSellerOrder",
+	sorting: "openRouterProviderSorting",
+} as const satisfies Record<keyof RoutingValues, string>
 
 const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup, currentMode, showProviderRouting }) => {
 	const { handleModeFieldChange, handleModeFieldsChange, handleFieldChange } = useApiConfigurationHandlers()
@@ -468,13 +480,29 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup, 
 						</DropdownContainer>
 					)}
 
+					{/* Routing — the ways a developer can say who serves this model. It sits under the key
+					    and the model because that is the order the decisions are made in. */}
+					{showProviderRouting && (
+						<OpenRouterRouting
+							modelInfo={selectedModelInfo}
+							onChange={(field, value) => handleFieldChange(ROUTING_FIELDS[field] as never, value as never)}
+							values={{
+								extraBody: apiConfiguration?.openRouterExtraBody,
+								maxInputPrice: apiConfiguration?.openRouterMaxInputPrice,
+								maxOutputPrice: apiConfiguration?.openRouterMaxOutputPrice,
+								onlyTheseSellers: apiConfiguration?.openRouterOnlyTheseSellers,
+								requireToolCalls: apiConfiguration?.openRouterRequireToolCalls,
+								sellerOrder: apiConfiguration?.openRouterSellerOrder,
+								sorting: apiConfiguration?.openRouterProviderSorting,
+							}}
+						/>
+					)}
+
 					<ModelInfoView
 						isPopup={isPopup}
 						modelInfo={selectedModelInfo}
-						onProviderSortingChange={(value) => handleFieldChange("openRouterProviderSorting", value)}
-						providerSorting={apiConfiguration?.openRouterProviderSorting}
 						selectedModelId={selectedModelId}
-						showProviderRouting={showProviderRouting}
+						showProviderRouting={false}
 					/>
 				</>
 			) : isOpenRouterPreset ? (
