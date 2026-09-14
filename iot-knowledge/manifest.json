@@ -306,7 +306,7 @@
 			"id": "adsum/nrf/platform",
 			"title": "Nordic nRF — Platform Index",
 			"type": "knowledge",
-			"version": "1.8.3",
+			"version": "1.8.4",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -321,7 +321,7 @@
 				"flash"
 			],
 			"path": "platforms/nrf/PLATFORM.md",
-			"content_hash": "755436bc9bcc358dcaa4ea8052cbb2ad55f633188c6ad8c1f722d4580d638dd2"
+			"content_hash": "1ae8a3974b54e5cd34f2675c0db9a94f8e4a8997c85b0b95acf9f6de33f99b4c"
 		},
 		{
 			"id": "adsum/nrf/rules/bit-loading",

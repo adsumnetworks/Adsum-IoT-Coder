@@ -2,7 +2,7 @@
 id: adsum/nrf/platform
 title: "Nordic nRF — Platform Index"
 type: knowledge
-version: 1.8.3
+version: 1.8.4
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -224,6 +224,15 @@ they report one. Paths are from the knowledge root.
 | The modem will not register anywhere and nothing else has worked | `platforms/nrf/actions/ask-the-sim.md` |
 | A bootloader that looks like it is looping | `platforms/nrf/actions/diagnose-a-bootloader.md` |
 | They want to test cloud wiring while the modem will not attach | `platforms/nrf/actions/cloud-device-before-radio.md` |
+| Uploading a firmware release to the device cloud is refused ("method not allowed", 405), or a release uploads and never shows up, shows as cancelled, or is never offered to a device | `platforms/nrf/actions/ota-upload-release.md` — upload through the vendor's own tool |
+| A release exists and no device is offered it | `platforms/nrf/cloud/deploy-to-cohort.md` |
+| They are writing the device's update-check code, or it reports a state they do not expect | `platforms/nrf/cloud/update-query-states.md` |
+| A cloud interface call is refused and the credential looks right — creating a release works but attaching or deploying it does not | `platforms/nrf/cloud/credentials-and-scopes.md` |
+| An interface key is rejected as malformed and the key is plainly right | `platforms/nrf/cloud/two-surfaces-one-name.md` |
+| They plan per-device certificates or per-device provisioning for the fleet back end | `platforms/nrf/cloud/no-per-device-cert.md` |
+| A hosted IoT platform accepts the CoAP integration and then refuses or never opens its endpoint | `platforms/nrf/cloud/coap-integration-not-hosted.md` |
+| A second integration is refused as "maximum reached", or they are sizing a pilot on a hosted platform's free tier | `platforms/nrf/cloud/hosted-tenant-limits.md` |
+| A bill-of-materials upload is refused with a format error or a bare "not found", or they are about to spend a cloud scan | `platforms/nrf/cloud/sbom-spdx-only.md` |
 
 ### Internal Actions (loaded when a Workflow instructs, or the Command Gate in `rules/bit-loading.md` fires)
 
