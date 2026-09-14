@@ -78,6 +78,20 @@ export interface KbitUnavailableInput {
 	antiImprovise: string
 	/** Developer builds only. A customer must never be handed an environment variable. */
 	isDev?: boolean
+	/**
+	 * What kind of bit it is. Only a WORKFLOW the task depends on ends the answer when it is locked: without it
+	 * there is no procedure to follow. A locked knowledge or tool bit is one missing ingredient, and the answer
+	 * goes on without it (B12). Absent ⇒ judged from `displayPath`.
+	 */
+	kind?: "workflow" | "knowledge" | "tool"
+}
+
+/** A bit's kind from the path the agent asked for: `…/workflows/…` and `…/tools/…` say so; the rest is knowledge. */
+export function kindFromPath(p: string): "workflow" | "knowledge" | "tool" {
+	const norm = p.replace(/\\/g, "/")
+	if (/(^|\/)workflows\//.test(norm)) return "workflow"
+	if (/(^|\/)tools\//.test(norm)) return "tool"
+	return "knowledge"
 }
 
 /** The developer-facing sentence for a bit that is real and not theirs yet. */
@@ -86,17 +100,39 @@ const LOCKED =
 	"tell the developer they can ask for more details from the Adsum panel, and that nothing on this " +
 	"machine is broken."
 
+/**
+ * [14 Sep 2026, B12] What follows the lock sentence for a locked knowledge or tool bit. The workflow wording
+ * ("tell the developer the workflow is currently unavailable and stop") used to follow every lock, so one
+ * locked satellite bit ended a whole answer and the free board bit that had loaded said nothing.
+ */
+/**
+ * For a locked WORKFLOW. It ends the answer only when the developer's request needs that workflow. On
+ * 14 September a developer asked how to flash a part; the agent also tried the first-run workflow, was told
+ * "tell the developer the workflow is currently unavailable and stop", and stopped — with the programming
+ * steps it had already loaded unsaid.
+ */
+const LOCKED_WORKFLOW =
+	" Do not reconstruct or improvise this workflow from general knowledge, memory or a prior report. If the " +
+	"developer's request cannot be answered without it, tell them the workflow is currently unavailable and stop. " +
+	"If it can, answer from the bits that did open and do not mention this workflow again."
+
+const LOCKED_CARRY_ON =
+	" Do not invent what it contains. Carry on with the bits that did open and with the developer's own " +
+	"project, and tell them in one sentence what this part would have added. When you tell them, say it is " +
+	"not open to *your account* — theirs, not yours."
+
 export function kbitUnavailableMessage({
 	reason,
 	displayPath,
 	pathHint = "",
 	antiImprovise,
 	isDev = false,
+	kind,
 }: KbitUnavailableInput): string {
 	if (reason === "locked") {
 		// No id, no hash, no size, no group name: none of that is the developer's business, and a
 		// number attached to a thing you cannot have reads as a tease.
-		return `${LOCKED}${antiImprovise}`
+		return (kind ?? kindFromPath(displayPath)) === "workflow" ? `${LOCKED}${LOCKED_WORKFLOW}` : `${LOCKED}${LOCKED_CARRY_ON}`
 	}
 	if (reason === "unreachable") {
 		return (

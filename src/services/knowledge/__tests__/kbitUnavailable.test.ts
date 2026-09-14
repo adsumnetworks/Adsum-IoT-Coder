@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert"
-import { kbitUnavailableMessage, refusalAfterNearMiss } from "../kbitUnavailable"
+import { kbitUnavailableMessage, kindFromPath, refusalAfterNearMiss } from "../kbitUnavailable"
 
 /**
  * The falsifier for the worst string in the product.
@@ -24,7 +24,8 @@ describe("a bit the account cannot open", () => {
 				assert.ok(!msg.toLowerCase().includes(banned.toLowerCase()), `locked message must not say "${banned}": ${msg}`)
 			}
 			assert.ok(msg.includes("ask for more details"), "the one action must be named")
-			assert.ok(msg.includes(ANTI.trim()), "the anti-improvise rule must survive")
+			// B12: a locked KNOWLEDGE bit no longer ends the answer; what survives is the rule against inventing it.
+			assert.ok(msg.includes("Do not invent what it contains"), "the no-invention rule must survive")
 			// Not even the id, the group or a size of the thing they cannot have.
 			assert.ok(!/advanced-full|blg20|[0-9a-f]{16}|\d+\s?(KB|MB|bytes)/i.test(msg), `no id or size: ${msg}`)
 		}
@@ -114,5 +115,63 @@ describe("a refusal after the near-miss rescue", () => {
 		})
 		assert.match(r.pathHint, /platforms\/nrf\/x\.md/)
 		assert.doesNotMatch(r.pathHint, /products\/a\/x\.md/)
+	})
+})
+
+/**
+ * B12, 14 September: every locked bit carried the workflow rule "tell the developer the workflow is currently
+ * unavailable and stop", so one locked satellite bit ended the answer and the open board bit contributed
+ * nothing. Only a locked workflow stops the answer.
+ */
+describe("a locked bit ends the answer only when it is a workflow", () => {
+	const STOP =
+		" Do NOT reconstruct or improvise this Adsum workflow from general knowledge, memory, or a prior report — tell the developer the workflow is currently unavailable and stop."
+
+	it("a locked KNOWLEDGE bit: the lock sentence, no stop, carry on, never invent, your account", () => {
+		const msg = kbitUnavailableMessage({
+			antiImprovise: STOP,
+			displayPath: "iot-knowledge/products/fanstel/blg20x/satellite-on-this-gateway.md",
+			reason: "locked",
+		})
+		assert.ok(msg.startsWith("This knowledge bit is not open to your account."), "the B8 lock sentence is unchanged")
+		assert.ok(!/currently unavailable and stop/.test(msg), `a knowledge bit must not end the answer: ${msg}`)
+		assert.match(msg, /Carry on with the bits that did open/)
+		assert.match(msg, /Do not invent what it contains/)
+		assert.match(msg, /your account\* — theirs, not yours/)
+	})
+
+	it("a locked TOOL bit carries on the same way", () => {
+		const msg = kbitUnavailableMessage({
+			antiImprovise: STOP,
+			displayPath: "iot-knowledge/tools/blg20-hex-demo-pair/TOOL.md",
+			reason: "locked",
+		})
+		assert.ok(!/and stop/.test(msg))
+		assert.match(msg, /Carry on/)
+	})
+
+	it("a locked WORKFLOW stops the answer only when the request needs it; the lock sentence is unchanged", () => {
+		const msg = kbitUnavailableMessage({
+			antiImprovise: STOP,
+			displayPath: "iot-knowledge/workflows/blg20x-first-run.md",
+			reason: "locked",
+		})
+		assert.ok(
+			msg.startsWith(
+				"This knowledge bit is not open to your account. Sets like this one are opened on request — tell the developer they can ask for more details from the Adsum panel, and that nothing on this machine is broken.",
+			),
+		)
+		assert.match(
+			msg,
+			/If the developer's request cannot be answered without it, tell them the workflow is currently unavailable and stop/,
+		)
+		assert.match(msg, /If it can, answer from the bits that did open/)
+		assert.match(msg, /Do not reconstruct or improvise this workflow/)
+	})
+
+	it("the kind is read from the path", () => {
+		assert.equal(kindFromPath("platforms/nrf/workflows/debug-loop.md"), "workflow")
+		assert.equal(kindFromPath("iot-knowledge\\tools\\x\\TOOL.md"), "tool")
+		assert.equal(kindFromPath("products/fanstel/blg20x/boards-blg20x.md"), "knowledge")
 	})
 })
