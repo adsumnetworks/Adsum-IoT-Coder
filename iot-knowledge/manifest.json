@@ -6,7 +6,7 @@
 			"id": "adsum/agent",
 			"title": "Identity & Persona",
 			"type": "knowledge",
-			"version": "1.4.3",
+			"version": "1.4.4",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -19,7 +19,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "AGENT.md",
-			"content_hash": "7a336d8180842263151d2ccfd36d7acea37405900418f751d2f503cc81407600"
+			"content_hash": "3b2d6e0757a339412698323d3af7262620db8bf16595721f3ee8b9270396fbad"
 		},
 		{
 			"id": "adsum/cra/tools/cra-action",
@@ -660,7 +660,7 @@
 			"id": "adsum/rules/bit-loading",
 			"title": "Universal Rule: Bit Loading",
 			"type": "knowledge",
-			"version": "1.3.0",
+			"version": "1.3.1",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -670,7 +670,7 @@
 			"platform": "universal",
 			"supersedes": "adsum/rules/skill-loading",
 			"path": "rules/bit-loading.md",
-			"content_hash": "c9af050505c0f6a143c270c68239ce2cfe3bf91419e4db3e978308a18c6b64de"
+			"content_hash": "c2f872e8b32a3f946ff218c2b1c9ef792e917eafb26796e2936159993728fe0b"
 		},
 		{
 			"id": "adsum/rules/core",

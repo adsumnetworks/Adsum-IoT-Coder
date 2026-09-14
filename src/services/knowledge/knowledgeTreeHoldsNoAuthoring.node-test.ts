@@ -87,6 +87,14 @@ describe("the shipped knowledge tree holds no authoring material", () => {
 		assert.deepEqual(hits, [])
 	})
 
+	test("no bit carries a dated authoring tag such as [BENCH 2026-09-04] (B13)", () => {
+		// 14 Sep 2026: tags like these in always-loaded bits taught the agent to call a developer's desk "the bench".
+		const hits = files
+			.filter((f) => f.endsWith(".md") && /\[\s*(BENCH|FIELD|OPERATOR)\b/.test(readFileSync(f, "utf8")))
+			.map(rel)
+		assert.deepEqual(hits, [])
+	})
+
 	test("the authoring documents live outside the tree, and that folder is not packaged", () => {
 		assert.ok(existsSync(path.join(AUTHORING, "KBIT-SPEC.md")), "kbit-authoring/KBIT-SPEC.md")
 		assert.ok(existsSync(path.join(AUTHORING, "kbit.schema.json")), "kbit-authoring/kbit.schema.json")

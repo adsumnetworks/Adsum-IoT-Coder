@@ -101,7 +101,9 @@ const LOCKED =
 	"machine is broken."
 
 /**
- * [14 Sep 2026, B12] What follows the lock sentence for a locked knowledge or tool bit. The workflow wording
+ * [14 Sep 2026, B12, B14] What follows the lock sentence for a locked knowledge or tool bit. B14: "carry on
+ * with the bits that did open" was read as permission to fill the locked topic from general knowledge — an agent
+ * refused the satellite bits and then wrote a satellite attach sequence, with settings, from memory. The workflow wording
  * ("tell the developer the workflow is currently unavailable and stop") used to follow every lock, so one
  * locked satellite bit ended a whole answer and the free board bit that had loaded said nothing.
  */
@@ -117,9 +119,10 @@ const LOCKED_WORKFLOW =
 	"If it can, answer from the bits that did open and do not mention this workflow again."
 
 const LOCKED_CARRY_ON =
-	" Do not invent what it contains. Carry on with the bits that did open and with the developer's own " +
-	"project, and tell them in one sentence what this part would have added. When you tell them, say it is " +
-	"not open to *your account* — theirs, not yours."
+	" Do not invent what it contains. For the topic this bit covers, give no procedure, command, setting or " +
+	"value from general knowledge — not even one you are confident of: the developer would act on it. Answer " +
+	"only with what the bits that did open and the developer's own project actually state. Tell the developer, " +
+	'in these words: "The detailed steps for this are in a set that isn\'t open to your account."'
 
 export function kbitUnavailableMessage({
 	reason,

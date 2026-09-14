@@ -135,9 +135,11 @@ describe("a locked bit ends the answer only when it is a workflow", () => {
 		})
 		assert.ok(msg.startsWith("This knowledge bit is not open to your account."), "the B8 lock sentence is unchanged")
 		assert.ok(!/currently unavailable and stop/.test(msg), `a knowledge bit must not end the answer: ${msg}`)
-		assert.match(msg, /Carry on with the bits that did open/)
 		assert.match(msg, /Do not invent what it contains/)
-		assert.match(msg, /your account\* — theirs, not yours/)
+		// B14: the locked topic gets no procedure from general knowledge, and the relay sentence is given verbatim.
+		assert.match(msg, /give no procedure, command, setting or value from general knowledge/)
+		assert.match(msg, /only with what the bits that did open and the developer's own project actually state/)
+		assert.ok(msg.includes('"The detailed steps for this are in a set that isn\'t open to your account."'), msg)
 	})
 
 	it("a locked TOOL bit carries on the same way", () => {
@@ -147,7 +149,7 @@ describe("a locked bit ends the answer only when it is a workflow", () => {
 			reason: "locked",
 		})
 		assert.ok(!/and stop/.test(msg))
-		assert.match(msg, /Carry on/)
+		assert.match(msg, /actually state/)
 	})
 
 	it("a locked WORKFLOW stops the answer only when the request needs it; the lock sentence is unchanged", () => {

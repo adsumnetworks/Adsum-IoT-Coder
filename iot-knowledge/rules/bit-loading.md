@@ -2,7 +2,7 @@
 id: adsum/rules/bit-loading
 title: "Universal Rule: Bit Loading"
 type: knowledge
-version: 1.3.0
+version: 1.3.1
 supersedes: adsum/rules/skill-loading
 owner: adsum-core
 author: adsum
@@ -89,7 +89,7 @@ platform's `analyze-logs.md`) is part of the same operation — never end at "lo
 at the tree, not after checking the structure, not after a quick grep to orient yourself. There is
 no step that legitimately comes between naming a bit and loading it.
 
-**Why this exists, and it is not a style preference.** [BENCH 2026-09-04] Asked to check a
+**Why this exists, and it is not a style preference.** Asked to check a
 dashboard renders before a flash, an agent reasoned: *"This is a LEW840X gateway project… Let me
 load the gateway-dashboard-ui knowledge bit since I'm about to check the dashboard page
 rendering. **Actually let me first understand the structure.**"* It never came back. It then ran

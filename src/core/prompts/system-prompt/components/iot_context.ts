@@ -749,7 +749,10 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	// OUTSIDE platforms/, which a partial path could never have reached at all.
 	ctx += "| The developer says | Read this FIRST |\n|---|---|\n"
 	ctx += "| NB-IoT, LTE-M, cellular, SIM, APN, MQTT over cellular | `platforms/nrf/sdks/ncs/protocols/LTE.md` |\n"
-	ctx += "| satellite, NTN, Skylo, direct-to-orbit | `platforms/nrf/sdks/ncs/protocols/NTN.md` |\n"
+	// [14 Sep 2026, B14] On a BLG20x the free board bit holds the one satellite fact a developer always needs — no
+	// GNSS, so the position is commissioned — and a run that had both satellite bits locked never reached it.
+	ctx +=
+		"| satellite, NTN, Skylo, direct-to-orbit | on a BLG20x, `products/fanstel/blg20x/boards-blg20x.md` first; then `platforms/nrf/sdks/ncs/protocols/NTN.md` |\n"
 	ctx += "| DECT, DECT NR+, NR+, licence-exempt mesh | `platforms/nrf/sdks/ncs/protocols/DECT-NR.md` |\n"
 	ctx += "| GPS, GNSS, location, position fix | `platforms/nrf/sdks/ncs/protocols/GNSS.md` |\n"
 	ctx += "| AT commands, modem shell, MoSh | `platforms/nrf/actions/board-shell.md` |\n"

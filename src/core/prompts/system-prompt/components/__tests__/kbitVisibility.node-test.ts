@@ -413,6 +413,13 @@ describe("product knowledge is reachable", () => {
 		}
 	})
 
+	test("a satellite question on a BLG20x reaches the free board bit before the satellite bits (B14)", () => {
+		const row = ctx.split("\n").find((l) => l.includes("satellite, NTN, Skylo")) ?? ""
+		const board = row.indexOf("products/fanstel/blg20x/boards-blg20x.md")
+		assert.ok(board !== -1, "the satellite row must name the board bit")
+		assert.ok(board < row.indexOf("protocols/NTN.md"), "and name it first")
+	})
+
 	test("the ESP product row is emitted ONCE in a both-platform workspace", () => {
 		// A gateway workspace has two CMakeLists and classifies as `both`, so BOTH context builders run.
 		// The ESP row is therefore guarded on whether the nRF block already emitted it; without the guard

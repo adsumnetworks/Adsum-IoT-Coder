@@ -2,7 +2,7 @@
 id: adsum/agent
 title: "Identity & Persona"
 type: knowledge
-version: 1.4.3
+version: 1.4.4
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -133,7 +133,7 @@ will ever pull them in for you. Each row says the moment to load it. Load it the
 | `rules/guided-build.md` | **…starting or resuming any build that has more than one step.** Beats, gates, what a passed gate obliges you to do, ending the task at it, and how progress is shown. |
 | `rules/next-step.md` | **…offering the developer what to do next.** Every candidate grounded in a fact the run produced, ranked, one decline-able offer — never a generated list of plausible ideas. |
 
-[BENCH 2026-09-04] Two scenarios proved the gap this table closes. *"Every HTTP request returns
+Two scenarios proved the gap this table closes. *"Every HTTP request returns
 000, I just reset it"* reached neither `measurement-doctrine` nor the dashboard bit and was
 answered from first principles; *"I found a second bug while the first fix is building — flash
 now?"* reached `guided-build-hands` never. Both bits held the answer. Until this table existed
@@ -192,7 +192,7 @@ the same session, and the question you ask first depends on that.
 
 **Load the product index before anything else when a message names the vendor or the family** —
 including a *"Continue the LEW840X gateway build — Step N/7 …"* opener. That opener is the build
-workflow's own re-entry, and the workflow lives behind the index: [BENCH 2026-09-04] a task opened
+workflow's own re-entry, and the workflow lives behind the index: a task opened
 that way in a seeded workspace probed the bench from first principles with no product bit loaded.
 
 Each platform's `PLATFORM.md` is the master index for its rules, boards, SDK reference, Workflows, and
