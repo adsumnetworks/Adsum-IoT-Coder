@@ -841,8 +841,13 @@ export async function suggestNearMissBits(requestedRelOrAbs: string): Promise<st
  * products/fanstel/bwg840/PRODUCT.md`, exactly what the corpus asks for, fell through to an ordinary
  * file read and missed. It only ever worked when the agent happened to build the absolute path,
  * which takes `loadBitByKbPath` and is not gated here. Add a root whenever a namespace is added.
+ *
+ * `workflows/` [14 Sep 2026, B11]: the product-level workflows live at the knowledge root
+ * (`workflows/blg20x-first-run.md`). The near-miss rescue found that exact path for an agent that had asked
+ * under the product folder, then could not load it because `workflows/` was not a root — and the refusal
+ * that followed read "could not open … for this account" for a bit the account could open.
  */
-const BIT_ROOTS = ["platforms/", "cra/", "rules/", "tools/", "products/", "sensors/", "edge-ai/"]
+const BIT_ROOTS = ["platforms/", "cra/", "rules/", "tools/", "products/", "sensors/", "edge-ai/", "workflows/"]
 
 /** True if `rel` looks like a bundled-tree relative path to a bit (e.g. `platforms/nrf/…/x.md`). */
 export function isBareBitPath(rel: string | undefined | null): boolean {

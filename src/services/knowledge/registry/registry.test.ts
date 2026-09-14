@@ -325,6 +325,16 @@ describe("loadBitByRel / isBareBitPath (bare bundled-tree path via read_file —
 		assert.equal(isBareBitPath("products\\fanstel\\lew840x\\PRODUCT.md"), true) // Windows, where it was found
 	})
 
+	test("a root-level workflow is a bit root, and resolves by its relative path (B11)", async () => {
+		// 14 Sep 2026: the near-miss rescue found `workflows/blg20x-first-run.md` and could not load it, so an
+		// entitled account was told the bit could not be opened "for this account".
+		assert.equal(isBareBitPath("workflows/blg20x-first-run.md"), true)
+		const { content, hash } = bit("adsum/workflows/blg20x-first-run", "# First run (blg20x-first-run.md)")
+		hook("adsum/workflows/blg20x-first-run", content, hash, await tmp())
+		assert.equal(await loadBitByRel("workflows/blg20x-first-run.md"), "# First run (blg20x-first-run.md)")
+		__resetManifestCache()
+	})
+
 	test("a product bit resolves by its relative path → the registry id the backend publishes it under", async () => {
 		// The backend publishes kbits/products/fanstel/lew840x/PRODUCT.md as adsum/products/fanstel/lew840x/product.
 		const { content, hash } = bit("adsum/products/fanstel/lew840x/product", "# LEW840X (PRODUCT.md)")
