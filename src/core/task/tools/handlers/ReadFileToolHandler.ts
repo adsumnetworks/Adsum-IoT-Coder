@@ -5,7 +5,7 @@ import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
 import { withLinks } from "@services/knowledge/kbit/people"
-import { kbitUnavailableMessage } from "@services/knowledge/kbitUnavailable"
+import { kbitUnavailableMessage, unavailableReason } from "@services/knowledge/kbitUnavailable"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
 import {
@@ -355,7 +355,15 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			// the misleading "not found" wording for this case), or (c) genuinely not in the registry.
 			const reachable = await isRegistryReachable()
 			const bitId = isAbsKbPath ? bitIdForKbPath(absolutePath) : deriveIdFromRel(relPath!.replace(/\\/g, "/"))
-			const listedButFetchFailed = reachable && bitId !== null && (await downloadedBitKnown(bitId))
+			// A locked bit is never a transient failure, whether the manifest named it locked or the blob
+			// route refused it: retrying cannot change the answer.
+			const lockedNow = bitId !== null && lockedBits().has(bitId)
+			const listedButFetchFailed =
+				unavailableReason({
+					locked: lockedNow,
+					reachable,
+					listed: bitId !== null && (await downloadedBitKnown(bitId)),
+				}) === null
 			// Anti-fabrication guard (domain-agnostic): a required Adsum bit that won't load must NOT be
 			// reconstructed from general knowledge, memory, or a prior report — that yields an ungrounded
 			// result (observed: a CRA run improvised a whole assessment when cra-readiness was unavailable).

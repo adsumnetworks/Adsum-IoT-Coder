@@ -10,6 +10,7 @@ import {
 	type DownloadedManifest,
 	type DownloadedManifestEntry,
 	RegistryClient,
+	splitManifestRows,
 } from "@/services/knowledge/registry/RegistryClient"
 import { fileExistsAtPath } from "@/utils/fs"
 import { refreshPeopleIndex } from "./kbit/people"
@@ -159,6 +160,12 @@ function recordCreditFromText(id: string, text: string): void {
  * it". The task drains it into one row per bit per task.
  */
 const lockedById = new Map<string, string>()
+
+/**
+ * Bits the manifest itself names as locked for this account: id → the group that opens it (null when
+ * the registry names none). Known, never fetchable — nothing here is ever requested as a blob.
+ */
+let lockedRows = new Map<string, string | null>()
 
 /** Bits refused this session for want of an entitlement: id → the group that would unlock it. */
 export function lockedBits(): ReadonlyMap<string, string> {
@@ -374,9 +381,11 @@ async function downloadedManifest(): Promise<Map<string, DownloadedManifestEntry
 	const map = new Map<string, DownloadedManifestEntry>()
 	if (manifestJson) {
 		try {
-			for (const b of (JSON.parse(manifestJson) as DownloadedManifest).bits ?? []) {
+			const split = splitManifestRows(JSON.parse(manifestJson))
+			for (const b of split?.bits ?? []) {
 				map.set(b.id, b)
 			}
+			lockedRows = new Map((split?.locked ?? []).map((l) => [l.id, l.group]))
 		} catch (e) {
 			console.error("KnowledgeResolver: failed to parse downloaded manifest", e)
 		}
@@ -388,7 +397,7 @@ async function downloadedManifest(): Promise<Map<string, DownloadedManifestEntry
 /** Purge cached blobs whose hash is no longer in the live catalog — honors revocation + frees superseded versions. */
 async function reconcileCache(manifest: DownloadedManifest): Promise<void> {
 	try {
-		const live = new Set((manifest.bits ?? []).map((b) => b.content_hash))
+		const live = new Set((manifest.bits ?? []).map((b) => b.content_hash).filter((h) => typeof h === "string"))
 		let purged = 0
 		for (const hash of await cache().listBlobHashes()) {
 			if (!live.has(hash)) {
@@ -601,7 +610,25 @@ export async function loadBit(id: string): Promise<string> {
 		return bundledBody(id, bundled, got.reason)
 	}
 
+	// Named by the manifest as locked for this account: real, not fetchable. Record it so the read
+	// tool says "not open to your account" rather than "does not exist" — and request nothing. A bundled
+	// copy, where one exists, still serves: bundled means open.
+	if (!row && !bundled) {
+		await downloadedManifest()
+		if (lockedRows.has(id)) {
+			lockedById.set(id, lockedRows.get(id) ?? "cellular-advanced")
+			console.info(`[kbit] ${id} — locked for this account (named by the manifest)`)
+			return bundledBody(id, bundled, "locked")
+		}
+	}
+
 	return bundledBody(id, bundled, decision.copy === "bundled" ? decision.reason : "no-registry-row")
+}
+
+/** True when the manifest names this bit as locked for this account. */
+export async function isLockedInManifest(id: string): Promise<boolean> {
+	await downloadedManifest()
+	return lockedRows.has(id)
 }
 
 /**
@@ -872,6 +899,8 @@ export function __resetManifestCache(): void {
 	syncCache = null
 	downloadedMap = null
 	manifestRevalidated = false
+	lockedRows = new Map()
+	lockedById.clear()
 	injectedCache = null
 	injectedRegistry = null
 	localKbitIndex = undefined

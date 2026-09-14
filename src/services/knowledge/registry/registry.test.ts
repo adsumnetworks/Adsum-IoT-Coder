@@ -641,3 +641,145 @@ describe("resolveAuthorToken", () => {
 		withEnv(undefined, () => assert.doesNotThrow(() => resolveAuthorToken()))
 	})
 })
+
+// ---------------------------------------------------------------- locked manifest rows (client 0.4.1)
+
+describe("a manifest row the account cannot open — known, never fetched", () => {
+	const LOCKED_ID = "adsum/products/acme/gw/boards-gw"
+	const OPEN_ID = "adsum/community/open-one"
+	/** A fetch double that records every URL, so "never fetched" is an observation, not a hope. */
+	const recording = (manifest: unknown, blobs: Record<string, string>) => {
+		const urls: string[] = []
+		const f = async (url: string) => {
+			urls.push(url)
+			return stubFetch(manifest, blobs)(url)
+		}
+		return { urls, f }
+	}
+	const blobCalls = (urls: string[]) => urls.filter((u) => u.includes("/v1/kbits/blob/"))
+
+	test("splitManifestRows: a locked row leaves bits, and a row with no hash never reaches bits", async () => {
+		const { splitManifestRows } = await import("./RegistryClient")
+		const split = splitManifestRows({
+			manifestVersion: 1,
+			bits: [
+				{ id: OPEN_ID, version: "1.0.0", content_hash: "a".repeat(64) },
+				{ id: LOCKED_ID, version: "0.1.3", group: "some-group", locked: true },
+				{ id: "adsum/x/no-hash", version: "1.0.0" },
+			],
+		})
+		assert.deepEqual(
+			split?.bits.map((b) => b.id),
+			[OPEN_ID],
+		)
+		assert.deepEqual(split?.locked, [{ id: LOCKED_ID, version: "0.1.3", group: "some-group", locked: true }])
+		// The cached copy carries the split and parses back to the same thing.
+		assert.deepEqual(splitManifestRows(JSON.parse(JSON.stringify(split))), split)
+	})
+
+	test("a locked row is never fetched, and is recorded as locked with its group", async () => {
+		const { lockedBits, downloadedBitKnown } = await import("../KnowledgeResolver")
+		const manifest = { manifestVersion: 1, bits: [{ id: LOCKED_ID, version: "0.1.3", group: "some-group", locked: true }] }
+		const { urls, f } = recording(manifest, {})
+		__resetManifestCache() // independent of any earlier test that failed before its own reset
+		__setRegistryHooks({ cache: new BitCache(await tmp()), registry: new RegistryClient("http://r", f, 5000, 1, 0, null) })
+
+		assert.equal(await loadBit(LOCKED_ID), "")
+		assert.deepEqual(blobCalls(urls), [], "no blob request of any kind for a locked row")
+		assert.ok(!urls.some((u) => u.includes("undefined")), "never a request for blob/undefined")
+		assert.equal(lockedBits().get(LOCKED_ID), "some-group")
+		// Not "listed but the fetch failed": the read tool must not tell the agent to retry a refusal.
+		assert.equal(await downloadedBitKnown(LOCKED_ID), false)
+		__resetManifestCache()
+	})
+
+	test("a locked row produces the locked message, not not-found and not a retry", async () => {
+		const { lockedBits, downloadedBitKnown } = await import("../KnowledgeResolver")
+		const { kbitUnavailableMessage, unavailableReason } = await import("../kbitUnavailable")
+		const manifest = { manifestVersion: 1, bits: [{ id: LOCKED_ID, version: "0.1.3", group: null, locked: true }] }
+		const { f } = recording(manifest, {})
+		__resetManifestCache() // independent of any earlier test that failed before its own reset
+		__setRegistryHooks({ cache: new BitCache(await tmp()), registry: new RegistryClient("http://r", f, 5000, 1, 0, null) })
+		await loadBit(LOCKED_ID)
+
+		// The read tool's inputs, exactly as it computes them.
+		const reason = unavailableReason({
+			locked: lockedBits().has(LOCKED_ID),
+			reachable: true,
+			listed: await downloadedBitKnown(LOCKED_ID),
+		})
+		assert.equal(reason, "locked")
+		const msg = kbitUnavailableMessage({ reason: "locked", displayPath: "products/acme/gw/boards-gw.md", antiImprovise: "" })
+		assert.match(msg, /not open to your account/)
+		assert.doesNotMatch(msg, /not found|does not exist|not in the registry/i)
+		// And a bit the blob route refuses AFTER being listed is locked too, not transient.
+		assert.equal(unavailableReason({ locked: true, reachable: true, listed: true }), "locked")
+		assert.equal(unavailableReason({ locked: false, reachable: true, listed: true }), null)
+		assert.equal(unavailableReason({ locked: false, reachable: true, listed: false }), "not-in-registry")
+		__resetManifestCache()
+	})
+
+	test("a normal row is unchanged: fetched by its hash and served", async () => {
+		const { lockedBits } = await import("../KnowledgeResolver")
+		const { content, hash } = bit(OPEN_ID, "# Open (open-one.md)\nbody")
+		const manifest = { manifestVersion: 1, bits: [{ id: OPEN_ID, version: "1.0.0", content_hash: hash, license: "CC0-1.0" }] }
+		const { urls, f } = recording(manifest, { [hash]: content })
+		__resetManifestCache() // independent of any earlier test that failed before its own reset
+		__setRegistryHooks({ cache: new BitCache(await tmp()), registry: new RegistryClient("http://r", f, 5000, 1, 0, null) })
+
+		assert.equal(await loadBit(OPEN_ID), "# Open (open-one.md)\nbody")
+		assert.deepEqual(
+			blobCalls(urls).map((u) => u.split("/").pop()),
+			[hash],
+		)
+		assert.equal(lockedBits().has(OPEN_ID), false)
+		__resetManifestCache()
+	})
+
+	test("a manifest mixing both resolves each one correctly, from the network and from the cached copy", async () => {
+		const { lockedBits } = await import("../KnowledgeResolver")
+		const { content, hash } = bit(OPEN_ID, "# Open (open-one.md)\nmixed")
+		const manifest = {
+			manifestVersion: 1,
+			bits: [
+				{ id: OPEN_ID, version: "1.0.0", content_hash: hash, license: "CC0-1.0" },
+				{ id: LOCKED_ID, version: "0.1.3", group: "some-group", locked: true },
+			],
+		}
+		const root = await tmp()
+		const { urls, f } = recording(manifest, { [hash]: content })
+		__resetManifestCache()
+		__setRegistryHooks({ cache: new BitCache(root), registry: new RegistryClient("http://r", f, 5000, 1, 0, null) })
+		assert.equal(await loadBit(LOCKED_ID), "")
+		assert.equal(await loadBit(OPEN_ID), "# Open (open-one.md)\nmixed")
+		assert.deepEqual(
+			blobCalls(urls).map((u) => u.split("/").pop()),
+			[hash],
+			"only the open row was fetched",
+		)
+		assert.equal(lockedBits().get(LOCKED_ID), "some-group")
+		__resetManifestCache()
+
+		// Offline, from the catalog this session cached: the same answers, still no fetch for the locked one.
+		const offline: string[] = []
+		__setRegistryHooks({
+			cache: new BitCache(root),
+			registry: new RegistryClient(
+				"http://r",
+				async (u: string) => {
+					offline.push(u)
+					throw new Error("offline")
+				},
+				5000,
+				1,
+				0,
+				null,
+			),
+		})
+		assert.equal(await loadBit(LOCKED_ID), "")
+		assert.equal(lockedBits().get(LOCKED_ID), "some-group")
+		assert.equal(await loadBit(OPEN_ID), "# Open (open-one.md)\nmixed")
+		assert.deepEqual(blobCalls(offline), [], "the open bit came from the cache, the locked one was never asked for")
+		__resetManifestCache()
+	})
+})

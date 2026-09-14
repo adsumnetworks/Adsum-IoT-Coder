@@ -74,7 +74,69 @@ export interface DownloadedManifestEntry {
 
 export interface DownloadedManifest {
 	manifestVersion: number
+	/** Rows this account can fetch. Every one carries a `content_hash` — nothing else reaches here. */
 	bits: DownloadedManifestEntry[]
+	/** Bits that exist and are not this account's yet: known, never fetchable. */
+	locked?: LockedManifestEntry[]
+}
+
+/**
+ * A manifest row for a bit this account cannot open (registry, from client 0.4.1): identity and the
+ * group that would open it — no hash, no size, no title. It says "this exists and is locked", which is
+ * the one thing the client could not tell apart from "never published" before these rows existed.
+ */
+export interface LockedManifestEntry {
+	id: string
+	version: string
+	group: string | null
+	locked: true
+}
+
+/**
+ * Split a raw manifest into fetchable rows and locked rows.
+ *
+ * The ONE place a manifest row is sorted. A locked row has no `content_hash`; left among the fetchable
+ * rows it would be indexed by id and fetched as `blob/undefined`, and a 404 there reads to the developer
+ * as a broken registry. So a row reaches `bits` only if it carries a string hash and is not locked; a
+ * locked row goes to `locked`; anything else malformed is dropped.
+ */
+export function splitManifestRows(raw: unknown): DownloadedManifest | null {
+	const data = raw as { manifestVersion?: unknown; bits?: unknown; locked?: unknown } | null
+	if (!data || !Array.isArray(data.bits)) {
+		return null
+	}
+	const bits: DownloadedManifestEntry[] = []
+	const locked = new Map<string, LockedManifestEntry>()
+	const takeLocked = (r: Record<string, unknown>) => {
+		if (typeof r.id === "string" && r.id) {
+			locked.set(r.id, {
+				id: r.id,
+				version: typeof r.version === "string" ? r.version : "",
+				group: typeof r.group === "string" ? r.group : null,
+				locked: true,
+			})
+		}
+	}
+	for (const row of data.bits as Array<Record<string, unknown> | null>) {
+		if (!row || typeof row !== "object") continue
+		if (row.locked === true) {
+			takeLocked(row)
+		} else if (typeof row.id === "string" && typeof row.content_hash === "string" && row.content_hash) {
+			bits.push(row as DownloadedManifestEntry)
+		}
+	}
+	// A cached catalog written by this client already carries the split.
+	if (Array.isArray(data.locked)) {
+		for (const row of data.locked as Array<Record<string, unknown> | null>) {
+			if (row && typeof row === "object") takeLocked(row)
+		}
+	}
+	for (const b of bits) locked.delete(b.id) // a fetchable row always wins
+	return {
+		manifestVersion: typeof data.manifestVersion === "number" ? data.manifestVersion : 1,
+		bits,
+		...(locked.size ? { locked: [...locked.values()] } : {}),
+	}
 }
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
@@ -124,8 +186,7 @@ export class RegistryClient {
 			return null
 		}
 		try {
-			const data = JSON.parse(text) as DownloadedManifest
-			return Array.isArray(data?.bits) ? data : null
+			return splitManifestRows(JSON.parse(text))
 		} catch {
 			return null
 		}

@@ -17,6 +17,19 @@ export type KbitUnavailableReason =
 	/** We could not reach the registry at all. */
 	| "unreachable"
 
+/**
+ * Which failure the read tool is looking at, decided in one place.
+ *
+ * Locked is checked FIRST. A bit the manifest lists and the blob route then refuses with 402 is also
+ * "listed but the fetch failed", and answering that as a transient blip tells the agent to retry a
+ * refusal that will never change. `null` means a transient fetch failure: retry once.
+ */
+export function unavailableReason(f: { locked: boolean; reachable: boolean; listed: boolean }): KbitUnavailableReason | null {
+	if (f.locked) return "locked"
+	if (!f.reachable) return "unreachable"
+	return f.listed ? null : "not-in-registry"
+}
+
 export interface KbitUnavailableInput {
 	reason: KbitUnavailableReason
 	/** What the agent asked for, as it asked for it. Never an id, hash or size of a locked bit. */
