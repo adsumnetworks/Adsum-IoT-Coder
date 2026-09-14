@@ -4,7 +4,6 @@ import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
-import { withLinks } from "@services/knowledge/kbit/people"
 import { kbitUnavailableMessage, unavailableReason } from "@services/knowledge/kbitUnavailable"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
@@ -36,6 +35,7 @@ import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 import { type CommandOutputFoldOptions, foldCommandOutputText } from "./commandOutputFold"
+import { creditBitOnce, serveNearMissBit } from "./kbitCredit"
 import { formatRangeHeader, sliceLineRange } from "./readFileRange"
 
 /**
@@ -47,38 +47,8 @@ import { formatRangeHeader, sliceLineRange } from "./readFileRange"
 // `source` is the resolver's provenance, so it carries "override" and "local" too — the credit line
 // must be able to say a registry copy replaced the shipped one, not flatten that back to "bundled".
 async function sayKbitCredit(config: any, credit: KbitCredit | null, source: BitProvenance): Promise<void> {
-	if (!credit) {
-		return
-	}
-	try {
-		await config.callbacks.say(
-			"kbit_loaded",
-			JSON.stringify({
-				id: credit.id,
-				title: credit.title,
-				kind: credit.kind,
-				author: credit.author,
-				attributed: credit.attributed,
-				// Co-authors ride with the lead so the UI can credit them without a second lookup; omitted
-				// when empty so the payload of a single-author bit is unchanged (older webviews ignore it).
-				coAuthors: credit.coAuthors.length ? credit.coAuthors : undefined,
-				// Profile links for the names on THIS line, resolved host-side — the webview has no network.
-				links: withLinks(credit).links,
-				version: credit.version,
-				license: credit.license,
-				platform: credit.platform,
-				steward: credit.steward,
-				source,
-				// A witness is hardware evidence; the UI renders it as a labelled row, not prose. Absent
-				// until a real run witnesses the bit — which is the honest state for nearly every bit today.
-				witness: credit.witness
-					? [credit.witness.board, credit.witness.toolchain, credit.witness.on].filter(Boolean).join(" · ")
-					: undefined,
-			}),
-		)
-	} catch {
-		// attribution is additive — never surface as a tool failure
-	}
+	// Once per bit per task, on every serving path — see kbitCredit.ts.
+	await creditBitOnce(config, credit, source)
 }
 
 export class ReadFileToolHandler implements IFullyManagedTool {
@@ -391,20 +361,22 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			// the transcript stays honest. Two+ matches stay an error (auto-picking would guess).
 			if (nearMisses.length === 1) {
 				const correctedRel = nearMisses[0]
-				const correctedBody = await loadBitByRel(correctedRel)
-				if (correctedBody) {
-					const correctedAbs = path.join(HostProvider.get().extensionFsPath, "iot-knowledge", correctedRel)
-					config.taskState.loadedKnowledgeFiles.add(correctedAbs)
-					await config.services.fileContextTracker.trackFileContext(correctedRel, "read_tool")
+				const served = await serveNearMissBit(config, displayPath, correctedRel, {
+					loadBitByRel,
+					idForRel: (rel) => deriveIdFromRel(rel.replace(/\\/g, "/")),
+					creditFor,
+					provenanceOf: (id) => provenanceOf(id) ?? null,
+					markLoaded: (rel) =>
+						config.taskState.loadedKnowledgeFiles.add(
+							path.join(HostProvider.get().extensionFsPath, "iot-knowledge", rel),
+						),
+					track: (rel) => config.services.fileContextTracker.trackFileContext(rel, "read_tool"),
+				})
+				if (served !== null) {
 					// Robustness signal: how often models mis-derive a bit directory. Send only the corrected
 					// catalog relpath (a known bit id, safe) — never the requested string (could carry a machine path).
 					telemetryService.captureKbitPathAutocorrected({ corrected: correctedRel })
-					return (
-						`[Adsum knowledge bit — path auto-corrected. You asked for "${displayPath}", which does not ` +
-						`exist; the only catalog bit with that filename is "${correctedRel}", served below. Use ` +
-						`"${correctedRel}" (exact) for any future read of this bit.]\n\n` +
-						correctedBody
-					)
+					return served
 				}
 			}
 			const pathHint =

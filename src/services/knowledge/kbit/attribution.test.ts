@@ -98,7 +98,8 @@ describe("attribution — the popover states facts, not prose", () => {
 	test("no derived prose sentence is sent to the UI", () => {
 		// The lead sentence restated the labelled rows beneath it (three renders of the author in one card).
 		// Provenance is rows now; a witness is its own row and only exists when a real witness record does.
-		const handler = read("src/core/task/tools/handlers/ReadFileToolHandler.ts")
+		// The credit payload is built in one place for every serving path (kbitCredit.ts, 14 Sep 2026).
+		const handler = read("src/core/task/tools/handlers/kbitCredit.ts")
 		assert.doesNotMatch(handler, /leadSentence/, "the credit payload must not carry derived prose")
 		assert.match(handler, /witness:/, "hardware evidence rides as a fact, not a sentence")
 	})

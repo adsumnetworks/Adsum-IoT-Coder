@@ -2,7 +2,7 @@
 id: adsum/agent
 title: "Identity & Persona"
 type: knowledge
-version: 1.4.2
+version: 1.4.3
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -184,6 +184,11 @@ mean a bit is unavailable, so still try the path in step 1):
 header, whether it can get a GPS fix, or how to program either half** — the index names the bit that
 holds each of those facts. Do not guess a file name under the product folder: a path the index does
 not name is not a bit.
+
+**The moment a developer asks to flash, program, erase or recover an nRF9151 or any nRF91 — on a BLG20x
+or any other board — load `platforms/nrf/actions/program-nrf91-safely.md` before you decide what to ask
+them or which tool to run.** An erase on this family locks the part unless the unlock is written back in
+the same session, and the question you ask first depends on that.
 
 **Load the product index before anything else when a message names the vendor or the family** —
 including a *"Continue the LEW840X gateway build — Step N/7 …"* opener. That opener is the build

@@ -6,7 +6,7 @@
 			"id": "adsum/agent",
 			"title": "Identity & Persona",
 			"type": "knowledge",
-			"version": "1.4.2",
+			"version": "1.4.3",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -19,7 +19,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "AGENT.md",
-			"content_hash": "83d9829c07c5dd46c90e1643acaab3d6123f38f5c80068a93fb09931e092fbc3"
+			"content_hash": "7a336d8180842263151d2ccfd36d7acea37405900418f751d2f503cc81407600"
 		},
 		{
 			"id": "adsum/cra/tools/cra-action",
@@ -676,7 +676,7 @@
 			"id": "adsum/rules/core",
 			"title": "Universal Embedded Rules",
 			"type": "knowledge",
-			"version": "1.6.1",
+			"version": "1.6.2",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -688,7 +688,7 @@
 				"adsum/nrf/tools/nrf-action"
 			],
 			"path": "rules/core.md",
-			"content_hash": "1058e52aa63e5dc0b308ea4e04e9d7ba588b32ff667d35f9ebc4aa50f92fe200"
+			"content_hash": "ffcb5f0a2cc9a8594bb57d906506774ce4a8bee7846ead6c0738ce8d2062078a"
 		},
 		{
 			"id": "adsum/rules/skill-loading",
