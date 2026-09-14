@@ -245,6 +245,10 @@
 									"blg20-adv-full",
 									"all"
 								]
+							},
+							"open": {
+								"type": "boolean",
+								"const": true
 							}
 						},
 						"required": [

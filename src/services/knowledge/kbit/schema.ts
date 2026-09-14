@@ -138,6 +138,9 @@ const artifactEntry = z
 		// no-LTE variant beside a demo hex and licensed source, and they are one bit with one history.
 		// Absent ⇒ the bit's own `group` applies, and if that is absent too, the member is free.
 		group: z.enum(KBIT_GROUPS).optional(),
+		// A file shared on purpose by free and gated bundles (a licence notice, an installer): readable by anyone.
+		// Never allowed on an image or source; the registry refuses it there and refuses an undeclared shared file.
+		open: z.literal(true).optional(),
 	})
 	.strict()
 
