@@ -2609,7 +2609,7 @@ export class TelemetryService {
 	public captureKbitLoadFailed(props: {
 		// "locked" is its own reason, and the point of the enum: a bit refused for want of an
 		// entitlement is not a missing bit, and counting the two together hid the whole gate.
-		reason: "transient_fetch" | "not_in_registry" | "registry_unreachable" | "locked"
+		reason: "transient_fetch" | "not_in_registry" | "registry_unreachable" | "locked" | "auth_refused"
 		bitId?: string
 		afterRetry?: boolean
 	}) {

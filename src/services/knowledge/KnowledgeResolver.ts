@@ -14,7 +14,7 @@ import {
 } from "@/services/knowledge/registry/RegistryClient"
 import { fileExistsAtPath } from "@/utils/fs"
 import { refreshPeopleIndex } from "./kbit/people"
-import { RegistryLockedError } from "./registry/RegistryClient"
+import { RegistryAuthError, RegistryLockedError } from "./registry/RegistryClient"
 
 /**
  * KnowledgeResolver — resolves a K-bit by its stable `id` to its on-disk location/content.
@@ -160,6 +160,13 @@ function recordCreditFromText(id: string, text: string): void {
  * it". The task drains it into one row per bit per task.
  */
 const lockedById = new Map<string, string>()
+/** Bits whose fetch was refused for the credential (401/403) in this session: a sign-in to renew, not a blip. */
+const authRefusedIds = new Set<string>()
+
+/** Ids the registry refused for the credential. The read tool says "sign in again" for these, never "retry". */
+export function authRefusedBits(): ReadonlySet<string> {
+	return authRefusedIds
+}
 
 /**
  * Bits the manifest itself names as locked for this account: id → the group that opens it (null when
@@ -518,6 +525,11 @@ async function registryBody(
 			recordCredit(id, entry)
 			lockedById.set(id, entry.group ?? "cellular-advanced")
 			return { reason: "locked" }
+		}
+		if (e instanceof RegistryAuthError) {
+			recordCredit(id, entry)
+			authRefusedIds.add(id)
+			return { reason: "auth-refused" }
 		}
 		throw e
 	}
@@ -889,6 +901,9 @@ export async function loadBitByRel(rel: string): Promise<string | null> {
 export function invalidateForAccountChange(): void {
 	downloadedMap = null
 	manifestRevalidated = false
+	// A new sign-in (or a sign-out) changes what the registry will answer; old refusals no longer hold.
+	authRefusedIds.clear()
+	lockedById.clear()
 }
 
 /** Test-only: inject cache/registry doubles for the downloaded tier (no network). */
@@ -906,6 +921,7 @@ export function __resetManifestCache(): void {
 	manifestRevalidated = false
 	lockedRows = new Map()
 	lockedById.clear()
+	authRefusedIds.clear()
 	injectedCache = null
 	injectedRegistry = null
 	localKbitIndex = undefined

@@ -146,7 +146,12 @@ type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
  * things to the caller: one is a paywall to surface, the other is "this registry does not have it"
  * (a rolled-back backend, say) which must stay silent.
  */
-export type ArtifactFetch = { kind: "ok"; bytes: Buffer } | { kind: "locked" } | { kind: "absent" } | { kind: "unreachable" }
+export type ArtifactFetch =
+	| { kind: "ok"; bytes: Buffer }
+	| { kind: "locked" }
+	| { kind: "auth" }
+	| { kind: "absent" }
+	| { kind: "unreachable" }
 
 /**
  * Thrown by the text path when the registry answers 402: the bit exists and is simply not this
@@ -157,6 +162,21 @@ export class RegistryLockedError extends Error {
 	constructor(public readonly path: string) {
 		super(`registry: entitlement required for ${path}`)
 		this.name = "RegistryLockedError"
+	}
+}
+
+/**
+ * Thrown when the registry answers 401 or 403: the credential sent was refused. That is a sign-in that has
+ * expired or been revoked — never a network blip. Retrying cannot change it, and telling the developer "the
+ * registry is unreachable" sends them to check a connection that works.
+ */
+export class RegistryAuthError extends Error {
+	constructor(
+		public readonly path: string,
+		public readonly status: number,
+	) {
+		super(`registry: credential refused (${status}) for ${path}`)
+		this.name = "RegistryAuthError"
 	}
 }
 
@@ -296,12 +316,21 @@ export class RegistryClient {
 				if (res.status === 402) {
 					throw new RegistryLockedError(path)
 				}
+				if (res.status === 401 || res.status === 403) {
+					throw new RegistryAuthError(path, res.status)
+				}
+				// Say which status it was: "unreachable" in a log with no number cannot be told apart from a 404.
+				console.warn(`[kbit] registry answered ${res.status} for ${path}`)
 				// 4xx = permanent (bit genuinely absent / bad request) → fail fast, no retry.
 				// 5xx = transient server error → fall through to retry.
 				if (res.status < 500) {
 					return null
 				}
-			} catch {
+			} catch (e) {
+				// A lock or a refused credential is an answer, not a blip: never retried, never "unreachable".
+				if (e instanceof RegistryLockedError || e instanceof RegistryAuthError) {
+					throw e
+				}
 				// Network error / timeout / abort → transient → fall through to retry.
 			} finally {
 				clearTimeout(timer)
@@ -350,6 +379,9 @@ export class RegistryClient {
 				}
 				if (res.status === 402) {
 					return { kind: "locked" }
+				}
+				if (res.status === 401 || res.status === 403) {
+					return { kind: "auth" }
 				}
 				if (res.status < 500) {
 					return { kind: "absent" }

@@ -8,6 +8,7 @@ import { kbitUnavailableMessage, refusalAfterNearMiss, unavailableReason } from 
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
 import {
+	authRefusedBits,
 	type BitProvenance,
 	bitIdForKbPath,
 	creditFor,
@@ -342,6 +343,16 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			const antiImprovise =
 				` Do NOT reconstruct or improvise this Adsum workflow from general knowledge, memory, or a prior ` +
 				`report — tell the developer the workflow is currently unavailable and stop.`
+			// The registry refused the credential (401/403): the sign-in expired or was revoked. Not a blip —
+			// retrying reads the same refusal — and not a lock the account could open.
+			if (bitId !== null && authRefusedBits().has(bitId)) {
+				telemetryService.captureKbitLoadFailed({ reason: "auth_refused", bitId, afterRetry: true })
+				return formatResponse.toolError(
+					`Knowledge bit "${displayPath}" could not be read because the developer's Adsum sign-in is no longer ` +
+						`accepted (it expired or was signed out). Do not retry this read. Tell the developer: "Your Adsum ` +
+						`sign-in has expired — sign in again from the Adsum panel, then ask me again."${antiImprovise}`,
+				)
+			}
 			if (listedButFetchFailed) {
 				// Field-health signal (the Omar/CRA dead-end): reason enum + catalog bit id only, never paths.
 				telemetryService.captureKbitLoadFailed({ reason: "transient_fetch", bitId: bitId ?? undefined, afterRetry: true })

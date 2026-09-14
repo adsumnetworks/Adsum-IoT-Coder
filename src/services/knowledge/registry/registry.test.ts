@@ -7,16 +7,18 @@ import {
 	__resetManifestCache,
 	__setKbitTelemetry,
 	__setRegistryHooks,
+	authRefusedBits,
 	isBareBitPath,
 	isRegistryReachable,
 	loadBit,
 	loadBitByKbPath,
 	loadBitByRel,
+	lockedBits,
 	rankNearMissIds,
 	relPathForId,
 } from "../KnowledgeResolver"
 import { BitCache, sha256 } from "./BitCache"
-import { RegistryClient, resolveAuthorToken } from "./RegistryClient"
+import { RegistryAuthError, RegistryClient, RegistryLockedError, resolveAuthorToken } from "./RegistryClient"
 
 const tmp = () => mkdtemp(join(tmpdir(), "kbit-cache-"))
 
@@ -791,5 +793,86 @@ describe("a manifest row the account cannot open — known, never fetched", () =
 		assert.equal(await loadBit(OPEN_ID), "# Open (open-one.md)\nmixed")
 		assert.deepEqual(blobCalls(offline), [], "the open bit came from the cache, the locked one was never asked for")
 		__resetManifestCache()
+	})
+
+	/**
+	 * B23, 14 Sep: a signed-in read of a gated workflow was reported as "registry unreachable" and the agent told
+	 * the developer it was a network blip. The client threw its 402 lock INSIDE the try whose catch treats every
+	 * throw as a timeout, so a lock (and any refused credential) was retried three times and came out as null.
+	 */
+	const gatedStatus = (status: number) => {
+		let calls = 0
+		const rc = new RegistryClient(
+			"http://r",
+			async () => {
+				calls++
+				return new Response("{}", { status })
+			},
+			5000,
+			3,
+			1,
+			null,
+		)
+		return { rc, calls: () => calls }
+	}
+
+	test("B23-a a 402 blob is a lock, asked once — not a retried blip", async () => {
+		const { rc, calls } = gatedStatus(402)
+		await assert.rejects(() => rc.fetchBlob("abc"), RegistryLockedError)
+		assert.equal(calls(), 1)
+	})
+
+	for (const status of [401, 403]) {
+		test(`B23-b a ${status} blob is a refused sign-in, asked once — not a blip, not a lock`, async () => {
+			const { rc, calls } = gatedStatus(status)
+			await assert.rejects(
+				() => rc.fetchBlob("abc"),
+				(e: unknown) => e instanceof RegistryAuthError && e.status === status,
+			)
+			assert.equal(calls(), 1)
+		})
+	}
+
+	test("B23-c a 5xx is still transient: retried, then null", async () => {
+		const { rc, calls } = gatedStatus(503)
+		assert.equal(await rc.fetchBlob("abc"), null)
+		assert.equal(calls(), 3)
+	})
+
+	test("B23-d loading a gated bit: 402 records a lock, 401 records a refused sign-in, neither says unreachable", async () => {
+		for (const [status, id] of [
+			[402, "adsum/community/gated-402"],
+			[401, "adsum/community/gated-401"],
+		] as const) {
+			const root = await tmp()
+			const { hash } = bit(id, "# G")
+			const c = new BitCache(root)
+			await c.writeManifest(JSON.stringify({ manifestVersion: 1, bits: [{ id, version: "1.0.0", content_hash: hash }] }))
+			let unreachable = 0
+			__setKbitTelemetry({ registryUnreachable: () => unreachable++ })
+			const rc = new RegistryClient(
+				"http://r",
+				async (url: string) => {
+					if (url.includes("/v1/kbits/manifest")) {
+						throw new Error("offline")
+					}
+					return new Response("{}", { status })
+				},
+				5000,
+				3,
+				1,
+				null,
+			)
+			__setRegistryHooks({ cache: c, registry: rc })
+			assert.equal(await loadBit(id), "")
+			assert.equal(unreachable, 0, `${status} must never be reported as unreachable`)
+			if (status === 402) {
+				assert.ok(lockedBits().has(id))
+			} else {
+				assert.ok(authRefusedBits().has(id))
+			}
+			__resetManifestCache()
+			__setKbitTelemetry({})
+		}
 	})
 })

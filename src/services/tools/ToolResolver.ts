@@ -670,7 +670,11 @@ export async function materialiseDownloadedToolResult(args: {
 				// conversations with the developer, so the reason travels with the refusal.
 				return {
 					unavailable:
-						r.kind === "locked" ? "locked" : r.kind === "unreachable" ? "registry-unreachable" : "not-fetched",
+						r.kind === "locked" || r.kind === "auth"
+							? "locked"
+							: r.kind === "unreachable"
+								? "registry-unreachable"
+								: "not-fetched",
 				}
 			}
 			fetched.push({ path: m.path, bytes: r.bytes, sha256: m.sha256 })
