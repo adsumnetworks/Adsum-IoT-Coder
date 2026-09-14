@@ -23,6 +23,24 @@ const CTX = path.join(process.cwd(), "src", "core", "prompts", "system-prompt", 
 const TASK = path.join(process.cwd(), "src", "core", "task", "index.ts")
 const STATE = path.join(process.cwd(), "src", "core", "task", "TaskState.ts")
 
+/**
+ * The downloaded bits live in the backend checkout, which sits BESIDE this repository, not inside it.
+ *
+ * These checks used to read `process.cwd()/Adsum-Backend/kbits` — a folder inside the extension tree that
+ * exists on no machine — so every bit-content check failed with "bit missing" and every one was invisible
+ * while mocha loaded this file (A8, 14 Sep 2026). The premise was stale, not the bits. Resolve the real
+ * sibling (or ADSUM_BACKEND_KBITS), and when it is absent SKIP with the path named: a check that cannot see
+ * the bits must neither fail for the wrong reason nor pass on their absence.
+ */
+const BACKEND_NRF = (() => {
+	const root = process.env.ADSUM_BACKEND_KBITS ?? path.resolve(process.cwd(), "..", "Adsum-Backend", "kbits")
+	const nrf = path.join(root, "platforms", "nrf")
+	return fs.existsSync(nrf) ? nrf : null
+})()
+const NO_BACKEND = BACKEND_NRF
+	? false
+	: `the backend corpus is not at ${path.resolve(process.cwd(), "..", "Adsum-Backend", "kbits")} (or ADSUM_BACKEND_KBITS) — these checks read the bits themselves`
+
 describe("bits injected into the prompt are credited too", () => {
 	const ctx = fs.readFileSync(CTX, "utf8")
 	const task = fs.readFileSync(TASK, "utf8")
@@ -79,8 +97,16 @@ describe("NTN knowledge reaches the parts that can do NTN", () => {
 	test("GNSS rides along, because NTN cannot attach without a position", () => {
 		// The modem asks the application for its location (AT%LOCATION) to pre-compensate Doppler and
 		// timing for a satellite moving at ~7.5 km/s. No fix, no attach — so the two bits travel together.
-		const block = ctx.slice(ctx.indexOf("NTN rides with the nRF9151"))
-		assert.ok(/protocols\/GNSS\.md/.test(block.slice(0, 900)))
+		//
+		// [14 Sep 2026] GNSS moved to its own gate on 29 Aug (a GPS mission on an nRF9161 could not reach it
+		// while it hung off NTN), so it no longer sits within 900 characters of the NTN comment and this check
+		// failed on distance alone. The guarantee is unchanged and is what is asserted now: the GNSS gate
+		// still opens for an nRF9151 and for a declared NTN project.
+		const gate = ctx.slice(ctx.indexOf("GNSS HANGS OFF ITS OWN GATE"))
+		const cond = gate.slice(gate.indexOf("if ("), gate.indexOf("protocols/GNSS.md"))
+		assert.ok(cond.length > 0 && /protocols\/GNSS\.md/.test(gate.slice(0, 1500)), "the GNSS gate must exist")
+		assert.ok(/nrf9151/i.test(cond), "an nRF9151 must still pull GNSS")
+		assert.ok(/hasNtnIntent/.test(cond), "a declared NTN project must still pull GNSS")
 	})
 
 	test("it does NOT load for every nRF91 — the golden rule is knowledge only where it is needed", () => {
@@ -91,8 +117,8 @@ describe("NTN knowledge reaches the parts that can do NTN", () => {
 	})
 })
 
-describe("the bits themselves carry the facts that were got wrong", () => {
-	const kb = path.join(process.cwd(), "Adsum-Backend", "kbits", "platforms", "nrf")
+describe("the bits themselves carry the facts that were got wrong", { skip: NO_BACKEND }, () => {
+	const kb = BACKEND_NRF ?? ""
 	const read = (p: string) => (fs.existsSync(path.join(kb, p)) ? fs.readFileSync(path.join(kb, p), "utf8") : "")
 
 	test("NTN.md forbids inventing a firmware name", () => {
@@ -151,8 +177,8 @@ describe("DECT NR+ knowledge reaches a DECT project", () => {
 	})
 })
 
-describe("the bits carry today's corrections", () => {
-	const kb = path.join(process.cwd(), "Adsum-Backend", "kbits", "platforms", "nrf")
+describe("the bits carry today's corrections", { skip: NO_BACKEND }, () => {
+	const kb = BACKEND_NRF ?? ""
 	const read = (p: string) => (fs.existsSync(path.join(kb, p)) ? fs.readFileSync(path.join(kb, p), "utf8") : "")
 
 	test("DECT: the firmware is not a public download, and that is said up front", () => {
@@ -231,9 +257,9 @@ describe("protocol knowledge arrives before the guessing starts", () => {
 	})
 })
 
-describe("the DECT bit refutes what was actually said", () => {
-	const kb = path.join(process.cwd(), "Adsum-Backend", "kbits", "platforms", "nrf")
-	const dect = fs.readFileSync(path.join(kb, "sdks", "ncs", "protocols", "DECT-NR.md"), "utf8")
+describe("the DECT bit refutes what was actually said", { skip: NO_BACKEND }, () => {
+	const kb = BACKEND_NRF ?? ""
+	const dect = BACKEND_NRF ? fs.readFileSync(path.join(kb, "sdks", "ncs", "protocols", "DECT-NR.md"), "utf8") : ""
 
 	test("the REV3 silicon claim is named and refuted", () => {
 		assert.ok(/REV3/.test(dect), "the exact wrong sentence must be quoted to be refuted")
@@ -362,11 +388,18 @@ describe("product knowledge is reachable", () => {
 		// The bits were authored correct and complete, and NOTHING referenced them — the same way
 		// DECT-NR.md sat unreachable for weeks. A bit nobody can reach is indistinguishable from a bit
 		// that does not exist. The ESP half is the same failure: the product is an ESP32 application.
+		//
+		// [14 Sep 2026] Since 4 Sep (I-28) the row is built by `productLine()` rather than written inline in each
+		// table, so the path and its trigger words live in that function and each table calls it. The check
+		// read the table text for the path and failed on the refactor alone. The guarantee is asserted
+		// where it now lives: every table emits productLine(), and productLine() carries the path and triggers.
+		const line = ctx.slice(ctx.indexOf("function productLine()"), ctx.indexOf("async function getEspPlatformContext"))
+		assert.ok(/products\/fanstel\/lew840x\/PRODUCT\.md/.test(line), "the product row must name the index")
+		for (const word of ["Fanstel", "LEW840X", "M.2"]) {
+			assert.ok(line.includes(word), `"${word}" is not a trigger`)
+		}
 		for (const block of blocks) {
-			assert.ok(/products\/fanstel\/lew840x\/PRODUCT\.md/.test(block))
-			for (const word of ["Fanstel", "LEW840X", "M.2"]) {
-				assert.ok(block.includes(word), `"${word}" is not a trigger`)
-			}
+			assert.ok(/productLine\(\)/.test(block), "each router table must emit the product row")
 		}
 	})
 
@@ -378,8 +411,11 @@ describe("product knowledge is reachable", () => {
 			/productRowEmitted/.test(ctx),
 			"the ESP router row must be guarded so a both-platform workspace does not print it twice",
 		)
+		// [14 Sep 2026] The call site's first argument was renamed (`cwd` → `espRoot`) when a workspace could
+		// hold the two platforms in different roots; the check matched the old name and failed on the rename.
+		// What matters is the third argument.
 		assert.ok(
-			/getEspPlatformContext\(cwd, load, nrfAlreadyRan\)/.test(ctx),
+			/getEspPlatformContext\(\w+, load, nrfAlreadyRan\)/.test(ctx),
 			"the detect path must pass whether the nRF context already ran",
 		)
 	})
@@ -388,9 +424,26 @@ describe("product knowledge is reachable", () => {
 		// The prompt tells the agent to join kbPath with the path it is given. Rows that were relative to
 		// platforms/nrf/ produced a path that does not exist when followed literally, and products/ could
 		// never be reached from a platform-relative row at all.
+		//
+		// [14 Sep 2026] The product row is emitted by productLine() (since 4 Sep), so the nRF table's own text
+		// carries six paths, not seven; the count failed on the refactor. Count the table's rows plus the
+		// product row it emits, and hold every path — including productLine()'s — to the root-relative rule.
 		const nrfBlock = blocks.find((b) => b.includes("DECT")) ?? ""
+		const line = ctx.slice(ctx.indexOf("function productLine()"), ctx.indexOf("async function getEspPlatformContext"))
 		const nrfPaths = [...nrfBlock.matchAll(/`([^`]+\.md)`/g)].map((m) => m[1])
-		assert.ok(nrfPaths.length >= 7, `expected every nRF router row to carry a path, found ${nrfPaths.length}`)
+		const emitsProductRow = /productLine\(\)/.test(nrfBlock)
+		assert.ok(
+			nrfPaths.length + (emitsProductRow ? 1 : 0) >= 7,
+			`expected every nRF router row to carry a path, found ${nrfPaths.length}${emitsProductRow ? " + the product row" : ""}`,
+		)
+		for (const p of [...line.matchAll(/\\`([^`\\]+\.md)\\`|`([^`]+\.md)`/g)].map((m) => m[1] ?? m[2])) {
+			if (p.includes("${")) continue // the recognised-product row interpolates its id; its prefix is checked below
+			assert.ok(/^(platforms|products|rules|actions|workflows)\//.test(p), `product row path is not root-relative: ${p}`)
+		}
+		assert.ok(
+			/`products\/\$\{found\.id\}\/PRODUCT\.md/.test(line.replace(/\\/g, "")),
+			"the recognised-product row is rooted at products/",
+		)
 		for (const block of blocks) {
 			for (const p of [...block.matchAll(/`([^`]+\.md)`/g)].map((m) => m[1])) {
 				assert.ok(/^(platforms|products|rules|actions|workflows)\//.test(p), `router path is not root-relative: ${p}`)

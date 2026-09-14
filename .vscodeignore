@@ -58,7 +58,7 @@ old_docs/
 evals/
 .changie.yaml
 .codespellrc
-.mocharc.json
+.mocharc.cjs
 buf.yaml
 .changeset/
 .clinerules/

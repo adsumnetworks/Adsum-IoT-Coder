@@ -8,8 +8,26 @@
  * Run: npm run test:account
  */
 import { strict as assert } from "node:assert"
-import { describe, test } from "node:test"
+import { after, before, describe, test } from "node:test"
+import { setImmediate as tick } from "node:timers/promises"
+import { __setTelemetryServiceForTest } from "@/services/telemetry"
 import * as account from "./AccountState"
+
+/**
+ * Telemetry the module fires without awaiting. Under this test there is no editor host, so the real service
+ * could not be created and five tests left a call running that rejected after they had ended — every
+ * assertion passed and the file still exited 1. A recording double ends that work inside the test (see
+ * `settled`), and it lets the sign-in event itself be asserted rather than merely survived.
+ */
+const captured: string[] = []
+before(() => {
+	__setTelemetryServiceForTest({
+		captureSignInCompleted: (props?: { groups: number }) => void captured.push(`signin_completed:${props?.groups ?? 0}`),
+	} as never)
+})
+after(() => __setTelemetryServiceForTest(null))
+/** Let every fire-and-forget capture started by the test finish before the test returns. */
+const settled = () => tick()
 
 // Persistence lives in StateManager and is exercised by the extension's own storage tests; these
 // cases drive the module in memory (`__setForTest` puts it there), because what is worth pinning
@@ -74,6 +92,8 @@ describe("X — the account, extension side", () => {
 		assert.equal(account.getSessionToken(), "adu_live")
 		assert.equal(account.getAccount()?.email, "dev@example.com")
 		assert.equal(account.getAccount()?.groups.length, 1)
+		await settled()
+		assert.ok(captured.includes("signin_completed:1"), "a completed sign-in is counted, with how many groups it opened")
 	})
 
 	test("X-09 an open access request survives sign-in and refresh", async () => {
@@ -108,6 +128,7 @@ describe("X — the account, extension side", () => {
 			() => account.refresh(true),
 		)
 		assert.deepEqual(account.getAccount()?.openRequests, ["lew840x", "blg20"], "and the hourly refresh keeps it current")
+		await settled()
 	})
 
 	test("X-10 a callback that lands in a DIFFERENT window still completes the sign-in", async () => {
@@ -143,6 +164,7 @@ describe("X — the account, extension side", () => {
 			"edge-ai-advanced",
 			"lew840x-demo-hex",
 		])
+		await settled()
 	})
 
 	test("X-04 one callback per attempt — a replayed URL cannot mint a second session", async () => {
@@ -153,6 +175,7 @@ describe("X — the account, extension side", () => {
 			)
 		assert.equal(await call(), true)
 		assert.equal(await call(), false, "the nonce is spent by the first callback")
+		await settled()
 	})
 
 	test("X-05 hasGroup answers the lock, and `all` satisfies everything", () => {
@@ -231,6 +254,7 @@ describe("X — the account, extension side", () => {
 		// token it believes is live.
 		assert.equal(account.getSessionToken(), undefined)
 		assert.equal(account.getAccount(), null)
+		await settled()
 	})
 
 	/**

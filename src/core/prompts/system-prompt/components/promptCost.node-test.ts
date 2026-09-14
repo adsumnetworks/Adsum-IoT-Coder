@@ -320,8 +320,16 @@ test("memo: workspaces are cached independently (no cross-workspace bleed)", asy
 	const bRoot = fsSync.mkdtempSync(nodePath.join(os.tmpdir(), "iotmemo-b-"))
 	fsSync.writeFileSync(nodePath.join(bRoot, "README.md"), "not a firmware project\n")
 
+	// [14 Sep 2026] Since 3 Sep (d43a5f234, "let a gateway workspace reach its own knowledge") the platform
+	// roots come from the cwd OR the open workspace's classification, so an app one folder down still gets
+	// its platform knowledge. This test only ever classified A, so prompting for B read A's classification —
+	// the nRF app it names — and B "inherited" A's platform: not a memo bleed, a workspace switch the test
+	// never made. The host reclassifies when the open workspace changes; the test now does the same, and
+	// what it pins is unchanged — each workspace's memo entry is its own.
 	const blockA = await iotBlock(a.cwd)
+	refreshWorkspaceClassification([bRoot])
 	const blockB = await iotBlock(bRoot)
+	refreshWorkspaceClassification([a.cwd])
 	const blockAAgain = await iotBlock(a.cwd)
 
 	assert.match(blockA, /Platform Detected: nRF Connect SDK \/ Zephyr RTOS/)
