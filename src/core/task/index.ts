@@ -120,6 +120,7 @@ import { Controller } from "../controller"
 import { executeHook } from "../hooks/hook-executor"
 import { StateManager } from "../storage/StateManager"
 import { nextAskTs } from "./askOrdering"
+import { coalescePost } from "./coalescePost"
 import { FocusChainManager } from "./focus-chain"
 import { MessageStateHandler } from "./message-state"
 import { reconcileNativeToolContent } from "./nativeToolContent"
@@ -308,7 +309,10 @@ export class Task {
 		this.controller = controller
 		this.mcpHub = mcpHub
 		this.updateTaskHistory = updateTaskHistory
-		this.postStateToWebview = postStateToWebview
+		// B31b: never wait on the panel from the task path; later posts collapse into one trailing post.
+		this.postStateToWebview = coalescePost(postStateToWebview, (e) =>
+			Logger.warn(`[Task ${taskId}] state post to the panel failed: ${e instanceof Error ? e.message : String(e)}`),
+		)
 		this.reinitExistingTaskFromId = reinitExistingTaskFromId
 		this.cancelTask = cancelTask
 		this.clineIgnoreController = new ClineIgnoreController(cwd)
