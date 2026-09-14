@@ -15,8 +15,34 @@ const frame = (values: Record<string, unknown>): StoryObj => ({
 	),
 })
 
-/** Nothing set: exactly what an existing configuration does today. */
+/** Nothing set: the preference and one quiet opener, which is all most developers need. */
 export const Default: StoryObj = frame({})
+/** The same configuration with the detail opened by hand. */
+export const Opened: StoryObj = {
+	render: () => (
+		<div style={{ padding: "12px" }}>
+			<OpenRouterRouting modelInfo={model} onChange={() => {}} values={{ sellerOrder: "" }} />
+		</div>
+	),
+}
+/** Closed, with choices already made: the one line that stops a developer forgetting. */
+export const ClosedWithValues: StoryObj = {
+	render: () => (
+		<div style={{ padding: "12px" }}>
+			<OpenRouterRouting
+				initialOpen={false}
+				modelInfo={model}
+				onChange={() => {}}
+				values={{
+					sellerOrder: "baidu, baseten, parasail",
+					onlyTheseSellers: true,
+					maxInputPrice: "0.15",
+					maxOutputPrice: "0.30",
+				}}
+			/>
+		</div>
+	),
+}
 /** Sellers named: the preference greys out and says why. */
 export const WithSellers: StoryObj = frame({ sellerOrder: "together, deepinfra", onlyTheseSellers: true })
 /** A ceiling under the live price — the warning that would have saved an evening. */

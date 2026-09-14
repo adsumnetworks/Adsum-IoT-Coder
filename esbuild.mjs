@@ -142,9 +142,27 @@ const buildEnvVars = {
 	"process.env.IS_STANDALONE": JSON.stringify(standalone ? "true" : "false"),
 }
 
-if (production) {
+/*
+ * A BENCH TEST BUILD, and it has to survive the production pipeline.
+ *
+ * `vsce package` always runs `vscode:prepublish`, which is the production build, so a dev bundle
+ * built beforehand is simply overwritten — which is why a dev-only command kept vanishing from the
+ * artifact installed on the bench. The override is deliberately NOT `IS_DEV`, which a developer may
+ * well have exported for other reasons: it is a variable nobody sets by accident, and it announces
+ * itself loudly in the build log so an artifact carrying it cannot be mistaken for a release.
+ */
+if (process.env.ADSUM_DEV_AID === "1") {
+	console.warn("[build] ADSUM_DEV_AID=1 — baking IS_DEV=true. This is a BENCH TEST BUILD; never publish it.")
+	buildEnvVars["process.env.IS_DEV"] = '"true"'
+} else if (production) {
 	// IS_DEV is always disable in production builds.
 	buildEnvVars["process.env.IS_DEV"] = "false"
+} else if (process.env.IS_DEV) {
+	// A NON-production build may bake the flag the builder asked for. Needed for a remote host: the
+	// extension host there does not inherit the shell that ran this build, so a dev-only command
+	// registered from `process.env.IS_DEV` would never appear on a bench. Production still hard-codes
+	// "false" above, so nothing a customer installs can be affected by this branch.
+	buildEnvVars["process.env.IS_DEV"] = JSON.stringify(process.env.IS_DEV)
 }
 // Set the environment and telemetry env vars. The API key env vars need to be populated in the GitHub
 // workflows from the secrets.

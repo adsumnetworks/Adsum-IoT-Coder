@@ -85,6 +85,7 @@ https://github.com/microsoft/vscode-webview-ui-toolkit-samples/tree/main/framewo
 
 */
 
+import { shouldRegisterRoutingTestAid } from "./dev/commands/routingTestAid"
 import { TerminalRegistry } from "./hosts/vscode/terminal/VscodeTerminalRegistry"
 import { setEditorWindowResolver } from "./services/adsum/editorWindow"
 
@@ -388,6 +389,19 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	}
 	context.subscriptions.push(vscode.window.registerUriHandler({ handleUri }))
+
+	// A development-only aid for putting a bench into a known routing configuration. Never registered
+	// in a production build — see shouldRegisterRoutingTestAid, which is the same condition, tested.
+	if (shouldRegisterRoutingTestAid(IS_DEV)) {
+		import("./dev/commands/routingTestAid")
+			.then((module) => {
+				context.subscriptions.push(...module.registerRoutingTestAid(webview.controller))
+				Logger.log("Adsum dev routing test aid registered")
+			})
+			.catch((error) => {
+				Logger.log("Failed to register the routing test aid: " + error)
+			})
+	}
 
 	// Register size testing commands in development mode
 	if (IS_DEV && IS_DEV === "true") {

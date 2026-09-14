@@ -104,6 +104,15 @@ export interface ModelInfo {
 	supportsImages?: boolean
 	supportsPromptCache: boolean // this value is hardcoded for now
 	supportsReasoning?: boolean // Whether the model supports reasoning/thinking mode
+	/**
+	 * Whether this model takes native tool calls, as told to us by the provider or its catalogue.
+	 *
+	 * Authoritative when present, and it exists because the alternative was reading version digits
+	 * out of a name: a vendor renamed a model on 10 September and every check that parsed the old id
+	 * silently reported the new one as incapable, so the agent was asked for XML and the runs died.
+	 * A name is the vendor's to change; a capability is theirs to declare.
+	 */
+	supportsNativeTools?: boolean
 	inputPrice?: number // Keep for non-tiered input models
 	outputPrice?: number // Keep for non-tiered output models
 	thinkingConfig?: {
