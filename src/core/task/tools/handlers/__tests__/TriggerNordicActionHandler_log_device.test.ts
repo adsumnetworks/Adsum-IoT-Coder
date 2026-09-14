@@ -200,6 +200,54 @@ describe("TriggerNordicActionHandler (log_device)", () => {
 		expect(normalizedCmd).to.contain("--output /mock/workspace/logs/")
 	})
 
+	// 2026-09-14: a capture on a board nobody had confirmed printed "[RESET] Device … reset successfully"
+	// before recording. A capture reads the device; the reset is an opt-in the agent has to name.
+	describe("capture reset is an explicit opt-in", () => {
+		const capture = async (extra: Record<string, string>) => {
+			const block: ToolUse = {
+				type: "tool_use",
+				name: ClineDefaultTool.NORDIC_ACTION,
+				params: { action: "log_device", operation: "capture", duration: "10", ...extra } as any,
+				partial: false,
+			}
+			await handler.execute(mockTaskConfig, block)
+			return String(mockExecuteCommandTool.firstCall.args[0]).split(" ")
+		}
+
+		it("a UART capture with no reset parameter passes --no-reset and never --reset", async () => {
+			const argv = await capture({ transport: "uart", port: "/dev/ttyACM2" })
+			expect(argv).to.include("--no-reset")
+			expect(argv).to.not.include("--reset")
+		})
+
+		it("an RTT capture with no reset parameter passes --no-reset", async () => {
+			const argv = await capture({ transport: "rtt", port: "1051878474" })
+			expect(argv).to.include("--no-reset")
+			expect(argv).to.not.include("--reset")
+		})
+
+		it("an auto-detect capture with no reset parameter passes --no-reset", async () => {
+			const argv = await capture({ transport: "uart", auto_detect: "true" })
+			expect(argv).to.include("--no-reset")
+			expect(argv).to.not.include("--reset")
+		})
+
+		it('reset="true" is the only way to get --reset', async () => {
+			const argv = await capture({ transport: "uart", port: "/dev/ttyACM2", reset: "true" })
+			expect(argv).to.include("--reset")
+			expect(argv).to.not.include("--no-reset")
+		})
+
+		it("any other reset value is --no-reset", async () => {
+			for (const value of ["false", "yes", "1", ""]) {
+				mockExecuteCommandTool.resetHistory()
+				const argv = await capture({ transport: "uart", port: "/dev/ttyACM2", reset: value })
+				expect(argv, `reset="${value}"`).to.include("--no-reset")
+				expect(argv, `reset="${value}"`).to.not.include("--reset")
+			}
+		})
+	})
+
 	it("should use relative path for wrapper script when possible", async () => {
 		const block: ToolUse = {
 			type: "tool_use",

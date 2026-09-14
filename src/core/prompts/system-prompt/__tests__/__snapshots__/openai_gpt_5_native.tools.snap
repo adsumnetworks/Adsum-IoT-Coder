@@ -387,7 +387,7 @@
           },
           "pre-capture-delay": {
             "type": "string",
-            "description": "Optional for \"capture\". Delay in seconds before device reset (pre-capture listening phase).\n- Use for boot log capture: listeners start BEFORE reset\n- Default: 0 (no delay)\n- Recommended: 2-3 seconds for boot logs\nThis ensures complete boot sequence is captured."
+            "description": "Optional for \"capture\". Seconds the listeners run before the reset, when reset=\"true\" was passed.\n- Default: 0 (no delay)\n- With reset=\"true\": 2-3 seconds, so the whole boot sequence is caught\nWithout reset=\"true\" there is no reset and this only delays the capture."
           },
           "devices": {
             "type": "string",
@@ -399,7 +399,7 @@
           },
           "reset": {
             "type": "string",
-            "description": "Optional. Reset device(s) before capture. DEFAULT: true. Set to false ONLY for mid-runtime capture."
+            "description": "Optional. DEFAULT: false — a capture reads the device as it runs and never resets it. Pass reset=\"true\" only to record a boot sequence, and only on a device the developer has confirmed is the one under discussion. A capture taken with a reset reboots the part: it is not a reading of what the part was doing."
           },
           "auto_detect": {
             "type": "string",

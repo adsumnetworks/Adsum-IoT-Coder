@@ -84,6 +84,15 @@ async function runDecoder(
 	}
 }
 
+/**
+ * The logger flag for a capture's `reset` parameter. Only an explicit true opts in; every other value,
+ * including a missing one, is `--no-reset`. A capture that reboots the part is not a reading of it, and
+ * the board on the port may not be the one the developer is asking about.
+ */
+export function captureResetFlag(reset: unknown): "--reset" | "--no-reset" {
+	return reset === true || (typeof reset === "string" && reset.trim().toLowerCase() === "true") ? "--reset" : "--no-reset"
+}
+
 export class TriggerNordicActionHandler implements IFullyManagedTool {
 	readonly name = ClineDefaultTool.NORDIC_ACTION
 
@@ -352,14 +361,14 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 				args.push("--capture")
 				// Helper to check for truthiness including string "false"
 				const isAutoDetect = auto_detect === true || auto_detect === "true"
-				const isResetDisabled = reset === false || reset === "false"
+				// A capture reads the device; it must not reboot it. Reset is an explicit opt-in the agent
+				// names with reset="true". Anything else — absent, "false", a typo — passes --no-reset, so a
+				// logger that still resets by default (an older copy, a registry override) is held too.
+				const resetFlag = captureResetFlag(reset)
 
 				if (isAutoDetect) {
 					args.push("--auto-detect")
-					// Reset is DEFAULT for auto-detect unless explicitly disabled
-					if (isResetDisabled) {
-						args.push("--no-reset")
-					}
+					args.push(resetFlag)
 				} else {
 					// Manual port or devices specification
 					if (port) args.push("--port", port)
@@ -372,10 +381,7 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 						)
 					}
 
-					// Reset is DEFAULT unless explicitly disabled
-					if (isResetDisabled) {
-						args.push("--no-reset")
-					}
+					args.push(resetFlag)
 				}
 
 				if (duration) args.push("--duration", duration.toString())

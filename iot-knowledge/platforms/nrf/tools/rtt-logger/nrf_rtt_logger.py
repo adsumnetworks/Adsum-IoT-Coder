@@ -416,7 +416,7 @@ class MonitorRTTThread(threading.Thread):
     Channel 1 → raw BT Monitor frames → .btmon file (decoded by the Adsum viewer).
     """
 
-    def __init__(self, name: str, serial: str, final_file: str, btmon_file: str, device_type: str, reset: bool = True):
+    def __init__(self, name: str, serial: str, final_file: str, btmon_file: str, device_type: str, reset: bool = False):
         super().__init__(daemon=True)
         self.name = name
         self.serial = serial
@@ -592,7 +592,7 @@ def report_zero_capture(zero_capture, duration):
     return 1 if zero_capture else 0
 
 
-def capture_rtt_logs(devices, duration, output_dir, reset=True, device_type=DEFAULT_DEVICE_TYPE, channel=DEFAULT_RTT_CHANNEL, monitor=False):
+def capture_rtt_logs(devices, duration, output_dir, reset=False, device_type=DEFAULT_DEVICE_TYPE, channel=DEFAULT_RTT_CHANNEL, monitor=False):
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     kill_jlink_processes()
@@ -840,7 +840,9 @@ def main():
     # this (2026-08-29).
     parser.add_argument("--out", help="Write the capture to exactly this FILE (single device)")
     parser.add_argument("--output", type=str, default="logs")
-    parser.add_argument("--no-reset", action="store_true")
+    # Never reset unless asked: a capture must not reboot the part it is reading.
+    parser.add_argument("--reset", action="store_true", help="Reset device(s) before capture. Off by default")
+    parser.add_argument("--no-reset", action="store_true", help="Do not reset (the default; wins over --reset)")
     parser.add_argument("--reset-serials", help="Device serial numbers to reset (comma-separated)")
     parser.add_argument("--analyze", action="store_true", help="Analyze logs after recording")
     parser.add_argument("--channel", type=int, default=DEFAULT_RTT_CHANNEL)
@@ -893,7 +895,7 @@ def main():
              sys.exit(1)
 
     # Capture
-    log_files = capture_rtt_logs(devices, args.duration, args.output, reset=not args.no_reset, device_type=args.device_type, channel=args.channel, monitor=args.monitor)
+    log_files = capture_rtt_logs(devices, args.duration, args.output, reset=(args.reset and not args.no_reset), device_type=args.device_type, channel=args.channel, monitor=args.monitor)
     log_files = honour_out_file(args.out, log_files)
     
     # Analyze

@@ -6,7 +6,7 @@
 			"id": "adsum/agent",
 			"title": "Identity & Persona",
 			"type": "knowledge",
-			"version": "1.4.4",
+			"version": "1.4.5",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -19,7 +19,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "AGENT.md",
-			"content_hash": "3b2d6e0757a339412698323d3af7262620db8bf16595721f3ee8b9270396fbad"
+			"content_hash": "9ef3cb429a013c09a732072f32b23fde02a8acf016ee00f272cd4bd858b70005"
 		},
 		{
 			"id": "adsum/cra/tools/cra-action",
@@ -241,7 +241,7 @@
 			"id": "adsum/nrf/actions/capture-logs",
 			"title": "Action: Capture Device Logs",
 			"type": "action",
-			"version": "1.0.0",
+			"version": "1.0.1",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -258,7 +258,7 @@
 				"process-kill"
 			],
 			"path": "platforms/nrf/actions/capture-logs.md",
-			"content_hash": "4d081d58b293155906cba96834b81064dd963c296f113c4b1a885954fdc027ff"
+			"content_hash": "658f15286fbf00c14c3c51e2127dd44254cb44bdc7098bbc2262c5d76d6fca05"
 		},
 		{
 			"id": "adsum/nrf/actions/flash",
@@ -306,7 +306,7 @@
 			"id": "adsum/nrf/platform",
 			"title": "Nordic nRF — Platform Index",
 			"type": "knowledge",
-			"version": "1.8.2",
+			"version": "1.8.3",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -321,7 +321,7 @@
 				"flash"
 			],
 			"path": "platforms/nrf/PLATFORM.md",
-			"content_hash": "acbf0a76d623eb51d4f1e4750000277e453ad2d6e0cae7af4ad82d2caac43327"
+			"content_hash": "755436bc9bcc358dcaa4ea8052cbb2ad55f633188c6ad8c1f722d4580d638dd2"
 		},
 		{
 			"id": "adsum/nrf/rules/bit-loading",
@@ -534,7 +534,7 @@
 			"id": "adsum/nrf/tools/rtt-logger",
 			"title": "rtt-logger",
 			"type": "tool",
-			"version": "1.1.1",
+			"version": "1.1.2",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "Apache-2.0",
@@ -552,7 +552,7 @@
 			"artifacts": [
 				{
 					"path": "nrf_rtt_logger.py",
-					"sha256": "3a3018698fbb8b2f6b5a382c7cba956d0413ffe81fba584b0977750dcd8ac36b"
+					"sha256": "7729ef75f3cf0e2c9aee0d6afc45f5f3ca0cd3b70ea8662aa1b4a530707c0eb0"
 				},
 				{
 					"path": "rtt-logger",
@@ -565,7 +565,7 @@
 			],
 			"readonly": false,
 			"path": "platforms/nrf/tools/rtt-logger/TOOL.md",
-			"content_hash": "78826dddeb1b9d96781b38dff3f6b4dafff686f5af02533992787eea69ba08bd"
+			"content_hash": "98db0fb97d64e20304944883e61cdce4efce2e69c393931649a47d8c26ba2d72"
 		},
 		{
 			"id": "adsum/nrf/tools/sniffer-decode",
@@ -604,7 +604,7 @@
 			"id": "adsum/nrf/tools/uart-logger",
 			"title": "uart-logger",
 			"type": "tool",
-			"version": "1.0.2",
+			"version": "1.0.3",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "Apache-2.0",
@@ -622,7 +622,7 @@
 			"artifacts": [
 				{
 					"path": "nrf_uart_logger.py",
-					"sha256": "f5a88d007fb5e6dc36825fc14f192e21d61f9b93a0188ba7c80184f3e7ee923a"
+					"sha256": "2967566a7ed51ef226ff367b239f9ab71d16bb4b4d9039b0b9f8b1107d56c44b"
 				},
 				{
 					"path": "uart-logger",
@@ -635,7 +635,7 @@
 			],
 			"readonly": false,
 			"path": "platforms/nrf/tools/uart-logger/TOOL.md",
-			"content_hash": "e2f7f023d05e3c204d095a3a7b0180ce33454beb9fe396ff3e50d61e33cf25bd"
+			"content_hash": "b4018c861c7ab9d2bdc0c5004f26cdee5cdf9551bfee189639f6da7a3df20541"
 		},
 		{
 			"id": "adsum/nrf/workflows/demo-debug",

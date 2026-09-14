@@ -33,6 +33,17 @@ describe("trigger_nordic_action tool", () => {
 		expect(operationParam?.instruction).to.include("capture")
 	})
 
+	it("says a capture does not reset unless reset=true is named", () => {
+		for (const variant of trigger_nordic_action_variants) {
+			const reset = variant.parameters?.find((p) => p.name === "reset")
+			expect(reset, String(variant.variant)).to.exist
+			expect(reset?.instruction).to.include("DEFAULT: false")
+			expect(reset?.instruction).to.include("never resets it")
+			expect(reset?.instruction).to.include("confirmed is the one under discussion")
+			expect(reset?.instruction).to.not.include("DEFAULT: true")
+		}
+	})
+
 	it("should have simplified description for NATIVE_GPT_5 variant", () => {
 		const nativeGpt5 = trigger_nordic_action_variants.find((v) => v.variant === ModelFamily.NATIVE_GPT_5)
 		expect(nativeGpt5).to.exist

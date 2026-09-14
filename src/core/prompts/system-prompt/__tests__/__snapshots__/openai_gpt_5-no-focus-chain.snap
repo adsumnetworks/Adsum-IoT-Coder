@@ -287,18 +287,17 @@ If unsure, tool auto-detects from prj.conf, but ALWAYS pass explicit transport f
 - Standard: 30 seconds (default)
 - Extended: 60+ seconds
 Choose based on investigation goal.
-- pre-capture-delay: (optional) Optional for "capture". Delay in seconds before device reset (pre-capture listening phase).
-- Use for boot log capture: listeners start BEFORE reset
+- pre-capture-delay: (optional) Optional for "capture". Seconds the listeners run before the reset, when reset="true" was passed.
 - Default: 0 (no delay)
-- Recommended: 2-3 seconds for boot logs
-This ensures complete boot sequence is captured.
+- With reset="true": 2-3 seconds, so the whole boot sequence is caught
+Without reset="true" there is no reset and this only delays the capture.
 - devices: (optional) Optional for "capture". Multi-device mapping: "label:identifier,label2:identifier2".
 The label is used to name the output log file. Use generic labels (device1, device2) when roles are unknown.
 Use role-specific labels (central, peripheral) ONLY when the role has been confirmed by project config or log analysis.
 - For UART: identifier is the serial port (e.g. "device1:/dev/ttyACM0").
 - For RTT: identifier is the serial number (e.g. "device1:683335182"). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.
 - output: (optional) Optional for "capture". Directory to save logs.
-- reset: (optional) Optional. Reset device(s) before capture. DEFAULT: true. Set to false ONLY for mid-runtime capture.
+- reset: (optional) Optional. DEFAULT: false — a capture reads the device as it runs and never resets it. Pass reset="true" only to record a boot sequence, and only on a device the developer has confirmed is the one under discussion. A capture taken with a reset reboots the part: it is not a reading of what the part was doing.
 - auto_detect: (optional) Optional. Auto-detect all connected nRF devices. Set to true for BLE/multi-device scenarios where you want to capture everything without specifying ports.
 - list_nrf: (optional) Optional. When true with operation="list", shows only nRF devices.
 - monitor: (optional) Optional, RTT only. When true, also captures the HCI Monitor stream (host↔controller commands/events) on RTT channel 1 and auto-decodes it to a readable logs/hci/*.hci.log the user and you can read. Pass monitor="true" for BLE debugging — pairing/connection/PHY/GATT/controller issues — where controller-level evidence helps. Auto-enabled when prj.conf has CONFIG_BT_DEBUG_MONITOR_RTT=y (you need not pass it then). Requires that Kconfig in the firmware; if missing, enable it first (see the BLE knowledge / log-generator workflow).
@@ -317,7 +316,7 @@ Usage:
 <pre-capture-delay>3</pre-capture-delay>
 <devices>device1:683335182,device2:683007782</devices>
 <output>logs/</output>
-<reset>true</reset>
+<reset>false</reset>
 <auto_detect>true</auto_detect>
 <list_nrf>true</list_nrf>
 <monitor>true</monitor>

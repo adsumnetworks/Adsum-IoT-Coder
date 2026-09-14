@@ -2,7 +2,7 @@
 id: adsum/nrf/platform
 title: "Nordic nRF — Platform Index"
 type: knowledge
-version: 1.8.2
+version: 1.8.3
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -183,7 +183,7 @@ triggerNordicAction: action="log_device", operation="capture", transport="rtt", 
 ```
 Use generic labels (`device1`, `device2`) until roles are confirmed. See `rules/device-identity.md`.
 
-**Boot log capture (with reset):**
+**Boot log capture (with reset — a capture never resets unless `reset="true"` is passed, and only on a device the developer confirmed):**
 ```
 triggerNordicAction: action="log_device", operation="capture", transport="rtt", port="<sn>", duration="15", pre-capture-delay="3", reset="true"
 ```
