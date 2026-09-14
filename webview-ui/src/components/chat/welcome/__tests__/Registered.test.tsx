@@ -56,7 +56,8 @@ describe("W — registered", () => {
 		expect(screen.getByText("You’re registered — cellular is unlocked")).toBeTruthy()
 		expect(screen.getByText("Advanced cellular knowledge: LTE-M, NB-IoT, NTN, DECT NR+")).toBeTruthy()
 		expect(screen.getByText("On-device inference on nRF54")).toBeTruthy()
-		expect(screen.getByText("Fanstel LEW840x demo hexes")).toBeTruthy()
+		// [14 Sep 2026] Registering grants no demo images; the card must not claim it does.
+		expect(screen.queryByText(/demo hexes|demo images/i)).toBeNull()
 		// The honest half: saying it here is what stops the next click being a disappointment.
 		expect(screen.getByText("Template source is by request — the LEW840x card has the link.")).toBeTruthy()
 
@@ -71,12 +72,14 @@ describe("W — registered", () => {
 		expect(screen.getByText("Flash the LEW840x demo")).toBeTruthy()
 		expect(
 			screen.getByText(
-				/Three signed hexes: BLE scanner, ESP32 uplink, nRF9160 bearer\. Needs nrfutil and esptool on this machine\./,
+				/Three images: BLE scanner, ESP32 uplink, nRF9160 bearer\. Needs nrfutil and esptool on this machine\./,
 			),
 		).toBeTruthy()
+		// The images are hash-pinned, not signed; a card that says "signed" claims a protection they do not have.
+		expect(screen.getByTestId("demo-hex-card").textContent).not.toMatch(/signed/i)
 		// The limits are their own line ABOVE the action, not a clause at the end of the description.
 		expect(screen.getByText("Wi-Fi and Ethernet unlimited")).toBeTruthy()
-		expect(screen.getByText("Cellular in 60-minute sessions, for evaluation")).toBeTruthy()
+		expect(screen.getByText("Cellular in 60-minute windows, for evaluation")).toBeTruthy()
 		expect(screen.getByText("≈ 3 min · you will be asked for the ports")).toBeTruthy()
 
 		await act(async () => {
@@ -103,10 +106,29 @@ describe("W — registered", () => {
 		expect(screen.getByTestId("demo-hex-card")).toBeTruthy()
 	})
 
+	it("W-11d a pair the registry does not serve is never offered, even to an account that holds its group", () => {
+		// The host read the manifest and the LEW840x pair is not in it: withdrawn, as on 14 Sep 2026.
+		state.current = account(["lew840x-demo-hex", "blg20-demo-hex"], {})
+		;(state.current.adsumAccount as Record<string, unknown>).servedDemoTools = ["adsum/tools/blg20-hex-demo-pair"]
+		render(<DemoHexCard onFlash={vi.fn()} />)
+		expect(screen.queryByTestId("demo-hex-card")).toBeNull()
+		expect(screen.getByTestId("demo-pair-card-blg20")).toBeTruthy()
+	})
+
+	it("W-11e before the host has read the registry the card hides nothing, and the board on the desk picks the pair", () => {
+		state.current = account(["all"])
+		const { unmount } = render(<DemoHexCard boards={["Fanstel BLG20XE02C"]} onFlash={vi.fn()} />)
+		expect(screen.getByTestId("demo-pair-card-blg20")).toBeTruthy()
+		unmount()
+		render(<DemoHexCard boards={["LEW840F-M2"]} onFlash={vi.fn()} />)
+		expect(screen.getByTestId("demo-hex-card")).toBeTruthy()
+	})
+
 	it("W-12 the demo prompt loads the tool bit and states the cap before flashing, not after", () => {
 		expect(DEMO_HEX_PROMPT).toContain("LOAD the lew840x demo-hex tool bit first")
 		expect(DEMO_HEX_PROMPT).toContain("nrfutil and esptool")
-		expect(DEMO_HEX_PROMPT).toMatch(/60-minute sessions .* before I start, not after|before I \n?start, not after/s)
+		expect(DEMO_HEX_PROMPT).toMatch(/60-minute windows .* before I start, not after/s)
+		expect(DEMO_HEX_PROMPT).not.toMatch(/signed/i)
 	})
 
 	it("W-13 a registered developer sees four live cards and no instruction to register", () => {

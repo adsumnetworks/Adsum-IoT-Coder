@@ -122,9 +122,12 @@ const AccountSection: React.FC<AccountSectionProps> = ({ renderSectionHeader }) 
 
 							<Key>Demo</Key>
 							<Val>
-								{accountHasGroup(adsumAccount, "lew840x-demo-hex")
-									? "LEW840x hexes available · cellular in 60-minute sessions"
-									: "Not unlocked on this account"}
+								{[
+									accountHasGroup(adsumAccount, "lew840x-demo-hex") && "LEW840x demo pair",
+									accountHasGroup(adsumAccount, "blg20-demo-hex") && "BLG20x demo pair",
+								]
+									.filter(Boolean)
+									.join(" · ") || "Not unlocked on this account"}
 							</Val>
 						</div>
 

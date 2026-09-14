@@ -960,7 +960,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 								runIntent("blg20Gateway", { onSelectMode, onStartTask, platform, projectName })
 							}}
 						/>
-						{!hasHistory && <DemoHexCard onFlash={(prompt) => void onStartTask(prompt)} />}
+						{!hasHistory && <DemoHexCard boards={ladderBoards} onFlash={(prompt) => void onStartTask(prompt)} />}
 						<RequestAccessForm
 							family={requesting ?? undefined}
 							onClose={() => setRequesting(null)}

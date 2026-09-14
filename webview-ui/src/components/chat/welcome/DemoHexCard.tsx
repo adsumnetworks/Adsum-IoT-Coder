@@ -1,4 +1,5 @@
 import { type AdsumAccountState, accountHasGroup } from "@shared/adsumAccount"
+import { demoPairServed } from "@shared/adsumDemoPairs"
 import React, { useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { BRAND_CORAL, BRAND_CYAN_UI, brandAlpha } from "../brandColors"
@@ -7,7 +8,7 @@ import { DEMO_HEX_PROMPT, DEMO_PAIR_PROMPT_BLG20 } from "./welcomeIntents"
 /**
  * The demo a registered developer can actually run, for whichever board's demo they hold.
  *
- * Coral frame, because this is the identity moment: our hardware partner's board, our signed builds.
+ * Coral frame, because this is the identity moment: our hardware partner's board, our tagged builds.
  * It is the only card on this surface that puts bytes on a device, so it is the only one that earns
  * a coloured edge here.
  *
@@ -16,12 +17,18 @@ import { DEMO_HEX_PROMPT, DEMO_PAIR_PROMPT_BLG20 } from "./welcomeIntents"
  * no statement of what protects the image, and no way to the demo except guessing a sentence into
  * the chat box. The limits are stated ABOVE the action, before anything is downloaded: a demo whose
  * limits are discovered afterwards is a demo that gets returned.
+ *
+ * [14 Sep 2026] Two more rules. The card shows only a pair the registry actually serves this account: the
+ * LEW840x pair was withdrawn while every registered account was still offered it. And when an account holds
+ * more than one pair, the board on the desk decides which card it sees, not the order of this table.
  */
 
 /** One board's demo, in the words the developer reads. Adding a board is a row here, not a component. */
 interface DemoPair {
 	/** The group that says this developer holds it. */
 	group: string
+	/** The boards this pair is for, as the environment names them. Decides between pairs an account holds. */
+	board: RegExp
 	title: string
 	/** What it costs, in tier words: Free, Registered, Licensed — never a price. */
 	badge: string
@@ -52,20 +59,24 @@ interface DemoPair {
 const DEMO_PAIRS: readonly DemoPair[] = [
 	{
 		group: "lew840x-demo-hex",
+		board: /lew840|ew840/i,
 		title: "Flash the LEW840x demo",
-		badge: "Included · registered",
-		body: "Three signed hexes: BLE scanner, ESP32 uplink, nRF9160 bearer. Needs nrfutil and esptool on this machine.",
-		limits: ["Wi-Fi and Ethernet unlimited", "Cellular in 60-minute sessions, for evaluation"],
+		badge: "Demo included",
+		body: "Three images: BLE scanner, ESP32 uplink, nRF9160 bearer. Needs nrfutil and esptool on this machine.",
+		limits: ["Wi-Fi and Ethernet unlimited", "Cellular in 60-minute windows, for evaluation"],
 		action: "Flash demo ▸",
 		after: "≈ 3 min · you will be asked for the ports",
+		licence: "A licence notice is written next to the images.",
+		protection: "Today the demo bearer is protected by your account's access and a limit built into the image, nothing more.",
 		prompt: DEMO_HEX_PROMPT,
 		testId: "demo-hex-card",
 	},
 	{
 		group: "blg20-demo-hex",
+		board: /blg20|lbg20/i,
 		title: "BLG20x demo pair",
-		badge: "Included · registered",
-		body: "Two images, one for each half of the board, built from a tagged source and signed.",
+		badge: "Demo included",
+		body: "Two images, one for each half of the board, built from a tagged source.",
 		limits: ["Limited use for demos", "Terrestrial and satellite"],
 		action: "Install into this project",
 		after: "Then program each half with your own probe. Take the serial number from the tool, never one you remember.",
@@ -83,12 +94,17 @@ interface DemoHexCardProps {
 	onFlash: (prompt: string) => void | Promise<void>
 	/** Which image is being written, e.g. "nRF9160 bearer… 2 of 3". Absent ⇒ idle. */
 	flashing?: string
+	/** The boards the environment has seen. Absent or no match ⇒ the first pair the account holds. */
+	boards?: readonly string[]
 }
 
-const DemoHexCard: React.FC<DemoHexCardProps> = ({ onFlash, flashing }) => {
+const DemoHexCard: React.FC<DemoHexCardProps> = ({ onFlash, flashing, boards }) => {
 	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
 	const [busy, setBusy] = useState(false)
-	const pair = DEMO_PAIRS.find((p) => accountHasGroup(adsumAccount, p.group))
+	const held = DEMO_PAIRS.filter(
+		(p) => accountHasGroup(adsumAccount, p.group) && demoPairServed(adsumAccount?.servedDemoTools, p.group),
+	)
+	const pair = held.find((p) => boards?.some((b) => p.board.test(b))) ?? held[0]
 	if (!pair) {
 		return null
 	}
