@@ -1,5 +1,5 @@
 /**
- * Generate iot-knowledge/kbit.schema.json from the canonical zod schema.
+ * Generate kbit-authoring/kbit.schema.json from the canonical zod schema.
  * Run: npm run gen:kbit-schema   (CI verifies the output is in sync).
  */
 import { writeFileSync } from "node:fs"
@@ -12,6 +12,6 @@ const jsonSchema = zodToJsonSchema(kbitMetaSchema, {
 	$refStrategy: "none",
 })
 
-const outPath = join(__dirname, "..", "iot-knowledge", "kbit.schema.json")
+const outPath = join(__dirname, "..", "kbit-authoring", "kbit.schema.json")
 writeFileSync(outPath, `${JSON.stringify(jsonSchema, null, "\t")}\n`, "utf8")
 console.log(`Generated ${outPath}`)

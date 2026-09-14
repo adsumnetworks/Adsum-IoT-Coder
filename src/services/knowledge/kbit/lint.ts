@@ -8,7 +8,7 @@ import { type KBitSafety, kbitMetaSchema } from "./schema"
 export { extractFrontmatter, type Frontmatter } from "./frontmatter"
 
 /**
- * Pure K-bit linting logic — see iot-knowledge/KBIT-SPEC.md.
+ * Pure K-bit linting logic — see kbit-authoring/KBIT-SPEC.md.
  * The CLI wrapper (scripts/kbit-lint.ts) does the IO + exit code; everything here is
  * importable + unit-testable (and reused by the authoring wizard in P1).
  */

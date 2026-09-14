@@ -1,6 +1,6 @@
 /**
  * Frontmatter parsing — pure string ops, zero deps (so the runtime loaders can import
- * `stripFrontmatter` without pulling in zod / js-yaml). See iot-knowledge/KBIT-SPEC.md.
+ * `stripFrontmatter` without pulling in zod / js-yaml). See kbit-authoring/KBIT-SPEC.md.
  */
 
 export type Frontmatter = { found: boolean; closed: boolean; yaml: string; body: string }

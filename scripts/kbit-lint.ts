@@ -1,6 +1,6 @@
 /**
  * K-bit linter CLI — validates iot-knowledge/*.md against the K-bit contract.
- * See iot-knowledge/KBIT-SPEC.md. Run: npm run lint:kbits
+ * See kbit-authoring/KBIT-SPEC.md. Run: npm run lint:kbits
  *
  * Logic lives in src/services/knowledge/kbit/lint.ts (importable + unit-tested);
  * this wrapper just does the IO + reporting + exit code.

@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 /**
- * Canonical K-bit frontmatter schema — see `iot-knowledge/KBIT-SPEC.md`.
+ * Canonical K-bit frontmatter schema — see `kbit-authoring/KBIT-SPEC.md`.
  *
  * This is the single source of truth, consumed by:
  *  - the linter (`scripts/kbit-lint.ts`),
@@ -9,7 +9,7 @@ import { z } from "zod"
  *  - the authoring wizard (P1),
  *  - the Node backend registry (P2).
  *
- * The JSON Schema artifact `iot-knowledge/kbit.schema.json` is GENERATED from this
+ * The JSON Schema artifact `kbit-authoring/kbit.schema.json` is GENERATED from this
  * file via `npm run gen:kbit-schema` (do not hand-edit the JSON; CI checks it is in sync).
  */
 

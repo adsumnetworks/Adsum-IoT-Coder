@@ -27,7 +27,6 @@ evals/
   package.json
   tsconfig.json
 iot-knowledge/
-  kbit.schema.json
   LICENSE
   manifest.json
 mcp/

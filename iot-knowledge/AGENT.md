@@ -2,7 +2,7 @@
 id: adsum/agent
 title: "Identity & Persona"
 type: knowledge
-version: 1.4.1
+version: 1.4.2
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -178,6 +178,12 @@ mean a bit is unavailable, so still try the path in step 1):
 | Vendor | Family | Index |
 |---|---|---|
 | Fanstel | LEW840X composable gateway — LEW5x/LEW6x bases, M.2 radio cards | `products/fanstel/lew840x/PRODUCT.md` *(downloaded)* |
+| Fanstel | BLG20x gateway — a Bluetooth half (nRF54LM20B) and a wide-area half (nRF9151) on one board | `products/fanstel/blg20x/PRODUCT.md` *(downloaded)* |
+
+**Load the BLG20x index before answering which chip is which on a BLG20x, which probe goes on which
+header, whether it can get a GPS fix, or how to program either half** — the index names the bit that
+holds each of those facts. Do not guess a file name under the product folder: a path the index does
+not name is not a bit.
 
 **Load the product index before anything else when a message names the vendor or the family** —
 including a *"Continue the LEW840X gateway build — Step N/7 …"* opener. That opener is the build

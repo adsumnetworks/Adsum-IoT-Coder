@@ -487,6 +487,7 @@
 		"test:precedence": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/precedence.node-test.ts",
 		"test:cve-tool": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/cra/cveScanTool.node-test.ts",
 		"test:databits": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/dataBits.node-test.ts",
+		"test:knowledge-tree": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/knowledgeTreeHoldsNoAuthoring.node-test.ts",
 		"test:bundle-parity": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/nrf/toolBundleParity.node-test.ts",
 		"test:cra-honesty": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/verdictScan.test.ts",
 		"test:cra-structure": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/structureScan.node-test.ts",
