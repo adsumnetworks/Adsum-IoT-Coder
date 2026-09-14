@@ -403,6 +403,16 @@ describe("product knowledge is reachable", () => {
 		}
 	})
 
+	test("the BLG20x routes to its index too — the router is not one family (H5)", () => {
+		// 14 Sep 2026: the fallback row named only the LEW840X, and an agent told a developer that was the only
+		// downloadable product family (B1) while it sat in a BLG20x session.
+		const line = ctx.slice(ctx.indexOf("function productLine()"), ctx.indexOf("async function getEspPlatformContext"))
+		assert.ok(/products\/fanstel\/blg20x\/PRODUCT\.md/.test(line), "the BLG20x index must be routed")
+		for (const word of ["BLG20x", "nRF9151", "nRF54LM20B"]) {
+			assert.ok(line.includes(word), `"${word}" is not a trigger`)
+		}
+	})
+
 	test("the ESP product row is emitted ONCE in a both-platform workspace", () => {
 		// A gateway workspace has two CMakeLists and classifies as `both`, so BOTH context builders run.
 		// The ESP row is therefore guarded on whether the nRF block already emitted it; without the guard
