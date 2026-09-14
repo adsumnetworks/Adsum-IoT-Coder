@@ -79,14 +79,14 @@
 			"adsum-account": {
 				"description": "Adsum account, signed out: an outline head and shoulders, as the Account tab in settings",
 				"default": {
-					"fontPath": "assets/icons/adsum-account.woff",
+					"fontPath": "assets/icons/adsum-account-outline.woff",
 					"fontCharacter": "\\e900"
 				}
 			},
 			"adsum-account-signed-in": {
 				"description": "Adsum account, signed in: the same outline with a solid dot at the lower right",
 				"default": {
-					"fontPath": "assets/icons/adsum-account.woff",
+					"fontPath": "assets/icons/adsum-account-outline.woff",
 					"fontCharacter": "\\e901"
 				}
 			},
