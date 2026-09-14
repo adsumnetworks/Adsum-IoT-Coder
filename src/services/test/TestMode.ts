@@ -4,6 +4,7 @@
  * instead of relying on process.env which may not be consistent across different parts of the extension
  */
 
+import { setSeamMarkerHidden } from "@shared/seamMarker"
 import * as fs from "fs"
 import * as path from "path"
 import * as vscode from "vscode"
@@ -20,6 +21,8 @@ let isTestMode = false
  */
 export function setTestMode(value: boolean): void {
 	isTestMode = value
+	// Round 23 (B33): while the seam is on, its marker file is not part of the project the agent is shown.
+	setSeamMarkerHidden(value)
 }
 
 /**
