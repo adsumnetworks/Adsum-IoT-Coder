@@ -950,13 +950,9 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						    It sits AFTER the suggested runs because it is a second offer, not a competing one:
 						    everything above works today with no account at all, and this group says plainly what
 						    a free account adds. Hiding it until sign-in would mean nobody ever learns it exists. */}
-						{/* The ladder for the board on the desk — history or not.
-						    It was painted only by a group this view no longer mounts, and behind the
-						    !hasHistory branch besides, so the one surface that answers "how do you want the
-						    firmware?" was invisible to exactly the developer who already has the board and has
-						    run something on it. A board on the desk is the reason to show it, and the only one. */}
 						<GatewayLadder
 							boards={ladderBoards}
+							chips={signals.nrfChips ?? []}
 							onAsk={() => setRequesting("blg20")}
 							onInstall={(way) => void onStartTask(blg20InstallPrompt(way))}
 							onStart={() => {
@@ -980,17 +976,32 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						/>
 					</>
 				) : resumeSession ? (
-					/* Collapsed: the resume and the composer, nothing else — except the one door. The
-					   runs, checks and samples are all still in the drawer, and this shape's only way
-					   in used to be the ☰. [OPERATOR 2026-09-09, approved] One quiet line instead. */
-					<button
-						className="self-start bg-transparent border-0 p-0 text-left"
-						data-testid="entry-more-runs"
-						onClick={openDrawer}
-						style={{ fontSize: "11px", color: BRAND_CYAN_TEXT, cursor: "pointer", fontWeight: 600 }}
-						type="button">
-						All runs{hasHistory ? ", and the demo flash" : ""} →
-					</button>
+					/* Collapsed: the resume and the composer, nothing else — except the one door and,
+					   when the board is on the desk, the ladder. A developer who has already run
+					   something on this board is the LAST person who should be unable to see the ways:
+					   the first mount of this card sat in the branch this shape does not paint, which
+					   is why it never appeared on the bench. [BENCH 2026-09-14]
+					   The runs, checks and samples are all still in the drawer. */
+					<>
+						<GatewayLadder
+							boards={ladderBoards}
+							chips={signals.nrfChips ?? []}
+							onAsk={() => setRequesting("blg20")}
+							onInstall={(way) => void onStartTask(blg20InstallPrompt(way))}
+							onStart={() => {
+								entryRunStart("blg20Gateway", "card")
+								runIntent("blg20Gateway", { onSelectMode, onStartTask, platform, projectName })
+							}}
+						/>
+						<button
+							className="self-start bg-transparent border-0 p-0 text-left"
+							data-testid="entry-more-runs"
+							onClick={openDrawer}
+							style={{ fontSize: "11px", color: BRAND_CYAN_TEXT, cursor: "pointer", fontWeight: 600 }}
+							type="button">
+							All runs{hasHistory ? ", and the demo flash" : ""} →
+						</button>
+					</>
 				) : (
 					<div
 						data-testid="entry-orientation"

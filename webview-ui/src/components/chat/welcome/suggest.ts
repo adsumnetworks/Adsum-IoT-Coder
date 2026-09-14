@@ -24,6 +24,8 @@ import type { WorkspacePlatform } from "./welcomeIntents"
 
 /** Everything the extension can actually see, in one place. */
 export interface Signals {
+	/** Chip identities the probes reported — the silicon's own answer, not the kit's name. */
+	nrfChips?: string[]
 	/** Nordic boards the detector currently reports. */
 	nrfBoards: string[]
 	/** ESP devices the detector currently reports. */

@@ -36,7 +36,7 @@ interface DemoPair {
 	 *
 	 * A sentence and not a link: the document it would point at does not exist yet, and a card is
 	 * not where anyone reads licence text. It says the one operational fact — a notice is written
-	 * beside the images — so nobody is surprised by a file they did not ask for.
+	 * next to the images — in the installer's own words, so the card, the bundle and the install agree.
 	 */
 	licence?: string
 	/**
@@ -69,7 +69,7 @@ const DEMO_PAIRS: readonly DemoPair[] = [
 		limits: ["Limited use for demos", "Terrestrial and satellite"],
 		action: "Install into this project",
 		after: "Then program each half with your own probe. Take the serial number from the tool, never one you remember.",
-		licence: "A licence notice is written beside the images.",
+		licence: "A licence notice is written next to the images.",
 		protection:
 			"Today the demo image is protected by your account's access and a usage cap built into the image, " +
 			"nothing more. The production image is protected by account access only.",

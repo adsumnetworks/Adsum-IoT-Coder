@@ -34,28 +34,51 @@ import { ASK_FOR_DETAILS } from "./welcomeIntents"
  */
 export const LADDER_COPY = {
 	question: "How do you want the firmware?",
-	build: "Everything to build it from scratch, including the traps.",
+	build: "Board, chips, programming recipe, the traps.",
 	advanced: "Advanced set: on request",
 	license: "Our build for this board, verified and signed.",
 	demoTerms: "Limited use for demos",
 	production: "Our build for the units you ship.",
 	source: "Our firmware's source, one half or both.",
-	sourceBoth: "Both halves are yours.",
-	sourceRadio: "The radio half is yours.",
-	sourceBle: "The BLE half is yours.",
+	/** Held, whichever halves: what arrives, once. Which halves is on the heading, not repeated here. */
+	sourceHeld: "Generated into your project, never a repository.",
 	built: "Tell us what it must do, how many, by when.",
 	reply: "We reply within a business day.",
 	after: "Program each half with your own probe.",
 } as const
 
-/** Boards this ladder is about. A board outside it gets no ladder, not a wrong one. */
+/** Boards this ladder is about, when something actually prints the product's name. */
 export const LADDER_BOARDS = /blg20|lbg20/i
 
+/**
+ * The two chips this gateway IS, matched on what the hardware reports about itself.
+ *
+ * Nothing prints "BLG20x". On a real bench the probes enumerate their targets — `nRF54LM20B` and
+ * `nRF9151` — while the board list shows the development kit each probe belongs to, so a name test
+ * finds nothing and the owner of the actual board sees no ladder at all. The chips are the honest
+ * signal: they are what the silicon answers when asked.
+ *
+ * BOTH, or nothing. One alone is not this board: an nRF9151 by itself is a cellular kit and an
+ * nRF54 by itself is a BLE kit, and either could sit on a desk for a completely different reason.
+ * Requiring the pair is what keeps the card from claiming a product nobody has.
+ */
+const LADDER_CHIP_A = /nrf54l/i
+const LADDER_CHIP_B = /nrf91(51|61|60)?/i
+
 export const ladderBoard = (boards: readonly string[]): string | undefined => boards.find((b) => LADDER_BOARDS.test(b))
+
+/** The pair, when both are present in the same environment. Returns the two names, in order seen. */
+export const ladderChipPair = (chips: readonly string[]): [string, string] | undefined => {
+	const a = chips.find((c) => LADDER_CHIP_A.test(c))
+	const b = chips.find((c) => LADDER_CHIP_B.test(c))
+	return a && b ? [a, b] : undefined
+}
 
 interface GatewayLadderProps {
 	/** Board names the environment has actually seen. */
 	boards?: readonly string[]
+	/** Chip identities the probes reported — what the silicon says it is. */
+	chips?: readonly string[]
 	/** Starts the free path in the editor. */
 	onStart: () => void
 	/** Opens the request form for this family, for anything not already theirs. */
@@ -122,6 +145,29 @@ const Ask: React.FC<{ label?: string; onClick: () => void; testId: string }> = (
 	</button>
 )
 
+/**
+ * "yours" — the marker on a rung the account holds.
+ *
+ * A word, not a sentence: the glance question is "which of these is already mine", and a chip answers
+ * it where the eye already is. It appears ONLY on a rung actually held, which is the same rule the
+ * falsifiers hold for the prose.
+ */
+const Yours: React.FC = () => (
+	<span
+		data-testid="ladder-yours"
+		style={{
+			marginLeft: "7px",
+			fontSize: "10px",
+			letterSpacing: "0.04em",
+			padding: "1px 6px",
+			borderRadius: "99px",
+			color: BRAND_CYAN_TEXT,
+			border: `1px solid ${brandAlpha(BRAND_CYAN_TEXT, 0.5)}`,
+		}}>
+		yours
+	</span>
+)
+
 /** The action for a way the developer already holds. Cyan, like every other doing action. */
 const Doing: React.FC<{ label: string; onClick: () => void; testId: string }> = ({ label, onClick, testId }) => (
 	<button
@@ -143,11 +189,12 @@ const Doing: React.FC<{ label: string; onClick: () => void; testId: string }> = 
 	</button>
 )
 
-const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onAsk, onInstall, onBrowse }) => {
+const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], onStart, onAsk, onInstall, onBrowse }) => {
 	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
 	const board = ladderBoard(boards)
-	// No board of this family, no ladder. A surface that names a board must have seen one.
-	if (!board) {
+	const pair = board ? undefined : ladderChipPair(chips)
+	// No name and no pair, no ladder. A surface that names a board must have seen one.
+	if (!board && !pair) {
 		return null
 	}
 	/*
@@ -176,9 +223,14 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onA
 				padding: "13px 14px 11px",
 			}}>
 			<div style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
-				Your board:{" "}
+				{/*
+				 * Named board, or the evidence. Seeing the two chips is not proof someone owns this
+				 * product — they might be two kits on one desk — so when that is all we have, the line
+				 * says what was seen and lets the reader draw the conclusion.
+				 */}
+				{board ? "Your board: " : "Seen here: "}
 				<span data-testid="ladder-board" style={{ color: "var(--vscode-foreground)" }}>
-					{board}
+					{board ?? `${pair?.[0]} and ${pair?.[1]} — the BLG20x pair`}
 				</span>
 				{/*
 				 * The mockup's "· both probes seen" is not here, and will not be until something counts
@@ -232,6 +284,7 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onA
 					<div data-testid="ladder-way-demo">
 						<div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
 							<span style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>Demo</span>
+							{hasDemo && <Yours />}
 							<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
 								{LADDER_COPY.demoTerms}
 							</span>
@@ -253,16 +306,19 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onA
 									color: "#04222b",
 								}}
 								type="button">
-								Flash the demo
+								Install into this project
 							</button>
 						)}
 					</div>
 					<div data-testid="ladder-way-production">
-						<div style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>Production licence</div>
+						<div style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>
+							Production licence
+							{hasProduction && <Yours />}
+						</div>
 						<Body>{LADDER_COPY.production}</Body>
 						{hasProduction ? (
 							<Doing
-								label="Flash the production image"
+								label="Install into this project"
 								onClick={() => onInstall("production")}
 								testId="ladder-use-prod"
 							/>
@@ -271,25 +327,21 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], onStart, onA
 						)}
 					</div>
 					<div data-testid="ladder-way-source">
-						<div style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>Source licence</div>
-						<Body>
+						<div style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>
+							Source licence
 							{hasBothSource
-								? LADDER_COPY.sourceBoth
+								? " · both halves"
 								: hasRadioSource
-									? LADDER_COPY.sourceRadio
+									? " · the radio half"
 									: hasBleSource
-										? LADDER_COPY.sourceBle
-										: LADDER_COPY.source}
-						</Body>
+										? " · the BLE half"
+										: ""}
+							{hasAnySource && <Yours />}
+						</div>
+						<Body>{hasAnySource ? LADDER_COPY.sourceHeld : LADDER_COPY.source}</Body>
 						{hasAnySource && (
 							<Doing
-								label={
-									hasBothSource
-										? "Install the source"
-										: hasRadioSource
-											? "Install the radio half"
-											: "Install the BLE half"
-								}
+								label="Install into this project"
 								onClick={() => onInstall("source")}
 								testId="ladder-use-source"
 							/>

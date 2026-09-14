@@ -12,6 +12,7 @@ import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
+import { ChunkLogSampler, guardedChunks, StreamStalledError } from "./streamGuards"
 
 // Single source of truth lives in @shared/api (`adsumFreeModels`) so the host budget and the webview's context
 // chip can never drift (they did once: the chip read 128K while the real budget was 200K). The host's REAL context
@@ -153,48 +154,67 @@ export class AdsumFreeHandler implements ApiHandler {
 		}
 
 		const toolCallProcessor = new ToolCallProcessor()
+		// Guarded: a stream that stops making progress ends the request rather than spinning, an
+		// identical empty chunk is never processed twice, and the raw-chunk log is sampled. All three
+		// were learned from one bench session that burned a core for twenty minutes and wrote 11 MB.
+		const sampler = new ChunkLogSampler()
 
-		for await (const chunk of stream) {
-			Logger.debug("AdsumFreeHandler chunk: " + JSON.stringify(chunk))
+		try {
+			for await (const chunk of guardedChunks(stream)) {
+				if (sampler.shouldLog()) {
+					Logger.debug("AdsumFreeHandler chunk: " + JSON.stringify(chunk))
+				}
 
-			const delta = chunk.choices?.[0]?.delta
+				const delta = chunk.choices?.[0]?.delta
 
-			if (delta?.content) {
-				yield { type: "text", text: delta.content }
-			}
+				if (delta?.content) {
+					yield { type: "text", text: delta.content }
+				}
 
-			// DeepSeek returns reasoning content in this field
-			if (delta && "reasoning_content" in delta && delta.reasoning_content) {
-				yield {
-					type: "reasoning",
-					reasoning: (delta.reasoning_content as string | undefined) || "",
+				// DeepSeek returns reasoning content in this field
+				if (delta && "reasoning_content" in delta && delta.reasoning_content) {
+					yield {
+						type: "reasoning",
+						reasoning: (delta.reasoning_content as string | undefined) || "",
+					}
+				}
+
+				if (delta?.tool_calls) {
+					yield* toolCallProcessor.processToolCallDeltas(delta.tool_calls)
+				}
+
+				if (chunk.usage) {
+					const cached = chunk.usage.prompt_tokens_details?.cached_tokens || 0
+					yield {
+						type: "usage",
+						inputTokens: (chunk.usage.prompt_tokens || 0) - cached,
+						outputTokens: chunk.usage.completion_tokens || 0,
+						cacheReadTokens: cached,
+						cacheWriteTokens: 0,
+						totalCost: 0, // free tier, no cost to the user
+					}
+					// Decrement the displayed remaining by THIS request's actual usage. The backend's
+					// X-Free-Quota-Remaining header is the PRE-request balance, so without this the chip
+					// lags a full request behind and never reaches 0 on the request that exhausts quota.
+					// Matches the backend's deduction (prompt + completion, including cached); the next
+					// request's header re-syncs it authoritatively, so this can't drift.
+					const usedTokens = (chunk.usage.prompt_tokens || 0) + (chunk.usage.completion_tokens || 0)
+					if (this.remainingQuota !== undefined && usedTokens > 0) {
+						this.remainingQuota = Math.max(0, this.remainingQuota - usedTokens)
+						persistCachedFreeTokensRemaining(this.remainingQuota)
+					}
 				}
 			}
-
-			if (delta?.tool_calls) {
-				yield* toolCallProcessor.processToolCallDeltas(delta.tool_calls)
+		} catch (err) {
+			// An honest end, in the developer's words, rather than a spin nobody can see.
+			if (err instanceof StreamStalledError) {
+				throw new Error(err.message)
 			}
-
-			if (chunk.usage) {
-				const cached = chunk.usage.prompt_tokens_details?.cached_tokens || 0
-				yield {
-					type: "usage",
-					inputTokens: (chunk.usage.prompt_tokens || 0) - cached,
-					outputTokens: chunk.usage.completion_tokens || 0,
-					cacheReadTokens: cached,
-					cacheWriteTokens: 0,
-					totalCost: 0, // free tier, no cost to the user
-				}
-				// Decrement the displayed remaining by THIS request's actual usage. The backend's
-				// X-Free-Quota-Remaining header is the PRE-request balance, so without this the chip
-				// lags a full request behind and never reaches 0 on the request that exhausts quota.
-				// Matches the backend's deduction (prompt + completion, including cached); the next
-				// request's header re-syncs it authoritatively, so this can't drift.
-				const usedTokens = (chunk.usage.prompt_tokens || 0) + (chunk.usage.completion_tokens || 0)
-				if (this.remainingQuota !== undefined && usedTokens > 0) {
-					this.remainingQuota = Math.max(0, this.remainingQuota - usedTokens)
-					persistCachedFreeTokensRemaining(this.remainingQuota)
-				}
+			throw err
+		} finally {
+			const summary = sampler.summary()
+			if (summary) {
+				Logger.debug(summary)
 			}
 		}
 	}

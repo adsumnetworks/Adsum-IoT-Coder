@@ -55,6 +55,9 @@ export function useEntrySignals(): EntryContext {
 				.map((b) => b.productName || b.deviceName || b.deviceFamily || "")
 				.filter(Boolean),
 			espDevices: (espEnvironment?.espDevices ?? []).map((d) => d.chip || "ESP32").filter(Boolean),
+			// What each probe says its TARGET is, which is not what the board list shows: a BLG20x
+			// debugged through a kit lists the kit, while the probe reports nRF54LM20B and nRF9151.
+			nrfChips: (nrfEnvironment?.boards ?? []).map((b) => b.deviceName || b.deviceFamily || "").filter(Boolean),
 			classification: workspaceClassification ?? "none",
 			toolchains: {
 				nrf: !!(nrfEnvironment?.extensionPresent || nrfEnvironment?.nrfutilPresent),

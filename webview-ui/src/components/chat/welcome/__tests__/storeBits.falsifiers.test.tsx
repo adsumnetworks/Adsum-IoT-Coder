@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { KbitLockedRow } from "../../KbitLockedRow"
 import DemoHexCard from "../DemoHexCard"
-import GatewayLadder, { LADDER_COPY } from "../GatewayLadder"
+import GatewayLadder, { LADDER_COPY, ladderChipPair } from "../GatewayLadder"
 import { CELLULAR_INTENTS } from "../welcomeIntents"
 
 /**
@@ -147,7 +147,7 @@ describe("BLG20x store bits — falsifiers", () => {
 		}
 		expect(onAsk).toHaveBeenCalledTimes(2)
 		// The demo IS theirs, so it offers the doing action rather than an ask.
-		expect(screen.getByTestId("ladder-flash-demo").textContent).toBe("Flash the demo")
+		expect(screen.getByTestId("ladder-flash-demo").textContent).toBe("Install into this project")
 		unmount()
 
 		// An unrelated board gets no ladder — a surface that names a board must have seen one.
@@ -183,7 +183,7 @@ describe("BLG20x store bits — falsifiers", () => {
 		const card = screen.getByTestId("gateway-ladder")
 
 		// The one thing they hold offers the doing action.
-		expect(screen.getByTestId("ladder-flash-demo").textContent).toBe("Flash the demo")
+		expect(screen.getByTestId("ladder-flash-demo").textContent).toBe("Install into this project")
 
 		// The two they do not hold offer ONE control each, and it is the ask.
 		for (const way of ["ladder-way-production", "ladder-way-source"] as const) {
@@ -229,7 +229,7 @@ describe("BLG20x store bits — falsifiers", () => {
 		render(<GatewayLadder boards={["Fanstel BLG20XE02C"]} onAsk={vi.fn()} onInstall={vi.fn()} onStart={vi.fn()} />)
 		expect(screen.getByTestId("ladder-rung-license-badge").textContent).toBe("Demo included")
 		// The doing action is the ownership signal now, not a sentence about it.
-		expect(screen.getByTestId("ladder-flash-demo").textContent).toBe("Flash the demo")
+		expect(screen.getByTestId("ladder-flash-demo").textContent).toBe("Install into this project")
 	})
 
 	it("F10 no rung says more than a developer can take in at a glance", () => {
@@ -289,13 +289,17 @@ describe("BLG20x store bits — falsifiers", () => {
 
 		// One half of the source is not both halves, and the words say which.
 		const radioHalf = ladder(["blg20-9151-src"])
-		expect(radioHalf.text).toContain("The radio half is yours.")
+		expect(radioHalf.text).toContain("· the radio half")
 		expect(radioHalf.ids).toContain("ladder-use-source")
 		expect(radioHalf.ids).toContain("ladder-ask-source")
 		const bleHalf = ladder(["blg20-ble-src"])
-		expect(bleHalf.text).toContain("The BLE half is yours.")
+		expect(bleHalf.text).toContain("· the BLE half")
 		const bothHalves = ladder(["blg20-ble-src", "blg20-9151-src"])
-		expect(bothHalves.text).toContain("Both halves are yours.")
+		// Both halves: the heading names them and the body says what arrives.
+		expect(bothHalves.text).toContain("· both halves")
+		expect(bothHalves.text).toContain("Generated into your project, never a repository.")
+		// One line for what arrives, whichever halves — the heading carries which.
+		expect(radioHalf.text).toContain("Generated into your project, never a repository.")
 		expect(bothHalves.ids).not.toContain("ladder-ask-source")
 
 		// And the defect that started this: two accounts, two cards.
@@ -306,11 +310,55 @@ describe("BLG20x store bits — falsifiers", () => {
 		expect(ladder([]).text).not.toEqual(partner.text)
 	})
 
+	it("F13 the board is recognised by the pair of chips, and never by one of them", () => {
+		state.current = account(["blg20-demo-hex"])
+		const render1 = (chips: string[]) => {
+			const { container, unmount } = render(
+				<GatewayLadder boards={[]} chips={chips} onAsk={vi.fn()} onInstall={vi.fn()} onStart={vi.fn()} />,
+			)
+			const found = !!container.querySelector("[data-testid='gateway-ladder']")
+			const line = container.querySelector("[data-testid='ladder-board']")?.textContent ?? ""
+			unmount()
+			return { found, line }
+		}
+
+		// What the probes actually report on a bench with this gateway attached.
+		const both = render1(["nRF54LM20B", "nRF9151", "nRF5340"])
+		expect(both.found, "both chips present is the board").toBe(true)
+		expect(both.line).toContain("nRF54LM20B")
+		expect(both.line).toContain("nRF9151")
+
+		// One alone is a different kit, and must not summon this card.
+		expect(render1(["nRF54LM20B", "nRF5340"]).found, "the BLE half alone is not the board").toBe(false)
+		expect(render1(["nRF9151"]).found, "the cellular half alone is not the board").toBe(false)
+		expect(render1(["nRF5340", "nRF52840"]).found, "neither is certainly not the board").toBe(false)
+		expect(render1([]).found).toBe(false)
+
+		// And the helper says the same thing on its own.
+		expect(ladderChipPair(["nRF54LM20B", "nRF9151"])).toEqual(["nRF54LM20B", "nRF9151"])
+		expect(ladderChipPair(["nRF54LM20B"])).toBeUndefined()
+		expect(ladderChipPair(["nRF9151"])).toBeUndefined()
+
+		// A printed board name still wins, and reads as a board rather than as evidence.
+		const named = render([
+			<GatewayLadder
+				boards={["Fanstel BLG20XE02C"]}
+				chips={["nRF54LM20B", "nRF9151"]}
+				key="named"
+				onAsk={vi.fn()}
+				onInstall={vi.fn()}
+				onStart={vi.fn()}
+			/>,
+		])
+		expect(screen.getByTestId("ladder-board").textContent).toBe("Fanstel BLG20XE02C")
+		named.unmount()
+	})
+
 	it("F12 the demo card says a licence notice travels with the images, in one line", () => {
 		state.current = account(["blg20-demo-hex"])
 		render(<DemoHexCard onFlash={vi.fn()} />)
 		const line = screen.getByTestId("demo-licence").textContent ?? ""
-		expect(line).toBe("A licence notice is written beside the images.")
+		expect(line).toBe("A licence notice is written next to the images.")
 		// One line at the narrow width, and no legal text or dead link on a card.
 		expect(line.length).toBeLessThanOrEqual(60)
 		expect(line).not.toMatch(/http|www\.|licen[cs]e agreement|terms and conditions|warrant|liab/i)
