@@ -105,6 +105,11 @@
 		},
 		"commands": [
 			{
+				"command": "adsum.pasteSignInLink",
+				"title": "Paste sign-in link",
+				"category": "Adsum"
+			},
+			{
 				"command": "adsum-iot-coder.plusButtonClicked",
 				"title": "New Task",
 				"icon": "$(add)"

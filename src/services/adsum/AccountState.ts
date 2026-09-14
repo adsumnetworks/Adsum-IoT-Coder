@@ -168,14 +168,151 @@ export function buildSignInUrl(provider: "github" | "google" | "email", editorSc
 }
 
 /**
+ * A 200 from exchange or claim becomes the signed-in account. One function, so the two ways a sign-in
+ * finishes cannot drift apart.
+ */
+async function applySession(res: Response): Promise<boolean> {
+	const data = (await res.json()) as {
+		token?: string
+		email?: string
+		name?: string
+		email_verified?: boolean
+		groups?: string[]
+		open_requests?: string[]
+	}
+	if (!data.token) {
+		return false
+	}
+	token = data.token
+	persistToken(data.token)
+	cached = {
+		email: data.email ?? "",
+		name: data.name ?? "",
+		emailVerified: !!data.email_verified,
+		groups: Array.isArray(data.groups) ? data.groups : [],
+		// The backend has always sent this; nobody read it, so "request sent" could never render on
+		// the card that offers the request. An open request is the one piece of account state a
+		// developer looks for after they ask for source.
+		openRequests: Array.isArray(data.open_requests) ? data.open_requests : [],
+		fetchedAt: Date.now(),
+	}
+	persistProfile(cached)
+	// The far end of the funnel: gate_shown → signin_started → HERE. `groups` is a count, not a
+	// list — how much a new account opens is the interesting number; which grants they hold is not
+	// telemetry's business.
+	telemetryService.captureSignInCompleted({ groups: cached.groups.length })
+	notify()
+	return true
+}
+
+/**
+ * Finish the sign-in from the window that started it, whatever window the OS hands the `vscode://` link to.
+ *
+ * Two editor profiles, or the OS giving `vscode://` to another editor, used to strand a sign-in: the callback
+ * arrived where no sign-in was pending. This window holds the state, so it asks the server every two seconds
+ * whether the browser has finished, for up to ten minutes. Whichever finishes first — this poll or the
+ * callback — wins; the server spends the code once, and the poll stops the moment the pending state is gone
+ * or replaced (a new sign-in, a completed callback, a sign-out). Call the returned function to stop it.
+ */
+export function startSignInClaimPoll(opts: { intervalMs?: number; maxMs?: number } = {}): () => void {
+	const pending = readPendingState()
+	if (!pending) {
+		return () => {}
+	}
+	const state = pending.nonce
+	const intervalMs = opts.intervalMs ?? 2000
+	const deadline = Date.now() + (opts.maxMs ?? 10 * 60_000)
+	let stopped = false
+	let timer: ReturnType<typeof setTimeout> | undefined
+	const stop = () => {
+		stopped = true
+		if (timer) {
+			clearTimeout(timer)
+		}
+	}
+	const tick = async () => {
+		if (stopped) {
+			return
+		}
+		if (readPendingState()?.nonce !== state || Date.now() > deadline) {
+			stop()
+			return
+		}
+		try {
+			const base = ClineEnv.config().adsumApiBaseUrl.replace(/\/$/, "")
+			const body: Record<string, string> = { state }
+			try {
+				body.install_id = getInstallId()
+			} catch {
+				/* optional */
+			}
+			const res = await fetch(`${base}/v1/auth/claim`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			})
+			if (stopped || readPendingState()?.nonce !== state) {
+				stop()
+				return
+			}
+			if (res.status === 200) {
+				writePendingState(undefined)
+				stop()
+				if (!(await applySession(res))) {
+					Logger.warn("[account] claim returned no session")
+				}
+				return
+			}
+			if (res.status === 410 || res.status === 403 || res.status === 400) {
+				// Used, expired, another install's, or not a state the server will take: nothing more to wait for.
+				Logger.info(`[account] sign-in claim ended: ${res.status}`)
+				stop()
+				return
+			}
+			// 202 pending, 429 slow down, 5xx: keep waiting.
+		} catch {
+			/* offline for a moment: keep waiting until the deadline */
+		}
+		if (!stopped) {
+			timer = setTimeout(tick, intervalMs)
+			timer.unref?.()
+		}
+	}
+	timer = setTimeout(tick, intervalMs)
+	timer.unref?.()
+	activePoll?.()
+	activePoll = stop
+	return stop
+}
+
+let activePoll: (() => void) | undefined
+
+/** Stop any sign-in poll — on window close, and before a new sign-in starts its own. */
+export function stopSignInClaimPoll(): void {
+	activePoll?.()
+	activePoll = undefined
+}
+
+/** Why a sign-in did or did not complete — the pasted-link path words each one for the developer. */
+export type SignInOutcome = "ok" | "state_mismatch" | "expired" | "failed"
+
+/**
  * The `vscode://…/auth/callback` half. Returns false — with a reason logged — rather than throwing,
  * because the caller is a URI handler and a thrown error there is invisible to the developer.
  */
 export async function completeSignIn(code: string, state: string): Promise<boolean> {
+	return (await completeSignInResult(code, state)) === "ok"
+}
+
+/**
+ * The one exchange path, used by the URI handler (through `completeSignIn`) and by a pasted sign-in link.
+ * A pasted link is the same code and state the editor would have been handed; it gets no path of its own.
+ */
+export async function completeSignInResult(code: string, state: string): Promise<SignInOutcome> {
 	const pending = readPendingState()
 	if (!pending || pending.nonce !== state) {
 		Logger.warn("[account] sign-in callback did not match any sign-in in flight — ignoring")
-		return false
+		return "state_mismatch"
 	}
 	// One callback per attempt: a replayed URL must not mint a second session. Cleared in the SHARED
 	// store, so a replay cannot be spent again by a different window either.
@@ -195,42 +332,19 @@ export async function completeSignIn(code: string, state: string): Promise<boole
 		})
 		if (!res.ok) {
 			Logger.warn(`[account] exchange failed: ${res.status}`)
-			return false
+			if (res.status === 401) {
+				const err = await res
+					.json()
+					.then((b: { error?: string }) => b?.error)
+					.catch(() => undefined)
+				return err === "state_mismatch" ? "state_mismatch" : "expired"
+			}
+			return "failed"
 		}
-		const data = (await res.json()) as {
-			token?: string
-			email?: string
-			name?: string
-			email_verified?: boolean
-			groups?: string[]
-			open_requests?: string[]
-		}
-		if (!data.token) {
-			return false
-		}
-		token = data.token
-		persistToken(data.token)
-		cached = {
-			email: data.email ?? "",
-			name: data.name ?? "",
-			emailVerified: !!data.email_verified,
-			groups: Array.isArray(data.groups) ? data.groups : [],
-			// The backend has always sent this; nobody read it, so "request sent" could never render on
-			// the card that offers the request. An open request is the one piece of account state a
-			// developer looks for after they ask for source.
-			openRequests: Array.isArray(data.open_requests) ? data.open_requests : [],
-			fetchedAt: Date.now(),
-		}
-		persistProfile(cached)
-		// The far end of the funnel: gate_shown → signin_started → HERE. `groups` is a count, not a
-		// list — how much a new account opens is the interesting number; which grants they hold is not
-		// telemetry's business.
-		telemetryService.captureSignInCompleted({ groups: cached.groups.length })
-		notify()
-		return true
+		return (await applySession(res)) ? "ok" : "failed"
 	} catch (e) {
 		Logger.warn(`[account] exchange threw: ${e instanceof Error ? e.message : String(e)}`)
-		return false
+		return "failed"
 	}
 }
 

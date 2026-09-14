@@ -1,6 +1,6 @@
 import { String as ProtoString, StringRequest } from "@shared/proto/cline/common"
 import { openExternal } from "@utils/env"
-import { buildSignInUrl } from "@/services/adsum/AccountState"
+import { buildSignInUrl, startSignInClaimPoll } from "@/services/adsum/AccountState"
 import { getEditorWindowId } from "@/services/adsum/editorWindow"
 import { Logger } from "@/services/logging/Logger"
 import { telemetryService } from "@/services/telemetry"
@@ -29,6 +29,9 @@ export async function startSignIn(controller: Controller, request: StringRequest
 	// And which of that editor's windows, so the callback returns HERE rather than to whichever window
 	// the OS happens to hand a `vscode://` URL to.
 	const url = buildSignInUrl(provider, scheme, await getEditorWindowId())
+	// This window finishes the sign-in itself by asking the server, so it does not matter which window or
+	// editor the OS hands the vscode:// link to.
+	startSignInClaimPoll()
 	telemetryService.captureSignInStarted({ provider })
 	try {
 		await openExternal(url)

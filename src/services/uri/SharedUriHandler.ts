@@ -1,5 +1,6 @@
 import { WebviewProvider } from "@/core/webview"
-import { completeSignIn } from "@/services/adsum/AccountState"
+import { completeSignInResult } from "@/services/adsum/AccountState"
+import { signInElsewhereNotice } from "@/services/adsum/signInElsewhere"
 import { Logger } from "../logging/Logger"
 
 /**
@@ -87,14 +88,20 @@ export class SharedUriHandler {
 						Logger.warn("SharedUriHandler: Adsum auth callback missing code or state")
 						return false
 					}
-					const ok = await completeSignIn(code, state)
+					const outcome = await completeSignInResult(code, state)
+					if (outcome === "state_mismatch") {
+						// Not this window's sign-in (another window, another profile). Nothing was exchanged, so the
+						// code is still good: the window that started the sign-in is polling and finishes it.
+						signInElsewhereNotice()
+						return false
+					}
 					// The webview is what tells the developer either way — the panel is where they clicked
 					// "Register", so it is where the answer belongs.
 					await visibleWebview.controller.postStateToWebview()
-					if (!ok) {
+					if (outcome !== "ok") {
 						Logger.warn("SharedUriHandler: Adsum sign-in could not be completed")
 					}
-					return ok
+					return outcome === "ok"
 				}
 				case "/auth/oca": {
 					console.log("SharedUriHandler: Oca Auth callback received:", { path: path })

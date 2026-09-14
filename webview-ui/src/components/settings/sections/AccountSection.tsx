@@ -2,7 +2,7 @@ import { type AdsumAccountState, accountHasGroup } from "@shared/adsumAccount"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import React, { useState } from "react"
 import { BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "@/components/chat/brandColors"
-import GatePanel from "@/components/chat/welcome/GatePanel"
+import GatePanel, { PasteSignInLink } from "@/components/chat/welcome/GatePanel"
 import RequestAccessForm, { FAMILIES } from "@/components/chat/welcome/RequestAccessForm"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { AdsumServiceClient } from "@/services/grpc-client"
@@ -68,6 +68,7 @@ const AccountSection: React.FC<AccountSectionProps> = ({ renderSectionHeader }) 
 						<button data-testid="account-signin" onClick={() => setGate(true)} style={primaryStyle} type="button">
 							Sign in
 						</button>
+						<PasteSignInLink />
 					</div>
 				) : (
 					<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>

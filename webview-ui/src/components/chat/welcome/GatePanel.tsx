@@ -222,6 +222,7 @@ const GatePanel: React.FC<GatePanelProps> = ({ open, satisfied = false, variant 
 								Start again
 							</button>
 						</Fine>
+						<PasteSignInLink />
 					</>
 				) : (
 					<>
@@ -279,10 +280,52 @@ const GatePanel: React.FC<GatePanelProps> = ({ open, satisfied = false, variant 
 							Free. No card. You sign in in your browser and come straight back here. Your projects and logs stay on
 							your machine.
 						</Fine>
+						<PasteSignInLink />
 					</>
 				)}
 			</div>
 		</div>
+	)
+}
+
+/**
+ * The last resort for a sign-in that cannot come back on its own — a browser on another machine, say. The
+ * window that started sign-in normally finishes by itself. The host asks for the link in an input box (a
+ * webview cannot prompt) and the answer is shown here, where the developer clicked.
+ */
+export const PasteSignInLink: React.FC = () => {
+	const [note, setNote] = useState<{ ok: boolean; message: string } | null>(null)
+	const paste = async () => {
+		try {
+			const res = await AdsumServiceClient.pasteSignInLink(EmptyRequest.create({}))
+			setNote(res.value ? (JSON.parse(res.value) as { ok: boolean; message: string }) : null)
+		} catch {
+			setNote(null)
+		}
+	}
+	return (
+		<Fine>
+			<button
+				data-testid="paste-signin-link"
+				onClick={paste}
+				style={{
+					background: "none",
+					border: "none",
+					padding: 0,
+					cursor: "pointer",
+					color: BRAND_CYAN_TEXT,
+					textDecoration: "underline",
+					font: "inherit",
+				}}
+				type="button">
+				Paste sign-in link
+			</button>
+			{note && (
+				<span data-testid="paste-signin-note" role="status" style={{ display: "block", marginTop: "4px" }}>
+					{note.message}
+				</span>
+			)}
+		</Fine>
 	)
 }
 

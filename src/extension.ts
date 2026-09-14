@@ -13,6 +13,9 @@ import { sendSettingsButtonClickedEvent } from "./core/controller/ui/subscribeTo
 import { sendWorktreesButtonClickedEvent } from "./core/controller/ui/subscribeToWorktreesButtonClicked"
 import { WebviewProvider } from "./core/webview"
 import { createClineAPI } from "./exports"
+import { promptAndPasteSignInLink } from "./hosts/vscode/pasteSignInLinkPrompt"
+import { stopSignInClaimPoll } from "./services/adsum/AccountState"
+import { setSignInElsewhereSurface } from "./services/adsum/signInElsewhere"
 import { Logger } from "./services/logging/Logger"
 import { cleanupTestMode, initializeTestMode } from "./services/test/TestMode"
 import "./utils/path" // necessary to have access to String.prototype.toPosix
@@ -109,6 +112,19 @@ export async function activate(context: vscode.ExtensionContext) {
 		const external = await vscode.env.asExternalUri(vscode.Uri.parse(`${scheme}://${context.extension.id}/auth/callback`))
 		return new URLSearchParams(external.query).get("windowId") ?? undefined
 	})
+
+	// Copy-and-paste sign-in: the browser's vscode:// link can open another editor window (two profiles, or the
+	// OS handing the scheme to another editor). The same link, pasted here, completes the sign-in.
+	setSignInElsewhereSurface((text) => {
+		context.subscriptions.push(vscode.window.setStatusBarMessage(`$(sync~spin) ${text}`, 8000))
+	})
+	context.subscriptions.push({ dispose: () => stopSignInClaimPoll() })
+	context.subscriptions.push(
+		vscode.commands.registerCommand("adsum.pasteSignInLink", async () => {
+			await promptAndPasteSignInLink()
+			await WebviewProvider.getInstance()?.controller.postStateToWebview()
+		}),
+	)
 
 	// Initialize hook discovery cache for performance optimization
 	HookDiscoveryCache.getInstance().initialize(

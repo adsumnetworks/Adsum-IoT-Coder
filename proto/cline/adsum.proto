@@ -20,6 +20,10 @@ service AdsumService {
   // Response value is "" on success, or a short reason the browser could not be opened.
   rpc startSignIn(StringRequest) returns (String);
 
+  // Completes a sign-in from a pasted link, for when the browser's link opened another editor window.
+  // The host asks for the link in an input box. Response value is JSON {ok, message}, or "" if cancelled.
+  rpc pasteSignInLink(EmptyRequest) returns (String);
+
   // Ends the session here and on the server, so a lost machine actually loses access.
   rpc signOutAccount(EmptyRequest) returns (Empty);
 
