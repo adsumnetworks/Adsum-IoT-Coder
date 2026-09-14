@@ -105,6 +105,19 @@
 		},
 		"commands": [
 			{
+				"command": "adsum.account.signIn",
+				"title": "Sign in",
+				"icon": "$(account)"
+			},
+			{
+				"command": "adsum.account.menu",
+				"title": "Account",
+				"icon": {
+					"light": "assets/icons/account-signed-in-light.svg",
+					"dark": "assets/icons/account-signed-in-dark.svg"
+				}
+			},
+			{
 				"command": "adsum.pasteSignInLink",
 				"title": "Paste sign-in link",
 				"category": "Adsum"
@@ -286,8 +299,18 @@
 					"when": "view == adsum-iot-coder.SidebarProvider"
 				},
 				{
-					"command": "adsum-iot-coder.settingsButtonClicked",
+					"command": "adsum.account.signIn",
 					"group": "navigation@3",
+					"when": "view == adsum-iot-coder.SidebarProvider && !adsum.signedIn"
+				},
+				{
+					"command": "adsum.account.menu",
+					"group": "navigation@3",
+					"when": "view == adsum-iot-coder.SidebarProvider && adsum.signedIn"
+				},
+				{
+					"command": "adsum-iot-coder.settingsButtonClicked",
+					"group": "navigation@4",
 					"when": "view == adsum-iot-coder.SidebarProvider"
 				}
 			],

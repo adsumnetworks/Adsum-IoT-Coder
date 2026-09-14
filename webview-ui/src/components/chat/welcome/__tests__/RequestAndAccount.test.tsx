@@ -134,6 +134,31 @@ describe("W — asking, and the account tab", () => {
 		expect(screen.getByTestId("gate-panel")).toBeTruthy()
 	})
 
+	it("W-17b signed out with a sign-in waiting, the Account tab shows the paste field instead of the door", () => {
+		state.current = { adsumSignInPending: true }
+		render(<AccountSection renderSectionHeader={header} />)
+		expect(screen.getByTestId("signin-link-field")).toBeTruthy()
+		expect(screen.queryByTestId("account-signin")).toBeNull()
+	})
+
+	it("W-17c the header's account icon, signed out, opens the sign-in window in the Account section", () => {
+		const clearAccountIntent = vi.fn()
+		state.current = { accountIntent: "signin", clearAccountIntent }
+		render(<AccountSection renderSectionHeader={header} />)
+		expect(screen.getByTestId("gate-panel")).toBeTruthy()
+		expect(clearAccountIntent).toHaveBeenCalled()
+	})
+
+	it("W-17d the header menu's Sign out opens this section's confirmation, and confirming signs out through the host", async () => {
+		state.current = { ...account(), accountIntent: "signout", clearAccountIntent: vi.fn() }
+		render(<AccountSection renderSectionHeader={header} />)
+		const confirm = screen.getByTestId("signout-confirm-yes")
+		await act(async () => {
+			fireEvent.click(confirm)
+		})
+		expect(rpc.signOutAccount).toHaveBeenCalledTimes(1)
+	})
+
 	it("W-18 signed in, groups are shown as words and template source names its state", () => {
 		render(<AccountSection renderSectionHeader={header} />)
 		const kv = screen.getByTestId("account-kv").textContent ?? ""

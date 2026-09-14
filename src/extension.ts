@@ -13,8 +13,9 @@ import { sendSettingsButtonClickedEvent } from "./core/controller/ui/subscribeTo
 import { sendWorktreesButtonClickedEvent } from "./core/controller/ui/subscribeToWorktreesButtonClicked"
 import { WebviewProvider } from "./core/webview"
 import { createClineAPI } from "./exports"
+import { registerAccountButton } from "./hosts/vscode/accountButton"
 import { promptAndPasteSignInLink } from "./hosts/vscode/pasteSignInLinkPrompt"
-import { stopSignInClaimPoll } from "./services/adsum/AccountState"
+import { sessionTokenChangedElsewhere, setStoredSessionTokenReader, stopSignInClaimPoll } from "./services/adsum/AccountState"
 import { setSignInElsewhereSurface } from "./services/adsum/signInElsewhere"
 import { Logger } from "./services/logging/Logger"
 import { cleanupTestMode, initializeTestMode } from "./services/test/TestMode"
@@ -115,6 +116,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Copy-and-paste sign-in: the browser's vscode:// link can open another editor window (two profiles, or the
 	// OS handing the scheme to another editor). The same link, pasted here, completes the sign-in.
+	registerAccountButton(context, async () => {
+		await vscode.commands.executeCommand("adsum-iot-coder.SidebarProvider.focus")
+	})
+	setStoredSessionTokenReader(async () => (await context.secrets.get("adsumSessionToken")) || undefined)
 	setSignInElsewhereSurface((text) => {
 		context.subscriptions.push(vscode.window.setStatusBarMessage(`$(sync~spin) ${text}`, 8000))
 	})
@@ -876,6 +881,12 @@ ${ctx.cellJson || "{}"}
 
 	context.subscriptions.push(
 		context.secrets.onDidChange(async (event) => {
+			// The Adsum session is shared by every window of this editor profile. A sign-in or sign-out in one of
+			// them reaches the others here, so no window keeps (or writes back) an account that is no longer stored.
+			if (event.key === "adsumSessionToken") {
+				sessionTokenChangedElsewhere((await context.secrets.get(event.key)) || undefined)
+				return
+			}
 			if (event.key === "adsum-iot-coder:accountId") {
 				// Check if the secret was removed (logout) or added/updated (login)
 				const secretValue = await context.secrets.get(event.key)

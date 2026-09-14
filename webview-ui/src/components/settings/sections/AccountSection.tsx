@@ -1,8 +1,9 @@
 import { type AdsumAccountState, accountHasGroup } from "@shared/adsumAccount"
+import { GROUP_WORDS } from "@shared/adsumGroupWords"
 import { EmptyRequest } from "@shared/proto/cline/common"
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "@/components/chat/brandColors"
-import GatePanel, { PasteSignInLink } from "@/components/chat/welcome/GatePanel"
+import GatePanel, { SignInWaiting } from "@/components/chat/welcome/GatePanel"
 import RequestAccessForm, { FAMILIES } from "@/components/chat/welcome/RequestAccessForm"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { AdsumServiceClient } from "@/services/grpc-client"
@@ -21,23 +22,6 @@ import Section from "../Section"
 
 const NEUTRAL_EDGE = "color-mix(in srgb, var(--vscode-foreground) 22%, transparent)"
 
-/** Group id → the words for it. An id with no entry here still shows, so a new group is never silent. */
-const GROUP_WORDS: Record<string, string> = {
-	"cellular-advanced": "Advanced cellular",
-	"edge-ai-advanced": "On-device inference",
-	"lew840x-demo-hex": "LEW840x demo hexes",
-	"lew840x-prod-hex": "LEW840x production hexes",
-	"lew840x-ble-src": "LEW840x BLE source",
-	"lew840x-esp-src": "LEW840x ESP source",
-	"lew840x-9160-src": "LEW840x nRF9160 source",
-	"blg20-demo-hex": "BLG20 demo hexes",
-	"blg20-prod-hex": "BLG20 production hexes",
-	"blg20-ble-src": "BLG20 BLE source",
-	"blg20-esp-src": "BLG20 ESP source",
-	"blg20-9151-src": "BLG20 nRF9151 source",
-	all: "Everything",
-}
-
 const SOURCE_GROUPS = Object.keys(GROUP_WORDS).filter((g) => g.endsWith("-src"))
 
 interface AccountSectionProps {
@@ -45,12 +29,31 @@ interface AccountSectionProps {
 }
 
 const AccountSection: React.FC<AccountSectionProps> = ({ renderSectionHeader }) => {
-	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
+	const { adsumAccount, adsumSignInPending, accountIntent, clearAccountIntent } = useExtensionState() as {
+		adsumAccount?: AdsumAccountState
+		adsumSignInPending?: boolean
+		accountIntent?: "signin" | "signout"
+		clearAccountIntent?: () => void
+	}
 	const [gate, setGate] = useState(false)
 	const [requesting, setRequesting] = useState(false)
 	const [confirmSignOut, setConfirmSignOut] = useState(false)
 	const [confirmDelete, setConfirmDelete] = useState(false)
 	const [deleteError, setDeleteError] = useState<string | null>(null)
+
+	// The header's account icon: signed out it opens the sign-in window here; "Sign out" in its menu opens this
+	// section's confirmation. One sign-out, and it lives here.
+	useEffect(() => {
+		if (!accountIntent) {
+			return
+		}
+		if (accountIntent === "signin" && !adsumAccount) {
+			setGate(true)
+		} else if (accountIntent === "signout" && adsumAccount) {
+			setConfirmSignOut(true)
+		}
+		clearAccountIntent?.()
+	}, [accountIntent, adsumAccount, clearAccountIntent])
 
 	const granted = SOURCE_GROUPS.filter((g) => adsumAccount?.groups.includes(g))
 	const open = adsumAccount?.openRequests ?? []
@@ -65,10 +68,13 @@ const AccountSection: React.FC<AccountSectionProps> = ({ renderSectionHeader }) 
 							Not signed in. A free account unlocks LTE-M, NB-IoT, NTN, DECT NR+ and on-device inference — and the
 							Fanstel gateway demo hexes.
 						</p>
-						<button data-testid="account-signin" onClick={() => setGate(true)} style={primaryStyle} type="button">
-							Sign in
-						</button>
-						<PasteSignInLink />
+						{adsumSignInPending ? (
+							<SignInWaiting />
+						) : (
+							<button data-testid="account-signin" onClick={() => setGate(true)} style={primaryStyle} type="button">
+								Sign in
+							</button>
+						)}
 					</div>
 				) : (
 					<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>

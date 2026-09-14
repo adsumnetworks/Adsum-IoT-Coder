@@ -185,6 +185,7 @@ async function applySession(res: Response): Promise<boolean> {
 	}
 	token = data.token
 	persistToken(data.token)
+	flushSoon()
 	cached = {
 		email: data.email ?? "",
 		name: data.name ?? "",
@@ -287,6 +288,12 @@ export function startSignInClaimPoll(opts: { intervalMs?: number; maxMs?: number
 
 let activePoll: (() => void) | undefined
 
+/** True while a sign-in started here is still worth waiting for — the panel shows its waiting view. */
+export function isSignInPending(): boolean {
+	const pending = readPendingState()
+	return !!pending && !token && Date.now() - pending.at < 10 * 60_000
+}
+
 /** Stop any sign-in poll — on window close, and before a new sign-in starts its own. */
 export function stopSignInClaimPoll(): void {
 	activePoll?.()
@@ -353,6 +360,10 @@ export async function completeSignInResult(code: string, state: string): Promise
  * and locking their cards because the wifi dropped would be a lie about why.
  */
 export async function refresh(force = false): Promise<void> {
+	// Another window of this editor profile may have signed in, or out, since this window last looked: they
+	// share one stored session. Adopt what is stored before asking the server, so this window never writes
+	// its own stale account over the one that just signed in.
+	await adoptStoredToken()
 	if (!token) {
 		return
 	}
@@ -391,6 +402,49 @@ export async function refresh(force = false): Promise<void> {
 		notify()
 	} catch {
 		/* offline: keep what we have */
+	}
+}
+
+/**
+ * The stored session, read from the editor's secret store itself rather than this window's copy. Installed by
+ * the host (context.secrets.get). Absent in a unit test or a host without one, where the in-memory token stands.
+ */
+let storedTokenReader: (() => Promise<string | undefined>) | undefined
+
+export function setStoredSessionTokenReader(reader: (() => Promise<string | undefined>) | undefined): void {
+	storedTokenReader = reader
+}
+
+async function adoptStoredToken(): Promise<void> {
+	if (!storedTokenReader) {
+		return
+	}
+	let stored: string | undefined
+	try {
+		stored = (await storedTokenReader()) || undefined
+	} catch {
+		return
+	}
+	if (stored !== token) {
+		sessionTokenChangedElsewhere(stored, false)
+	}
+}
+
+/**
+ * Every window of one editor profile shares the stored session: a sign-in or sign-out in one of them is a
+ * sign-in or sign-out in all. Called when the secret store reports the session changed. This window takes the
+ * stored value as the truth and writes nothing back — the window that changed it already did.
+ */
+export function sessionTokenChangedElsewhere(stored: string | undefined, refetch = true): void {
+	if (stored === token) {
+		return
+	}
+	token = stored
+	// A different account may be behind the new token (or none): this window's profile is no longer it.
+	cached = null
+	notify()
+	if (stored && refetch) {
+		void refresh(true)
 	}
 }
 
@@ -434,6 +488,23 @@ function persistToken(next: string | undefined): void {
 	} catch (e) {
 		Logger.warn(`[account] could not persist the session: ${e instanceof Error ? e.message : String(e)}`)
 	}
+}
+
+/**
+ * Write a new session to disk now rather than on the next debounce. A sign-in is the one write that must
+ * survive the window closing, or another window reading the shared store, a moment later.
+ */
+function flushSoon(): void {
+	if (!ready) {
+		return
+	}
+	setTimeout(() => {
+		void store()
+			.flushPendingState()
+			.catch((e: unknown) =>
+				Logger.warn(`[account] could not save the session: ${e instanceof Error ? e.message : String(e)}`),
+			)
+	}, 0)
 }
 
 function persistProfile(next: AccountProfile | undefined | null): void {

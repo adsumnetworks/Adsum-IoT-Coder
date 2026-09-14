@@ -1,5 +1,7 @@
 import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
+import { parseSignInLink } from "@shared/signInLinkParse"
 import React, { useEffect, useRef, useState } from "react"
+import { useExtensionState } from "@/context/ExtensionStateContext"
 import { AdsumServiceClient } from "@/services/grpc-client"
 import { BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "../brandColors"
 
@@ -56,6 +58,12 @@ const GatePanel: React.FC<GatePanelProps> = ({ open, satisfied = false, variant 
 	// If the browser could not be opened, the URL is the fallback — a link the developer can copy is
 	// a better answer than a toast that says it failed.
 	const [manualUrl, setManualUrl] = useState<string | null>(null)
+	// Waiting on the browser: after this panel opened it, or when the host says a sign-in started in this
+	// window is still pending (the panel may have been closed and reopened since).
+	const { adsumSignInPending } = useExtensionState() as { adsumSignInPending?: boolean }
+	const [startedHere, setStartedHere] = useState(false)
+	const [backToProviders, setBackToProviders] = useState(false)
+	const waiting = (startedHere || !!adsumSignInPending) && !backToProviders
 
 	/**
 	 * Getting what it asked for closes the gate.
@@ -106,6 +114,10 @@ const GatePanel: React.FC<GatePanelProps> = ({ open, satisfied = false, variant 
 			const res = await AdsumServiceClient.startSignIn(StringRequest.create({ value: provider }))
 			// A non-empty value is the URL we could not open for them.
 			setManualUrl(res.value || null)
+			if (!res.value) {
+				setStartedHere(true)
+				setBackToProviders(false)
+			}
 		} catch {
 			setManualUrl(null)
 		} finally {
@@ -222,7 +234,6 @@ const GatePanel: React.FC<GatePanelProps> = ({ open, satisfied = false, variant 
 								Start again
 							</button>
 						</Fine>
-						<PasteSignInLink />
 					</>
 				) : (
 					<>
@@ -241,35 +252,39 @@ const GatePanel: React.FC<GatePanelProps> = ({ open, satisfied = false, variant 
 							<li>The Fanstel gateway demo hexes</li>
 							<li>Template source, by request</li>
 						</ul>
-						<div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
-							{PROVIDERS.map((p) => (
-								<button
-									data-testid={`gate-provider-${p.id}`}
-									disabled={busy !== null}
-									key={p.id}
-									onClick={() => signIn(p.id)}
-									style={{
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "center",
-										gap: "8px",
-										width: "100%",
-										padding: "8px 12px",
-										borderRadius: "7px",
-										cursor: busy ? "default" : "pointer",
-										fontSize: "12px",
-										fontWeight: 600,
-										border: p.primary ? `1px solid ${BRAND_CYAN_UI}` : `1px solid ${NEUTRAL_EDGE}`,
-										background: p.primary ? BRAND_CYAN_UI : "var(--vscode-input-background)",
-										color: p.primary ? "#04222b" : "var(--vscode-foreground)",
-										opacity: busy && busy !== p.id ? 0.6 : 1,
-									}}
-									type="button">
-									<i className={`codicon codicon-${p.icon}`} style={{ fontSize: "13px" }} />
-									{busy === p.id ? "Opening your browser…" : p.label}
-								</button>
-							))}
-						</div>
+						{waiting ? (
+							<SignInWaiting onBack={() => setBackToProviders(true)} />
+						) : (
+							<div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
+								{PROVIDERS.map((p) => (
+									<button
+										data-testid={`gate-provider-${p.id}`}
+										disabled={busy !== null}
+										key={p.id}
+										onClick={() => signIn(p.id)}
+										style={{
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "center",
+											gap: "8px",
+											width: "100%",
+											padding: "8px 12px",
+											borderRadius: "7px",
+											cursor: busy ? "default" : "pointer",
+											fontSize: "12px",
+											fontWeight: 600,
+											border: p.primary ? `1px solid ${BRAND_CYAN_UI}` : `1px solid ${NEUTRAL_EDGE}`,
+											background: p.primary ? BRAND_CYAN_UI : "var(--vscode-input-background)",
+											color: p.primary ? "#04222b" : "var(--vscode-foreground)",
+											opacity: busy && busy !== p.id ? 0.6 : 1,
+										}}
+										type="button">
+										<i className={`codicon codicon-${p.icon}`} style={{ fontSize: "13px" }} />
+										{busy === p.id ? "Opening your browser…" : p.label}
+									</button>
+								))}
+							</div>
+						)}
 						{manualUrl && (
 							<Fine>
 								We couldn’t open your browser. Paste this in yourself:{" "}
@@ -280,7 +295,7 @@ const GatePanel: React.FC<GatePanelProps> = ({ open, satisfied = false, variant 
 							Free. No card. You sign in in your browser and come straight back here. Your projects and logs stay on
 							your machine.
 						</Fine>
-						<PasteSignInLink />
+						{!waiting && <PasteLinkDisclosure />}
 					</>
 				)}
 			</div>
@@ -289,25 +304,149 @@ const GatePanel: React.FC<GatePanelProps> = ({ open, satisfied = false, variant 
 }
 
 /**
- * The last resort for a sign-in that cannot come back on its own — a browser on another machine, say. The
- * window that started sign-in normally finishes by itself. The host asks for the link in an input box (a
- * webview cannot prompt) and the answer is shown here, where the developer clicked.
+ * Waiting on the browser, with the fallback in plain sight.
+ *
+ * The window that started sign-in normally finishes by itself. When it cannot — a browser on another machine,
+ * a link the OS gave to another editor — the developer pastes the link from the browser page right here. A
+ * paste that parses as a sign-in link submits by itself; anything else waits for the button. The host completes
+ * it through the same exchange as the vscode:// callback, and a refusal is shown under the field.
  */
-export const PasteSignInLink: React.FC = () => {
-	const [note, setNote] = useState<{ ok: boolean; message: string } | null>(null)
-	const paste = async () => {
-		try {
-			const res = await AdsumServiceClient.pasteSignInLink(EmptyRequest.create({}))
-			setNote(res.value ? (JSON.parse(res.value) as { ok: boolean; message: string }) : null)
-		} catch {
-			setNote(null)
+export const SignInWaiting: React.FC<{ onBack?: () => void; compact?: boolean }> = ({ onBack, compact = false }) => {
+	const [value, setValue] = useState("")
+	const [error, setError] = useState<string | null>(null)
+	const [submitting, setSubmitting] = useState(false)
+	const inFlight = useRef(false)
+
+	const submit = async (text: string) => {
+		if (inFlight.current) {
+			return
 		}
+		if (!parseSignInLink(text)) {
+			setError(
+				"That doesn't look like a sign-in link. Copy the whole link from the browser page — it starts with vscode://.",
+			)
+			return
+		}
+		inFlight.current = true
+		setSubmitting(true)
+		setError(null)
+		try {
+			const res = await AdsumServiceClient.pasteSignInLink(StringRequest.create({ value: text }))
+			const out = res.value ? (JSON.parse(res.value) as { ok: boolean; message: string }) : null
+			if (!out?.ok) {
+				setError(out?.message ?? "Sign-in couldn't be completed. Check your connection, then try again.")
+			}
+		} catch {
+			setError("Sign-in couldn't be completed. Check your connection, then try again.")
+		} finally {
+			inFlight.current = false
+			setSubmitting(false)
+		}
+	}
+
+	return (
+		<div data-testid="signin-waiting">
+			{!compact && <Lead>Finish signing in in your browser — this window will sign in on its own.</Lead>}
+			<form
+				onSubmit={(e) => {
+					e.preventDefault()
+					void submit(value)
+				}}
+				style={{ display: "flex", gap: "6px", marginTop: "6px" }}>
+				<input
+					aria-label="Sign-in link from the browser page"
+					data-testid="signin-link-field"
+					disabled={submitting}
+					onChange={(e) => {
+						setValue(e.target.value)
+						setError(null)
+					}}
+					onPaste={(e) => {
+						const text = e.clipboardData.getData("text")
+						if (parseSignInLink(text)) {
+							e.preventDefault()
+							setValue(text)
+							void submit(text)
+						}
+					}}
+					placeholder="vscode://…"
+					style={{
+						flex: 1,
+						minWidth: 0,
+						padding: "6px 8px",
+						borderRadius: "6px",
+						border: `1px solid ${NEUTRAL_EDGE}`,
+						background: "var(--vscode-input-background)",
+						color: "var(--vscode-input-foreground)",
+						fontSize: "12px",
+					}}
+					type="text"
+					value={value}
+				/>
+				<button
+					data-testid="signin-link-submit"
+					disabled={submitting}
+					style={{
+						padding: "6px 12px",
+						borderRadius: "6px",
+						border: `1px solid ${BRAND_CYAN_UI}`,
+						background: BRAND_CYAN_UI,
+						color: "#04222b",
+						fontSize: "12px",
+						fontWeight: 600,
+						cursor: submitting ? "default" : "pointer",
+					}}
+					type="submit">
+					{submitting ? "Signing in…" : "Sign in"}
+				</button>
+			</form>
+			{error && (
+				<div
+					data-testid="signin-link-error"
+					role="alert"
+					style={{ fontSize: "11px", lineHeight: 1.5, marginTop: "6px", color: "var(--vscode-errorForeground)" }}>
+					{error}
+				</div>
+			)}
+			{onBack && (
+				<Fine>
+					<button
+						data-testid="signin-waiting-back"
+						onClick={onBack}
+						style={{
+							background: "none",
+							border: "none",
+							padding: 0,
+							cursor: "pointer",
+							color: BRAND_CYAN_TEXT,
+							textDecoration: "underline",
+							font: "inherit",
+						}}
+						type="button">
+						Choose another way to sign in
+					</button>
+				</Fine>
+			)}
+		</div>
+	)
+}
+
+/** Before Continue: one quiet line for someone who reopened the panel after the browser step. */
+const PasteLinkDisclosure: React.FC = () => {
+	const [openField, setOpenField] = useState(false)
+	if (openField) {
+		return (
+			<div style={{ marginTop: "10px" }}>
+				<SignInWaiting compact />
+			</div>
+		)
 	}
 	return (
 		<Fine>
+			Have a sign-in link?{" "}
 			<button
-				data-testid="paste-signin-link"
-				onClick={paste}
+				data-testid="signin-link-disclose"
+				onClick={() => setOpenField(true)}
 				style={{
 					background: "none",
 					border: "none",
@@ -318,13 +457,8 @@ export const PasteSignInLink: React.FC = () => {
 					font: "inherit",
 				}}
 				type="button">
-				Paste sign-in link
+				Paste it
 			</button>
-			{note && (
-				<span data-testid="paste-signin-note" role="status" style={{ display: "block", marginTop: "4px" }}>
-					{note.message}
-				</span>
-			)}
 		</Fine>
 	)
 }

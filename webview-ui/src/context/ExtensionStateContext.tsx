@@ -28,7 +28,13 @@ import {
 	requestyDefaultModelInfo,
 } from "../../../src/shared/api"
 import type { McpMarketplaceCatalog, McpServer, McpViewTab } from "../../../src/shared/mcp"
-import { McpServiceClient, ModelsServiceClient, StateServiceClient, UiServiceClient } from "../services/grpc-client"
+import {
+	AdsumServiceClient,
+	McpServiceClient,
+	ModelsServiceClient,
+	StateServiceClient,
+	UiServiceClient,
+} from "../services/grpc-client"
 
 export interface ExtensionStateContextType extends ExtensionState {
 	didHydrateState: boolean
@@ -106,6 +112,9 @@ export interface ExtensionStateContextType extends ExtensionState {
 	// Navigation functions
 	navigateToMcp: (tab?: McpViewTab) => void
 	navigateToSettings: (targetSection?: string) => void
+	/** What the header's account icon last asked for ("signin" | "signout"), for the Account section to act on once. */
+	accountIntent?: "signin" | "signout"
+	clearAccountIntent: () => void
 	navigateToHistory: () => void
 	navigateToAccount: () => void
 	navigateToWorktrees: () => void
@@ -136,6 +145,8 @@ export const ExtensionStateContextProvider: React.FC<{
 	const [mcpTab, setMcpTab] = useState<McpViewTab | undefined>(undefined)
 	const [showSettings, setShowSettings] = useState(false)
 	const [settingsTargetSection, setSettingsTargetSection] = useState<string | undefined>(undefined)
+	const [accountIntent, setAccountIntent] = useState<"signin" | "signout" | undefined>(undefined)
+	const clearAccountIntent = useCallback(() => setAccountIntent(undefined), [])
 	const [showHistory, setShowHistory] = useState(false)
 	const [showAccount, setShowAccount] = useState(false)
 	const [showWorktrees, setShowWorktrees] = useState(false)
@@ -352,6 +363,7 @@ export const ExtensionStateContextProvider: React.FC<{
 	const historyButtonClickedSubscriptionRef = useRef<(() => void) | null>(null)
 	const chatButtonUnsubscribeRef = useRef<(() => void) | null>(null)
 	const accountButtonClickedSubscriptionRef = useRef<(() => void) | null>(null)
+	const accountActionSubscriptionRef = useRef<(() => void) | null>(null)
 	const settingsButtonClickedSubscriptionRef = useRef<(() => void) | null>(null)
 	const worktreesButtonClickedSubscriptionRef = useRef<(() => void) | null>(null)
 	const partialMessageUnsubscribeRef = useRef<(() => void) | null>(null)
@@ -618,6 +630,17 @@ export const ExtensionStateContextProvider: React.FC<{
 				console.error("Failed to initialize webview via gRPC:", error)
 			})
 
+		// The header's account icon: sign in, account settings, or the sign-out confirmation — all in the Account section.
+		accountActionSubscriptionRef.current = AdsumServiceClient.subscribeToAccountAction(EmptyRequest.create({}), {
+			onResponse: (event) => {
+				const action = event.value
+				navigateToSettings("account")
+				setAccountIntent(action === "signin" || action === "signout" ? action : undefined)
+			},
+			onError: (error) => console.error("Error in account action subscription:", error),
+			onComplete: () => {},
+		})
+
 		// Set up account button clicked subscription
 		accountButtonClickedSubscriptionRef.current = UiServiceClient.subscribeToAccountButtonClicked(EmptyRequest.create(), {
 			onResponse: () => {
@@ -673,6 +696,10 @@ export const ExtensionStateContextProvider: React.FC<{
 			if (chatButtonUnsubscribeRef.current) {
 				chatButtonUnsubscribeRef.current()
 				chatButtonUnsubscribeRef.current = null
+			}
+			if (accountActionSubscriptionRef.current) {
+				accountActionSubscriptionRef.current()
+				accountActionSubscriptionRef.current = null
 			}
 			if (accountButtonClickedSubscriptionRef.current) {
 				accountButtonClickedSubscriptionRef.current()
@@ -814,6 +841,8 @@ export const ExtensionStateContextProvider: React.FC<{
 		mcpTab,
 		showSettings,
 		settingsTargetSection,
+		accountIntent,
+		clearAccountIntent,
 		showHistory,
 		showAccount,
 		showWorktrees,

@@ -1,3 +1,4 @@
+import { parseSignInLink } from "@shared/signInLinkParse"
 import { completeSignInResult, type SignInOutcome } from "./AccountState"
 
 /**
@@ -9,50 +10,10 @@ import { completeSignInResult, type SignInOutcome } from "./AccountState"
  * and hands its code and state to the one exchange path the URI handler uses. There is no second path.
  */
 
-export interface SignInLink {
-	code: string
-	state: string
-}
-
-/** Editors whose scheme a sign-in link may carry. Anything else is not our link. */
-const SCHEMES = /^(vscode|vscode-insiders|cursor|windsurf|vscodium):\/\//i
-
-/**
- * Accepts the full link (`vscode://…/auth/callback?code=…&state=…`, `vscode-insiders://…`) or only its query
- * (`code=…&state=…`, with or without a leading `?`). Returns null for anything else.
- */
-export function parseSignInLink(input: string): SignInLink | null {
-	const text = (input ?? "").trim().replace(/^["'<]+|[>"']+$/g, "")
-	if (!text) {
-		return null
-	}
-	let query: string
-	if (SCHEMES.test(text)) {
-		const q = text.indexOf("?")
-		if (q === -1) {
-			return null
-		}
-		const path = text.slice(0, q).replace(SCHEMES, "")
-		if (!/\/auth\/callback\/?$/i.test(path)) {
-			return null
-		}
-		query = text.slice(q + 1)
-	} else if (/^\??code=/i.test(text) || /^\??state=/i.test(text)) {
-		query = text.replace(/^\?/, "")
-	} else {
-		return null
-	}
-	const params = new URLSearchParams(query.split("#")[0])
-	const code = params.get("code")?.trim() ?? ""
-	const state = params.get("state")?.trim() ?? ""
-	if (!/^[A-Za-z0-9_-]{16,}$/.test(code) || !/^[A-Za-z0-9_-]{8,}$/.test(state)) {
-		return null
-	}
-	return { code, state }
-}
+export { parseSignInLink, type SignInLink } from "@shared/signInLinkParse"
 
 export const PASTE_MESSAGES = {
-	notALink: "That isn't a sign-in link. Copy the whole link from the browser page — it starts with vscode://.",
+	notALink: "That doesn't look like a sign-in link. Copy the whole link from the browser page — it starts with vscode://.",
 	otherWindow: "This link belongs to a sign-in started in another window. Press Sign in here and use the new link.",
 	expired: "This sign-in link has expired or was already used. Press Sign in here and use the new link.",
 	failed: "Sign-in couldn't be completed. Check your connection, then press Sign in to try again.",

@@ -96,6 +96,48 @@ describe("X — the account, extension side", () => {
 		assert.ok(captured.includes("signin_completed:1"), "a completed sign-in is counted, with how many groups it opened")
 	})
 
+	/**
+	 * B22, 14 Sep. Every window of one editor profile shares the stored session and profile. The bench window
+	 * signed in; another window of the same profile still held its own older account in memory, and wrote that
+	 * back. A window must take the stored session as the truth before it writes anything.
+	 */
+	test("X-22a a window holding an older session adopts the stored one and never writes its own back", async () => {
+		account.__setForTest({
+			token: "adu_older_window_session_aaaaaaaa",
+			profile: { email: "older@example.com", name: "", emailVerified: true, groups: ["all"], fetchedAt: 0 },
+		})
+		account.setStoredSessionTokenReader(async () => "adu_just_signed_in_elsewhere_bbbb")
+		const bearers: string[] = []
+		try {
+			await withFetch(
+				(async (_url: string | URL, init?: RequestInit) => {
+					const auth = String((init?.headers as Record<string, string>)?.Authorization ?? "")
+					bearers.push(auth)
+					return auth.endsWith("bbbb")
+						? json({ email: "bench@example.com", groups: ["cellular-advanced"] })
+						: json({ email: "older@example.com", groups: ["all"] })
+				}) as typeof fetch,
+				() => account.refresh(true),
+			)
+			await settled()
+			assert.equal(account.getSessionToken(), "adu_just_signed_in_elsewhere_bbbb")
+			assert.equal(account.getAccount()?.email, "bench@example.com")
+			assert.ok(!bearers.some((b) => b.endsWith("aaaaaaaa")), "the stale session must not be used or written back")
+		} finally {
+			account.setStoredSessionTokenReader(undefined)
+		}
+	})
+
+	test("X-22b a sign-out in another window signs this one out, without this window deleting anything", async () => {
+		account.__setForTest({
+			token: "adu_live_session_cccccccccccccccc",
+			profile: { email: "dev@example.com", name: "", emailVerified: true, groups: [], fetchedAt: Date.now() },
+		})
+		account.sessionTokenChangedElsewhere(undefined)
+		assert.equal(account.getSessionToken(), undefined)
+		assert.equal(account.getAccount(), null)
+	})
+
 	test("X-09 an open access request survives sign-in and refresh", async () => {
 		// The backend has always sent `open_requests`; neither completeSignIn nor refresh read it, so
 		// `openRequests` was permanently [] and the card that offers "request template source" could
