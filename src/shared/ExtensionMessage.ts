@@ -151,6 +151,8 @@ export interface ExtensionState {
 	 *  is what puts the cellular cards behind the register gate. Never carries the session bearer: the
 	 *  webview renders a lock, the registry enforces it. */
 	adsumAccount?: AdsumAccountState
+	/** A sign-in started in this window is waiting on the browser: the panel shows the waiting view with the paste field. */
+	adsumSignInPending?: boolean
 	/** Show the one-time "what you unlocked" card: signed in, and never dismissed. */
 	adsumUnlockedShow?: boolean
 }

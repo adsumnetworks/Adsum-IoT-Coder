@@ -71,9 +71,12 @@ describe("W — registered", () => {
 		expect(screen.getByText("Flash the LEW840x demo")).toBeTruthy()
 		expect(
 			screen.getByText(
-				/Three signed hexes: BLE scanner, ESP32 uplink, nRF9160 bearer\. Wi-Fi and Ethernet unlimited; cellular in 60-minute sessions, for evaluation\. Needs nrfutil and esptool on this machine\./,
+				/Three signed hexes: BLE scanner, ESP32 uplink, nRF9160 bearer\. Needs nrfutil and esptool on this machine\./,
 			),
 		).toBeTruthy()
+		// The limits are their own line ABOVE the action, not a clause at the end of the description.
+		expect(screen.getByText("Wi-Fi and Ethernet unlimited")).toBeTruthy()
+		expect(screen.getByText("Cellular in 60-minute sessions, for evaluation")).toBeTruthy()
 		expect(screen.getByText("≈ 3 min · you will be asked for the ports")).toBeTruthy()
 
 		await act(async () => {

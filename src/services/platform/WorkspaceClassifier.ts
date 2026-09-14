@@ -501,9 +501,63 @@ export interface RecognisedProduct {
 /** Files a product's template writes, cheapest first. Only the root of each app dir is read. */
 const PRODUCT_MARKER_FILES = ["README.md", "BUILDLOG.md", join(".adsum", "bench.json")]
 
-/** name → the marker that must appear in one of those files. One entry per supported product. */
-const PRODUCT_SIGNATURES: Array<{ id: string; re: RegExp; label: string }> = [
+/**
+ * One entry per supported product: the name its own files carry, and — where the product has them —
+ * project files that only a project for that board contains.
+ *
+ * [14 Sep 2026, H5] This list held only the LEW840x, so a BLG20x workspace was never recognised and the
+ * agent was told of one downloadable product family (B1). The BLG20x is added as a second entry.
+ * FOLLOW-UP: derive this table (and the prompt's fallback router rows in iot_context.ts `productLine`) from
+ * the product indexes we publish — a `recognise:` block in each PRODUCT.md read from the cached manifest —
+ * so the next product needs no code change. Not done tonight: recognition runs synchronously while the
+ * prompt is built, and on a first session the manifest may not be cached yet, which would leave exactly
+ * the customer this fixes unrecognised.
+ */
+const PRODUCT_SIGNATURES: Array<{
+	id: string
+	re: RegExp
+	label: string
+	/** Project-file evidence beyond a name in a README: returns what it saw, or null. */
+	projectFiles?: (dir: string, fsAdapter: FsAdapter) => string | null
+}> = [
 	{ id: "fanstel/lew840x", re: /\bLEW840[0-9A-Za-z]*\b/, label: "Fanstel LEW840x" },
+	{
+		id: "fanstel/blg20x",
+		// BLG20, BLG20x, BLG20XE02C, BLG20BC — and not LBG20, the other variant's name.
+		re: /\bBLG20[0-9A-Za-z]*\b/,
+		label: "Fanstel BLG20x",
+		// A developer opens their project with no board attached as often as with one, so recognition must
+		// come from the project, not from which chips answer a probe. These are the files a BLG20x project
+		// actually has: the Zephyr board target named for this board, an app overlay for one of its two
+		// halves, a build configured for it, or the prebuilt pair as our installer writes it.
+		projectFiles: (dir, fsa) => {
+			const has = (rel: string) => fsa.exists(join(dir, rel))
+			if (has(join("boards", "fanstel", "blg20", "board.yml"))) {
+				return "the BLG20 board definition in boards/fanstel/blg20/board.yml"
+			}
+			try {
+				if (fsa.isDir(join(dir, "boards"))) {
+					const overlay = fsa
+						.listDir(join(dir, "boards"))
+						.find((f) => /^blg20_(nrf9151|nrf54lm20b)\w*\.overlay$/.test(f))
+					if (overlay) return `a BLG20 overlay, boards/${overlay}`
+				}
+				for (const entry of fsa.listDir(dir)) {
+					if (!isBuildDir(entry)) continue
+					const info = join(dir, entry, "build_info.yml")
+					if (fsa.exists(info) && /\bblg20_(nrf9151|nrf54lm20b)/.test(fsa.readFile(info))) {
+						return `a build for the BLG20 board, ${entry}/build_info.yml`
+					}
+				}
+			} catch {
+				// unreadable — no evidence
+			}
+			if (has(join("nrf9151", "zephyr.signed.hex")) && has(join("bm20", "zephyr.signed.hex")) && has("LICENSE-ADSUM.txt")) {
+				return "the BLG20x prebuilt pair (nrf9151/ and bm20/ images with their licence)"
+			}
+			return null
+		},
+	},
 ]
 
 export function recogniseProduct(roots: string[], fsAdapter: FsAdapter = realFsAdapter): RecognisedProduct | null {
@@ -520,6 +574,13 @@ export function recogniseProduct(roots: string[], fsAdapter: FsAdapter = realFsA
 			// unreadable root — nothing to recognise
 		}
 		for (const dir of dirs) {
+			for (const sig of PRODUCT_SIGNATURES) {
+				const seen = sig.projectFiles?.(dir, fsAdapter)
+				if (seen) {
+					const rel = dir.startsWith(root) ? dir.slice(root.length).replace(/^[/\\]/, "") : dir
+					return { id: sig.id, evidence: `${seen}${rel ? ` (in ${rel}/)` : ""}` }
+				}
+			}
 			for (const marker of PRODUCT_MARKER_FILES) {
 				const p = join(dir, marker)
 				if (!fsAdapter.exists(p)) continue

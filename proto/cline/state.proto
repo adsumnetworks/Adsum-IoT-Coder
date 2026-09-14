@@ -310,7 +310,13 @@ message Settings {
   optional bool external_agent_auto_mcp = 181;
   optional bool external_agent_manage_claude_md = 182;
   optional bool external_agent_write_agents_md = 183;
-  map<string, string> open_ai_headers = 184;
+  optional string open_router_seller_order = 185;
+  optional bool open_router_only_these_sellers = 186;
+  optional string open_router_max_input_price = 187;
+  optional string open_router_max_output_price = 188;
+  optional bool open_router_require_tool_calls = 189;
+  optional string open_router_extra_body = 190;
+  map<string, string> open_ai_headers = 191;
 }
 
 message DictationSettings {

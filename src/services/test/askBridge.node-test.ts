@@ -40,6 +40,20 @@ describe("pendingAskFrom", () => {
 		assert.ok(pendingAskFrom([ask({ partial: false })]))
 	})
 
+	// B24, 14 Sep: a run whose saved transcript ends reasoning → a long answer → a closing followup was recorded as a
+	// timeout. The answer-first rule puts a long text right before the ask in the same turn; the ask is still the
+	// last message and must be the pending one, in the order the task writes it (partial ask, then finalised).
+	test("a long answer followed by a closing followup in the same turn: the followup is pending", () => {
+		const answer = { type: "say", say: "text", text: "The map is a prediction. ".repeat(400), ts: 135_000, partial: false }
+		const reasoning = { type: "say", say: "reasoning", text: "thinking", ts: 120_000, partial: false }
+		const question = JSON.stringify({ question: "How would you like to proceed?", options: ["Scan", "Lock", "Explain"] })
+		const streaming = [reasoning, answer, { type: "ask", ask: "followup", text: question, ts: 193_000, partial: true }]
+		assert.equal(pendingAskFrom(streaming), null, "not while the question is still being written")
+		const final = [reasoning, answer, { type: "ask", ask: "followup", text: question, ts: 193_000, partial: false }]
+		assert.deepEqual(pendingAskFrom(final), { kind: "followup", text: question, ts: 193_000 })
+		assert.equal(sessionStateFrom(final, true), "awaiting_human")
+	})
+
 	test("a missing ask kind or text degrades to empty strings, never undefined", () => {
 		const p = pendingAskFrom([{ type: "ask", ts: 5 }])
 		assert.deepEqual(p, { kind: "", text: "", ts: 5 })
@@ -208,5 +222,37 @@ describe("what a run has learned, not only what it asks", () => {
 	test("no messages is an empty list, never a throw", () => {
 		assert.deepEqual(messagesSince(undefined, 0), [])
 		assert.deepEqual(messagesSince([], 0), [])
+	})
+})
+
+describe("a running command's output ask (host issue H3)", () => {
+	const say = (ts: number) => ({ type: "say", say: "command", text: "west build", ts })
+	const out = (ts: number) => ({ type: "ask", ask: "command_output", text: "[1/200] Building C object", ts })
+
+	test("it is visible on /ask, marked as raised while running", () => {
+		assert.deepEqual(pendingAskFrom([say(1), out(2)]), {
+			kind: "command_output",
+			text: "[1/200] Building C object",
+			ts: 2,
+			whileRunning: true,
+		})
+	})
+
+	test("the run is running, not awaiting a human — nobody has to answer a command's output", () => {
+		assert.equal(sessionStateFrom([say(1), out(2)], true), "running")
+	})
+
+	test("it can be answered like the panel answers it, and a stale ts is still refused", () => {
+		const pending = pendingAskFrom([say(1), out(2)])
+		const proceed = checkRespond(JSON.stringify({ responseType: "yesButtonClicked", ts: 2 }), pending)
+		assert.equal(proceed.ok, true)
+		const stale = checkRespond(JSON.stringify({ responseType: "yesButtonClicked", ts: 1 }), pending)
+		assert.equal(stale.ok, false)
+	})
+
+	test("other asks are unchanged: a followup still waits on a human and carries no running flag", () => {
+		const f = { type: "ask", ask: "followup", text: "?", ts: 3 }
+		assert.equal(sessionStateFrom([say(1), f], true), "awaiting_human")
+		assert.equal(pendingAskFrom([f])?.whileRunning, undefined)
 	})
 })

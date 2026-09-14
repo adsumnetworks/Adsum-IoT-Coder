@@ -2,7 +2,7 @@
 id: adsum/nrf/actions/capture-logs
 title: "Action: Capture Device Logs"
 type: action
-version: 1.0.0
+version: 1.0.2
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -70,14 +70,15 @@ triggerNordicAction: action="log_device", operation="capture", transport="rtt", 
 **CRITICAL NOTE FOR MULTI-DEVICE:** When multiple devices are connected, you do NOT know which serial number runs which firmware. Do NOT arbitrarily assign `central` or `peripheral` to serial numbers based on project config. You **MUST** use `device1:<sn1>,device2:<sn2>` for the first capture. See `rules/device-identity.md`.
 
 ### Boot Log Capture (with pre-capture delay)
-To capture the full boot sequence, use `pre-capture-delay` so listeners start before device reset:
+A capture does not reset the device unless you pass `reset="true"`. To record the full boot sequence of a device the developer has confirmed is the one under discussion, opt in to the reset and use `pre-capture-delay` so listeners start before it:
 ```
 triggerNordicAction: action="log_device", operation="capture", transport="rtt", port="<sn>", duration="15", pre-capture-delay="3", reset="true"
 ```
 
 ## Recommended Capture Parameters
-- Before all captures you should reset device with reset="true" (only if the application requires runtime capture).
-- For UART transport, always use pre-capture-delay="3" to wait 3 seconds before start capturing (only if the application requires runtime capture).
+- Leave `reset` unset to read the device as it is running. Pass `reset="true"` only for a boot sequence, and only on a device the developer confirmed; a capture with a reset reboots the part and is not a reading of what it was doing.
+- Right after you flashed a board in this task, that board is the confirmed one: pass `reset="true"` so the verification capture catches its boot.
+- With `reset="true"` on UART, use `pre-capture-delay="3"` so the port is listening before the reset.
 
 
 ## Recommended Capture Durations

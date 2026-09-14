@@ -10,10 +10,11 @@ import {
 	type DownloadedManifest,
 	type DownloadedManifestEntry,
 	RegistryClient,
+	splitManifestRows,
 } from "@/services/knowledge/registry/RegistryClient"
 import { fileExistsAtPath } from "@/utils/fs"
 import { refreshPeopleIndex } from "./kbit/people"
-import { RegistryLockedError } from "./registry/RegistryClient"
+import { RegistryAuthError, RegistryLockedError } from "./registry/RegistryClient"
 
 /**
  * KnowledgeResolver — resolves a K-bit by its stable `id` to its on-disk location/content.
@@ -159,6 +160,19 @@ function recordCreditFromText(id: string, text: string): void {
  * it". The task drains it into one row per bit per task.
  */
 const lockedById = new Map<string, string>()
+/** Bits whose fetch was refused for the credential (401/403) in this session: a sign-in to renew, not a blip. */
+const authRefusedIds = new Set<string>()
+
+/** Ids the registry refused for the credential. The read tool says "sign in again" for these, never "retry". */
+export function authRefusedBits(): ReadonlySet<string> {
+	return authRefusedIds
+}
+
+/**
+ * Bits the manifest itself names as locked for this account: id → the group that opens it (null when
+ * the registry names none). Known, never fetchable — nothing here is ever requested as a blob.
+ */
+let lockedRows = new Map<string, string | null>()
 
 /** Bits refused this session for want of an entitlement: id → the group that would unlock it. */
 export function lockedBits(): ReadonlyMap<string, string> {
@@ -374,9 +388,11 @@ async function downloadedManifest(): Promise<Map<string, DownloadedManifestEntry
 	const map = new Map<string, DownloadedManifestEntry>()
 	if (manifestJson) {
 		try {
-			for (const b of (JSON.parse(manifestJson) as DownloadedManifest).bits ?? []) {
+			const split = splitManifestRows(JSON.parse(manifestJson))
+			for (const b of split?.bits ?? []) {
 				map.set(b.id, b)
 			}
+			lockedRows = new Map((split?.locked ?? []).map((l) => [l.id, l.group]))
 		} catch (e) {
 			console.error("KnowledgeResolver: failed to parse downloaded manifest", e)
 		}
@@ -388,7 +404,7 @@ async function downloadedManifest(): Promise<Map<string, DownloadedManifestEntry
 /** Purge cached blobs whose hash is no longer in the live catalog — honors revocation + frees superseded versions. */
 async function reconcileCache(manifest: DownloadedManifest): Promise<void> {
 	try {
-		const live = new Set((manifest.bits ?? []).map((b) => b.content_hash))
+		const live = new Set((manifest.bits ?? []).map((b) => b.content_hash).filter((h) => typeof h === "string"))
 		let purged = 0
 		for (const hash of await cache().listBlobHashes()) {
 			if (!live.has(hash)) {
@@ -510,6 +526,11 @@ async function registryBody(
 			lockedById.set(id, entry.group ?? "cellular-advanced")
 			return { reason: "locked" }
 		}
+		if (e instanceof RegistryAuthError) {
+			recordCredit(id, entry)
+			authRefusedIds.add(id)
+			return { reason: "auth-refused" }
+		}
 		throw e
 	}
 	if (fetched === null) {
@@ -601,7 +622,25 @@ export async function loadBit(id: string): Promise<string> {
 		return bundledBody(id, bundled, got.reason)
 	}
 
+	// Named by the manifest as locked for this account: real, not fetchable. Record it so the read
+	// tool says "not open to your account" rather than "does not exist" — and request nothing. A bundled
+	// copy, where one exists, still serves: bundled means open.
+	if (!row && !bundled) {
+		await downloadedManifest()
+		if (lockedRows.has(id)) {
+			lockedById.set(id, lockedRows.get(id) ?? "cellular-advanced")
+			console.info(`[kbit] ${id} — locked for this account (named by the manifest)`)
+			return bundledBody(id, bundled, "locked")
+		}
+	}
+
 	return bundledBody(id, bundled, decision.copy === "bundled" ? decision.reason : "no-registry-row")
+}
+
+/** True when the manifest names this bit as locked for this account. */
+export async function isLockedInManifest(id: string): Promise<boolean> {
+	await downloadedManifest()
+	return lockedRows.has(id)
 }
 
 /**
@@ -846,8 +885,13 @@ export async function suggestNearMissBits(requestedRelOrAbs: string): Promise<st
  * products/fanstel/bwg840/PRODUCT.md`, exactly what the corpus asks for, fell through to an ordinary
  * file read and missed. It only ever worked when the agent happened to build the absolute path,
  * which takes `loadBitByKbPath` and is not gated here. Add a root whenever a namespace is added.
+ *
+ * `workflows/` [14 Sep 2026, B11]: the product-level workflows live at the knowledge root
+ * (`workflows/blg20x-first-run.md`). The near-miss rescue found that exact path for an agent that had asked
+ * under the product folder, then could not load it because `workflows/` was not a root — and the refusal
+ * that followed read "could not open … for this account" for a bit the account could open.
  */
-const BIT_ROOTS = ["platforms/", "cra/", "rules/", "tools/", "products/", "sensors/", "edge-ai/"]
+const BIT_ROOTS = ["platforms/", "cra/", "rules/", "tools/", "products/", "sensors/", "edge-ai/", "workflows/"]
 
 /** True if `rel` looks like a bundled-tree relative path to a bit (e.g. `platforms/nrf/…/x.md`). */
 export function isBareBitPath(rel: string | undefined | null): boolean {
@@ -889,6 +933,9 @@ export async function loadBitByRel(rel: string): Promise<string | null> {
 export function invalidateForAccountChange(): void {
 	downloadedMap = null
 	manifestRevalidated = false
+	// A new sign-in (or a sign-out) changes what the registry will answer; old refusals no longer hold.
+	authRefusedIds.clear()
+	lockedById.clear()
 }
 
 /** Test-only: inject cache/registry doubles for the downloaded tier (no network). */
@@ -904,6 +951,9 @@ export function __resetManifestCache(): void {
 	syncCache = null
 	downloadedMap = null
 	manifestRevalidated = false
+	lockedRows = new Map()
+	lockedById.clear()
+	authRefusedIds.clear()
 	injectedCache = null
 	injectedRegistry = null
 	localKbitIndex = undefined

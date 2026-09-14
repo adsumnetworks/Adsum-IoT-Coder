@@ -4,6 +4,7 @@ import type { ApiProviderInfo } from "@core/api"
 import {
 	getToolCallReliabilityTier,
 	isClaude4PlusModelFamily,
+	isDeepSeekNativeToolsModelFamily,
 	isGLMModelFamily,
 	isNativeToolCallingConfig,
 	isNextGenModelFamily,
@@ -148,5 +149,67 @@ describe("GLM next-gen membership — condense on, native tools gated off", () =
 		isNativeToolCallingConfig(fakeProviderInfo("openrouter", "z-ai/glm-5.2"), true).should.be.false()
 		// sanity: the same provider+flag still enables native tools for a validated family
 		isNativeToolCallingConfig(fakeProviderInfo("openrouter", "anthropic/claude-sonnet-4-5"), true).should.be.true()
+	})
+})
+
+describe("our own free tier — capability is a fact about the forwarder, not about a name", () => {
+	it("gets native tool calls, whatever opaque id it is serving today", () => {
+		// The failure this fixes: absent from the provider list, the free tier was prompted for XML,
+		// the served model answered in its own markup at a low thinking budget, and the run died on
+		// the mistake limit having executed nothing.
+		isNativeToolCallingConfig(fakeProviderInfo("adsum-free", "free-default"), true).should.be.true()
+		// The id is deliberately meaningless, so no id may decide this — including one that looks old.
+		isNativeToolCallingConfig(fakeProviderInfo("adsum-free", "whatever-we-serve-next"), true).should.be.true()
+		isNativeToolCallingConfig(fakeProviderInfo("adsum-free", "gpt-2"), true).should.be.true()
+	})
+
+	it("still obeys the developer's own switch", () => {
+		isNativeToolCallingConfig(fakeProviderInfo("adsum-free", "free-default"), false).should.be.false()
+	})
+
+	it("does not hand the capability to anyone else by accident", () => {
+		isNativeToolCallingConfig(fakeProviderInfo("some-other-gateway", "free-default"), true).should.be.false()
+	})
+})
+
+describe("capability comes from what we were told, not from digits in a name", () => {
+	const withInfo = (providerId: string, modelId: string, supportsNativeTools?: boolean): ApiProviderInfo => ({
+		providerId,
+		model: { id: modelId, info: { supportsPromptCache: false, supportsNativeTools } as never },
+		mode: "act",
+	})
+
+	it("survives the rename that broke it: the new name is capable, and so is the old", () => {
+		// The vendor retired deepseek-v4-flash on 10 September and served the same model as
+		// deepseek-flash. Reading version digits reported the new name as incapable.
+		isNativeToolCallingConfig(fakeProviderInfo("deepseek", "deepseek-flash"), true).should.be.true()
+		isNativeToolCallingConfig(fakeProviderInfo("deepseek", "deepseek-pro"), true).should.be.true()
+		isNativeToolCallingConfig(fakeProviderInfo("deepseek", "deepseek-v4-flash"), true).should.be.true()
+		isNativeToolCallingConfig(fakeProviderInfo("deepseek", "deepseek-v4-pro"), true).should.be.true()
+		isNativeToolCallingConfig(fakeProviderInfo("openrouter", "deepseek/deepseek-v4-flash-0731"), true).should.be.true()
+	})
+
+	it("treats an unfamiliar DeepSeek id conservatively rather than optimistically", () => {
+		// A model that cannot parse tools but is sent them is a dead session; a model that could have
+		// used them but is asked for XML is a slow one. Guess in the direction that still works.
+		isNativeToolCallingConfig(fakeProviderInfo("deepseek", "deepseek-turbo-next"), true).should.be.false()
+		isNativeToolCallingConfig(fakeProviderInfo("deepseek", "deepseek-chat"), true).should.be.false()
+		// …and the provider saying so is what makes it capable, whatever it is called.
+		isNativeToolCallingConfig(withInfo("deepseek", "deepseek-turbo-next", true), true).should.be.true()
+	})
+
+	it("lets a declaration override a name in BOTH directions", () => {
+		// Told no about a model we would have guessed yes for.
+		isNativeToolCallingConfig(withInfo("anthropic", "claude-sonnet-4-5", false), true).should.be.false()
+		// Told yes about one we would have guessed no for.
+		isNativeToolCallingConfig(withInfo("openai", "some-new-thing", true), true).should.be.true()
+	})
+
+	it("moves no other family", () => {
+		isNativeToolCallingConfig(fakeProviderInfo("anthropic", "claude-sonnet-4-5"), true).should.be.true()
+		isNativeToolCallingConfig(fakeProviderInfo("openrouter", "z-ai/glm-5.2"), true).should.be.false()
+		isNativeToolCallingConfig(fakeProviderInfo("openai", "gpt-3.5-turbo"), true).should.be.false()
+		isNativeToolCallingConfig(fakeProviderInfo("ollama", "llama3"), true).should.be.false()
+		isDeepSeekNativeToolsModelFamily("deepseek-speciale").should.be.false()
 	})
 })

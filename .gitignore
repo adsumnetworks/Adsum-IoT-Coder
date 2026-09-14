@@ -91,3 +91,6 @@ __pycache__/
 
 # Claude Code local settings (machine-specific permissions; the shared variant is .claude/settings.json)
 .claude/settings.local.json
+
+# local one-off probe scripts, see .dev-probes/README.md
+.dev-probes/

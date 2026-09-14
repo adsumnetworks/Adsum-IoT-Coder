@@ -28,7 +28,24 @@ export function isNextGenModelProvider(providerInfo: ApiProviderInfo): boolean {
 		// calls (that provider is listed here, and the family check only reads the model id), so the
 		// manual workaround behaved better than the first-class provider.
 		"deepseek",
+		// OUR OWN forwarder. Absent from this list, the free tier was told to write XML tool calls,
+		// and at a low thinking budget the served model answers in its own markup instead — the
+		// engine sees no tool, says so, the model repeats the call, and the session dies on the
+		// mistake limit without executing anything. The forwarder passes tools through with
+		// tool_choice auto, so the capability was there the whole time and only this list said no.
+		"adsum-free",
 	].some((id) => providerId === id)
+}
+
+/**
+ * Our own inference, where capability is a fact about US and not about a model id.
+ *
+ * The free tier serves an opaque id ("free-default") and the model behind it changes when we change
+ * it. Every other capability test here reads a name, which cannot work for a name that deliberately
+ * says nothing: the honest test is who is serving it, because we know what our forwarder supports.
+ */
+export function isAdsumOwnProvider(providerInfo: ApiProviderInfo): boolean {
+	return normalize(providerInfo.providerId) === "adsum-free"
 }
 
 export function modelDoesntSupportWebp(apiHandlerModel: ApiHandlerModel): boolean {
@@ -155,6 +172,30 @@ export function isGemini3ModelFamily(id: string): boolean {
 	return modelId.includes("gemini3") || modelId.includes("gemini-3")
 }
 
+/**
+ * DeepSeek ids that take native tool calls, by NAME — the last resort, not the first.
+ *
+ * On 10 September the vendor retired `deepseek-v4-flash` and served the same model as
+ * `deepseek-flash`; from 04:00 UTC on the 14th `v4-pro` routes there too. Every digit-reading check
+ * kept working on the old name and reported the new one as incapable, which is how a rename silently
+ * turned tools off for whoever had followed the vendor's advice and updated their id.
+ *
+ * So: named families we KNOW are capable are listed as names, not inferred from digits, and a
+ * DeepSeek id we do not recognise is treated CONSERVATIVELY — no native tools, because being asked
+ * for XML by a model that could have used tools is a slow day, while sending tools to a model that
+ * cannot parse them is a dead session. The way to make a new id capable is for the provider or the
+ * catalogue to say so (`ModelInfo.supportsNativeTools`), which no rename can undo.
+ */
+const DEEPSEEK_NATIVE_TOOL_NAMES = [
+	"deepseek-flash", // the current name of what was v4-flash
+	"deepseek-pro", // and of what was v4-pro
+	"deepseek-v4",
+	"deepseek-chat-v4",
+	"v4-flash",
+	"v4-pro",
+	"3.2",
+]
+
 export function isDeepSeekNativeToolsModelFamily(id: string): boolean {
 	const modelId = normalize(id)
 	if (!modelId.includes("deepseek")) {
@@ -163,9 +204,7 @@ export function isDeepSeekNativeToolsModelFamily(id: string): boolean {
 	if (modelId.includes("speciale")) {
 		return false
 	}
-	// 3.2 and V4-class DeepSeek models expose OpenAI-compatible tool_calls;
-	// older 3.1/V3 chat models do not.
-	return modelId.includes("3.2") || modelId.includes("v4") || /(?:^|[^0-9])4\.\d/.test(modelId)
+	return DEEPSEEK_NATIVE_TOOL_NAMES.some((name) => modelId.includes(name))
 }
 
 export function isNextGenModelFamily(id: string): boolean {
@@ -263,6 +302,23 @@ export function isNativeToolCallingConfig(providerInfo: ApiProviderInfo, enableN
 	}
 	if (!isNextGenModelProvider(providerInfo)) {
 		return false
+	}
+	/*
+	 * WHAT WE WERE TOLD BEATS WHAT WE CAN GUESS.
+	 *
+	 * If the provider or its catalogue declared this model's tool support, that is the answer — a
+	 * vendor may rename a model whenever it likes, and no pattern over a name survives that. Only
+	 * when nobody has told us anything do we fall back to recognising families by name, and that
+	 * fallback is deliberately conservative.
+	 */
+	const declared = providerInfo.model.info?.supportsNativeTools
+	if (typeof declared === "boolean") {
+		return declared
+	}
+	// Our own provider answers for itself: the id it serves is opaque on purpose, so there is no
+	// name to read and no need to read one.
+	if (isAdsumOwnProvider(providerInfo)) {
+		return true
 	}
 	const modelId = providerInfo.model.id.toLowerCase()
 	if (isGLMModelFamily(modelId) && !ENABLE_GLM_NATIVE_TOOL_CALLS) {

@@ -2,7 +2,7 @@
 id: adsum/rules/core
 title: "Universal Embedded Rules"
 type: knowledge
-version: 1.6.1
+version: 1.6.3
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -37,7 +37,11 @@ These rules apply universally to any IoT or Embedded project context, regardless
 ## 5. Proactive Action via Buttons (Global UX Rule)
 Any high-value recommendation that involves a hardware interaction or significant action MUST be presented as clickable buttons using `ask_followup_question` with the `options` parameter. Do NOT present recommendations as plain text that requires the user to type a response.
 
+**The answer comes first, in full.** When the developer asked something, write the whole answer in your message — the diagnosis, the why, what to do — and only then offer buttons. A closing question may follow the answer; it never replaces it, and an option is never a stand-in for it ("Just explain why…"). Never announce the answer ("let me give it to you") and then ask instead.
+
 **The principle:** After completing any significant action, write 1-2 sentences summarizing what was done and offering a key insight or recommendation, then immediately present the next logical step(s) as buttons. Do NOT ask open-ended questions like "What would you like to do next?"
+
+**Offer a topic by its name, never by its file.** When an answer, an offer or a button points the developer at more knowledge, name what it covers in plain words — *"the satellite details for this gateway: the position it needs, the payload ceiling and the wait"*. Never show a knowledge file path, a bit id or a folder from the knowledge tree (`products/…/satellite-on-this-gateway.md`): those are for your own `read_file` calls, and to the developer they read as our internals, not as help.
 
 **CRITICAL XML TOOL USAGE RULE:** 
 Never nest tool calls. Do NOT place the `<ask_followup_question>` tool inside the text payload of an `<attempt_completion>` block. 

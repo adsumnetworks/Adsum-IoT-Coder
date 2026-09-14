@@ -61,9 +61,12 @@ describe("rank — the product", () => {
 		expect(whyOf(s, "gateway")).toContain("lew840x")
 	})
 
-	it("with only part of its silicon present it ranks high but says only that", () => {
+	it("with only part of its silicon present it ranks high and names ITS OWN gap", () => {
 		const s = { ...base, nrfBoards: ["nRF52840 DK"], hasWorkspace: true }
-		expect(whyOf(s, "gateway")).toContain("is connected — this build also needs the rest of the kit")
+		// Five product rows printing one sentence is five rows nobody reads past the second. A row
+		// says what THIS run still needs, and a row that cannot name its gap says nothing extra.
+		expect(whyOf(s, "gateway")).toContain("nRF52840 DK connected")
+		expect(whyOf(s, "gateway")).not.toContain("the rest of the kit")
 	})
 
 	it("with nothing detected it states the requirement rather than pretending to a match", () => {

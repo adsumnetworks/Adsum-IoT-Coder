@@ -77,7 +77,69 @@ export interface DownloadedManifestEntry {
 
 export interface DownloadedManifest {
 	manifestVersion: number
+	/** Rows this account can fetch. Every one carries a `content_hash` — nothing else reaches here. */
 	bits: DownloadedManifestEntry[]
+	/** Bits that exist and are not this account's yet: known, never fetchable. */
+	locked?: LockedManifestEntry[]
+}
+
+/**
+ * A manifest row for a bit this account cannot open (registry, from client 0.4.1): identity and the
+ * group that would open it — no hash, no size, no title. It says "this exists and is locked", which is
+ * the one thing the client could not tell apart from "never published" before these rows existed.
+ */
+export interface LockedManifestEntry {
+	id: string
+	version: string
+	group: string | null
+	locked: true
+}
+
+/**
+ * Split a raw manifest into fetchable rows and locked rows.
+ *
+ * The ONE place a manifest row is sorted. A locked row has no `content_hash`; left among the fetchable
+ * rows it would be indexed by id and fetched as `blob/undefined`, and a 404 there reads to the developer
+ * as a broken registry. So a row reaches `bits` only if it carries a string hash and is not locked; a
+ * locked row goes to `locked`; anything else malformed is dropped.
+ */
+export function splitManifestRows(raw: unknown): DownloadedManifest | null {
+	const data = raw as { manifestVersion?: unknown; bits?: unknown; locked?: unknown } | null
+	if (!data || !Array.isArray(data.bits)) {
+		return null
+	}
+	const bits: DownloadedManifestEntry[] = []
+	const locked = new Map<string, LockedManifestEntry>()
+	const takeLocked = (r: Record<string, unknown>) => {
+		if (typeof r.id === "string" && r.id) {
+			locked.set(r.id, {
+				id: r.id,
+				version: typeof r.version === "string" ? r.version : "",
+				group: typeof r.group === "string" ? r.group : null,
+				locked: true,
+			})
+		}
+	}
+	for (const row of data.bits as Array<Record<string, unknown> | null>) {
+		if (!row || typeof row !== "object") continue
+		if (row.locked === true) {
+			takeLocked(row)
+		} else if (typeof row.id === "string" && typeof row.content_hash === "string" && row.content_hash) {
+			bits.push(row as DownloadedManifestEntry)
+		}
+	}
+	// A cached catalog written by this client already carries the split.
+	if (Array.isArray(data.locked)) {
+		for (const row of data.locked as Array<Record<string, unknown> | null>) {
+			if (row && typeof row === "object") takeLocked(row)
+		}
+	}
+	for (const b of bits) locked.delete(b.id) // a fetchable row always wins
+	return {
+		manifestVersion: typeof data.manifestVersion === "number" ? data.manifestVersion : 1,
+		bits,
+		...(locked.size ? { locked: [...locked.values()] } : {}),
+	}
 }
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
@@ -87,7 +149,12 @@ type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
  * things to the caller: one is a paywall to surface, the other is "this registry does not have it"
  * (a rolled-back backend, say) which must stay silent.
  */
-export type ArtifactFetch = { kind: "ok"; bytes: Buffer } | { kind: "locked" } | { kind: "absent" } | { kind: "unreachable" }
+export type ArtifactFetch =
+	| { kind: "ok"; bytes: Buffer }
+	| { kind: "locked" }
+	| { kind: "auth" }
+	| { kind: "absent" }
+	| { kind: "unreachable" }
 
 /**
  * Thrown by the text path when the registry answers 402: the bit exists and is simply not this
@@ -98,6 +165,21 @@ export class RegistryLockedError extends Error {
 	constructor(public readonly path: string) {
 		super(`registry: entitlement required for ${path}`)
 		this.name = "RegistryLockedError"
+	}
+}
+
+/**
+ * Thrown when the registry answers 401 or 403: the credential sent was refused. That is a sign-in that has
+ * expired or been revoked — never a network blip. Retrying cannot change it, and telling the developer "the
+ * registry is unreachable" sends them to check a connection that works.
+ */
+export class RegistryAuthError extends Error {
+	constructor(
+		public readonly path: string,
+		public readonly status: number,
+	) {
+		super(`registry: credential refused (${status}) for ${path}`)
+		this.name = "RegistryAuthError"
 	}
 }
 
@@ -127,8 +209,7 @@ export class RegistryClient {
 			return null
 		}
 		try {
-			const data = JSON.parse(text) as DownloadedManifest
-			return Array.isArray(data?.bits) ? data : null
+			return splitManifestRows(JSON.parse(text))
 		} catch {
 			return null
 		}
@@ -270,12 +351,21 @@ export class RegistryClient {
 				if (res.status === 402) {
 					throw new RegistryLockedError(path)
 				}
+				if (res.status === 401 || res.status === 403) {
+					throw new RegistryAuthError(path, res.status)
+				}
+				// Say which status it was: "unreachable" in a log with no number cannot be told apart from a 404.
+				console.warn(`[kbit] registry answered ${res.status} for ${path}`)
 				// 4xx = permanent (bit genuinely absent / bad request) → fail fast, no retry.
 				// 5xx = transient server error → fall through to retry.
 				if (res.status < 500) {
 					return null
 				}
-			} catch {
+			} catch (e) {
+				// A lock or a refused credential is an answer, not a blip: never retried, never "unreachable".
+				if (e instanceof RegistryLockedError || e instanceof RegistryAuthError) {
+					throw e
+				}
 				// Network error / timeout / abort → transient → fall through to retry.
 			} finally {
 				clearTimeout(timer)
@@ -324,6 +414,9 @@ export class RegistryClient {
 				}
 				if (res.status === 402) {
 					return { kind: "locked" }
+				}
+				if (res.status === 401 || res.status === 403) {
+					return { kind: "auth" }
 				}
 				if (res.status < 500) {
 					return { kind: "absent" }

@@ -51,6 +51,8 @@ service ModelsService {
   rpc getAihubmixModels(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
   // Refreshes and returns Vercel AI Gateway models
   rpc refreshVercelAiGatewayModelsRpc(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
+  // Returns the models a direct provider (named in the request value) serves now, reconciled with the shipped list
+  rpc refreshDirectProviderModels(StringRequest) returns (OpenRouterCompatibleModelInfo);
 }
 
 // List of VS Code LM models
@@ -106,6 +108,9 @@ message OpenRouterModelInfo {
   optional double temperature = 14;
   optional bool supports_reasoning = 15;
   optional ApiFormat api_format = 16;
+  // Declared by the provider or its catalogue. Authoritative: a vendor renaming a model must not be
+  // able to turn tool calling off for the people who followed the rename.
+  optional bool supports_native_tools = 17;
 }
 
 // Shared response message for model information

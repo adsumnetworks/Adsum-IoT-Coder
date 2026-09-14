@@ -4,11 +4,12 @@ import type { ToolUse } from "@core/assistant-message"
 import { formatResponse } from "@core/prompts/responses"
 import { getWorkspaceBasename, resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
-import { withLinks } from "@services/knowledge/kbit/people"
+import { kbitUnavailableMessage, refusalAfterNearMiss, unavailableReason } from "@services/knowledge/kbitUnavailable"
 import { tierOpens } from "@shared/adsumAccount"
 import { arePathsEqual, getReadablePath, isLocatedInWorkspace } from "@utils/path"
 import { HostProvider } from "@/hosts/host-provider"
 import {
+	authRefusedBits,
 	type BitProvenance,
 	bitIdForKbPath,
 	creditFor,
@@ -16,11 +17,13 @@ import {
 	deriveIdFromRel,
 	downloadedBitKnown,
 	isBareBitPath,
+	isLockedInManifest,
 	isOverridden,
 	isRegistryReachable,
 	loadBitByKbPath,
 	loadBitByRel,
 	lockedBitInfo,
+	lockedBits,
 	provenanceOf,
 	suggestNearMissBits,
 } from "@/services/knowledge/KnowledgeResolver"
@@ -36,6 +39,7 @@ import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 import { type CommandOutputFoldOptions, foldCommandOutputText } from "./commandOutputFold"
+import { creditBitOnce, serveNearMissBit } from "./kbitCredit"
 import { formatRangeHeader, sliceLineRange } from "./readFileRange"
 
 /**
@@ -47,38 +51,8 @@ import { formatRangeHeader, sliceLineRange } from "./readFileRange"
 // `source` is the resolver's provenance, so it carries "override" and "local" too — the credit line
 // must be able to say a registry copy replaced the shipped one, not flatten that back to "bundled".
 async function sayKbitCredit(config: any, credit: KbitCredit | null, source: BitProvenance): Promise<void> {
-	if (!credit) {
-		return
-	}
-	try {
-		await config.callbacks.say(
-			"kbit_loaded",
-			JSON.stringify({
-				id: credit.id,
-				title: credit.title,
-				kind: credit.kind,
-				author: credit.author,
-				attributed: credit.attributed,
-				// Co-authors ride with the lead so the UI can credit them without a second lookup; omitted
-				// when empty so the payload of a single-author bit is unchanged (older webviews ignore it).
-				coAuthors: credit.coAuthors.length ? credit.coAuthors : undefined,
-				// Profile links for the names on THIS line, resolved host-side — the webview has no network.
-				links: withLinks(credit).links,
-				version: credit.version,
-				license: credit.license,
-				platform: credit.platform,
-				steward: credit.steward,
-				source,
-				// A witness is hardware evidence; the UI renders it as a labelled row, not prose. Absent
-				// until a real run witnesses the bit — which is the honest state for nearly every bit today.
-				witness: credit.witness
-					? [credit.witness.board, credit.witness.toolchain, credit.witness.on].filter(Boolean).join(" · ")
-					: undefined,
-			}),
-		)
-	} catch {
-		// attribution is additive — never surface as a tool failure
-	}
+	// Once per bit per task, on every serving path — see kbitCredit.ts.
+	await creditBitOnce(config, credit, source)
 }
 
 export class ReadFileToolHandler implements IFullyManagedTool {
@@ -355,7 +329,15 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			// the misleading "not found" wording for this case), or (c) genuinely not in the registry.
 			const reachable = await isRegistryReachable()
 			const bitId = isAbsKbPath ? bitIdForKbPath(absolutePath) : deriveIdFromRel(relPath!.replace(/\\/g, "/"))
-			const listedButFetchFailed = reachable && bitId !== null && (await downloadedBitKnown(bitId))
+			// A locked bit is never a transient failure, whether the manifest named it locked or the blob
+			// route refused it: retrying cannot change the answer.
+			const lockedNow = bitId !== null && lockedBits().has(bitId)
+			const listedButFetchFailed =
+				unavailableReason({
+					locked: lockedNow,
+					reachable,
+					listed: bitId !== null && (await downloadedBitKnown(bitId)),
+				}) === null
 			// Anti-fabrication guard (domain-agnostic): a required Adsum bit that won't load must NOT be
 			// reconstructed from general knowledge, memory, or a prior report — that yields an ungrounded
 			// result (observed: a CRA run improvised a whole assessment when cra-readiness was unavailable).
@@ -363,6 +345,16 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			const antiImprovise =
 				` Do NOT reconstruct or improvise this Adsum workflow from general knowledge, memory, or a prior ` +
 				`report — tell the developer the workflow is currently unavailable and stop.`
+			// The registry refused the credential (401/403): the sign-in expired or was revoked. Not a blip —
+			// retrying reads the same refusal — and not a lock the account could open.
+			if (bitId !== null && authRefusedBits().has(bitId)) {
+				telemetryService.captureKbitLoadFailed({ reason: "auth_refused", bitId, afterRetry: true })
+				return formatResponse.toolError(
+					`Knowledge bit "${displayPath}" could not be read because the developer's Adsum sign-in is no longer ` +
+						`accepted (it expired or was signed out). Do not retry this read. Tell the developer: "Your Adsum ` +
+						`sign-in has expired — sign in again from the Adsum panel, then ask me again."${antiImprovise}`,
+				)
+			}
 			if (listedButFetchFailed) {
 				// Field-health signal (the Omar/CRA dead-end): reason enum + catalog bit id only, never paths.
 				telemetryService.captureKbitLoadFailed({ reason: "transient_fetch", bitId: bitId ?? undefined, afterRetry: true })
@@ -371,32 +363,6 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 						`(a transient network/server blip — this is NOT a wrong path and NOT a missing bit). Retry the ` +
 						`same read_file once; if it still fails, tell the developer the bit is temporarily unavailable ` +
 						`and to retry in a minute.${antiImprovise}`,
-				)
-			}
-			// LOCKED, not missing. The manifest withholds a bit this account may not read, so every gated
-			// bit arrived here indistinguishable from a typo and got the "not in the registry" wording —
-			// which sent a developer off to publish it to our own registry while the actual fix was a free
-			// account (2026-09-10, an unregistered guided build: b0-pitch, b2-ble-scanner, b3-modem,
-			// b4-esp-app and multi-bearer-gateway, all `cellular-advanced`, all reported as non-existent).
-			// Asked BEFORE the near-miss rescue: a locked bit is not a mistyped one, and offering a
-			// same-named alternative would quietly answer from the wrong bit.
-			const locked = reachable && bitId !== null ? await lockedBitInfo(bitId) : null
-			if (locked) {
-				telemetryService.captureKbitLoadFailed({ reason: "locked", bitId: bitId ?? undefined, afterRetry: true })
-				// The tier is the difference between "click register" and "ask for access". Getting this
-				// wrong sends someone to a sign-up page that would not have opened the bit.
-				const how = tierOpens(locked.group)
-					? `This opens with a FREE account — no card. Tell the developer to click Register in the ` +
-						`Adsum panel (or Settings → Account) and sign in with GitHub or email, then retry this step.`
-					: `This one is not covered by registering: it is granted per developer. Tell the developer to ` +
-						`open Settings → Account and request access${locked.group ? ` to \`${locked.group}\`` : ""}.`
-				return formatResponse.toolError(
-					`Knowledge bit "${displayPath}" EXISTS and is published — this account simply cannot open it ` +
-						`yet.${locked.group ? ` It is gated on the \`${locked.group}\` entitlement.` : ""} This is NOT a ` +
-						`wrong path, NOT a missing bit, and NOTHING for the developer to publish or configure. ${how} ` +
-						`Do not offer to publish it, and do not mention environment variables — neither is theirs to do. ` +
-						`Then keep going: continue with whatever you CAN do, and say plainly which bit you went ` +
-						`without and what that costs.${antiImprovise}`,
 				)
 			}
 			// Near-miss rescue (F5 1907 field failure): a run guessed `cra/rules/core.md` for `cra/core.md`,
@@ -409,46 +375,61 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 			// the transcript stays honest. Two+ matches stay an error (auto-picking would guess).
 			if (nearMisses.length === 1) {
 				const correctedRel = nearMisses[0]
-				const correctedBody = await loadBitByRel(correctedRel)
-				if (correctedBody) {
-					const correctedAbs = path.join(HostProvider.get().extensionFsPath, "iot-knowledge", correctedRel)
-					config.taskState.loadedKnowledgeFiles.add(correctedAbs)
-					await config.services.fileContextTracker.trackFileContext(correctedRel, "read_tool")
+				const served = await serveNearMissBit(config, displayPath, correctedRel, {
+					loadBitByRel,
+					idForRel: (rel) => deriveIdFromRel(rel.replace(/\\/g, "/")),
+					creditFor,
+					provenanceOf: (id) => provenanceOf(id) ?? null,
+					markLoaded: (rel) =>
+						config.taskState.loadedKnowledgeFiles.add(
+							path.join(HostProvider.get().extensionFsPath, "iot-knowledge", rel),
+						),
+					track: (rel) => config.services.fileContextTracker.trackFileContext(rel, "read_tool"),
+				})
+				if (served !== null) {
 					// Robustness signal: how often models mis-derive a bit directory. Send only the corrected
 					// catalog relpath (a known bit id, safe) — never the requested string (could carry a machine path).
 					telemetryService.captureKbitPathAutocorrected({ corrected: correctedRel })
-					return (
-						`[Adsum knowledge bit — path auto-corrected. You asked for "${displayPath}", which does not ` +
-						`exist; the only catalog bit with that filename is "${correctedRel}", served below. Use ` +
-						`"${correctedRel}" (exact) for any future read of this bit.]\n\n` +
-						correctedBody
-					)
+					return served
 				}
 			}
-			const pathHint =
-				nearMisses.length > 0
-					? `A bit with this FILENAME exists at a different path — you likely mis-derived the directory. ` +
-						`Retry with the exact path: ${nearMisses.join("  or  ")}. `
-					: `First re-check the path (combine the iot-knowledge directory with the bit's relative path). `
+			/*
+			 * A bit the registry refused for want of an entitlement is REAL. The resolver already knows
+			 * — it records the refusal in lockedBits(), including for a near miss the rescue just tried —
+			 * and until this branch existed the handler threw that knowledge away and told the developer
+			 * the bit did not exist. A lock is said alone, and no path the account cannot open is hinted
+			 * (B8): see refusalAfterNearMiss.
+			 */
+			const lockedId = async (rel: string) => {
+				const id = deriveIdFromRel(rel.replace(/\\/g, "/"))
+				return lockedBits().has(id) || (await isLockedInManifest(id))
+			}
+			const refusal = refusalAfterNearMiss({
+				requestedLocked: bitId !== null && (lockedBits().has(bitId) || (await isLockedInManifest(bitId))),
+				reachable,
+				nearMisses: await Promise.all(nearMisses.map(async (rel) => ({ rel, locked: await lockedId(rel) }))),
+			})
+			const pathHint = refusal.pathHint
+			const isLocked = refusal.reason === "locked"
+			// Registering opens some locked sets and not others; the door differs, so the sentence does (merged
+			// from main's "a locked bit says register"). The group is looked up, never shown.
+			const lockedGroup =
+				isLocked && bitId !== null ? (lockedBits().get(bitId) ?? (await lockedBitInfo(bitId))?.group ?? null) : null
+			const opensWithFreeAccount = isLocked && tierOpens(lockedGroup)
 			telemetryService.captureKbitLoadFailed({
-				reason: reachable ? "not_in_registry" : "registry_unreachable",
+				reason: isLocked ? "locked" : reachable ? "not_in_registry" : "registry_unreachable",
 				bitId: bitId ?? undefined,
 				afterRetry: true,
 			})
 			return formatResponse.toolError(
-				reachable
-					? `Knowledge bit not found: "${displayPath}". It is not bundled and not in the registry, and it ` +
-							`is not locked behind an entitlement either — the registry does not know this id at all. ` +
-							pathHint +
-							`If the bit genuinely does not exist,${antiImprovise} ` +
-							// Never suggest publishing it or setting ADSUM_KBIT_LOCAL. Both are OUR maintenance
-							// actions, and offering them to a developer reads as "the product is broken, please
-							// go fix our registry" — which is what happened on 2026-09-10.
-							`Do not suggest publishing the bit or setting any environment variable: neither is the ` +
-							`developer's to do.`
-					: `Could not load knowledge bit "${displayPath}": the Adsum knowledge registry is unreachable ` +
-							`and this bit is not cached locally. Check your network connection and retry.${antiImprovise} ` +
-							`(Bundled knowledge is unaffected.)`,
+				kbitUnavailableMessage({
+					antiImprovise,
+					displayPath,
+					isDev: process.env.IS_DEV === "true",
+					opensWithFreeAccount,
+					pathHint,
+					reason: refusal.reason,
+				}),
 			)
 		}
 

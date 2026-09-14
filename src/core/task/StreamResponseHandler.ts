@@ -9,6 +9,7 @@ import {
 	ClineReasoningDetailParam,
 } from "@/shared/messages/content"
 import { ClineDefaultTool } from "@/shared/tools"
+import { cleanNativeToolInput, stripModelControlTokens } from "./modelControlTokens"
 
 export interface PendingToolUse {
 	id: string
@@ -144,7 +145,8 @@ class ToolUseHandler {
 			type: "tool_use",
 			id: pending.id,
 			name: pending.name,
-			input,
+			// The model's own close-token, if it left one inside an argument, goes no further than here.
+			input: cleanNativeToolInput(input),
 			signature: pending.signature,
 			call_id: pending.call_id,
 		}
@@ -208,7 +210,9 @@ class ToolUseHandler {
 				const params: Record<string, string> = {}
 				if (typeof input === "object" && input !== null) {
 					for (const [key, value] of Object.entries(input)) {
-						params[key] = typeof value === "string" ? value : JSON.stringify(value)
+						// Cleaned here, where the argument becomes a parameter — not at the call sites,
+						// which would mean every tool remembering to do it and one of them forgetting.
+						params[key] = typeof value === "string" ? stripModelControlTokens(value) : JSON.stringify(value)
 					}
 				}
 				results.push({

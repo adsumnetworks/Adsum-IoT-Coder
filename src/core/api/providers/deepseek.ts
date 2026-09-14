@@ -2,7 +2,9 @@ import { DeepSeekModelId, deepSeekDefaultModelId, deepSeekModels, ModelInfo } fr
 import { calculateApiCostOpenAI } from "@utils/cost"
 import OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
+import { isServedLiveModel } from "@/core/api/models/liveModelLists"
 import { applyPriceOverlay } from "@/core/api/pricing/priceOverlay"
+import { UNKNOWN_MODEL_INFO } from "@/shared/liveModels"
 import { ClineStorageMessage } from "@/shared/messages/content"
 import { fetch } from "@/shared/net"
 import { ApiHandler, CommonApiHandlerOptions } from "../"
@@ -91,8 +93,18 @@ export class DeepSeekHandler implements ApiHandler {
 		}
 	}
 
+	/** One per request, so the stall watchdog's abort() cancels the HTTP request rather than abandoning it. */
+	private abortController?: AbortController
+
+	abort(): void {
+		this.abortController?.abort()
+	}
+
 	@withRetry()
 	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
+		this.abortController?.abort()
+		const controller = new AbortController()
+		this.abortController = controller
 		const client = this.ensureClient()
 		const model = this.getModel()
 
@@ -131,19 +143,22 @@ export class DeepSeekHandler implements ApiHandler {
 			openAiMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
 		}
 
-		const stream = await client.chat.completions.create({
-			model: model.id,
-			max_completion_tokens: model.info.maxTokens,
-			messages: openAiMessages,
-			stream: true,
-			stream_options: { include_usage: true },
-			// Thinking mode ignores temperature/top_p/penalties (documented as accepted-but-inert), and R1
-			// rejects a custom temperature outright — so omit it in both cases and use 0 everywhere else.
-			...(model.id === "deepseek-reasoner" || v4ThinkingOn ? {} : { temperature: 0 }),
-			...v4Thinking,
-			...v4Effort,
-			...getOpenAIToolParams(tools),
-		})
+		const stream = await client.chat.completions.create(
+			{
+				model: model.id,
+				max_completion_tokens: model.info.maxTokens,
+				messages: openAiMessages,
+				stream: true,
+				stream_options: { include_usage: true },
+				// Thinking mode ignores temperature/top_p/penalties (documented as accepted-but-inert), and R1
+				// rejects a custom temperature outright — so omit it in both cases and use 0 everywhere else.
+				...(model.id === "deepseek-reasoner" || v4ThinkingOn ? {} : { temperature: 0 }),
+				...v4Thinking,
+				...v4Effort,
+				...getOpenAIToolParams(tools),
+			},
+			{ signal: controller.signal },
+		)
 
 		const toolCallProcessor = new ToolCallProcessor()
 
@@ -173,11 +188,16 @@ export class DeepSeekHandler implements ApiHandler {
 		}
 	}
 
-	getModel(): { id: DeepSeekModelId; info: ModelInfo } {
+	getModel(): { id: string; info: ModelInfo } {
 		const modelId = this.options.apiModelId
 		if (modelId && modelId in deepSeekModels) {
 			const id = modelId as DeepSeekModelId
 			return { id, info: applyPriceOverlay(id, deepSeekModels[id]) }
+		}
+		// Served by DeepSeek but newer than the shipped table (e.g. a renamed model): send it as chosen, with
+		// conservative info and no prices, rather than quietly swapping in the default.
+		if (modelId && isServedLiveModel("deepseek", modelId)) {
+			return { id: modelId, info: applyPriceOverlay(modelId, { ...UNKNOWN_MODEL_INFO }) }
 		}
 		return {
 			id: deepSeekDefaultModelId,

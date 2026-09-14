@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# --- no AI co-author line may reach a remote (operator rule, 13 Sep 2026) ---
+z=0000000000000000000000000000000000000000
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$z" ] && continue
+  if [ "$remote_sha" = "$z" ]; then range="$local_sha"; else range="$remote_sha..$local_sha"; fi
+  n=$(git log --format=%B "$range" 2>/dev/null | grep -ciE "Co-Authored-By: *Claude|noreply@anthropic|Generated with \[?Claude" || true)
+  if [ "${n:-0}" -gt 0 ]; then echo "pre-push: $local_ref carries $n commit line(s) naming an AI co-author; rewrite before pushing." >&2; exit 1; fi
+done < /dev/stdin
+

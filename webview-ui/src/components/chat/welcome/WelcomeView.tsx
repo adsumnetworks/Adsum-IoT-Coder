@@ -17,6 +17,7 @@ import EntryDrawer, { type DrawerRun } from "./EntryDrawer"
 import EnvStrip, { platformVerdicts, useEnvRefresh } from "./EnvStrip"
 import { entryDrawerOpen, entryEnvOpen, entryFirstPrompt, entryRunStart, entryShown, gateShown } from "./entryTelemetry"
 import GatePanel from "./GatePanel"
+import GatewayLadder from "./GatewayLadder"
 import IntentCard from "./IntentCard"
 import { oneNotice } from "./notices"
 import RequestAccessForm from "./RequestAccessForm"
@@ -26,11 +27,14 @@ import { rank } from "./suggest"
 import UnlockedCard from "./UnlockedCard"
 import { useEntrySignals } from "./useEntrySignals"
 import {
+	ASK_FOR_DETAILS,
+	blg20InstallPrompt,
 	CELLULAR_BOARDS,
 	CELLULAR_INTENTS,
 	DEMO_HEX_PROMPT,
 	getTenure,
 	type IntentDef,
+	isRequestOnlyGroup,
 	NO_PROJECT_INTENTS,
 	PROJECT_INTENTS,
 	resolveIntentPlatform,
@@ -109,6 +113,8 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 	const [requesting, setRequesting] = useState<"lew840x" | "blg20" | null>(null)
 	const hasHistory = (taskHistory?.length ?? 0) > 0
 	const { mode, signals, scopeName, isColdStart } = useEntrySignals()
+	// Everything the environment has actually seen, for the surfaces that name a board.
+	const ladderBoards = [...signals.nrfBoards, ...signals.espDevices]
 
 	const [drawerOpen, setDrawerOpen] = useState(false)
 	const [seenRuns, setSeenRuns] = useState<string[]>(readSeen)
@@ -143,6 +149,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			blurb: "Fanstel's composable multi-radio gateway: BLE in, Ethernet / Wi-Fi / LTE out — with or without the cellular card. Seven steps.",
 			meta: "7 steps",
 			whyNeutral: "needs the gateway, its UART bridge board and a Nordic DK as probe — the full list comes first",
+			needsAlso: "the LEW840x gateway, its UART bridge board and a DK as probe",
 			onRun: () =>
 				onStartTask("Build the LEW840x gateway: scan BLE tags and publish them to MQTT over Ethernet, Wi-Fi and LTE"),
 		}
@@ -166,10 +173,14 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				boardMatch: CELLULAR_BOARDS,
 				whyNeutral:
 					i.id === "edgeAi" ? "needs an nRF54 with the Axon NPU" : "needs an nRF91-family board or a Fanstel gateway",
+				// Its own gap, so five rows do not print one sentence five times.
+				needsAlso: i.needsAlso,
 				title: i.title,
 				blurb: i.description,
 				locked,
-				lockPill: locked ? (adsumAccount ? "Request access" : "Register") : undefined,
+				// The drawer is a second surface for the same cards, so it says the same thing: one
+				// phrase for the one door, and "Register" only where registering is what opens it.
+				lockPill: locked ? (adsumAccount || isRequestOnlyGroup(i.group) ? ASK_FOR_DETAILS : "Register") : undefined,
 				onRun: () => {
 					if (!locked) {
 						runIntent(i.id, handlers)
@@ -200,6 +211,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			need: "lew840x",
 			productLabel: "Fanstel LEW840x",
 			whyNeutral: "needs the LEW840x and its programming kit; nrfutil and esptool on this machine",
+			needsAlso: "the LEW840x programming kit, with nrfutil and esptool on this machine",
 			title: "Flash the LEW840x demo",
 			blurb: "Three signed hexes: BLE scanner, ESP32 uplink, nRF9160 bearer. About three minutes.",
 			meta: "≈ 3 min",
@@ -938,7 +950,17 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						    It sits AFTER the suggested runs because it is a second offer, not a competing one:
 						    everything above works today with no account at all, and this group says plainly what
 						    a free account adds. Hiding it until sign-in would mean nobody ever learns it exists. */}
-						{!hasHistory && <DemoHexCard onFlash={() => void onStartTask(DEMO_HEX_PROMPT)} />}
+						<GatewayLadder
+							boards={ladderBoards}
+							chips={signals.nrfChips ?? []}
+							onAsk={() => setRequesting("blg20")}
+							onInstall={(way) => void onStartTask(blg20InstallPrompt(way))}
+							onStart={() => {
+								entryRunStart("blg20Gateway", "card")
+								runIntent("blg20Gateway", { onSelectMode, onStartTask, platform, projectName })
+							}}
+						/>
+						{!hasHistory && <DemoHexCard onFlash={(prompt) => void onStartTask(prompt)} />}
 						<RequestAccessForm
 							family={requesting ?? undefined}
 							onClose={() => setRequesting(null)}
@@ -954,17 +976,32 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 						/>
 					</>
 				) : resumeSession ? (
-					/* Collapsed: the resume and the composer, nothing else — except the one door. The
-					   runs, checks and samples are all still in the drawer, and this shape's only way
-					   in used to be the ☰. [OPERATOR 2026-09-09, approved] One quiet line instead. */
-					<button
-						className="self-start bg-transparent border-0 p-0 text-left"
-						data-testid="entry-more-runs"
-						onClick={openDrawer}
-						style={{ fontSize: "11px", color: BRAND_CYAN_TEXT, cursor: "pointer", fontWeight: 600 }}
-						type="button">
-						All runs{hasHistory ? ", and the demo flash" : ""} →
-					</button>
+					/* Collapsed: the resume and the composer, nothing else — except the one door and,
+					   when the board is on the desk, the ladder. A developer who has already run
+					   something on this board is the LAST person who should be unable to see the ways:
+					   the first mount of this card sat in the branch this shape does not paint, which
+					   is why it never appeared on the bench. [BENCH 2026-09-14]
+					   The runs, checks and samples are all still in the drawer. */
+					<>
+						<GatewayLadder
+							boards={ladderBoards}
+							chips={signals.nrfChips ?? []}
+							onAsk={() => setRequesting("blg20")}
+							onInstall={(way) => void onStartTask(blg20InstallPrompt(way))}
+							onStart={() => {
+								entryRunStart("blg20Gateway", "card")
+								runIntent("blg20Gateway", { onSelectMode, onStartTask, platform, projectName })
+							}}
+						/>
+						<button
+							className="self-start bg-transparent border-0 p-0 text-left"
+							data-testid="entry-more-runs"
+							onClick={openDrawer}
+							style={{ fontSize: "11px", color: BRAND_CYAN_TEXT, cursor: "pointer", fontWeight: 600 }}
+							type="button">
+							All runs{hasHistory ? ", and the demo flash" : ""} →
+						</button>
+					</>
 				) : (
 					<div
 						data-testid="entry-orientation"

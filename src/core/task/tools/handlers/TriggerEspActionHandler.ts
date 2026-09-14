@@ -31,6 +31,14 @@ import { foldCommandOutput } from "./commandOutputFold"
  *                `idf.py set-target esp32s3`, `idf.py --version`,
  *                `esptool.py flash_id`, `python -m serial.tools.list_ports`.
  */
+/**
+ * The wrapper flag for a monitor's `reset` parameter. Only an explicit true opts in; every other value,
+ * including a missing one, is `--no-reset`, which the wrapper hands to `idf.py monitor --no-reset`.
+ */
+export function espMonitorResetFlag(reset: unknown): "--reset" | "--no-reset" {
+	return reset === true || (typeof reset === "string" && reset.trim().toLowerCase() === "true") ? "--reset" : "--no-reset"
+}
+
 /** workspaceState key for the per-project IDF version chosen when several are installed (ask-once). */
 const IDF_VERSION_STATE_KEY = "adsum.esp.idfVersion"
 
@@ -194,11 +202,9 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 			if (name) args.push("--name", name)
 		}
 		args.push("--duration", String(duration || "10"))
-		// Reset-before-capture is the default (captures the boot sequence). Only
-		// skip it for mid-runtime capture, matching the nRF capture semantics.
-		if (reset === "false") {
-			args.push("--no-reset")
-		}
+		// A capture reads the board; it must not reboot it. Only reset="true" resets. Anything else passes
+		// --no-reset, so an older wrapper that still resets by default is held too. Same rule as nRF.
+		args.push(espMonitorResetFlag(reset))
 		return args.join(" ")
 	}
 }

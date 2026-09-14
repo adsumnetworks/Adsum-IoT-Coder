@@ -322,18 +322,17 @@ If unsure, tool auto-detects from prj.conf, but ALWAYS pass explicit transport f
 - Standard: 30 seconds (default)
 - Extended: 60+ seconds
 Choose based on investigation goal.
-- pre-capture-delay: (optional) Optional for "capture". Delay in seconds before device reset (pre-capture listening phase).
-- Use for boot log capture: listeners start BEFORE reset
+- pre-capture-delay: (optional) Optional for "capture". Seconds the listeners run before the reset, when reset="true" was passed.
 - Default: 0 (no delay)
-- Recommended: 2-3 seconds for boot logs
-This ensures complete boot sequence is captured.
+- With reset="true": 2-3 seconds, so the whole boot sequence is caught
+Without reset="true" there is no reset and this only delays the capture.
 - devices: (optional) Optional for "capture". Multi-device mapping: "label:identifier,label2:identifier2".
 The label is used to name the output log file. Use generic labels (device1, device2) when roles are unknown.
 Use role-specific labels (central, peripheral) ONLY when the role has been confirmed by project config or log analysis.
 - For UART: identifier is the serial port (e.g. "device1:/dev/ttyACM0").
 - For RTT: identifier is the serial number (e.g. "device1:683335182"). CRITICAL: NEVER pass a COM port or /dev/tty* port when using RTT. RTT strictly uses 9-12 digit J-Link serial numbers.
 - output: (optional) Optional for "capture". Directory to save logs.
-- reset: (optional) Optional. Reset device(s) before capture. DEFAULT: true. Set to false ONLY for mid-runtime capture.
+- reset: (optional) Optional. DEFAULT: false — a capture reads the device as it runs and never resets it. Pass reset="true" only to record a boot sequence, and only on a device the developer has confirmed is the one under discussion. A capture taken with a reset reboots the part: it is not a reading of what the part was doing.
 - auto_detect: (optional) Optional. Auto-detect all connected nRF devices. Set to true for BLE/multi-device scenarios where you want to capture everything without specifying ports.
 - list_nrf: (optional) Optional. When true with operation="list", shows only nRF devices.
 - monitor: (optional) Optional, RTT only. When true, also captures the HCI Monitor stream (host↔controller commands/events) on RTT channel 1 and auto-decodes it to a readable logs/hci/*.hci.log the user and you can read. Pass monitor="true" for BLE debugging — pairing/connection/PHY/GATT/controller issues — where controller-level evidence helps. Auto-enabled when prj.conf has CONFIG_BT_DEBUG_MONITOR_RTT=y (you need not pass it then). Requires that Kconfig in the firmware; if missing, enable it first (see the BLE knowledge / log-generator workflow).
@@ -352,7 +351,7 @@ Usage:
 <pre-capture-delay>3</pre-capture-delay>
 <devices>device1:683335182,device2:683007782</devices>
 <output>logs/</output>
-<reset>true</reset>
+<reset>false</reset>
 <auto_detect>true</auto_detect>
 <list_nrf>true</list_nrf>
 <monitor>true</monitor>
@@ -376,7 +375,7 @@ CRITICAL OPERATIONAL RULES:
    - "idf.py size"  → app IRAM/DRAM/Flash usage (after a build).
 3. TARGET: A project builds for one chip (esp32, esp32s3, esp32c3, esp32c6...). Set it with action="execute" command="idf.py set-target esp32s3" before the first build if it differs from sdkconfig's CONFIG_IDF_TARGET.
 4. PORTS: take the port from "Connected ESP Devices" in your context (already discovered for you); only fall back to command="python -m serial.tools.list_ports" if it is not listed there. Then ALWAYS pass "port" to flash and monitor. A portless flash/monitor makes esptool open every serial device (/dev/ttyS0..S31 on Linux) one by one before finding the board, and picks the wrong one when two boards are attached. Linux: /dev/ttyUSB* or /dev/ttyACM*; macOS: /dev/cu.usbserial-* or /dev/cu.usbmodem*; Windows: COMx.
-5. MONITOR = log capture: action="monitor" runs idf.py monitor for "duration" seconds and SAVES the serial output (panic backtraces already decoded to file:line) to logs/uart/<name>_<chip>_<port>_<ts>.log. It resets the board first by default (set reset="false" for mid-runtime capture). This is how you capture crashes/coredumps — do NOT run "idf.py monitor" via execute (it would hang).
+5. MONITOR = log capture: action="monitor" runs idf.py monitor for "duration" seconds and SAVES the serial output (panic backtraces already decoded to file:line) to logs/uart/<name>_<chip>_<port>_<ts>.log. It does NOT reset the board: it reads the board as it runs. Pass reset="true" only to record a boot sequence, and only on a board the developer has confirmed is the one under discussion. This is how you capture crashes/coredumps — do NOT run "idf.py monitor" via execute (it would hang).
    MULTI-BOARD: pass "devices" instead of "port" to capture two or more boards CONCURRENTLY in one call (e.g. a BLE central + peripheral pair). Format: "name1:port1:/abs/path/project1,name2:port2:/abs/path/project2". Each board runs idf.py monitor inside its own project directory, in parallel, for the same "duration".
 6. CLEAN/RECONFIG: use action="execute" with command="idf.py fullclean" or "idf.py reconfigure" when the build is in a bad state.
 
@@ -410,7 +409,7 @@ When "devices" is set, "port" and "name" parameters are ignored (name is embedde
 - Connection / Wi-Fi debug: 20-30 seconds
 - Stability test: 60+ seconds
 - name: (optional) Optional for "monitor". A label used in the log filename (e.g. "boot", "wifi", "crash"). Defaults to the project/chip name.
-- reset: (optional) Optional for "monitor". Reset the board before capturing (DEFAULT: true — captures the full boot sequence). Set to "false" for mid-runtime capture without resetting.
+- reset: (optional) Optional for "monitor". DEFAULT: false — a monitor capture reads the board as it runs and never resets it. Pass reset="true" only to record a boot sequence, and only on a board the developer has confirmed is the one under discussion. A capture taken with a reset reboots the board: it is not a reading of what the board was doing.
 - idf_version: (optional) Optional. The ESP-IDF version to build/flash with, e.g. "5.5.2".
 You normally do NOT set this — the tool auto-resolves the version from the project's pin (dependencies.lock)
 or uses the only installed version. Set it ONLY when the tool reports that multiple ESP-IDF versions are
@@ -425,7 +424,7 @@ Usage:
 <devices>central:COM8:C:\projects\ble_central,peripheral:COM10:C:\projects\ble_peripheral</devices>
 <duration>10</duration>
 <name>crash</name>
-<reset>true</reset>
+<reset>false</reset>
 <idf_version>5.5.2</idf_version>
 </triggerEspAction>
 

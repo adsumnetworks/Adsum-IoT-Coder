@@ -14,7 +14,9 @@ import {
 } from "@shared/api"
 import OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
+import { isServedLiveModel } from "@/core/api/models/liveModelLists"
 import { applyPriceOverlay } from "@/core/api/pricing/priceOverlay"
+import { UNKNOWN_MODEL_INFO } from "@/shared/liveModels"
 import { ClineStorageMessage } from "@/shared/messages/content"
 import { fetch } from "@/shared/net"
 import { version as extensionVersion } from "../../../../package.json"
@@ -82,12 +84,16 @@ export class ZAiHandler implements ApiHandler {
 		return this.client
 	}
 
-	getModel(): { id: mainlandZAiModelId | internationalZAiModelId | zaiCodingPlanModelId; info: ModelInfo } {
+	getModel(): { id: string; info: ModelInfo } {
 		const modelId = this.options.apiModelId
 		// Only use modelId when it's actually in the active catalog — otherwise fall back to the default. Guards against
 		// an empty string or a stale id left over from a previously-selected provider (e.g. a Claude model id) reaching
 		// z.ai, which rejects those with 400 "model code cannot be empty" (1214) / "Unknown Model" (1211).
 		if (this.isCodingPlan()) {
+			// Served on the coding endpoint but newer than the shipped table: send it as chosen, no prices.
+			if (modelId && !(modelId in zaiCodingPlanModels) && isServedLiveModel("zai-coding-plan", modelId)) {
+				return { id: modelId, info: applyPriceOverlay(modelId, { ...UNKNOWN_MODEL_INFO }) }
+			}
 			const id: zaiCodingPlanModelId =
 				modelId && modelId in zaiCodingPlanModels ? (modelId as zaiCodingPlanModelId) : zaiCodingPlanDefaultModelId
 			return { id, info: applyPriceOverlay(id, zaiCodingPlanModels[id]) }

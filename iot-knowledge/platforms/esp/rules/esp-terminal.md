@@ -2,7 +2,7 @@
 id: adsum/esp/rules/esp-terminal
 title: "ESP Platform Rule: The ESP-IDF Device Tool"
 type: knowledge
-version: 1.1.0
+version: 1.1.1
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -38,7 +38,7 @@ A plain terminal has no ESP-IDF environment (`IDF_PATH`, the Xtensa/RISC-V toolc
 - **Never** `execute_command` for `idf.py` / `esptool.py` / `idf.py monitor`.
 - **Never** run `idf.py monitor` through `action="execute"` — it runs forever and hangs the session. Use `action="monitor"`, which captures for a bounded `duration` and saves to a log file.
 - **Do NOT expose tool names** to the user. Say *"Building firmware…"*, *"Capturing the serial log…"* — not the tool/action names.
-- **Reset:** `action="monitor"` resets the board before capturing by default (captures the boot sequence). Pass `reset="false"` only for mid-runtime capture.
+- **Reset:** `action="monitor"` does not reset the board; it reads it as it runs. Pass `reset="true"` only to record a boot sequence, on a board the developer has confirmed is the one under discussion — or the board you just flashed in this task. A capture with a reset reboots the board and is not a reading of what it was doing.
 
 ## Commands that DO NOT use this tool
 - `git`, file manipulation, host package managers (`pip`, `apt`) → `execute_command`.

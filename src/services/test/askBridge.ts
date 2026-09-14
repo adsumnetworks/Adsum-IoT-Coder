@@ -21,7 +21,16 @@ export interface PendingAsk {
 	kind: string
 	text: string
 	ts: number
+	/**
+	 * Present and true on an ask a RUNNING command raises with each chunk of its output. Nobody has to
+	 * answer it — the command goes on and the ask is replaced by the next chunk or by the command's end.
+	 * Answering `yesButtonClicked` is the panel's "Proceed While Running"; any other answer is feedback.
+	 */
+	whileRunning?: true
 }
+
+/** Asks raised while something is still running, which replace themselves rather than wait for a person. */
+export const STREAMING_ASKS = new Set(["command_output"])
 
 /** Longest answer accepted. Generous for a considered reply, small enough that a runaway body is refused. */
 export const MAX_ANSWER_CHARS = 10_000
@@ -41,7 +50,13 @@ export function pendingAskFrom(messages: AskLike[] | undefined): PendingAsk | nu
 	if (!last || last.type !== "ask" || last.partial === true) {
 		return null
 	}
-	return { kind: String(last.ask ?? ""), text: String(last.text ?? ""), ts: Number(last.ts ?? 0) }
+	const kind = String(last.ask ?? "")
+	return {
+		kind,
+		text: String(last.text ?? ""),
+		ts: Number(last.ts ?? 0),
+		...(STREAMING_ASKS.has(kind) ? { whileRunning: true as const } : {}),
+	}
 }
 
 export type RespondCheck =
@@ -145,6 +160,11 @@ export function sessionStateFrom(messages: AskLike[] | undefined, hasTask: boole
 	if (!pending) {
 		// No pending ask: the task holds the floor. A partial ask lands here too, deliberately — the
 		// question is still being written, and a driver that answered it would race the model finishing it.
+		return "running"
+	}
+	if (STREAMING_ASKS.has(pending.kind)) {
+		// A command still producing output. The run holds the floor; the ask is visible on /ask for a
+		// driver that wants to proceed while it runs, but nobody is being waited on.
 		return "running"
 	}
 	return COMPLETION_ASKS.has(pending.kind) ? "complete" : "awaiting_human"

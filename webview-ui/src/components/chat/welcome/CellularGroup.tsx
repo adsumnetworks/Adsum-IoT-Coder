@@ -4,10 +4,18 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { BRAND_CYAN_TEXT } from "../brandColors"
 import { entryRunStart, gateShown } from "./entryTelemetry"
 import GatePanel from "./GatePanel"
+import GatewayLadder, { ladderBoard } from "./GatewayLadder"
 import IntentCard from "./IntentCard"
 import RequestAccessForm from "./RequestAccessForm"
 import { type IntentActionHandlers, runIntent } from "./runIntent"
-import { CELLULAR_INTENTS, cellularHint, type IntentDef } from "./welcomeIntents"
+import {
+	ASK_FOR_DETAILS,
+	blg20InstallPrompt,
+	CELLULAR_INTENTS,
+	cellularHint,
+	type IntentDef,
+	isRequestOnlyGroup,
+} from "./welcomeIntents"
 
 /**
  * "Cellular & gateways" — the group that asks for a free account.
@@ -24,7 +32,7 @@ import { CELLULAR_INTENTS, cellularHint, type IntentDef } from "./welcomeIntents
 interface CellularGroupProps extends IntentActionHandlers {
 	/** Board names already detected — a hint earns its line only when it names one of them. */
 	boards?: readonly string[]
-	/** Rendered under the LEW840x card once registered (the template-source request states). */
+	/** Rendered under the LEW840x card once registered (the source request states). */
 	gatewaySubline?: React.ReactNode
 }
 
@@ -40,6 +48,13 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 	// would be an instruction that does nothing.
 	const anonymous = !adsumAccount
 	const hint = anonymous ? cellularHint(boards) : undefined
+	/*
+	 * With the board on the desk, the flat card for it becomes the LADDER: one card, three ways, and
+	 * which one is already theirs. The card is not shown as well as the ladder — it IS the ladder,
+	 * in the same place in the same list, or a developer would meet the same board twice and have to
+	 * work out whether the two offers were the same thing.
+	 */
+	const ladder = ladderBoard(boards)
 
 	// The gate is open for ONE card. It has nothing left to ask the moment that card's group arrives —
 	// which is what sign-in does, and is not the same as "this developer has an account" (W-02b).
@@ -49,7 +64,7 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 	const openGate = (intent: IntentDef) => {
 		// Signed in and still locked means a BY-REQUEST group (the tier opens on registration), so
 		// the honest door is the request form, not a register panel for someone already registered.
-		if (adsumAccount) {
+		if (adsumAccount || isRequestOnlyGroup(intent.group)) {
 			setRequesting(intent.id === "blg20Gateway" ? "blg20" : "lew840x")
 			return
 		}
@@ -72,7 +87,22 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 					{hint}
 				</div>
 			)}
+			{ladder && (
+				<GatewayLadder
+					boards={boards}
+					onAsk={() => setRequesting("blg20")}
+					onInstall={(way) => void handlers.onStartTask(blg20InstallPrompt(way))}
+					onStart={() => {
+						entryRunStart("blg20Gateway", "card")
+						runIntent("blg20Gateway", handlers)
+					}}
+				/>
+			)}
 			{CELLULAR_INTENTS.map((intent) => {
+				// The ladder already IS this board's card.
+				if (ladder && intent.id === "blg20Gateway") {
+					return null
+				}
 				const locked = isLocked(intent)
 				return (
 					<React.Fragment key={intent.id}>
@@ -85,7 +115,16 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 								runIntent(intent.id, handlers)
 							}}
 							onLocked={() => openGate(intent)}
-							pill={locked ? (adsumAccount ? "Request access" : "Register") : undefined}
+							/* One phrase for the one door: the pill, the sub-line under it and the row in the
+							   transcript all say the same thing. "Register" survives only where registering
+							   is what actually opens the card — never on a set a person opens by hand. */
+							pill={
+								locked
+									? adsumAccount || isRequestOnlyGroup(intent.group)
+										? ASK_FOR_DETAILS
+										: "Register"
+									: undefined
+							}
 							testId={`cellular-card-${intent.id}`}
 							title={intent.title}
 						/>
@@ -93,7 +132,12 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 					    is rendered as a sibling rather than inside it: the card IS a button, and a control
 					    nested in a button is unreachable by keyboard and mis-announced by screen readers.
 					    Same place, same words, same colour — one valid control instead of two broken ones. */}
-						{!locked && intent.id === "cellularGateway" && <SourceLine onRequest={() => setRequesting("lew840x")} />}
+						{!locked && SOURCE_FAMILY[intent.id] && (
+							<SourceLine
+								family={SOURCE_FAMILY[intent.id]}
+								onRequest={() => setRequesting(SOURCE_FAMILY[intent.id])}
+							/>
+						)}
 					</React.Fragment>
 				)
 			})}
@@ -112,38 +156,60 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 }
 
 /**
+ * Which family's source rungs a card offers. A card that is not in here offers none — the map is
+ * the statement, so adding a gateway without deciding what its source is cannot silently inherit
+ * another family's.
+ */
+const SOURCE_FAMILY: Record<string, string> = {
+	cellularGateway: "lew840x",
+	blg20Gateway: "blg20",
+}
+
+/**
  * "Request template source access →", or the state of the request already made.
  *
  * Read from the account's open requests, which come from the server — so a request sent on another
  * machine shows here too, and one the operator has decided stops showing as pending on the next
  * refresh without anyone clicking anything.
  */
-export const SourceLine: React.FC<{ onRequest: () => void }> = ({ onRequest }) => {
+export const SourceLine: React.FC<{ onRequest: () => void; family?: string }> = ({ onRequest, family = "lew840x" }) => {
 	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
-	const granted = !!adsumAccount?.groups.some((g) => g.startsWith("lew840x-") && g.endsWith("-src"))
-	const pending = (adsumAccount?.openRequests ?? []).includes("lew840x")
+	/*
+	 * The group prefix is the family's own, read from the card, not the literal "lew840x" this
+	 * line carried while there was one gateway. A BLG20 holder's rungs are blg20-ble-src and
+	 * blg20-9151-src, and a check hard-coded to the other family would have shown them
+	 * "request access" for source they already hold.
+	 */
+	const granted = !!adsumAccount?.groups.some((g) => g.startsWith(`${family}-`) && g.endsWith("-src"))
+	const pending = (adsumAccount?.openRequests ?? []).includes(family)
 	const style: React.CSSProperties = { fontSize: "11px", paddingLeft: "63px", marginTop: "-6px" }
+	/*
+	 * Two gateway cards can now show this line at once, and two elements with one test id is a
+	 * rig that silently asserts about whichever came first. The historic id stays on the family
+	 * that had it, so every existing test still names the thing it was written about.
+	 */
+	const testId = family === "lew840x" ? "source-line" : `source-line-${family}`
 	if (granted) {
 		return (
-			<div data-testid="source-line" style={{ ...style, color: "var(--vscode-descriptionForeground)" }}>
-				Template source: granted — it resolves in your next run
+			<div data-testid={testId} style={{ ...style, color: "var(--vscode-descriptionForeground)" }}>
+				Source: yours — it resolves in your next run
 			</div>
 		)
 	}
 	if (pending) {
 		return (
-			<div data-testid="source-line" style={{ ...style, color: "var(--vscode-descriptionForeground)" }}>
-				Template source: request sent · we reply within a business day
+			<div data-testid={testId} style={{ ...style, color: "var(--vscode-descriptionForeground)" }}>
+				Asked today · we reply within a business day
 			</div>
 		)
 	}
 	return (
 		<button
-			data-testid="source-line"
+			data-testid={testId}
 			onClick={onRequest}
 			style={{ ...style, background: "none", border: "none", cursor: "pointer", color: BRAND_CYAN_TEXT, textAlign: "left" }}
 			type="button">
-			Request template source access →
+			{ASK_FOR_DETAILS}
 		</button>
 	)
 }

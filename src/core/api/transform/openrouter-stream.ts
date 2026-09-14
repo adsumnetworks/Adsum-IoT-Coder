@@ -10,6 +10,7 @@ import { shouldSkipReasoningForModel } from "@utils/model-utils"
 import OpenAI from "openai"
 import { ChatCompletionTool } from "openai/resources/chat/completions"
 import { convertToOpenAiMessages, sanitizeGeminiMessages } from "./openai-format"
+import { buildProviderBlock, mergeAdvancedBody, type RoutingSettings } from "./openrouter-routing"
 import { convertToR1Format } from "./r1-format"
 import { getOpenAIToolParams } from "./tool-call-processor"
 
@@ -23,6 +24,10 @@ export async function createOpenRouterStream(
 	openRouterProviderSorting?: string,
 	tools?: Array<ChatCompletionTool>,
 	geminiThinkingLevel?: string,
+	/** What the developer asked for in the Routing block. Absent ⇒ exactly the behaviour of before. */
+	routing?: RoutingSettings,
+	/** Lets the caller cancel the HTTP request itself — a stalled stream is aborted, not abandoned. */
+	requestOptions?: { signal?: AbortSignal },
 ) {
 	// Convert Anthropic messages to OpenAI format
 	let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -196,8 +201,14 @@ export async function createOpenRouterStream(
 	// Skip reasoning for models that don't support it (e.g., devstral, grok-4)
 	const includeReasoning = !shouldSkipReasoningForModel(model.id)
 
-	// @ts-expect-error-next-line
-	const stream = await client.chat.completions.create({
+	/*
+	 * Routing, ours first. The developer's Routing block wins over the legacy single sort field —
+	 * that field is greyed out in the settings whenever a seller list is set, and this is the same
+	 * rule enforced where it matters.
+	 */
+	const routingBlock = routing ? buildProviderBlock({ ...routing, sort: routing.sort ?? openRouterProviderSorting }) : undefined
+
+	const body = {
 		model: model.id,
 		max_tokens: maxTokens,
 		temperature: temperature,
@@ -208,14 +219,25 @@ export async function createOpenRouterStream(
 		include_reasoning: includeReasoning,
 		...(model.id.startsWith("openai/o") ? { reasoning_effort: reasoningEffort || "medium" } : {}),
 		...(reasoning ? { reasoning } : {}),
-		...(openRouterProviderSorting && !providerPreferences ? { provider: { sort: openRouterProviderSorting } } : {}),
+		...(routingBlock && !providerPreferences ? { provider: routingBlock } : {}),
+		...(!routingBlock && openRouterProviderSorting && !providerPreferences
+			? { provider: { sort: openRouterProviderSorting } }
+			: {}),
 		...(providerPreferences ? { provider: providerPreferences } : {}),
 		...(isClaudeSonnet1m ? { provider: { order: ["anthropic", "google-vertex/global"], allow_fallbacks: false } } : {}),
 		...getOpenAIToolParams(tools),
 		...(model.id.includes("gemini-3") && geminiThinkingLevel
 			? { thinking_config: { thinking_level: geminiThinkingLevel, include_thoughts: true } }
 			: {}),
-	})
+	}
+
+	// The advanced field is merged LAST, and can never change the model or the messages.
+	// The cast is the same one this call always needed (the SDK types the streaming and non-streaming
+	// overloads by a literal), kept in one place now that the body is assembled before the call.
+	const stream = (await client.chat.completions.create(
+		mergeAdvancedBody(body as Record<string, unknown>, routing?.extraBody) as never,
+		requestOptions?.signal ? { signal: requestOptions.signal } : undefined,
+	)) as unknown as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>
 
 	return stream
 }

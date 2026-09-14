@@ -58,7 +58,7 @@ old_docs/
 evals/
 .changie.yaml
 .codespellrc
-.mocharc.json
+.mocharc.cjs
 buf.yaml
 .changeset/
 .clinerules/
@@ -75,6 +75,9 @@ webview-ui/node_modules/**
 
 # Ignore docs
 docs/**
+# Authoring documents for bits (the spec, the schema). Never shipped: the agent can search the
+# installed extension, and authoring vocabulary must not reach a developer's session.
+kbit-authoring/**
 old_docs/**
 
 # Drop social/marketing assets — not referenced by the shipped README (P2.1 VSIX size).

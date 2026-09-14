@@ -197,7 +197,7 @@ describe("the shape rule decides what is on screen", () => {
 		expect(screen.getAllByTestId("entry-drawer-run-locked").length).toBeGreaterThanOrEqual(4)
 	})
 
-	it("registered: the tier cards open, and the BLG20 card stays locked behind 'Request access'", () => {
+	it("registered: the tier cards open, and the BLG20 card stays locked behind the one phrase", () => {
 		mockState({ openFolderPaths: ["/w/gateway-fw"], adsumAccount: REGISTERED })
 		render(<WelcomeView {...baseProps} />)
 		fireEvent.click(screen.getByTestId("entry-more-runs"))
@@ -205,7 +205,8 @@ describe("the shape rule decides what is on screen", () => {
 		// exactly ONE run is still locked for a registered account — the by-request BLG20 card
 		expect(locked).toHaveLength(1)
 		expect(locked[0].textContent).toMatch(/BLG20/)
-		expect(locked[0].textContent).toMatch(/Request access/)
+		// The drawer says exactly what the card and the transcript row say — one door, one name.
+		expect(locked[0].textContent).toMatch(/Ask for more details/)
 	})
 
 	it("the demo card holds the surface until the install has a task, then moves to the drawer", () => {

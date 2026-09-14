@@ -554,6 +554,41 @@ async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: bool
 		}
 
 		console.info(`[adsum][nrf] boards after Nordic filter: ${boards.length}`)
+		/*
+		 * The TARGET, not the kit.
+		 *
+		 * `list --json` reports what the debug probe IS — on this bench, three development kits — and
+		 * that is all the panel strip ever needed. It is not enough to recognise a product debugged
+		 * THROUGH a kit: a Fanstel gateway wired to an nRF54LM20 DK lists as an nRF54LM20 DK, while
+		 * the chip on the other end of the probe is an nRF9151. `device-info` is the only call that
+		 * answers "what is actually attached", so it runs once per board, in parallel, best-effort:
+		 * a board that does not answer keeps exactly the identity it had.
+		 */
+		await Promise.all(
+			boards.map(async (board) => {
+				if (board.deviceName) {
+					return
+				}
+				try {
+					const info = await execAsync(`${devicePrefix} device-info --serial-number ${board.serialNumber} --json`, {
+						timeout: 4000,
+					})
+					const parsed = parseDeviceInfo(info.stdout)
+					if (parsed.deviceName) {
+						board.deviceName = parsed.deviceName
+						board.deviceVersion = parsed.deviceVersion ?? board.deviceVersion
+						// The family from the target wins over the kit's own: they differ exactly when
+						// the interesting case is happening.
+						board.deviceFamily = parsed.deviceFamily ?? board.deviceFamily
+					}
+				} catch {
+					// A probe that will not answer is not an error worth a line in the panel.
+				}
+			}),
+		)
+		console.info(
+			`[adsum][nrf] targets: ${boards.map((b) => `${b.serialNumber}=${b.deviceName ?? b.deviceFamily ?? "?"}`).join(", ")}`,
+		)
 		return { nrfutilPresent: true, boards }
 	} catch (err) {
 		// Surface WHY detection failed so Windows "nrfutil not found" can be diagnosed:

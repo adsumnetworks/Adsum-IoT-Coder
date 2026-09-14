@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 /**
- * Canonical K-bit frontmatter schema — see `iot-knowledge/KBIT-SPEC.md`.
+ * Canonical K-bit frontmatter schema — see `kbit-authoring/KBIT-SPEC.md`.
  *
  * This is the single source of truth, consumed by:
  *  - the linter (`scripts/kbit-lint.ts`),
@@ -9,7 +9,7 @@ import { z } from "zod"
  *  - the authoring wizard (P1),
  *  - the Node backend registry (P2).
  *
- * The JSON Schema artifact `iot-knowledge/kbit.schema.json` is GENERATED from this
+ * The JSON Schema artifact `kbit-authoring/kbit.schema.json` is GENERATED from this
  * file via `npm run gen:kbit-schema` (do not hand-edit the JSON; CI checks it is in sync).
  */
 
@@ -54,6 +54,9 @@ export const KBIT_GROUPS = [
 	"blg20-9151-src",
 	// opens the BLG20 gateway card; by request, unlocked per developer as certification lands
 	"blg20-early-access",
+	// the advanced knowledge behind each BLG20x source rung; granted with the rung [13 Sep 2026]
+	"blg20-adv-ble",
+	"blg20-adv-full",
 	// staff / partner catch-all: holding it satisfies every other group
 	"all",
 ] as const
@@ -135,6 +138,9 @@ const artifactEntry = z
 		// no-LTE variant beside a demo hex and licensed source, and they are one bit with one history.
 		// Absent ⇒ the bit's own `group` applies, and if that is absent too, the member is free.
 		group: z.enum(KBIT_GROUPS).optional(),
+		// A file shared on purpose by free and gated bundles (a licence notice, an installer): readable by anyone.
+		// Never allowed on an image or source; the registry refuses it there and refuses an undeclared shared file.
+		open: z.literal(true).optional(),
 	})
 	.strict()
 

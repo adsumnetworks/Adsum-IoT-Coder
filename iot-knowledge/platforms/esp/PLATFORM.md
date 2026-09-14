@@ -2,7 +2,7 @@
 id: adsum/esp/platform
 title: "ESP32 — Platform Index"
 type: knowledge
-version: 1.5.1
+version: 1.5.2
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -78,6 +78,8 @@ Load the board file once the target chip is known (from `sdkconfig`, the build a
 |---|---|
 | `esp32s3` | `boards/esp32-s3.md` |
 | `esp32` (DevKitC v4) | `boards/esp32-devkitc-v4.md` |
+| `esp32c3` | `boards/esp32-c3.md` |
+| `esp32c6` | `boards/esp32-c6.md` |
 
 Other targets (`esp32c6`, `esp32c3`, …) are supported by the toolchain; board files are added as they are validated on hardware.
 

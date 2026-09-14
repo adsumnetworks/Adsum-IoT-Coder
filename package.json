@@ -110,6 +110,21 @@
 		},
 		"commands": [
 			{
+				"command": "adsum.account.signIn",
+				"title": "Sign in",
+				"icon": "$(sign-in)"
+			},
+			{
+				"command": "adsum.account.menu",
+				"title": "Account",
+				"icon": "$(account)"
+			},
+			{
+				"command": "adsum.pasteSignInLink",
+				"title": "Paste sign-in link",
+				"category": "Adsum"
+			},
+			{
 				"command": "adsum-iot-coder.plusButtonClicked",
 				"title": "New Task",
 				"icon": "$(add)"
@@ -230,18 +245,24 @@
 			},
 			{
 				"command": "adsum-iot-coder.exportSession",
-				"title": "Export this session…",
+				"title": "Export this session\u2026",
 				"category": "Adsum"
 			},
 			{
 				"command": "adsum-iot-coder.exportEngineConfig",
-				"title": "Export engine configuration…",
+				"title": "Export engine configuration\u2026",
 				"category": "Adsum"
 			},
 			{
 				"command": "adsum-iot-coder.headlessEngineInfo",
 				"title": "Headless engine info",
 				"category": "Adsum"
+			},
+			{
+				"command": "adsum.dev.writeRoutingForTest",
+				"title": "Adsum Dev: Write routing fields for a test",
+				"category": "Adsum",
+				"enablement": "cline.isDevMode"
 			}
 		],
 		"keybindings": [
@@ -280,8 +301,18 @@
 					"when": "view == adsum-iot-coder.SidebarProvider"
 				},
 				{
-					"command": "adsum-iot-coder.settingsButtonClicked",
+					"command": "adsum.account.signIn",
 					"group": "navigation@3",
+					"when": "view == adsum-iot-coder.SidebarProvider && !adsum.signedIn"
+				},
+				{
+					"command": "adsum.account.menu",
+					"group": "navigation@3",
+					"when": "view == adsum-iot-coder.SidebarProvider && adsum.signedIn"
+				},
+				{
+					"command": "adsum-iot-coder.settingsButtonClicked",
+					"group": "navigation@4",
 					"when": "view == adsum-iot-coder.SidebarProvider"
 				}
 			],
@@ -357,6 +388,10 @@
 				{
 					"command": "adsum-iot-coder.reviewComment.reply",
 					"when": "false"
+				},
+				{
+					"command": "adsum.dev.writeRoutingForTest",
+					"when": "cline.isDevMode"
 				}
 			],
 			"comments/commentThread/context": [
@@ -380,7 +415,7 @@
 				"adsum-iot-coder.telemetry.enabled": {
 					"type": "boolean",
 					"default": true,
-					"markdownDescription": "Send anonymous usage telemetry to help improve Adsum IoT Coder. Telemetry is also gated by VS Code's global `#telemetry.telemetryLevel#` setting — disabling either one stops all data collection. See [TELEMETRY.md](https://github.com/adsumnetworks/Adsum-IoT-Coder/blob/main/TELEMETRY.md) for full details on what is and isn't collected.",
+					"markdownDescription": "Send anonymous usage telemetry to help improve Adsum IoT Coder. Telemetry is also gated by VS Code's global `#telemetry.telemetryLevel#` setting \u2014 disabling either one stops all data collection. See [TELEMETRY.md](https://github.com/adsumnetworks/Adsum-IoT-Coder/blob/main/TELEMETRY.md) for full details on what is and isn't collected.",
 					"tags": [
 						"telemetry",
 						"usesOnlineServices"
@@ -399,12 +434,12 @@
 						"off"
 					],
 					"default": "off",
-					"markdownDescription": "**(Not available in this release.)** How Adsum behaves when no inference model is configured. `auto`: if no provider/key is set, card execution defaults to handing over to your own coding agent (Adsum conducts: knowledge, toolchain commands, tracking, snapshots — zero Adsum tokens). `always`: conductor mode even when a provider is configured. `off`: never suggest conductor mode."
+					"markdownDescription": "**(Not available in this release.)** How Adsum behaves when no inference model is configured. `auto`: if no provider/key is set, card execution defaults to handing over to your own coding agent (Adsum conducts: knowledge, toolchain commands, tracking, snapshots \u2014 zero Adsum tokens). `always`: conductor mode even when a provider is configured. `off`: never suggest conductor mode."
 				},
 				"adsum-iot-coder.modelPricing": {
 					"type": "object",
 					"default": {},
-					"markdownDescription": "Your own prices for a model, in **USD per million tokens**. Overrides both the built-in table and the figures Adsum fetches — use it for a negotiated rate, a regional price list, or a vendor change we have not published yet.\n\nKeyed by model id. Only the fields you give are overridden; the rest keep their existing value.\n\n```json\n{\n  \"deepseek-v4-flash\": { \"outputPrice\": 1.32, \"cacheWritesPrice\": 0.44, \"cacheReadsPrice\": 0.014 }\n}\n```\n\nDeepSeek's off-peak half-price window is applied on top automatically — enter the full rate.",
+					"markdownDescription": "Your own prices for a model, in **USD per million tokens**. Overrides both the built-in table and the figures Adsum fetches \u2014 use it for a negotiated rate, a regional price list, or a vendor change we have not published yet.\n\nKeyed by model id. Only the fields you give are overridden; the rest keep their existing value.\n\n```json\n{\n  \"deepseek-v4-flash\": { \"outputPrice\": 1.32, \"cacheWritesPrice\": 0.44, \"cacheReadsPrice\": 0.014 }\n}\n```\n\nDeepSeek's off-peak half-price window is applied on top automatically \u2014 enter the full rate.",
 					"additionalProperties": {
 						"type": "object",
 						"properties": {
@@ -452,7 +487,7 @@
 		"watch:esbuild": "node esbuild.mjs --watch",
 		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
 		"package": "npm run check-types && npm run build:webview && npm run lint && node esbuild.mjs --production && npm run compile-standalone:prod",
-		"//vsix": "Build the installable VSIX. It ALWAYS lands in dist/ — never the repo root, which holds a decade of old builds and made the current one impossible to find.",
+		"//vsix": "Build the installable VSIX. It ALWAYS lands in dist/ \u2014 never the repo root, which holds a decade of old builds and made the current one impossible to find.",
 		"vsix": "npm run package && npx vsce package --no-dependencies --allow-star-activation --out dist/",
 		"protos": "node scripts/build-proto.mjs",
 		"protos-go": "node scripts/build-go-proto.mjs",
@@ -482,6 +517,7 @@
 		"test:precedence": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/precedence.node-test.ts",
 		"test:cve-tool": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/cra/cveScanTool.node-test.ts",
 		"test:databits": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/dataBits.node-test.ts",
+		"test:knowledge-tree": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/knowledgeTreeHoldsNoAuthoring.node-test.ts",
 		"test:bundle-parity": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/nrf/toolBundleParity.node-test.ts",
 		"test:cra-honesty": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/verdictScan.test.ts",
 		"test:cra-structure": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/honesty/structureScan.node-test.ts",
@@ -512,7 +548,8 @@
 		"ci:check-all": "npm-run-all -p check-types lint format",
 		"ci:build": "npm run protos && npm run build:webview && node esbuild.mjs && npm run compile-tests",
 		"pretest": "npm run compile && npm run compile-tests && npm run compile-standalone && npm run lint",
-		"test": "npm-run-all test:unit test:integration",
+		"test": "npm-run-all test:unit test:node test:integration",
+		"test:node": "node scripts/run-node-tests.mjs",
 		"test:integration": "vscode-test",
 		"test:unit": "cross-env TS_NODE_PROJECT=./tsconfig.unit-test.json mocha",
 		"test:nordic": "cross-env TS_NODE_PROJECT=./tsconfig.unit-test.json mocha --config mocha-nordic.json",
@@ -588,12 +625,14 @@
 		"test:chip-identity": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/knowledge/chipIdentityParity.node-test.ts",
 		"test:hil-bits": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/hil-bits.ts",
 		"test:ask-bridge": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/askBridge.node-test.ts",
+		"test:ask-ordering": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/askOrdering.node-test.ts",
+		"test:kbit-credit": "ts-node --transpile-only -P tsconfig.unit-test.json -r tsconfig-paths/register src/core/task/tools/handlers/kbitCredit.node-test.ts",
 		"test:session-lease": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/sessionLease.node-test.ts",
 		"test:inject-queue": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/test/injectQueue.node-test.ts",
 		"test:telemetry-events": "ts-node --transpile-only -P tsconfig.unit-test.json -r ./src/test/requires.ts src/services/telemetry/__tests__/telemetryEvents040.node-test.ts",
 		"test:terminal-events": "ts-node --transpile-only -P tsconfig.unit-test.json src/hosts/vscode/terminal/terminalEndEvents.node-test.ts",
 		"test:gnss-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/gnssGate.node-test.ts",
-		"test:logger-tools": "python3 -m unittest discover -s iot-knowledge/platforms/nrf/tools/rtt-logger -p 'test_*.py'"
+		"test:logger-tools": "python3 -m unittest discover -s iot-knowledge/platforms/nrf/tools/rtt-logger -p 'test_*.py' && python3 -m unittest discover -s iot-knowledge/platforms/esp/tools/esp-monitor -p 'test_*.py'"
 	},
 	"lint-staged": {
 		"src/shared/storage/state-keys.ts": [

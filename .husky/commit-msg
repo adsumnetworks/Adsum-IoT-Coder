@@ -1,0 +1,6 @@
+#!/bin/sh
+# Reject commit messages that name an AI co-author or a generated-with line (operator rule, 13 Sep 2026).
+if grep -qiE "Co-Authored-By: *Claude|noreply@anthropic|Generated with \[?Claude|Anthropic" "$1"; then
+  echo "commit-msg: an AI co-author or vendor line is not allowed in this repository (operator rule)." >&2
+  exit 1
+fi

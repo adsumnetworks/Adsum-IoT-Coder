@@ -1,8 +1,8 @@
-# K-bit Specification (`iot-knowledge/KBIT-SPEC.md`)
+# K-bit Specification (`kbit-authoring/KBIT-SPEC.md`)
 
 **Status:** v0 (P0a) · **Audience:** anyone authoring or reviewing a knowledge bit.
 
-A **K-bit** is a self-contained, versioned unit of expert knowledge in `iot-knowledge/`: a **workflow** (ordered multi-step procedure), an **action** (atomic subroutine), or a **knowledge** doc (reference). This file turns the corpus's *implicit* conventions into a **checkable contract**: a required YAML frontmatter block + body house-style rules. The linter (`scripts/kbit-lint.ts`) enforces it; the canonical schema lives in `src/services/knowledge/kbit/schema.ts` (zod) and is mirrored to `iot-knowledge/kbit.schema.json` for editors.
+A **K-bit** is a self-contained, versioned unit of expert knowledge in `iot-knowledge/`: a **workflow** (ordered multi-step procedure), an **action** (atomic subroutine), or a **knowledge** doc (reference). This file turns the corpus's *implicit* conventions into a **checkable contract**: a required YAML frontmatter block + body house-style rules. The linter (`scripts/kbit-lint.ts`) enforces it; the canonical schema lives in `src/services/knowledge/kbit/schema.ts` (zod) and is mirrored to `kbit-authoring/kbit.schema.json` for editors.
 
 > **Why a contract:** retrieval, the manifest/index, and (later) the marketplace only work if bits are *structurally consistent*. Hand-maintained indexes have already drifted from the files; an enforced schema + generated index fixes that class of bug.
 
@@ -212,5 +212,5 @@ platform: universal
 ## 8. How it's checked / used
 
 - **Linter** (`npm run lint:kbits`): leading-block extraction → schema validation → `requires`/link resolution → undeclared-dangerous-ops → H1-path (warn). Chained into `npm run lint` (CI).
-- **Schema:** `src/services/knowledge/kbit/schema.ts` is canonical (zod); `iot-knowledge/kbit.schema.json` is **generated** from it (`npm run gen:kbit-schema`) and kept in sync by CI.
+- **Schema:** `src/services/knowledge/kbit/schema.ts` is canonical (zod); `kbit-authoring/kbit.schema.json` is **generated** from it (`npm run gen:kbit-schema`) and kept in sync by CI.
 - **Migration:** P0a migrates `add-feature` as the reference. P0b migrates the rest and **generates** `PLATFORM.md`/`AGENT.md` indexes from frontmatter.

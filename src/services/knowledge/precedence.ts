@@ -61,6 +61,11 @@ export type PrecedenceReason =
 	 * serve, and reporting it as "fetch-failed" would blame the network for a gate.
 	 */
 	| "locked"
+	/**
+	 * The registry refused the credential (401/403): the developer's sign-in has expired or was revoked.
+	 * Not a network failure, and not a lock the account could open — the fix is to sign in again.
+	 */
+	| "auth-refused"
 
 export type PrecedenceChoice<B, R> =
 	/** A dev-only local file (`ADSUM_KBIT_LOCAL`) — an author editing a bit under F5. */
@@ -249,6 +254,8 @@ export function reasonText(reason: PrecedenceReason): string {
 			return "registry copy could not be parsed"
 		case "locked":
 			return "this account does not hold the entitlement for it"
+		case "auth-refused":
+			return "the sign-in was refused; sign in again"
 		case "offline-uncached":
 			return "registry override unavailable offline"
 		case "unreadable":

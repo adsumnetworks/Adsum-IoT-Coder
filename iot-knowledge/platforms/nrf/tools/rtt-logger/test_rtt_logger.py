@@ -111,5 +111,65 @@ class ZeroCaptureIsReported(unittest.TestCase):
         self._check(UART, "uart_zero")
 
 
+
+class CaptureNeverResetsUnlessAsked(unittest.TestCase):
+    """
+    2026-09-14: a capture of a board that was not the developer's began "[RESET] Device … reset successfully",
+    and its LED was then reported as evidence about the developer's bootloader. A capture reads; it resets
+    only when --reset is passed, and --no-reset wins.
+    """
+
+    def _uart_resets(self, argv):
+        mod = load(UART, "uart_reset_default")
+        seen = {}
+        mod.require_serial = lambda: None
+        mod.get_device_serial = lambda port: "1051878474"
+        mod.record_logs = lambda devices, duration, output, reset_serials, delay: seen.setdefault("serials", reset_serials) and {} or {}
+        mod.honour_out_file = lambda out, files: files
+        mod.report_zero_capture = lambda *a, **k: False
+        old = sys.argv
+        sys.argv = ["nrf_uart_logger.py", "--capture", "--port", "/dev/ttyACM2", "--duration", "1"] + argv
+        try:
+            mod.main()
+        finally:
+            sys.argv = old
+        return list(seen.get("serials") or [])
+
+    def _rtt_resets(self, argv):
+        mod = load(RTT, "rtt_reset_default")
+        seen = {}
+
+        def capture(devices, duration, output, reset=None, **kw):
+            seen["reset"] = reset
+            return {}
+
+        mod.capture_rtt_logs = capture
+        mod.honour_out_file = lambda out, files: files
+        old = sys.argv
+        sys.argv = ["nrf_rtt_logger.py", "--port", "1051878474", "--duration", "1"] + argv
+        try:
+            try:
+                mod.main()
+            except SystemExit:
+                pass
+        finally:
+            sys.argv = old
+        return seen.get("reset")
+
+    def test_uart_capture_does_not_reset_by_default(self):
+        self.assertEqual(self._uart_resets([]), [], "a plain capture must not reset the device")
+
+    def test_uart_reset_is_an_opt_in(self):
+        self.assertEqual(self._uart_resets(["--reset"]), ["1051878474"])
+
+    def test_uart_no_reset_wins(self):
+        self.assertEqual(self._uart_resets(["--reset", "--no-reset"]), [])
+
+    def test_rtt_capture_does_not_reset_by_default(self):
+        self.assertFalse(self._rtt_resets([]), "a plain RTT capture must not reset the device")
+
+    def test_rtt_reset_is_an_opt_in(self):
+        self.assertTrue(self._rtt_resets(["--reset"]))
+
 if __name__ == "__main__":
     unittest.main()

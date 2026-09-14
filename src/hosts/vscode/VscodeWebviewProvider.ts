@@ -6,6 +6,7 @@ import { HostProvider } from "@/hosts/host-provider"
 import { ExtensionRegistryInfo } from "@/registry"
 import type { ExtensionMessage } from "@/shared/ExtensionMessage"
 import { WebviewMessage } from "@/shared/WebviewMessage"
+import { deliverToWebview } from "./deliverToWebview"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -194,7 +195,10 @@ export class VscodeWebviewProvider extends WebviewProvider implements vscode.Web
 	 * @returns A thenable that resolves to a boolean indicating success, or undefined if the webview is not available
 	 */
 	private async postMessageToWebview(message: ExtensionMessage): Promise<boolean | undefined> {
-		return this.webview?.webview.postMessage(message)
+		// Not awaited: a hidden or unready panel resolves delivery late, and a task that waited on it froze.
+		return deliverToWebview(this.webview?.webview, message, (e) =>
+			console.warn("[webview] message not delivered:", e instanceof Error ? e.message : String(e)),
+		)
 	}
 
 	override async dispose() {

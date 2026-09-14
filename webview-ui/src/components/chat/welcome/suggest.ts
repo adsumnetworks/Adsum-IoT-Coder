@@ -24,6 +24,8 @@ import type { WorkspacePlatform } from "./welcomeIntents"
 
 /** Everything the extension can actually see, in one place. */
 export interface Signals {
+	/** Chip identities the probes reported — the silicon's own answer, not the kit's name. */
+	nrfChips?: string[]
 	/** Nordic boards the detector currently reports. */
 	nrfBoards: string[]
 	/** ESP devices the detector currently reports. */
@@ -49,6 +51,14 @@ export interface Suggestable {
 	/** Shown instead of a platform reason when nothing is detected — for runs whose requirement is
 	 *  hardware we cannot see, like a sealed product needing its own programming kit. */
 	whyNeutral?: string
+	/**
+	 * What THIS run needs beyond the board already on the desk.
+	 *
+	 * Every product row used to say the same sentence — "this build also needs the rest of the kit" —
+	 * five times down one drawer, and the one thing that would have helped, which part is missing for
+	 * this run, was the part it did not say. A row that cannot name its own gap says nothing extra.
+	 */
+	needsAlso?: string
 	/** How to NAME the product to a person. Without it a reason line would print the internal id
 	 *  ("this looks like a lew840x project"), and an id is not a product name. */
 	productLabel?: string
@@ -137,7 +147,9 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 			return {
 				item,
 				score: SCORE.productPartial,
-				why: `${nrf ?? esp} is connected — this build also needs the rest of the kit`,
+				why: item.needsAlso
+					? `${nrf ?? esp} connected · this one also needs ${item.needsAlso}`
+					: `${nrf ?? esp} connected`,
 				grounded: true,
 			}
 		}

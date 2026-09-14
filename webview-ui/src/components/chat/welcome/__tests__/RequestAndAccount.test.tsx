@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import AccountSection from "../../../settings/sections/AccountSection"
 import { KbitLockedRow } from "../../KbitLockedRow"
 import CellularGroup from "../CellularGroup"
-import RequestAccessForm from "../RequestAccessForm"
+import RequestAccessForm, { chipsFor, FAMILIES } from "../RequestAccessForm"
 
 /**
  * W-14…W-21 — asking for what a free account does not give you, and the two doors out.
@@ -57,12 +57,8 @@ beforeEach(() => {
 describe("W — asking, and the account tab", () => {
 	it("W-14 the form says licensed source, offers both families and three chips, and never promises open source", () => {
 		render(<RequestAccessForm onClose={vi.fn()} open={true} />)
-		expect(screen.getByText("Request template source access")).toBeTruthy()
-		expect(
-			screen.getByText(
-				/The prebuilt gateway templates are licensed source\. Tell us what you’re building and which chips you need to customise\./,
-			),
-		).toBeTruthy()
+		expect(screen.getByText("Ask for more details")).toBeTruthy()
+		expect(screen.getByText(/These are licensed source; we will say what covers it\./)).toBeTruthy()
 		expect(screen.getByTestId("request-family")).toBeTruthy()
 		expect(screen.getByText("Fanstel LEW840x")).toBeTruthy()
 		expect(screen.getByText("Fanstel BLG20")).toBeTruthy()
@@ -83,16 +79,20 @@ describe("W — asking, and the account tab", () => {
 			fireEvent.click(screen.getByTestId("request-send"))
 		})
 		const sentBody = JSON.parse(rpc.requestAccess.mock.calls[0][0].value)
-		expect(sentBody).toEqual({ family: "lew840x", chips: ["ble-src", "esp-src"], message: "100 units in Q1" })
+		// Nothing is pre-ticked, so what is posted is exactly what the developer chose.
+		expect(sentBody).toEqual({ family: "lew840x", chips: ["esp-src"], message: "100 units in Q1" })
 		expect(onSent).toHaveBeenCalledWith("lew840x")
 		expect(screen.getByText("Request sent")).toBeTruthy()
 		expect(screen.getByText(/We reply within a business day to/)).toBeTruthy()
-		expect(screen.getByText(/the source will resolve in your next run\./)).toBeTruthy()
+		expect(screen.getByText(/card will say so when it is yours\./)).toBeTruthy()
 	})
 
 	it("W-15b a second request for the same family says which case it hit, not a generic failure", async () => {
 		rpc.requestAccess.mockResolvedValue({ value: JSON.stringify({ ok: false, reason: "already_open" }) })
 		render(<RequestAccessForm onClose={vi.fn()} open={true} />)
+		// Nothing is pre-ticked, so there is nothing to send until the developer says what they want.
+		expect((screen.getByTestId("request-send") as HTMLButtonElement).disabled).toBe(true)
+		fireEvent.click(screen.getByTestId("request-chip-ble-src"))
 		await act(async () => {
 			fireEvent.click(screen.getByTestId("request-send"))
 		})
@@ -111,19 +111,17 @@ describe("W — asking, and the account tab", () => {
 
 	it("W-16 the gateway card's source line reflects the SERVER's view of the request", () => {
 		const { unmount } = render(<CellularGroup onSelectMode={vi.fn()} onStartTask={vi.fn()} />)
-		expect(screen.getByTestId("source-line").textContent).toBe("Request template source access →")
+		expect(screen.getByTestId("source-line").textContent).toBe("Ask for more details")
 		unmount()
 
 		state.current = account({ openRequests: ["lew840x"] })
 		const second = render(<CellularGroup onSelectMode={vi.fn()} onStartTask={vi.fn()} />)
-		expect(screen.getByTestId("source-line").textContent).toBe(
-			"Template source: request sent · we reply within a business day",
-		)
+		expect(screen.getByTestId("source-line").textContent).toBe("Asked today · we reply within a business day")
 		second.unmount()
 
 		state.current = account({ groups: ["cellular-advanced", "lew840x-ble-src"] })
 		render(<CellularGroup onSelectMode={vi.fn()} onStartTask={vi.fn()} />)
-		expect(screen.getByTestId("source-line").textContent).toBe("Template source: granted — it resolves in your next run")
+		expect(screen.getByTestId("source-line").textContent).toBe("Source: yours — it resolves in your next run")
 	})
 
 	it("W-17 signed out, the Account tab says what an account is for and offers one door", () => {
@@ -134,6 +132,31 @@ describe("W — asking, and the account tab", () => {
 		)
 		fireEvent.click(screen.getByTestId("account-signin"))
 		expect(screen.getByTestId("gate-panel")).toBeTruthy()
+	})
+
+	it("W-17b signed out with a sign-in waiting, the Account tab shows the paste field instead of the door", () => {
+		state.current = { adsumSignInPending: true }
+		render(<AccountSection renderSectionHeader={header} />)
+		expect(screen.getByTestId("signin-link-field")).toBeTruthy()
+		expect(screen.queryByTestId("account-signin")).toBeNull()
+	})
+
+	it("W-17c the header's account icon, signed out, opens the sign-in window in the Account section", () => {
+		const clearAccountIntent = vi.fn()
+		state.current = { accountIntent: "signin", clearAccountIntent }
+		render(<AccountSection renderSectionHeader={header} />)
+		expect(screen.getByTestId("gate-panel")).toBeTruthy()
+		expect(clearAccountIntent).toHaveBeenCalled()
+	})
+
+	it("W-17d the header menu's Sign out opens this section's confirmation, and confirming signs out through the host", async () => {
+		state.current = { ...account(), accountIntent: "signout", clearAccountIntent: vi.fn() }
+		render(<AccountSection renderSectionHeader={header} />)
+		const confirm = screen.getByTestId("signout-confirm-yes")
+		await act(async () => {
+			fireEvent.click(confirm)
+		})
+		expect(rpc.signOutAccount).toHaveBeenCalledTimes(1)
 	})
 
 	it("W-18 signed in, groups are shown as words and template source names its state", () => {
@@ -237,5 +260,32 @@ describe("W — asking, and the account tab", () => {
 		})
 		expect(screen.queryByTestId("delete-confirm")).toBeNull()
 		expect(rpc.deleteAccount).toHaveBeenCalledTimes(2)
+	})
+
+	it("the chips a family offers are that family's real silicon, and every family has some", () => {
+		// The point of the change: a BLG20's halves are an nRF54 and an nRF9151, so offering
+		// "nRF9160" against one files a request nobody can grant.
+		const blg20 = chipsFor("blg20").map((c) => c.id)
+		// THE CONTRACT. These four ids are what the backend's chip table for this family maps; the
+		// backend asserts the same four against this file, so neither side can be edited alone.
+		expect(blg20).toEqual(["prod-hex", "9151-src", "both-src", "adv"])
+		// The BLG20x list is the WAYS, in the developer's words — no part numbers to decode, and no
+		// entry for the demo pair, which a registered account already holds: a form that offers to
+		// request what you have is a form that files a request nobody needs to answer.
+		expect(chipsFor("blg20").every((c) => !/nRF|ESP|hex|image/i.test(c.label))).toBe(true)
+		expect(blg20).not.toContain("demo-hex")
+		expect(blg20).not.toContain("esp-src")
+		expect(blg20).not.toContain("9160-src")
+
+		// The other family is untouched.
+		expect(chipsFor("lew840x").map((c) => c.id)).toEqual(["ble-src", "esp-src", "9160-src"])
+
+		// Every family in the picker resolves to a non-empty list — a family whose chips did not
+		// resolve would render a form with nothing to tick and a Send button that never enables.
+		for (const f of FAMILIES) {
+			expect(chipsFor(f.id).length).toBeGreaterThan(0)
+		}
+		// And an unknown family falls back rather than throwing on [0].id.
+		expect(chipsFor("nope").length).toBeGreaterThan(0)
 	})
 })

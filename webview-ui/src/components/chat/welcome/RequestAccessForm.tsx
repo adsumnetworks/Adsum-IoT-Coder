@@ -6,7 +6,8 @@ import { AdsumServiceClient } from "@/services/grpc-client"
 import { BRAND_CYAN_UI } from "../brandColors"
 
 /**
- * "Request template source access" — the one thing a free account does not open.
+ * "Ask for more details" — the one door to everything a free account does not open, under the one
+ * name the rest of the product uses for it.
  *
  * It is a form and not a button because the answer depends on what they are building: a pilot of a
  * hundred units and a hobby port get different answers, and asking here is cheaper for both sides
@@ -22,11 +23,40 @@ export const FAMILIES = [
 	{ id: "blg20", label: "Fanstel BLG20" },
 ] as const
 
-export const CHIPS = [
-	{ id: "ble-src", label: "BLE (nRF52840)" },
-	{ id: "esp-src", label: "ESP32" },
-	{ id: "9160-src", label: "nRF9160" },
-] as const
+/**
+ * What a family can be asked for, per family.
+ *
+ * Per family and not one list, because the chips are the real silicon: a BLG20's BLE half is an
+ * nRF54 and its cellular half an nRF9151, and offering "nRF9160" against a board that does not
+ * carry one files a request nobody can grant. The ids are the group suffixes the steward acts on,
+ * so a label may be rewritten freely and an id may not.
+ */
+export const CHIPS_BY_FAMILY = {
+	lew840x: [
+		{ id: "ble-src", label: "BLE (nRF52840)" },
+		{ id: "esp-src", label: "ESP32" },
+		{ id: "9160-src", label: "nRF9160" },
+	],
+	/*
+	 * The BLG20x list is the WAYS, not the parts. The demo pair is included with a registered
+	 * account, so offering it here would file a request for something the developer already has —
+	 * and the two images are not "chips" and the knowledge set is not "source", which is why the
+	 * field above them no longer says either word.
+	 */
+	blg20: [
+		{ id: "prod-hex", label: "Production licence" },
+		{ id: "9151-src", label: "Source for the radio half (cellular and satellite)" },
+		{ id: "both-src", label: "Source for both halves" },
+		{ id: "adv", label: "The advanced knowledge set" },
+	],
+} as const
+
+/** The list for a family, and never an empty one: an unknown family falls back to the first. */
+export const chipsFor = (family: string): ReadonlyArray<{ id: string; label: string }> =>
+	CHIPS_BY_FAMILY[family as keyof typeof CHIPS_BY_FAMILY] ?? CHIPS_BY_FAMILY[FAMILIES[0].id]
+
+/** The historic export, kept so nothing that imports it breaks: the LEW840x list. */
+export const CHIPS = CHIPS_BY_FAMILY.lew840x
 
 export type RequestState = "none" | "sent" | "granted"
 
@@ -44,7 +74,18 @@ const NEUTRAL_EDGE = "color-mix(in srgb, var(--vscode-foreground) 22%, transpare
 const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, onSent, family: initialFamily }) => {
 	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
 	const [family, setFamily] = useState<string>(initialFamily ?? FAMILIES[0].id)
-	const [chips, setChips] = useState<string[]>(["ble-src"])
+	const [chips, setChips] = useState<string[]>([])
+
+	/*
+	 * A selection made for one family is meaningless in another - an ESP entry against a BLG20 is a
+	 * request nobody can answer - so changing the family clears the selection rather than carrying
+	 * the old ids across. It clears to NOTHING and never to a default: a pre-ticked box asks on the
+	 * developer's behalf for something they did not choose, and the first entry of a list is not a
+	 * guess worth making.
+	 */
+	useEffect(() => {
+		setChips([])
+	}, [family])
 	const [message, setMessage] = useState("")
 	const [sending, setSending] = useState(false)
 	const [sent, setSent] = useState(false)
@@ -162,8 +203,8 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 						<Title>Request sent</Title>
 						<Lead>
 							We reply within a business day to{" "}
-							<b style={{ color: "var(--vscode-foreground)" }}>{adsumAccount?.email}</b>. When access is granted the{" "}
-							{familyLabel.replace("Fanstel ", "")} card will say so, and the source will resolve in your next run.
+							<b style={{ color: "var(--vscode-foreground)" }}>{adsumAccount?.email}</b>. The{" "}
+							{familyLabel.replace("Fanstel ", "")} card will say so when it is yours.
 						</Lead>
 						<Row>
 							<Secondary onClick={onClose} testId="request-done">
@@ -173,11 +214,10 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 					</>
 				) : (
 					<>
-						<Title>Request template source access</Title>
-						<Lead>
-							The prebuilt gateway templates are licensed source. Tell us what you’re building and which chips you
-							need to customise.
-						</Lead>
+						<Title>Ask for more details</Title>
+						{/* One line: what to do. The old lead explained our licensing before asking the
+						    question, which is our concern and not the reader's at this moment. */}
+						<Lead>Tell us what you are building. These are licensed source; we will say what covers it.</Lead>
 						<Field label="Gateway family">
 							<select
 								data-testid="request-family"
@@ -191,9 +231,9 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 								))}
 							</select>
 						</Field>
-						<Field label="Chips you need as source">
+						<Field label="What you are asking about">
 							<div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-								{CHIPS.map((c) => (
+								{chipsFor(family).map((c) => (
 									<label
 										key={c.id}
 										style={{

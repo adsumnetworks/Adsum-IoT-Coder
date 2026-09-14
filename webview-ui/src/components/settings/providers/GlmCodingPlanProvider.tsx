@@ -5,6 +5,7 @@ import {
 	GLM_EFFORT_MODELS,
 	zaiCodingPlanModels,
 } from "@shared/api"
+import { PRICES_CHECKED_AT } from "@shared/liveModels"
 import { Mode } from "@shared/storage/types"
 import { VSCodeCheckbox, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -15,6 +16,7 @@ import { DropdownContainer, ModelSelector } from "../common/ModelSelector"
 import { getModeSpecificFields, normalizeApiConfiguration } from "../utils/providerUtils"
 import { getThinkingControl } from "../utils/thinkingControl"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
+import { useLiveModels } from "../utils/useLiveModels"
 
 /**
  * Props for the GlmCodingPlanProvider component
@@ -33,6 +35,10 @@ interface GlmCodingPlanProviderProps {
 export const GlmCodingPlanProvider = ({ showModelOptions, isPopup, currentMode }: GlmCodingPlanProviderProps) => {
 	const { apiConfiguration } = useExtensionState()
 	const { handleFieldChange, handleModeFieldChange } = useApiConfigurationHandlers()
+	// The models the GLM Coding Plan endpoint serves now; the shipped list until the answer arrives or if the call fails.
+	const models =
+		useLiveModels("zai-coding-plan", `${apiConfiguration?.zaiApiKey ?? ""}|${apiConfiguration?.zaiApiLine ?? ""}`) ??
+		zaiCodingPlanModels
 	const { selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, currentMode)
 	const { thinkingBudgetTokens, reasoningEffort } = getModeSpecificFields(apiConfiguration, currentMode)
 	// GLM controls thinking via thinking.type (on/off), not a token budget — so we reuse thinkingBudgetTokens purely as
@@ -64,8 +70,9 @@ export const GlmCodingPlanProvider = ({ showModelOptions, isPopup, currentMode }
 			{showModelOptions && (
 				<>
 					<ModelSelector
+						flagUnlisted
 						label="Model"
-						models={zaiCodingPlanModels}
+						models={models}
 						onChange={(e: any) =>
 							handleModeFieldChange(
 								{ plan: "planModeApiModelId", act: "actModeApiModelId" },
@@ -132,7 +139,12 @@ export const GlmCodingPlanProvider = ({ showModelOptions, isPopup, currentMode }
 						</div>
 					)}
 
-					<ModelInfoView isPopup={isPopup} modelInfo={selectedModelInfo} selectedModelId={selectedModelId} />
+					<ModelInfoView
+						isPopup={isPopup}
+						modelInfo={selectedModelInfo}
+						pricesCheckedAt={PRICES_CHECKED_AT["zai-coding-plan"]}
+						selectedModelId={selectedModelId}
+					/>
 				</>
 			)}
 		</div>

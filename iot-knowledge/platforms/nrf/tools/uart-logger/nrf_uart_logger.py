@@ -5,7 +5,7 @@ nrf_uart_logger.py - Cross-platform UART Logging Tool for Nordic nRF Devices
 Features:
 - Multi-device simultaneous logging
 - Pre-flight connection test
-- Automatic device reset before capture
+- Capture only: the device is never reset unless --reset is passed
 - Timestamped log files
 - Cross-platform (Windows/Mac/Linux)
 
@@ -19,9 +19,9 @@ Usage:
     # Record from single device
     python nrf_uart_logger.py --port /dev/ttyACM0 --duration 60 --output logs/
 
-    # Multi-device recording with reset
+    # Multi-device recording, resetting named devices first (explicit opt-in)
     python nrf_logger.py --devices central:/dev/ttyACM0,peripheral:/dev/ttyACM1 \
-                         --duration 60 --reset-serials 683007782,683247800 --output logs/
+                         --duration 60 --reset --reset-serials 683007782,683247800 --output logs/
 """
 
 import argparse
@@ -639,7 +639,7 @@ def record_logs(devices, duration, output_dir, reset_serials=None, pre_capture_d
         for remaining in range(int(total_pre_delay), 0, -1):
             print(f"  {remaining}s...", end='\r', flush=True)
             time.sleep(1)
-        print("  Ready! Starting reset...                 ")
+        print("  Ready! Starting reset...                 " if reset_serials else "  Ready.                                   ")
     else:
         time.sleep(stabilization_delay)
     
@@ -815,8 +815,11 @@ Usage:
     # this (2026-08-29).
     parser.add_argument("--out", help="Write the capture to exactly this FILE (single device)")
     parser.add_argument("--output", default="logs", help="Output directory (default: logs/)")
-    parser.add_argument("--reset", action="store_true", help="Reset device(s) before capture (DEFAULT for boot logs)")
-    parser.add_argument("--no-reset", action="store_true", help="Skip reset (for mid-runtime capture)")
+    # A capture must not change the thing it measures: it never resets unless asked. The old default
+    # (reset unless --no-reset) rebooted whatever board sat on the port, including a board nobody had
+    # confirmed was the one under discussion.
+    parser.add_argument("--reset", action="store_true", help="Reset device(s) before capture. Off by default: only for a boot sequence on a device the developer confirmed")
+    parser.add_argument("--no-reset", action="store_true", help="Do not reset (the default; kept so older callers still work, and it wins over --reset)")
     parser.add_argument("--reset-serials", help="Device serial numbers to reset (comma-separated, auto-detected if not provided)")
     parser.add_argument("--pre-capture-delay", type=int, default=0, help="Extra delay before reset in seconds (default: 0, recommended: 2-3 for boot logs)")
     parser.add_argument("--analyze", action="store_true", help="Analyze logs after recording")
@@ -848,7 +851,7 @@ Usage:
         
         # Use auto-detected devices
         devices = device_map
-        reset_serials = serials if not args.no_reset else []
+        reset_serials = serials if (args.reset and not args.no_reset) else []
         
         # Record logs
         log_files = record_logs(devices, args.duration, args.output, reset_serials, args.pre_capture_delay)
@@ -884,10 +887,10 @@ Usage:
         parser.print_help()
         return 1
     
-    # Determine if we should reset (DEFAULT: yes, unless --no-reset)
-    should_reset = not args.no_reset  # Default is True
-    if args.reset:
-        should_reset = True  # Explicit --reset overrides
+    # Reset only on explicit request; --no-reset always wins.
+    should_reset = bool(args.reset) and not args.no_reset
+    if not should_reset:
+        print("[NO RESET] Capturing the device as it is running; it is not reset. Pass --reset for a boot sequence.")
     
     # Parse or auto-detect reset serials
     reset_serials = []

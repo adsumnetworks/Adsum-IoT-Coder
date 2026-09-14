@@ -9,6 +9,8 @@ import {
 	CLAUDE_SONNET_1M_SUFFIX,
 	ModelInfo,
 } from "@shared/api"
+import { isServedLiveModel } from "@/core/api/models/liveModelLists"
+import { UNKNOWN_MODEL_INFO } from "@/shared/liveModels"
 import { ClineStorageMessage } from "@/shared/messages/content"
 import { fetch } from "@/shared/net"
 import { ApiHandler, CommonApiHandlerOptions } from "../index"
@@ -275,6 +277,10 @@ export class AnthropicHandler implements ApiHandler {
 		if (modelId && modelId in anthropicModels) {
 			const id = modelId as AnthropicModelId
 			return { id, info: anthropicModels[id] }
+		}
+		// Served by Anthropic but newer than the shipped table: send it as chosen, with conservative info.
+		if (modelId && isServedLiveModel("anthropic", modelId)) {
+			return { id: modelId, info: { ...UNKNOWN_MODEL_INFO } }
 		}
 		return {
 			id: anthropicDefaultModelId,

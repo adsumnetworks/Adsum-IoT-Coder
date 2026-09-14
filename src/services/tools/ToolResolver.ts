@@ -520,10 +520,14 @@ export function resetToolSnapshot(): void {
 export async function resolveToolAsync(id: string, cwd?: string): Promise<ToolResolution> {
 	const shipped = loadBundledTools(cwd).find((t) => t.id === id) ?? null
 	try {
-		const { downloadedEntries, precedenceEnvFor } = await import("@/services/knowledge/KnowledgeResolver")
+		const { downloadedEntries, isLockedInManifest, precedenceEnvFor } = await import("@/services/knowledge/KnowledgeResolver")
 		const { RegistryClient } = await import("@/services/knowledge/registry/RegistryClient")
 		const { ToolCache } = await import("./ToolCache")
 		const entry = toolEntriesFromDownloadedManifest(await downloadedEntries()).find((e) => String(e.id ?? "") === id)
+		// Named by the manifest as locked for this account: say so, and fetch nothing.
+		if (!entry && !shipped && (await isLockedInManifest(id))) {
+			return { unavailable: "locked" }
+		}
 		if (entry) {
 			const decision = choose(id, shipped ? { version: shipped.version } : null, entry, {
 				...precedenceEnvFor(),
@@ -666,7 +670,11 @@ export async function materialiseDownloadedToolResult(args: {
 				// conversations with the developer, so the reason travels with the refusal.
 				return {
 					unavailable:
-						r.kind === "locked" ? "locked" : r.kind === "unreachable" ? "registry-unreachable" : "not-fetched",
+						r.kind === "locked" || r.kind === "auth"
+							? "locked"
+							: r.kind === "unreachable"
+								? "registry-unreachable"
+								: "not-fetched",
 				}
 			}
 			fetched.push({ path: m.path, bytes: r.bytes, sha256: m.sha256 })

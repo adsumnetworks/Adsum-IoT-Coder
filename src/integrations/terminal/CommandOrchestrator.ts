@@ -15,6 +15,7 @@
 
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import { formatResponse } from "@core/prompts/responses"
+import { isSupersededAsk } from "@core/task/askOrdering"
 import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { Logger } from "@services/logging/Logger"
 import { TerminalHangStage, TerminalUserInterventionAction, telemetryService } from "@services/telemetry"
@@ -22,21 +23,21 @@ import { ClineTempManager } from "@services/temp"
 import { COMMAND_CANCEL_TOKEN } from "@shared/ExtensionMessage"
 import * as fs from "fs"
 import {
-    BUFFER_STUCK_TIMEOUT_MS,
-    CHUNK_BYTE_SIZE,
-    CHUNK_DEBOUNCE_MS,
-    CHUNK_LINE_COUNT,
-    COMPLETION_TIMEOUT_MS,
-    MAX_BYTES_BEFORE_FILE,
-    MAX_LINES_BEFORE_FILE,
-    SUMMARY_LINES_TO_KEEP,
+	BUFFER_STUCK_TIMEOUT_MS,
+	CHUNK_BYTE_SIZE,
+	CHUNK_DEBOUNCE_MS,
+	CHUNK_LINE_COUNT,
+	COMPLETION_TIMEOUT_MS,
+	MAX_BYTES_BEFORE_FILE,
+	MAX_LINES_BEFORE_FILE,
+	SUMMARY_LINES_TO_KEEP,
 } from "./constants"
 import type {
-    CommandExecutorCallbacks,
-    ITerminalManager,
-    OrchestrationOptions,
-    OrchestrationResult,
-    TerminalProcessResultPromise,
+	CommandExecutorCallbacks,
+	ITerminalManager,
+	OrchestrationOptions,
+	OrchestrationResult,
+	TerminalProcessResultPromise,
 } from "./types"
 
 /**
@@ -206,8 +207,13 @@ export async function orchestrateCommandExecution(
 						await flushBuffer()
 					}
 				}
-			} catch {
-				Logger.error("Error while asking for command output")
+			} catch (err) {
+				if (isSupersededAsk(err)) {
+					// More output, or the command's end, replaced this ask before anyone answered it. Expected.
+					Logger.debug("command output ask superseded by later output")
+				} else {
+					Logger.error("Error while asking for command output", err instanceof Error ? err : undefined)
+				}
 			} finally {
 				// Clear the stuck timer
 				if (bufferStuckTimer) {

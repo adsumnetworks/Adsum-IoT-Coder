@@ -4,6 +4,7 @@
 import assert from "node:assert"
 import { DIFF_VIEW_URI_SCHEME } from "@hosts/vscode/VscodeDiffViewProvider"
 import * as vscode from "vscode"
+import { loadCachedLiveModelLists } from "@/core/api/models/liveModelLists"
 import { type PriceOverride, setManualPrices } from "@/core/api/pricing/priceOverlay"
 import { loadCachedPrices, refreshDirectModelPrices } from "@/core/api/pricing/refreshDirectModelPrices"
 import { sendChatButtonClickedEvent } from "./core/controller/ui/subscribeToChatButtonClicked"
@@ -12,6 +13,10 @@ import { sendSettingsButtonClickedEvent } from "./core/controller/ui/subscribeTo
 import { sendWorktreesButtonClickedEvent } from "./core/controller/ui/subscribeToWorktreesButtonClicked"
 import { WebviewProvider } from "./core/webview"
 import { createClineAPI } from "./exports"
+import { registerAccountButton } from "./hosts/vscode/accountButton"
+import { promptAndPasteSignInLink } from "./hosts/vscode/pasteSignInLinkPrompt"
+import { sessionTokenChangedElsewhere, setStoredSessionTokenReader, stopSignInClaimPoll } from "./services/adsum/AccountState"
+import { setSignInElsewhereSurface } from "./services/adsum/signInElsewhere"
 import { Logger } from "./services/logging/Logger"
 import { cleanupTestMode, initializeTestMode } from "./services/test/TestMode"
 import "./utils/path" // necessary to have access to String.prototype.toPosix
@@ -85,6 +90,7 @@ https://github.com/microsoft/vscode-webview-ui-toolkit-samples/tree/main/framewo
 
 */
 
+import { shouldRegisterRoutingTestAid } from "./dev/commands/routingTestAid"
 import { TerminalRegistry } from "./hosts/vscode/terminal/VscodeTerminalRegistry"
 import { setEditorWindowResolver } from "./services/adsum/editorWindow"
 
@@ -107,6 +113,23 @@ export async function activate(context: vscode.ExtensionContext) {
 		const external = await vscode.env.asExternalUri(vscode.Uri.parse(`${scheme}://${context.extension.id}/auth/callback`))
 		return new URLSearchParams(external.query).get("windowId") ?? undefined
 	})
+
+	// Copy-and-paste sign-in: the browser's vscode:// link can open another editor window (two profiles, or the
+	// OS handing the scheme to another editor). The same link, pasted here, completes the sign-in.
+	registerAccountButton(context, async () => {
+		await vscode.commands.executeCommand("adsum-iot-coder.SidebarProvider.focus")
+	})
+	setStoredSessionTokenReader(async () => (await context.secrets.get("adsumSessionToken")) || undefined)
+	setSignInElsewhereSurface((text) => {
+		context.subscriptions.push(vscode.window.setStatusBarMessage(`$(sync~spin) ${text}`, 8000))
+	})
+	context.subscriptions.push({ dispose: () => stopSignInClaimPoll() })
+	context.subscriptions.push(
+		vscode.commands.registerCommand("adsum.pasteSignInLink", async () => {
+			await promptAndPasteSignInLink()
+			await WebviewProvider.getInstance()?.controller.postStateToWebview()
+		}),
+	)
 
 	// Initialize hook discovery cache for performance optimization
 	HookDiscoveryCache.getInstance().initialize(
@@ -389,6 +412,19 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 	context.subscriptions.push(vscode.window.registerUriHandler({ handleUri }))
 
+	// A development-only aid for putting a bench into a known routing configuration. Never registered
+	// in a production build — see shouldRegisterRoutingTestAid, which is the same condition, tested.
+	if (shouldRegisterRoutingTestAid(IS_DEV)) {
+		import("./dev/commands/routingTestAid")
+			.then((module) => {
+				context.subscriptions.push(...module.registerRoutingTestAid(webview.controller))
+				Logger.log("Adsum dev routing test aid registered")
+			})
+			.catch((error) => {
+				Logger.log("Failed to register the routing test aid: " + error)
+			})
+	}
+
 	// Register size testing commands in development mode
 	if (IS_DEV && IS_DEV === "true") {
 		// Use dynamic import to avoid loading the module in production
@@ -583,6 +619,17 @@ export async function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 	void loadCachedPrices().then(() => refreshDirectModelPrices())
+	// Which models each direct provider was last seen serving, so a model newer than the shipped list that was
+	// chosen in an earlier session is sent as chosen from the first request (see liveModelLists.ts).
+	// …and ask them again now, for every provider with a saved key, so the live list is in place before the
+	// picker is first opened. The picker and the settings panel still ask on open.
+	void loadCachedLiveModelLists()
+		.then(async () => {
+			const { warmLiveModelLists } = await import("@/core/controller/models/refreshDirectProviderModels")
+			const { StateManager } = await import("@/core/storage/StateManager")
+			await warmLiveModelLists(StateManager.get())
+		})
+		.catch(() => {})
 
 	handover.sweepClosedSessionsIntoHistory()
 	// The free tier appearing/running out changes the conductor verdict mid-session.
@@ -842,6 +889,12 @@ ${ctx.cellJson || "{}"}
 
 	context.subscriptions.push(
 		context.secrets.onDidChange(async (event) => {
+			// The Adsum session is shared by every window of this editor profile. A sign-in or sign-out in one of
+			// them reaches the others here, so no window keeps (or writes back) an account that is no longer stored.
+			if (event.key === "adsumSessionToken") {
+				sessionTokenChangedElsewhere((await context.secrets.get(event.key)) || undefined)
+				return
+			}
 			if (event.key === "adsum-iot-coder:accountId") {
 				// Check if the secret was removed (logout) or added/updated (login)
 				const secretValue = await context.secrets.get(event.key)

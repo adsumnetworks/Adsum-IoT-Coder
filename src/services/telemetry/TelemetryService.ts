@@ -2646,7 +2646,7 @@ export class TelemetryService {
 		// `locked` is the one that is not a fault: the bit exists and the account cannot open it. Kept in
 		// the same event so the ratio is visible — a corpus that is mostly locked to new developers is a
 		// packaging decision, and it should be measurable rather than inferred from support threads.
-		reason: "transient_fetch" | "not_in_registry" | "registry_unreachable" | "locked"
+		reason: "transient_fetch" | "not_in_registry" | "registry_unreachable" | "locked" | "auth_refused"
 		bitId?: string
 		afterRetry?: boolean
 	}) {

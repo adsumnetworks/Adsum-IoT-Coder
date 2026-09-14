@@ -19,9 +19,25 @@ interface OpenRouterHandlerOptions extends CommonApiHandlerOptions {
 	openRouterModelId?: string
 	openRouterModelInfo?: ModelInfo
 	openRouterProviderSorting?: string
+	/** Routing, in the developer's words; the API's field names live in openrouter-routing.ts. */
+	openRouterSellerOrder?: string
+	openRouterOnlyTheseSellers?: boolean
+	openRouterMaxInputPrice?: string
+	openRouterMaxOutputPrice?: string
+	openRouterRequireToolCalls?: boolean
+	openRouterExtraBody?: string
 	reasoningEffort?: string
 	thinkingBudgetTokens?: number
 	geminiThinkingLevel?: string
+}
+
+/** A price the developer typed, or nothing — an empty box is not a ceiling of zero. */
+function numberOrUndefined(value?: string): number | undefined {
+	if (value === undefined || value.trim() === "") {
+		return undefined
+	}
+	const n = Number(value)
+	return Number.isFinite(n) && n >= 0 ? n : undefined
 }
 
 export class OpenRouterHandler implements ApiHandler {
@@ -55,10 +71,23 @@ export class OpenRouterHandler implements ApiHandler {
 		return this.client
 	}
 
+	/**
+	 * One per request. The stall watchdog calls abort() when a stream goes silent; without a real abort the
+	 * HTTP request stayed open behind the error and the connection could be held for the next turn.
+	 */
+	private abortController?: AbortController
+
+	abort(): void {
+		this.abortController?.abort()
+	}
+
 	@withRetry()
 	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
 		const client = this.ensureClient()
 		this.lastGenerationId = undefined
+		this.abortController?.abort()
+		const controller = new AbortController()
+		this.abortController = controller
 
 		const stream = await createOpenRouterStream(
 			client,
@@ -70,6 +99,18 @@ export class OpenRouterHandler implements ApiHandler {
 			this.options.openRouterProviderSorting,
 			tools,
 			this.options.geminiThinkingLevel,
+			{
+				extraBody: this.options.openRouterExtraBody,
+				maxInputPrice: numberOrUndefined(this.options.openRouterMaxInputPrice),
+				maxOutputPrice: numberOrUndefined(this.options.openRouterMaxOutputPrice),
+				onlyThese: this.options.openRouterOnlyTheseSellers,
+				order: (this.options.openRouterSellerOrder ?? "")
+					.split(",")
+					.map((s) => s.trim())
+					.filter(Boolean),
+				requireToolCalls: this.options.openRouterRequireToolCalls,
+			},
+			{ signal: controller.signal },
 		)
 
 		let didOutputUsage: boolean = false

@@ -6,7 +6,7 @@
 			"id": "adsum/agent",
 			"title": "Identity & Persona",
 			"type": "knowledge",
-			"version": "1.4.1",
+			"version": "1.4.8",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -19,7 +19,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "AGENT.md",
-			"content_hash": "69eab2fd1faa8b6f87972807f1ea529f4fd6b6dc7b6d77b34d9c7891bdcfeeea"
+			"content_hash": "a2041fa8f048915eadc6992e2cca341cd47d00b7c898733f6f9f3d4c2bc8d21b"
 		},
 		{
 			"id": "adsum/cra/tools/cra-action",
@@ -75,7 +75,7 @@
 			"id": "adsum/esp/platform",
 			"title": "ESP32 — Platform Index",
 			"type": "knowledge",
-			"version": "1.5.1",
+			"version": "1.5.2",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -87,7 +87,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "platforms/esp/PLATFORM.md",
-			"content_hash": "1ec092cdf42246ebd322503b72aa4730305dee84f0fed4b4356d8c0aabfaf844"
+			"content_hash": "c61ae3ed3c3301f145e6a35d09bbc33c0a3ee619071084bc8adec30ec2e28d95"
 		},
 		{
 			"id": "adsum/esp/rules/bit-loading",
@@ -127,7 +127,7 @@
 			"id": "adsum/esp/rules/esp-terminal",
 			"title": "ESP Platform Rule: The ESP-IDF Device Tool",
 			"type": "knowledge",
-			"version": "1.1.0",
+			"version": "1.1.1",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -139,7 +139,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "platforms/esp/rules/esp-terminal.md",
-			"content_hash": "b74abdc56c5f7f3772a8c5363142a2e270630fe463b55d66cb6ca108e85c199b"
+			"content_hash": "2d08d0f4636eb76599b28444802b7e27eb154fe03f4c247edc4980576cd2ef8b"
 		},
 		{
 			"id": "adsum/esp/rules/skill-loading",
@@ -204,7 +204,7 @@
 			"id": "adsum/esp/tools/esp-monitor",
 			"title": "esp-monitor",
 			"type": "tool",
-			"version": "1.3.0",
+			"version": "1.3.1",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "Apache-2.0",
@@ -230,18 +230,18 @@
 				},
 				{
 					"path": "esp_monitor_logger.py",
-					"sha256": "a3fbbcc009c6639ab4ae845a9335b62665ccc85e4e05deeffb531b76c10cb855"
+					"sha256": "f14727ef8efb0e62c4f79782c5ad19074ade1387fdbe5a99de525bece0278133"
 				}
 			],
 			"readonly": false,
 			"path": "platforms/esp/tools/esp-monitor/TOOL.md",
-			"content_hash": "ddc45af59c661611753c1cd54dad2691baa4427410de3513fde67e90d0fdf6a3"
+			"content_hash": "0ca33c545bf7fe1e45974c2b3e6877de6c3e5932c303f1aca2f6d546c93851e1"
 		},
 		{
 			"id": "adsum/nrf/actions/capture-logs",
 			"title": "Action: Capture Device Logs",
 			"type": "action",
-			"version": "1.0.0",
+			"version": "1.0.2",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -258,7 +258,7 @@
 				"process-kill"
 			],
 			"path": "platforms/nrf/actions/capture-logs.md",
-			"content_hash": "4d081d58b293155906cba96834b81064dd963c296f113c4b1a885954fdc027ff"
+			"content_hash": "9483ebe16e10871ff1e14bf62933b6b80fbd82bdcb72e23b85a6ef4a77c51192"
 		},
 		{
 			"id": "adsum/nrf/actions/flash",
@@ -306,7 +306,7 @@
 			"id": "adsum/nrf/platform",
 			"title": "Nordic nRF — Platform Index",
 			"type": "knowledge",
-			"version": "1.8.1",
+			"version": "1.8.6",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -321,7 +321,7 @@
 				"flash"
 			],
 			"path": "platforms/nrf/PLATFORM.md",
-			"content_hash": "49d52f0f3b2162db0cdca34a9353d142d1514a9f475882aa8b619befd30bb5e9"
+			"content_hash": "570ee1ff1d1c7bde46d5384ddf3898cd11fb8a9b3ce6aaf5f0dd0c07babf0c22"
 		},
 		{
 			"id": "adsum/nrf/rules/bit-loading",
@@ -534,7 +534,7 @@
 			"id": "adsum/nrf/tools/rtt-logger",
 			"title": "rtt-logger",
 			"type": "tool",
-			"version": "1.1.1",
+			"version": "1.1.2",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "Apache-2.0",
@@ -552,7 +552,7 @@
 			"artifacts": [
 				{
 					"path": "nrf_rtt_logger.py",
-					"sha256": "3a3018698fbb8b2f6b5a382c7cba956d0413ffe81fba584b0977750dcd8ac36b"
+					"sha256": "7729ef75f3cf0e2c9aee0d6afc45f5f3ca0cd3b70ea8662aa1b4a530707c0eb0"
 				},
 				{
 					"path": "rtt-logger",
@@ -565,7 +565,7 @@
 			],
 			"readonly": false,
 			"path": "platforms/nrf/tools/rtt-logger/TOOL.md",
-			"content_hash": "78826dddeb1b9d96781b38dff3f6b4dafff686f5af02533992787eea69ba08bd"
+			"content_hash": "98db0fb97d64e20304944883e61cdce4efce2e69c393931649a47d8c26ba2d72"
 		},
 		{
 			"id": "adsum/nrf/tools/sniffer-decode",
@@ -604,7 +604,7 @@
 			"id": "adsum/nrf/tools/uart-logger",
 			"title": "uart-logger",
 			"type": "tool",
-			"version": "1.0.2",
+			"version": "1.0.3",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "Apache-2.0",
@@ -622,7 +622,7 @@
 			"artifacts": [
 				{
 					"path": "nrf_uart_logger.py",
-					"sha256": "f5a88d007fb5e6dc36825fc14f192e21d61f9b93a0188ba7c80184f3e7ee923a"
+					"sha256": "2967566a7ed51ef226ff367b239f9ab71d16bb4b4d9039b0b9f8b1107d56c44b"
 				},
 				{
 					"path": "uart-logger",
@@ -635,7 +635,7 @@
 			],
 			"readonly": false,
 			"path": "platforms/nrf/tools/uart-logger/TOOL.md",
-			"content_hash": "e2f7f023d05e3c204d095a3a7b0180ce33454beb9fe396ff3e50d61e33cf25bd"
+			"content_hash": "b4018c861c7ab9d2bdc0c5004f26cdee5cdf9551bfee189639f6da7a3df20541"
 		},
 		{
 			"id": "adsum/nrf/workflows/demo-debug",
@@ -660,7 +660,7 @@
 			"id": "adsum/rules/bit-loading",
 			"title": "Universal Rule: Bit Loading",
 			"type": "knowledge",
-			"version": "1.4.0",
+			"version": "1.4.1",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -670,13 +670,13 @@
 			"platform": "universal",
 			"supersedes": "adsum/rules/skill-loading",
 			"path": "rules/bit-loading.md",
-			"content_hash": "55ed3e8b60d18e6dd480daf3a986ff3c490ac49c8f5bc0fab82e47d9d4e2c764"
+			"content_hash": "ce9c721b1a432725005dcb072b495fd23bff7a2eaf7b1fd8f00d9917d766b12c"
 		},
 		{
 			"id": "adsum/rules/core",
 			"title": "Universal Embedded Rules",
 			"type": "knowledge",
-			"version": "1.6.1",
+			"version": "1.6.3",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -688,7 +688,7 @@
 				"adsum/nrf/tools/nrf-action"
 			],
 			"path": "rules/core.md",
-			"content_hash": "1058e52aa63e5dc0b308ea4e04e9d7ba588b32ff667d35f9ebc4aa50f92fe200"
+			"content_hash": "4ae38d3707ffa29189c19dc325cae0622da94c17e61f9c13f04cc4aa9da203e5"
 		},
 		{
 			"id": "adsum/rules/skill-loading",

@@ -8,8 +8,26 @@
  * Run: npm run test:account
  */
 import { strict as assert } from "node:assert"
-import { describe, test } from "node:test"
+import { after, before, describe, test } from "node:test"
+import { setImmediate as tick } from "node:timers/promises"
+import { __setTelemetryServiceForTest } from "@/services/telemetry"
 import * as account from "./AccountState"
+
+/**
+ * Telemetry the module fires without awaiting. Under this test there is no editor host, so the real service
+ * could not be created and five tests left a call running that rejected after they had ended — every
+ * assertion passed and the file still exited 1. A recording double ends that work inside the test (see
+ * `settled`), and it lets the sign-in event itself be asserted rather than merely survived.
+ */
+const captured: string[] = []
+before(() => {
+	__setTelemetryServiceForTest({
+		captureSignInCompleted: (props?: { groups: number }) => void captured.push(`signin_completed:${props?.groups ?? 0}`),
+	} as never)
+})
+after(() => __setTelemetryServiceForTest(null))
+/** Let every fire-and-forget capture started by the test finish before the test returns. */
+const settled = () => tick()
 
 // Persistence lives in StateManager and is exercised by the extension's own storage tests; these
 // cases drive the module in memory (`__setForTest` puts it there), because what is worth pinning
@@ -28,6 +46,37 @@ const json = (body: unknown, status = 200) =>
 	new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
 
 describe("X — the account, extension side", () => {
+	test("X-23 activation with a stored session tells listeners registered before it — the header shows signed in", async () => {
+		// Round 22 (B26): the account button registers its listener early in activation, before the account state is
+		// seeded from storage. The seed must notify, or a signed-in window shows "Sign in" until the next refresh.
+		const { StateManager } = await import("@/core/storage/StateManager")
+		const profile = { email: "dev@example.com", name: "", emailVerified: true, groups: [], fetchedAt: Date.now() }
+		const fake = {
+			getGlobalStateKey: (k: string) => (k === "adsumAccountProfile" ? profile : undefined),
+			getSecretKey: (k: string) => (k === "adsumSessionToken" ? "adu_stored" : undefined),
+			setGlobalState: () => {},
+			setSecret: () => {},
+		}
+		const holder = StateManager as unknown as { instance: unknown }
+		const saved = holder.instance
+		holder.instance = fake
+		const seen: (string | null)[] = []
+		const stop = account.onAccountChanged((p) => seen.push(p?.email ?? null))
+		try {
+			account.__setForTest({ token: undefined, profile: null })
+			await withFetch((async () => json({ error: "offline in test" }, 503)) as typeof fetch, async () => {
+				account.initAccountState()
+				await settled()
+			})
+			assert.equal(seen[0], "dev@example.com", "the first notification must carry the stored account")
+			assert.equal(account.getAccount()?.email, "dev@example.com")
+		} finally {
+			stop()
+			holder.instance = saved
+			account.__setForTest({ token: undefined, profile: null })
+		}
+	})
+
 	test("X-01 the sign-in URL carries the editor and a fresh nonce every time", () => {
 		const a = account.buildSignInUrl("github", "cursor")
 		const b = account.buildSignInUrl("github", "cursor")
@@ -74,6 +123,50 @@ describe("X — the account, extension side", () => {
 		assert.equal(account.getSessionToken(), "adu_live")
 		assert.equal(account.getAccount()?.email, "dev@example.com")
 		assert.equal(account.getAccount()?.groups.length, 1)
+		await settled()
+		assert.ok(captured.includes("signin_completed:1"), "a completed sign-in is counted, with how many groups it opened")
+	})
+
+	/**
+	 * B22, 14 Sep. Every window of one editor profile shares the stored session and profile. The bench window
+	 * signed in; another window of the same profile still held its own older account in memory, and wrote that
+	 * back. A window must take the stored session as the truth before it writes anything.
+	 */
+	test("X-22a a window holding an older session adopts the stored one and never writes its own back", async () => {
+		account.__setForTest({
+			token: "adu_older_window_session_aaaaaaaa",
+			profile: { email: "older@example.com", name: "", emailVerified: true, groups: ["all"], fetchedAt: 0 },
+		})
+		account.setStoredSessionTokenReader(async () => "adu_just_signed_in_elsewhere_bbbb")
+		const bearers: string[] = []
+		try {
+			await withFetch(
+				(async (_url: string | URL, init?: RequestInit) => {
+					const auth = String((init?.headers as Record<string, string>)?.Authorization ?? "")
+					bearers.push(auth)
+					return auth.endsWith("bbbb")
+						? json({ email: "bench@example.com", groups: ["cellular-advanced"] })
+						: json({ email: "older@example.com", groups: ["all"] })
+				}) as typeof fetch,
+				() => account.refresh(true),
+			)
+			await settled()
+			assert.equal(account.getSessionToken(), "adu_just_signed_in_elsewhere_bbbb")
+			assert.equal(account.getAccount()?.email, "bench@example.com")
+			assert.ok(!bearers.some((b) => b.endsWith("aaaaaaaa")), "the stale session must not be used or written back")
+		} finally {
+			account.setStoredSessionTokenReader(undefined)
+		}
+	})
+
+	test("X-22b a sign-out in another window signs this one out, without this window deleting anything", async () => {
+		account.__setForTest({
+			token: "adu_live_session_cccccccccccccccc",
+			profile: { email: "dev@example.com", name: "", emailVerified: true, groups: [], fetchedAt: Date.now() },
+		})
+		account.sessionTokenChangedElsewhere(undefined)
+		assert.equal(account.getSessionToken(), undefined)
+		assert.equal(account.getAccount(), null)
 	})
 
 	test("X-09 an open access request survives sign-in and refresh", async () => {
@@ -108,6 +201,7 @@ describe("X — the account, extension side", () => {
 			() => account.refresh(true),
 		)
 		assert.deepEqual(account.getAccount()?.openRequests, ["lew840x", "blg20"], "and the hourly refresh keeps it current")
+		await settled()
 	})
 
 	test("X-10 a callback that lands in a DIFFERENT window still completes the sign-in", async () => {
@@ -143,6 +237,7 @@ describe("X — the account, extension side", () => {
 			"edge-ai-advanced",
 			"lew840x-demo-hex",
 		])
+		await settled()
 	})
 
 	test("X-04 one callback per attempt — a replayed URL cannot mint a second session", async () => {
@@ -153,6 +248,7 @@ describe("X — the account, extension side", () => {
 			)
 		assert.equal(await call(), true)
 		assert.equal(await call(), false, "the nonce is spent by the first callback")
+		await settled()
 	})
 
 	test("X-05 hasGroup answers the lock, and `all` satisfies everything", () => {
@@ -231,6 +327,7 @@ describe("X — the account, extension side", () => {
 		// token it believes is live.
 		assert.equal(account.getSessionToken(), undefined)
 		assert.equal(account.getAccount(), null)
+		await settled()
 	})
 
 	/**

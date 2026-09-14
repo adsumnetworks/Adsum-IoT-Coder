@@ -1,7 +1,7 @@
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import { ApiHandler, ApiProviderInfo, buildApiHandler } from "@core/api"
 import { QuotaExhaustedError } from "@core/api/providers/adsum-free"
-import { guardStream } from "@core/api/stream-watchdog"
+import { autoRetryLimitFor, guardStream, startTurnWatchdog } from "@core/api/stream-watchdog"
 import { ApiStream } from "@core/api/transform/stream"
 import { parseAssistantMessageV2, ToolUse } from "@core/assistant-message"
 import { buildCompactionLedger } from "@core/context/context-management/CompactionLedger"
@@ -119,6 +119,8 @@ import { refreshWorkflowToggles } from "../context/instructions/user-instruction
 import { Controller } from "../controller"
 import { executeHook } from "../hooks/hook-executor"
 import { StateManager } from "../storage/StateManager"
+import { nextAskTs } from "./askOrdering"
+import { coalescePost } from "./coalescePost"
 import { FocusChainManager } from "./focus-chain"
 import { MessageStateHandler } from "./message-state"
 import { reconcileNativeToolContent } from "./nativeToolContent"
@@ -307,7 +309,10 @@ export class Task {
 		this.controller = controller
 		this.mcpHub = mcpHub
 		this.updateTaskHistory = updateTaskHistory
-		this.postStateToWebview = postStateToWebview
+		// B31b: never wait on the panel from the task path; later posts collapse into one trailing post.
+		this.postStateToWebview = coalescePost(postStateToWebview, (e) =>
+			Logger.warn(`[Task ${taskId}] state post to the panel failed: ${e instanceof Error ? e.message : String(e)}`),
+		)
 		this.reinitExistingTaskFromId = reinitExistingTaskFromId
 		this.cancelTask = cancelTask
 		this.clineIgnoreController = new ClineIgnoreController(cwd)
@@ -610,7 +615,7 @@ export class Task {
 			this.controller.context,
 			this.taskState,
 			this.messageStateHandler,
-			this.api,
+			() => this.api,
 			this.diffViewProvider,
 			this.mcpHub,
 			this.fileContextTracker,
@@ -686,7 +691,12 @@ export class Task {
 					// this.askResponse = undefined
 					// this.askResponseText = undefined
 					// this.askResponseImages = undefined
-					askTs = Date.now()
+					askTs = nextAskTs(
+						Math.max(
+							this.taskState.lastMessageTs ?? 0,
+							Number(this.messageStateHandler.getClineMessages().at(-1)?.ts ?? 0),
+						),
+					)
 					this.taskState.lastMessageTs = askTs
 					await this.messageStateHandler.addToClineMessages({
 						ts: askTs,
@@ -729,7 +739,12 @@ export class Task {
 					this.taskState.askResponseText = undefined
 					this.taskState.askResponseImages = undefined
 					this.taskState.askResponseFiles = undefined
-					askTs = Date.now()
+					askTs = nextAskTs(
+						Math.max(
+							this.taskState.lastMessageTs ?? 0,
+							Number(this.messageStateHandler.getClineMessages().at(-1)?.ts ?? 0),
+						),
+					)
 					this.taskState.lastMessageTs = askTs
 					await this.messageStateHandler.addToClineMessages({
 						ts: askTs,
@@ -747,7 +762,9 @@ export class Task {
 			this.taskState.askResponseText = undefined
 			this.taskState.askResponseImages = undefined
 			this.taskState.askResponseFiles = undefined
-			askTs = Date.now()
+			askTs = nextAskTs(
+				Math.max(this.taskState.lastMessageTs ?? 0, Number(this.messageStateHandler.getClineMessages().at(-1)?.ts ?? 0)),
+			)
 			this.taskState.lastMessageTs = askTs
 			await this.messageStateHandler.addToClineMessages({
 				ts: askTs,
@@ -2251,7 +2268,7 @@ export class Task {
 					!isClineProviderInsufficientCredits &&
 					!isAuthError &&
 					!isQuotaExhausted &&
-					this.taskState.autoRetryAttempts < 3
+					this.taskState.autoRetryAttempts < autoRetryLimitFor(error)
 				) {
 					// Auto-retry enabled with max 3 attempts: automatically approve the retry
 					this.taskState.autoRetryAttempts++
@@ -2279,7 +2296,7 @@ export class Task {
 						"error_retry",
 						JSON.stringify({
 							attempt: this.taskState.autoRetryAttempts,
-							maxAttempts: 3,
+							maxAttempts: autoRetryLimitFor(error),
 							delaySeconds: delay / 1000,
 							errorMessage: streamingFailedMessage,
 						}),
@@ -2313,8 +2330,8 @@ export class Task {
 						await this.say(
 							"error_retry",
 							JSON.stringify({
-								attempt: 3,
-								maxAttempts: 3,
+								attempt: autoRetryLimitFor(error),
+								maxAttempts: autoRetryLimitFor(error),
 								delaySeconds: 0,
 								failed: true, // Special flag to indicate retries exhausted
 								errorMessage: streamingFailedMessage,
@@ -2995,8 +3012,22 @@ export class Task {
 			this.taskState.isStreaming = true
 			let didReceiveUsageChunk = false
 
+			// The idle budget over the whole turn, chunk handling included (see startTurnWatchdog). When it fires the
+			// request is aborted, which ends the loop below with an error that is then handled as this stall.
+			const turnWatchdog = startTurnWatchdog({
+				isWaitingForUser: () => {
+					const last = this.messageStateHandler.getClineMessages().at(-1)
+					return last?.type === "ask" && !last.partial
+				},
+				onStall: (stall) => {
+					Logger.warn(`[Task ${this.taskId}] ${stall.message}`)
+					this.api.abort?.()
+				},
+			})
+
 			try {
 				for await (const chunk of stream) {
+					turnWatchdog.touch()
 					switch (chunk.type) {
 						case "usage":
 							this.streamHandler.setRequestId(chunk.id)
@@ -3128,7 +3159,9 @@ export class Task {
 						break
 					}
 				}
-			} catch (error) {
+			} catch (caught) {
+				// A turn the watchdog aborted surfaces as the SDK's abort error; report it as the stall it was.
+				const error = turnWatchdog.stalled ?? caught
 				// abandoned happens when extension is no longer waiting for the cline instance to finish aborting (error is thrown here when any function in the for loop throws due to this.abort)
 				if (!this.taskState.abandoned) {
 					const isQuotaExhaustedStream =
@@ -3138,7 +3171,7 @@ export class Task {
 					const clineError = ErrorService.get().toClineError(error, this.api.getModel().id)
 					const errorMessage = clineError.serialize()
 					// Auto-retry for streaming failures — skip for quota exhaustion (card handles it)
-					if (!isQuotaExhaustedStream && this.taskState.autoRetryAttempts < 3) {
+					if (!isQuotaExhaustedStream && this.taskState.autoRetryAttempts < autoRetryLimitFor(error)) {
 						this.taskState.autoRetryAttempts++
 
 						// Calculate exponential backoff for streaming failures: 2s, 4s, 8s
@@ -3149,7 +3182,7 @@ export class Task {
 							"error_retry",
 							JSON.stringify({
 								attempt: this.taskState.autoRetryAttempts,
-								maxAttempts: 3,
+								maxAttempts: autoRetryLimitFor(error),
 								delaySeconds: delay / 1000,
 								errorMessage,
 							}),
@@ -3164,13 +3197,13 @@ export class Task {
 								await this.controller.task.handleWebviewAskResponse("yesButtonClicked", "", [])
 							}
 						})
-					} else if (!isQuotaExhaustedStream && this.taskState.autoRetryAttempts >= 3) {
+					} else if (!isQuotaExhaustedStream && this.taskState.autoRetryAttempts >= autoRetryLimitFor(error)) {
 						// Show error_retry with failed flag to indicate all retries exhausted
 						await this.say(
 							"error_retry",
 							JSON.stringify({
-								attempt: 3,
-								maxAttempts: 3,
+								attempt: autoRetryLimitFor(error),
+								maxAttempts: autoRetryLimitFor(error),
 								delaySeconds: 0,
 								failed: true, // Special flag to indicate retries exhausted
 								errorMessage,
@@ -3185,6 +3218,7 @@ export class Task {
 					await this.reinitExistingTaskFromId(this.taskId)
 				}
 			} finally {
+				turnWatchdog.stop()
 				this.taskState.isStreaming = false
 			}
 

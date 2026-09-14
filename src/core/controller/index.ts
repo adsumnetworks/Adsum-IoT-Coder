@@ -31,7 +31,7 @@ import type * as vscode from "vscode"
 import { ClineEnv } from "@/config"
 import { HostProvider } from "@/hosts/host-provider"
 import { ExtensionRegistryInfo } from "@/registry"
-import { getAccount, onAccountChanged } from "@/services/adsum/AccountState"
+import { getAccount, isSignInPending, onAccountChanged } from "@/services/adsum/AccountState"
 import { getFreeTierTokensForDisplay } from "@/services/adsum/FreeTierState"
 import { AuthService } from "@/services/auth/AuthService"
 import { OcaAuthService } from "@/services/auth/oca/OcaAuthService"
@@ -1055,6 +1055,7 @@ export class Controller {
 			// dismissal ledger every other one-time card uses — and so a dismissal survives a reload
 			// rather than coming back on the next paint.
 			adsumUnlockedShow: !!getAccount() && !BannerService.get().isBannerDismissed(ADSUM_REGISTERED_BANNER),
+			adsumSignInPending: isSignInPending(),
 			queuedUserMessages: this.task?.noteQueue.snapshot(),
 			// One-time "leave a review" nudge — three independent gates must ALL hold:
 			//   1. flag: dark-launched, default OFF (src/shared/services/feature-flags) — flipped on remotely once a
