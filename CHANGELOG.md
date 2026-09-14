@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- A guided first run for the Fanstel BLG20x gateway. It starts with the plan and the parts to have on the desk,
+  then identifies the board from its probes, flashes the prebuilt image pair onto both halves, commissions the unit
+  from a browser, shows the unit's own view, and brings the first reading to your own tenant, with an update and a
+  command back as optional steps. Every step says where you are, what it ends with, and how to pick it up again.
+  Needs a free registered account.
+- Advanced knowledge for building on the BLG20x (bearer switching, satellite payloads, updates between the two halves,
+  commissioning internals and more), opened per account on request.
+- An account item in the panel header, next to history and settings: sign in when you are signed out; your account
+  and sign out when you are signed in. Every window of the editor follows the same session.
+
+### Changed
+- Sign-in finishes in the window that started it, even when the editor hands the browser's link to another window.
+  If it still cannot, the sign-in page shows the link once, and the sign-in window has a field to paste it into.
+- A knowledge bit your account cannot open is named as such, with the one way in: register, when a free account
+  opens it; ask for more details, when the set is opened on request. The answer continues from what it has read and
+  never fills the missing steps from general knowledge.
+- The BLG20x image pair now carries each half's bootloader, so a unit straight from the box comes up, and its
+  programming steps write the protection back before the reset, so the part stays unlocked.
+
+### Fixed
+- A task no longer slows to a step a minute while the editor window is hidden or behind another app.
+- A reply that stops arriving is ended, retried once, and then reported with a sentence you can act on, instead of
+  leaving the task waiting.
+- The account icon draws correctly in remote windows.
+
+
 ## [0.4.0] - 2026-09-09
 
 *0.3.2 and 0.3.3 were bench pre-releases and were never published; their work ships here.*
