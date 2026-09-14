@@ -6,7 +6,7 @@
 			"id": "adsum/agent",
 			"title": "Identity & Persona",
 			"type": "knowledge",
-			"version": "1.4.8",
+			"version": "1.4.9",
 			"owner": "adsum-core",
 			"author": "adsum",
 			"license": "CC-BY-SA-4.0",
@@ -19,7 +19,7 @@
 				"adsum/esp/tools/esp-action"
 			],
 			"path": "AGENT.md",
-			"content_hash": "a2041fa8f048915eadc6992e2cca341cd47d00b7c898733f6f9f3d4c2bc8d21b"
+			"content_hash": "82efef60adf83d936754f4c1e53029ce6067b848821eda52d432eda55d261be4"
 		},
 		{
 			"id": "adsum/cra/tools/cra-action",
