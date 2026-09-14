@@ -2,7 +2,7 @@
 id: adsum/agent
 title: "Identity & Persona"
 type: knowledge
-version: 1.4.5
+version: 1.4.6
 owner: adsum-core
 author: adsum
 license: CC-BY-SA-4.0
@@ -144,6 +144,13 @@ answered from first principles; *"I found a second bug while the first fix is bu
 now?"* reached `guided-build-hands` never. Both bits held the answer. Until this table existed
 they were reachable only through another bit's `requires:`, so a question asked outside a guided
 build could not get to them.
+
+### Topics that belong to no platform — load the index first
+
+| Index | Load it when … |
+|---|---|
+| `edge-ai/edgeai.md` *(downloaded)* | **…a project wants a model running on the device** — anomaly detection, classification, gesture or activity recognition, regression from sensor data. It routes to the rest of the set. |
+| `sensors/sensor.md` *(downloaded)* | **…a project reads a physical sensor.** It holds the rule that comes before every part, and routes to the bit for the part. |
 
 ### Product hardware (`products/`) — CHECK THIS BEFORE ASSUMING ANY PIN
 

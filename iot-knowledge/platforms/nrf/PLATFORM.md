@@ -2,7 +2,7 @@
 id: adsum/nrf/platform
 title: "Nordic nRF — Platform Index"
 type: knowledge
-version: 1.8.4
+version: 1.8.6
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -101,6 +101,9 @@ Load the board file when the project targets a specific SoC. Each file documents
 | `nrf54l15dk/nrf54l15/cpuapp` (+ cpuflpr, L10/L05 emulation) | nRF54L15 | `boards/nrf54l15dk.md` — min NCS 2.8.0 |
 | `nrf54lm20dk/nrf54lm20a/cpuapp` (emulation) / `nrf54lm20dk/nrf54lm20b/cpuapp` (native) | nRF54LM20 | `boards/nrf54lm20dk.md` — min NCS 3.3.0 |
 | `xiao_nrf54lm20a/nrf54lm20a/cpuapp` | nRF54LM20A (Seeed XIAO — not in NCS by default) | `boards/xiao-nrf54lm20a.md` *(bundled)* |
+| `nrf9151dk/nrf9151/ns` | nRF9151 | `boards/nrf9151dk.md` *(downloaded)* |
+| `nrf9161dk/nrf9161/ns` | nRF9161 | `boards/nrf9161dk.md` *(downloaded)* |
+| `nrf9160dk/nrf9160/ns` | nRF9160 | `boards/nrf9160dk.md` *(downloaded)* |
 
 Board targets use the Zephyr format: `<board>/<soc>` (e.g., `nrf52840dk/nrf52840`).
 
@@ -130,6 +133,9 @@ answer to "is this worth trying".
 | BLE Stack | `sdks/ncs/protocols/BLE.md` | Load when the project uses BLE (`CONFIG_BT=y`) or when debugging BLE-related issues. Also maps the BLE deep-dive bits below. |
 | BLE → HCI Monitor (interpret) | `sdks/ncs/protocols/BLE/hci-monitor.md` *(downloaded)* | Load before interpreting a decoded HCI trace (`logs/hci/*.hci.log`). Driven by the `hci-trace` workflow. |
 | BLE → OTA Sniffer (interpret) | `sdks/ncs/protocols/BLE/ota-sniffer.md` *(downloaded)* | Load before interpreting an over-the-air capture (`logs/sniffer/*`). Driven by the `ble-sniffer` workflow. |
+| BLE → Channel Sounding | `sdks/ncs/protocols/BLE/channel-sounding.md` *(downloaded)* | Load when the project measures distance between two Bluetooth devices, before choosing a sample or writing ranging code. |
+| DECT NR+ | `sdks/ncs/protocols/DECT-NR.md` *(downloaded)* | Load when the project uses DECT NR+ on an nRF91, or asks for a licence-exempt mesh on one. |
+| SAADC (analog input) | `sdks/ncs/peripherals/saadc.md` *(downloaded)* | Load before writing code that reads a voltage: an analog sensor, a battery divider, a current shunt. |
 
 ---
 
@@ -233,6 +239,29 @@ they report one. Paths are from the knowledge root.
 | A hosted IoT platform accepts the CoAP integration and then refuses or never opens its endpoint | `platforms/nrf/cloud/coap-integration-not-hosted.md` |
 | A second integration is refused as "maximum reached", or they are sizing a pilot on a hosted platform's free tier | `platforms/nrf/cloud/hosted-tenant-limits.md` |
 | A bill-of-materials upload is refused with a format error or a bare "not found", or they are about to spend a cloud scan | `platforms/nrf/cloud/sbom-spdx-only.md` |
+| A bug that persists across reboots vanished after reprogramming, or they are about to program a board whose stored data they need to keep | `platforms/nrf/knowledge/bench-programmer-must-not-chip-erase.md` |
+| A byte counter or data budget reads absurdly low, or zero, on a cellular part | `platforms/nrf/knowledge/byte-counter-reads-zero.md` |
+| A function enabled in the configuration is undefined at link time, or an option set to off comes back on | `platforms/nrf/knowledge/config-choice-silently-ignored.md` |
+| The debug reader finds no control block and the board looks dead, but the image verified good | `platforms/nrf/knowledge/console-on-a-committed-uart.md` |
+| They are about to write memory through the debug port on a running part, or a part stopped responding after they did | `platforms/nrf/knowledge/debug-write-halts-the-core.md` |
+| After a decommission or factory reset, the installer's phone connects and drops in under a second | `platforms/nrf/knowledge/decommission-leaves-the-phone-bonded.md` |
+| They are porting a vendor sample to a product and need to know whether it fits the slot | `platforms/nrf/knowledge/flash-headroom-of-a-sample.md` |
+| A stack overflow names the Bluetooth host's receive work queue, often on a large characteristic write | `platforms/nrf/knowledge/gatt-write-grows-the-stack.md` |
+| Records arrive over Bluetooth but the control-point response never comes | `platforms/nrf/knowledge/indicate-is-not-notify.md` |
+| The log says configuration was staged at boot, and the next line says the set in force is empty | `platforms/nrf/knowledge/init-order-erases-staged-config.md` |
+| A stored list silently fails to come back after a reboot, usually once it has grown | `platforms/nrf/knowledge/list-larger-than-a-sector.md` |
+| A phone that paired yesterday now connects and drops after a few seconds, and the unit looks dead | `platforms/nrf/knowledge/one-bond-slot.md` |
+| The commissioning tool or the phone will not show a passkey, or asks for a passkey the device never displayed | `products/fanstel/blg20x/passkey-from-address.md` — written for the BLG20x; the fix does not depend on the board |
+| A pin-edge interrupt never calls the button handler, and nothing errored at configure time | `platforms/nrf/knowledge/poll-the-button.md` |
+| The device lands on a different operator or network than the coverage map shows (a PLMN, MCC-MNC, that is not the one expected), or they want to lock the modem to a band chosen from a map or a prediction | `platforms/nrf/knowledge/scan-before-you-lock.md` |
+| Two processors share one button and a press is sometimes missed, or one part runs warm | `platforms/nrf/knowledge/shared-button-two-mcus.md` |
+| They want to give a peripheral a short local identifier, or a short identifier points at the wrong device the next day | `platforms/nrf/knowledge/short-id-needs-a-stable-identity.md` |
+| After swapping the SIM card the radio refuses to switch on, and a device reset does not help | `platforms/nrf/knowledge/sim-swap-stuck-context.md` |
+| An image staged into a spare slot by hand, from a script or a pipeline, reads back corrupt | `platforms/nrf/knowledge/stage-an-image-by-hand.md` |
+| The modem reports every system mode as unsupported on a modem that plainly works | `platforms/nrf/knowledge/system-mode-two-shapes.md` |
+| A record persisted to flash comes back half old and half new after a power loss, or they are about to persist one | `platforms/nrf/knowledge/torn-write-needs-a-crc.md` |
+| A command sent across a link sometimes never takes effect, and both ends report no drops | `platforms/nrf/knowledge/unacked-command-is-not-received.md` |
+| A build reports no watchdog on a part that plainly has one | `platforms/nrf/knowledge/watchdog-disabled-in-the-soc-file.md` |
 
 ### Internal Actions (loaded when a Workflow instructs, or the Command Gate in `rules/bit-loading.md` fires)
 
