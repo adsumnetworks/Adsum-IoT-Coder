@@ -9,7 +9,6 @@ import { Controller } from "@/core/controller"
 import { ExtensionRegistryInfo } from "@/registry"
 import { getCwd } from "@/utils/path"
 import { checkRespond, messagesSince, pendingAskFrom, sessionStateFrom } from "./askBridge"
-import { apiConfigurationReceivedAt, taskGate } from "./configReadiness"
 import { initializeGitRepository, validateWorkspacePath } from "./GitHelper"
 import { checkInject } from "./injectQueue"
 import { checkClaim, claim, type Lease } from "./sessionLease"
@@ -393,28 +392,6 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 					res.writeHead(400)
 					res.end(JSON.stringify({ error: "Missing task parameter" }))
 					return
-				}
-
-				// H1: never start on the host's default while the panel's saved settings are still on their way.
-				{
-					const started = Date.now()
-					for (;;) {
-						const gate = taskGate({
-							remote: Boolean(vscode.env.remoteName) && !apiKey,
-							configReceivedAt: apiConfigurationReceivedAt(),
-							waitedMs: Date.now() - started,
-						})
-						if (gate.verdict === "proceed") {
-							break
-						}
-						if (gate.verdict === "refuse") {
-							Logger.log(`Test server refused a task: ${gate.error}`)
-							res.writeHead(gate.status)
-							res.end(JSON.stringify({ error: gate.error }))
-							return
-						}
-						await new Promise((r) => setTimeout(r, 250))
-					}
 				}
 
 				// Get a visible webview instance

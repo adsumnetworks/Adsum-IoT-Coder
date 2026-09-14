@@ -10,7 +10,6 @@ import {
 import { buildApiHandler } from "@/core/api"
 import { getInstallId } from "@/services/adsum/InstallIdentity"
 import { telemetryService } from "@/services/telemetry"
-import { noteApiConfigurationReceived } from "@/services/test/configReadiness"
 import type { Controller } from "../index"
 
 /**
@@ -124,8 +123,6 @@ export async function updateApiConfigurationProto(
 
 		// Update the API configuration in storage
 		controller.stateManager.setApiConfiguration(convertedApiConfigurationFromProto)
-		// The seam holds a new task until this first delivery in a remote window (host issue H1).
-		noteApiConfigurationReceived()
 
 		// Detect BYOK conversion: user was on free tier, now switching to a real provider.
 		// Check both the stored provider string AND the live handler model id (bundle-safe),
