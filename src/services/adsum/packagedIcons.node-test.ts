@@ -60,10 +60,11 @@ describe("I — icons ship", () => {
 		assert.deepEqual(missing, [], `referenced by package.json but not packaged: ${missing.join(", ")}`)
 	})
 
-	test("I-02 the account icon: a codicon signed out, the contributed account-with-dot glyph signed in", () => {
+	test("I-02 the account icon: the outline person signed out, the same with a dot signed in, both from the packaged font", () => {
 		const cmd = (id: string) => pkg.contributes.commands.find((c: { command: string }) => c.command === id)
-		assert.equal(cmd("adsum.account.signIn").icon, "$(account)")
+		assert.equal(cmd("adsum.account.signIn").icon, "$(adsum-account)")
 		assert.equal(cmd("adsum.account.menu").icon, "$(adsum-account-signed-in)")
 		assert.equal(pkg.contributes.icons["adsum-account-signed-in"].default.fontPath, "assets/icons/adsum-account.woff")
+		assert.equal(pkg.contributes.icons["adsum-account"].default.fontPath, "assets/icons/adsum-account.woff")
 	})
 })

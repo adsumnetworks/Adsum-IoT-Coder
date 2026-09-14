@@ -17,9 +17,9 @@ const root = path.resolve(__dirname, "../../..")
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"))
 
 describe("H — the account icon", () => {
-	test("H-01 signed out: the plain account glyph, titled Sign in, between history and settings", () => {
+	test("H-01 signed out: the outline account glyph, titled Sign in, between history and settings", () => {
 		const cmd = pkg.contributes.commands.find((c: { command: string }) => c.command === "adsum.account.signIn")
-		assert.equal(cmd.icon, "$(account)")
+		assert.equal(cmd.icon, "$(adsum-account)")
 		assert.equal(cmd.title, "Sign in")
 		const rows = pkg.contributes.menus["view/title"] as { command: string; group: string; when: string }[]
 		const order = (id: string) => Number(rows.find((r) => r.command === id)?.group.split("@")[1])

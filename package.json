@@ -76,8 +76,15 @@
 					"fontCharacter": "\\e900"
 				}
 			},
+			"adsum-account": {
+				"description": "Adsum account, signed out: an outline head and shoulders, as the Account tab in settings",
+				"default": {
+					"fontPath": "assets/icons/adsum-account.woff",
+					"fontCharacter": "\\e900"
+				}
+			},
 			"adsum-account-signed-in": {
-				"description": "Adsum account, signed in: the account glyph with a dot",
+				"description": "Adsum account, signed in: the same outline with a solid dot at the lower right",
 				"default": {
 					"fontPath": "assets/icons/adsum-account.woff",
 					"fontCharacter": "\\e901"
@@ -114,7 +121,7 @@
 			{
 				"command": "adsum.account.signIn",
 				"title": "Sign in",
-				"icon": "$(account)"
+				"icon": "$(adsum-account)"
 			},
 			{
 				"command": "adsum.account.menu",
