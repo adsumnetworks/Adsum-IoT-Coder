@@ -46,7 +46,11 @@ export const RELEASE_NOTES = {
 	version: "0.4.0",
 
 	/** Hotfixes on top of `version`. `{ silent: true }` means "nothing to announce", and no toast fires. */
-	patches: {} as Record<string, PatchNote>,
+	patches: {
+		"0.4.1": {
+			note: "the Fanstel BLG20x guided first run, the account in the panel header, and the LEW840x cellular images",
+		},
+	} as Record<string, PatchNote>,
 
 	/** One line, plain words. The update toast is built from it. */
 	headline:

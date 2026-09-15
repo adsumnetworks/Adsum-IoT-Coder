@@ -165,7 +165,8 @@ describe("announcement copy names the shipping release", () => {
 		]
 		// Distinctive nouns from the release, not filler. Each must appear in the changelog (proving it is
 		// really this release's story) and in at least one live surface (proving users are told).
-		const themes = ["account", "cellular", "session", "message"]
+		// 0.4.1: the BLG20x first run, the account in the header, the LEW840x cellular images (the patch note carries them).
+		const themes = ["account", "cellular", "blg20x", "lew840x"]
 		for (const theme of themes) {
 			assert.ok(
 				entry.includes(theme),

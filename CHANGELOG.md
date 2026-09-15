@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-15
+
 ### Added
 - A guided first run for the Fanstel BLG20x gateway. It starts with the plan and the parts to have on the desk,
   then identifies the board from its probes, flashes the prebuilt image pair onto both halves, commissions the unit
@@ -15,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Needs a free registered account.
 - Advanced knowledge for building on the BLG20x (bearer switching, satellite payloads, updates between the two halves,
   commissioning internals and more), opened per account on request.
+- The Fanstel LEW840x cellular images: the demo pair (the card's bearer, in windows, and the ESP32 application with
+  the cellular rung) comes with a free registered account; the production bearer, with no limit, is opened per account.
+- The LEW840x BLE scanner source and the ESP32 application source without the cellular rung are free, like their
+  prebuilt images.
 - An account item in the panel header, next to history and settings: sign in when you are signed out; your account
   and sign out when you are signed in. Every window of the editor follows the same session.
 
@@ -22,8 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sign-in finishes in the window that started it, even when the editor hands the browser's link to another window.
   If it still cannot, the sign-in page shows the link once, and the sign-in window has a field to paste it into.
 - A knowledge bit your account cannot open is named as such, with the one way in: register, when a free account
-  opens it; ask for more details, when the set is opened on request. The answer continues from what it has read and
-  never fills the missing steps from general knowledge.
+  opens it; ask for more details, when the set is opened on request. Signed in, the row says the set is not in your
+  account and names it, and never offers Register; asking re-reads your account, so a set opened for you meanwhile is
+  there for the next task. The answer continues from what it has read and never fills the missing steps from general
+  knowledge.
+- The LEW840x request form asks for one thing: the full source with the cellular rung.
 - The BLG20x image pair now carries each half's bootloader, so a unit straight from the box comes up, and its
   programming steps write the protection back before the reset, so the part stays unlocked.
 
@@ -32,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A reply that stops arriving is ended, retried once, and then reported with a sentence you can act on, instead of
   leaving the task waiting.
 - The account icon draws correctly in remote windows.
+- The request form says when an option cannot be granted for that board, and that nothing was sent, instead of
+  asking you to try again.
 
 
 ## [0.4.0] - 2026-09-09
