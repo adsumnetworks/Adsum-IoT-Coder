@@ -56,6 +56,20 @@ describe("the way in", () => {
 		expect(requestFamilyFor("blg20-demo-hex")).toBe("blg20")
 	})
 
+	it("the transcript's locked row is told whether an account is signed in, as the home screen's cards are", () => {
+		// [15 Sep 2026] The account was in scope at the call site and never passed down, so the row could
+		// only branch on revoked and told a registered developer to register. The call site is read as
+		// text: a refactor that drops the prop would pass every component test and bring the row back.
+		const chatRow = readFileSync(join(process.cwd(), "src", "components", "chat", "ChatRow.tsx"), "utf8")
+		const call = /<KbitLockedRow\b[\s\S]*?\/>/.exec(chatRow)?.[0] ?? ""
+		expect(call, "ChatRow renders KbitLockedRow").not.toBe("")
+		expect(call).toMatch(/signedIn=\{signedIn\}/)
+		expect(chatRow).toMatch(/const signedIn = !!adsumAccount/)
+		// And the home screen decides the pill the same way, so the two surfaces cannot disagree again.
+		const welcome = readFileSync(join(process.cwd(), "src", "components", "chat", "welcome", "WelcomeView.tsx"), "utf8")
+		expect(welcome).toMatch(/adsumAccount \|\| isRequestOnlyGroup\(i\.group\) \? ASK_FOR_DETAILS : "Register"/)
+	})
+
 	const serverGroups = join(process.cwd(), "..", "..", "Adsum-Backend", "src", "services", "groups.ts")
 	it.skipIf(!existsSync(serverGroups))(`the tier here is exactly the server's REGISTERED_TIER (${serverGroups})`, () => {
 		const src = readFileSync(serverGroups, "utf8")

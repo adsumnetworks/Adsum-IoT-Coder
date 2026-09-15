@@ -1,3 +1,4 @@
+import { GROUP_WORDS } from "@shared/adsumGroupWords"
 import { useState } from "react"
 import { ASK_FOR_DETAILS, isRequestOnlyGroup } from "@/components/chat/welcome/welcomeIntents"
 import { BRAND_CYAN_UI } from "./brandColors"
@@ -49,14 +50,42 @@ interface KbitLockedRowProps {
 	bit: KbitLockedPayload
 	/** Opens the register gate. Absent ⇒ the row still renders, just without the button. */
 	onRegister?: () => void
-	/** Opens the request form — for a by-request set, and for the revoked case. */
+	/** Opens the request form — for a by-request set, for a signed-in developer, and for the revoked case. */
 	onRequestAccess?: () => void
+	/**
+	 * True when an account is signed in. The row then never says "register": the account exists, so
+	 * the words are "not in your account" and the one action is the ask. [15 Sep 2026] Without this the
+	 * row had two states, revoked or not, and a registered developer meeting a group they were never
+	 * granted read "needs a registered account" beside a Register button that could open nothing — the
+	 * home screen's cards had read the account for the same decision since 13 Sep, and the transcript
+	 * had not, so the two surfaces disagreed about the same thing.
+	 */
+	signedIn?: boolean
 }
 
-export const KbitLockedRow = ({ bit, onRegister, onRequestAccess }: KbitLockedRowProps) => {
+/** What a locked row says after the title, by state. Exported so the states can be tested as words. */
+export function lockedWords(state: { byRequest: boolean; revoked: boolean; signedIn: boolean }): string {
+	if (state.byRequest) {
+		return "available on request"
+	}
+	if (state.revoked) {
+		return "no longer in your account"
+	}
+	if (state.signedIn) {
+		return "not in your account"
+	}
+	return "needs a registered account"
+}
+
+export const KbitLockedRow = ({ bit, onRegister, onRequestAccess, signedIn = false }: KbitLockedRowProps) => {
 	const [hover, setHover] = useState(false)
 	const revoked = !!bit.revoked
 	const byRequest = isRequestOnlyGroup(bit.group)
+	// Register is offered only when registering is what opens the bit: no account yet, and a set the
+	// registered tier carries. Every other state has the one door, under its one name.
+	const registerOpens = !byRequest && !revoked && !signedIn
+	// The set is named in the developer's words, so they can ask for the right thing instead of guessing.
+	const setWords = bit.group ? GROUP_WORDS[bit.group] : undefined
 	// One action, one phrase. "Ask for more details" is what the card pill and the sub-line on the
 	// home screen say for the same thing, so the developer meets one door and not three names for it.
 	const askButton = onRequestAccess && (
@@ -98,11 +127,12 @@ export const KbitLockedRow = ({ bit, onRegister, onRequestAccess }: KbitLockedRo
 					curated by <PersonLink links={bit.links} name={bit.author} />
 				</span>
 			)}
-			<span>
-				· {byRequest ? "available on request" : revoked ? "no longer in your account" : "needs a registered account"}
+			<span data-testid="kbit-locked-words">
+				· {lockedWords({ byRequest, revoked, signedIn })}
+				{setWords ? ` · ${setWords}` : ""}
 			</span>
 			{bit.summary && byRequest && <span className="basis-full pl-[25px] opacity-90">{bit.summary}</span>}
-			{byRequest || revoked ? (
+			{!registerOpens ? (
 				askButton
 			) : onRegister ? (
 				<button

@@ -35,6 +35,16 @@ export async function requestAccess(controller: Controller, request: StringReque
 			// Two tabs, or a second ask before we answered the first. Not a failure to apologise for.
 			return reply({ ok: false, reason: "already_open" })
 		}
+		if (res.status === 400) {
+			// The server refuses an option that names no group on this family rather than filing an
+			// empty request; the form must say that, not "try again", or the developer retries a thing
+			// that can never send. [15 Sep 2026]
+			const detail = await res.text().catch(() => "")
+			if (/no known group/i.test(detail)) {
+				return reply({ ok: false, reason: "unknown_option" })
+			}
+			return reply({ ok: false, reason: "http_400" })
+		}
 		if (!res.ok) {
 			return reply({ ok: false, reason: `http_${res.status}` })
 		}

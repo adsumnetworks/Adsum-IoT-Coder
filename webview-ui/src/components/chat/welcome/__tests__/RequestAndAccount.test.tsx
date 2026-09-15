@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import AccountSection from "../../../settings/sections/AccountSection"
-import { KbitLockedRow } from "../../KbitLockedRow"
+import { KbitLockedRow, lockedWords } from "../../KbitLockedRow"
 import CellularGroup from "../CellularGroup"
 import RequestAccessForm, { chipsFor, FAMILIES } from "../RequestAccessForm"
 
@@ -107,6 +107,15 @@ describe("W — asking, and the account tab", () => {
 			fireEvent.click(screen.getByTestId("request-send"))
 		})
 		expect(screen.getByTestId("request-error").textContent).toContain("has not been sent")
+
+		// An option the server cannot resolve to a group on this family is refused, and the form says
+		// which option class it hit — never "try again", which would send the developer round again.
+		rpc.requestAccess.mockResolvedValue({ value: JSON.stringify({ ok: false, reason: "unknown_option" }) })
+		await act(async () => {
+			fireEvent.click(screen.getByTestId("request-send"))
+		})
+		expect(screen.getByTestId("request-error").textContent).toContain("not one we can grant")
+		expect(screen.queryByText("Request sent")).toBeNull()
 	})
 
 	it("W-16 the gateway card's source line reflects the SERVER's view of the request", () => {
@@ -223,6 +232,46 @@ describe("W — asking, and the account tab", () => {
 
 		fireEvent.click(screen.getByTestId("kbit-locked-register"))
 		expect(onRegister).toHaveBeenCalledTimes(1)
+	})
+
+	it("W-20b signed in and never granted, the row says the set is not in the account, names it, and asks — never Register", () => {
+		// Omar, 15 Sep 2026, with the grants in place: a registered developer read "needs a registered
+		// account" beside a Register button on a bit they were never granted. The row branched on
+		// revoked alone; the account was in scope at the call site and not passed down.
+		const onRegister = vi.fn()
+		const onRequestAccess = vi.fn()
+		render(
+			<KbitLockedRow
+				bit={{
+					id: "adsum/nrf/protocols/lte-attach",
+					title: "nRF91 LTE attach",
+					author: "Omar El Sayed",
+					group: "cellular-advanced",
+				}}
+				onRegister={onRegister}
+				onRequestAccess={onRequestAccess}
+				signedIn={true}
+			/>,
+		)
+		const words = screen.getByTestId("kbit-locked-words").textContent ?? ""
+		expect(words).toContain("not in your account")
+		expect(words).toContain("Advanced cellular")
+		expect(words).not.toContain("needs a registered account")
+		expect(screen.queryByTestId("kbit-locked-register")).toBeNull()
+		expect(screen.getByText("Omar El Sayed")).toBeTruthy()
+		fireEvent.click(screen.getByTestId("kbit-locked-request"))
+		expect(onRequestAccess).toHaveBeenCalledTimes(1)
+		expect(onRegister).not.toHaveBeenCalled()
+	})
+
+	it("W-20c the four states are four different sentences, and only the signed-out tier state says register", () => {
+		const off = { byRequest: false, revoked: false, signedIn: false }
+		expect(lockedWords(off)).toBe("needs a registered account")
+		expect(lockedWords({ ...off, signedIn: true })).toBe("not in your account")
+		expect(lockedWords({ ...off, revoked: true })).toBe("no longer in your account")
+		expect(lockedWords({ ...off, byRequest: true })).toBe("available on request")
+		// Revoked while signed in stays the more specific sentence.
+		expect(lockedWords({ ...off, revoked: true, signedIn: true })).toBe("no longer in your account")
 	})
 
 	it("W-21 a revoked bit reads differently — telling an account holder to register is nonsense", () => {

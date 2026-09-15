@@ -9,7 +9,7 @@ import {
 	ClineSayTool,
 	COMPLETION_RESULT_CHANGES_FLAG,
 } from "@shared/ExtensionMessage"
-import { StringRequest } from "@shared/proto/cline/common"
+import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
 import { Mode } from "@shared/storage/types"
 import deepEqual from "fast-deep-equal"
 import {
@@ -48,7 +48,7 @@ import McpResourceRow from "@/components/mcp/configuration/tabs/installed/server
 import McpToolRow from "@/components/mcp/configuration/tabs/installed/server-row/McpToolRow"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { cn } from "@/lib/utils"
-import { FileServiceClient, UiServiceClient } from "@/services/grpc-client"
+import { AdsumServiceClient, FileServiceClient, UiServiceClient } from "@/services/grpc-client"
 import { findMatchingResourceOrTemplate, getMcpServerDisplayName } from "@/utils/mcp"
 import CodeAccordian, { cleanPathPrefix } from "../common/CodeAccordian"
 import { CommandOutputContent, CommandOutputRow } from "./CommandOutputRow"
@@ -993,14 +993,26 @@ export const ChatRowContent = memo(
 						// request form. Sending it to the register gate would satisfy nothing: that gate's
 						// condition is a group registration does not grant, so it could never close.
 						const byRequest = isRequestOnlyGroup(locked?.group)
+						// A signed-in developer is never sent to register either: the account exists. Their
+						// row asks, and re-reads the account on the way, so a grant that landed since the
+						// task began is in force for the next one without an editor restart. [15 Sep 2026]
+						const signedIn = !!adsumAccount
+						const asks = byRequest || signedIn
+						const openAsk = () => {
+							if (signedIn) {
+								AdsumServiceClient.refreshAccount(EmptyRequest.create({})).catch(() => {})
+							}
+							setRequestOpen(true)
+						}
 						return locked ? (
 							<>
 								<KbitLockedRow
 									bit={locked}
-									onRegister={byRequest ? undefined : () => setGateOpen(true)}
-									onRequestAccess={() => (byRequest ? setRequestOpen(true) : setGateOpen(true))}
+									onRegister={asks ? undefined : () => setGateOpen(true)}
+									onRequestAccess={() => (asks ? openAsk() : setGateOpen(true))}
+									signedIn={signedIn}
 								/>
-								{byRequest ? (
+								{asks ? (
 									<RequestAccessForm
 										family={requestFamilyFor(locked.group)}
 										onClose={() => setRequestOpen(false)}

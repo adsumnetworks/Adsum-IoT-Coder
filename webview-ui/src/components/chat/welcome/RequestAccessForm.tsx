@@ -128,9 +128,11 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 				setError(
 					out.reason === "already_open"
 						? "You already have an open request for this family — we are still on it."
-						: out.reason === "offline"
-							? "Adsum can’t be reached right now. Your request has not been sent."
-							: "That didn’t send. Try again in a moment.",
+						: out.reason === "unknown_option"
+							? "That option is not one we can grant on this family. Your request has not been sent."
+							: out.reason === "offline"
+								? "Adsum can’t be reached right now. Your request has not been sent."
+								: "That didn’t send. Try again in a moment.",
 				)
 			}
 		} catch {
