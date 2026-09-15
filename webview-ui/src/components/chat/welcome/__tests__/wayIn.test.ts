@@ -36,13 +36,15 @@ describe("the way in", () => {
 		}
 	})
 
-	it("every other group is asked for, including the five the old list missed", () => {
+	it("every other group is asked for, including the ones the old list missed", () => {
 		for (const g of EVERY_GROUP.filter((x) => !REGISTERED_TIER_GROUPS.includes(x))) {
 			expect(isRequestOnlyGroup(g), g).toBe(true)
 		}
 		for (const g of ["lew840x-prod-hex", "lew840x-ble-src", "lew840x-esp-src", "lew840x-9160-src", "blg20-demo-hex"]) {
 			expect(isRequestOnlyGroup(g), g).toBe(true)
 		}
+		// The LEW840x demo pair is back in the tier since 15 Sep 2026: registering is exactly what opens it.
+		expect(isRequestOnlyGroup("lew840x-demo-hex")).toBe(false)
 	})
 
 	it("no group, and the wildcard, are never a request", () => {

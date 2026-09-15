@@ -389,9 +389,10 @@ export const ASK_FOR_DETAILS = "Ask for more details"
  *
  * Mirrors REGISTERED_TIER on the server (Adsum-Backend `src/services/groups.ts`); `wayIn.test.ts` compares
  * the two whenever the backend checkout sits beside this one. blg20-demo-hex left the tier on 13 Sep 2026
- * and lew840x-demo-hex on 14 Sep: both demo pairs are granted per account.
+ * and is granted per account; lew840x-demo-hex left it on 14 Sep while its pair was withdrawn and returned
+ * on 15 Sep with the rebuilt pair published.
  */
-export const REGISTERED_TIER_GROUPS: readonly string[] = ["cellular-advanced", "edge-ai-advanced"]
+export const REGISTERED_TIER_GROUPS: readonly string[] = ["cellular-advanced", "edge-ai-advanced", "lew840x-demo-hex"]
 
 /**
  * Groups a person opens by hand, one developer at a time: every group outside the registered tier.
