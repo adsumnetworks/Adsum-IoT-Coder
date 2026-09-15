@@ -33,6 +33,34 @@ describe("api configuration proto round-trip", () => {
 		}
 	})
 
+	/**
+	 * [15 Sep 2026] Every control in the routing block — the sellers, both price ceilings, the two
+	 * checkboxes and the extra request body — was missing from this conversion AND from the proto
+	 * message behind it. The settings panel wrote them, the wire dropped them, the host sent the old
+	 * configuration back and the control returned to its previous value: on the bench nothing in that
+	 * block could be changed at all, and the values that were in it had been written by a dev-only
+	 * command. A field a panel can write and this wire cannot carry is a setting that never saves.
+	 */
+	test("every routing choice survives the wire, including an unticked box", () => {
+		const out = roundTrip({
+			actModeApiProvider: "openrouter",
+			openRouterProviderSorting: "latency",
+			openRouterSellerOrder: "baseten",
+			openRouterOnlyTheseSellers: true,
+			openRouterMaxInputPrice: "0.15",
+			openRouterMaxOutputPrice: "0.30",
+			openRouterRequireToolCalls: false,
+			openRouterExtraBody: '{"reasoning_effort": "low"}',
+		} as ApiConfiguration)
+		assert.equal(out.openRouterSellerOrder, "baseten")
+		assert.equal(out.openRouterOnlyTheseSellers, true)
+		assert.equal(out.openRouterMaxInputPrice, "0.15")
+		assert.equal(out.openRouterMaxOutputPrice, "0.30")
+		assert.equal(out.openRouterRequireToolCalls, false, "an unticked box must not come back ticked")
+		assert.equal(out.openRouterExtraBody, '{"reasoning_effort": "low"}')
+		assert.equal(out.openRouterProviderSorting, "latency")
+	})
+
 	test("the external-agent setup preferences survive the wire", () => {
 		const out = roundTrip({
 			actModeApiProvider: "external-agent",

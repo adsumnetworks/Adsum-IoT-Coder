@@ -448,6 +448,15 @@ export function convertApiConfigurationToProto(config: ApiConfiguration): ProtoA
 		anthropicBaseUrl: config.anthropicBaseUrl,
 		openRouterApiKey: config.openRouterApiKey,
 		openRouterProviderSorting: config.openRouterProviderSorting,
+		// Routing: the six fields the settings panel writes. Left out of this conversion until
+		// 15 Sep 2026, so every one of them was dropped on the way to the host and no value a
+		// developer typed or ticked in that block was ever saved.
+		openRouterSellerOrder: config.openRouterSellerOrder,
+		openRouterOnlyTheseSellers: config.openRouterOnlyTheseSellers,
+		openRouterMaxInputPrice: config.openRouterMaxInputPrice,
+		openRouterMaxOutputPrice: config.openRouterMaxOutputPrice,
+		openRouterRequireToolCalls: config.openRouterRequireToolCalls,
+		openRouterExtraBody: config.openRouterExtraBody,
 		awsAccessKey: config.awsAccessKey,
 		awsSecretKey: config.awsSecretKey,
 		awsSessionToken: config.awsSessionToken,
@@ -632,6 +641,12 @@ export function convertProtoToApiConfiguration(protoConfig: ProtoApiConfiguratio
 		anthropicBaseUrl: protoConfig.anthropicBaseUrl,
 		openRouterApiKey: protoConfig.openRouterApiKey,
 		openRouterProviderSorting: protoConfig.openRouterProviderSorting,
+		openRouterSellerOrder: protoConfig.openRouterSellerOrder,
+		openRouterOnlyTheseSellers: protoConfig.openRouterOnlyTheseSellers,
+		openRouterMaxInputPrice: protoConfig.openRouterMaxInputPrice,
+		openRouterMaxOutputPrice: protoConfig.openRouterMaxOutputPrice,
+		openRouterRequireToolCalls: protoConfig.openRouterRequireToolCalls,
+		openRouterExtraBody: protoConfig.openRouterExtraBody,
 		awsAccessKey: protoConfig.awsAccessKey,
 		awsSecretKey: protoConfig.awsSecretKey,
 		awsSessionToken: protoConfig.awsSessionToken,
