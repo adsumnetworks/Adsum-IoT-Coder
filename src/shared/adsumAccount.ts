@@ -15,6 +15,11 @@ export interface AdsumAccountState {
 	groups: string[]
 	/** Families with a template-source request still open, as the server sees it. */
 	openRequests: string[]
+	/**
+	 * The demo-pair tools the registry serves this account (`adsumDemoPairs.ts`), read from the manifest the
+	 * host already holds. Absent until the host has read it, which the panel treats as "do not hide".
+	 */
+	servedDemoTools?: string[]
 }
 
 /** True when this account opens a bit in `group`. No group ⇒ free to everyone, signed in or not. */

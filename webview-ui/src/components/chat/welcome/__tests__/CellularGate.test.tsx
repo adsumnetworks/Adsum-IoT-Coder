@@ -200,11 +200,13 @@ describe("W — the register gate", () => {
 		for (const bullet of [
 			"LTE-M, NB-IoT, NTN and DECT NR+ knowledge and tools",
 			"On-device inference on nRF54",
-			"The Fanstel gateway demo hexes",
 			"Template source, by request",
 		]) {
 			expect(screen.getByText(bullet)).toBeTruthy()
 		}
+		// [14 Sep 2026] Registering grants no demo images: both demo pairs are granted per account, so the
+		// gate that promised "the Fanstel gateway demo hexes" promised something the sign-up cannot deliver.
+		expect(document.body.textContent).not.toMatch(/demo hexes|demo images/i)
 		expect(screen.getByTestId("gate-provider-github").textContent).toContain("Continue with GitHub")
 		expect(screen.getByTestId("gate-provider-email").textContent).toContain("Continue with email")
 		// Every provider offered here must be one that actually works. Google is parked until it has an

@@ -10,6 +10,7 @@ import { isCheckpointsNotApplicableMessage } from "@integrations/checkpoints/Che
 import { ClineAccountService } from "@services/account/ClineAccountService"
 import { McpHub } from "@services/mcp/McpHub"
 import { ADSUM_REGISTERED_BANNER } from "@shared/adsumAccount"
+import { ALL_DEMO_PAIR_TOOLS } from "@shared/adsumDemoPairs"
 import type { ApiProvider, ModelInfo } from "@shared/api"
 import type { ChatContent } from "@shared/ChatContent"
 import type { ExtensionState, Platform } from "@shared/ExtensionMessage"
@@ -40,7 +41,7 @@ import { BannerService } from "@/services/banner/BannerService"
 import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import { featureFlagsService } from "@/services/feature-flags"
 import { getHandoverUiState } from "@/services/handover/HandoverUiState"
-import { consumeCraRanThisSession } from "@/services/knowledge/KnowledgeResolver"
+import { consumeCraRanThisSession, servedIdsSnapshot, warmDownloadedManifest } from "@/services/knowledge/KnowledgeResolver"
 import { getDistinctId } from "@/services/logging/distinctId"
 import { Logger } from "@/services/logging/Logger"
 import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
@@ -848,6 +849,24 @@ export class Controller {
 		await sendStateUpdate(state)
 	}
 
+	private demoToolsWarming = false
+	/**
+	 * Read the registry manifest once, then repaint, so the demo card can tell a pair the registry serves from
+	 * one it withdrew. Fires only while the answer is unknown, and never twice at once.
+	 */
+	private warmServedDemoTools(): void {
+		if (this.demoToolsWarming) {
+			return
+		}
+		this.demoToolsWarming = true
+		void warmDownloadedManifest().finally(() => {
+			this.demoToolsWarming = false
+			if (servedIdsSnapshot(ALL_DEMO_PAIR_TOOLS).known) {
+				void this.postStateToWebview()
+			}
+		})
+	}
+
 	async getStateToPostToWebview(): Promise<ExtensionState> {
 		// Get API configuration from cache for immediate access
 		const onboardingModels = getClineOnboardingModels()
@@ -1041,15 +1060,23 @@ export class Controller {
 			// the keychain: the panel is told WHAT is unlocked, never given the means to unlock it.
 			adsumAccount: (() => {
 				const a = getAccount()
-				return a
-					? {
-							email: a.email,
-							name: a.name,
-							emailVerified: a.emailVerified,
-							groups: a.groups,
-							openRequests: a.openRequests ?? [],
-						}
-					: undefined
+				if (!a) {
+					return undefined
+				}
+				// Which demo pairs the registry actually serves this account. Unknown until the manifest has been
+				// read, and unknown is sent as absent — the card then hides nothing — while a read is started.
+				const demo = servedIdsSnapshot(ALL_DEMO_PAIR_TOOLS)
+				if (!demo.known) {
+					this.warmServedDemoTools()
+				}
+				return {
+					email: a.email,
+					name: a.name,
+					emailVerified: a.emailVerified,
+					groups: a.groups,
+					openRequests: a.openRequests ?? [],
+					...(demo.known ? { servedDemoTools: demo.served } : {}),
+				}
 			})(),
 			// The one-time "what you unlocked" card. Computed here, not in the panel, so it uses the same
 			// dismissal ledger every other one-time card uses — and so a dismissal survives a reload

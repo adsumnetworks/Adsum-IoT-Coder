@@ -385,24 +385,29 @@ const REQUEST_ONLY_BOARDS = /blg20/i
 export const ASK_FOR_DETAILS = "Ask for more details"
 
 /**
- * Groups a person opens by hand, one developer at a time.
+ * What registering grants: the registered tier, and nothing else.
+ *
+ * Mirrors REGISTERED_TIER on the server (Adsum-Backend `src/services/groups.ts`); `wayIn.test.ts` compares
+ * the two whenever the backend checkout sits beside this one. blg20-demo-hex left the tier on 13 Sep 2026
+ * and lew840x-demo-hex on 14 Sep: both demo pairs are granted per account.
+ */
+export const REGISTERED_TIER_GROUPS: readonly string[] = ["cellular-advanced", "edge-ai-advanced"]
+
+/**
+ * Groups a person opens by hand, one developer at a time: every group outside the registered tier.
  *
  * Registering does not reach these and never will: they are opened after a conversation. A surface
  * that offers "Register" against one of them promises an unlock the sign-up cannot deliver — the
  * developer signs up, comes back, and the same thing is still out of reach. Every surface that can
  * show a locked thing asks this predicate, so the home screen and the transcript cannot drift into
  * telling different stories about the same group again.
+ *
+ * [14 Sep 2026] This was a hand-kept list of six BLG20x groups. It missed the LEW840x source and
+ * production groups and the BLG20x demo pair, so a registered developer who met one of those in a task
+ * was sent to "Register", which could never open it. Derived from the tier, it cannot miss one.
  */
-export const REQUEST_ONLY_GROUPS: readonly string[] = [
-	"blg20-early-access",
-	"blg20-adv-ble",
-	"blg20-adv-full",
-	"blg20-ble-src",
-	"blg20-9151-src",
-	"blg20-prod-hex",
-]
-
-export const isRequestOnlyGroup = (group?: string): boolean => !!group && REQUEST_ONLY_GROUPS.includes(group)
+export const isRequestOnlyGroup = (group?: string): boolean =>
+	!!group && group !== "all" && !REGISTERED_TIER_GROUPS.includes(group)
 
 /**
  * Which family's request form a group belongs to. The form is per board family, and a row in the
@@ -471,9 +476,9 @@ export const DEMO_PAIR_PROMPT_BLG20 =
 	"remember, and ask me which probe is which before you program anything."
 
 export const DEMO_HEX_PROMPT =
-	"Flash the Fanstel LEW840x demo. LOAD the lew840x demo-hex tool bit first — it carries the three " +
-	"signed hexes and their hashes, and I want the ones you verify, not ones you build. Then walk me " +
+	"Flash the Fanstel LEW840x demo. LOAD the lew840x demo-hex tool bit first — it carries the demo " +
+	"images and their hashes, and I want the ones you verify, not ones you build. Then walk me " +
 	"through it: check nrfutil and esptool are on this machine and say plainly if they are not, ask me " +
 	"which serial port is which, and flash the BLE scanner, the ESP32 uplink and the nRF9160 bearer in " +
-	"that order. Tell me the cellular bearer is capped at 60-minute sessions in this build before I " +
-	"start, not after."
+	"that order. Tell me the cellular bearer runs in 60-minute windows that come back by themselves, " +
+	"1,440 minutes in total, before I start, not after."

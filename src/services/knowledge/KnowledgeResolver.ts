@@ -938,6 +938,29 @@ export function invalidateForAccountChange(): void {
 	lockedById.clear()
 }
 
+/**
+ * Which of these ids the downloaded manifest serves this account, without fetching anything.
+ *
+ * `known` is false until the manifest has been read this session, or since the account last changed. A
+ * surface that must not offer something the registry withdrew reads this; nothing here waits on the network.
+ */
+export function servedIdsSnapshot(ids: readonly string[]): { known: boolean; served: string[] } {
+	const map = downloadedMap
+	if (!map) {
+		return { known: false, served: [] }
+	}
+	return { known: true, served: ids.filter((id) => map.has(id)) }
+}
+
+/** Read the manifest now, so a surface waiting on `servedIdsSnapshot` stops waiting. Never throws. */
+export async function warmDownloadedManifest(): Promise<void> {
+	try {
+		await downloadedManifest()
+	} catch {
+		// Offline and no cached catalog: the snapshot stays unknown, and unknown hides nothing.
+	}
+}
+
 /** Test-only: inject cache/registry doubles for the downloaded tier (no network). */
 export function __setRegistryHooks(hooks: { cache?: BitCache; registry?: RegistryClient }): void {
 	injectedCache = hooks.cache ?? null

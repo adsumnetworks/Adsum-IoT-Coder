@@ -41,7 +41,7 @@ export const KBIT_GROUPS = [
 	"cellular-advanced", // LTE-M / NB-IoT / NTN / DECT NR+ beyond chip-and-DK basics
 	"edge-ai-advanced", // on-device inference (nRF54 Axon)
 	// Fanstel LEW840x gateway artefacts
-	"lew840x-demo-hex", // the three signed demo hexes (cellular capped at 60 min per boot)
+	"lew840x-demo-hex", // the LEW840x demo images; granted per account since 14 Sep 2026 (cellular in 60-minute windows)
 	"lew840x-prod-hex", // the same builds without the cap — granted by hand for pilots
 	"lew840x-ble-src",
 	"lew840x-esp-src",

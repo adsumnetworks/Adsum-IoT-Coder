@@ -164,10 +164,12 @@ describe("W — asking, and the account tab", () => {
 		const kv = screen.getByTestId("account-kv").textContent ?? ""
 		expect(kv).toContain("ismail@adsumnetworks.com")
 		// Words, not ids: `cellular-advanced` is a thing our database recognises, not the developer.
-		expect(kv).toContain("Advanced cellular · On-device inference · LEW840x demo hexes")
+		expect(kv).toContain("Advanced cellular · On-device inference · LEW840x demo images")
 		expect(kv).not.toContain("cellular-advanced")
 		expect(screen.getByTestId("account-request")).toBeTruthy()
-		expect(kv).toContain("LEW840x hexes available · cellular in 60-minute sessions")
+		expect(kv).toContain("LEW840x demo pair")
+		// The line names the pair the account holds and no limit it cannot see: the cap lives on the card.
+		expect(kv).not.toContain("60-minute sessions")
 	})
 
 	it("W-18b a pending request and a granted one each say so, and the ask disappears once made", () => {
