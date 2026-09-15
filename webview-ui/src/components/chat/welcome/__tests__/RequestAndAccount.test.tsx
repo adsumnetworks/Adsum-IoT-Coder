@@ -55,16 +55,17 @@ beforeEach(() => {
 })
 
 describe("W — asking, and the account tab", () => {
-	it("W-14 the form says licensed source, offers both families and three chips, and never promises open source", () => {
+	it("W-14 the form says licensed source, offers both families and the one LEW840x ask, and never promises open source", () => {
 		render(<RequestAccessForm onClose={vi.fn()} open={true} />)
 		expect(screen.getByText("Ask for more details")).toBeTruthy()
 		expect(screen.getByText(/These are licensed source; we will say what covers it\./)).toBeTruthy()
 		expect(screen.getByTestId("request-family")).toBeTruthy()
 		expect(screen.getByText("Fanstel LEW840x")).toBeTruthy()
 		expect(screen.getByText("Fanstel BLG20")).toBeTruthy()
-		for (const chip of ["ble-src", "esp-src", "9160-src"]) {
-			expect(screen.getByTestId(`request-chip-${chip}`)).toBeTruthy()
-		}
+		// The BLE scanner and the ESP32-without-cellular source are free since 15 Sep 2026: not an ask.
+		expect(screen.getByTestId("request-chip-9160-src")).toBeTruthy()
+		expect(screen.queryByTestId("request-chip-ble-src")).toBeNull()
+		expect(screen.queryByTestId("request-chip-esp-src")).toBeNull()
 		expect(screen.getByTestId("request-message")).toBeTruthy()
 		expect(screen.getByText(/one open request per family\./)).toBeTruthy()
 		expect(document.body.textContent).not.toMatch(/open[- ]source/i)
@@ -73,14 +74,14 @@ describe("W — asking, and the account tab", () => {
 	it("W-15 sending posts the family, chips and message, and the sent state names the reply time", async () => {
 		const onSent = vi.fn()
 		render(<RequestAccessForm onClose={vi.fn()} onSent={onSent} open={true} />)
-		fireEvent.click(screen.getByTestId("request-chip-esp-src"))
+		fireEvent.click(screen.getByTestId("request-chip-9160-src"))
 		fireEvent.change(screen.getByTestId("request-message"), { target: { value: "100 units in Q1" } })
 		await act(async () => {
 			fireEvent.click(screen.getByTestId("request-send"))
 		})
 		const sentBody = JSON.parse(rpc.requestAccess.mock.calls[0][0].value)
 		// Nothing is pre-ticked, so what is posted is exactly what the developer chose.
-		expect(sentBody).toEqual({ family: "lew840x", chips: ["esp-src"], message: "100 units in Q1" })
+		expect(sentBody).toEqual({ family: "lew840x", chips: ["9160-src"], message: "100 units in Q1" })
 		expect(onSent).toHaveBeenCalledWith("lew840x")
 		expect(screen.getByText("Request sent")).toBeTruthy()
 		expect(screen.getByText(/We reply within a business day to/)).toBeTruthy()
@@ -92,7 +93,7 @@ describe("W — asking, and the account tab", () => {
 		render(<RequestAccessForm onClose={vi.fn()} open={true} />)
 		// Nothing is pre-ticked, so there is nothing to send until the developer says what they want.
 		expect((screen.getByTestId("request-send") as HTMLButtonElement).disabled).toBe(true)
-		fireEvent.click(screen.getByTestId("request-chip-ble-src"))
+		fireEvent.click(screen.getByTestId("request-chip-9160-src"))
 		await act(async () => {
 			fireEvent.click(screen.getByTestId("request-send"))
 		})
@@ -329,7 +330,7 @@ describe("W — asking, and the account tab", () => {
 		expect(blg20).not.toContain("9160-src")
 
 		// The other family is untouched.
-		expect(chipsFor("lew840x").map((c) => c.id)).toEqual(["ble-src", "esp-src", "9160-src"])
+		expect(chipsFor("lew840x").map((c) => c.id)).toEqual(["9160-src"])
 
 		// Every family in the picker resolves to a non-empty list — a family whose chips did not
 		// resolve would render a form with nothing to tick and a Send button that never enables.

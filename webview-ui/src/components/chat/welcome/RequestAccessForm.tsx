@@ -32,11 +32,13 @@ export const FAMILIES = [
  * so a label may be rewritten freely and an id may not.
  */
 export const CHIPS_BY_FAMILY = {
-	lew840x: [
-		{ id: "ble-src", label: "BLE (nRF52840)" },
-		{ id: "esp-src", label: "ESP32" },
-		{ id: "9160-src", label: "nRF9160" },
-	],
+	/*
+	 * [15 Sep 2026] The BLE scanner source and the ESP32 application without the cellular rung are free,
+	 * as their prebuilt images are, so they are no longer something to ask for. The one LEW840x source a
+	 * person asks for is the full tree with the cellular rung — the nRF9160 modem project and the ESP32
+	 * application that drives it. The id is the group suffix the steward acts on and stays as it was.
+	 */
+	lew840x: [{ id: "9160-src", label: "Full source, with the cellular rung (nRF9160 + ESP32)" }],
 	/*
 	 * The BLG20x list is the WAYS, not the parts. The demo pair is included with a registered
 	 * account, so offering it here would file a request for something the developer already has —
