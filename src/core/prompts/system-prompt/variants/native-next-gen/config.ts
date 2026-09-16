@@ -1,4 +1,4 @@
-import { isGPT5ModelFamily, isNextGenModelFamily, isNextGenModelProvider } from "@utils/model-utils"
+import { isAdsumOwnProvider, isGPT5ModelFamily, isNextGenModelFamily, isNextGenModelProvider } from "@utils/model-utils"
 import { ModelFamily } from "@/shared/prompts"
 import { ClineDefaultTool } from "@/shared/tools"
 import { SystemPromptSection } from "../../templates/placeholders"
@@ -26,7 +26,28 @@ export const config = createVariant(ModelFamily.NATIVE_NEXT_GEN)
 			return false
 		}
 		const modelId = providerInfo.model.id.toLowerCase()
-		return !isGPT5ModelFamily(modelId) && isNextGenModelFamily(modelId)
+		if (isGPT5ModelFamily(modelId)) {
+			// GPT-5 has variants of its own; this one must not take them.
+			return false
+		}
+		/*
+		 * WHAT WE WERE TOLD BEATS WHAT WE CAN GUESS — the same rule as isNativeToolCallingConfig,
+		 * which had it and this matcher did not. The gap cost a CRA run on 16 Sep 2026: our own
+		 * forwarder serves the id `free-default`, opaque on purpose so what it serves can change
+		 * without the client knowing, and a name nobody can read matches no family. So the free
+		 * tier fell through to the generic XML prompt and was asked for XML tool calls, while the
+		 * model behind it calls tools natively and does it cleanly the moment `tools` are sent.
+		 * Asked for XML it sent its own markup instead, with the parameter opening tokens stripped,
+		 * and every file write failed for a missing `content` the model had plainly written.
+		 */
+		const declared = providerInfo.model.info?.supportsNativeTools
+		if (typeof declared === "boolean") {
+			return declared
+		}
+		if (isAdsumOwnProvider(providerInfo)) {
+			return true
+		}
+		return isNextGenModelFamily(modelId)
 	})
 	.template(TEMPLATE_OVERRIDES.BASE)
 	.components(
