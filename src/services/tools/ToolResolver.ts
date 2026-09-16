@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
+import { Logger } from "@services/logging/Logger"
 import { load as yamlLoad } from "js-yaml"
 import { HostProvider } from "@/hosts/host-provider"
 import { extractFrontmatter } from "@/services/knowledge/kbit/frontmatter"
@@ -473,6 +474,12 @@ export async function resolveToolsAsync(summary: WorkspaceSummary, taskKey: stri
 	if (hit) {
 		return hit
 	}
+	// Every failure below is swallowed on purpose — a registry problem must never cost the developer their
+	// bundled tools. But swallowed AND unlogged meant a gated bundle could vanish for days with nothing
+	// anywhere to say why (16 Sep: the BLG20x demo pair, three runs). So each decision is written down.
+	Logger.info(
+		`ToolResolver: resolving ${taskKey} — ${entries.length} downloaded tool(s), ${sessionToken ? "signed in" : "signed out"}`,
+	)
 	const bundled = loadBundledTools(cwd)
 	const byId = new Map(bundled.map((t) => [t.id, t]))
 	try {
@@ -500,6 +507,9 @@ export async function resolveToolsAsync(summary: WorkspaceSummary, taskKey: stri
 					hasPlatformLauncher: (row) => bundleHasPlatformLauncher(id, row),
 				})
 				if (decision.copy !== "registry") {
+					Logger.info(
+						`ToolResolver: ${id} — keeping the bundled copy (${"reason" in decision ? decision.reason : decision.copy})`,
+					)
 					continue // keep the bundled tool
 				}
 				const got = await materialiseDownloadedToolResult({
@@ -509,6 +519,9 @@ export async function resolveToolsAsync(summary: WorkspaceSummary, taskKey: stri
 					cwd,
 					provenance: shipped ? "override" : "downloaded",
 				})
+				if (!("tool" in got)) {
+					Logger.warn(`ToolResolver: ${id}@${String(entry.version ?? "")} not available — ${got.unavailable}`)
+				}
 				if ("tool" in got) {
 					// An override may never WIDEN what the developer already agreed to. If the shipped
 					// descriptor was stricter, the stricter answer is the one that stands for this session.
@@ -530,8 +543,9 @@ export async function resolveToolsAsync(summary: WorkspaceSummary, taskKey: stri
 				// housekeeping must never cost the developer their tools
 			}
 		}
-	} catch {
+	} catch (e) {
 		// The registry being unreachable must never cost the developer their bundled tools.
+		Logger.warn(`ToolResolver: registry tools skipped — ${e instanceof Error ? e.message : String(e)}`)
 	}
 	return snapshotSet(
 		key,
