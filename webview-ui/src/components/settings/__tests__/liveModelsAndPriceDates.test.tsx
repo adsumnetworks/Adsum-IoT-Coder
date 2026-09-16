@@ -24,11 +24,17 @@ describe("the price date next to the price", () => {
 				selectedModelId="deepseek-v4-pro"
 			/>,
 		)
-		expect(screen.getByTestId("prices-checked").textContent).toBe("Prices checked 4 Sep 2026")
+		expect(screen.getByTestId("prices-checked").textContent).toBe("Prices checked 16 Sep 2026")
 	})
 
 	it("a model the price list does not cover says so instead of showing a date that does not apply", () => {
-		render(<ModelInfoView modelInfo={UNKNOWN_MODEL_INFO} pricesCheckedAt="2026-09-04" selectedModelId="deepseek-flash" />)
+		render(
+			<ModelInfoView
+				modelInfo={UNKNOWN_MODEL_INFO}
+				pricesCheckedAt="2026-09-04"
+				selectedModelId="deepseek-something-unreleased"
+			/>,
+		)
 		expect(screen.queryByTestId("prices-checked")).toBeNull()
 		expect(screen.getByTestId("prices-unknown").textContent).toContain("not in our price list yet")
 	})

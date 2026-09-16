@@ -1686,22 +1686,31 @@ export const deepSeekDefaultModelId: DeepSeekModelId = "deepseek-v4-pro"
  * re-read and corrected on 2026-09-04 (commit e44921f3a, and the `PRICING_SCHEDULES` sources below).
  * Shown next to the prices in settings, so a stale figure is visible. Update it whenever the table is re-read.
  */
-export const deepSeekPricesCheckedAt = "2026-09-04"
+export const deepSeekPricesCheckedAt = "2026-09-16"
 /**
- * `deepseek-flash` — what DeepSeek serves in place of `deepseek-v4-flash` (the old id is accepted but retired,
- * billed at the Flash price). Checked against api-docs.deepseek.com/quick_start/pricing on 2026-09-14: the
- * page now lists PEAK and OFF-PEAK rates (off-peak is half; peak 01:00–04:00 and 06:00–10:00 UTC, Mon–Fri) —
- * Flash per 1M tokens: cache hit $0.003 / $0.006, cache miss $0.15 / $0.3, output $0.6 / $1.2 (off-peak / peak);
- * V4 Pro: $0.022 / $0.044, $0.66 / $1.32, $1.98 / $3.96 (the table above carries the Pro peak rates).
- * A single price per model cannot state a time-of-day rate truthfully, so `deepseek-flash` is NOT added to the
- * table and gets no thinking controls yet; it runs as a served-but-unpriced model (see liveModels.ts) until
- * the price model can carry two rates.
+ * WHAT THE VENDOR PUBLISHES FOR THE TWO MODELS IT SERVES, read 2026-09-16 from
+ * api-docs.deepseek.com/quick_start/pricing.
+ *
+ *   deepseek-flash   = DeepSeek-V4.1-Flash   · 1M context · 384K max output · tool calls · vision
+ *   deepseek-v4-pro  = DeepSeek-V4-Pro-0813  · 1M context · 384K max output · tool calls · no vision
+ *
+ * Both support thinking and non-thinking mode, thinking ON at effort "high" being the vendor's own
+ * default. Prices per 1M tokens, off-peak / peak — off-peak is exactly half, peak being 01:00–04:00
+ * and 06:00–10:00 UTC Mon–Fri:
+ *
+ *   flash    cache hit $0.003 / $0.006   cache miss $0.15 / $0.3   output $0.6 / $1.2
+ *   v4-pro   cache hit $0.022 / $0.044   cache miss $0.66 / $1.32  output $1.98 / $3.96
+ *
+ * The tables below carry the PEAK rate and `PRICING_SCHEDULES` halves it by the clock. An earlier
+ * note here said a single price per model could not state a time-of-day rate truthfully, and so left
+ * `deepseek-flash` unpriced and without thinking controls — a developer saw "not in our price list
+ * yet", a 128K context and no way to reach the thinking dial, because an absent entry falls back to
+ * defaults. The schedule mechanism already answered that objection; the note outlived it.
+ *
+ * The legacy ids `deepseek-v4-flash` and `deepseek-v4-flash-vision-exp` are still accepted but their
+ * models are retired: the vendor serves those requests with V4.1-Flash and bills them at the Flash
+ * price, which is why the legacy entry below carries Flash's prices and not the ones it shipped with.
  */
-export const deepSeekFlashPriceCheck = {
-	checkedAt: "2026-09-14",
-	source: "https://api-docs.deepseek.com/quick_start/pricing",
-	finding: "peak and off-peak rates; not representable as one price",
-} as const
 export const deepSeekModels = {
 	"deepseek-chat": {
 		maxTokens: 8_000,
@@ -1736,6 +1745,21 @@ export const deepSeekModels = {
 	//     true figure keeps the budget arithmetic honest.
 	//   - cacheReadsPrice was 0.028 / 0.086, which overstated cache reads by 10x and 24x. In an agentic loop
 	//     nearly all repeated context is a cache read, so this was the dominant term in the cost shown.
+	"deepseek-flash": {
+		maxTokens: 384_000,
+		contextWindow: 1_000_000,
+		// The vendor's feature table marks Vision ✓ for this model. Left false until an image round-trip
+		// is measured through this handler: offering an attachment that fails is worse than not offering it.
+		supportsImages: false,
+		supportsPromptCache: true,
+		supportsReasoning: true,
+		inputPrice: 0,
+		outputPrice: 1.2,
+		cacheWritesPrice: 0.3,
+		cacheReadsPrice: 0.006,
+	},
+	// Retired id, still accepted; served by V4.1-Flash and billed at the Flash price, so it carries
+	// Flash's figures. Kept only so a configuration saved before the rename keeps resolving.
 	"deepseek-v4-flash": {
 		maxTokens: 384_000,
 		contextWindow: 1_000_000,
@@ -1743,9 +1767,9 @@ export const deepSeekModels = {
 		supportsPromptCache: true,
 		supportsReasoning: true,
 		inputPrice: 0,
-		outputPrice: 1.32,
-		cacheWritesPrice: 0.44,
-		cacheReadsPrice: 0.014,
+		outputPrice: 1.2,
+		cacheWritesPrice: 0.3,
+		cacheReadsPrice: 0.006,
 	},
 	"deepseek-v4-pro": {
 		maxTokens: 384_000,
@@ -1765,6 +1789,15 @@ export const deepSeekModels = {
  * this says when the bill is lower. Re-read the source whenever prices are checked.
  */
 export const PRICING_SCHEDULES: Readonly<Record<string, PricingSchedule>> = {
+	"deepseek-flash": {
+		offPeakMultiplier: 0.5,
+		peakUtcHours: [
+			[1, 4],
+			[6, 10],
+		],
+		peakDays: [1, 2, 3, 4, 5],
+		source: "api-docs.deepseek.com/quick_start/pricing, read 2026-09-16",
+	},
 	"deepseek-v4-flash": {
 		offPeakMultiplier: 0.5,
 		peakUtcHours: [

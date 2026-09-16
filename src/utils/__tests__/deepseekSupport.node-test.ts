@@ -46,7 +46,7 @@ describe("native tool calling reaches the native DeepSeek provider", () => {
 	})
 })
 
-describe("catalogue matches DeepSeek's published figures (re-read 2026-09-04)", () => {
+describe("catalogue matches DeepSeek's published figures (re-read 2026-09-16)", () => {
 	// PEAK rates, which are the list price; DeepSeek halves them outside 01:00–04:00 and
 	// 06:00–10:00 UTC on weekdays, and PRICING_SCHEDULES applies that at calculation time.
 	//
@@ -57,8 +57,14 @@ describe("catalogue matches DeepSeek's published figures (re-read 2026-09-04)", 
 	// below were taken from api-docs.deepseek.com/quick_start/pricing on 2026-09-04, and the
 	// durable fix is the fetched overlay (refreshDirectModelPrices) that lets them change without
 	// a release; this test guards the OFFLINE fallback those prices fall back to.
+	// Re-read 2026-09-16: the served pair is `deepseek-flash` (V4.1-Flash) and `deepseek-v4-pro`. The
+	// legacy `deepseek-v4-flash` id is still accepted but its model is retired — those requests are
+	// served by V4.1-Flash and billed at the Flash price, so it must carry Flash's figures, not the
+	// ones it shipped with. Until this read, `deepseek-flash` had no entry at all: it showed a 128K
+	// context, no cache support, no prices and no thinking controls, all of them fallback defaults.
 	const published = {
-		"deepseek-v4-flash": { maxTokens: 384_000, contextWindow: 1_000_000, out: 1.32, miss: 0.44, hit: 0.014 },
+		"deepseek-flash": { maxTokens: 384_000, contextWindow: 1_000_000, out: 1.2, miss: 0.3, hit: 0.006 },
+		"deepseek-v4-flash": { maxTokens: 384_000, contextWindow: 1_000_000, out: 1.2, miss: 0.3, hit: 0.006 },
 		"deepseek-v4-pro": { maxTokens: 384_000, contextWindow: 1_000_000, out: 3.96, miss: 1.32, hit: 0.044 },
 	} as const
 

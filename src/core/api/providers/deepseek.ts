@@ -109,10 +109,16 @@ export class DeepSeekHandler implements ApiHandler {
 		const model = this.getModel()
 
 		const isDeepseekReasoner = model.id.includes("deepseek-reasoner")
-		// DeepSeek V4 (deepseek-v4-flash/pro) toggles thinking via thinking.type (enabled/disabled), like GLM — not a
+		// DeepSeek V4-class models toggle thinking via thinking.type (enabled/disabled), like GLM — not a
 		// separate model id. Send it only when the user set an explicit on/off (thinkingBudgetTokens); the OpenAI SDK
 		// forwards the unknown body field to DeepSeek. The old deepseek-reasoner keeps its R1 message format.
-		const isV4 = model.id.startsWith("deepseek-v4")
+		//
+		// WHICH MODELS TAKE IT IS DECLARED, NOT READ OFF THE NAME. This was `startsWith("deepseek-v4")`, and
+		// the vendor's current Flash is `deepseek-flash` (V4.1-Flash) — no "deepseek-v4" in the id, so both the
+		// toggle and the effort level silently went nowhere for the model most people are on. `supportsReasoning`
+		// is what the settings panel gates the same controls on (getThinkingControl), so panel and wire now agree
+		// by construction rather than by two lists being kept in step.
+		const takesThinkingParams = model.info.supportsReasoning === true
 		const budget = this.options.thinkingBudgetTokens
 		// Choosing a depth IS choosing to think. [OPERATOR 2026-09-04] "deepseek is configured with
 		// thinking = low but I see very long thinking sessions" — and it was: the panel shows the
@@ -126,8 +132,10 @@ export class DeepSeekHandler implements ApiHandler {
 		const effort = this.options.reasoningEffort
 		const wantsThinking = (budget ?? 0) > 0 || (budget === undefined && Boolean(effort))
 		const v4Thinking: Record<string, unknown> =
-			isV4 && (budget !== undefined || effort) ? { thinking: { type: wantsThinking ? "enabled" : "disabled" } } : {}
-		const v4ThinkingOn = isV4 && wantsThinking
+			takesThinkingParams && (budget !== undefined || effort)
+				? { thinking: { type: wantsThinking ? "enabled" : "disabled" } }
+				: {}
+		const v4ThinkingOn = takesThinkingParams && wantsThinking
 		// reasoning_effort tunes HOW DEEPLY it thinks: "low" | "high" | "max" (api-docs.deepseek.com,
 		// guides/thinking_mode, checked 2026-08-16). Both v4-flash and v4-pro support all three. It only has
 		// meaning with thinking on, and DeepSeek's own default is enabled at "high" — so send it only when the

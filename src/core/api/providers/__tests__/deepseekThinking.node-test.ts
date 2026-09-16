@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { describe, test } from "node:test"
+import { deepSeekModels } from "@shared/api"
 
 /**
  * The DeepSeek thinking toggle, end to end: the Settings control must reach the request body.
@@ -45,7 +46,7 @@ describe("DeepSeek thinking toggle is reachable", () => {
 		// the panel let one be chosen without ever writing a budget. Still never guessed — with
 		// neither signal present nothing is sent and DeepSeek's own default stands.
 		assert.ok(
-			/isV4 && \(budget !== undefined \|\| effort\) \? \{ thinking: \{ type: wantsThinking \? "enabled" : "disabled" \} \} : \{\}/.test(
+			/takesThinkingParams && \(budget !== undefined \|\| effort\) \? \{ thinking: \{ type: wantsThinking \? "enabled" : "disabled" \} \} : \{\}/.test(
 				handler,
 			),
 			"with neither a budget nor an effort, no thinking parameter may be sent",
@@ -56,8 +57,32 @@ describe("DeepSeek thinking toggle is reachable", () => {
 		assert.ok(/v4ThinkingOn \? \{\} : \{ temperature: 0 \}/.test(handler), "must not send temperature with thinking on")
 	})
 
-	test("only V4 gets the parameter — older DeepSeek models would reject it", () => {
-		assert.ok(/const isV4 = model\.id\.startsWith\("deepseek-v4"\)/.test(handler))
+	test("which models take the parameter is DECLARED, never read off the model name", () => {
+		// It was startsWith("deepseek-v4"), and the vendor's current Flash is `deepseek-flash` — so the
+		// model most developers are on matched nothing and lost both controls in silence. The same
+		// declaration the settings panel gates on (getThinkingControl → supportsReasoning) decides here.
+		assert.ok(
+			/const takesThinkingParams = model\.info\.supportsReasoning === true/.test(handler),
+			"the gate must read the model's declared capability",
+		)
+		// Comments may quote the old rule — they explain why it went. Only executable lines are judged.
+		const code = handler.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")
+		assert.ok(!/startsWith\("deepseek-v4"\)/.test(code), "no name-prefix test may decide this again")
+		// And the declaration is actually present on both models the vendor serves today, or the gate
+		// is correct and still reaches nobody.
+		for (const id of ["deepseek-flash", "deepseek-v4-pro"] as const) {
+			assert.equal(deepSeekModels[id].supportsReasoning, true, `${id} must declare supportsReasoning`)
+		}
+	})
+
+	test("older DeepSeek models, which would reject the parameter, do not declare it", () => {
+		for (const id of ["deepseek-chat", "deepseek-reasoner"] as const) {
+			assert.notEqual(
+				(deepSeekModels[id] as { supportsReasoning?: boolean }).supportsReasoning,
+				true,
+				`${id} must not declare supportsReasoning`,
+			)
+		}
 	})
 })
 
@@ -113,7 +138,7 @@ describe("an effort chosen with no explicit budget still reaches the wire", () =
 			"an effort with no budget must count as thinking on, or a stored Low is silently dropped",
 		)
 		assert.ok(
-			/isV4 && \(budget !== undefined \|\| effort\)/.test(handler),
+			/takesThinkingParams && \(budget !== undefined \|\| effort\)/.test(handler),
 			"thinking must go on the wire when the developer has expressed either signal",
 		)
 	})
