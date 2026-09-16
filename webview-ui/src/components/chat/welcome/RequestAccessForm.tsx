@@ -32,11 +32,15 @@ export const FAMILIES = [
  * so a label may be rewritten freely and an id may not.
  */
 export const CHIPS_BY_FAMILY = {
-	lew840x: [
-		{ id: "ble-src", label: "BLE (nRF52840)" },
-		{ id: "esp-src", label: "ESP32" },
-		{ id: "9160-src", label: "nRF9160" },
-	],
+	/*
+	 * ONE chip, because the other two stopped being requestable on 15 Sep 2026: the BLE scanner
+	 * source and the ESP32 application without LTE are published free, as their prebuilt images
+	 * are, so the only LEW840x source anyone asks for is the full rung. The backend narrowed
+	 * ASK_CHIPS that day and this list did not follow, which left the form offering two ways to
+	 * request something the developer could already download - and left groups.test.ts, the check
+	 * that exists to catch exactly this, red from then until 16 Sep.
+	 */
+	lew840x: [{ id: "9160-src", label: "nRF9160" }],
 	/*
 	 * The BLG20x list is the WAYS, not the parts. The demo pair is included with a registered
 	 * account, so offering it here would file a request for something the developer already has —

@@ -62,7 +62,9 @@ export function formatTree(entries: ManifestEntry[]): string {
 			out.push(`  ${type}/`)
 			for (const e of tree[plat][type].slice().sort((a, b) => a.id.localeCompare(b.id))) {
 				out.push(
-					`    ${e.id.split("/").pop()}  (v${e.version}${e.status && e.status !== "published" ? ` · ${e.status}` : ""})`,
+					// Any status that survives is worth showing: since 16 Sep the field only carries
+					// "deprecated" or "revoked", so the old `!== "published"` guard suppressed nothing.
+					`    ${e.id.split("/").pop()}  (v${e.version}${e.status ? ` · ${e.status}` : ""})`,
 				)
 			}
 		}

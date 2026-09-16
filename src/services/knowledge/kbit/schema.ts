@@ -19,9 +19,24 @@ export const KBIT_TIERS = ["community", "certified"] as const
 export const KBIT_DELIVERY = ["bundled", "downloaded"] as const
 export const KBIT_PLATFORMS = ["nrf", "esp", "universal"] as const
 export const KBIT_SAFETY = ["shell", "flash", "erase", "network", "fs-write", "process-kill", "long-running"] as const
-// Lifecycle status (R4.1). Absent ⇒ treated as "published" by consumers. Enforcement (revocation,
-// transitions) is P2 — in P1 this is a declared, forward-compatible field.
-export const KBIT_STATUS = ["draft", "published", "deprecated", "revoked"] as const
+/*
+ * Lifecycle status — ONLY for withdrawing a bit. Absent is the normal state and means "live".
+ *
+ * "draft" and "published" were removed on 16 Sep 2026 because they could not be true. The registry
+ * decides draft-versus-published on its own: submitDraft() writes 'draft' unconditionally and a
+ * steward's approval promotes it, so nothing an author writes here changes it. The field is not
+ * served in the manifest either, so no client ever reads it.
+ *
+ * What it did instead was mislead. 152 of 241 bits said "draft" while published and served - the
+ * value was simply never updated after approval, because nothing updates it - and a release
+ * evening was spent believing seventeen bits were awaiting publication when they had been live for
+ * days. A field that looks authoritative, is read by nobody, and is wrong on two thirds of the
+ * corpus is worse than no field.
+ *
+ * Schema validation on submit is warn-only, so the 152 are not refused: each is nudged the next
+ * time it is legitimately republished, which is the moment its version is being bumped anyway.
+ */
+export const KBIT_STATUS = ["deprecated", "revoked"] as const
 // Commercial axis, DELIBERATELY separate from `delivery` (which is distribution). Absent ⇒ "free",
 // so every bit published before this field existed stays free by construction — the no-rug-pull rule
 // enforced by the default rather than by an audit.

@@ -374,8 +374,6 @@
 				"status": {
 					"type": "string",
 					"enum": [
-						"draft",
-						"published",
 						"deprecated",
 						"revoked"
 					]
