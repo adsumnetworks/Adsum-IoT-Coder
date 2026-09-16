@@ -189,14 +189,20 @@ const Doing: React.FC<{ label: string; onClick: () => void; testId: string }> = 
 	</button>
 )
 
+/** Groups that mean this account has been given the BLG20x — not the demo group, which a tier may carry. */
+const BLG20_ACCESS_GROUPS = [
+	"blg20-early-access",
+	"blg20-prod-hex",
+	"blg20-9151-src",
+	"blg20-ble-src",
+	"blg20-adv-ble",
+	"blg20-adv-full",
+] as const
+
 const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], onStart, onAsk, onInstall, onBrowse }) => {
 	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
 	const board = ladderBoard(boards)
 	const pair = board ? undefined : ladderChipPair(chips)
-	// No name and no pair, no ladder. A surface that names a board must have seen one.
-	if (!board && !pair) {
-		return null
-	}
 	/*
 	 * Every rung reads the SAME group facts the rest of the surface reads. Before this the card knew
 	 * only whether the demo was held, so a licence holder was invited to "Ask for more details" about
@@ -204,6 +210,18 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 	 * byte-identical screenshots.
 	 */
 	const holds = (group: string) => accountHasGroup(adsumAccount, group)
+	/*
+	 * Access shows the card as surely as a detected board does. It used to take a detected board alone,
+	 * and on 17 Sep, after a clean reload, the probe identities did not reach this screen: a developer
+	 * whose account held BLG20x access saw no BLG20x card at all. What the account holds is certain; a
+	 * probe scan landing in time is not. The demo group does not count here — it may be held by every
+	 * registered account, and the card would then appear to everyone.
+	 */
+	const hasFamilyAccess = BLG20_ACCESS_GROUPS.some(holds)
+	// No board, no pair and no access: no ladder. A surface that names a board must have seen one.
+	if (!board && !pair && !hasFamilyAccess) {
+		return null
+	}
 	const hasDemo = holds("blg20-demo-hex")
 	const hasProduction = holds("blg20-prod-hex")
 	const hasRadioSource = holds("blg20-9151-src")
@@ -228,9 +246,9 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 				 * product — they might be two kits on one desk — so when that is all we have, the line
 				 * says what was seen and lets the reader draw the conclusion.
 				 */}
-				{board ? "Your board: " : "Seen here: "}
+				{board ? "Your board: " : pair ? "Seen here: " : "Your access: "}
 				<span data-testid="ladder-board" style={{ color: "var(--vscode-foreground)" }}>
-					{board ?? `${pair?.[0]} and ${pair?.[1]} — the BLG20x pair`}
+					{board ?? (pair ? `${pair[0]} and ${pair[1]} — the BLG20x pair` : "BLG20x gateway")}
 				</span>
 				{/*
 				 * The mockup's "· both probes seen" is not here, and will not be until something counts
