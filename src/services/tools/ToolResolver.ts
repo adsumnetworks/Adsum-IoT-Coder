@@ -212,6 +212,8 @@ export function toolEntriesFromManifest(manifestText: string): ManifestEntry[] {
  * Pure: turn a descriptor's frontmatter into a ResolvedTool, or explain why it cannot run.
  * `fileExists` is injected so this is testable without a filesystem.
  */
+const KNOWN_RUNTIMES: ReadonlySet<string> = new Set<ToolRuntime>(["python3", "node", "wasm", "native"])
+
 export function buildResolvedTool(args: {
 	id: string
 	dir: string
@@ -239,6 +241,13 @@ export function buildResolvedTool(args: {
 	const entry = typeof meta.entry === "string" ? meta.entry : undefined
 	if (!runtime || !entry) {
 		return null // not a runnable tool descriptor; the schema refuses these at publish
+	}
+	// A runtime this build has no launcher for is not runnable here — a newer tool, or a bad descriptor.
+	// It must come back as "not a tool", never reach the launcher: `nrf91-safe-program` was published with
+	// `runtime: host` on 14 Sep, the launcher returned undefined, and the throw took out every downloaded
+	// tool resolved after it.
+	if (!KNOWN_RUNTIMES.has(runtime)) {
+		return null
 	}
 	const name = id.split("/").pop() ?? id
 	const entryPath = path.join(dir, entry)
@@ -495,38 +504,43 @@ export async function resolveToolsAsync(summary: WorkspaceSummary, taskKey: stri
 				if (!id) {
 					continue
 				}
-				const shipped = byId.get(id) ?? null
-				// The same rule the knowledge resolver uses. A newer registry copy replaces a bundled tool
-				// only when this extension can run it AND the descriptor is complete enough not to degrade
-				// the advertisement — a stale-but-complete tool beats a newer one that loses its safety
-				// tags or its platform launcher.
-				const decision = choose(id, shipped ? { version: shipped.version } : null, entry, {
-					...precedenceEnvFor(),
-					kind: "tool",
-					signatureOk: (row) => signatureAllowsRun(verdictFor(row)),
-					hasPlatformLauncher: (row) => bundleHasPlatformLauncher(id, row),
-				})
-				if (decision.copy !== "registry") {
-					Logger.info(
-						`ToolResolver: ${id} — keeping the bundled copy (${"reason" in decision ? decision.reason : decision.copy})`,
-					)
-					continue // keep the bundled tool
-				}
-				const got = await materialiseDownloadedToolResult({
-					entry,
-					cache,
-					fetchArtifact: (sha) => client.fetchArtifact(sha),
-					cwd,
-					provenance: shipped ? "override" : "downloaded",
-				})
-				if (!("tool" in got)) {
-					Logger.warn(`ToolResolver: ${id}@${String(entry.version ?? "")} not available — ${got.unavailable}`)
-				}
-				if ("tool" in got) {
-					// An override may never WIDEN what the developer already agreed to. If the shipped
-					// descriptor was stricter, the stricter answer is the one that stands for this session.
-					byId.set(id, shipped ? noWiderThan(got.tool, shipped) : got.tool)
-					live.push({ id, version: String(entry.version ?? "") })
+				try {
+					const shipped = byId.get(id) ?? null
+					// The same rule the knowledge resolver uses. A newer registry copy replaces a bundled tool
+					// only when this extension can run it AND the descriptor is complete enough not to degrade
+					// the advertisement — a stale-but-complete tool beats a newer one that loses its safety
+					// tags or its platform launcher.
+					const decision = choose(id, shipped ? { version: shipped.version } : null, entry, {
+						...precedenceEnvFor(),
+						kind: "tool",
+						signatureOk: (row) => signatureAllowsRun(verdictFor(row)),
+						hasPlatformLauncher: (row) => bundleHasPlatformLauncher(id, row),
+					})
+					if (decision.copy !== "registry") {
+						Logger.info(
+							`ToolResolver: ${id} — keeping the bundled copy (${"reason" in decision ? decision.reason : decision.copy})`,
+						)
+						continue // keep the bundled tool
+					}
+					const got = await materialiseDownloadedToolResult({
+						entry,
+						cache,
+						fetchArtifact: (sha) => client.fetchArtifact(sha),
+						cwd,
+						provenance: shipped ? "override" : "downloaded",
+					})
+					if (!("tool" in got)) {
+						Logger.warn(`ToolResolver: ${id}@${String(entry.version ?? "")} not available — ${got.unavailable}`)
+					}
+					if ("tool" in got) {
+						// An override may never WIDEN what the developer already agreed to. If the shipped
+						// descriptor was stricter, the stricter answer is the one that stands for this session.
+						byId.set(id, shipped ? noWiderThan(got.tool, shipped) : got.tool)
+						live.push({ id, version: String(entry.version ?? "") })
+					}
+				} catch (e) {
+					// One tool's descriptor must never cost the developer every tool after it in the manifest.
+					Logger.warn(`ToolResolver: ${id} skipped — ${e instanceof Error ? e.message : String(e)}`)
 				}
 			}
 			// Versioned cache dirs are what makes bundled and registry copies coexist safely, but nothing

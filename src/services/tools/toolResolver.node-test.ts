@@ -52,6 +52,16 @@ test("a descriptor missing runtime or entry is not a runnable tool", () => {
 	assert.equal(buildResolvedTool({ ...base, meta: { ...META, runtime: undefined }, fileExists: () => true }), null)
 })
 
+test("a runtime this build does not know is not a runnable tool — and never throws", () => {
+	// 14 Sep: nrf91-safe-program was published with `runtime: host`. The launcher had no case for it,
+	// returned undefined, and building its command threw — inside the loop that resolves every downloaded
+	// tool, so each tool after it in the manifest (the BLG20x demo pair among them) was silently dropped.
+	for (const runtime of ["host", "bash", "", "PYTHON3"]) {
+		assert.doesNotThrow(() => buildResolvedTool({ ...base, meta: { ...META, runtime }, fileExists: () => true }), runtime)
+		assert.equal(buildResolvedTool({ ...base, meta: { ...META, runtime }, fileExists: () => true }), null, runtime)
+	}
+})
+
 test("a missing interpreter is stated in the line, not hidden", () => {
 	const t = buildResolvedTool({ ...base, interpreter: null, fileExists: exists(path.join(DIR, "nrf_rtt_logger.py")) })
 	assert.ok(t)
