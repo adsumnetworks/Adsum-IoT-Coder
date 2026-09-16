@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { load as yamlLoad } from "js-yaml"
@@ -422,8 +423,52 @@ export function resolveTools(summary: WorkspaceSummary, taskKey: string, cwd?: s
  * On a duplicate id the NEWER copy wins if this extension can run it, exactly as for knowledge bits
  * (`services/knowledge/precedence.ts`). The bundled copy is the last resort and is always reachable.
  */
+/**
+ * The snapshot key: which task, which workspace — and WHO is asking, against WHICH manifest.
+ *
+ * The last two are the fix. The prompt key is `prompt:<cwd>`, which never changes between tasks, and the
+ * snapshot map never expires, so without them the first resolution in a window stood for the life of the
+ * window. A first prompt built before the developer signed in — the ordinary first run — resolved every
+ * gated bundle as locked, and the developer's tools stayed missing until a reload, however long ago they
+ * had signed in. Folding in the account and the manifest's tool versions means a sign-in, a sign-out, a
+ * different account or a newly published tool is a new set; nothing else is, so a task still sees one
+ * stable set while the cache fills in behind it.
+ *
+ * The session is folded in as a short hash, never the credential: keys are logged and held in a map.
+ */
+export function toolSnapshotKey(args: {
+	taskKey: string
+	summary: WorkspaceSummary
+	cwd?: string
+	sessionToken?: string
+	toolEntries?: Array<Record<string, unknown>>
+}): string {
+	const who = args.sessionToken ? createHash("sha256").update(args.sessionToken, "utf8").digest("hex").slice(0, 12) : "anon"
+	const catalogue = (args.toolEntries ?? [])
+		.map((e) => `${String(e.id ?? "")}@${String(e.version ?? "")}`)
+		.sort()
+		.join(",")
+	const what = createHash("sha256").update(catalogue, "utf8").digest("hex").slice(0, 12)
+	return `async::${args.taskKey}::${args.summary}::${args.cwd ?? ""}::${who}::${what}`
+}
+
 export async function resolveToolsAsync(summary: WorkspaceSummary, taskKey: string, cwd?: string): Promise<ResolvedTool[]> {
-	const key = `async::${taskKey}::${summary}::${cwd ?? ""}`
+	// Read the account and the manifest FIRST: they are part of the key, so a lookup made before them would
+	// return a set resolved for a different account or an older catalogue.
+	let entries: Array<Record<string, unknown>> = []
+	let sessionToken: string | undefined
+	try {
+		const { downloadedEntries } = await import("@/services/knowledge/KnowledgeResolver")
+		entries = toolEntriesFromDownloadedManifest(await downloadedEntries())
+	} catch {
+		// The registry being unreachable must never cost the developer their bundled tools.
+	}
+	try {
+		sessionToken = (await import("@/services/adsum/AccountState")).getSessionToken()
+	} catch {
+		// no account state yet — resolve as signed out, and a later sign-in will get its own set
+	}
+	const key = toolSnapshotKey({ taskKey, summary, cwd, sessionToken, toolEntries: entries })
 	const hit = snapshotGet(key)
 	if (hit) {
 		return hit
@@ -431,10 +476,9 @@ export async function resolveToolsAsync(summary: WorkspaceSummary, taskKey: stri
 	const bundled = loadBundledTools(cwd)
 	const byId = new Map(bundled.map((t) => [t.id, t]))
 	try {
-		const { downloadedEntries, precedenceEnvFor } = await import("@/services/knowledge/KnowledgeResolver")
+		const { precedenceEnvFor } = await import("@/services/knowledge/KnowledgeResolver")
 		const { RegistryClient } = await import("@/services/knowledge/registry/RegistryClient")
 		const { ToolCache } = await import("./ToolCache")
-		const entries = toolEntriesFromDownloadedManifest(await downloadedEntries())
 		if (entries.length) {
 			const client = new RegistryClient()
 			const cache = new ToolCache(toolCacheRoot())
