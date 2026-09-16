@@ -469,12 +469,16 @@ export function blg20InstallPrompt(way: "demo" | "production" | "source"): strin
 	return DEMO_PAIR_PROMPT_BLG20
 }
 
+// Name the tool exactly as the Device tools block advertises it. "The demo-pair tool bit" left the agent to
+// guess an id; on 17 Sep it guessed products/fanstel/blg20x/demo-pair, found nothing, and told the developer
+// the pair was not open to their account while the real tool sat downloaded and advertised. The limits and
+// the flash order live in step 2's bit, which the agent can read — the tool's own descriptor it cannot.
 export const DEMO_PAIR_PROMPT_BLG20 =
-	"Install the BLG20x demo pair into this project. Load the curated BLG20x demo-pair tool bit first — it " +
-	"carries both signed images and their hashes, and I want the ones you verify, not ones you build. Then " +
-	"tell me plainly what is limited about this demo before anything is written, verify each image against " +
-	"its hash, and show me where the files landed. Take the serial number from the tool, never one you " +
-	"remember, and ask me which probe is which before you program anything."
+	"Install the BLG20x demo pair into this project with the blg20-hex-demo-pair tool — run it with --list " +
+	"first, then --into this project, so each image is checked against its hash before it is written. Read " +
+	"products/fanstel/blg20x/beats/s2-flash-the-demo.md for what is limited about this demo, and tell me " +
+	"plainly before anything is written. Show me where the files landed, and ask me which probe is which " +
+	"before you program anything."
 
 export const DEMO_HEX_PROMPT =
 	"Flash the Fanstel LEW840x demo. LOAD the lew840x demo-hex tool bit first — it carries the demo " +
