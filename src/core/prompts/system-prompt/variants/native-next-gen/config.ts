@@ -1,4 +1,4 @@
-import { isGPT5ModelFamily, isNextGenModelFamily, isNextGenModelProvider } from "@utils/model-utils"
+import { isAdsumOwnProvider, isGPT5ModelFamily, isNextGenModelFamily, isNextGenModelProvider } from "@utils/model-utils"
 import { ModelFamily } from "@/shared/prompts"
 import { ClineDefaultTool } from "@/shared/tools"
 import { SystemPromptSection } from "../../templates/placeholders"
@@ -26,7 +26,40 @@ export const config = createVariant(ModelFamily.NATIVE_NEXT_GEN)
 			return false
 		}
 		const modelId = providerInfo.model.id.toLowerCase()
-		return !isGPT5ModelFamily(modelId) && isNextGenModelFamily(modelId)
+		if (isGPT5ModelFamily(modelId)) {
+			return false
+		}
+		/*
+		 * Capability, decided the way isNativeToolCallingConfig already decides it: a declared
+		 * answer first, our own provider second, the name only as a fallback.
+		 *
+		 * A name test alone cannot work for the free tier. Its id is "free-default" — opaque on
+		 * purpose, so the forwarder can change what it serves without the client knowing — so it
+		 * matches no family, falls through to the generic XML variant, and is asked for tool calls
+		 * in XML. The model behind it calls tools NATIVELY, so it answers in its own markup, which
+		 * spills into the text channel half-detokenised:
+		 *
+		 *     <｜｜DSML｜｜ invoke name="read_file"> /path/to/file </｜｜DSML｜｜ invoke
+		 *
+		 * The parameter OPENERS are missing, so no parser recovers it, and the host reports
+		 * "without value for required parameter 'path'". The model then shrinks its own output and
+		 * retries, five times, and the session dies. Measured against the vendor the same day: ask
+		 * in XML and it leaks; send a tools array and it returns finish_reason: tool_calls, one
+		 * clean call, no markup anywhere.
+		 *
+		 * Deliberately NOT calling isNativeToolCallingConfig outright, tidy as that would be: it
+		 * carries ENABLE_GLM_NATIVE_TOOL_CALLS = false and reusing it would move GLM off its own
+		 * variant — a real behaviour change to a shipped provider. This widens to a declared
+		 * capability and to our own provider, and to nothing else.
+		 */
+		const declared = providerInfo.model.info?.supportsNativeTools
+		if (typeof declared === "boolean") {
+			return declared
+		}
+		if (isAdsumOwnProvider(providerInfo)) {
+			return true
+		}
+		return isNextGenModelFamily(modelId)
 	})
 	.template(TEMPLATE_OVERRIDES.BASE)
 	.components(
