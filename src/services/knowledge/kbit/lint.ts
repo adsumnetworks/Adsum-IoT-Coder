@@ -91,6 +91,33 @@ export function lintBitContent(relPath: string, text: string, knownIds: Set<stri
 		return issues
 	}
 
+	/*
+	 * R4.1b — the inert status, stripped before the schema sees it.
+	 *
+	 * `draft` and `published` left KBIT_STATUS on 16 Sep 2026 because neither could ever be true:
+	 * the registry writes 'draft' on submit and 'published' on a steward's approval, and never
+	 * reads this field. 152 of 241 bits said "draft" while live and served, which is what made a
+	 * release evening believe seventeen published bits were still waiting.
+	 *
+	 * Caught HERE rather than after safeParse, and stripped rather than refused, for two reasons.
+	 * After the parse it is unreachable - the narrowed enum rejects the value first, and the
+	 * author gets zod's "Invalid enum value" instead of being told what to do. And refusing would
+	 * turn 152 bits red at once: an alarm nobody can act on today is how an alarm stops being
+	 * read, which is the failure this whole rule exists to undo. A warning fires at the one moment
+	 * the fix is free, when the bit is already being versioned.
+	 */
+	if (parsed && typeof parsed === "object") {
+		const raw = parsed as Record<string, unknown>
+		if (raw.status === "draft" || raw.status === "published") {
+			issues.push({
+				level: "warn",
+				file: relPath,
+				msg: `status "${raw.status}" says nothing the registry does not decide for itself — delete the line while you are versioning this bit`,
+			})
+			delete raw.status
+		}
+	}
+
 	const result = kbitMetaSchema.safeParse(parsed)
 	if (!result.success) {
 		for (const issue of result.error.issues) {

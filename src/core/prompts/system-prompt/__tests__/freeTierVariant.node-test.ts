@@ -1,108 +1,103 @@
-import assert from "node:assert/strict"
-import { describe, it } from "node:test"
-import type { ApiProviderInfo } from "@/core/api"
-import { ModelFamily } from "@/shared/prompts"
-import type { SystemPromptContext } from "../types"
-import { VARIANT_CONFIGS } from "../variants"
-
-/**
- * WHICH PROMPT THE FREE TIER GETS, AND WHY IT MATTERS.
+/*
+ * The free tier must be asked for tool calls in the format its model actually speaks.
  *
- * 16 Sep 2026, a CRA run on the free tier: every `write_to_file` failed with "without value for
- * required parameter 'content'", five times, the model shrinking its own JSON each retry, nothing
- * written. The text it actually sent was its NATIVE call markup —
- * `<｜｜DSML｜｜ invoke name="write_to_file">` — with the parameter OPENING tokens stripped and only
- * the closing ones surviving, which no XML parser can read and the DSML normalizer cannot either
- * (it needs the openers).
+ * Its model id is "free-default" — opaque on purpose, so the forwarder can change what it serves
+ * without the client knowing. Variant selection used to end in a NAME test, so that id matched no
+ * family, fell through to the generic XML variant, and the model was asked for XML. It calls tools
+ * natively, so it answered in its own markup and that markup spilled into the text channel with
+ * its parameter openers missing:
  *
- * The model was not misbehaving: it is trained to call tools natively, and proven to do it cleanly
- * when `tools` are sent (verified against the vendor the same day — one structured tool_call, right
- * arguments, no markup in the text). It only reaches for its own markup when we ask for XML instead.
+ *     <｜｜DSML｜｜ invoke name="read_file"> /path </｜｜DSML｜｜ invoke
  *
- * The reason we asked for XML is this: the variant matcher decides by MODEL NAME, and the free
- * tier's id is `free-default` — opaque on purpose, so the forwarder can change what it serves
- * without the client knowing. `isNextGenModelProvider` and the DeepSeek name list were both already
- * taught about us; the matcher was not, so the provider fell through to the generic XML variant,
- * which carries no native tools.
+ * Nothing can parse that, the host reports "without value for required parameter 'path'", and the
+ * model shrinks its output and retries until the session dies. Seen on a CRA run, then again on a
+ * BLG20x bring-up, then by Omar.
  *
- * The rule this locks: our own provider's capability is answered by the provider, never by reading
- * a name it deliberately does not expose.
+ * So these assert the SELECTION, which is where the bug was — not the string formatting downstream.
  */
-const freeTier = (mode: "act" | "plan" = "act"): ApiProviderInfo => ({
-	providerId: "adsum-free",
-	model: { id: "free-default", info: {} as never },
-	mode,
-})
+import assert from "node:assert/strict"
+import { describe, test } from "node:test"
+import { ModelFamily } from "@/shared/prompts"
+import { PromptRegistry } from "../registry/PromptRegistry"
+import type { SystemPromptContext } from "../types"
 
-const familyFor = (providerInfo: ApiProviderInfo, enableNativeToolCalls: boolean): ModelFamily => {
-	const context = { providerInfo, enableNativeToolCalls } as unknown as SystemPromptContext
-	// Same walk the registry does in getModelFamily: first matching variant wins, a throwing
-	// matcher counts as no match, and nothing matching means the generic XML prompt.
-	for (const [family, config] of Object.entries(VARIANT_CONFIGS)) {
-		try {
-			if ((config as { matcher?: (c: SystemPromptContext) => boolean }).matcher?.(context)) {
-				return family as ModelFamily
-			}
-		} catch {
-			// A throwing matcher is a no-match, exactly as the registry treats it.
-		}
-	}
-	return ModelFamily.GENERIC
+const ctx = (providerId: string, modelId: string, extra: Record<string, unknown> = {}): SystemPromptContext =>
+	({
+		enableNativeToolCalls: true,
+		providerInfo: { providerId, model: { id: modelId, info: extra.info ?? {} } },
+		...extra,
+	}) as unknown as SystemPromptContext
+
+const familyFor = async (c: SystemPromptContext) => {
+	const r = PromptRegistry.getInstance()
+	await r.load?.()
+	return r.getModelFamily(c)
 }
 
-describe("the free tier's prompt variant", () => {
-	it("is the native one, so the served model is asked for the calls it actually makes", () => {
-		assert.equal(familyFor(freeTier(), true), ModelFamily.NATIVE_NEXT_GEN)
+describe("variant selection — the free tier gets native tool calls", () => {
+	test("free-default on our own provider resolves to the native variant, not generic", async () => {
+		assert.equal(await familyFor(ctx("adsum-free", "free-default")), ModelFamily.NATIVE_NEXT_GEN)
 	})
 
-	it("is native in plan mode too — the leak was never mode-specific", () => {
-		assert.equal(familyFor(freeTier("plan"), true), ModelFamily.NATIVE_NEXT_GEN)
+	test("our provider is trusted whatever opaque id it serves", async () => {
+		for (const id of ["free-default", "whatever-we-swap-to-next", "deepseek-flash"]) {
+			assert.equal(await familyFor(ctx("adsum-free", id)), ModelFamily.NATIVE_NEXT_GEN, id)
+		}
 	})
 
-	it("still honours the developer turning native calls off, rather than forcing them", () => {
-		assert.notEqual(familyFor(freeTier(), false), ModelFamily.NATIVE_NEXT_GEN)
+	test("a declared capability beats the name, in both directions", async () => {
+		// An id no family matcher recognises, on a provider that is allowed to reach this variant.
+		assert.equal(
+			await familyFor(ctx("openrouter", "some-vendor/renamed-2027", { info: { supportsNativeTools: true } })),
+			ModelFamily.NATIVE_NEXT_GEN,
+		)
+		// And a NO is believed, even from our own provider, which the branch below would say yes to.
+		assert.notEqual(
+			await familyFor(ctx("adsum-free", "free-default", { info: { supportsNativeTools: false } })),
+			ModelFamily.NATIVE_NEXT_GEN,
+		)
 	})
 
-	it("does not hand the native variant to a provider that never claimed it", () => {
-		const unknown: ApiProviderInfo = { providerId: "ollama", model: { id: "llama-3.2-1b", info: {} as never }, mode: "act" }
-		assert.notEqual(familyFor(unknown, true), ModelFamily.NATIVE_NEXT_GEN)
+	test("the provider allow-list still comes first — a declaration cannot talk its way past it", async () => {
+		// Deliberate: this widens to a declared capability and to our own provider, and to nothing
+		// else. A forwarder we have never heard of does not get native tools by asserting it has
+		// them, because the cost of being wrong is a dead session, not a slow one.
+		assert.notEqual(
+			await familyFor(ctx("some-forwarder", "unknown-model", { info: { supportsNativeTools: true } })),
+			ModelFamily.NATIVE_NEXT_GEN,
+		)
 	})
 
-	it("believes a catalogue that declares the capability, in either direction", () => {
-		const declared = (supportsNativeTools: boolean): ApiProviderInfo => ({
-			providerId: "openrouter",
-			model: { id: "some-new-model-nobody-has-a-pattern-for", info: { supportsNativeTools } as never },
-			mode: "act",
-		})
-		assert.equal(familyFor(declared(true), true), ModelFamily.NATIVE_NEXT_GEN)
-		assert.notEqual(familyFor(declared(false), true), ModelFamily.NATIVE_NEXT_GEN)
+	test("the switch still wins: native calls off means never the native variant", async () => {
+		const c = ctx("adsum-free", "free-default")
+		;(c as { enableNativeToolCalls?: boolean }).enableNativeToolCalls = false
+		assert.notEqual(await familyFor(c), ModelFamily.NATIVE_NEXT_GEN)
 	})
-})
 
-/**
- * The neighbours, measured before the matcher was touched and pinned here after.
- *
- * The fix widens one matcher, and a widened matcher is exactly the kind that quietly steals another
- * variant's models — GLM has its own for a reason, and GPT-5 has two. This table is the proof it
- * stole nothing, and the alarm if someone widens it again.
- */
-describe("the other providers keep the variant they had", () => {
-	const cases: Array<[provider: string, modelId: string, nativeOn: string, nativeOff: string]> = [
-		["anthropic", "claude-sonnet-4-6", "native-next-gen", "next-gen"],
-		["openai", "gpt-5", "gpt-5-native", "gpt-5"],
-		// The DeepSeek key path, on the vendor's current name: native both ways round is the point —
-		// this is the same model the free tier forwards to, reached with the developer's own key.
-		["deepseek", "deepseek-flash", "native-next-gen", "next-gen"],
-		["zai", "glm-5", "glm", "glm"],
-		["gemini", "gemini-2.5-pro", "native-next-gen", "next-gen"],
-		["ollama", "llama-3.2-1b", "generic", "generic"],
-	]
+	test("a provider that is neither ours nor next-gen is unchanged", async () => {
+		assert.notEqual(await familyFor(ctx("ollama", "llama3")), ModelFamily.NATIVE_NEXT_GEN)
+	})
 
-	for (const [providerId, modelId, nativeOn, nativeOff] of cases) {
-		it(`${providerId}/${modelId}`, () => {
-			const providerInfo: ApiProviderInfo = { providerId, model: { id: modelId, info: {} as never }, mode: "act" }
-			assert.equal(familyFor(providerInfo, true), nativeOn, "with native calls on")
-			assert.equal(familyFor(providerInfo, false), nativeOff, "with native calls off")
-		})
-	}
+	test("GPT-5 keeps its own variant — the exclusion is not widened", async () => {
+		assert.notEqual(await familyFor(ctx("openai", "gpt-5")), ModelFamily.NATIVE_NEXT_GEN)
+	})
+
+	// The neighbours, measured with the matcher reverted and again with it in place: every row
+	// below was identical in both states, and free-default was the only row that moved. They are
+	// pinned so a later widening of this matcher cannot quietly take a shipped provider with it —
+	// GLM in particular sits on its own variant behind ENABLE_GLM_NATIVE_TOOL_CALLS.
+	test("no other provider moves", async () => {
+		const pins: Array<[string, string, string]> = [
+			["anthropic", "claude-sonnet-4-6", "native-next-gen"],
+			["gemini", "gemini-2.5-pro", "native-next-gen"],
+			["openai", "gpt-5", "gpt-5-native"],
+			["zai", "glm-5", "glm"],
+			["ollama", "llama3", "generic"],
+			["deepseek", "deepseek-flash", "native-next-gen"],
+			["openrouter", "deepseek/deepseek-flash", "native-next-gen"],
+		]
+		for (const [provider, model, family] of pins) {
+			assert.equal(await familyFor(ctx(provider, model)), family, `${provider}/${model}`)
+		}
+	})
 })

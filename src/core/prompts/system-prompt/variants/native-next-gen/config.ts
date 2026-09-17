@@ -31,14 +31,27 @@ export const config = createVariant(ModelFamily.NATIVE_NEXT_GEN)
 			return false
 		}
 		/*
-		 * WHAT WE WERE TOLD BEATS WHAT WE CAN GUESS — the same rule as isNativeToolCallingConfig,
-		 * which had it and this matcher did not. The gap cost a CRA run on 16 Sep 2026: our own
-		 * forwarder serves the id `free-default`, opaque on purpose so what it serves can change
-		 * without the client knowing, and a name nobody can read matches no family. So the free
-		 * tier fell through to the generic XML prompt and was asked for XML tool calls, while the
-		 * model behind it calls tools natively and does it cleanly the moment `tools` are sent.
-		 * Asked for XML it sent its own markup instead, with the parameter opening tokens stripped,
-		 * and every file write failed for a missing `content` the model had plainly written.
+		 * Capability, decided the way isNativeToolCallingConfig already decides it: a declared
+		 * answer first, our own provider second, the name only as a fallback.
+		 *
+		 * A name test alone cannot work for the free tier. Its id is "free-default" — opaque on
+		 * purpose, so the forwarder can change what it serves without the client knowing — so it
+		 * matches no family, falls through to the generic XML variant, and is asked for tool calls
+		 * in XML. The model behind it calls tools NATIVELY, so it answers in its own markup, which
+		 * spills into the text channel half-detokenised:
+		 *
+		 *     <｜｜DSML｜｜ invoke name="read_file"> /path/to/file </｜｜DSML｜｜ invoke
+		 *
+		 * The parameter OPENERS are missing, so no parser recovers it, and the host reports
+		 * "without value for required parameter 'path'". The model then shrinks its own output and
+		 * retries, five times, and the session dies. Measured against the vendor the same day: ask
+		 * in XML and it leaks; send a tools array and it returns finish_reason: tool_calls, one
+		 * clean call, no markup anywhere.
+		 *
+		 * Deliberately NOT calling isNativeToolCallingConfig outright, tidy as that would be: it
+		 * carries ENABLE_GLM_NATIVE_TOOL_CALLS = false and reusing it would move GLM off its own
+		 * variant — a real behaviour change to a shipped provider. This widens to a declared
+		 * capability and to our own provider, and to nothing else.
 		 */
 		const declared = providerInfo.model.info?.supportsNativeTools
 		if (typeof declared === "boolean") {

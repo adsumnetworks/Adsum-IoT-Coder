@@ -463,7 +463,7 @@ describe("kbit schema — roles & lifecycle (P1)", () => {
 				co_authors: [{ handle: "omar", name: "Omar" }],
 				endorsers: [{ handle: "drx", name: "Dr X", affiliation: "Nordic", version: "1.0.0", date: "2026-06-14" }],
 				supporters: [{ handle: "acme", kind: "backer" }],
-				status: "published",
+				status: "deprecated",
 				created: "2026-01-01",
 				updated: "2026-06-14",
 			}),
@@ -493,9 +493,19 @@ describe("kbit schema — roles & lifecycle (P1)", () => {
 		)
 	})
 
-	test("status enum is enforced", () => {
-		assert.equal(ok({ ...validAction, status: "live" }), false)
+	test("status may only WITHDRAW a bit — the registry owns draft and published", () => {
 		assert.equal(ok({ ...validAction, status: "deprecated" }), true)
+		assert.equal(ok({ ...validAction, status: "revoked" }), true)
+		assert.equal(ok({ ...validAction, status: "live" }), false)
+		/*
+		 * The two that left on 16 Sep 2026. They could never be true: submitDraft() writes
+		 * 'draft' on submit and a steward's approval writes 'published', and nothing reads
+		 * this field back. 152 of 241 bits said "draft" while live and served, which is what
+		 * made a release evening believe seventeen published bits were still waiting. Pinned
+		 * here so they cannot quietly return.
+		 */
+		assert.equal(ok({ ...validAction, status: "draft" }), false)
+		assert.equal(ok({ ...validAction, status: "published" }), false)
 	})
 })
 

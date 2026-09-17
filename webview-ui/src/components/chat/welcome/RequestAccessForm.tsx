@@ -37,6 +37,10 @@ export const CHIPS_BY_FAMILY = {
 	 * as their prebuilt images are, so they are no longer something to ask for. The one LEW840x source a
 	 * person asks for is the full tree with the cellular rung — the nRF9160 modem project and the ESP32
 	 * application that drives it. The id is the group suffix the steward acts on and stays as it was.
+	 *
+	 * The backend narrowed ASK_CHIPS that day and this list did not follow, so the form went on offering
+	 * two ways to request something the developer could already download — and groups.test.ts, the check
+	 * that exists to catch exactly this, was red from then until 16 September.
 	 */
 	lew840x: [{ id: "9160-src", label: "Full source, with the cellular rung (nRF9160 + ESP32)" }],
 	/*
