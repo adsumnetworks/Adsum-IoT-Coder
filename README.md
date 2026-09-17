@@ -37,26 +37,17 @@
 
 <p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
 
-## What's New <sup>`v0.4.0`</sup>
+## What's New <sup>`v0.4.1`</sup>
 
-A home that reads your desk, cellular and satellite work behind a free account, and a run you can steer while it works. BLE, Wi-Fi and Ethernet need no account, today or tomorrow.
+A guided first run for the Fanstel BLG20x, an account in the panel header, and tasks that keep going when the editor is in the background. BLE, Wi-Fi and Ethernet need no account, today or tomorrow.
 
-<table>
-<tr>
-<td width="58%" valign="top">
+<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**The Fanstel BLG20x, from an unflashed board to your own platform.** A BLE 6 terrestrial + non-terrestrial gateway, in one guided run: identify the board, flash both halves, commission it from the browser, admit a sensor, and see readings arrive on your own tenant, with a command sent back. The demo images are available on request, with a free account. [Gateway firmware](https://docs.adsumnetworks.com/gateway-firmware)
 
-<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**A home that reads your desk.** One row says what is on it and what is missing (*nRF ✓ nRF52840 DK*, or *no toolchain yet · what to install →*); a device that will not answer is reported there, with *why →*. Then the runs worth starting, ranked, each saying why. Typing in the box is the new session; a named resume is offered whenever the folder has one, and every other session is one click away in the editor's History. [Getting started](https://docs.adsumnetworks.com/getting-started)
+<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Your account in the panel header.** Sign in from the icon beside history and settings; every window of the editor follows the same session. A knowledge bit your account cannot open says so, names the set it belongs to, and offers the one way in. [Getting started](https://docs.adsumnetworks.com/getting-started)
 
-<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**Gateway firmware you can flash and license.** Signed images and licensed source for the Fanstel LEW840x on BLE, Ethernet and Wi-Fi; a cellular demo on LTE-M / NB-IoT; satellite NB-NTN and nRF54 edge AI with a free account (GitHub or email, no card). New in 0.4.1: the Fanstel BLG20x, a BLE 6 terrestrial + non-terrestrial gateway, from an unflashed board to your own platform in one guided run. [Gateway firmware](https://docs.adsumnetworks.com/gateway-firmware)
+<img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Runs that do not stall.** A hidden editor window no longer slows a task to a step a minute, and a reply that stops arriving is retried once and then reported. Model lists are read live, and OpenRouter lets you choose which sellers serve a model. [Models](https://docs.adsumnetworks.com/models)
 
-<img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Steer a run without stopping it.** A message sent to a working session lands at its next step. The thinking depth you set for DeepSeek and GLM now reaches the request, DeepSeek prices match the vendor's, and `modelPricing` takes your own rate. [Models](https://docs.adsumnetworks.com/models)
-
-</td>
-<td width="42%" valign="top"><img src="assets/docs/home-0.4.0.png" width="100%" alt="The Adsum IoT Coder home in VS Code: the detected nRF52840 DK, the Fanstel LEW840x project, ranked suggested runs, and the cellular and gateway runs that unlock with a free account" /></td>
-</tr>
-</table>
-
-**In `v0.3.1`:** nRF91 cellular, the first partner open-hardware gateway, and Tool bits downloaded on demand. **In `v0.2.0`:** a two-chip industrial gateway built, debugged and CRA-checked from one spec **in under 30 minutes**. [Watch the playlist](https://www.youtube.com/playlist?list=PLYh65pF22Elk) · *full history in the [changelog](./CHANGELOG.md).*
+**In `v0.4.0`:** a home that reads your desk, cellular and satellite work behind a free account, and a message sent to a working run that lands at its next step. **In `v0.3.1`:** nRF91 cellular, the first partner open-hardware gateway, and Tool bits downloaded on demand. **In `v0.2.0`:** a two-chip industrial gateway built, debugged and CRA-checked from one spec **in under 30 minutes**. [Watch the playlist](https://www.youtube.com/playlist?list=PLYh65pF22Elk) · *full history in the [changelog](./CHANGELOG.md).*
 
 ## Getting Started
 

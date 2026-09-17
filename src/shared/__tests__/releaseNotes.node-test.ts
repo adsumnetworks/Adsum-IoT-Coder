@@ -49,10 +49,14 @@ describe("RELEASE_NOTES is reviewed for the version being shipped", () => {
 		)
 	})
 
-	test("the README's What's New names the announced release", () => {
+	test("the README's What's New names the release being shipped", () => {
+		// A patch with a note is something users hear about, so the README leads with it; a silent patch
+		// changes nothing a reader should notice, and the heading stays on the release it patches.
+		const patch = RELEASE_NOTES.patches[packageVersion]
+		const shown = patch && "note" in patch ? packageVersion : RELEASE_NOTES.version
 		assert.ok(
-			read("README.md").includes(`What's New <sup>\`v${RELEASE_NOTES.version}\`</sup>`),
-			`README.md's What's New heading is not on v${RELEASE_NOTES.version}`,
+			read("README.md").includes(`What's New <sup>\`v${shown}\`</sup>`),
+			`README.md's What's New heading is not on v${shown}`,
 		)
 	})
 
