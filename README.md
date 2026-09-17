@@ -94,7 +94,7 @@ Working firmware for the Fanstel composable LEW gateway, two ways: **signed imag
 | Satellite **NB-NTN** on nRF9151 | NB-NTN | Bring-up run + knowledge | · | nRF9151 DK (LACA A1A) |
 | **Edge AI** on nRF54 | On-device inference basics | Knowledge + guided run | · | An nRF54 board |
 | **BWG840X** · BLE to Wi-Fi | BLE in; Wi-Fi out | Build it from a prompt today; curated images soon | Soon | BWG840X |
-| **BLG20x** · BLE 6 terrestrial + non-terrestrial gateway | BLE 6 in; LTE-M, NB-IoT, NB-NTN out (nRF54LM20 + nRF9151) | **Demo**, on request: 10 devices, guided first run | On request | BLG20x, SIM · free account |
+| **BLG20x** · BLE 6 terrestrial + non-terrestrial gateway | BLE 6 in; LTE-M, NB-IoT, NB-NTN out (nRF54LM20 + nRF9151) | **Demo**, on request, with a guided first run | On request | BLG20x, SIM · free account |
 
 - **Flash to judge**: register (free), flash, watch tags reach your broker. Wi-Fi and Ethernet unlimited; cellular in 60-minute sessions; needs `nrfutil` and `esptool`.
 - **License to ship**: ask for the modules you need from *Settings › Account › Request template source*, or write to support@adsumnetworks.com. Per module, production use, your modifications stay yours; the images are for evaluation.
