@@ -38,6 +38,7 @@ import { useSize } from "react-use"
 import { KbitCredit, parseKbitPayload } from "@/components/chat/KbitCredit"
 import { KbitLockedRow, parseKbitLockedPayload } from "@/components/chat/KbitLockedRow"
 import { OptionsButtons } from "@/components/chat/OptionsButtons"
+import { gateShown } from "@/components/chat/welcome/entryTelemetry"
 import GatePanel from "@/components/chat/welcome/GatePanel"
 import RequestAccessForm from "@/components/chat/welcome/RequestAccessForm"
 import { isRequestOnlyGroup, requestFamilyFor } from "@/components/chat/welcome/welcomeIntents"
@@ -1004,12 +1005,17 @@ export const ChatRowContent = memo(
 							}
 							setRequestOpen(true)
 						}
+						// The register funnel's first step, from a transcript — the welcome cards already count theirs.
+						const openGate = () => {
+							gateShown("chat", locked?.id)
+							setGateOpen(true)
+						}
 						return locked ? (
 							<>
 								<KbitLockedRow
 									bit={locked}
-									onRegister={asks ? undefined : () => setGateOpen(true)}
-									onRequestAccess={() => (asks ? openAsk() : setGateOpen(true))}
+									onRegister={asks ? undefined : () => openGate()}
+									onRequestAccess={() => (asks ? openAsk() : openGate())}
 									signedIn={signedIn}
 								/>
 								{asks ? (

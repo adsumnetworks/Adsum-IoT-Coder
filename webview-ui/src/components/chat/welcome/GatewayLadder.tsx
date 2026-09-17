@@ -1,7 +1,8 @@
 import { type AdsumAccountState, accountHasGroup } from "@shared/adsumAccount"
-import React from "react"
+import React, { useEffect } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI, brandAlpha } from "../brandColors"
+import { cardAction, cardShown } from "./entryTelemetry"
 import { ASK_FOR_DETAILS } from "./welcomeIntents"
 
 /**
@@ -74,6 +75,9 @@ export const ladderChipPair = (chips: readonly string[]): [string, string] | und
 	return a && b ? [a, b] : undefined
 }
 
+type LadderAsk = "adv" | "demo" | "prod-hex" | "both-src" | "built"
+type LadderInstall = "demo" | "production" | "source"
+
 interface GatewayLadderProps {
 	/** Board names the environment has actually seen. */
 	boards?: readonly string[]
@@ -82,9 +86,9 @@ interface GatewayLadderProps {
 	/** Starts the free path in the editor. */
 	onStart: () => void
 	/** Opens the request form for this family, for anything not already theirs. */
-	onAsk: (rung: string) => void
+	onAsk: (rung: LadderAsk) => void
 	/** Runs the way the developer already holds — only ever offered for a way they hold. */
-	onInstall: (way: "demo" | "production" | "source") => void
+	onInstall: (way: LadderInstall) => void
 	/** Opens the hardware list, for someone whose board is not this one. */
 	onBrowse?: () => void
 }
@@ -218,10 +222,6 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 	 * registered account, and the card would then appear to everyone.
 	 */
 	const hasFamilyAccess = BLG20_ACCESS_GROUPS.some(holds)
-	// No board, no pair and no access: no ladder. A surface that names a board must have seen one.
-	if (!board && !pair && !hasFamilyAccess) {
-		return null
-	}
 	const hasDemo = holds("blg20-demo-hex")
 	const hasProduction = holds("blg20-prod-hex")
 	const hasRadioSource = holds("blg20-9151-src")
@@ -231,6 +231,42 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 	// "On request" is an invitation. Sending it to someone who already holds the set is the same
 	// mistake as the Register button, so the line simply is not there for them.
 	const hasAdvanced = holds("blg20-adv-ble") || holds("blg20-adv-full")
+	const visible = !!(board || pair || hasFamilyAccess)
+	// What put the card on screen, and what the account already holds: the two facts that say whether a
+	// rung went unclicked because it was not wanted or because it was already theirs. Booleans only.
+	const evidence = board ? "board" : pair ? "chip_pair" : "access"
+	useEffect(() => {
+		if (visible) {
+			cardShown("blg20_ladder", {
+				evidence,
+				demo: String(hasDemo),
+				production: String(hasProduction),
+				source: hasBothSource ? "both" : hasRadioSource ? "radio" : hasBleSource ? "ble" : "none",
+				advanced: String(hasAdvanced),
+			})
+		}
+	}, [visible, evidence, hasDemo, hasProduction, hasBothSource, hasRadioSource, hasBleSource, hasAdvanced])
+	// No board, no pair and no access: no ladder. A surface that names a board must have seen one.
+	if (!visible) {
+		return null
+	}
+	// Every mount of this card measures itself, so no parent can forget to.
+	const start = () => {
+		cardAction("blg20_ladder", "start")
+		onStart()
+	}
+	const ask = (rung: LadderAsk) => {
+		cardAction("blg20_ladder", "ask", { rung })
+		onAsk(rung)
+	}
+	const install = (way: LadderInstall) => {
+		cardAction("blg20_ladder", "install", { way })
+		onInstall(way)
+	}
+	const browse = () => {
+		cardAction("blg20_ladder", "browse")
+		onBrowse?.()
+	}
 	return (
 		<div
 			data-testid="gateway-ladder"
@@ -266,7 +302,7 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 				<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "7px" }}>
 					<button
 						data-testid="ladder-start"
-						onClick={onStart}
+						onClick={start}
 						style={{
 							padding: "4px 11px",
 							borderRadius: "6px",
@@ -287,7 +323,7 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 						data-testid="ladder-advanced-line"
 						style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginTop: "6px" }}>
 						<span style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>{LADDER_COPY.advanced}</span>
-						<Ask onClick={() => onAsk("adv")} testId="ladder-ask-adv" />
+						<Ask onClick={() => ask("adv")} testId="ladder-ask-adv" />
 					</div>
 				)}
 			</Rung>
@@ -306,12 +342,12 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 							<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
 								{LADDER_COPY.demoTerms}
 							</span>
-							{hasDemo ? null : <Ask onClick={() => onAsk("demo")} testId="ladder-ask-demo" />}
+							{hasDemo ? null : <Ask onClick={() => ask("demo")} testId="ladder-ask-demo" />}
 						</div>
 						{hasDemo && (
 							<button
 								data-testid="ladder-flash-demo"
-								onClick={() => onInstall("demo")}
+								onClick={() => install("demo")}
 								style={{
 									marginTop: "5px",
 									padding: "3px 10px",
@@ -337,11 +373,11 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 						{hasProduction ? (
 							<Doing
 								label="Install into this project"
-								onClick={() => onInstall("production")}
+								onClick={() => install("production")}
 								testId="ladder-use-prod"
 							/>
 						) : (
-							<Ask onClick={() => onAsk("prod-hex")} testId="ladder-ask-prod" />
+							<Ask onClick={() => ask("prod-hex")} testId="ladder-ask-prod" />
 						)}
 					</div>
 					<div data-testid="ladder-way-source">
@@ -360,12 +396,12 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 						{hasAnySource && (
 							<Doing
 								label="Install into this project"
-								onClick={() => onInstall("source")}
+								onClick={() => install("source")}
 								testId="ladder-use-source"
 							/>
 						)}
 						{/* One half held is still half asked-about: the other half is a real thing to ask for. */}
-						{!hasBothSource && <Ask onClick={() => onAsk("both-src")} testId="ladder-ask-source" />}
+						{!hasBothSource && <Ask onClick={() => ask("both-src")} testId="ladder-ask-source" />}
 					</div>
 				</div>
 			</Rung>
@@ -373,7 +409,7 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 			<Rung badge="By arrangement" icon="edit" testId="ladder-rung-built" title="Have it built">
 				<Body>{LADDER_COPY.built}</Body>
 				<div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
-					<Ask onClick={() => onAsk("built")} testId="ladder-ask-built" />
+					<Ask onClick={() => ask("built")} testId="ladder-ask-built" />
 					<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>{LADDER_COPY.reply}</span>
 				</div>
 			</Rung>
@@ -389,7 +425,7 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 					Not this board?{" "}
 					<button
 						data-testid="ladder-browse"
-						onClick={onBrowse}
+						onClick={browse}
 						style={{
 							background: "none",
 							border: "none",

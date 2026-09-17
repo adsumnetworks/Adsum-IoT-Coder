@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { AdsumServiceClient } from "@/services/grpc-client"
 import { BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "../brandColors"
+import { cardAction } from "./entryTelemetry"
 
 /**
  * "Register to unlock cellular" — the one message a developer sees at the gate.
@@ -126,6 +127,7 @@ const GatePanel: React.FC<GatePanelProps> = ({ open, satisfied = false, variant 
 	}
 
 	const retry = async () => {
+		cardAction("gate", "retry")
 		try {
 			await AdsumServiceClient.refreshAccount(EmptyRequest.create({}))
 		} catch {
@@ -321,6 +323,7 @@ export const SignInWaiting: React.FC<{ onBack?: () => void; compact?: boolean }>
 			return
 		}
 		if (!parseSignInLink(text)) {
+			cardAction("signin_link", "paste", { result: "not_a_link" })
 			setError(
 				"That doesn't look like a sign-in link. Copy the whole link from the browser page — it starts with vscode://.",
 			)
@@ -332,10 +335,14 @@ export const SignInWaiting: React.FC<{ onBack?: () => void; compact?: boolean }>
 		try {
 			const res = await AdsumServiceClient.pasteSignInLink(StringRequest.create({ value: text }))
 			const out = res.value ? (JSON.parse(res.value) as { ok: boolean; message: string }) : null
+			// The pasted link is the fallback for a browser that handed the callback to another window.
+			// How often it is needed, and whether it works, is the only way to know that fallback is enough.
+			cardAction("signin_link", "paste", { result: out?.ok ? "ok" : "failed" })
 			if (!out?.ok) {
 				setError(out?.message ?? "Sign-in couldn't be completed. Check your connection, then try again.")
 			}
 		} catch {
+			cardAction("signin_link", "paste", { result: "error" })
 			setError("Sign-in couldn't be completed. Check your connection, then try again.")
 		} finally {
 			inFlight.current = false
@@ -445,7 +452,10 @@ const PasteLinkDisclosure: React.FC = () => {
 			Have a sign-in link?{" "}
 			<button
 				data-testid="signin-link-disclose"
-				onClick={() => setOpenField(true)}
+				onClick={() => {
+					cardAction("signin_link", "disclose")
+					setOpenField(true)
+				}}
 				style={{
 					background: "none",
 					border: "none",

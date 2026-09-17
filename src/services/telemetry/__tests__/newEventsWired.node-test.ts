@@ -47,3 +47,48 @@ describe("the events added for this release are wired to real code", () => {
 		assert.doesNotMatch(service, /UPGRADE_PROMPT_DISMISSED/)
 	})
 })
+
+describe("0.4.1: every new card and the actions that matter reach the host", () => {
+	const service = read("src/services/telemetry/TelemetryService.ts")
+	const w = (f: string) => read(`webview-ui/src/components/${f}`)
+
+	test("the BLG20x card counts itself and every rung, from inside the card", () => {
+		const ladder = w("chat/welcome/GatewayLadder.tsx")
+		assert.match(ladder, /cardShown\("blg20_ladder"/)
+		for (const action of ["start", "ask", "install", "browse"]) {
+			assert.match(ladder, new RegExp(`cardAction\\("blg20_ladder", "${action}"`))
+		}
+		// Measured inside the card, so no mount site can forget: no rung calls the parent's handler directly.
+		assert.doesNotMatch(ladder, /onClick=\{\(\) => on(Ask|Install)\(/)
+		assert.doesNotMatch(ladder, /onClick=\{on(Start|Browse)\}/)
+	})
+
+	test("the demo pair, the locked row and the request form", () => {
+		assert.match(w("chat/welcome/DemoHexCard.tsx"), /cardShown\("demo_hex"/)
+		assert.match(w("chat/welcome/DemoHexCard.tsx"), /cardAction\("demo_hex", "flash"/)
+		const row = w("chat/KbitLockedRow.tsx")
+		assert.match(row, /cardShown\("kbit_locked"/)
+		assert.match(row, /cardAction\("kbit_locked", "ask"/)
+		assert.match(row, /cardAction\("kbit_locked", "register"/)
+		const form = w("chat/welcome/RequestAccessForm.tsx")
+		assert.match(form, /cardAction\("request_form", "open"/)
+		// Refusals too: the host only counts a request the server accepted.
+		assert.equal(form.match(/cardAction\("request_form", "send"/g)?.length, 2)
+	})
+
+	test("every door into the register funnel says which door", () => {
+		assert.match(read("webview-ui/src/components/chat/ChatRow.tsx"), /gateShown\("chat"/)
+		const account = w("settings/sections/AccountSection.tsx")
+		assert.match(account, /gateShown\("settings"\)/)
+		assert.match(account, /gateShown\("header"\)/)
+		assert.match(w("chat/welcome/GatePanel.tsx"), /cardAction\("signin_link", "paste"/)
+		const header = read("src/hosts/vscode/accountButton.ts")
+		assert.match(header, /captureButtonClick\("header_account_signin"\)/)
+		assert.match(header, /captureButtonClick\(`header_account_\$\{pick\.action\}`\)/)
+	})
+
+	test("a downloaded tool left out is counted, not only logged", () => {
+		assert.match(read("src/services/tools/ToolResolver.ts"), /reportUnavailable\(id,/)
+		assert.match(service, /TOOL_BIT_UNAVAILABLE: "task\.tool_bit_unavailable"/)
+	})
+})

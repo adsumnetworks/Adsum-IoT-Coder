@@ -29,6 +29,8 @@ vi.mock("@/services/grpc-client", () => ({
 vi.mock("../entryTelemetry", () => ({
 	gateShown: (...a: unknown[]) => telemetry.gateShown(...a),
 	entryRunStart: (...a: unknown[]) => telemetry.entryRunStart(...a),
+	cardShown: () => {},
+	cardAction: () => {},
 }))
 
 const handlers = () => ({ onSelectMode: vi.fn(), onStartTask: vi.fn() })

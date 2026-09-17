@@ -2,7 +2,7 @@ import { type AdsumAccountState, accountHasGroup } from "@shared/adsumAccount"
 import React, { useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { BRAND_CYAN_TEXT } from "../brandColors"
-import { entryRunStart, gateShown } from "./entryTelemetry"
+import { cardAction, entryRunStart, gateShown } from "./entryTelemetry"
 import GatePanel from "./GatePanel"
 import GatewayLadder, { ladderBoard } from "./GatewayLadder"
 import IntentCard from "./IntentCard"
@@ -65,6 +65,7 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 		// Signed in and still locked means a BY-REQUEST group (the tier opens on registration), so
 		// the honest door is the request form, not a register panel for someone already registered.
 		if (adsumAccount || isRequestOnlyGroup(intent.group)) {
+			cardAction("cellular", "ask", { intent: intent.id })
 			setRequesting(intent.id === "blg20Gateway" ? "blg20" : "lew840x")
 			return
 		}
@@ -135,7 +136,10 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 						{!locked && SOURCE_FAMILY[intent.id] && (
 							<SourceLine
 								family={SOURCE_FAMILY[intent.id]}
-								onRequest={() => setRequesting(SOURCE_FAMILY[intent.id])}
+								onRequest={() => {
+									cardAction("source_line", "ask", { family: SOURCE_FAMILY[intent.id] })
+									setRequesting(SOURCE_FAMILY[intent.id])
+								}}
 							/>
 						)}
 					</React.Fragment>

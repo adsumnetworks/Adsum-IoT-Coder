@@ -20,7 +20,7 @@ vi.mock("@/services/grpc-client", () => ({
 	AdsumServiceClient: { startSignIn: async () => ({ value: "" }), refreshAccount: async () => ({}) },
 	StateServiceClient: { captureEntryEvent: () => ({ catch: () => {} }) },
 }))
-vi.mock("../entryTelemetry", () => ({ gateShown: vi.fn(), entryRunStart: vi.fn() }))
+vi.mock("../entryTelemetry", () => ({ gateShown: vi.fn(), entryRunStart: vi.fn(), cardShown: vi.fn(), cardAction: vi.fn() }))
 
 const account = (groups: string[], over: Record<string, unknown> = {}) => ({
 	adsumAccount: { email: "ismail@adsumnetworks.com", name: "Ismail", emailVerified: true, groups },

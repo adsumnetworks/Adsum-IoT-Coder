@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { AdsumServiceClient } from "@/services/grpc-client"
 import { BRAND_CYAN_UI } from "../brandColors"
+import { cardAction } from "./entryTelemetry"
 
 /**
  * "Ask for more details" — the one door to everything a free account does not open, under the one
@@ -98,6 +99,13 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 	const [error, setError] = useState<string | null>(null)
 	const dialogRef = useRef<HTMLDivElement>(null)
 
+	// Opening the form is the ask; sending it is the commitment. The gap between the two is the number.
+	useEffect(() => {
+		if (open) {
+			cardAction("request_form", "open", { family: family ?? "" })
+		}
+	}, [open, family])
+
 	useEffect(() => {
 		if (!open) {
 			return
@@ -127,6 +135,13 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 				StringRequest.create({ value: JSON.stringify({ family, chips, message }) }),
 			)
 			const out = JSON.parse(res.value || "{}") as { ok?: boolean; reason?: string }
+			// Every outcome, not only success: the host counts a request that reached the server, and a
+			// refusal it never sent is exactly what that count cannot see. Chip COUNT, never the message.
+			cardAction("request_form", "send", {
+				family: family ?? "",
+				chips: String(chips.length),
+				result: out.ok ? "ok" : (out.reason ?? "failed"),
+			})
 			if (out.ok) {
 				setSent(true)
 				onSent?.(family)
@@ -142,6 +157,7 @@ const RequestAccessForm: React.FC<RequestAccessFormProps> = ({ open, onClose, on
 				)
 			}
 		} catch {
+			cardAction("request_form", "send", { family: family ?? "", chips: String(chips.length), result: "error" })
 			setError("That didn’t send. Try again in a moment.")
 		} finally {
 			setSending(false)

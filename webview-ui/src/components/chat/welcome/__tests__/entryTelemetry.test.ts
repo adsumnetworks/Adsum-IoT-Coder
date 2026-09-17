@@ -25,6 +25,24 @@ beforeEach(() => {
 })
 
 describe("entry counters", () => {
+	it("a card is one impression per state per paint — a re-render is not a second look", async () => {
+		const t = await load()
+		const shown = () => captureEntryEvent.mock.calls.filter((c) => (c[0] as { event: string }).event === "card_shown")
+		t.cardShown("blg20_ladder", { demo: "false" })
+		t.cardShown("blg20_ladder", { demo: "false" })
+		expect(shown()).toHaveLength(1)
+		// A changed state IS a new fact: the demo was granted while the card was on screen.
+		t.cardShown("blg20_ladder", { demo: "true" })
+		expect(shown()).toHaveLength(2)
+		// A new paint starts counting again.
+		t.entryShown({ mode: "expanded", reason: "returning", hasResume: false, sessions: 0, newestAgeDays: 0, roots: 0 })
+		t.cardShown("blg20_ladder", { demo: "true" })
+		expect(shown()).toHaveLength(3)
+		t.cardAction("blg20_ladder", "ask", { rung: "demo" })
+		const act = captureEntryEvent.mock.calls.at(-1)?.[0] as { event: string; properties: Record<string, string> }
+		expect(act).toEqual({ event: "card_action", properties: { card: "blg20_ladder", action: "ask", rung: "demo" } })
+	})
+
 	it("a paint is one measurement, carrying the shape it painted", async () => {
 		const t = await load()
 		t.entryShown({ mode: "collapsed", reason: "returning", hasResume: true, sessions: 4, newestAgeDays: 2.5, roots: 1 })

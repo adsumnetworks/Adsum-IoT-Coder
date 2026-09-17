@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.1] - 2026-09-15
+## [0.4.1] - 2026-09-17
 
 ### Added
 - A guided first run for the Fanstel BLG20x gateway. It starts with the plan and the parts to have on the desk,
@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   prebuilt images.
 - An account item in the panel header, next to history and settings: sign in when you are signed out; your account
   and sign out when you are signed in. Every window of the editor follows the same session.
+- OpenRouter: choose which sellers may serve a model, with price ceilings, from Settings.
 
 ### Changed
 - Sign-in finishes in the window that started it, even when the editor hands the browser's link to another window.
@@ -35,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The LEW840x request form asks for one thing: the full source with the cellular rung.
 - The BLG20x image pair now carries each half's bootloader, so a unit straight from the box comes up, and its
   programming steps write the protection back before the reset, so the part stays unlocked.
+- Each provider's model list is read live at startup and when the picker opens; retired models are no longer offered,
+  and DeepSeek's current model shows its own context size, cache prices and thinking setting.
+- A log or monitor capture reads the device and never resets it unless you ask, on nRF and on ESP.
+- Anonymous usage counts now cover the new gateway and demo cards, the locked-bit row, the request form and the
+  sign-in link: which card and which action, never what you typed. See [TELEMETRY.md](./TELEMETRY.md).
 
 ### Fixed
 - A task no longer slows to a step a minute while the editor window is hidden or behind another app.
@@ -43,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The account icon draws correctly in remote windows.
 - The request form says when an option cannot be granted for that board, and that nothing was sent, instead of
   asking you to try again.
+- On the free tier, a task could fail to write a file and retry with less each time; the model is now asked for tool
+  calls in the format it makes them.
+- One downloaded tool with a bad descriptor no longer hides every tool after it, and signing in reaches the tool list
+  without a reload.
+- An account with BLG20x access sees the BLG20x card even before the board is detected.
 
 
 ## [0.4.0] - 2026-09-09

@@ -33,7 +33,7 @@ vi.mock("@/services/grpc-client", () => ({
 	},
 	StateServiceClient: { captureEntryEvent: () => ({ catch: () => {} }) },
 }))
-vi.mock("../entryTelemetry", () => ({ gateShown: vi.fn(), entryRunStart: vi.fn() }))
+vi.mock("../entryTelemetry", () => ({ gateShown: vi.fn(), entryRunStart: vi.fn(), cardShown: vi.fn(), cardAction: vi.fn() }))
 
 const account = (over: Partial<{ groups: string[]; openRequests: string[]; emailVerified: boolean }> = {}) => ({
 	adsumAccount: {

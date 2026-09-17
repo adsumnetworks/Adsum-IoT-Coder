@@ -1,8 +1,9 @@
 import { type AdsumAccountState, accountHasGroup } from "@shared/adsumAccount"
 import { demoPairServed } from "@shared/adsumDemoPairs"
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { BRAND_CORAL, BRAND_CYAN_UI, brandAlpha } from "../brandColors"
+import { cardAction, cardShown } from "./entryTelemetry"
 import { DEMO_HEX_PROMPT, DEMO_PAIR_PROMPT_BLG20 } from "./welcomeIntents"
 
 /**
@@ -105,6 +106,13 @@ const DemoHexCard: React.FC<DemoHexCardProps> = ({ onFlash, flashing, boards }) 
 		(p) => accountHasGroup(adsumAccount, p.group) && demoPairServed(adsumAccount?.servedDemoTools, p.group),
 	)
 	const pair = held.find((p) => boards?.some((b) => p.board.test(b))) ?? held[0]
+	// Which pair, and whether the board on the desk chose it or it was simply the first one held.
+	const matched = !!pair && !!boards?.some((b) => pair.board.test(b))
+	useEffect(() => {
+		if (pair) {
+			cardShown("demo_hex", { pair: pair.group, board_matched: String(matched) })
+		}
+	}, [pair, matched])
 	if (!pair) {
 		return null
 	}
@@ -161,6 +169,7 @@ const DemoHexCard: React.FC<DemoHexCardProps> = ({ onFlash, flashing, boards }) 
 						<button
 							data-testid="demo-hex-flash"
 							onClick={() => {
+								cardAction("demo_hex", "flash", { pair: pair.group })
 								setBusy(true)
 								void Promise.resolve(onFlash(pair.prompt)).finally(() => setBusy(false))
 							}}

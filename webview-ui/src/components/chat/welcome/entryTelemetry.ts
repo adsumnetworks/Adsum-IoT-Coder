@@ -18,6 +18,8 @@ import { StateServiceClient } from "@/services/grpc-client"
 
 let shownAt = 0
 let firstPromptSent = false
+/** Impressions already counted on this paint, so a re-render is never a second impression. */
+const shownCards = new Set<string>()
 
 const send = (event: string, properties: Record<string, string>) => {
 	// Guarded on both axes, because a counter must never take down the surface it measures.
@@ -42,6 +44,7 @@ export function entryShown(p: {
 }): void {
 	shownAt = Date.now()
 	firstPromptSent = false
+	shownCards.clear()
 	send("entry_shown", {
 		mode: p.mode,
 		// [POSTHOG 2026-09-04] `mode` alone cannot be acted on: "expanded" covers a first-ever
@@ -92,4 +95,27 @@ export function gateShown(surface: string, intent?: string): void {
 /** The full environment view opened — from the row itself, or from an exception's "why →". */
 export function entryEnvOpen(via: "row" | "why" | "always"): void {
 	send("entry_env_open", { via })
+}
+
+/**
+ * A card was on screen. Once per card, per state, per paint: the panel re-renders on every keystroke
+ * behind it, and an impression counted per render would make every rate built on it meaningless.
+ *
+ * Properties are enums, ids and booleans — which card, which rung, what the account already holds.
+ * Never an email, a path, a board serial or anything typed.
+ */
+export function cardShown(card: string, properties: Record<string, string> = {}): void {
+	const key = `${card}|${Object.entries(properties)
+		.map(([k, v]) => `${k}=${v}`)
+		.join("&")}`
+	if (shownCards.has(key)) {
+		return
+	}
+	shownCards.add(key)
+	send("card_shown", { card, ...properties })
+}
+
+/** A deliberate act on a card: which card, which action, and the enum that says which way. */
+export function cardAction(card: string, action: string, properties: Record<string, string> = {}): void {
+	send("card_action", { card, action, ...properties })
 }

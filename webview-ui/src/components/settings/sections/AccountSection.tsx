@@ -3,6 +3,7 @@ import { GROUP_WORDS } from "@shared/adsumGroupWords"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import React, { useEffect, useState } from "react"
 import { BRAND_CYAN_TEXT, BRAND_CYAN_UI } from "@/components/chat/brandColors"
+import { cardAction, gateShown } from "@/components/chat/welcome/entryTelemetry"
 import GatePanel, { SignInWaiting } from "@/components/chat/welcome/GatePanel"
 import RequestAccessForm, { FAMILIES } from "@/components/chat/welcome/RequestAccessForm"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -48,6 +49,7 @@ const AccountSection: React.FC<AccountSectionProps> = ({ renderSectionHeader }) 
 			return
 		}
 		if (accountIntent === "signin" && !adsumAccount) {
+			gateShown("header")
 			setGate(true)
 		} else if (accountIntent === "signout" && adsumAccount) {
 			setConfirmSignOut(true)
@@ -71,7 +73,14 @@ const AccountSection: React.FC<AccountSectionProps> = ({ renderSectionHeader }) 
 						{adsumSignInPending ? (
 							<SignInWaiting />
 						) : (
-							<button data-testid="account-signin" onClick={() => setGate(true)} style={primaryStyle} type="button">
+							<button
+								data-testid="account-signin"
+								onClick={() => {
+									gateShown("settings")
+									setGate(true)
+								}}
+								style={primaryStyle}
+								type="button">
 								Sign in
 							</button>
 						)}
@@ -111,7 +120,10 @@ const AccountSection: React.FC<AccountSectionProps> = ({ renderSectionHeader }) 
 										none ·{" "}
 										<button
 											data-testid="account-request"
-											onClick={() => setRequesting(true)}
+											onClick={() => {
+												cardAction("account", "request_source")
+												setRequesting(true)
+											}}
 											style={linkStyle}
 											type="button">
 											Request access

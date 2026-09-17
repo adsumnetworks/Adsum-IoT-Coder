@@ -126,6 +126,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push({ dispose: () => stopSignInClaimPoll() })
 	context.subscriptions.push(
 		vscode.commands.registerCommand("adsum.pasteSignInLink", async () => {
+			telemetryService.captureButtonClick("command_pasteSignInLink")
 			await promptAndPasteSignInLink()
 			await WebviewProvider.getInstance()?.controller.postStateToWebview()
 		}),

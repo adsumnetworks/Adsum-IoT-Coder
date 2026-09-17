@@ -3,6 +3,7 @@ import * as vscode from "vscode"
 import { sendAccountAction } from "@/core/controller/adsum/subscribeToAccountAction"
 import { type AccountProfile, getAccount, onAccountChanged } from "@/services/adsum/AccountState"
 import { accountMenuItems } from "@/services/adsum/accountMenu"
+import { telemetryService } from "@/services/telemetry"
 
 /**
  * The account icon in the panel header, between history and settings. The header row is the editor's own
@@ -20,11 +21,14 @@ export function registerAccountButton(context: vscode.ExtensionContext, revealPa
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand("adsum.account.signIn", async () => {
+			// The header icon is a door of its own into the register funnel; the menu's picks are enums.
+			telemetryService.captureButtonClick("header_account_signin")
 			await revealPanel()
 			await sendAccountAction("signin")
 		}),
 		vscode.commands.registerCommand("adsum.account.menu", async () => {
 			const profile = getAccount()
+			telemetryService.captureButtonClick(profile ? "header_account_menu" : "header_account_signin")
 			if (!profile) {
 				await revealPanel()
 				await sendAccountAction("signin")
@@ -40,6 +44,7 @@ export function registerAccountButton(context: vscode.ExtensionContext, revealPa
 				{ title: "Adsum account", placeHolder: profile.email },
 			)
 			if (pick?.action) {
+				telemetryService.captureButtonClick(`header_account_${pick.action}`)
 				await revealPanel()
 				await sendAccountAction(pick.action)
 			}

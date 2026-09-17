@@ -412,6 +412,10 @@ export class TelemetryService {
 			HANDOVER_STARTED: "task.handover_started",
 			/** A tool bit was invoked through execute_command. Id and delivery only — never arguments or paths. */
 			TOOL_BIT_INVOKED: "task.tool_bit_invoked",
+			/** A downloaded tool was left out of the tool list. Id, version and the reason enum only. On 16 Sep a
+			 *  gated bundle went missing for three runs with nothing anywhere to say why; the log now says, and
+			 *  this says how often it happens to people who are not us. */
+			TOOL_BIT_UNAVAILABLE: "task.tool_bit_unavailable",
 			/** A message was queued while the turn was running. Counts and enums only — never the message. */
 			MESSAGE_QUEUED: "task.message_queued",
 			/** Queued messages reached the model at a turn boundary. How many, and by which door. */
@@ -2666,6 +2670,10 @@ export class TelemetryService {
 
 	public captureToolBitInvoked(ulid: string, bitId: string, delivery: "bundled" | "downloaded" | "override") {
 		this.capture({ event: TelemetryService.EVENTS.TASK.TOOL_BIT_INVOKED, properties: { ulid, bitId, delivery } })
+	}
+
+	public captureToolBitUnavailable(props: { bitId: string; version: string; reason: string; signedIn: boolean }) {
+		this.capture({ event: TelemetryService.EVENTS.TASK.TOOL_BIT_UNAVAILABLE, properties: { ...props } })
 	}
 
 	/**

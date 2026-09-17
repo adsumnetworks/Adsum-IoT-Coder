@@ -142,6 +142,16 @@ export type ToolUnavailable =
 	/** The descriptor is missing fields needed to run it. */
 	| "incomplete-descriptor"
 
+/**
+ * Count a tool left out. Imported lazily and never awaited: the resolver runs in rigs with no telemetry
+ * at all, and a counter must never be the reason a developer loses their tools.
+ */
+function reportUnavailable(bitId: string, version: string, reason: string, signedIn: boolean): void {
+	import("@/services/telemetry")
+		.then(({ telemetryService }) => telemetryService.captureToolBitUnavailable({ bitId, version, reason, signedIn }))
+		.catch(() => {})
+}
+
 export type ToolResolution = { tool: ResolvedTool } | { unavailable: ToolUnavailable }
 
 interface ManifestEntry {
@@ -531,6 +541,7 @@ export async function resolveToolsAsync(summary: WorkspaceSummary, taskKey: stri
 					})
 					if (!("tool" in got)) {
 						Logger.warn(`ToolResolver: ${id}@${String(entry.version ?? "")} not available — ${got.unavailable}`)
+						reportUnavailable(id, String(entry.version ?? ""), got.unavailable, !!sessionToken)
 					}
 					if ("tool" in got) {
 						// An override may never WIDEN what the developer already agreed to. If the shipped

@@ -1,5 +1,6 @@
 import { GROUP_WORDS } from "@shared/adsumGroupWords"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { cardAction, cardShown } from "@/components/chat/welcome/entryTelemetry"
 import { ASK_FOR_DETAILS, isRequestOnlyGroup } from "@/components/chat/welcome/welcomeIntents"
 import { BRAND_CYAN_UI } from "./brandColors"
 import { PersonLink } from "./KbitCredit"
@@ -86,12 +87,26 @@ export const KbitLockedRow = ({ bit, onRegister, onRequestAccess, signedIn = fal
 	const registerOpens = !byRequest && !revoked && !signedIn
 	// The set is named in the developer's words, so they can ask for the right thing instead of guessing.
 	const setWords = bit.group ? GROUP_WORDS[bit.group] : undefined
+	// The row's state is the door it offers. Bit id and group are registry names, never anything of the developer's.
+	const door = revoked ? "revoked" : byRequest ? "by_request" : signedIn ? "signed_in" : "register"
+	const facts = { bit: bit.id, group: bit.group ?? "", door }
+	useEffect(() => {
+		cardShown("kbit_locked", { bit: bit.id, group: bit.group ?? "", door })
+	}, [bit.id, bit.group, door])
+	const requestAccess = () => {
+		cardAction("kbit_locked", "ask", facts)
+		onRequestAccess?.()
+	}
+	const register = () => {
+		cardAction("kbit_locked", "register", facts)
+		onRegister?.()
+	}
 	// One action, one phrase. "Ask for more details" is what the card pill and the sub-line on the
 	// home screen say for the same thing, so the developer meets one door and not three names for it.
 	const askButton = onRequestAccess && (
 		<button
 			data-testid="kbit-locked-request"
-			onClick={onRequestAccess}
+			onClick={requestAccess}
 			style={{
 				padding: "2px 8px",
 				fontSize: "11px",
@@ -137,7 +152,7 @@ export const KbitLockedRow = ({ bit, onRegister, onRequestAccess, signedIn = fal
 			) : onRegister ? (
 				<button
 					data-testid="kbit-locked-register"
-					onClick={onRegister}
+					onClick={register}
 					onMouseEnter={() => setHover(true)}
 					onMouseLeave={() => setHover(false)}
 					style={{
