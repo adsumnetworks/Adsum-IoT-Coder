@@ -124,9 +124,11 @@ export function buildIntentPrompt(
 			)
 		case "blg20Gateway":
 			return (
-				"Bring up the Fanstel BLG20 gateway on its nRF9151. Ask me which uplink and which SIM I have, " +
-				"then LOAD the curated BLG20 workflow before you answer — the nRF54 BLE side, the ESP32 host " +
-				"and the nRF9151 modem each have their own bring-up order, and I want the one that was measured."
+				// [17 Sep 2026] This named an ESP32 host the board does not have, and never named the guided run.
+				"Start the BLG20x guided first run. LOAD the BLG20x first-run workflow before you answer and follow " +
+				"its steps: the nRF54 Bluetooth half and the nRF9151 cellular half each have their own probe and " +
+				"their own programming order, and I want the one that was measured. Begin with the plan and what " +
+				"I need on the desk."
 			)
 		case "ntnBringUp":
 			return (
@@ -326,7 +328,8 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 		// is an order code, not an offer: at panel width it wrapped to two lines, and a developer
 		// scanning the list is choosing what to build, not decoding a catalogue row. The numbers are
 		// still here — one line down, where someone comparing an order code will look for them.
-		title: "BLG20x gateway: BLE 6 in, Wi-Fi, cellular, satellite out",
+		// [17 Sep 2026] Wi-Fi came off the title: the hardware family has Wi-Fi models, the firmware does not use it.
+		title: "BLG20x gateway: BLE 6 in, cellular and satellite out",
 		// Names as Fanstel writes them (fanstel.com/blg20cbwg20c, /lbg51e20c, checked 2026-09-09): the IP51
 		// BLG20BC / BLG20BF / BLG20XE line and the IP67 LBG20BC / LBG20BXE / LBG20BC02C line, all nRF9151 +
 		// nRF54LM20B. "BLC" was a mishearing; BWG20BF is the WiFi-only sibling with no nRF9151 and is not here.

@@ -13,7 +13,6 @@ export const GROUP_WORDS: Record<string, string> = {
 	"blg20-demo-hex": "BLG20x demo images",
 	"blg20-prod-hex": "BLG20x production images",
 	"blg20-ble-src": "BLG20x Bluetooth-half source",
-	"blg20-esp-src": "BLG20x ESP source",
 	"blg20-9151-src": "BLG20x radio-half source",
 	"blg20-early-access": "BLG20x gateway card",
 	"blg20-adv-ble": "BLG20x advanced knowledge, Bluetooth half",

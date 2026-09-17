@@ -43,33 +43,29 @@ export interface CardAction {
 export type PatchNote = { silent: true } | { note: string }
 
 export const RELEASE_NOTES = {
-	version: "0.4.0",
+	version: "0.4.1",
 
 	/** Hotfixes on top of `version`. `{ silent: true }` means "nothing to announce", and no toast fires. */
-	patches: {
-		"0.4.1": {
-			note: "the Fanstel BLG20x guided first run, the account in the panel header, and the LEW840x cellular images",
-		},
-	} as Record<string, PatchNote>,
+	patches: {} as Record<string, PatchNote>,
 
 	/** One line, plain words. The update toast is built from it. */
 	headline:
-		"the panel opens on your folder and boards · cellular and satellite with a free account · message a run while it works",
+		"a guided first run for the Fanstel BLG20x gateway · your account in the panel header · runs that keep going in the background",
 
 	/** The panel card. Three lines, each a thing then what to do with it. */
 	card: {
 		lines: [
 			{
-				head: "Home",
-				body: "one row says what is on your desk and what is missing, then ranks the runs worth starting. Typing is the new session; every other session is in the editor's History.",
+				head: "BLG20x",
+				body: "a guided first run for the Fanstel gateway: flash both halves, commission it from the browser, and see its readings on your own platform. Ask for access from the card.",
 			},
 			{
 				head: "Account",
-				body: "free, GitHub or email, no card. Unlocks gateway firmware to flash and license: the LEW840x on BLE, Ethernet, Wi-Fi and cellular; satellite NB-NTN on the nRF9151; nRF54 edge-AI basics.",
+				body: "sign in from the icon beside history and settings. A bit your account cannot open names its set and the one way in; the LEW840x cellular demo comes with a free account.",
 			},
 			{
 				head: "Runs",
-				body: "send a message while the agent works and it lands at the next step. Stop is still its own button.",
+				body: "a task keeps its pace with the editor in the background, and a reply that stops arriving is retried once, then reported.",
 			},
 		] as readonly ReleaseLine[],
 		/** Optional: the one click this release earns. Hidden when it no longer applies (already registered). */
@@ -108,8 +104,8 @@ export const RELEASE_NOTES = {
 			{
 				family: "Products",
 				sdk: "both chips, one workspace",
-				chips: ["Fanstel LEW840X", "Fanstel BWG840X"],
-				protocols: ["BLE", "Ethernet", "Wi-Fi", "cellular"],
+				chips: ["Fanstel LEW840X", "Fanstel BWG840X", "Fanstel BLG20x"],
+				protocols: ["BLE", "Ethernet", "Wi-Fi", "cellular", "NB-NTN"],
 			},
 		] as readonly RunsOnRow[],
 		runsOnNote:

@@ -79,7 +79,7 @@ describe("W — registered", () => {
 		expect(screen.getByTestId("demo-hex-card").textContent).not.toMatch(/signed/i)
 		// The limits are their own line ABOVE the action, not a clause at the end of the description.
 		expect(screen.getByText("Wi-Fi and Ethernet unlimited")).toBeTruthy()
-		expect(screen.getByText("Cellular in 60-minute windows, for evaluation")).toBeTruthy()
+		expect(screen.getByText("Cellular limited, for demos")).toBeTruthy()
 		expect(screen.getByText("≈ 3 min · you will be asked for the ports")).toBeTruthy()
 
 		await act(async () => {

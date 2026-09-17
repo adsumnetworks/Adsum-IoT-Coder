@@ -21,7 +21,7 @@ import { cardAction } from "./entryTelemetry"
 
 export const FAMILIES = [
 	{ id: "lew840x", label: "Fanstel LEW840x" },
-	{ id: "blg20", label: "Fanstel BLG20" },
+	{ id: "blg20", label: "Fanstel BLG20x" },
 ] as const
 
 /**
@@ -45,12 +45,15 @@ export const CHIPS_BY_FAMILY = {
 	 */
 	lew840x: [{ id: "9160-src", label: "Full source, with the cellular rung (nRF9160 + ESP32)" }],
 	/*
-	 * The BLG20x list is the WAYS, not the parts. The demo pair is included with a registered
-	 * account, so offering it here would file a request for something the developer already has —
-	 * and the two images are not "chips" and the knowledge set is not "source", which is why the
-	 * field above them no longer says either word.
+	 * The BLG20x list is the WAYS, not the parts. The two images are not "chips" and the knowledge set
+	 * is not "source", which is why the field above them no longer says either word.
+	 *
+	 * [17 Sep 2026] The demo images are opened per person, not by registering, and the card's Demo line
+	 * has always offered "Ask for more details" to anyone without them. The form had no such option, so
+	 * that ask opened a list with nothing on it the developer had come for.
 	 */
 	blg20: [
+		{ id: "demo-hex", label: "Demo firmware" },
 		{ id: "prod-hex", label: "Production licence" },
 		{ id: "9151-src", label: "Source for the radio half (cellular and satellite)" },
 		{ id: "both-src", label: "Source for both halves" },

@@ -61,7 +61,7 @@ describe("W — asking, and the account tab", () => {
 		expect(screen.getByText(/These are licensed source; we will say what covers it\./)).toBeTruthy()
 		expect(screen.getByTestId("request-family")).toBeTruthy()
 		expect(screen.getByText("Fanstel LEW840x")).toBeTruthy()
-		expect(screen.getByText("Fanstel BLG20")).toBeTruthy()
+		expect(screen.getByText("Fanstel BLG20x")).toBeTruthy()
 		// The BLE scanner and the ESP32-without-cellular source are free since 15 Sep 2026: not an ask.
 		expect(screen.getByTestId("request-chip-9160-src")).toBeTruthy()
 		expect(screen.queryByTestId("request-chip-ble-src")).toBeNull()
@@ -318,14 +318,12 @@ describe("W — asking, and the account tab", () => {
 		// The point of the change: a BLG20's halves are an nRF54 and an nRF9151, so offering
 		// "nRF9160" against one files a request nobody can grant.
 		const blg20 = chipsFor("blg20").map((c) => c.id)
-		// THE CONTRACT. These four ids are what the backend's chip table for this family maps; the
-		// backend asserts the same four against this file, so neither side can be edited alone.
-		expect(blg20).toEqual(["prod-hex", "9151-src", "both-src", "adv"])
-		// The BLG20x list is the WAYS, in the developer's words — no part numbers to decode, and no
-		// entry for the demo pair, which a registered account already holds: a form that offers to
-		// request what you have is a form that files a request nobody needs to answer.
+		// THE CONTRACT. These ids are what the backend's chip table for this family maps; the backend
+		// asserts the same list against this file, so neither side can be edited alone.
+		expect(blg20).toEqual(["demo-hex", "prod-hex", "9151-src", "both-src", "adv"])
+		// The BLG20x list is the WAYS, in the developer's words — no part numbers to decode. The demo is
+		// one of them: it left the registered tier on 13 Sep and is opened per person, so it is an ask.
 		expect(chipsFor("blg20").every((c) => !/nRF|ESP|hex|image/i.test(c.label))).toBe(true)
-		expect(blg20).not.toContain("demo-hex")
 		expect(blg20).not.toContain("esp-src")
 		expect(blg20).not.toContain("9160-src")
 

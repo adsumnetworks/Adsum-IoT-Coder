@@ -160,6 +160,7 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 							<VSCodeLink href={`${DOCS}/cra-readiness`}>CRA readiness</VSCodeLink>
 							<VSCodeLink href={`${DOCS}/supported-hardware`}>Chips and protocols</VSCodeLink>
 							<VSCodeLink href={`${DOCS}/cellular`}>Cellular on nRF91</VSCodeLink>
+							<VSCodeLink href={`${DOCS}/gateway-firmware`}>Gateway firmware</VSCodeLink>
 						</div>
 					</div>
 					<div className="flex flex-col gap-2">

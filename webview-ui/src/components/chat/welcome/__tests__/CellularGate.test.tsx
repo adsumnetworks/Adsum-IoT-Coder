@@ -105,7 +105,7 @@ describe("W — the register gate", () => {
 			"LTE-M / NB-IoT gateway",
 			// [OPERATOR 2026-09-09] The BLG20 is mentioned, locked, and opened per person later.
 			// Titled by what the firmware does; the part numbers are one line down, in the description.
-			"BLG20x gateway: BLE 6 in, Wi-Fi, cellular, satellite out",
+			"BLG20x gateway: BLE 6 in, cellular and satellite out",
 			"Satellite NB-NTN bring-up",
 			"nRF91 modem bring-up",
 			"On-device inference",

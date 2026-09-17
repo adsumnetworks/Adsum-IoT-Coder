@@ -169,7 +169,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				icon: i.icon,
 				platform: "product",
 				need: i.id === "blg20Gateway" ? "blg20" : "cellular",
-				productLabel: i.id === "blg20Gateway" ? "Fanstel BLG20" : undefined,
+				productLabel: i.id === "blg20Gateway" ? "Fanstel BLG20x" : undefined,
 				boardMatch: CELLULAR_BOARDS,
 				whyNeutral:
 					i.id === "edgeAi" ? "needs an nRF54 with the Axon NPU" : "needs an nRF91-family board or a Fanstel gateway",

@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   there for the next task. The answer continues from what it has read and never fills the missing steps from general
   knowledge.
 - The LEW840x request form asks for one thing: the full source with the cellular rung.
+- The BLG20x request form can ask for the demo firmware, which the card's Demo line has always offered to ask
+  about. The card no longer lists Wi-Fi, which this firmware does not use, and Start begins the guided first run.
 - The BLG20x image pair now carries each half's bootloader, so a unit straight from the box comes up, and its
   programming steps write the protection back before the reset, so the part stays unlocked.
 - Each provider's model list is read live at startup and when the picker opens; retired models are no longer offered,

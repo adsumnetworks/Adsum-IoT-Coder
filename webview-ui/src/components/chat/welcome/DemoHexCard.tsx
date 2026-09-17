@@ -64,7 +64,7 @@ const DEMO_PAIRS: readonly DemoPair[] = [
 		title: "Flash the LEW840x demo",
 		badge: "Demo included",
 		body: "Three images: BLE scanner, ESP32 uplink, nRF9160 bearer. Needs nrfutil and esptool on this machine.",
-		limits: ["Wi-Fi and Ethernet unlimited", "Cellular in 60-minute windows, for evaluation"],
+		limits: ["Wi-Fi and Ethernet unlimited", "Cellular limited, for demos"],
 		action: "Flash demo ▸",
 		after: "≈ 3 min · you will be asked for the ports",
 		licence: "A licence notice is written next to the images.",
