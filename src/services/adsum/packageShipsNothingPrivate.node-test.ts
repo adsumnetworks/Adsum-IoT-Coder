@@ -1,12 +1,9 @@
 /**
  * Nothing of ours that is not the product rides into the package.
  *
- * 17 Sep: 0.4.1 was published with this repo's own `.adsum/` folder inside it — the workspace map, the project
- * notes and a run note the agent writes while we work on the extension. `.vscodeignore` already excluded the
- * other maintainer memory (CLAUDE.md, .claude/, .agents/) and nobody had added `.adsum/`, so a path naming a
- * local machine and this repository's folder shipped in 0.3.1, 0.4.0 and 0.4.1. The ignore list was a guard
- * by convention: a new folder is shipped until someone remembers to name it. This lists the files `vsce` would
- * actually package — the same list the icon test reads — and fails on the folder and on what it gave away.
+ * `.vscodeignore` is a list, and a list only excludes what someone remembered to name: a new maintainer folder
+ * is packaged until it is added. This lists the files `vsce` would actually package, the same list the icon test
+ * reads, and fails on maintainer folders and on any packaged text that names a local machine or a private repo.
  *
  * Run: npx ts-node --transpile-only -P tsconfig.unit-test.json -r tsconfig-paths/register src/services/adsum/packageShipsNothingPrivate.node-test.ts
  */

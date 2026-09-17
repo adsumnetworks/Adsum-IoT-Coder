@@ -117,8 +117,7 @@ CLAUDE.md
 CLAUDE.roadmap.md
 .clangd
 .agents/**
-# The extension's own workspace memory for THIS repo (map, project notes, run notes). Written by the agent
-# while we work on the extension; it names local paths. 0.3.1 to 0.4.1 shipped it. [17 Sep 2026]
+# The extension's own workspace memory for this repo (map, project notes, run notes). Local, never shipped.
 .adsum/**
 # One-off UI probe scripts (gitignored). Gitignored is not unpackaged: a local build would ship them.
 .dev-probes/**
