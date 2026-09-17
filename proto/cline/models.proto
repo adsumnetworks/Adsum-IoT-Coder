@@ -237,6 +237,14 @@ message ModelsApiOptions {
   optional string aihubmix_base_url = 42;
   optional string aihubmix_app_code = 43;
   optional bool azure_identity = 44;
+  // Routing — who serves an OpenRouter model, and on what terms. Carried here because a field the
+  // settings panel can write but this message cannot hold is a setting that silently never saves.
+  optional string open_router_seller_order = 45;
+  optional bool open_router_only_these_sellers = 46;
+  optional string open_router_max_input_price = 47;
+  optional string open_router_max_output_price = 48;
+  optional bool open_router_require_tool_calls = 49;
+  optional string open_router_extra_body = 50;
 
   // Plan mode configurations
   optional ApiProvider plan_mode_api_provider = 100;
@@ -587,6 +595,13 @@ message ModelsApiConfiguration {
   optional string aihubmix_app_code = 84;
   optional string nous_research_api_key = 85;
   optional bool azure_identity = 86;
+  // Routing — the same six fields as ModelsApiOptions, for the same reason.
+  optional string open_router_seller_order = 89;
+  optional bool open_router_only_these_sellers = 90;
+  optional string open_router_max_input_price = 91;
+  optional string open_router_max_output_price = 92;
+  optional bool open_router_require_tool_calls = 93;
+  optional string open_router_extra_body = 94;
 
   // Plan mode configurations
   optional ApiProvider plan_mode_api_provider = 100;

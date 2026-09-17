@@ -92,10 +92,34 @@ export function hasRoutingValues(values: RoutingValues): boolean {
 	return routingSummary(values).length > 0
 }
 
+/** The fields a person types into, as opposed to the checkboxes and the preference. */
+type TypedField = "sellerOrder" | "maxInputPrice" | "maxOutputPrice" | "extraBody"
+
 export const OpenRouterRouting: React.FC<OpenRouterRoutingProps> = ({ values, onChange, modelInfo, initialOpen }) => {
 	// Opens on values that already exist — a developer must not lose sight of a choice made an hour
 	// ago — and otherwise stays shut.
 	const [open, setOpen] = useState(() => initialOpen ?? hasRoutingValues(values))
+
+	// [15 Sep 2026] What a person types is what the field shows, immediately.
+	//
+	// Each keystroke sends the WHOLE configuration to the host and the host pushes it back
+	// (`handleFieldChange` → `updateApiConfigurationProto` → state); these fields read that returned
+	// value, so every character waited on a round trip, and a busy host — a task streaming in the
+	// same window — meant characters vanished as they were typed. The block could not be edited at
+	// all. The typing is held here until the configuration agrees with it, so the write is still the
+	// configuration's and a change made anywhere else still lands in the field.
+	const [draft, setDraft] = useState<Partial<Record<TypedField, string>>>({})
+	React.useEffect(() => {
+		setDraft((d) => {
+			const kept = Object.fromEntries(Object.entries(d).filter(([k, v]) => values[k as TypedField] !== v))
+			return Object.keys(kept).length === Object.keys(d).length ? d : kept
+		})
+	}, [values])
+	const shown = (field: TypedField): string => draft[field] ?? values[field] ?? ""
+	const typed = (field: TypedField) => (value: string) => {
+		setDraft((d) => ({ ...d, [field]: value }))
+		onChange(field, value)
+	}
 	const summary = routingSummary(values)
 	const sellers = (values.sellerOrder ?? "")
 		.split(",")
@@ -176,10 +200,10 @@ export const OpenRouterRouting: React.FC<OpenRouterRoutingProps> = ({ values, on
 						<VSCodeTextField
 							data-testid="routing-sellers"
 							id="routing-sellers"
-							onInput={(e: any) => onChange("sellerOrder", e.target.value)}
+							onInput={(e: any) => typed("sellerOrder")(e.target.value)}
 							placeholder="e.g. together, deepinfra"
 							style={{ width: "100%" }}
-							value={values.sellerOrder ?? ""}
+							value={shown("sellerOrder")}
 						/>
 						<Hint>Separate names with commas. The first that can serve the model gets the request.</Hint>
 					</div>
@@ -201,17 +225,17 @@ export const OpenRouterRouting: React.FC<OpenRouterRoutingProps> = ({ values, on
 						<div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
 							<VSCodeTextField
 								data-testid="routing-max-input"
-								onInput={(e: any) => onChange("maxInputPrice", e.target.value)}
+								onInput={(e: any) => typed("maxInputPrice")(e.target.value)}
 								placeholder="input $/M"
 								style={{ flex: "1 1 120px" }}
-								value={values.maxInputPrice ?? ""}
+								value={shown("maxInputPrice")}
 							/>
 							<VSCodeTextField
 								data-testid="routing-max-output"
-								onInput={(e: any) => onChange("maxOutputPrice", e.target.value)}
+								onInput={(e: any) => typed("maxOutputPrice")(e.target.value)}
 								placeholder="output $/M"
 								style={{ flex: "1 1 120px" }}
-								value={values.maxOutputPrice ?? ""}
+								value={shown("maxOutputPrice")}
 							/>
 						</div>
 						<Hint>
@@ -244,7 +268,7 @@ export const OpenRouterRouting: React.FC<OpenRouterRoutingProps> = ({ values, on
 						<textarea
 							data-testid="routing-extra"
 							id="routing-extra"
-							onChange={(e) => onChange("extraBody", e.target.value)}
+							onChange={(e) => typed("extraBody")(e.target.value)}
 							placeholder='{"reasoning_effort": "high"}'
 							rows={3}
 							style={{
@@ -257,7 +281,7 @@ export const OpenRouterRouting: React.FC<OpenRouterRoutingProps> = ({ values, on
 								borderRadius: "3px",
 								padding: "6px",
 							}}
-							value={values.extraBody ?? ""}
+							value={shown("extraBody")}
 						/>
 						<Hint>Merged last. The model and your messages are never changed by it.</Hint>
 					</div>

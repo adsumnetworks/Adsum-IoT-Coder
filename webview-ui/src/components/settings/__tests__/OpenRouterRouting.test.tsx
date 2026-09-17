@@ -93,6 +93,46 @@ describe("the Routing block", () => {
 		expect(onChange).toHaveBeenCalledWith("extraBody", '{"reasoning_effort":"high"}')
 	})
 
+	/**
+	 * [15 Sep 2026] The field would not take typing. Every keystroke here is a whole configuration sent to
+	 * the host and pushed back (`handleFieldChange` → `updateApiConfigurationProto`), and until it came back
+	 * the field went on showing the OLD value — so with a task streaming, characters vanished as they were
+	 * typed and the block could not be changed at all. A developer's own typing is now what the field shows,
+	 * and the configuration catches up behind it.
+	 */
+	it("takes typing while the configuration is still catching up", () => {
+		const onChange = vi.fn()
+		const stale = { sellerOrder: "baidu, baseten, parasail", extraBody: '{"reasoning_effort": "high"}' }
+		const { rerender } = render(<OpenRouterRouting modelInfo={model} onChange={onChange} values={stale} />)
+
+		const sellers = screen.getByTestId("routing-sellers") as HTMLInputElement
+		// The toolkit's field carries its own value property, so typing is that value plus the event.
+		sellers.value = "baseten"
+		fireEvent.input(sellers)
+		// The host answers — with the configuration as it was a moment ago, which is the whole problem.
+		rerender(<OpenRouterRouting modelInfo={model} onChange={onChange} values={stale} />)
+		expect(sellers.value).toBe("baseten")
+		expect(onChange).toHaveBeenCalledWith("sellerOrder", "baseten")
+
+		const extra = screen.getByTestId("routing-extra") as HTMLTextAreaElement
+		fireEvent.change(extra, { target: { value: '{"reasoning_effort": "low"}' } })
+		rerender(<OpenRouterRouting modelInfo={model} onChange={onChange} values={stale} />)
+		expect(extra.value).toBe('{"reasoning_effort": "low"}')
+
+		// And once the configuration agrees, the field is the configuration's again: a change made
+		// anywhere else still reaches it.
+		rerender(
+			<OpenRouterRouting
+				modelInfo={model}
+				onChange={onChange}
+				values={{ sellerOrder: "baseten", extraBody: '{"reasoning_effort": "low"}' }}
+			/>,
+		)
+		rerender(<OpenRouterRouting modelInfo={model} onChange={onChange} values={{ sellerOrder: "wafer", extraBody: "" }} />)
+		expect((screen.getByTestId("routing-sellers") as HTMLInputElement).value).toBe("wafer")
+		expect((screen.getByTestId("routing-extra") as HTMLTextAreaElement).value).toBe("")
+	})
+
 	it("says plainly what leaving substitutions on means", () => {
 		render(<OpenRouterRouting modelInfo={model} onChange={vi.fn()} values={{}} />)
 		fireEvent.click(screen.getByTestId("routing-toggle"))
