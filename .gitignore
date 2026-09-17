@@ -94,3 +94,6 @@ __pycache__/
 
 # local one-off probe scripts, see .dev-probes/README.md
 .dev-probes/
+
+# The extension's workspace memory for this repo: local notes and paths, never committed or shipped.
+.adsum/

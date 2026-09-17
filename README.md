@@ -37,7 +37,7 @@
 
 <p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
 
-## What's New <sup>`v0.4.1`</sup>
+## What's New <sup>`v0.4.2`</sup>
 
 A guided first run for the Fanstel BLG20x, an account in the panel header, and tasks that keep going when the editor is in the background. BLE, Wi-Fi and Ethernet need no account, today or tomorrow.
 

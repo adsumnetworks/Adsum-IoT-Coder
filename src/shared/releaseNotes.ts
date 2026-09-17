@@ -43,7 +43,7 @@ export interface CardAction {
 export type PatchNote = { silent: true } | { note: string }
 
 export const RELEASE_NOTES = {
-	version: "0.4.1",
+	version: "0.4.2",
 
 	/** Hotfixes on top of `version`. `{ silent: true }` means "nothing to announce", and no toast fires. */
 	patches: {} as Record<string, PatchNote>,

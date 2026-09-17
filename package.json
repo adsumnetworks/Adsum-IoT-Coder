@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr), including nRF91 cellular (NB-IoT, LTE-M, NB-NTN). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.4.1",
+	"version": "0.4.2",
 	"icon": "assets/icons/icon.png",
 	"galleryBanner": {
 		"color": "#161311",
