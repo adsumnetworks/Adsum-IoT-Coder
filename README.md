@@ -1,8 +1,6 @@
 <div align="center" markdown="1">
 
-<img src="assets/icons/icon.png" width="110" alt="Adsum IoT Coder" />
-
-# Adsum IoT Coder
+<img src="assets/docs/work-with-adsum.png" width="100%" alt="Work with Adsum IoT Coder" />
 
 ### ESP &amp; nRF · IoT Firmware Debug, Dev &amp; CRA Readiness
 
