@@ -1,4 +1,6 @@
 import assert from "node:assert/strict"
+import * as fs from "node:fs"
+import * as path from "node:path"
 import { describe, test } from "node:test"
 
 /**
@@ -14,12 +16,24 @@ import { describe, test } from "node:test"
  *
  * The regexes are duplicated here rather than imported: they are one line each, and a test that reads
  * the source's own pattern passes no matter what that pattern says.
+ *
+ * But duplication alone rots. The DECT gate block in `__tests__/kbitVisibility.node-test.ts` pairs the
+ * copy with an assertion that the source STILL contains it, so a change on one side fails loudly
+ * instead of quietly leaving the test measuring a pattern nobody uses. Same here.
  */
+const CTX = path.join(process.cwd(), "src", "core", "prompts", "system-prompt", "components", "iot_context.ts")
 const LORA_KCONFIG = /^\s*CONFIG_LORA\w*\s*=\s*y/im
 const LORA_DEVICETREE = /semtech,sx12/i
 const ESP_LORA = /sx12[67]x|sx126[128]|sx127[6-9]|lora|radiolib/i
 
 describe("recognising a LoRa project from its configuration", () => {
+	test("the test is checking the same patterns the source uses", () => {
+		const ctx = fs.readFileSync(CTX, "utf8")
+		for (const re of [LORA_KCONFIG, LORA_DEVICETREE, ESP_LORA]) {
+			assert.ok(ctx.includes(String(re)), `iot_context.ts no longer uses ${re} — update this test`)
+		}
+	})
+
 	test("the driver Kconfigs are matched", () => {
 		for (const line of ["CONFIG_LORA=y", "CONFIG_LORA_SX126X=y", "CONFIG_LORA_SX127X=y", "  CONFIG_LORA=y  "]) {
 			assert.ok(LORA_KCONFIG.test(`${line}\n`), line)

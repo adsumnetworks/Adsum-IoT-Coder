@@ -231,16 +231,18 @@ describe("protocol knowledge arrives before the guessing starts", () => {
 		assert.ok(/Protocol knowledge — load it BEFORE you design or debug/.test(ctx))
 	})
 
-	test("all four protocols route, plus both device tools", () => {
+	test("every protocol routes, plus both device tools", () => {
 		const block = ctx.slice(ctx.indexOf("Protocol knowledge —"), ctx.indexOf("Device tools (shipped"))
-		for (const bit of ["LTE.md", "NTN.md", "DECT-NR.md", "GNSS.md", "board-shell.md", "modem-trace.md"]) {
+		// LORA.md is the SHARED radio bit, not a platform one: which band a module is built for, and
+		// whether two radios can hear each other, are facts about the radio rather than about nRF.
+		for (const bit of ["LTE.md", "NTN.md", "DECT-NR.md", "GNSS.md", "LORA.md", "board-shell.md", "modem-trace.md"]) {
 			assert.ok(block.includes(bit), `router does not point at ${bit}`)
 		}
 	})
 
 	test("the words a developer actually types are the triggers", () => {
 		const block = ctx.slice(ctx.indexOf("Protocol knowledge —"), ctx.indexOf("Device tools (shipped"))
-		for (const word of ["NB-IoT", "LTE-M", "satellite", "DECT", "GNSS", "AT commands"]) {
+		for (const word of ["NB-IoT", "LTE-M", "satellite", "DECT", "GNSS", "LoRa", "spreading factor", "AT commands"]) {
 			assert.ok(block.includes(word), `"${word}" is not a trigger`)
 		}
 	})
@@ -463,7 +465,10 @@ describe("product knowledge is reachable", () => {
 		)
 		for (const block of blocks) {
 			for (const p of [...block.matchAll(/`([^`]+\.md)`/g)].map((m) => m[1])) {
-				assert.ok(/^(platforms|products|rules|actions|workflows)\//.test(p), `router path is not root-relative: ${p}`)
+				assert.ok(
+					/^(platforms|products|rules|actions|workflows|wireless|edge-ai|sensors|tools|cra)\//.test(p),
+					`router path is not root-relative: ${p}`,
+				)
 			}
 		}
 	})
