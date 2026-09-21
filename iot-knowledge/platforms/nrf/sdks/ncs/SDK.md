@@ -2,7 +2,7 @@
 id: adsum/nrf/sdks/ncs/sdk
 title: "Nordic Connect SDK"
 type: knowledge
-version: 1.0.0
+version: 1.1.0
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -90,6 +90,9 @@ Board targets use the format `<board>/<soc>` (e.g. `nrf52840dk/nrf52840`).
 ## Supported Protocols
 For protocol-specific knowledge, refer to:
 - **BLE:** `sdks/ncs/protocols/BLE.md`
+- **LoRa:** `wireless/lora/LORA.md` for the radio and which parts can hear each other, then
+  `sdks/ncs/protocols/LORA.md` for driving it. Zephyr ships `semtech,sx126x` and `semtech,sx127x`
+  drivers; there is no LR11xx or LR20xx driver in NCS.
 
 
 ## Memory Report

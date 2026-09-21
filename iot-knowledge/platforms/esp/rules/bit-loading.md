@@ -2,7 +2,7 @@
 id: adsum/esp/rules/bit-loading
 title: "ESP Platform Rule: Bit Loading"
 type: knowledge
-version: 1.3.0
+version: 1.4.0
 supersedes: adsum/esp/rules/skill-loading
 owner: adsum-core
 author: Omar Morceli
@@ -32,6 +32,7 @@ This table is organized by what you, the agent, are about to *do* — not by wha
 | **Scaffold a new ESP-IDF prototype** — task contains `scaffold a new ESP-IDF prototype` or `Start a new ESP-IDF prototype` | `platforms/esp/workflows/prototype.md` |
 | **Add a feature to an existing project** — task contains `add a feature` or `Add a feature to` | `platforms/esp/workflows/add-feature.md` |
 | **Test or validate firmware** — task contains `test and validate` or `Prove` + `works` | `platforms/esp/workflows/test-validate.md` |
+| **Build a LoRa link or a LoRa node** — two boards that must talk, a point-to-point link, "test my LoRa modules" | `wireless/lora/demos/two-node-433.md` (it loads the radio and SDK bits it needs) |
 | Build firmware · Flash firmware · run the Build → Flash → Capture → Analyze → Fix cycle · diagnose a crash/panic/WDT/brownout | `platforms/esp/workflows/debug-loop.md` |
 | Capture serial logs · analyze logs · diagnose runtime behaviour on a board **already running** (no reflash) | `platforms/esp/workflows/log-analyzer.md` |
 | Add `ESP_LOG*` instrumentation to existing source · prepare a project for future log capture | `platforms/esp/workflows/log-generator.md` |

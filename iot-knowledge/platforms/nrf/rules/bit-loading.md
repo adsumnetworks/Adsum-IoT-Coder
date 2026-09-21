@@ -2,7 +2,7 @@
 id: adsum/nrf/rules/bit-loading
 title: "nRF Platform Rule: Bit Loading"
 type: knowledge
-version: 1.6.0
+version: 1.7.0
 supersedes: adsum/nrf/rules/skill-loading
 owner: adsum-core
 author: Omar Morceli
@@ -38,6 +38,7 @@ This table is organized by what you, the agent, are about to *do* — not by wha
 | Capture device logs (UART/RTT) · perform log analysis · diagnose runtime behaviour from logs | `platforms/nrf/workflows/log-analyzer.md` |
 | Inject `LOG_*` macros into source · configure the log backend in `prj.conf` · enable deep BLE stack logging · prepare a project for future log capture | `platforms/nrf/workflows/log-generator.md` |
 | **Debug a BLE problem that app/stack logs don't explain** — pairing fails on one side · conn params won't update · PHY won't switch · GATT works on a phone but not a peer · a crash inside the controller · any timing-sensitive BLE bug | `platforms/nrf/workflows/hci-trace.md` (host↔controller HCI evidence) |
+| **Build a LoRa link or a LoRa node** — two boards that must talk, a point-to-point link, "test my LoRa modules" | `wireless/lora/demos/two-node-433.md` (it loads the radio and SDK bits it needs) |
 | **Anything about the BLE sniffer** — set up / flash / plug in the sniffer dongle, enter DFU, OR confirm what actually transmitted over the air (HCI shows a command went out but no result · "is the device even advertising / being connected to?" · range/interference) | `platforms/nrf/workflows/ble-sniffer.md` (it walks dongle setup + capture) |
 
 If an upcoming operation does not match any row, you are not in a Workflow's scope and may proceed with standard tool use (consult `AGENT.md` Scope Gate first).

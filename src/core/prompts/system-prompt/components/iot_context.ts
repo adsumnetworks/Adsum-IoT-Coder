@@ -80,6 +80,65 @@ async function hasDectIntent(cwd: string): Promise<boolean> {
 	}
 }
 
+/**
+ * True when the project has a LoRa radio on it.
+ *
+ * TWO signals, and the second is not optional. `CONFIG_LORA` is the obvious one, but a project can
+ * carry a fully described radio in devicetree with the driver deliberately switched off — which is
+ * exactly how the LEW840X LoRa bring-up was done on 2026-09-21: the `semtech,sx1262` node was real,
+ * the SPI was real, and `CONFIG_LORA` was off on purpose so a hand-written probe could own the bus
+ * before Zephyr's driver did. A Kconfig-only gate would have missed the one project that most needed
+ * the knowledge.
+ *
+ * Overlays are read from the project root and its `boards/` directory, which is where Zephyr looks.
+ */
+async function hasLoraIntent(cwd: string): Promise<boolean> {
+	try {
+		const prj = path.join(cwd, "prj.conf")
+		if ((await fileExistsAtPath(prj)) && /^\s*CONFIG_LORA\w*\s*=\s*y/im.test(await fs.readFile(prj, "utf-8"))) {
+			return true
+		}
+	} catch {
+		// fall through to the devicetree check — a missing prj.conf is not an answer
+	}
+
+	for (const dir of [cwd, path.join(cwd, "boards")]) {
+		try {
+			for (const name of await fs.readdir(dir)) {
+				if (!name.endsWith(".overlay") && !name.endsWith(".dts") && !name.endsWith(".dtsi")) {
+					continue
+				}
+				// `semtech,sx12` covers sx1261/1262/1268 and sx1272/1276/1278 in one test.
+				if (/semtech,sx12/i.test(await fs.readFile(path.join(dir, name), "utf-8"))) {
+					return true
+				}
+			}
+		} catch {
+			// no such directory, or unreadable — try the next one
+		}
+	}
+	return false
+}
+
+/**
+ * The ESP half of the same question. ESP-IDF ships no LoRa driver, so there is no Kconfig to read:
+ * the evidence is a registry component in `idf_component.yml`, or source that names a part.
+ */
+async function hasEspLoraIntent(cwd: string): Promise<boolean> {
+	const files = ["idf_component.yml", "main/idf_component.yml", "sdkconfig", "sdkconfig.defaults"]
+	for (const rel of files) {
+		try {
+			const p = path.join(cwd, rel)
+			if ((await fileExistsAtPath(p)) && /sx12[67]x|sx126[128]|sx127[6-9]|lora/i.test(await fs.readFile(p, "utf-8"))) {
+				return true
+			}
+		} catch {
+			// unreadable file is not evidence either way
+		}
+	}
+	return false
+}
+
 async function hasGnssIntent(cwd: string): Promise<boolean> {
 	try {
 		const prj = path.join(cwd, "prj.conf")
@@ -620,11 +679,17 @@ async function getEspPlatformContext(cwd: string, load: TrackedLoad, productRowE
 	// is an ESP32 application with two Nordic radio cards. The router row existed only on the nRF path,
 	// so an ESP-classified workspace could never be routed to the family — the agent never learned the
 	// bits existed. Paths are written from the KNOWLEDGE ROOT, as the nRF table's comment explains.
+	// The router table on the ESP path. It used to exist only to carry the product row, so it appeared
+	// only when that row had not already been emitted — which meant a LoRa row added inside it would
+	// have been invisible on exactly the workspaces that had seen a product row elsewhere. The table
+	// is now emitted whenever it has anything to say, and each row decides for itself.
+	const espRows: string[] = ["| LoRa, LoRaWAN, SX1262, SX1276, SX1278, spreading factor, sub-GHz | `wireless/lora/LORA.md` |\n"]
 	if (!productRowEmitted) {
-		ctx += "| The developer says | Read this FIRST |\n|---|---|\n"
-		ctx += productLine()
-		ctx += "A bit already listed under *Knowledge Already Loaded* is in context — do not read it again.\n\n"
+		espRows.unshift(productLine())
 	}
+	ctx += "| The developer says | Read this FIRST |\n|---|---|\n"
+	ctx += espRows.join("")
+	ctx += "A bit already listed under *Knowledge Already Loaded* is in context — do not read it again.\n\n"
 
 	// Surface the IDF-version split so the agent can reconcile (rules/device-identity.md Step 3):
 	// the active env's IDF vs the project's pinned IDF (dependencies.lock). The host bridge already
@@ -677,6 +742,14 @@ async function getEspPlatformContext(cwd: string, load: TrackedLoad, productRowE
 	if (hasBle) {
 		ctx += "#### Protocol: BLE Detected\n\n"
 		ctx += (await load("platforms/esp/sdks/esp-idf/protocols/BLE.md")) + "\n\n"
+	}
+	// No Kconfig to detect here: ESP-IDF ships no LoRa driver, so the evidence is a registry component
+	// or source naming a part. Which component the project picked decides its whole API, so the bit
+	// has to arrive before the code does.
+	if (await hasEspLoraIntent(cwd)) {
+		ctx += "#### LoRa Detected — from a component dependency or the source\n\n"
+		ctx += (await load("wireless/lora/LORA.md")) + "\n\n"
+		ctx += (await load("platforms/esp/sdks/esp-idf/protocols/LORA.md")) + "\n\n"
 	}
 
 	// Board: prefer the build artifact target(s), then the sdkconfig target, then — when the workspace
@@ -757,6 +830,11 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	ctx += "| GPS, GNSS, location, position fix | `platforms/nrf/sdks/ncs/protocols/GNSS.md` |\n"
 	ctx += "| AT commands, modem shell, MoSh | `platforms/nrf/actions/board-shell.md` |\n"
 	ctx += "| modem trace, why will it not attach | `platforms/nrf/actions/modem-trace.md` |\n"
+	// LoRa routes to the SHARED bit, not a platform one. The band a module is built for, whether two
+	// radios can hear each other, and why one transceiver is not a gateway are all facts about the
+	// radio rather than about nRF — and getting them from the platform bit would mean writing them
+	// twice and having them disagree.
+	ctx += "| LoRa, LoRaWAN, SX1262, SX1276, SX1278, spreading factor, sub-GHz | `wireless/lora/LORA.md` |\n"
 	// A product is not a platform: the Fanstel gateway is an nRF52840 BLE card, an nRF9160 LTE card and
 	// an ESP32 Ethernet host in one enclosure. Its index names which sub-bit answers which question, so
 	// one row reaches the whole family.
@@ -881,6 +959,16 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	if (await hasDectIntent(cwd)) {
 		ctx += "#### DECT NR+ Detected — from project configuration\n\n"
 		ctx += (await load("platforms/nrf/sdks/ncs/protocols/DECT-NR.md")) + "\n\n"
+	}
+
+	// LoRa, on its own gate for the same reason DECT is: it is not cellular, it has no SIM, and a LoRa
+	// project may set no Kconfig the other gates look at. Both bits, because they answer different
+	// questions — the shared one says what the radio can do and which parts can hear each other, the
+	// NCS one says how to drive it and how to prove it before trusting the driver.
+	if (await hasLoraIntent(cwd)) {
+		ctx += "#### LoRa Detected — from project configuration or devicetree\n\n"
+		ctx += (await load("wireless/lora/LORA.md")) + "\n\n"
+		ctx += (await load("platforms/nrf/sdks/ncs/protocols/LORA.md")) + "\n\n"
 	}
 
 	if (boardSignals.length > 0) {
