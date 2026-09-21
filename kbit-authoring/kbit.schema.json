@@ -164,6 +164,7 @@
 					"enum": [
 						"cellular-advanced",
 						"edge-ai-advanced",
+						"lora-advanced",
 						"lew840x-demo-hex",
 						"lew840x-prod-hex",
 						"lew840x-ble-src",
@@ -230,6 +231,7 @@
 								"enum": [
 									"cellular-advanced",
 									"edge-ai-advanced",
+									"lora-advanced",
 									"lew840x-demo-hex",
 									"lew840x-prod-hex",
 									"lew840x-ble-src",

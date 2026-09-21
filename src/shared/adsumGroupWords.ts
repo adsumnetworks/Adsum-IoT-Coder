@@ -5,6 +5,7 @@
 export const GROUP_WORDS: Record<string, string> = {
 	"cellular-advanced": "Advanced cellular",
 	"edge-ai-advanced": "On-device inference",
+	"lora-advanced": "LoRa knowledge",
 	"lew840x-demo-hex": "LEW840x demo images",
 	"lew840x-prod-hex": "LEW840x production images",
 	"lew840x-ble-src": "LEW840x BLE source",

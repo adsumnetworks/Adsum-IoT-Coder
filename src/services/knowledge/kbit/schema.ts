@@ -55,6 +55,10 @@ export const KBIT_GROUPS = [
 	// knowledge
 	"cellular-advanced", // LTE-M / NB-IoT / NTN / DECT NR+ beyond chip-and-DK basics
 	"edge-ai-advanced", // on-device inference (nRF54 Axon)
+	// LoRa: the modulation, the chipsets, and the NCS and ESP-IDF bits that build a node. In the
+	// registered tier on purpose — a developer who signs up can prototype LoRa on either SDK, which
+	// is the cheapest way to meet the people who later need a production image.
+	"lora-advanced",
 	// Fanstel LEW840x gateway artefacts
 	"lew840x-demo-hex", // the LEW840x demo images; granted per account since 14 Sep 2026 (cellular in 60-minute windows)
 	"lew840x-prod-hex", // the same builds without the cap — granted by hand for pilots
