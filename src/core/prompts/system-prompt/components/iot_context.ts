@@ -123,13 +123,20 @@ async function hasLoraIntent(cwd: string): Promise<boolean> {
 /**
  * The ESP half of the same question. ESP-IDF ships no LoRa driver, so there is no Kconfig to read:
  * the evidence is a registry component in `idf_component.yml`, or source that names a part.
+ *
+ * `radiolib` is in the pattern because it is one of the two common choices on this platform and its
+ * name contains neither a part number nor the word LoRa. A gate that matched only the obvious names
+ * would miss it — which the gate test caught before this shipped.
  */
 async function hasEspLoraIntent(cwd: string): Promise<boolean> {
 	const files = ["idf_component.yml", "main/idf_component.yml", "sdkconfig", "sdkconfig.defaults"]
 	for (const rel of files) {
 		try {
 			const p = path.join(cwd, rel)
-			if ((await fileExistsAtPath(p)) && /sx12[67]x|sx126[128]|sx127[6-9]|lora/i.test(await fs.readFile(p, "utf-8"))) {
+			if (
+				(await fileExistsAtPath(p)) &&
+				/sx12[67]x|sx126[128]|sx127[6-9]|lora|radiolib/i.test(await fs.readFile(p, "utf-8"))
+			) {
 				return true
 			}
 		} catch {
