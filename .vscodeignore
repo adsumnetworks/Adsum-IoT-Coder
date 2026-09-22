@@ -130,6 +130,7 @@ qa/**
 # local tooling artifacts.
 Adsum-Planning/**
 Adsum-Backend/**
+Adsum-Golden-Templates/**
 # adsum-studio is our SECOND extension (K-bit authoring/visualisation), cloned here for
 # convenience. It is gitignored, but .gitignore does not govern packaging — without this
 # line vsce swallowed all 49 of its files (+1.6 MB, including its own SQLite store) into
