@@ -69,6 +69,10 @@ Adsum-Backend/
 # Cloned here for convenience; has its own remote. Never tracked by the code repo.
 adsum-studio/
 
+# Golden reference firmware templates — cloned here for agent context; has its own
+# remote. Never tracked by the code repo.
+Adsum-Golden-Templates/
+
 # Public demo program — firmware, prompts and evidence for the docs-site demo pages.
 # Cloned here for agent context; has its own remote. Never tracked by the code repo.
 adsum-demos/
