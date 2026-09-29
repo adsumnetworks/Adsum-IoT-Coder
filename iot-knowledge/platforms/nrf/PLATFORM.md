@@ -2,7 +2,7 @@
 id: adsum/nrf/platform
 title: "Nordic nRF — Platform Index"
 type: knowledge
-version: 1.8.7
+version: 1.8.8
 owner: adsum-core
 author: Omar Morceli
 license: CC-BY-SA-4.0
@@ -55,8 +55,7 @@ platforms/nrf/
 │   ├── sniff-capture.md     ← over-the-air BLE capture with the sniffer dongle (downloaded)
 │   ├── analyze-logs.md      ← analyze + present an app log
 │   ├── analyze-hci.md       ← analyze + present a decoded HCI trace (downloaded)
-│   ├── analyze-sniffer.md   ← analyze + present a decoded sniffer capture (downloaded)
-│   └── blg20-usb-service.md ← BLG20 gateway USB-C service port: passport/needs/claim/logs/update
+│   └── analyze-sniffer.md   ← analyze + present a decoded sniffer capture (downloaded)
 └── workflows/               ← Primary entry points (START HERE for each task)
     ├── log-generator.md
     ├── log-analyzer.md
@@ -66,8 +65,7 @@ platforms/nrf/
     ├── ble-sniffer.md       ← BLE over-the-air sniffer capture+decode (downloaded — fetched on demand)
     ├── prototype.md         ← SCAFFOLD: new project from verified Nordic sample
     ├── add-feature.md       ← SCAFFOLD: add a Zephyr feature to existing project
-    ├── test-validate.md     ← SCAFFOLD: simulator (native_sim/QEMU, OS-aware) + on-hardware validation
-    └── blg20-usb-journey.md ← BLG20 gateway over USB: detect → passport → needs → update
+    └── test-validate.md     ← SCAFFOLD: simulator (native_sim/QEMU, OS-aware) + on-hardware validation
 ```
 
 ---
@@ -216,7 +214,6 @@ When starting a new task, load one of these Workflows first.
 | Prototype | `workflows/prototype.md` | Compose a new nRF project from verified Nordic samples |
 | Add Feature | `workflows/add-feature.md` | Port one feature into an existing project, then verify via Debug Loop |
 | Test & Validate | `workflows/test-validate.md` | ztest via simulator/on-hardware Twister + behavioral validation + CI offer |
-| BLG20 USB Journey | `workflows/blg20-usb-journey.md` | Detect → passport → needs → (claim) → logs → update a BLG20 gateway over its USB-C service port |
 
 ### When the developer's symptom is one of these — load the action before you answer *(downloaded)*
 
@@ -255,8 +252,7 @@ they report one. Paths are from the knowledge root.
 | A stored list silently fails to come back after a reboot, usually once it has grown | `platforms/nrf/knowledge/list-larger-than-a-sector.md` |
 | A phone that paired yesterday now connects and drops after a few seconds, and the unit looks dead | `platforms/nrf/knowledge/one-bond-slot.md` |
 | The commissioning tool or the phone will not show a passkey, or asks for a passkey the device never displayed | `products/fanstel/blg20x/passkey-from-address.md` — written for the BLG20x; the fix does not depend on the board |
-| A BLG20 gateway is plugged into USB, or a serial port enumerates as "BLG20 Gateway" | `platforms/nrf/workflows/blg20-usb-journey.md` — detect, passport, needs, and (on request) claim, over the USB-C service port |
-| They want to check, update, or read the logs of a BLG20 over USB | `platforms/nrf/workflows/blg20-usb-journey.md` — passport/needs/logs, or update-ble/update-lte with a signed image |
+| A BLG20 gateway is plugged into USB, a serial port enumerates as "BLG20 Gateway", or they want to check, claim, read the logs of, or update a BLG20 over USB | `products/fanstel/blg20x/PRODUCT.md` — its index names the USB service-port bit (downloaded); load that bit before the first command |
 | A pin-edge interrupt never calls the button handler, and nothing errored at configure time | `platforms/nrf/knowledge/poll-the-button.md` |
 | The device lands on a different operator or network than the coverage map shows (a PLMN, MCC-MNC, that is not the one expected), or they want to lock the modem to a band chosen from a map or a prediction | `platforms/nrf/knowledge/scan-before-you-lock.md` |
 | Two processors share one button and a press is sometimes missed, or one part runs warm | `platforms/nrf/knowledge/shared-button-two-mcus.md` |

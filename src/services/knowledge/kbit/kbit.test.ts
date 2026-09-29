@@ -305,19 +305,18 @@ describe("regression: live corpus", () => {
 	// of ESP32 targets and Nordic PCA numbers. Both bundled
 	// so the mapping works offline, and published as a registry copy so a new Espressif part reaches
 	// developers without a reinstall — the leak guard still holds, because it is CC-BY-SA-4.0.
-	// 10 → 11 in 0.4.x: nrf/tools/blg20-service, the BLG20 gateway USB-C service-port tool (MCUmgr
-	// SMP over USB CDC ACM to the BM20/nRF9151 pair) — bundled + Apache-2.0, like every other tool bit.
-	test("corpus is fully migrated and lint-clean: content bits + 11 tool bits, 0 errors", () => {
+	// The BLG20 USB service-port tool (nrf/tools/blg20-service) was bundled here in 0.4.4 and moved to the
+	// registry in 0.4.5 with its guide and its image bundles: a product tool reaches the developer the way
+	// every other BLG20 bit does, per account, and never from a path on one bench. Still 10 tool bits.
+	test("corpus is fully migrated and lint-clean: content bits + 10 tool bits, 0 errors", () => {
 		const { issues, files, migrated } = lintCorpus(KNOWLEDGE_ROOT)
 		const toolFiles = files.filter((f) => f.replace(/\\/g, "/").endsWith("/TOOL.md"))
-		assert.equal(toolFiles.length, 11, "bundled tool bits")
+		assert.equal(toolFiles.length, 10, "bundled tool bits")
 		// 23 = the 20 content bits + three deprecated pointer stubs left at rules/skill-loading.md
 		// (universal, nrf, esp) after the rename to bit-loading, so a served bit cached before the
 		// rename still resolves the old path instead of 404ing. All three are open-licensed, like the
 		// rules they point at; this guard exists to catch a PROPRIETARY bit leaking into the bundle.
-		// +2 in 0.4.x: actions/blg20-usb-service.md and workflows/blg20-usb-journey.md (25 total) —
-		// both bundled CC-BY-SA-4.0 content bits, alongside the new tool above.
-		assert.equal(files.length - toolFiles.length, 25, "bundled content bits — a rise here means a proprietary bit leaked in")
+		assert.equal(files.length - toolFiles.length, 23, "bundled content bits — a rise here means a proprietary bit leaked in")
 		assert.equal(migrated, files.length)
 		assert.equal(issues.filter((i) => i.level === "error").length, 0)
 		const unmigrated = issues.filter((i) => i.msg.startsWith("no frontmatter"))
