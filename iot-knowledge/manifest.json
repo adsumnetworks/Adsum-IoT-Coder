@@ -1,6 +1,6 @@
 {
 	"manifestVersion": 2,
-	"count": 36,
+	"count": 33,
 	"bits": [
 		{
 			"id": "adsum/agent",
@@ -238,27 +238,6 @@
 			"content_hash": "0ca33c545bf7fe1e45974c2b3e6877de6c3e5932c303f1aca2f6d546c93851e1"
 		},
 		{
-			"id": "adsum/nrf/actions/blg20-usb-service",
-			"title": "Action: BLG20 USB Service",
-			"type": "action",
-			"version": "0.1.0",
-			"owner": "adsum-core",
-			"author": "Omar Morceli",
-			"license": "CC-BY-SA-4.0",
-			"tier": "certified",
-			"delivery": "bundled",
-			"domain": "embedded-iot",
-			"platform": "nrf",
-			"requires": [
-				"adsum/nrf/tools/blg20-service"
-			],
-			"safety": [
-				"flash"
-			],
-			"path": "platforms/nrf/actions/blg20-usb-service.md",
-			"content_hash": "72fcbbed0f4a3696400d381c4298750af736fa9e4d1bb4b42c0912a3b7703a19"
-		},
-		{
 			"id": "adsum/nrf/actions/capture-logs",
 			"title": "Action: Capture Device Logs",
 			"type": "action",
@@ -327,7 +306,7 @@
 			"id": "adsum/nrf/platform",
 			"title": "Nordic nRF — Platform Index",
 			"type": "knowledge",
-			"version": "1.8.7",
+			"version": "1.8.8",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -342,7 +321,7 @@
 				"flash"
 			],
 			"path": "platforms/nrf/PLATFORM.md",
-			"content_hash": "f26c2ee019472ed18949c793cb9c68ee11816348667043472b7153082e0622b1"
+			"content_hash": "a1e0563bddd26dcd40f38b5b526a5fc56d8f864727cc1d15ed985dd00e6dba95"
 		},
 		{
 			"id": "adsum/nrf/rules/bit-loading",
@@ -448,44 +427,6 @@
 			"platform": "nrf",
 			"path": "platforms/nrf/sdks/ncs/SDK.md",
 			"content_hash": "897bb528121b51f09380bc01bcd7f9ddf9a954bb68836fb9d6f49e17bd735c50"
-		},
-		{
-			"id": "adsum/nrf/tools/blg20-service",
-			"title": "blg20-service",
-			"type": "tool",
-			"version": "0.1.2",
-			"owner": "adsum-core",
-			"author": "Omar Morceli",
-			"license": "Apache-2.0",
-			"tier": "certified",
-			"delivery": "bundled",
-			"domain": "embedded-iot",
-			"platform": "nrf",
-			"safety": [
-				"flash",
-				"long-running"
-			],
-			"min_ext": "0.3.0",
-			"runtime": "python3",
-			"entry": "blg20_service.py",
-			"usage": "list | passport [--chip lte] | needs | claim | logs [--chip ble|lte] [--lines N] | update-ble FILE | update-lte FILE [--force] | doctor   # add --json for one JSON object on stdout",
-			"artifacts": [
-				{
-					"path": "blg20_service.py",
-					"sha256": "ae47dfdcd6ffb51f92081d7b44ff719817941c645ab00d98c40c0e4e5ac64be2"
-				},
-				{
-					"path": "blg20-service",
-					"sha256": "0a970d6858786119ca2912ab42d5a4b19766b67671ddcd296fe07b0a9655cfe3"
-				},
-				{
-					"path": "blg20-service.bat",
-					"sha256": "8ca8de7dba094ecd4624c64b7753136e27c0873506ca03d563422b5ea24a81f9"
-				}
-			],
-			"readonly": false,
-			"path": "platforms/nrf/tools/blg20-service/TOOL.md",
-			"content_hash": "8c7b1660e2a967654ae0211d560810edfb230c089fddadccd4fecdeffb0104f4"
 		},
 		{
 			"id": "adsum/nrf/tools/hci-decode",
@@ -695,30 +636,6 @@
 			"readonly": false,
 			"path": "platforms/nrf/tools/uart-logger/TOOL.md",
 			"content_hash": "b4018c861c7ab9d2bdc0c5004f26cdee5cdf9551bfee189639f6da7a3df20541"
-		},
-		{
-			"id": "adsum/nrf/workflows/blg20-usb-journey",
-			"title": "BLG20 USB Journey Workflow",
-			"type": "workflow",
-			"version": "0.1.0",
-			"owner": "adsum-core",
-			"author": "Omar Morceli",
-			"license": "CC-BY-SA-4.0",
-			"tier": "certified",
-			"delivery": "bundled",
-			"domain": "embedded-iot",
-			"platform": "nrf",
-			"triggers": [
-				"BLG20 gateway",
-				"BLG20 USB service",
-				"blg20-service"
-			],
-			"requires": [
-				"adsum/nrf/actions/blg20-usb-service",
-				"adsum/nrf/tools/blg20-service"
-			],
-			"path": "platforms/nrf/workflows/blg20-usb-journey.md",
-			"content_hash": "9d5f3304b2ff01f53390811e6aba49b22dfa0e19074b5a9805944605084b341d"
 		},
 		{
 			"id": "adsum/nrf/workflows/demo-debug",

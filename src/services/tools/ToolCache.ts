@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
 /**
@@ -86,6 +86,11 @@ export class ToolCache {
 				}
 				mkdirSync(path.dirname(dest), { recursive: true })
 				writeFileSync(dest, f.bytes, { mode: 0o755 })
+				// The mode above is masked by the umask; the launcher must be executable whatever the
+				// umask says (a bundled one lost its bit to a zip once, and the agent worked around it).
+				if (process.platform !== "win32") {
+					chmodSync(dest, 0o755)
+				}
 			}
 			mkdirSync(path.dirname(finalDir), { recursive: true })
 			if (existsSync(finalDir)) {

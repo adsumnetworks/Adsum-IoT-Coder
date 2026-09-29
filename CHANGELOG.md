@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The BLG20 gateway's USB-C service port, from IoT Coder: plug the unit in and ask what it is. The agent reads its
+  ID card without any key, shows what it still needs, and, only when you ask, claims it for this PC's key and says
+  where that key is. It reads the logs of both halves and updates either half to the demo or the production image,
+  or to your own build, over the cable. The tool, the guide and the images come from the registry per account:
+  the demo images with the demo firmware, the production images with a production licence.
+
+### Fixed
+- A downloaded tool's launcher is always executable on Linux and macOS, whatever the umask.
+
 ## [0.4.2] - 2026-09-17
 
 ### Changed
