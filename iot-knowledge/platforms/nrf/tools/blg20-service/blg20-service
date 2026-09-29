@@ -1,0 +1,16 @@
+#!/bin/bash
+# BLG20 USB Service Wrapper Script
+# Provides a consistent interface for the BLG20 gateway USB service-port tool
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_SCRIPT="${SCRIPT_DIR}/blg20_service.py"
+
+# Check if Python script exists
+if [ ! -f "$PYTHON_SCRIPT" ]; then
+    echo "ERROR: blg20_service.py not found at $PYTHON_SCRIPT"
+    exit 1
+fi
+
+# Execute Python script with all arguments
+# PYTHONNOUSERSITE=1 isolates from user-site .pth conflicts (see CLAUDE.md, bug B1).
+exec env PYTHONNOUSERSITE=1 python3 "$PYTHON_SCRIPT" "$@"
