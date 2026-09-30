@@ -10,6 +10,7 @@
 import { strict as assert } from "node:assert"
 import { after, before, describe, test } from "node:test"
 import { setImmediate as tick } from "node:timers/promises"
+import { ExtensionRegistryInfo } from "@/registry"
 import { __setTelemetryServiceForTest } from "@/services/telemetry"
 import * as account from "./AccountState"
 
@@ -305,6 +306,25 @@ describe("X — the account, extension side", () => {
 			() => account.refresh(true),
 		)
 		assert.equal(account.hasGroup("lew840x-ble-src"), true, "a grant made in the admin page must arrive without a restart")
+	})
+
+	test("X-07b refresh sends this build's version, so the server lists every group this build can name", async () => {
+		account.__setForTest({
+			token: "adu_live",
+			profile: { email: "v@w.x", name: "", emailVerified: true, groups: ["cellular-advanced"], fetchedAt: 0 },
+		})
+		let asked = ""
+		await withFetch(
+			(async (url: string | URL | Request) => {
+				asked = String(url)
+				return json({ email: "v@w.x", email_verified: true, groups: ["cellular-advanced", "lora-advanced"] })
+			}) as typeof fetch,
+			() => account.refresh(true),
+		)
+		// The server leaves a group off for a client that sends no version, because an older build prints
+		// a group it has no word for as its raw id. Forgetting the version here hides LoRa from this build.
+		assert.ok(asked.endsWith(`/v1/me?ext=${encodeURIComponent(ExtensionRegistryInfo.version)}`), asked)
+		assert.equal(account.hasGroup("lora-advanced"), true)
 	})
 
 	test("X-08 sign-out clears the keychain and tells the server, and survives the server being down", async () => {

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto"
 import { ClineEnv } from "@/config"
 import { StateManager } from "@/core/storage/StateManager"
+import { ExtensionRegistryInfo } from "@/registry"
 import { Logger } from "@/services/logging/Logger"
 import { telemetryService } from "@/services/telemetry"
 import { getInstallId } from "./InstallIdentity"
@@ -377,7 +378,10 @@ export async function refresh(force = false): Promise<void> {
 	}
 	try {
 		const base = ClineEnv.config().adsumApiBaseUrl.replace(/\/$/, "")
-		const res = await fetch(`${base}/v1/me`, { headers: { Authorization: `Bearer ${token()}` } })
+		// Our version, so the server lists every group this build has a word for. Without it the server
+		// assumes an older client and leaves off the groups that client would print as a raw id.
+		const ext = encodeURIComponent(ExtensionRegistryInfo.version)
+		const res = await fetch(`${base}/v1/me?ext=${ext}`, { headers: { Authorization: `Bearer ${token()}` } })
 		if (res.status === 401) {
 			// The server revoked or expired it. That IS a sign-out, and pretending otherwise would leave
 			// cards unlocked that no longer resolve.
