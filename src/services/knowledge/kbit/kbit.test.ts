@@ -806,6 +806,11 @@ describe("kbit schema — tool bits", () => {
 		assert.equal(ok(validAction), true) // no group at all — the pre-existing corpus
 		assert.equal(ok({ ...gatedProse, group: "cellular-advanced", min_ext: "0.4.0" }), true)
 		assert.equal(ok({ ...gatedProse, group: "all", min_ext: "0.4.0" }), true)
+		// [30 Sep 2026] the LoRa groups: the registered-tier corpus and the LEW840x LoRa line in preparation
+		for (const g of ["lora-advanced", "lew840x-lora-src", "lew840x-lora-adv"]) {
+			assert.equal(ok({ ...gatedProse, group: g, min_ext: "0.4.3" }), true, g)
+		}
+		assert.equal(ok({ ...gatedProse, group: "lora_advanced", min_ext: "0.4.3" }), false)
 		assert.equal(ok({ ...gatedProse, group: "cellular_advanced", min_ext: "0.4.0" }), false)
 		assert.equal(ok({ ...gatedProse, group: "whatever-i-like", min_ext: "0.4.0" }), false)
 		assert.equal(ok({ ...gatedProse, group: "", min_ext: "0.4.0" }), false)

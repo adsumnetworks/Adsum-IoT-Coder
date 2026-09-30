@@ -93,7 +93,7 @@
 			"id": "adsum/esp/rules/bit-loading",
 			"title": "ESP Platform Rule: Bit Loading",
 			"type": "knowledge",
-			"version": "1.3.0",
+			"version": "1.4.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -103,7 +103,7 @@
 			"platform": "esp",
 			"supersedes": "adsum/esp/rules/skill-loading",
 			"path": "platforms/esp/rules/bit-loading.md",
-			"content_hash": "fea74b39dfa812bf0572e3071bee502621d389a5d92e651f72eea59b9861aa64"
+			"content_hash": "1ed82d7c1c994aa41db951f9dfb0ff3981e0f2e317bb5c4190258254590224d6"
 		},
 		{
 			"id": "adsum/esp/rules/device-identity",
@@ -327,7 +327,7 @@
 			"id": "adsum/nrf/rules/bit-loading",
 			"title": "nRF Platform Rule: Bit Loading",
 			"type": "knowledge",
-			"version": "1.6.0",
+			"version": "1.7.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -340,7 +340,7 @@
 			],
 			"supersedes": "adsum/nrf/rules/skill-loading",
 			"path": "platforms/nrf/rules/bit-loading.md",
-			"content_hash": "d30ba82f777ee20beca2f147395bc265ea71e75955294135e1b2938066fab51d"
+			"content_hash": "a1763f3f02047c8563c3db1d1ab4a16ad3fc77c3e458da46e6ba35973a28c18a"
 		},
 		{
 			"id": "adsum/nrf/rules/device-identity",
@@ -417,7 +417,7 @@
 			"id": "adsum/nrf/sdks/ncs/sdk",
 			"title": "Nordic Connect SDK",
 			"type": "knowledge",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "CC-BY-SA-4.0",
@@ -426,7 +426,7 @@
 			"domain": "embedded-iot",
 			"platform": "nrf",
 			"path": "platforms/nrf/sdks/ncs/SDK.md",
-			"content_hash": "99f9933f1bc13be7aaed40baba4a7802fa105b8cfe252fa87413e227c2aaeabd"
+			"content_hash": "897bb528121b51f09380bc01bcd7f9ddf9a954bb68836fb9d6f49e17bd735c50"
 		},
 		{
 			"id": "adsum/nrf/tools/hci-decode",

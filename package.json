@@ -2,7 +2,7 @@
 	"name": "nrf-ai-debugger",
 	"displayName": "Adsum IoT Coder - ESP & nRF - AI Debug, Dev & CRA Readiness",
 	"description": "Open-source IoT coding agent for Espressif ESP32 / ESP-IDF and Nordic nRF (nRF Connect SDK / Zephyr), including nRF91 cellular (NB-IoT, LTE-M, NB-NTN). Builds, flashes, and debugs firmware on real hardware, analyzes device logs, and runs a one-click EU Cyber Resilience Act (CRA) readiness check: SBOM (SPDX), secure-by-design posture, and CVE remediation.",
-	"version": "0.4.2",
+	"version": "0.4.3",
 	"icon": "assets/icons/icon.png",
 	"galleryBanner": {
 		"color": "#161311",
@@ -539,7 +539,7 @@
 		"test:memory": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/memory.test.ts",
 		"test:memory-migrate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/migrate.test.ts",
 		"test:sniffer-payload": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/nrf/payloadHex.node-test.ts",
-		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:stream-watchdog test:telemetry-events test:workspace test:cve test:engine-config test:ask-bridge test:chip-identity test:standalone-package test:session-lease test:platform-roots test:classifier-refresh test:product-recognition test:inject-queue test:queued-messages test:native-tool-text test:terminal-events test:gnss-gate",
+		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:stream-watchdog test:telemetry-events test:workspace test:cve test:engine-config test:ask-bridge test:chip-identity test:standalone-package test:session-lease test:platform-roots test:classifier-refresh test:product-recognition test:inject-queue test:queued-messages test:native-tool-text test:terminal-events test:gnss-gate test:lora-gate",
 		"kbit": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit.ts",
 		"qa": "bash qa/regression/run.sh",
 		"format": "biome format --changed --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error",
@@ -632,6 +632,7 @@
 		"test:telemetry-events": "ts-node --transpile-only -P tsconfig.unit-test.json -r ./src/test/requires.ts src/services/telemetry/__tests__/telemetryEvents040.node-test.ts",
 		"test:terminal-events": "ts-node --transpile-only -P tsconfig.unit-test.json src/hosts/vscode/terminal/terminalEndEvents.node-test.ts",
 		"test:gnss-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/gnssGate.node-test.ts",
+		"test:lora-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/loraGate.node-test.ts",
 		"test:logger-tools": "python3 -m unittest discover -s iot-knowledge/platforms/nrf/tools/rtt-logger -p 'test_*.py' && python3 -m unittest discover -s iot-knowledge/platforms/esp/tools/esp-monitor -p 'test_*.py'"
 	},
 	"lint-staged": {

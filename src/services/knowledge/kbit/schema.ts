@@ -55,12 +55,18 @@ export const KBIT_GROUPS = [
 	// knowledge
 	"cellular-advanced", // LTE-M / NB-IoT / NTN / DECT NR+ beyond chip-and-DK basics
 	"edge-ai-advanced", // on-device inference (nRF54 Axon)
+	// LoRa and LoRaWAN: the modulation, the Semtech parts, the node bits for NCS and ESP-IDF. Registered tier. [30 Sep 2026]
+	"lora-advanced",
 	// Fanstel LEW840x gateway artefacts
 	"lew840x-demo-hex", // the LEW840x demo images; granted per account since 14 Sep 2026 (cellular in 60-minute windows)
 	"lew840x-prod-hex", // the same builds without the cap — granted by hand for pilots
 	"lew840x-ble-src",
 	"lew840x-esp-src",
 	"lew840x-9160-src",
+	// the LEW840x with LoRa as a second access radio: source and advanced knowledge, by request; the full-source rung
+	// does NOT open them (a separate product line). In preparation [30 Sep 2026].
+	"lew840x-lora-src",
+	"lew840x-lora-adv",
 	// Fanstel BLG20 gateway artefacts (same ladder, published as the port lands)
 	"blg20-demo-hex",
 	"blg20-prod-hex",

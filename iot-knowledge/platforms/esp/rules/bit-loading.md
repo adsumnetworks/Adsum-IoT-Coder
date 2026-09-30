@@ -2,7 +2,7 @@
 id: adsum/esp/rules/bit-loading
 title: "ESP Platform Rule: Bit Loading"
 type: knowledge
-version: 1.3.0
+version: 1.4.0
 supersedes: adsum/esp/rules/skill-loading
 owner: adsum-core
 author: Omar Morceli
@@ -59,6 +59,7 @@ defined once in the universal `rules/bit-loading.md`. This table is the ESP-spec
 | Run Unity tests (host `linux` / QEMU / on-hardware pytest) | `platforms/esp/actions/run-tests.md` |
 | Pick an IDF example / registry component to copy or pull from | `platforms/esp/actions/find-sample.md` |
 | Create/edit a CI workflow for firmware build/tests | `platforms/esp/actions/setup-ci.md` |
+| **Build a LoRa link or a LoRa node** — two boards that must talk, a point-to-point link, "test my LoRa modules" | `wireless/lora/demos/two-node-433.md` (it loads the radio and SDK bits it needs) |
 
 **Why this is non-negotiable (ESP specifics):** target reconciliation, the `sdkconfig` vs
 `sdkconfig.defaults` trap, the always-pass-the-port rule, monitor's backtrace decode, the

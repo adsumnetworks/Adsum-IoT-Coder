@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.2] - 2026-09-17
+## [0.4.3] - 2026-09-30
+
+### Added
+- LoRa and LoRaWAN knowledge: the modulation, the Semtech SX126x, SX127x, LR2021 and SX130x parts, regions and link budgets, LoRaWAN internals, and the node bits for nRF Connect SDK and ESP-IDF. Included with a free account. Corpus by Omar Morceli.
+- A project that sets `CONFIG_LORA*` or names a `semtech,sx12…` devicetree node (NCS), or pulls a LoRa driver or RadioLib (ESP-IDF), loads the LoRa knowledge on its own.
+- Three LoRa tools: `lora-airtime`, `lora-doctor`, `lora-scan-report`.
+
+### Changed
+- The registered account now opens LoRa knowledge beside cellular and on-device inference; the gate panel says so.
 
 ### Changed
 - Packaging cleanup: a smaller, tidier extension package.

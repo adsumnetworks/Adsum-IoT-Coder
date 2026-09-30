@@ -2,7 +2,7 @@
 id: adsum/nrf/rules/bit-loading
 title: "nRF Platform Rule: Bit Loading"
 type: knowledge
-version: 1.6.0
+version: 1.7.0
 supersedes: adsum/nrf/rules/skill-loading
 owner: adsum-core
 author: Omar Morceli
@@ -63,6 +63,7 @@ If an upcoming operation does not match any row, you are not in a Workflow's sco
 | Run `twister` (simulator or `--device-testing`) | `platforms/nrf/actions/run-twister.md` |
 | Pick a Nordic sample to copy or port from | `platforms/nrf/actions/find-sample.md` |
 | Create/edit a CI workflow for firmware tests | `platforms/nrf/actions/setup-ci.md` |
+| **Build a LoRa link or a LoRa node** — two boards that must talk, a point-to-point link, "test my LoRa modules" | `wireless/lora/demos/two-node-433.md` (it loads the radio and SDK bits it needs) |
 
 **Why this is non-negotiable (nRF specifics):** sysbuild artifact paths, `--dev-id` (not the deprecated
 `--snr`), per-DK VCOM mapping, the DTR tri-state rule, OS-aware Twister targets, pristine-build triggers —

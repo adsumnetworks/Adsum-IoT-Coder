@@ -41,6 +41,11 @@ export function injectedBitPaths(): string[] {
 	return lastInjectedBits
 }
 
+/** LoRa intent patterns, exported so `loraGate.node-test.ts` tests the pattern the code actually runs. */
+export const NRF_LORA_CONFIG_RE = /^\s*CONFIG_LORA\w*\s*=\s*y/im
+export const LORA_DT_COMPAT_RE = /semtech,sx12/i
+export const ESP_LORA_RE = /sx12[67]x|sx126[128]|sx127[6-9]|\blora\b|radiolib/i
+
 /** True when the project itself asks for NTN -- CONFIG_NTN in prj.conf. A prototype has no prj.conf yet,
  *  which is why the board signal above is the primary gate and this is the secondary one. */
 async function hasNtnIntent(cwd: string): Promise<boolean> {
@@ -90,6 +95,58 @@ async function hasGnssIntent(cwd: string): Promise<boolean> {
 	} catch {
 		return false
 	}
+}
+
+/**
+ * True when an nRF project drives a LoRa radio: `CONFIG_LORA*=y` in prj.conf, or a `semtech,sx12…`
+ * node in any overlay or devicetree file in the project root or its `boards/` folder. Its own gate,
+ * like DECT and GNSS: a LoRa node has no modem and sets no cellular symbol, and the radio is a plain
+ * SPI peripheral, so nothing else in the workspace would ever load the LoRa knowledge for it.
+ * [30 Sep 2026, from the LoRa corpus bring-up.]
+ */
+async function hasNrfLoraIntent(cwd: string): Promise<boolean> {
+	try {
+		const prj = path.join(cwd, "prj.conf")
+		if ((await fileExistsAtPath(prj)) && NRF_LORA_CONFIG_RE.test(await fs.readFile(prj, "utf-8"))) {
+			return true
+		}
+	} catch {
+		// fall through to the devicetree check
+	}
+	for (const dir of [cwd, path.join(cwd, "boards")]) {
+		try {
+			for (const name of await fs.readdir(dir)) {
+				if (!/\.(overlay|dtsi?|dts)$/.test(name)) {
+					continue
+				}
+				if (LORA_DT_COMPAT_RE.test(await fs.readFile(path.join(dir, name), "utf-8"))) {
+					return true
+				}
+			}
+		} catch {
+			// no such folder, or unreadable: not intent
+		}
+	}
+	return false
+}
+
+/**
+ * True when an ESP-IDF project pulls a LoRa driver: a Semtech part, "lora" or RadioLib named in the
+ * component manifest or sdkconfig. Usage-based like Wi-Fi, because nothing in ESP-IDF itself ships a
+ * LoRa driver — the presence of one is the whole signal.
+ */
+async function hasEspLoraIntent(cwd: string): Promise<boolean> {
+	for (const rel of ["idf_component.yml", "main/idf_component.yml", "sdkconfig", "sdkconfig.defaults"]) {
+		try {
+			const f = path.join(cwd, rel)
+			if ((await fileExistsAtPath(f)) && ESP_LORA_RE.test(await fs.readFile(f, "utf-8"))) {
+				return true
+			}
+		} catch {
+			// unreadable: not intent
+		}
+	}
+	return false
 }
 
 async function readKnowledgeFile(relativePath: string): Promise<string> {
@@ -678,6 +735,11 @@ async function getEspPlatformContext(cwd: string, load: TrackedLoad, productRowE
 		ctx += "#### Protocol: BLE Detected\n\n"
 		ctx += (await load("platforms/esp/sdks/esp-idf/protocols/BLE.md")) + "\n\n"
 	}
+	if (await hasEspLoraIntent(cwd)) {
+		ctx += "#### LoRa Detected — from a component dependency or the configuration\n\n"
+		ctx += (await load("wireless/lora/LORA.md")) + "\n\n"
+		ctx += (await load("platforms/esp/sdks/esp-idf/protocols/LORA.md")) + "\n\n"
+	}
 
 	// Board: prefer the build artifact target(s), then the sdkconfig target, then — when the workspace
 	// says nothing at all (a prototype with no project yet) — the chip actually plugged in. Mirrors the
@@ -881,6 +943,15 @@ async function getNrfPlatformContext(cwd: string, load: TrackedLoad): Promise<st
 	if (await hasDectIntent(cwd)) {
 		ctx += "#### DECT NR+ Detected — from project configuration\n\n"
 		ctx += (await load("platforms/nrf/sdks/ncs/protocols/DECT-NR.md")) + "\n\n"
+	}
+
+	// LoRa hangs off its own gate too. The radio knowledge is platform-independent and lives under
+	// `wireless/`; the SDK bit says how NCS drives it. Both are registered-tier bits, so `load` goes
+	// through the entitlement-aware path and a signed-out developer meets the locked row, not silence.
+	if (await hasNrfLoraIntent(cwd)) {
+		ctx += "#### LoRa Detected — from project configuration or devicetree\n\n"
+		ctx += (await load("wireless/lora/LORA.md")) + "\n\n"
+		ctx += (await load("platforms/nrf/sdks/ncs/protocols/LORA.md")) + "\n\n"
 	}
 
 	if (boardSignals.length > 0) {

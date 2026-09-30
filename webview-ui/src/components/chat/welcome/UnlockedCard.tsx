@@ -57,6 +57,7 @@ const UnlockedCard: React.FC<UnlockedCardProps> = ({ onDismiss }) => (
 			}}>
 			<li>Advanced cellular knowledge: LTE-M, NB-IoT, NTN, DECT NR+</li>
 			<li>On-device inference on nRF54</li>
+			<li>LoRa and LoRaWAN knowledge, with the node bits for NCS and ESP-IDF</li>
 		</ul>
 		<div style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)", marginTop: "7px" }}>
 			Template source is by request — the LEW840x card has the link.

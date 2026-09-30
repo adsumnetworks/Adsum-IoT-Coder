@@ -35,17 +35,17 @@
 
 <p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
 
-## What's New <sup>`v0.4.2`</sup>
+## What's New <sup>`v0.4.3`</sup>
 
-A guided first run for the Fanstel BLG20x, an account in the panel header, and tasks that keep going when the editor is in the background. BLE, Wi-Fi and Ethernet need no account, today or tomorrow.
+LoRa and LoRaWAN knowledge with a free account, a guided first run for the Fanstel BLG20x, and an account in the panel header. BLE, Wi-Fi and Ethernet need no account, today or tomorrow.
+
+<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**LoRa, from a bare board.** The modulation and its parameters, regions and link budgets, the Semtech SX126x, SX127x, LR2021 and SX130x parts, LoRaWAN internals, and the node bits for nRF Connect SDK and ESP-IDF, with three tools to decode a radio's status, work out airtime and read a capture. A project that sets `CONFIG_LORA` or names a Semtech part loads it on its own. Free with an account.
 
 <img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**The Fanstel BLG20x, from an unflashed board to your own platform.** A BLE 6 terrestrial + non-terrestrial gateway, in one guided run: identify the board, flash both halves, commission it from the browser, admit a sensor, and see readings arrive on your own tenant, with a command sent back. The demo images are available on request, with a free account. [Gateway firmware](https://docs.adsumnetworks.com/gateway-firmware)
 
 <img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Your account in the panel header.** Sign in from the icon beside history and settings; every window of the editor follows the same session. A knowledge bit your account cannot open says so, names the set it belongs to, and offers the one way in. [Getting started](https://docs.adsumnetworks.com/getting-started)
 
-<img src="assets/icons/whatsnew-byok.png" width="18" valign="middle" alt="" /> &nbsp;**Runs that do not stall.** A hidden editor window no longer slows a task to a step a minute, and a reply that stops arriving is retried once and then reported. Model lists are read live, and OpenRouter lets you choose which sellers serve a model. [Models](https://docs.adsumnetworks.com/models)
-
-**In `v0.4.0`:** a home that reads your desk, cellular and satellite work behind a free account, and a message sent to a working run that lands at its next step. **In `v0.3.1`:** nRF91 cellular, the first partner open-hardware gateway, and Tool bits downloaded on demand. **In `v0.2.0`:** a two-chip industrial gateway built, debugged and CRA-checked from one spec **in under 30 minutes**. [Watch the playlist](https://www.youtube.com/playlist?list=PLYh65pF22Elk) · *full history in the [changelog](./CHANGELOG.md).*
+**In `v0.4.2`:** runs that keep their pace with the editor in the background, and a reply that stops arriving retried once, then reported. **In `v0.4.0`:** a home that reads your desk, cellular and satellite work behind a free account, and a message sent to a working run that lands at its next step. **In `v0.3.1`:** nRF91 cellular, the first partner open-hardware gateway, and Tool bits downloaded on demand. **In `v0.2.0`:** a two-chip industrial gateway built, debugged and CRA-checked from one spec **in under 30 minutes**. [Watch the playlist](https://www.youtube.com/playlist?list=PLYh65pF22Elk) · *full history in the [changelog](./CHANGELOG.md).*
 
 ## Getting Started
 
@@ -56,7 +56,7 @@ Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the 
 1. Start with a **sample run**, no board needed: a real BLE bug, the same bug one layer deeper with a sniffer and HCI tracing, or a CRA readiness check on a pre-built gateway.
 2. Open your **nRF or ESP project**. The home detects your boards and toolchains and ranks the runs worth starting: *Build, flash & debug*, *Add a feature*, *Test & validate*, *CRA SBOM & Fix*, or a guided partner-gateway build.
 3. **Describe the task** or pick a run. Enter starts the session; a message sent while it works lands at the next step.
-4. **Register (free, no card)** when you reach cellular, satellite or edge AI. Everything else keeps working without it.
+4. **Register (free, no card)** when you reach cellular, satellite, LoRa or edge AI. Everything else keeps working without it.
 5. **Bring your own model** whenever you want: the GLM Coding Plan, Claude, DeepSeek, or any OpenAI- or Anthropic-compatible endpoint, cloud or local (Ollama, LM Studio), switched instantly on a running task.
 
 Field-tested on our own builds: the budget tiers handle routine work with thinking on; the full models can switch it off, which is where the token saving lives. [Free tier →](https://docs.adsumnetworks.com/free-tier) · [Models →](https://docs.adsumnetworks.com/models)

@@ -43,18 +43,22 @@ export interface CardAction {
 export type PatchNote = { silent: true } | { note: string }
 
 export const RELEASE_NOTES = {
-	version: "0.4.2",
+	version: "0.4.3",
 
 	/** Hotfixes on top of `version`. `{ silent: true }` means "nothing to announce", and no toast fires. */
 	patches: {} as Record<string, PatchNote>,
 
 	/** One line, plain words. The update toast is built from it. */
 	headline:
-		"a guided first run for the Fanstel BLG20x gateway · your account in the panel header · runs that keep going in the background",
+		"LoRa and LoRaWAN knowledge with a free account · a guided first run for the Fanstel BLG20x gateway · your account in the panel header",
 
 	/** The panel card. Three lines, each a thing then what to do with it. */
 	card: {
 		lines: [
+			{
+				head: "LoRa",
+				body: "the radio, the Semtech parts, LoRaWAN, and the node bits for NCS and ESP-IDF, with a free account. A project that names a Semtech part or sets CONFIG_LORA loads them on its own.",
+			},
 			{
 				head: "BLG20x",
 				body: "a guided first run for the Fanstel gateway: flash both halves, commission it from the browser, and see its readings on your own platform. Ask for access from the card.",
@@ -62,10 +66,6 @@ export const RELEASE_NOTES = {
 			{
 				head: "Account",
 				body: "sign in from the icon beside history and settings. A bit your account cannot open names its set and the one way in; the LEW840x cellular demo comes with a free account.",
-			},
-			{
-				head: "Runs",
-				body: "a task keeps its pace with the editor in the background, and a reply that stops arriving is retried once, then reported.",
 			},
 		] as readonly ReleaseLine[],
 		/** Optional: the one click this release earns. Hidden when it no longer applies (already registered). */

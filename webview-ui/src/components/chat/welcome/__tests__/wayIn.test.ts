@@ -14,11 +14,14 @@ import { isRequestOnlyGroup, REGISTERED_TIER_GROUPS, requestFamilyFor } from "..
 const EVERY_GROUP = [
 	"cellular-advanced",
 	"edge-ai-advanced",
+	"lora-advanced",
 	"lew840x-demo-hex",
 	"lew840x-prod-hex",
 	"lew840x-ble-src",
 	"lew840x-esp-src",
 	"lew840x-9160-src",
+	"lew840x-lora-src",
+	"lew840x-lora-adv",
 	"blg20-demo-hex",
 	"blg20-prod-hex",
 	"blg20-ble-src",
@@ -40,7 +43,17 @@ describe("the way in", () => {
 		for (const g of EVERY_GROUP.filter((x) => !REGISTERED_TIER_GROUPS.includes(x))) {
 			expect(isRequestOnlyGroup(g), g).toBe(true)
 		}
-		for (const g of ["lew840x-prod-hex", "lew840x-ble-src", "lew840x-esp-src", "lew840x-9160-src", "blg20-demo-hex"]) {
+		// [30 Sep 2026] LoRa knowledge comes with registration; the LEW840x LoRa line is asked for, like every other LEW840x line.
+		expect(isRequestOnlyGroup("lora-advanced")).toBe(false)
+		for (const g of [
+			"lew840x-prod-hex",
+			"lew840x-ble-src",
+			"lew840x-esp-src",
+			"lew840x-9160-src",
+			"lew840x-lora-src",
+			"lew840x-lora-adv",
+			"blg20-demo-hex",
+		]) {
 			expect(isRequestOnlyGroup(g), g).toBe(true)
 		}
 		// The LEW840x demo pair is back in the tier since 15 Sep 2026: registering is exactly what opens it.
@@ -55,6 +68,7 @@ describe("the way in", () => {
 
 	it("a request opens the form for the group's own family", () => {
 		expect(requestFamilyFor("lew840x-esp-src")).toBe("lew840x")
+		expect(requestFamilyFor("lew840x-lora-adv")).toBe("lew840x")
 		expect(requestFamilyFor("blg20-demo-hex")).toBe("blg20")
 	})
 

@@ -251,6 +251,7 @@ const GatePanel: React.FC<GatePanelProps> = ({ open, satisfied = false, variant 
 							}}>
 							<li>LTE-M, NB-IoT, NTN and DECT NR+ knowledge and tools</li>
 							<li>On-device inference on nRF54</li>
+							<li>LoRa and LoRaWAN knowledge, with the node bits for NCS and ESP-IDF</li>
 							<li>Template source, by request</li>
 						</ul>
 						{waiting ? (

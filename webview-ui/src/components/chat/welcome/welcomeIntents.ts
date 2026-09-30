@@ -395,7 +395,12 @@ export const ASK_FOR_DETAILS = "Ask for more details"
  * and is granted per account; lew840x-demo-hex left it on 14 Sep while its pair was withdrawn and returned
  * on 15 Sep with the rebuilt pair published.
  */
-export const REGISTERED_TIER_GROUPS: readonly string[] = ["cellular-advanced", "edge-ai-advanced", "lew840x-demo-hex"]
+export const REGISTERED_TIER_GROUPS: readonly string[] = [
+	"cellular-advanced",
+	"edge-ai-advanced",
+	"lora-advanced",
+	"lew840x-demo-hex",
+]
 
 /**
  * Groups a person opens by hand, one developer at a time: every group outside the registered tier.
