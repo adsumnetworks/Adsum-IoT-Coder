@@ -126,3 +126,76 @@ describe("RELEASE_NOTES agrees with the code it describes", () => {
 		assert.ok(!/const PLATFORMS\s*[:=]/.test(about), "AboutSection.tsx has grown its own platform table again")
 	})
 })
+
+/**
+ * The in-product What's New (the panel card, the toast, the About table) and the README tell one story.
+ * The failure this catches: a release whose README gained a radio or a gate while the card, the headline or
+ * the Runs-on table kept last release's list. Found by hand on 1 Oct 2026 (LoRa in the README, absent from
+ * About); from now on the publish script runs this and refuses to build.
+ */
+describe("RELEASE_NOTES tells the same story as the README", () => {
+	const readme = read("README.md")
+	const whatsNew = readme.slice(readme.indexOf("## What's New"), readme.indexOf("## Getting Started"))
+	const lower = (s: string) => s.toLowerCase()
+	/** "BLE, **LoRa / LoRaWAN**, **NB-IoT**" and ["BLE", "LoRa / LoRaWAN", "NB-IoT"] become the same sorted token list. */
+	const tokens = (cells: readonly string[]) =>
+		cells
+			.flatMap((c) => c.replace(/\*\*/g, "").split(/[,/]/))
+			.map((t) => lower(t.trim()))
+			.filter(Boolean)
+			.sort()
+
+	test("every card line is a beat of the README's What's New and of the headline", () => {
+		assert.ok(whatsNew.length > 200, "README.md has no What's New block before Getting Started")
+		for (const line of RELEASE_NOTES.card.lines) {
+			assert.ok(
+				lower(whatsNew).includes(lower(line.head)),
+				`card line "${line.head}" has no paragraph in the README's What's New`,
+			)
+			assert.ok(lower(RELEASE_NOTES.headline).includes(lower(line.head)), `card line "${line.head}" is not in the headline`)
+		}
+		assert.equal(
+			RELEASE_NOTES.headline.split(" · ").length,
+			RELEASE_NOTES.card.lines.length,
+			"the headline has a different number of beats than the card has lines",
+		)
+	})
+
+	test("the card and the headline fit their space", () => {
+		assert.ok(
+			RELEASE_NOTES.headline.length <= 160,
+			`headline is ${RELEASE_NOTES.headline.length} characters; the toast has 200 in all`,
+		)
+		for (const line of RELEASE_NOTES.card.lines) {
+			assert.ok(
+				line.body.length <= 190,
+				`card line "${line.head}" is ${line.body.length} characters; the panel card wraps past five lines`,
+			)
+		}
+	})
+
+	test("Settings > About > Runs on lists the same protocols as the README's platform table", () => {
+		for (const row of RELEASE_NOTES.claims.runsOn) {
+			const m = new RegExp(`^\\| \\*\\*${row.family}\\*\\* \\|(.*)\\|\\s*$`, "m").exec(readme)
+			assert.ok(m, `README.md's platform table has no "${row.family}" row`)
+			const cells = m![1].split("|")
+			assert.deepEqual(
+				tokens([cells[cells.length - 1]]),
+				tokens(row.protocols),
+				`${row.family}: the About table and the README list different protocols`,
+			)
+		}
+	})
+
+	test("what needs a free account is named the same in the README and in the About note", () => {
+		const sentence = /[^.]*need a free registered account[^.]*\./.exec(readme)?.[0]
+		assert.ok(sentence, "README.md no longer says what needs a free registered account")
+		const gated = ["cellular", "NB-NTN", "LoRa", "edge-AI", "satellite"].filter((g) => lower(sentence!).includes(lower(g)))
+		for (const g of gated) {
+			assert.ok(
+				lower(RELEASE_NOTES.claims.runsOnNote).includes(lower(g)),
+				`the README says ${g} needs a free account; the About note does not say so`,
+			)
+		}
+	})
+})

@@ -92,13 +92,13 @@ export const RELEASE_NOTES = {
 				family: "Nordic",
 				sdk: "nRF Connect SDK · Zephyr",
 				chips: ["nRF52", "nRF53", "nRF54L15", "nRF54LM20", "nRF9160", "nRF9161", "nRF9151"],
-				protocols: ["BLE", "NB-IoT", "LTE-M", "GNSS", "NB-NTN"],
+				protocols: ["BLE", "LoRa / LoRaWAN", "NB-IoT", "LTE-M", "GNSS", "NB-NTN"],
 			},
 			{
 				family: "Espressif",
 				sdk: "ESP-IDF",
 				chips: ["ESP32", "ESP32-S3", "ESP32-C6"],
-				protocols: ["Wi-Fi", "BLE"],
+				protocols: ["Wi-Fi", "BLE", "LoRa / LoRaWAN"],
 				note: "and the rest of the shipping range",
 			},
 			{
@@ -109,7 +109,7 @@ export const RELEASE_NOTES = {
 			},
 		] as readonly RunsOnRow[],
 		runsOnNote:
-			"Any board built with a supported chip: your own design, a reference board, a DK, or a product off the shelf. Cellular, NB-NTN and edge-AI runs need a free account; nothing else does. NTN needs LACA A1A silicon; DECT NR+ a modem image from Nordic sales.",
+			"Any board built with a supported chip: your own design, a reference board, a DK, or a product off the shelf. Cellular, NB-NTN, LoRa and edge-AI runs need a free account; nothing else does. LoRa needs a Semtech radio on the board. NTN needs LACA A1A silicon; DECT NR+ a modem image from Nordic sales.",
 		/** Tied to AGENT_HANDOVER_ENABLED by the guard: the label and the switch cannot disagree. */
 		notOffered: ["Bring your own coding agent"] as readonly string[],
 	},

@@ -67,7 +67,7 @@ Field-tested on our own builds: the budget tiers handle routine work with thinki
 |:---|:---|:---|:---|
 | **Nordic** | nRF52, nRF53, nRF54L (L15, LM20), **nRF91 (9160, 9161, 9151)** | nRF Connect SDK (Zephyr) | BLE, **LoRa / LoRaWAN**, **NB-IoT, LTE-M, GNSS, NB-NTN** |
 | **Espressif** | ESP32, ESP32-S3, ESP32-C6, and the rest of the shipping range | ESP-IDF | Wi-Fi, BLE, **LoRa / LoRaWAN** |
-| **Products** | **Fanstel LEW840X, BWG840X, BLG20x** gateways, with their own product knowledge | both, one workspace | BLE, Ethernet, Wi-Fi, cellular |
+| **Products** | **Fanstel LEW840X, BWG840X, BLG20x** gateways, with their own product knowledge | both, one workspace | BLE, Ethernet, Wi-Fi, cellular, NB-NTN |
 | **Roadmap** | nRF7x (Wi-Fi), on-device AI on nRF54 / ESP32, Linux devices (NVIDIA Jetson, Raspberry Pi) | | 5G / 5G RedCap via hats |
 
 Adsum works on **any board built with a supported chip**: your own design, a reference board, a development kit, or a product off the shelf. There is no list your board has to be on. LoRa needs a Semtech radio on the board, wired over SPI; the node path is verified on an nRF52840 with an SX1262. Cellular, NB-NTN, LoRa and edge-AI runs, and the gateway firmware below, need a free registered account; nothing else does. NTN firmware is a public download but runs only on an nRF9151 of the LACA A1A revision; DECT NR+ knowledge ships and needs a modem image from Nordic sales. [Chips and protocols](https://docs.adsumnetworks.com/supported-hardware) · [cellular](https://docs.adsumnetworks.com/cellular) · [partner open hardware](https://docs.adsumnetworks.com/supported-hardware/partner-open-hardware)
