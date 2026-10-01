@@ -57,7 +57,7 @@ export const RELEASE_NOTES = {
 		lines: [
 			{
 				head: "LoRa",
-				body: "the radio, the Semtech parts, LoRaWAN, and the node bits for NCS and ESP-IDF, with a free account. A project that names a Semtech part or sets CONFIG_LORA loads them on its own.",
+				body: "the radio, the Semtech parts, LoRaWAN, and how to build a node on NCS or ESP-IDF, with a free account. A project that names a Semtech part or sets CONFIG_LORA loads them on its own.",
 			},
 			{
 				head: "BLG20x",

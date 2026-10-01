@@ -10,12 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.3] - 2026-09-30
 
 ### Added
-- LoRa and LoRaWAN knowledge: the modulation, the Semtech SX126x, SX127x, LR2021 and SX130x parts, regions and link budgets, LoRaWAN internals, and the node bits for nRF Connect SDK and ESP-IDF. Included with a free account. Corpus by Omar Morceli.
-- A project that sets `CONFIG_LORA*` or names a `semtech,sx12…` devicetree node (NCS), or pulls a LoRa driver or RadioLib (ESP-IDF), loads the LoRa knowledge on its own.
-- Three LoRa tools: `lora-airtime`, `lora-doctor`, `lora-scan-report`.
+- LoRa and LoRaWAN knowledge, included with a free account: point-to-point LoRa and LoRaWAN on nRF and ESP32 boards
+  with a Semtech radio. The modulation and its parameters, regions, duty cycles and link budgets, the Semtech SX126x,
+  SX127x, LR2021 and SX130x parts, LoRaWAN internals (join, class A receive windows, frame counters, MAC commands,
+  payload codecs, keys), and how to build a node on nRF Connect SDK or ESP-IDF. Verified on an nRF52840 with an
+  SX1262. Knowledge contributed by Omar Morceli.
+- LoRa is detected from the project, as cellular and GNSS are: `CONFIG_LORA` in the configuration or a Semtech
+  `sx12xx` devicetree node on nRF Connect SDK, a LoRa driver or RadioLib among the components or in the configuration
+  on ESP-IDF. The LoRa knowledge then loads on its own.
+- Tool bits for LoRa: time on air and the duty-cycle budget of a packet, to check before a spreading factor is
+  chosen; an SX126x status, IRQ or error word decoded into plain words, with what to try next; a capture turned into
+  a report that says which devices were heard and how much of the band was listened to.
 
 ### Changed
-- The registered account now opens LoRa knowledge beside cellular and on-device inference; the gate panel says so.
+- A free registered account now opens LoRa knowledge beside cellular, satellite and on-device inference. The gate
+  panel and the unlocked card say so.
+- The account screen names the sets your account opens; a set this build has no word for is left off rather than
+  shown as a raw id.
+
+## [0.4.2] - 2026-09-17
 
 ### Changed
 - Packaging cleanup: a smaller, tidier extension package.

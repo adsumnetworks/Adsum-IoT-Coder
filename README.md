@@ -8,7 +8,7 @@
 
 **What makes it different is real human expertise, not just the AI model.** Adsum is augmented with curated firmware knowledge authored by engineers who have shipped, loaded on demand and validated by an [open benchmark](#benchmark) on real hardware. Human-curated, not AI-generated.
 
-**Shipping today:** Espressif ESP32 (incl. S3, C6) on ESP-IDF · Nordic nRF52 / nRF53 / nRF54L / nRF91 on nRF Connect SDK (Zephyr) · BLE, Wi-Fi, Ethernet, and cellular (NB-IoT, LTE-M, GNSS, satellite NB-NTN) · **one-click EU Cyber Resilience Act (CRA) readiness: an SBOM plus a secure-by-design posture check.** Open source under Apache 2.0.
+**Shipping today:** Espressif ESP32 (incl. S3, C6) on ESP-IDF · Nordic nRF52 / nRF53 / nRF54L / nRF91 on nRF Connect SDK (Zephyr) · BLE, Wi-Fi, Ethernet, LoRa / LoRaWAN, and cellular (NB-IoT, LTE-M, GNSS, satellite NB-NTN) · **one-click EU Cyber Resilience Act (CRA) readiness: an SBOM plus a secure-by-design posture check.** Open source under Apache 2.0.
 
 <p>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://badgen.net/vs-marketplace/v/AdsumNetwork.nrf-ai-debugger?label=version&color=161311" alt="VS Code Marketplace version"></a>
@@ -39,7 +39,7 @@
 
 LoRa and LoRaWAN knowledge with a free account, a guided first run for the Fanstel BLG20x, and an account in the panel header. BLE, Wi-Fi and Ethernet need no account, today or tomorrow.
 
-<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**LoRa, from a bare board.** The modulation and its parameters, regions and link budgets, the Semtech SX126x, SX127x, LR2021 and SX130x parts, LoRaWAN internals, and the node bits for nRF Connect SDK and ESP-IDF, with three tools to decode a radio's status, work out airtime and read a capture. A project that sets `CONFIG_LORA` or names a Semtech part loads it on its own. Free with an account.
+<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**LoRa and LoRaWAN, from a bare board.** Point-to-point LoRa and LoRaWAN on nRF and ESP32 boards with a Semtech radio: the modulation and its parameters, regions, duty cycles and link budgets, the SX126x, SX127x, LR2021 and SX130x parts, LoRaWAN internals from join to frame counters, and how to build a node on nRF Connect SDK or ESP-IDF. Tools work out time on air before you pick a spreading factor, decode an SX126x status or error word into plain words, and turn a capture into a report. A project that sets `CONFIG_LORA` or names a Semtech part loads it on its own. Verified on an nRF52840 with an SX1262. Free with an account.
 
 <img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**The Fanstel BLG20x, from an unflashed board to your own platform.** A BLE 6 terrestrial + non-terrestrial gateway, in one guided run: identify the board, flash both halves, commission it from the browser, admit a sensor, and see readings arrive on your own tenant, with a command sent back. The demo images are available on request, with a free account. [Gateway firmware](https://docs.adsumnetworks.com/gateway-firmware)
 
@@ -65,12 +65,12 @@ Field-tested on our own builds: the budget tiers handle routine work with thinki
 
 | Platform | Chips (today) | SDK | Protocols (today) |
 |:---|:---|:---|:---|
-| **Nordic** | nRF52, nRF53, nRF54L (L15, LM20), **nRF91 (9160, 9161, 9151)** | nRF Connect SDK (Zephyr) | BLE, **NB-IoT, LTE-M, GNSS, NB-NTN** |
-| **Espressif** | ESP32, ESP32-S3, ESP32-C6, and the rest of the shipping range | ESP-IDF | Wi-Fi, BLE |
+| **Nordic** | nRF52, nRF53, nRF54L (L15, LM20), **nRF91 (9160, 9161, 9151)** | nRF Connect SDK (Zephyr) | BLE, **LoRa / LoRaWAN**, **NB-IoT, LTE-M, GNSS, NB-NTN** |
+| **Espressif** | ESP32, ESP32-S3, ESP32-C6, and the rest of the shipping range | ESP-IDF | Wi-Fi, BLE, **LoRa / LoRaWAN** |
 | **Products** | **Fanstel LEW840X, BWG840X, BLG20x** gateways, with their own product knowledge | both, one workspace | BLE, Ethernet, Wi-Fi, cellular |
-| **Roadmap** | nRF7x (Wi-Fi), on-device AI on nRF54 / ESP32, Linux devices (NVIDIA Jetson, Raspberry Pi) | | LoRa, 5G / 5G RedCap via hats |
+| **Roadmap** | nRF7x (Wi-Fi), on-device AI on nRF54 / ESP32, Linux devices (NVIDIA Jetson, Raspberry Pi) | | 5G / 5G RedCap via hats |
 
-Adsum works on **any board built with a supported chip**: your own design, a reference board, a development kit, or a product off the shelf. There is no list your board has to be on. Cellular, NB-NTN and edge-AI runs, and the gateway firmware below, need a free registered account; nothing else does. NTN firmware is a public download but runs only on an nRF9151 of the LACA A1A revision; DECT NR+ knowledge ships and needs a modem image from Nordic sales. [Chips and protocols](https://docs.adsumnetworks.com/supported-hardware) · [cellular](https://docs.adsumnetworks.com/cellular) · [partner open hardware](https://docs.adsumnetworks.com/supported-hardware/partner-open-hardware)
+Adsum works on **any board built with a supported chip**: your own design, a reference board, a development kit, or a product off the shelf. There is no list your board has to be on. LoRa needs a Semtech radio on the board, wired over SPI; the node path is verified on an nRF52840 with an SX1262. Cellular, NB-NTN, LoRa and edge-AI runs, and the gateway firmware below, need a free registered account; nothing else does. NTN firmware is a public download but runs only on an nRF9151 of the LACA A1A revision; DECT NR+ knowledge ships and needs a modem image from Nordic sales. [Chips and protocols](https://docs.adsumnetworks.com/supported-hardware) · [cellular](https://docs.adsumnetworks.com/cellular) · [partner open hardware](https://docs.adsumnetworks.com/supported-hardware/partner-open-hardware)
 
 ## Gateway firmware: flash it, license it, extend it
 
@@ -98,7 +98,7 @@ Fanstel makes and sells the hardware; Adsum writes, signs and licenses the firmw
 - **Builds, flashes and debugs on real hardware.** Live RTT (J-Link) and UART logs on nRF, serial on ESP, read against your source. The reset vector is checked before an image is flashed.
 - **Debugs across three layers.** App log, HCI bus and over-the-air radio (an nRF52840 dongle the agent flashes as an nRF Sniffer for Bluetooth LE), correlated. [A real one](https://docs.adsumnetworks.com/ble-wifi-gateway/troubleshooting): 36 advertisements on the air, 0 received, a radio front end never switched on.
 - **Talks to the board.** AT and Zephyr shell commands, and a modem trace with the network's own reason for refusing a connection.
-- **Scaffolds, extends, tests.** A new project, or a BLE service, sensor, shell or storage wired into yours; host tests and on-hardware checks.
+- **Scaffolds, extends, tests.** A new project, or a BLE service, a LoRa link, sensor, shell or storage wired into yours; host tests and on-hardware checks.
 - **Remembers and can be steered.** An `.adsum/` project memory read at the start of every task; a message mid-run lands at the next step; any session exports as one redacted file.
 
 ## CRA Readiness: SBOM, CVE, and secure-by-design
@@ -164,7 +164,7 @@ Any board built on a supported chip: nRF52, nRF53, nRF54L and nRF91 on nRF Conne
 
 ### Do I need an API key or an account?
 
-No. The free tier is on by default, with no key and no card. A free account (GitHub or email) is needed only for cellular, satellite NB-NTN, nRF54 edge AI and the gateway firmware images.
+No. The free tier is on by default, with no key and no card. A free account (GitHub or email) is needed only for cellular, satellite NB-NTN, LoRa, nRF54 edge AI and the gateway firmware images.
 
 ### Does it replace the nRF Connect for VS Code or ESP-IDF extensions?
 
