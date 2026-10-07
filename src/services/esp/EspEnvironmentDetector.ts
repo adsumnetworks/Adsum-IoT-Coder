@@ -166,6 +166,9 @@ export interface RawPortData {
 	serial_number?: string | null
 	/** pyserial's USB location, e.g. "1-14.1.2:1.0". Two interfaces of one board share a parent hub. */
 	location?: string | null
+	product?: string | null
+	manufacturer?: string | null
+	hwid?: string | null
 }
 
 /**
@@ -322,10 +325,12 @@ export function readProjectIdfVersionFromLock(roots: string[]): string | undefin
  * fall back to the system python. Returns [] when no python has pyserial.
  */
 async function probeEspDevices(): Promise<EspDevice[]> {
+	// product, manufacturer and hwid are read for the BLG20x rule (shared/blg20.ts), which needs the
+	// product string and the USB interface; the ESP filter ignores them.
 	const script = [
 		"from serial.tools.list_ports import comports",
 		"import json",
-		"print(json.dumps([{'device':p.device,'vid':p.vid,'pid':p.pid,'description':p.description,'serial_number':p.serial_number,'location':p.location} for p in comports()]))",
+		"print(json.dumps([{'device':p.device,'vid':p.vid,'pid':p.pid,'description':p.description,'serial_number':p.serial_number,'location':p.location,'product':p.product,'manufacturer':p.manufacturer,'hwid':p.hwid} for p in comports()]))",
 	].join(";")
 
 	const idfPython = getIdfPython()
@@ -334,12 +339,20 @@ async function probeEspDevices(): Promise<EspDevice[]> {
 		try {
 			const { stdout } = await execAsync(`${bin} -c "${script}"`, { timeout: 6000 })
 			const parsed = JSON.parse(stdout.trim()) as RawPortData[]
+			_serialPorts = parsed
 			return filterEspPorts(parsed)
 		} catch {
 			// try next interpreter or return empty
 		}
 	}
+	_serialPorts = []
 	return []
+}
+
+/** Every serial port seen by the last detection, unfiltered — the BLG20x rule reads it. Enumeration only. */
+let _serialPorts: RawPortData[] = []
+export function getCachedSerialPorts(): RawPortData[] {
+	return _serialPorts
 }
 
 /**

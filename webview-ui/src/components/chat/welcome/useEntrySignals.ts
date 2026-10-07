@@ -1,3 +1,4 @@
+import { blg20Label } from "@shared/blg20"
 import { useMemo } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { type EntryMode, type EntrySession, entryMode } from "./entryMode"
@@ -51,9 +52,11 @@ export function useEntrySignals(): EntryContext {
 		const mode = entryMode({ history, roots, scope, now: Date.now() })
 
 		const signals: Signals = {
-			nrfBoards: (nrfEnvironment?.boards ?? [])
-				.map((b) => b.productName || b.deviceName || b.deviceFamily || "")
-				.filter(Boolean),
+			// A connected BLG20x first, by name: the gateway cards (ladder, cellular, request access) key on "blg20".
+			nrfBoards: [
+				...(nrfEnvironment?.blg20Units ?? []).map(blg20Label),
+				...(nrfEnvironment?.boards ?? []).map((b) => b.productName || b.deviceName || b.deviceFamily || ""),
+			].filter(Boolean),
 			espDevices: (espEnvironment?.espDevices ?? []).map((d) => d.chip || "ESP32").filter(Boolean),
 			// What each probe says its TARGET is, which is not what the board list shows: a BLG20x
 			// debugged through a kit lists the kit, while the probe reports nRF54LM20B and nRF9151.

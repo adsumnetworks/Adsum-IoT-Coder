@@ -38,13 +38,13 @@ import { AuthService } from "@/services/auth/AuthService"
 import { OcaAuthService } from "@/services/auth/oca/OcaAuthService"
 import { LogoutReason } from "@/services/auth/types"
 import { BannerService } from "@/services/banner/BannerService"
+import { nrfEnvironmentWithBlg20 } from "@/services/blg20/connectedBlg20"
 import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import { featureFlagsService } from "@/services/feature-flags"
 import { getHandoverUiState } from "@/services/handover/HandoverUiState"
 import { consumeCraRanThisSession, servedIdsSnapshot, warmDownloadedManifest } from "@/services/knowledge/KnowledgeResolver"
 import { getDistinctId } from "@/services/logging/distinctId"
 import { Logger } from "@/services/logging/Logger"
-import { getCachedNrfEnvironment } from "@/services/nrf/EnvironmentDetector"
 import { getCachedWorkspaceFeatures, getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { telemetryService } from "@/services/telemetry"
 import { BannerCardData } from "@/shared/cline/banner"
@@ -1048,7 +1048,7 @@ export class Controller {
 				this.task?.api instanceof AdsumFreeHandler
 					? (this.task.api.remainingQuota ?? getFreeTierTokensForDisplay())
 					: getFreeTierTokensForDisplay(),
-			nrfEnvironment: getCachedNrfEnvironment(),
+			nrfEnvironment: nrfEnvironmentWithBlg20(),
 			espEnvironment: getCachedEspEnvironment(),
 			workspaceClassification: getCachedWorkspaceSummary(),
 			workspaceFeatures: getCachedWorkspaceFeatures(),

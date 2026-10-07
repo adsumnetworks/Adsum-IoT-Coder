@@ -1,3 +1,4 @@
+import { blg20Label, blg20ProbeSerials } from "@shared/blg20"
 import { type EspDevice, type EspEnvironment, espUnresolvedDeviceLabel } from "@shared/esp"
 import type { NrfBoard, NrfEnvironment } from "@shared/nrf"
 import { EmptyRequest } from "@shared/proto/cline/common"
@@ -238,34 +239,43 @@ export function useEnvRefresh(): { refresh: () => void; busy: boolean } {
 }
 
 function nrfHasAnything(env: NrfEnvironment): boolean {
-	return env.extensionPresent || env.nrfutilPresent || env.boards.length > 0 || !!env.projectSdk
+	return env.extensionPresent || env.nrfutilPresent || env.boards.length > 0 || !!env.projectSdk || !!env.blg20Units?.length
 }
 
 /** Every connected nRF board by name — the strip's rows and the header row read the same list. */
 export function nrfBoardLabels(env: NrfEnvironment): string[] {
-	if (env.status === "unknown" || env.status === "detecting" || !env.nrfutilPresent) {
+	if (env.status === "unknown" || env.status === "detecting") {
 		return []
 	}
-	const labelled = env.boards.map((b: NrfBoard) => {
-		// Named host-side from the board-identity bit, so a board Nordic ships between our releases is
-		// named by a registry update rather than a reinstall. The webview holds no second table: two
-		// copies of one mapping drift, and this one had already acquired two wrong rows. Raw PCA otherwise.
-		const friendly = b.boardVersion ? (b.boardName ?? b.boardVersion) : undefined
-		// A Nordic USB device with no probe — a dongle — publishes no chip: nrfutil itself answers
-		// "not supported for this type of device". Name the CATEGORY, as every other row names a board,
-		// plus the only specific identity it does publish: the firmware it is running.
-		// This line answers "what boards and DKs are detected" — hardware, not what is running on it.
-		// A dongle has no PCA, so its board comes from the board-identity bit, which knows which board
-		// Nordic's own firmware images ship for; when the bit cannot name it we say what we do know
-		// rather than reporting the firmware string as if it were a model.
-		const usbOnly = b.nordicUsb && !b.deviceName && !b.deviceFamily && !b.boardVersion
-		const name = usbOnly
-			? (b.boardName ?? "Nordic USB device")
-			: // [SWEEP 2026-09-09] productName sits before the serial: a board the cards call "nRF52840 DK"
-				// was reading as "001050288730" here — same detection, two names for one board.
-				(b.deviceName ?? friendly ?? b.productName ?? b.deviceFamily ?? b.serialNumber)
-		return { board: b, label: b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name }
-	})
+	// A BLG20x is named as the gateway, first. Over USB it needs no nrfutil at all; on two probes its two
+	// chips would otherwise read as a loose nRF54LM20B and nRF9151, so those probes fold into it.
+	const gateways = (env.blg20Units ?? []).map(blg20Label)
+	if (!env.nrfutilPresent) {
+		return gateways
+	}
+	const gatewayProbes = blg20ProbeSerials(env.blg20Units)
+	const labelled = env.boards
+		.filter((b: NrfBoard) => !gatewayProbes.has(b.serialNumber))
+		.map((b: NrfBoard) => {
+			// Named host-side from the board-identity bit, so a board Nordic ships between our releases is
+			// named by a registry update rather than a reinstall. The webview holds no second table: two
+			// copies of one mapping drift, and this one had already acquired two wrong rows. Raw PCA otherwise.
+			const friendly = b.boardVersion ? (b.boardName ?? b.boardVersion) : undefined
+			// A Nordic USB device with no probe — a dongle — publishes no chip: nrfutil itself answers
+			// "not supported for this type of device". Name the CATEGORY, as every other row names a board,
+			// plus the only specific identity it does publish: the firmware it is running.
+			// This line answers "what boards and DKs are detected" — hardware, not what is running on it.
+			// A dongle has no PCA, so its board comes from the board-identity bit, which knows which board
+			// Nordic's own firmware images ship for; when the bit cannot name it we say what we do know
+			// rather than reporting the firmware string as if it were a model.
+			const usbOnly = b.nordicUsb && !b.deviceName && !b.deviceFamily && !b.boardVersion
+			const name = usbOnly
+				? (b.boardName ?? "Nordic USB device")
+				: // [SWEEP 2026-09-09] productName sits before the serial: a board the cards call "nRF52840 DK"
+					// was reading as "001050288730" here — same detection, two names for one board.
+					(b.deviceName ?? friendly ?? b.productName ?? b.deviceFamily ?? b.serialNumber)
+			return { board: b, label: b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name }
+		})
 	// Two boards of the same kind render identically — the bench has two nRF9161 DKs, both reporting
 	// PCA10153 — and the developer then has no way to tell from the strip which one a command will
 	// reach. Disambiguate with the tail of the serial, but ONLY where a label actually repeats: a
@@ -274,9 +284,12 @@ export function nrfBoardLabels(env: NrfEnvironment): string[] {
 	for (const { label } of labelled) {
 		seen.set(label, (seen.get(label) ?? 0) + 1)
 	}
-	return labelled.map(({ board, label }) =>
-		(seen.get(label) ?? 0) > 1 && board.serialNumber ? `${label} ·${board.serialNumber.slice(-4)}` : label,
-	)
+	return [
+		...gateways,
+		...labelled.map(({ board, label }) =>
+			(seen.get(label) ?? 0) > 1 && board.serialNumber ? `${label} ·${board.serialNumber.slice(-4)}` : label,
+		),
+	]
 }
 
 function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
@@ -321,10 +334,10 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 	if (env.status === "unknown" || env.status === "detecting") {
 		devices = "detecting…"
 		devicesMuted = true
-	} else if (!env.nrfutilPresent) {
+	} else if (!env.nrfutilPresent && !env.blg20Units?.length) {
 		devices = "nrfutil not found"
 		devicesMuted = true
-	} else if (env.boards.length === 0) {
+	} else if (env.boards.length === 0 && !env.blg20Units?.length) {
 		devices = "no boards connected"
 		devicesMuted = true
 	} else {

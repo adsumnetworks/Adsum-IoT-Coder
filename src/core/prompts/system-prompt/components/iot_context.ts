@@ -1,6 +1,7 @@
 import fs from "fs/promises"
 import path from "path"
 import { HostProvider } from "@/hosts/host-provider"
+import { getConnectedBlg20Units } from "@/services/blg20/connectedBlg20"
 import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import { bitSdkRequirement, deriveIdFromRel, loadBit } from "@/services/knowledge/KnowledgeResolver"
 import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
@@ -18,6 +19,7 @@ import {
 	recogniseProduct,
 } from "@/services/platform/WorkspaceClassifier"
 import { type ResolvedTool, resolveToolsAsync } from "@/services/tools/ToolResolver"
+import { type Blg20Unit, blg20Label, blg20ProbeSerials } from "@/shared/blg20"
 import { fileExistsAtPath } from "@/utils/fs"
 import { shouldInjectMap } from "../../../memory/workspace/mapGate"
 import { migrateLegacyMemory } from "../../../memory/workspace/migrate"
@@ -425,7 +427,14 @@ export function boardSignalTargetFor(b: {
 
 function connectedBoardSignals(): BoardSignal[] {
 	const out: BoardSignal[] = []
+	// The two probes on a BLG20x report an nRF54LM20B and an nRF9151, and those route to the nRF54LM20 DK
+	// and nRF9151 DK bits: the right silicon on the wrong boards, with the wrong pins. Those probes ARE the
+	// gateway, which productLine() states with its own bit, so their chips are not board evidence here.
+	const gatewayProbes = blg20ProbeSerials(getConnectedBlg20Units())
 	for (const b of getCachedNrfEnvironment().boards ?? []) {
+		if (gatewayProbes.has(b.serialNumber)) {
+			continue
+		}
 		/**
 		 * ON A NORDIC DK THE PRODUCT STRING IS THE DEBUGGER, NOT THE BOARD.
 		 *
@@ -642,6 +651,21 @@ export async function detectEspFeatures(cwd: string): Promise<{ hasBle: boolean;
  * evidence, instead of waiting for the developer to say a word they have no reason to say when
  * they are reporting a symptom.
  */
+/** How a connected BLG20x was seen, in one clause. Exported for tests. */
+export function blg20Evidence(u: Blg20Unit): string {
+	const parts: string[] = []
+	if (u.servicePort) {
+		parts.push(
+			`USB service port ${u.servicePort}${u.ltePort ? ` and LTE tunnel ${u.ltePort}` : " (LTE tunnel closed: the port is locked)"}` +
+				(u.serialNumber ? `, unit id ${u.serialNumber}` : ""),
+		)
+	}
+	if (u.bleProbe && u.lteProbe) {
+		parts.push(`probe ${u.bleProbe} reaches its nRF54LM20B (BLE half) and probe ${u.lteProbe} its nRF9151 (LTE half)`)
+	}
+	return parts.join("; ") || blg20Label(u)
+}
+
 function productLine(): string {
 	const found = recogniseProduct(getCachedWorkspaceRoots())
 	if (found) {
@@ -650,6 +674,17 @@ function productLine(): string {
 			`load \`products/${found.id}/PRODUCT.md\` **before diagnosing anything here**: its sub-bits carry the ` +
 			`pin maps, the card rules and the fault ladders for this hardware, and general platform knowledge ` +
 			`does not. |\n\n`
+		)
+	}
+	// [7 Oct 2026] The hardware is evidence too: a BLG20x on its USB service port, or on two probes that
+	// reach an nRF54LM20B and an nRF9151. Stated with how it was seen, so the agent can weigh it.
+	const gateways = getConnectedBlg20Units()
+	if (gateways.length > 0) {
+		return (
+			`| **A Fanstel BLG20x gateway is connected to this computer** — ${gateways.map(blg20Evidence).join("; ")} | ` +
+			"load `products/fanstel/blg20x/PRODUCT.md` **before diagnosing anything about it**: its sub-bits carry the " +
+			"service port, the two halves, their probes and their fault ladders. Never open the service port just to " +
+			"look: opening it with DTR up starts a session on the unit. |\n\n"
 		)
 	}
 	// [14 Sep 2026, H5] One row per product family. The BLG20x is the second entry; the follow-up is to build
@@ -1138,7 +1173,11 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	if (!isPlatformDetected) {
 		const nrfConnected = connectedBoardSignals()
 		const espConnected = getCachedEspEnvironment().espDevices ?? []
-		const fromHardware = platformsFromConnectedHardware(nrfConnected.length, espConnected.length)
+		// A BLG20x is Nordic hardware even when only its USB service port shows (no probe, no nrfutil board).
+		const fromHardware = platformsFromConnectedHardware(
+			nrfConnected.length + getConnectedBlg20Units().length,
+			espConnected.length,
+		)
 
 		if (fromHardware.nrf) {
 			isPlatformDetected = true
@@ -1354,6 +1393,13 @@ async function computeIotContextFingerprint(cwd: string): Promise<string | null>
 		parts.push(
 			`boards=${(nrf.boards ?? [])
 				.map((b) => `${b.serialNumber}:${b.productName ?? b.deviceName ?? b.deviceFamily ?? ""}`)
+				.sort()
+				.join("|")}`,
+		)
+		// A BLG20x plugged in or out changes the product row (productLine), so it invalidates too.
+		parts.push(
+			`blg20=${getConnectedBlg20Units()
+				.map((u) => [u.serialNumber, u.servicePort, u.ltePort, u.bleProbe, u.lteProbe].map((x) => x ?? "").join(":"))
 				.sort()
 				.join("|")}`,
 		)
