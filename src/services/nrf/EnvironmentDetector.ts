@@ -7,6 +7,7 @@ import { promisify } from "util"
 import { boardNameFor, boardNameForUsbProduct } from "@/services/knowledge/dataBits"
 import { telemetryService } from "@/services/telemetry"
 import { chipFamilyList, nrfChipFamily } from "@/services/telemetry/chipFamily"
+import type { Blg20NrfutilDevice } from "@/shared/blg20"
 
 export type { NrfBoard, NrfEnvironment, ProjectSdk }
 
@@ -35,6 +36,12 @@ export function setNrfWorkspaceRoots(roots: string[]): void {
 
 export function getCachedNrfEnvironment(): NrfEnvironment {
 	return _cache ?? { ...EMPTY_ENV }
+}
+
+/** BLG20x units nrfutil listed on the last detection (their USB port, which the board list drops). */
+let _blg20Usb: Blg20NrfutilDevice[] = []
+export function getCachedBlg20UsbDevices(): Blg20NrfutilDevice[] {
+	return _blg20Usb
 }
 
 export function clearNrfEnvironmentCache(): void {
@@ -291,6 +298,8 @@ interface DeviceListEntry {
 	/** USB product description, e.g. "Seeed Studio XIAO nRF54LM20A CMSIS-DAP". */
 	usbProduct?: string
 	usbManufacturer?: string
+	/** Its serial ports as nrfutil lists them (a BLG20x's service port and LTE tunnel are read from here). */
+	serialPorts?: { path: string; interfaceNumber?: number; vcom?: number }[]
 }
 
 /**
@@ -345,6 +354,15 @@ export function parseDeviceListFull(stdout: string): DeviceListEntry[] {
 					// The only identity a third-party module (XIAO, custom CMSIS-DAP board) publishes.
 					usbProduct: d.usb?.product as string | undefined,
 					usbManufacturer: d.usb?.manufacturer as string | undefined,
+					serialPorts: Array.isArray(d.serialPorts)
+						? (d.serialPorts as any[])
+								.filter((sp) => sp?.comName || sp?.path)
+								.map((sp) => ({
+									path: (sp.comName ?? sp.path) as string,
+									interfaceNumber: typeof sp.interfaceNumber === "number" ? sp.interfaceNumber : undefined,
+									vcom: typeof sp.vcom === "number" ? sp.vcom : undefined,
+								}))
+						: undefined,
 				}))
 			if (entries.length > best.length) {
 				best = entries
@@ -540,6 +558,12 @@ async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: bool
 			console.info(`[adsum][nrf] device list returned no devices; raw head: ${listResult.stdout.slice(0, 300)}`)
 			return { nrfutilPresent: true, boards: [] }
 		}
+
+		// A BLG20x's own USB port names no Nordic part ("BLG20 Gateway"), so the filter below drops it as a
+		// board. It is still the gateway: keep it for the BLG20 rule (shared/blg20.ts), which names it.
+		_blg20Usb = entries
+			.filter((e) => /blg20/i.test(e.usbProduct ?? ""))
+			.map((e) => ({ serialNumber: e.serialNumber, product: e.usbProduct, ports: e.serialPorts ?? [] }))
 
 		const boards: NrfBoard[] = []
 		for (const entry of entries) {

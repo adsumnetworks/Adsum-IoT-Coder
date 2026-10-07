@@ -1,3 +1,5 @@
+import type { Blg20Unit } from "./blg20"
+
 export interface NrfBoard {
 	serialNumber: string
 	deviceFamily?: string
@@ -76,5 +78,10 @@ export interface NrfEnvironment {
 	/** SDK version bound to the open project, when one can be resolved. Drives "we understand this project". */
 	projectSdk?: ProjectSdk
 	boards: NrfBoard[]
+	/**
+	 * Fanstel BLG20x gateways connected right now, by their USB service port or their two debug probes
+	 * (see shared/blg20.ts). Filled when the state is built, from the serial-port enumeration and `boards`.
+	 */
+	blg20Units?: Blg20Unit[]
 	lastDetectedAt?: number
 }

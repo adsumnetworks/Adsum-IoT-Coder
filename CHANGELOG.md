@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where that key is. It reads the logs of both halves and updates either half to the demo or the production image,
   or to your own build, over the cable. The tool, the guide and the images come from the registry per account:
   the demo images with the demo firmware, the production images with a production licence.
+- A connected BLG20 gateway is detected, like an nRF DK or an ESP board: by its USB-C service port (and its LTE
+  tunnel when unlocked), or by the two debug probes that reach its nRF54LM20B and nRF9151. The service port is
+  found through nrfutil, so no extra Python package is needed. The environment strip names it by its device id
+  ("BLG20 9802AF5C69DF1E66"), and the agent knows the gateway is on the desk and loads its product guide first,
+  instead of reading its two chips as two separate development kits.
 
 ### Fixed
 - A downloaded tool's launcher is always executable on Linux and macOS, whatever the umask.
