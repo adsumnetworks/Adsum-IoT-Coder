@@ -328,14 +328,15 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 		// is an order code, not an offer: at panel width it wrapped to two lines, and a developer
 		// scanning the list is choosing what to build, not decoding a catalogue row. The numbers are
 		// still here — one line down, where someone comparing an order code will look for them.
-		// [17 Sep 2026] Wi-Fi came off the title: the hardware family has Wi-Fi models, the firmware does not use it.
+		// [17 Sep 2026] Wi-Fi came off the title: the hardware family has Wi-Fi models, the firmware did not use it.
+		// [9 Oct 2026] demo-1 uses the Wi-Fi module where it is fitted; the description says so, the title stays short.
 		title: "BLG20x gateway: BLE 6 in, cellular and satellite out",
 		// Names as Fanstel writes them (fanstel.com/blg20cbwg20c, /lbg51e20c, checked 2026-09-09): the IP51
 		// BLG20BC / BLG20BF / BLG20XE line and the IP67 LBG20BC / LBG20BXE / LBG20BC02C line, all nRF9151 +
 		// nRF54LM20B. "BLC" was a mishearing; BWG20BF is the WiFi-only sibling with no nRF9151 and is not here.
 		// One line at panel width: what it is, then the two chips. The variants and the Wi-Fi builds
 		// are a detail for the board's own page, not for a row someone is scanning.
-		description: "Indoor and outdoor. An nRF54 for the BLE half, an nRF9151 for cellular and satellite.",
+		description: "Indoor and outdoor. An nRF54 for BLE and Wi-Fi where fitted, an nRF9151 for cellular and satellite.",
 		needsAlso: "a Fanstel BLG20x or LBG20x on the desk",
 		group: "blg20-early-access",
 	},
@@ -458,6 +459,19 @@ export function cellularHint(boards: readonly string[]): string | undefined {
  * One function rather than three call sites, so a way that gains an action cannot be wired to the
  * wrong prompt — and so the words a developer sees in their own composer stay in one place.
  */
+/**
+ * A BLG20x already answering on its USB-C service port: the unit is flashed, so the way in is the
+ * service port's journey, never the probe-based first run (demo-1 plan, WP6: one card, one next action).
+ * The order is the plan's: read, claim when asked, the update offer, then commissioning.
+ */
+export function blg20SetUpPrompt(board: string): string {
+	return (
+		`A BLG20x gateway is plugged into this computer's USB (${board}). LOAD products/fanstel/blg20x/PRODUCT.md ` +
+		"and follow its new-unit journey on the USB-C service port: tell me what the unit is and what it still " +
+		"needs, claim it only when I say so, then check whether it needs an update, then guide me through commissioning."
+	)
+}
+
 export function blg20InstallPrompt(way: "demo" | "production" | "source"): string {
 	if (way === "production") {
 		return (

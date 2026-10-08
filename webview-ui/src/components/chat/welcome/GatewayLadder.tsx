@@ -34,6 +34,8 @@ import { ASK_FOR_DETAILS } from "./welcomeIntents"
  * are printed beside every narrow shot, and that is what the number is calibrated against.
  */
 export const LADDER_COPY = {
+	/** A unit already on USB: set it up before choosing anything (demo-1). */
+	setUp: "On USB: read it, claim it, update it, commission it.",
 	question: "How do you want the firmware?",
 	build: "Board, chips, programming recipe, the traps.",
 	advanced: "Advanced set: on request",
@@ -85,6 +87,8 @@ interface GatewayLadderProps {
 	chips?: readonly string[]
 	/** Starts the free path in the editor. */
 	onStart: () => void
+	/** A unit on its USB service port: starts its set-up journey (read, claim, update, commission). */
+	onSetUp?: (board: string) => void
 	/** Opens the request form for this family, for anything not already theirs. */
 	onAsk: (rung: LadderAsk) => void
 	/** Runs the way the developer already holds — only ever offered for a way they hold. */
@@ -203,7 +207,15 @@ const BLG20_ACCESS_GROUPS = [
 	"blg20-adv-full",
 ] as const
 
-const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], onStart, onAsk, onInstall, onBrowse }) => {
+const GatewayLadder: React.FC<GatewayLadderProps> = ({
+	boards = [],
+	chips = [],
+	onStart,
+	onSetUp,
+	onAsk,
+	onInstall,
+	onBrowse,
+}) => {
 	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
 	const board = ladderBoard(boards)
 	const pair = board ? undefined : ladderChipPair(chips)
@@ -255,6 +267,14 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 		cardAction("blg20_ladder", "start")
 		onStart()
 	}
+	// A unit answering on its USB service port is already flashed: its next action is to set it up.
+	const onUsb = !!board && /\(USB /.test(board)
+	const setUp = () => {
+		cardAction("blg20_ladder", "setup")
+		if (board) {
+			onSetUp?.(board)
+		}
+	}
 	const ask = (rung: LadderAsk) => {
 		cardAction("blg20_ladder", "ask", { rung })
 		onAsk(rung)
@@ -293,6 +313,12 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({ boards = [], chips = [], 
 				 * probes when it counted something else is worse than a card that claims nothing.
 				 */}
 			</div>
+			{onUsb && onSetUp && (
+				<div data-testid="ladder-setup" style={{ margin: "7px 0 4px" }}>
+					<Body>{LADDER_COPY.setUp}</Body>
+					<Doing label="Set it up" onClick={setUp} testId="ladder-setup-start" />
+				</div>
+			)}
 			<div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--vscode-foreground)", margin: "6px 0 2px" }}>
 				{LADDER_COPY.question}
 			</div>

@@ -29,6 +29,7 @@ import { useEntrySignals } from "./useEntrySignals"
 import {
 	ASK_FOR_DETAILS,
 	blg20InstallPrompt,
+	blg20SetUpPrompt,
 	CELLULAR_BOARDS,
 	CELLULAR_INTENTS,
 	DEMO_HEX_PROMPT,
@@ -955,6 +956,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							chips={signals.nrfChips ?? []}
 							onAsk={() => setRequesting("blg20")}
 							onInstall={(way) => void onStartTask(blg20InstallPrompt(way))}
+							onSetUp={(board) => void onStartTask(blg20SetUpPrompt(board))}
 							onStart={() => {
 								entryRunStart("blg20Gateway", "card")
 								runIntent("blg20Gateway", { onSelectMode, onStartTask, platform, projectName })
@@ -988,6 +990,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 							chips={signals.nrfChips ?? []}
 							onAsk={() => setRequesting("blg20")}
 							onInstall={(way) => void onStartTask(blg20InstallPrompt(way))}
+							onSetUp={(board) => void onStartTask(blg20SetUpPrompt(board))}
 							onStart={() => {
 								entryRunStart("blg20Gateway", "card")
 								runIntent("blg20Gateway", { onSelectMode, onStartTask, platform, projectName })

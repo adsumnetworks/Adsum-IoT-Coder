@@ -11,6 +11,7 @@ import { type IntentActionHandlers, runIntent } from "./runIntent"
 import {
 	ASK_FOR_DETAILS,
 	blg20InstallPrompt,
+	blg20SetUpPrompt,
 	CELLULAR_INTENTS,
 	cellularHint,
 	type IntentDef,
@@ -93,6 +94,7 @@ const CellularGroup: React.FC<CellularGroupProps> = ({ boards = [], gatewaySubli
 					boards={boards}
 					onAsk={() => setRequesting("blg20")}
 					onInstall={(way) => void handlers.onStartTask(blg20InstallPrompt(way))}
+					onSetUp={(board) => void handlers.onStartTask(blg20SetUpPrompt(board))}
 					onStart={() => {
 						entryRunStart("blg20Gateway", "card")
 						runIntent("blg20Gateway", handlers)
