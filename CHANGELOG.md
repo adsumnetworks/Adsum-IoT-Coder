@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-10-09
+
 ### Added
 - The BLG20 gateway's USB-C service port, from IoT Coder: plug the unit in and ask what it is. The agent reads its
   ID card without any key, shows what it still needs, and, only when you ask, claims it for this PC's key and says
@@ -19,8 +21,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ("BLG20 9802AF5C69DF1E66"), and the agent knows the gateway is on the desk and loads its product guide first,
   instead of reading its two chips as two separate development kits.
 
+- A BLG20 on USB gets one next action on its card: set it up. It starts the journey above (read, claim when you
+  ask, the update offer, then commissioning) instead of the first run for a blank board.
+- The update offer: after a claim, the gateway's two firmware versions are compared with the latest demo release
+  and the update is offered in one sentence, over the cable; a unit that needs a one-time load over its debug
+  headers is told so instead.
+
+### Changed
+- A BLG20 seen only through its two debug probes, or through the shared test USB ids without a product name, is
+  shown as possibly a BLG20: the agent confirms it before treating it as one, and no card claims it.
+- The RTT and UART log tools no longer end other programs' debugger sessions when they start or stop; they say
+  which program holds a busy probe.
+- The BLG20x card says Wi-Fi where the module is fitted: the demo firmware now uses it.
+
 ### Fixed
 - A downloaded tool's launcher is always executable on Linux and macOS, whatever the umask.
+- The agent can no longer end processes by name (pkill, killall, taskkill /IM, Stop-Process -Name) in any terminal;
+  it names the program that holds a port or a probe and asks.
+- Commands the agent runs no longer wait on a pager.
 
 ## [0.4.3] - 2026-09-30
 

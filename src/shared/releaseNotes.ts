@@ -43,29 +43,29 @@ export interface CardAction {
 export type PatchNote = { silent: true } | { note: string }
 
 export const RELEASE_NOTES = {
-	version: "0.4.3",
+	version: "0.4.6",
 
 	/** Hotfixes on top of `version`. `{ silent: true }` means "nothing to announce", and no toast fires. */
 	patches: {} as Record<string, PatchNote>,
 
 	/** One line, plain words. The update toast is built from it. */
 	headline:
-		"LoRa and LoRaWAN knowledge with a free account · a guided first run for the Fanstel BLG20x gateway · your account in the panel header",
+		"the BLG20x from its own USB port: plug it in, claim it, update it · Wi-Fi on BLG20x units that have it · your debug sessions left alone",
 
 	/** The panel card. Three lines, each a thing then what to do with it. */
 	card: {
 		lines: [
 			{
-				head: "LoRa",
-				body: "the radio, the Semtech parts, LoRaWAN, and how to build a node on NCS or ESP-IDF, with a free account. A project that names a Semtech part or sets CONFIG_LORA loads them on its own.",
-			},
-			{
 				head: "BLG20x",
-				body: "a guided first run for the Fanstel gateway: flash both halves, commission it from the browser, and see its readings on your own platform. Ask for access from the card.",
+				body: "plug the gateway into your computer and ask what it is. IoT Coder reads its ID card, claims it when you say so, offers the latest demo release and walks you to commissioning.",
 			},
 			{
-				head: "Account",
-				body: "sign in from the icon beside history and settings. A bit your account cannot open names its set and the one way in; the LEW840x cellular demo comes with a free account.",
+				head: "Wi-Fi",
+				body: "a BLG20x with the Wi-Fi module sends over Wi-Fi first and falls back to cellular by itself. Give it the network on the commissioning page.",
+			},
+			{
+				head: "Debug",
+				body: "IoT Coder no longer ends a debugger by name, so your other sessions keep running. When a probe or a port is busy, it says which program holds it.",
 			},
 		] as readonly ReleaseLine[],
 		/** Optional: the one click this release earns. Hidden when it no longer applies (already registered). */
