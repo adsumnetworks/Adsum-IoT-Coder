@@ -19,7 +19,7 @@ import {
 	recogniseProduct,
 } from "@/services/platform/WorkspaceClassifier"
 import { type ResolvedTool, resolveToolsAsync } from "@/services/tools/ToolResolver"
-import { type Blg20Unit, blg20Label, blg20ProbeSerials } from "@/shared/blg20"
+import { type Blg20Unit, blg20Label, blg20ProbeSerials, confirmedBlg20Units } from "@/shared/blg20"
 import { fileExistsAtPath } from "@/utils/fs"
 import { shouldInjectMap } from "../../../memory/workspace/mapGate"
 import { migrateLegacyMemory } from "../../../memory/workspace/migrate"
@@ -430,7 +430,8 @@ function connectedBoardSignals(): BoardSignal[] {
 	// The two probes on a BLG20x report an nRF54LM20B and an nRF9151, and those route to the nRF54LM20 DK
 	// and nRF9151 DK bits: the right silicon on the wrong boards, with the wrong pins. Those probes ARE the
 	// gateway, which productLine() states with its own bit, so their chips are not board evidence here.
-	const gatewayProbes = blg20ProbeSerials(getConnectedBlg20Units())
+	// Only a CONFIRMED unit's probes are folded away: an unconfirmed pair may be two real kits.
+	const gatewayProbes = blg20ProbeSerials(confirmedBlg20Units(getConnectedBlg20Units()))
 	for (const b of getCachedNrfEnvironment().boards ?? []) {
 		if (gatewayProbes.has(b.serialNumber)) {
 			continue
@@ -678,13 +679,24 @@ function productLine(): string {
 	}
 	// [7 Oct 2026] The hardware is evidence too: a BLG20x on its USB service port, or on two probes that
 	// reach an nRF54LM20B and an nRF9151. Stated with how it was seen, so the agent can weigh it.
-	const gateways = getConnectedBlg20Units()
+	const all = getConnectedBlg20Units()
+	const gateways = confirmedBlg20Units(all)
 	if (gateways.length > 0) {
 		return (
 			`| **A Fanstel BLG20x gateway is connected to this computer** — ${gateways.map(blg20Evidence).join("; ")} | ` +
 			"load `products/fanstel/blg20x/PRODUCT.md` **before diagnosing anything about it**: its sub-bits carry the " +
 			"service port, the two halves, their probes and their fault ladders. Never open the service port just to " +
 			"look: opening it with DTR up starts a session on the unit. |\n\n"
+		)
+	}
+	// demo-1 (red-team finding 7): a probe pair, or the shared test USB ids with no product name, is only
+	// POSSIBLY a BLG20x. Said as a possibility with a way to settle it, never as a fact.
+	if (all.length > 0) {
+		return (
+			`| **Possibly a Fanstel BLG20x on this computer, not confirmed** — ${all.map(blg20Evidence).join("; ")} | ` +
+			"confirm before treating it as one: ask the developer whether a BLG20x is plugged in, or read its passport " +
+			"with the `blg20-service` tool (reading needs no key). An nRF54LM20 DK and an nRF9151 DK on two probes can " +
+			"look the same. Once confirmed, load `products/fanstel/blg20x/PRODUCT.md`. |\n\n"
 		)
 	}
 	// [14 Sep 2026, H5] One row per product family. The BLG20x is the second entry; the follow-up is to build

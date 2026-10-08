@@ -9,8 +9,10 @@
  *    0 is the service port; interface 2 is the LTE tunnel, which exists only while the service port is
  *    unlocked, so a unit may show one port or two. Both share the unit's USB serial number.
  *    0x1209:0x0001 is pid.codes' shared test pair, so the ids alone are not unique: a port whose product
- *    string is present and does not say BLG20 is not one. Windows often reports no product string at
- *    all, and then the ids are all there is (the service tool accepts the port on the same rule).
+ *    string is present and does not say BLG20 is not one, and a port with NO product string (Windows
+ *    often reports none) is only "possibly a BLG20" until something names it: nrfutil, which reads the
+ *    USB product itself, or the service tool's passport (demo-1 plan, decision 2: the product-string
+ *    check is mandatory on every OS until the unit has a PID of its own).
  *
  *    nrfutil lists the same port too (product "BLG20 Gateway", its serial ports in interface order), and
  *    every nRF developer has nrfutil, while pyserial is only certain where ESP-IDF is installed. So both
@@ -19,7 +21,9 @@
  *  - TWO DEBUG PROBES, one on each chip. On the bench the board is reached through two kits, and
  *    `nrfutil device device-info` names the TARGET behind each: an nRF54LM20B and an nRF9151. The
  *    nRF54LM20 DK carries A silicon and the XIAO too, so the B part together with an nRF9151 is the
- *    BLG20's own pair. Still an inference: it is said as one.
+ *    BLG20's own pair. Still an inference, and a bench with an nRF54LM20 DK and an nRF9151 DK can look
+ *    the same, so a probe pair alone is "possibly a BLG20": never claimed by a card, and the agent is
+ *    told to confirm before treating it as one (red-team finding 7).
  *
  * Enumeration only. Opening the service port with DTR up starts a session on the unit, so nothing here
  * ever opens a port.
@@ -64,6 +68,9 @@ export interface Blg20ProbeBoard {
 export interface Blg20Unit {
 	/** How it was recognised: its own USB-C service port, or the two debug probes on its two chips. */
 	via: "usb" | "probes"
+	/** Named BLG20 by the device itself: its USB product string (from pyserial or from nrfutil). False for
+	 *  the test ids with no product string, and for a probe pair: "possibly a BLG20", to be confirmed. */
+	confirmed: boolean
 	/** USB serial number of the service port — the unit's identity when seen over USB. */
 	serialNumber?: string
 	/** The BLE half's service port (interface 0), e.g. "COM5" or "/dev/ttyACM0". */
@@ -91,6 +98,11 @@ export function isBlg20Port(p: Blg20RawPort): boolean {
 	return /blg20/i.test(product) || /blg20/i.test(p.description ?? "")
 }
 
+/** Does the port NAME itself a BLG20 (product string or description), rather than only carry the test ids? */
+export function blg20PortNamed(p: Blg20RawPort): boolean {
+	return isBlg20Port(p) && (/blg20/i.test(p.product ?? "") || /blg20/i.test(p.description ?? ""))
+}
+
 /** Which USB interface a port is: 0 = service port, 2 = LTE tunnel, undefined = the OS did not say. */
 export function blg20Interface(p: Blg20RawPort): number | undefined {
 	// Linux "1-2:1.0"; pyserial on Windows writes "1-2:x.0". The digit after the dot is the interface.
@@ -114,7 +126,11 @@ export function blg20UnitsFromPorts(ports: Blg20RawPort[]): Blg20Unit[] {
 	}
 	const units: Blg20Unit[] = []
 	for (const [key, list] of byUnit) {
-		const unit: Blg20Unit = { via: "usb", serialNumber: key.startsWith("port:") ? undefined : key }
+		const unit: Blg20Unit = {
+			via: "usb",
+			confirmed: list.some(blg20PortNamed),
+			serialNumber: key.startsWith("port:") ? undefined : key,
+		}
 		const unknown: Blg20RawPort[] = []
 		for (const p of list) {
 			const iface = blg20Interface(p)
@@ -152,6 +168,7 @@ export function blg20UnitsFromNrfutil(devices: Blg20NrfutilDevice[]): Blg20Unit[
 			const known = d.ports.some((p) => p.interfaceNumber !== undefined)
 			return {
 				via: "usb" as const,
+				confirmed: true, // nrfutil read the USB product string itself, and it says BLG20
 				serialNumber: d.serialNumber,
 				servicePort: known ? byIface(0) : ordered[0]?.path,
 				ltePort: known ? byIface(2) : ordered[1]?.path,
@@ -166,7 +183,12 @@ function mergeUsbUnits(fromPorts: Blg20Unit[], fromNrfutil: Blg20Unit[]): Blg20U
 		const same = out.findIndex((u) => u.serialNumber && u.serialNumber === n.serialNumber)
 		if (same >= 0) {
 			const u = out[same]
-			out[same] = { ...u, servicePort: u.servicePort ?? n.servicePort, ltePort: u.ltePort ?? n.ltePort }
+			out[same] = {
+				...u,
+				confirmed: u.confirmed || n.confirmed,
+				servicePort: u.servicePort ?? n.servicePort,
+				ltePort: u.ltePort ?? n.ltePort,
+			}
 		} else {
 			out.push(n)
 		}
@@ -183,7 +205,7 @@ export function blg20FromProbes(boards: Blg20ProbeBoard[]): Blg20Unit | undefine
 	if (!ble || !lte) {
 		return undefined
 	}
-	return { via: "probes", bleProbe: ble.serialNumber, lteProbe: lte.serialNumber }
+	return { via: "probes", confirmed: false, bleProbe: ble.serialNumber, lteProbe: lte.serialNumber }
 }
 
 /**
@@ -206,6 +228,11 @@ export function detectBlg20Units(
 	return [...usb, probes]
 }
 
+/** The units something has named BLG20: the only ones a card may claim, or the agent may treat as a gateway. */
+export function confirmedBlg20Units(units: Blg20Unit[] | undefined): Blg20Unit[] {
+	return (units ?? []).filter((u) => u.confirmed)
+}
+
 /** J-Link serials that belong to a recognised BLG20 — their boards are the gateway, not two loose chips. */
 export function blg20ProbeSerials(units: Blg20Unit[] | undefined): Set<string> {
 	const s = new Set<string>()
@@ -222,8 +249,8 @@ export function blg20ProbeSerials(units: Blg20Unit[] | undefined): Set<string> {
 
 /**
  * One short label per unit, named by its device id (the BLE half's hardware id, which is also its USB
- * serial number), e.g. "BLG20 9802AF5C69DF1E66 (USB COM5 + LTE tunnel COM6)", or
- * "BLG20 gateway (2 debug probes)" when only the probes show and no id is known.
+ * serial number), e.g. "BLG20 9802AF5C69DF1E66 (USB COM5 + LTE tunnel COM6)". A unit nothing has named
+ * says so: "Possibly a BLG20 (2 debug probes), not confirmed".
  */
 export function blg20Label(u: Blg20Unit): string {
 	const how: string[] = []
@@ -233,5 +260,6 @@ export function blg20Label(u: Blg20Unit): string {
 	if (u.bleProbe && u.lteProbe) {
 		how.push("2 debug probes")
 	}
-	return `BLG20 ${u.serialNumber ?? "gateway"}${how.length ? ` (${how.join(", ")})` : ""}`
+	const where = how.length ? ` (${how.join(", ")})` : ""
+	return u.confirmed ? `BLG20 ${u.serialNumber ?? "gateway"}${where}` : `Possibly a BLG20${where}, not confirmed`
 }

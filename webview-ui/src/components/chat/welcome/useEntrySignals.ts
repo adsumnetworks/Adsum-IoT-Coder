@@ -1,4 +1,4 @@
-import { blg20Label } from "@shared/blg20"
+import { blg20Label, confirmedBlg20Units } from "@shared/blg20"
 import { useMemo } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { type EntryMode, type EntrySession, entryMode } from "./entryMode"
@@ -53,8 +53,10 @@ export function useEntrySignals(): EntryContext {
 
 		const signals: Signals = {
 			// A connected BLG20x first, by name: the gateway cards (ladder, cellular, request access) key on "blg20".
+			// Only a unit something has NAMED a BLG20: a probe pair or a bare test id is "possibly a BLG20",
+			// shown on the strip and never claimed by a card (demo-1 plan, red-team finding 7).
 			nrfBoards: [
-				...(nrfEnvironment?.blg20Units ?? []).map(blg20Label),
+				...confirmedBlg20Units(nrfEnvironment?.blg20Units).map(blg20Label),
 				...(nrfEnvironment?.boards ?? []).map((b) => b.productName || b.deviceName || b.deviceFamily || ""),
 			].filter(Boolean),
 			espDevices: (espEnvironment?.espDevices ?? []).map((d) => d.chip || "ESP32").filter(Boolean),

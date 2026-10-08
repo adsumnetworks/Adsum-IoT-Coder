@@ -9,6 +9,7 @@ import {
 	blg20ProbeSerials,
 	blg20UnitsFromNrfutil,
 	blg20UnitsFromPorts,
+	confirmedBlg20Units,
 	detectBlg20Units,
 	isBlg20Port,
 } from "../blg20"
@@ -65,16 +66,35 @@ const PROBES = [
 describe("BLG20x over its USB service port", () => {
 	test("the bench's two ports are one unit: interface 0 the service port, interface 2 the LTE tunnel", () => {
 		assert.deepEqual(blg20UnitsFromPorts(LINUX), [
-			{ via: "usb", serialNumber: "9802AF5C69DF1E66", servicePort: "/dev/ttyACM0", ltePort: "/dev/ttyACM1" },
+			{
+				via: "usb",
+				confirmed: true,
+				serialNumber: "9802AF5C69DF1E66",
+				servicePort: "/dev/ttyACM0",
+				ltePort: "/dev/ttyACM1",
+			},
 		])
 	})
 
-	test("Windows: no product string, the interface comes from MI_xx (or pyserial's x.N location)", () => {
+	test("Windows: no product string, the interface comes from MI_xx (or pyserial's x.N location) - and the unit is NOT confirmed", () => {
 		const win: Blg20RawPort[] = [
 			{ device: "COM7", vid: 0x1209, pid: 1, serial_number: "AB12", hwid: "USB\\VID_1209&PID_0001&MI_02\\7&1" },
 			{ device: "COM5", vid: 0x1209, pid: 1, serial_number: "AB12", location: "1-2:x.0" },
 		]
-		assert.deepEqual(blg20UnitsFromPorts(win), [{ via: "usb", serialNumber: "AB12", servicePort: "COM5", ltePort: "COM7" }])
+		const units = blg20UnitsFromPorts(win)
+		assert.deepEqual(units, [{ via: "usb", confirmed: false, serialNumber: "AB12", servicePort: "COM5", ltePort: "COM7" }])
+		assert.equal(blg20Label(units[0]), "Possibly a BLG20 (USB COM5 + LTE tunnel COM7), not confirmed")
+	})
+
+	test("Windows: nrfutil names the same unit, so it is confirmed", () => {
+		const win: Blg20RawPort[] = [{ device: "COM5", vid: 0x1209, pid: 1, serial_number: "AB12", location: "1-2:x.0" }]
+		const nrf: Blg20NrfutilDevice[] = [
+			{ serialNumber: "AB12", product: "BLG20 Gateway", ports: [{ path: "COM5", interfaceNumber: 0 }] },
+		]
+		const units = detectBlg20Units(win, [], nrf)
+		assert.equal(units.length, 1)
+		assert.equal(units[0].confirmed, true)
+		assert.equal(blg20Label(units[0]), "BLG20 AB12 (USB COM5)")
 	})
 
 	test("a locked unit shows its service port only", () => {
@@ -114,7 +134,12 @@ describe("BLG20x over its USB service port", () => {
 
 describe("BLG20x on two debug probes", () => {
 	test("an nRF54LM20B and an nRF9151 behind two probes are the gateway's chip pair", () => {
-		assert.deepEqual(blg20FromProbes(PROBES), { via: "probes", bleProbe: "960167369", lteProbe: "1051878474" })
+		assert.deepEqual(blg20FromProbes(PROBES), {
+			via: "probes",
+			confirmed: false,
+			bleProbe: "960167369",
+			lteProbe: "1051878474",
+		})
 	})
 
 	test("an nRF54LM20 DK (A silicon) with an nRF9151 DK is not a BLG20", () => {
@@ -137,6 +162,7 @@ describe("both at once — the bench", () => {
 		assert.equal(units.length, 1)
 		assert.deepEqual(units[0], {
 			via: "usb",
+			confirmed: true,
 			serialNumber: "9802AF5C69DF1E66",
 			servicePort: "/dev/ttyACM0",
 			ltePort: "/dev/ttyACM1",
@@ -147,10 +173,11 @@ describe("both at once — the bench", () => {
 		assert.deepEqual([...blg20ProbeSerials(units)].sort(), ["1051878474", "960167369"])
 	})
 
-	test("probes only (no USB cable): one unit, named for its probes", () => {
+	test("probes only (no USB cable): one unit, POSSIBLY a BLG20, never claimed", () => {
 		const units = detectBlg20Units([], PROBES)
-		assert.deepEqual(units, [{ via: "probes", bleProbe: "960167369", lteProbe: "1051878474" }])
-		assert.equal(blg20Label(units[0]), "BLG20 gateway (2 debug probes)")
+		assert.deepEqual(units, [{ via: "probes", confirmed: false, bleProbe: "960167369", lteProbe: "1051878474" }])
+		assert.equal(blg20Label(units[0]), "Possibly a BLG20 (2 debug probes), not confirmed")
+		assert.deepEqual(confirmedBlg20Units(units), [])
 	})
 
 	test("nothing connected: nothing detected", () => {
@@ -161,7 +188,13 @@ describe("both at once — the bench", () => {
 describe("BLG20x from nrfutil's device list (no pyserial needed)", () => {
 	test("the bench unit: interface 0 the service port, interface 2 the LTE tunnel", () => {
 		assert.deepEqual(blg20UnitsFromNrfutil(NRFUTIL), [
-			{ via: "usb", serialNumber: "9802AF5C69DF1E66", servicePort: "/dev/ttyACM0", ltePort: "/dev/ttyACM1" },
+			{
+				via: "usb",
+				confirmed: true,
+				serialNumber: "9802AF5C69DF1E66",
+				servicePort: "/dev/ttyACM0",
+				ltePort: "/dev/ttyACM1",
+			},
 		])
 	})
 
@@ -176,7 +209,13 @@ describe("BLG20x from nrfutil's device list (no pyserial needed)", () => {
 				],
 			},
 		]
-		assert.deepEqual(blg20UnitsFromNrfutil(d)[0], { via: "usb", serialNumber: "AB", servicePort: "COM8", ltePort: "COM9" })
+		assert.deepEqual(blg20UnitsFromNrfutil(d)[0], {
+			via: "usb",
+			confirmed: true,
+			serialNumber: "AB",
+			servicePort: "COM8",
+			ltePort: "COM9",
+		})
 	})
 
 	test("a J-Link or any other product is not a BLG20", () => {
