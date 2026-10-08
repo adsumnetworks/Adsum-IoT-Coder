@@ -26,9 +26,11 @@ Called from: Debug Loop Phase 3, Log Analyzer Step 4, Log Generator post-build v
 - Device is flashed and running firmware with logging enabled
 - Log backend detected from `prj.conf` (RTT or UART)
 - Device serial number (for RTT) or port (for UART) is known
-- **Process Cleanup required:** Run cross-platform process cleanup before any capture.
-  - Linux/Mac: `pkill -9 JLink && pkill -9 nrfutil`
-  - Windows: `cmd /c "taskkill /F /IM JLink.exe 2>nul & taskkill /F /IM nrfutil.exe 2>nul"` (wrap in `cmd /c` so it works in PowerShell — `&` is reserved in PowerShell, but cmd.exe parses the quoted string natively)
+- **A busy probe is identified, never cleared by name.** `pkill`, `killall`, `taskkill /IM` and `Stop-Process -Name`
+  end every probe session on the machine (another engineer's, the nRF Connect apps, a capture another task has running)
+  and are refused by the host. If the capture cannot connect: list what holds the probe (Linux/macOS
+  `pgrep -af "JLinkExe|nrfutil"` or `fuser -v /dev/ttyACM*`; Windows `Get-Process JLink*,nrfutil* | Select Id,StartTime,Path`),
+  tell the developer which program it is, and end that one process by its id only if they agree.
 
 ## Transport Selection
 Detect from `prj.conf`:

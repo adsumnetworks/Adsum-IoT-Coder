@@ -20,7 +20,10 @@ describe("trigger_nordic_action tool", () => {
 		expect(generic?.description).to.include("Execute commands in the nRF Connect terminal")
 		expect(generic?.description).to.include('USE action="execute" for ALL NCS CLI')
 		expect(generic?.description).to.include("NEVER use execute_command for NCS SDK tasks")
-		expect(generic?.description).to.include("taskkill /F /IM JLink.exe")
+		// G4 (5 Oct 2026): the description no longer tells the model to end debugger processes by name.
+		expect(generic?.description).to.include("never end debugger processes by name")
+		expect(generic?.description).to.not.include("taskkill /F /IM")
+		expect(generic?.description).to.not.include("pkill -9")
 
 		if (!generic) throw new Error("Generic variant not found")
 

@@ -57,9 +57,8 @@ export function rejectAdsumShellWrite(command: string): CommandRejection {
  * one abandoned task, because the model then asked the user to re-confirm the board instead of simply
  * switching tools.
  *
- * Deliberately narrow: only the SDK executables, and only when they open the command. Anything else —
- * including the `taskkill /F /IM JLink.exe` cleanup that the capture-logs action legitimately performs —
- * passes through untouched.
+ * Deliberately narrow: only the SDK executables, and only when they open the command. Anything else
+ * passes through untouched (a kill by name is refused by its own guard, below).
  */
 const NRF_TOOLS = ["nrfutil", "nrfjprog", "west", "mergehex", "nrfdl"] as const
 
@@ -69,7 +68,10 @@ export function rejectRawNrfToolCommand(command: string): CommandRejection {
 	let head = command.trim()
 	for (let i = 0; i < 3; i++) {
 		const peeled = head
-			.replace(/^(?:cmd(?:\.exe)?\s+\/c\s+|powershell(?:\.exe)?\s+(?:-\w+\s+)*|pwsh\s+-\w+\s+|sh\s+-c\s+|bash\s+-c\s+)/i, "")
+			.replace(
+				/^(?:cmd(?:\.exe)?\s+\/c\s+|powershell(?:\.exe)?\s+(?:-\w+\s+)*|pwsh\s+-\w+\s+|sh\s+-c\s+|bash\s+-c\s+)/i,
+				"",
+			)
 			.replace(/^["']/, "")
 		if (peeled === head) {
 			break
@@ -86,14 +88,49 @@ export function rejectRawNrfToolCommand(command: string): CommandRejection {
 	}
 	return (
 		`Refused: \`${first}\` must run in the nRF Connect terminal, not a plain shell.\n\n` +
-		"A plain shell has no NCS environment, so this fails with \"the term is not recognized\" even " +
-		"though the tool is installed. Use `trigger_nordic_action` with `action: \"execute\"` and put the " +
+		'A plain shell has no NCS environment, so this fails with "the term is not recognized" even ' +
+		'though the tool is installed. Use `trigger_nordic_action` with `action: "execute"` and put the ' +
 		"same command in its `command` parameter — it runs in the correct environment.\n\n" +
 		"Do not ask the developer to confirm anything about this; just re-issue through the right tool."
 	)
 }
 
+/**
+ * Ending processes by NAME is refused; ending one process by its id is not.
+ *
+ * Observed 2026-10-05 (the first BLG20 run on Windows, finding G4): the agent ran `taskkill /F /IM JLink.exe`
+ * and the same for nrfutil. On 2026-08-30 two agents reached for `pkill -9 JLink` within a day on a shared
+ * bench. A name match ends every probe session on the machine: another engineer's, the nRF Connect apps, a
+ * capture another task is running, and with them the evidence of why the probe was busy. The device tool's
+ * own description used to tell the model to do it before every flash; that text is gone and this guard is
+ * the backstop for anything that still suggests it.
+ */
+const KILL_BY_NAME: RegExp[] = [
+	/(^|[\s;&|(`"'])(pkill|killall)(\.exe)?\b/i,
+	/\btaskkill(\.exe)?\b[^&|;]*\/IM\b/i,
+	/\bStop-Process\b[^|;]*-(Name|ProcessName)\b/i,
+	/\bGet-Process\b[^|;]*\|\s*(Stop-Process|kill)\b/i,
+	/\bkill\b[^;&|]*(\$\(|`)\s*(pgrep|pidof)\b/i,
+	/\b(pgrep|pidof)\b[^;]*\|\s*xargs\s+(-\S+\s+)*kill\b/i,
+	/\bwmic\b[^&|;]*\bwhere\b[^&|;]*name[^&|;]*\b(delete|terminate)\b/i,
+]
+
+export function rejectKillByName(command: string): CommandRejection {
+	const c = command.replace(/\s+/g, " ")
+	if (!KILL_BY_NAME.some((re) => re.test(c))) {
+		return null
+	}
+	return (
+		"Refused: ending processes by name (pkill, killall, taskkill /IM, Stop-Process -Name) also ends the " +
+		"developer's other sessions - another J-Link, the nRF Connect apps, a capture another task is running.\n\n" +
+		'If a probe or a port is busy: list what holds it (Linux/macOS `pgrep -af "JLinkExe|JLinkGDBServer|nrfutil"` ' +
+		"or `fuser -v /dev/ttyACM0`; Windows `Get-Process JLink*,nrfutil* | Select Id,StartTime,Path`), tell the " +
+		"developer which program holds it, and end that one process by its id (`kill <pid>`, `Stop-Process -Id <id>`, " +
+		"`taskkill /PID <id>`) only after they agree - or ask them to close it."
+	)
+}
+
 /** All command guards, in order. Returns the first rejection, or null when the command is allowed. */
 export function checkCommandGuards(command: string): CommandRejection {
-	return rejectAdsumShellWrite(command) ?? rejectRawNrfToolCommand(command)
+	return rejectAdsumShellWrite(command) ?? rejectRawNrfToolCommand(command) ?? rejectKillByName(command)
 }

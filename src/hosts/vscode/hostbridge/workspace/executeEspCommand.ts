@@ -24,6 +24,7 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import * as vscode from "vscode"
+import { NO_PAGER_ENV } from "@/hosts/vscode/terminal/noPagerEnv"
 import { getCachedEspEnvironment, readFreshProjectIdfVersion } from "@/services/esp/EspEnvironmentDetector"
 import {
 	buildEspShellCommand,
@@ -169,7 +170,7 @@ export async function prepareEspTerminal(cwd?: string): Promise<PreparedEspTermi
 	ensureCloseListener()
 	let terminal = findOurEspTerminal()
 	if (!terminal) {
-		terminal = vscode.window.createTerminal({ name: ESP_TERMINAL_NAME })
+		terminal = vscode.window.createTerminal({ name: ESP_TERMINAL_NAME, env: NO_PAGER_ENV })
 	}
 	terminal.show()
 	return { terminal, terminalName: terminal.name, needsSourcing: !sourcedTerminals.has(sourceKey(cwd)) }

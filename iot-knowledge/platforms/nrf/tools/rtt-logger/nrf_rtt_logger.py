@@ -171,35 +171,28 @@ def find_jlink_rtt_logger() -> str:
 # Cleanup Handlers
 # ============================================================================
 
-def kill_jlink_processes():
-    """Kill any existing J-Link processes to prevent locks. Cross-platform."""
-    is_windows = sys.platform == "win32"
-    processes_to_kill = ["JLinkRTTLogger", "nrfjprog", "JLinkExe", "JLinkGDBServer"]
-    
+def report_probe_holders():
+    """Say which debugger processes are running, without ending any of them.
+
+    These used to be ended BY NAME before and after every capture (taskkill /IM, pkill -9), which also ended
+    every other probe session on the machine: another engineer's, the nRF Connect apps, a capture another task
+    was running. A busy probe is now named, and the developer decides (finding G4, 5 Oct 2026)."""
     try:
-        for proc_name in processes_to_kill:
-            try:
-                if is_windows:
-                    # Windows: use taskkill
-                    subprocess.run(
-                        ["taskkill", "/F", "/IM", f"{proc_name}.exe"],
-                        capture_output=True,
-                        timeout=5
-                    )
-                else:
-                    # Unix: use pkill
-                    subprocess.run(
-                        ["pkill", "-9", proc_name],
-                        capture_output=True,
-                        timeout=5
-                    )
-            except Exception:
-                # Process might not exist or command failed - that's OK
-                pass
-        time.sleep(0.5)
+        if sys.platform == "win32":
+            # JLink.exe, JLinkGDBServerCL.exe, JLinkRTTLogger.exe and nrfjprog.exe all start with these.
+            out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True, timeout=5).stdout
+            held = [ln.split(",")[0].strip('"') + " pid " + ln.split(",")[1].strip('"')
+                    for ln in out.splitlines() if ln.strip('"').lower().startswith(("jlink", "nrfjprog"))]
+        else:
+            out = subprocess.run(["pgrep", "-l", "-f", "JLinkExe|JLinkGDBServer|JLinkRTTLogger|nrfjprog"],
+                                 capture_output=True, text=True, timeout=5).stdout
+            held = [ln.strip() for ln in out.splitlines() if ln.strip() and str(os.getpid()) not in ln.split()[0]]
     except Exception:
-        # Non-fatal if cleanup fails
-        pass
+        return []
+    if held:
+        print("  note: debugger processes already running (not ended; if the capture cannot connect, one of "
+              "these holds the probe): " + "; ".join(held[:6]), file=sys.stderr)
+    return held
 
 
 def cleanup_processes():
@@ -210,7 +203,6 @@ def cleanup_processes():
                 proc.wait(timeout=1)
             except:
                 proc.kill()
-    kill_jlink_processes()
 
 
 def signal_handler(signum, frame):
@@ -595,7 +587,6 @@ def report_zero_capture(zero_capture, duration):
 def capture_rtt_logs(devices, duration, output_dir, reset=False, device_type=DEFAULT_DEVICE_TYPE, channel=DEFAULT_RTT_CHANNEL, monitor=False):
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    kill_jlink_processes()
 
     # The monitor (pylink) path resets IN-SESSION inside MonitorRTTThread, AFTER rtt_start, so a blind
     # external reset here would desync RTT (see MonitorRTTThread.run). Only the JLinkRTTLogger.exe path,

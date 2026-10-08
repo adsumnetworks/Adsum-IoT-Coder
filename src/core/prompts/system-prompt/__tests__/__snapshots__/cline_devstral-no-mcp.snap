@@ -255,10 +255,7 @@ CRITICAL OPERATIONAL RULES:
 1. BOARD NAMES: Must be full Zephyr ID (e.g., "nrf52840dk/nrf52840", NOT "nrf52840dk"). Use for example "west boards -f "{name}/{qualifiers}" | grep nrf52840" to verify.
 2. BUILD DIRS: User may have custom build dirs (e.g., build_52840, build_central). Use --build-dir (-d) to target them.
 3. MULTI-DEVICE FLASH: Use "west flash --snr <serial_number>" to target a specific device. Required when >1 device connected.
-4. PROCESS CLEANUP (run before flash or log capture):
-   - Linux/Mac: pkill -9 JLink && pkill -9 nrfutil
-   - Windows:   cmd /c "taskkill /F /IM JLink.exe 2>nul & taskkill /F /IM nrfutil.exe 2>nul"
-     (always wrap in cmd /c — '&' and '2>nul' are cmd.exe syntax, but the user may be in PowerShell, which rejects them; cmd /c "..." makes it portable)
+4. A BUSY PROBE: never end debugger processes by name (pkill, killall, taskkill /IM, Stop-Process -Name) - that ends the developer's other sessions too, and is refused. List what holds the probe (Linux/Mac: pgrep -af "JLinkExe|nrfutil"; Windows: Get-Process JLink*,nrfutil* | Select Id,StartTime,Path), name it to the developer, and end that one process by its id only if they agree.
 5. PORTS: Windows uses COMx; Linux uses /dev/ttyACMx; Mac uses /dev/tty.usbmodemXXXX.
 6. DEVICE LISTING: For device enumeration, use action="log_device" operation="list". NEVER call nrfutil device list via execute_command directly.
 

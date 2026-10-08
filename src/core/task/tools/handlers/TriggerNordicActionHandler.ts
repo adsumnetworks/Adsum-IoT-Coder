@@ -16,6 +16,7 @@ import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
+import { rejectKillByName } from "./commandGuards"
 import { foldCommandOutput } from "./commandOutputFold"
 
 /**
@@ -142,6 +143,13 @@ export class TriggerNordicActionHandler implements IFullyManagedTool {
 		if (!command) {
 			config.taskState.consecutiveMistakeCount++
 			return await config.callbacks.sayAndCreateMissingParamError(this.name, "command")
+		}
+
+		// A kill by name is refused here too: the nRF terminal is where debugger processes live.
+		const killRejection = rejectKillByName(command)
+		if (killRejection) {
+			config.taskState.consecutiveMistakeCount++
+			return formatResponse.toolError(killRejection)
 		}
 
 		config.taskState.consecutiveMistakeCount = 0

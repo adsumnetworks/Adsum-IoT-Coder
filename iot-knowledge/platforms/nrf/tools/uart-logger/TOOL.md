@@ -2,7 +2,7 @@
 id: adsum/nrf/tools/uart-logger
 title: "uart-logger"
 type: tool
-version: 1.0.3
+version: 1.0.4
 owner: adsum-core
 author: Omar Morceli
 license: Apache-2.0
@@ -18,7 +18,7 @@ safety: [shell]
 readonly: false
 artifacts:
   - path: nrf_uart_logger.py
-    sha256: 2967566a7ed51ef226ff367b239f9ab71d16bb4b4d9039b0b9f8b1107d56c44b
+    sha256: 949b88e9d29f2474c001159b88ac89405b3d11f272ad25fc2ba8d2fa0263aa93
   - path: uart-logger
     sha256: 48f06b49fd995e62ec6aa284b66abb4add031dff0bffa376be9aa85e223859ca
   - path: uart-logger.bat

@@ -40,7 +40,7 @@ The active shell is PowerShell, which rejects cmd.exe-style syntax. Use these ru
 - Invoke a QUOTED executable path with that call operator: \`& "C:\\path with spaces\\tool.bat" --flag\`. A bare quoted string on its own is a ParserError, not a command.
 - Redirect stderr with \`2>$null\`, not \`2>nul\`.
 - Use \`Write-Host\`, not \`echo\` (echo is aliased but causes confusion in pipelines).
-- To kill processes: \`Get-Process -Name JLink, nrfutil -ErrorAction SilentlyContinue | Stop-Process -Force\` — not \`taskkill /F /IM ... & ...\`.
+- Never end processes by name (\`Stop-Process -Name\`, \`taskkill /IM\`): list them with \`Get-Process JLink*,nrfutil* | Select Id,StartTime,Path\` and end one by \`-Id\` only after the developer agrees.
 - For "command not found"-style continuation, use \`if ($?) { ... }\` instead of \`&&\`.
 - List serial ports: \`[System.IO.Ports.SerialPort]::GetPortNames()\`.`
 }

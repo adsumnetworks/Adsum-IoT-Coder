@@ -2,6 +2,7 @@ import { exec } from "node:child_process"
 import * as fs from "node:fs"
 import { promisify } from "node:util"
 import * as vscode from "vscode"
+import { NO_PAGER_ENV } from "@/hosts/vscode/terminal/noPagerEnv"
 import { getCachedNrfEnvironment, getResolvedNrfutil, type NrfutilCommands } from "@/services/nrf/EnvironmentDetector"
 import { detectShell } from "./idfEnvResolver"
 import { buildJLinkArgs, getJLinkBinaryName, resolveJLinkBinary, type SupportedPlatform } from "./jlinkResolver"
@@ -372,9 +373,10 @@ async function prepareAdsumNrfTerminal(opts: {
 			}, 2000)
 		})
 	}
-	const terminal = vscode.window.createTerminal(
-		env ? { name: ADSUM_NRF_TERMINAL_NAME, env } : { name: ADSUM_NRF_TERMINAL_NAME },
-	)
+	const terminal = vscode.window.createTerminal({
+		name: ADSUM_NRF_TERMINAL_NAME,
+		env: { ...NO_PAGER_ENV, ...(env ?? {}) },
+	})
 	_adsumNrfTerminal = terminal
 	_adsumNrfSignature = signature
 	terminal.show()

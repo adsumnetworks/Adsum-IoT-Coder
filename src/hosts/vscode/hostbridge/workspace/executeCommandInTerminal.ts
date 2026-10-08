@@ -1,5 +1,6 @@
 import { ExecuteCommandInTerminalRequest, ExecuteCommandInTerminalResponse } from "@shared/proto/host/workspace"
 import * as vscode from "vscode"
+import { NO_PAGER_ENV } from "@/hosts/vscode/terminal/noPagerEnv"
 import { TerminalRegistry } from "@/hosts/vscode/terminal/VscodeTerminalRegistry"
 
 /**
@@ -22,6 +23,7 @@ export async function executeCommandInTerminal(
 			...TerminalRegistry.terminalIdentity(),
 			env: {
 				CLINE_ACTIVE: "true",
+				...NO_PAGER_ENV,
 			},
 		}
 

@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+import { NO_PAGER_ENV } from "./noPagerEnv"
 
 export interface TerminalInfo {
 	terminal: vscode.Terminal
@@ -47,6 +48,7 @@ export class TerminalRegistry {
 			...TerminalRegistry.terminalIdentity(),
 			env: {
 				CLINE_ACTIVE: "true",
+				...NO_PAGER_ENV,
 			},
 		}
 

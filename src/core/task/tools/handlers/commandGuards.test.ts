@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { checkCommandGuards, rejectAdsumShellWrite, rejectRawNrfToolCommand } from "./commandGuards"
+import { checkCommandGuards, rejectAdsumShellWrite, rejectKillByName, rejectRawNrfToolCommand } from "./commandGuards"
 
 /**
  * Every "must reject" case below is a command a model actually ran on 2026-08-08 and that dead-ended.
@@ -79,5 +79,48 @@ describe("checkCommandGuards — combined", () => {
 	})
 	test("allows a normal command", () => {
 		assert.equal(checkCommandGuards("npm run build"), null)
+	})
+})
+
+describe("rejectKillByName — one process by its id, never every process with a name", () => {
+	test("the real G4 commands (5 Oct, Windows) and the 30 Aug shared-bench one", () => {
+		for (const cmd of [
+			"taskkill /F /IM JLink.exe",
+			'cmd /c "taskkill /F /IM JLink.exe 2>nul & taskkill /F /IM nrfutil.exe 2>nul"',
+			"pkill -9 JLink",
+			"pkill -9 JLink && pkill -9 nrfutil",
+		]) {
+			const r = rejectKillByName(cmd)
+			assert.ok(r, `must be rejected: ${cmd}`)
+			assert.match(r as string, /by its id/, "says what to do instead")
+		}
+	})
+
+	test("the other ways to kill by name", () => {
+		assert.ok(rejectKillByName("killall JLinkExe"))
+		assert.ok(rejectKillByName("Get-Process -Name JLink, nrfutil -ErrorAction SilentlyContinue | Stop-Process -Force"))
+		assert.ok(rejectKillByName("Stop-Process -Name JLink -Force"))
+		assert.ok(rejectKillByName("kill -9 $(pgrep JLinkExe)"))
+		assert.ok(rejectKillByName("pgrep -f nrfutil | xargs kill -9"))
+		assert.ok(rejectKillByName("sudo pkill nrfutil"))
+	})
+
+	test("one process by its id is allowed, and so is looking", () => {
+		assert.equal(rejectKillByName("kill 12345"), null)
+		assert.equal(rejectKillByName("kill -9 12345"), null)
+		assert.equal(rejectKillByName("Stop-Process -Id 4242 -Force"), null)
+		assert.equal(rejectKillByName("taskkill /F /T /PID 4242"), null)
+		assert.equal(rejectKillByName('pgrep -af "JLinkExe|nrfutil"'), null)
+		assert.equal(rejectKillByName("Get-Process JLink*,nrfutil* | Select Id,StartTime,Path"), null)
+		assert.equal(rejectKillByName("fuser -v /dev/ttyACM0"), null)
+	})
+
+	test("words that merely contain the names are not kills", () => {
+		assert.equal(rejectKillByName("west build -b nrf52840dk/nrf52840 -- -DCONFIG_SKILL=y"), null)
+		assert.equal(rejectKillByName('git log --grep "pkill"'), rejectKillByName('git log --grep "pkill"'))
+	})
+
+	test("the combined check includes it", () => {
+		assert.ok(checkCommandGuards("taskkill /F /IM JLink.exe"))
 	})
 })

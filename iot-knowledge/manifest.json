@@ -258,7 +258,7 @@
 				"process-kill"
 			],
 			"path": "platforms/nrf/actions/capture-logs.md",
-			"content_hash": "9483ebe16e10871ff1e14bf62933b6b80fbd82bdcb72e23b85a6ef4a77c51192"
+			"content_hash": "711aad014cb05d52fdabdee30ec7c70855b41830f3a8e19c1d0c9dc44e714211"
 		},
 		{
 			"id": "adsum/nrf/actions/flash",
@@ -534,7 +534,7 @@
 			"id": "adsum/nrf/tools/rtt-logger",
 			"title": "rtt-logger",
 			"type": "tool",
-			"version": "1.1.2",
+			"version": "1.1.3",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "Apache-2.0",
@@ -552,7 +552,7 @@
 			"artifacts": [
 				{
 					"path": "nrf_rtt_logger.py",
-					"sha256": "7729ef75f3cf0e2c9aee0d6afc45f5f3ca0cd3b70ea8662aa1b4a530707c0eb0"
+					"sha256": "44660e5b314fa3b77d8e730fe3b2af81eb67b790e1655d70a20bd4c8d73bf9cc"
 				},
 				{
 					"path": "rtt-logger",
@@ -604,7 +604,7 @@
 			"id": "adsum/nrf/tools/uart-logger",
 			"title": "uart-logger",
 			"type": "tool",
-			"version": "1.0.3",
+			"version": "1.0.4",
 			"owner": "adsum-core",
 			"author": "Omar Morceli",
 			"license": "Apache-2.0",
@@ -622,7 +622,7 @@
 			"artifacts": [
 				{
 					"path": "nrf_uart_logger.py",
-					"sha256": "2967566a7ed51ef226ff367b239f9ab71d16bb4b4d9039b0b9f8b1107d56c44b"
+					"sha256": "949b88e9d29f2474c001159b88ac89405b3d11f272ad25fc2ba8d2fa0263aa93"
 				},
 				{
 					"path": "uart-logger",

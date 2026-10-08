@@ -11,6 +11,7 @@ import type { ToolResponse } from "../../index"
 import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
+import { rejectKillByName } from "./commandGuards"
 import { foldCommandOutput } from "./commandOutputFold"
 
 /**
@@ -86,6 +87,12 @@ export class TriggerEspActionHandler implements IFullyManagedTool {
 			if (!command) {
 				config.taskState.consecutiveMistakeCount++
 				return await config.callbacks.sayAndCreateMissingParamError(this.name, "command")
+			}
+			// A kill by name is refused in the ESP terminal too (see commandGuards.ts).
+			const killRejection = rejectKillByName(command)
+			if (killRejection) {
+				config.taskState.consecutiveMistakeCount++
+				return formatResponse.toolError(killRejection)
 			}
 			body = command.trim()
 			sayPath = body
