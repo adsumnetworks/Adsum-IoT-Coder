@@ -304,7 +304,7 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 				 */}
 				{board ? "Your board: " : pair ? "Seen here: " : "Your access: "}
 				<span data-testid="ladder-board" style={{ color: "var(--vscode-foreground)" }}>
-					{board ?? (pair ? `${pair[0]} and ${pair[1]} — the BLG20x pair` : "BLG20x gateway")}
+					{board ?? (pair ? `${pair[0]} and ${pair[1]}, the BLG20x pair` : "BLG20x gateway")}
 				</span>
 				{/*
 				 * The mockup's "· both probes seen" is not here, and will not be until something counts

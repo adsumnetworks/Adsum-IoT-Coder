@@ -476,14 +476,14 @@ export function blg20InstallPrompt(way: "demo" | "production" | "source"): strin
 	if (way === "production") {
 		return (
 			"Install the BLG20x production image into this project. Load the curated BLG20x production tool bit " +
-			"first — it carries the signed image and its hash, and I want the one you verify, not one you build. " +
+			"first: it carries the signed image and its hash, and I want the one you verify, not one you build. " +
 			"Verify the image against its hash, show me where the files landed, and ask me which probe is which " +
 			"before you program anything."
 		)
 	}
 	if (way === "source") {
 		return (
-			"Set up the BLG20x firmware source in this project — the halves my account holds and no others. Load " +
+			"Set up the BLG20x firmware source in this project, the halves my account holds and no others. Load " +
 			"the curated BLG20x source tool bit first, tell me plainly which halves it gave me, and show me where " +
 			"the files landed before building anything."
 		)
@@ -496,7 +496,7 @@ export function blg20InstallPrompt(way: "demo" | "production" | "source"): strin
 // the pair was not open to their account while the real tool sat downloaded and advertised. The limits and
 // the flash order live in step 2's bit, which the agent can read — the tool's own descriptor it cannot.
 export const DEMO_PAIR_PROMPT_BLG20 =
-	"Install the BLG20x demo pair into this project with the blg20-hex-demo-pair tool — run it with --list " +
+	"Install the BLG20x demo pair into this project with the blg20-hex-demo-pair tool. Run it with --list " +
 	"first, then --into this project, so each image is checked against its hash before it is written. Read " +
 	"products/fanstel/blg20x/beats/s2-flash-the-demo.md for what is limited about this demo, and tell me " +
 	"plainly before anything is written. Show me where the files landed, and ask me which probe is which " +
