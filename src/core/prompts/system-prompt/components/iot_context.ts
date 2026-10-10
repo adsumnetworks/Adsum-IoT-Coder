@@ -697,7 +697,9 @@ export const bluetoothGatewayWords = (platform: string = process.platform): stri
 	"connectable only inside its commissioning window: at power-up, or after its button is held for three seconds (an " +
 	"uncommissioned unit keeps it open); if it is not found, say that. The first run from a computer pairs: " +
 	(platform === "linux"
-		? "add `--passkey <the six digits from the unit's label>` to that command (Linux pairs through the tool). "
+		? "add `--passkey <the six digits from the unit's label>` to that command (Linux pairs through the tool; " +
+			"`list --ble --json` says with `bonded` whether this computer is paired with the unit already, and the tool " +
+			"refuses at once, naming --passkey, when it is not). "
 		: "tell the developer to type the six digits from the unit's label when the computer asks. ") +
 	"If the tool says the computer kept a " +
 	"pairing from before the unit was wiped, the developer forgets the unit in the computer's Bluetooth settings and " +

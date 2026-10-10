@@ -357,10 +357,18 @@ export function blg20BleTarget(u: Blg20Unit): string | undefined {
  * system dialog; Linux has no such dialog, so the tool answers the pairing itself from `--passkey`. The computer is
  * the one the extension host runs on (over Remote SSH, the remote machine), which is where the tool runs.
  */
-export function blg20PairingWords(platform?: string): string {
-	return platform === "linux"
-		? "the first time, add `--passkey <the six digits on the unit's label>` to the command (Linux pairs through the tool)"
-		: "the first time, the computer asks to pair: type the six digits on the unit's label"
+export function blg20PairingWords(platform?: string, bonded?: boolean | null): string {
+	if (platform !== "linux") {
+		return "the first time, the computer asks to pair: type the six digits on the unit's label"
+	}
+	// Linux says whether this computer holds the pairing (the scan's `bonded`): paired needs nothing; not yet paired
+	// needs the passkey on this very command, said as a fact rather than an "if".
+	if (bonded === true) {
+		return ""
+	}
+	return bonded === false
+		? "this computer has no pairing with the unit yet: add `--passkey <the six digits on the unit's label>` to the command (Linux pairs through the tool)"
+		: "the first time, add `--passkey <the six digits on the unit's label>` to the command (Linux pairs through the tool)"
 }
 
 /**
@@ -372,9 +380,10 @@ export function blg20BleUnitRoute(u: Blg20Unit, folder: string, platform?: strin
 	if (!blg20OverBluetooth(u)) return undefined
 	const name = blg20BleTarget(u)
 	const set = `${folder.replace(/[\\/]+$/, "")}/usb/demo`
+	const pairing = blg20PairingWords(platform, u.bonded)
 	return (
 		`to ${blg20Label(u)} over Bluetooth with \`blg20-service update-pair --ble ${name} ${set} --json\` ` +
-		`(both halves, the Bluetooth half first); ${blg20PairingWords(platform)}` +
+		`(both halves, the Bluetooth half first)${pairing ? `; ${pairing}` : ""}` +
 		`${u.windowOpen === false ? ". Its commissioning window is closed: hold its button for three seconds first" : ""}`
 	)
 }

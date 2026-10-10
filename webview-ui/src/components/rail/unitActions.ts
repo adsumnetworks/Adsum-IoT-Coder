@@ -11,10 +11,10 @@ export interface UnitAction {
 	prompt: string
 }
 
-/** The pairing as a sentence of its own: "The first time, ...". */
-const pairingSentence = (platform?: string) => {
-	const w = blg20PairingWords(platform)
-	return `${w[0].toUpperCase()}${w.slice(1)}.`
+/** The pairing as a sentence of its own ("The first time, ..."), or nothing when this computer is paired already. */
+const pairingSentence = (platform?: string, bonded?: boolean | null) => {
+	const w = blg20PairingWords(platform, bonded)
+	return w ? `${w[0].toUpperCase()}${w.slice(1)}. ` : ""
 }
 
 export function unitActions(u: Blg20Unit, platform?: string): UnitAction[] {
@@ -23,7 +23,7 @@ export function unitActions(u: Blg20Unit, platform?: string): UnitAction[] {
 	const via = ble ? ` --ble ${blg20BleTarget(u)}` : ""
 	const door = ble ? "over Bluetooth" : "on its USB-C service port"
 	const pairing = ble
-		? ` ${pairingSentence(platform)} If it is not found, its commissioning window is closed: tell me to hold its button for three seconds.`
+		? ` ${pairingSentence(platform, u.bonded)}If it is not found, its commissioning window is closed: tell me to hold its button for three seconds.`
 		: ""
 	return [
 		{
@@ -59,7 +59,6 @@ export function bleSetUpPrompt(u: Blg20Unit, platform?: string): string {
 		`A Fanstel ${blg20Label(u)} gateway is in Bluetooth range of this computer (its USB-C carries power only). ` +
 		"LOAD products/fanstel/blg20x/PRODUCT.md and follow its new-unit journey on the service port over Bluetooth " +
 		`(\`blg20-service <verb> --ble ${blg20BleTarget(u)} --json\`): tell me what the unit is and what it still needs, ` +
-		"claim it only when I say so, then check whether it needs an update, then guide me through commissioning. " +
-		pairingSentence(platform)
+		`claim it only when I say so, then check whether it needs an update, then guide me through commissioning. ${pairingSentence(platform, u.bonded)}`.trimEnd()
 	)
 }
