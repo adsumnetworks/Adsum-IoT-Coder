@@ -188,8 +188,9 @@ export async function downloadFirmware(
 			writeFileSync(dest, bytes)
 			artifacts.push({ path: a.path, sha256: a.sha256, size: bytes.length })
 		}
+		// The term is the developer's: it runs from the download, not from the day the version was released.
 		const now = new Date().toISOString()
-		const termStart = entry.released_at ?? now
+		const termStart = now
 		const termEnd = addMonths(termStart, entry.licence.termMonths || 12)
 		const watermark = sha256(Buffer.from(`${auth.licensee}|${entry.id}|${entry.version}`)).slice(0, 16)
 		const receipt: FirmwareReceipt = {
@@ -224,6 +225,21 @@ export async function downloadFirmware(
 		rmSync(staging, { recursive: true, force: true })
 		throw e
 	}
+}
+
+/**
+ * What a receipt's status is now: active while the account still holds the group AND the term has not
+ * ended; expired otherwise. Either way the files stay and still flash; the word only says what Download
+ * and the licence line should say.
+ */
+export function receiptStatusNow(
+	receipt: Pick<FirmwareReceipt, "term_end">,
+	entitled: boolean,
+	now: Date = new Date(),
+): FirmwareReceipt["status"] {
+	const end = receipt.term_end ? new Date(receipt.term_end) : null
+	const ended = end !== null && !Number.isNaN(end.getTime()) && end.getTime() <= now.getTime()
+	return entitled && !ended ? "active" : "expired"
 }
 
 /** Marks a receipt expired (or active again) after the account has been re-read. The files stay. */

@@ -8,6 +8,7 @@ import {
 	downloadFirmware,
 	type LocalFirmware,
 	listLocalFirmware,
+	receiptStatusNow,
 	setReceiptStatus,
 } from "@/services/firmware/FirmwareStore"
 import { type FirmwareRowState, firmwareRowState } from "@/services/firmware/firmwareRows"
@@ -119,10 +120,12 @@ async function list(family?: string, id?: string): Promise<FirmwareListResult> {
 		}
 		const local = locals.find((l) => l.receipt.id === entry.id && l.receipt.version === entry.version) ?? null
 		const entitled = entry.entitled || (!!account && hasGroup(entry.group ?? undefined))
-		// The receipt follows the account: a group no longer held marks it expired, never deleted.
+		// The receipt follows the account and the clock: a group no longer held, or a term that has ended,
+		// marks it expired, never deleted.
 		if (local) {
-			setReceiptStatus(local.folder, entitled ? "active" : "expired")
-			local.receipt.status = entitled ? "active" : "expired"
+			const status = receiptStatusNow(local.receipt, entitled)
+			setReceiptStatus(local.folder, status)
+			local.receipt.status = status
 		}
 		const state = firmwareRowState({ entitled, group: entry.group, signedIn: !!account, local })
 		rows.push({ entry, local, state, folder: local?.folder ?? (ws ? defaultFolder(ws, entry) : "") })
@@ -133,6 +136,8 @@ async function list(family?: string, id?: string): Promise<FirmwareListResult> {
 		if (seen.has(`${l.receipt.id}@${l.receipt.version}`)) {
 			continue
 		}
+		// Offline the account cannot be re-read; the clock can.
+		l.receipt.status = receiptStatusNow(l.receipt, l.receipt.status === "active")
 		rows.push({
 			entry: {
 				id: l.receipt.id,

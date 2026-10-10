@@ -13,6 +13,7 @@ import {
 	listLocalFirmware,
 	RECEIPT_FILE,
 	readLocal,
+	receiptStatusNow,
 	setReceiptStatus,
 	sha256,
 } from "./FirmwareStore"
@@ -66,7 +67,9 @@ function fakeFetch(opts: { tamper?: boolean; firmware?: FirmwareEntry } = {}): t
 			)
 		}
 		if (u.includes("/v1/firmware/artifact/")) {
-			assert.match(u, /token=adf_test/)
+			// The token is a header, never part of the URL (a URL is logged).
+			assert.doesNotMatch(u, /adf_test/)
+			assert.equal((init?.headers as Record<string, string>)["X-Adsum-Firmware-Token"], "adf_test")
 			const sha = u.split("/artifact/")[1].split("?")[0]
 			const bytes = BYTES[sha] ?? BIN
 			return new Response(opts.tamper ? Buffer.concat([bytes, Buffer.from("x")]) : bytes, { status: 200 })
@@ -96,8 +99,12 @@ describe("the firmware lane on disk", () => {
 		const receipt = JSON.parse(readFileSync(path.join(folder, RECEIPT_FILE), "utf8"))
 		assert.equal(receipt.licensee, "ops@acme.example")
 		assert.equal(receipt.status, "active")
-		assert.equal(receipt.term_start, entry.released_at)
-		assert.match(receipt.term_end, /^2027-10-01/)
+		// The term runs from the download, not from the release date.
+		assert.equal(receipt.term_start, receipt.downloaded_at)
+		assert.notEqual(receipt.term_start.slice(0, 10), String(entry.released_at).slice(0, 10))
+		const start = new Date(receipt.term_start)
+		const end = new Date(receipt.term_end)
+		assert.equal(end.getFullYear(), start.getFullYear() + 1, "a twelve-month term")
 		// The two files, and the licence written beside them, recorded as it is on disk.
 		assert.equal(receipt.artifacts.length, 3)
 		assert.ok(receipt.artifacts.some((a: { path: string }) => a.path === LICENCE_FILE))
@@ -134,6 +141,16 @@ describe("the firmware lane on disk", () => {
 		assert.equal(r?.receipt.status, "expired")
 		assert.ok(r?.receipt.status_checked_at)
 		assert.equal(readFileSync(path.join(folder, "nrf9151/zephyr.signed.hex")).toString(), HEX.toString(), "the files stay")
+	})
+
+	test("an ended term reads expired even while the group is held; a live term with the group reads active", () => {
+		const live = { term_end: "2027-10-11T00:00:00.000Z" }
+		const ended = { term_end: "2026-10-01T00:00:00.000Z" }
+		const now = new Date("2026-10-11T00:00:00.000Z")
+		assert.equal(receiptStatusNow(live, true, now), "active")
+		assert.equal(receiptStatusNow(ended, true, now), "expired")
+		assert.equal(receiptStatusNow(live, false, now), "expired", "a group no longer held")
+		assert.equal(receiptStatusNow({ term_end: "" }, true, now), "active", "no term recorded: the account decides")
 	})
 
 	test("a folder without a receipt is not firmware; a receipt without files is not intact", () => {

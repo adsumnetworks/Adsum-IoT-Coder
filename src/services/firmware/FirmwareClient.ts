@@ -119,17 +119,19 @@ export class FirmwareClient {
 		return (await res.json()) as FirmwareAuthorisation
 	}
 
-	/** One file, under the authorisation that covers it. The caller verifies the hash before keeping it. */
+	/**
+	 * One file, under the authorisation that covers it. The caller verifies the hash before keeping it. The
+	 * token travels in a header, never in the URL: a URL is logged, a header is not.
+	 */
 	async artifact(sha256: string, token: string, memberPath: string): Promise<Buffer> {
-		const res = await this.call(
-			`/v1/firmware/artifact/${sha256}?token=${encodeURIComponent(token)}&path=${encodeURIComponent(memberPath)}`,
-			{ headers: { Accept: "application/octet-stream", "X-Adsum-Firmware-Token": token } },
-		)
+		const res = await this.call(`/v1/firmware/artifact/${sha256}`, {
+			headers: { Accept: "application/octet-stream", "X-Adsum-Firmware-Token": token },
+		})
 		if (res.status === 402 || res.status === 403) {
 			throw new FirmwareLockedError(null, "authorisation_required")
 		}
 		if (!res.ok) {
-			throw new Error(`firmware artifact: ${res.status}`)
+			throw new Error(`firmware artifact ${memberPath}: ${res.status}`)
 		}
 		return Buffer.from(await res.arrayBuffer())
 	}
