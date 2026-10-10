@@ -9,7 +9,7 @@ import { paletteOpen as countPaletteOpen, entryRunStart, gateShown, suggestionCl
 import GatePanel from "../chat/welcome/GatePanel"
 import RequestAccessForm from "../chat/welcome/RequestAccessForm"
 import { isRequestOnlyGroup, requestFamilyFor } from "../chat/welcome/welcomeIntents"
-import { AdsumMark } from "../common/AdsumLogo"
+import { AdsumLogo, AdsumMark } from "../common/AdsumLogo"
 import Info from "../common/Info"
 import HistoryView from "../history/HistoryView"
 import SettingsView from "../settings/SettingsView"
@@ -208,6 +208,10 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 				/>
 			) : (
 				<>
+					{/* The lockup, first: the mark in coral and the name in type, the same on every surface. */}
+					<div data-testid="rail-lockup" style={{ display: "flex", alignItems: "center", padding: "2px 0 0" }}>
+						<AdsumLogo size={18} />
+					</div>
 					<RailYou
 						onAccount={() => {
 							navigateToSettings("account")
