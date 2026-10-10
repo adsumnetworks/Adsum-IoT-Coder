@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Ranked } from "../chat/welcome/suggest"
 import Info from "../common/Info"
+import Truncate from "../common/Truncate"
 import { KIND_SENTENCE, R } from "./railStyles"
 import type { Run } from "./useRankedRuns"
 import { Chevron, useSectionOpen } from "./useSectionOpen"
@@ -64,27 +65,15 @@ export const RunRow: React.FC<{
 					{locked ? "🔒" : run.kind === "fire" || run.kind === "sample" ? "▶" : run.kind === "open-folder" ? "⌂" : "✎"}
 				</span>
 				<span style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
-					<span
+					<Truncate
 						style={{
 							...R.title,
-							whiteSpace: "nowrap",
-							overflow: "hidden",
-							textOverflow: "ellipsis",
 							color: locked ? "color-mix(in srgb, var(--vscode-foreground) 78%, transparent)" : R.title.color,
-						}}>
-						{run.title}
-					</span>
+						}}
+						text={run.title}
+					/>
 					{showWhy && r.grounded && r.why ? (
-						<span
-							style={{
-								...R.meta,
-								color: "var(--adsum-cyan-text)",
-								whiteSpace: "nowrap",
-								overflow: "hidden",
-								textOverflow: "ellipsis",
-							}}>
-							◆ {r.why}
-						</span>
+						<Truncate style={{ ...R.meta, color: "var(--adsum-cyan-text)" }} text={`◆ ${r.why}`} />
 					) : null}
 				</span>
 			</button>

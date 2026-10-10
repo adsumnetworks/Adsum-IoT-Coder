@@ -6,6 +6,7 @@ import { useMemo, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { TaskServiceClient } from "@/services/grpc-client"
 import { sameFolder } from "../chat/welcome/entryMode"
+import Truncate from "../common/Truncate"
 import { R } from "./railStyles"
 import { Chevron, useSectionOpen } from "./useSectionOpen"
 
@@ -176,10 +177,9 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 											style={{
 												...R.title,
 												fontSize: 12,
-												whiteSpace: "nowrap",
-												overflow: "hidden",
-												textOverflow: "ellipsis",
-												display: "block",
+												display: "flex",
+												alignItems: "center",
+												minWidth: 0,
 											}}>
 											<span
 												aria-label={
@@ -192,7 +192,7 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 													height: 7,
 													borderRadius: "50%",
 													marginRight: 6,
-													verticalAlign: "middle",
+													flex: "none",
 													background: o?.streaming
 														? "var(--vscode-testing-iconPassed, #3fb950)"
 														: o?.waiting
@@ -230,7 +230,7 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 													value={editing.title}
 												/>
 											) : (
-												h.title?.trim() || h.task
+												<Truncate text={h.title?.trim() || h.task} />
 											)}
 										</span>
 										<span
