@@ -4,7 +4,7 @@ import { HostProvider } from "@/hosts/host-provider"
  * Simple logging utility for the extension's backend code.
  */
 export class Logger {
-	public readonly channelName = "Cline Dev Logger"
+	public readonly channelName = "Adsum IoT Coder Dev"
 	static error(message: string, error?: Error) {
 		Logger.#output("ERROR", message, error)
 	}

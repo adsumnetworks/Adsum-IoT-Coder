@@ -340,7 +340,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Clean up old temp files in background (non-blocking) and start periodic cleanup every 24 hours
 	ClineTempManager.startPeriodicCleanup()
 
-	Logger.log("Cline extension activated")
+	Logger.log("Adsum IoT Coder activated")
 
 	const testModeWatchers = await initializeTestMode(webview)
 	// Initialize test mode and add disposables to context
@@ -468,7 +468,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			.then((module) => {
 				const devTaskCommands = module.registerTaskCommands(webview.controller)
 				context.subscriptions.push(...devTaskCommands)
-				Logger.log("Cline dev task commands registered")
+				Logger.log("dev task commands registered")
 			})
 			.catch((error) => {
 				Logger.log("Failed to register dev task commands: " + error)
@@ -1074,7 +1074,7 @@ async function getBinaryLocation(name: string): Promise<string> {
 
 // This method is called when your extension is deactivated
 export async function deactivate() {
-	Logger.log("Cline extension deactivating, cleaning up resources...")
+	Logger.log("Adsum IoT Coder deactivating, cleaning up resources...")
 	markHostShuttingDown()
 
 	// Stop periodic temp file cleanup
@@ -1096,7 +1096,7 @@ export async function deactivate() {
 
 	clearOnboardingModelsCache()
 
-	Logger.log("Cline extension deactivated")
+	Logger.log("Adsum IoT Coder deactivated")
 }
 
 // TODO: Find a solution for automatically removing DEV related content from production builds.
