@@ -1,6 +1,7 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
 
 import type { EspEnvironment } from "@shared/esp"
+import type { FreeTierQuotaState } from "@shared/freeTier"
 import type { HandoverUiState } from "@shared/handover"
 import { WorkspaceRoot } from "@shared/multi-root/types"
 import type { NrfEnvironment } from "@shared/nrf"
@@ -131,6 +132,9 @@ export interface ExtensionState {
 	banners?: BannerCardData[]
 	openAiCodexIsAuthenticated?: boolean
 	freeTierRemainingTokens?: number
+	/** [0.5 free tier quota states] The one state the free-tier UI renders — see quotaState.ts.
+	 *  Absent when the configured provider isn't the free tier. */
+	quota?: FreeTierQuotaState
 	nrfEnvironment?: NrfEnvironment
 	espEnvironment?: EspEnvironment
 	/** Which embedded platform(s) the open workspace is — drives platform-aware card copy. */

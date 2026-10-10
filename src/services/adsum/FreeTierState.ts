@@ -84,6 +84,27 @@ export function consumeQuotaExhausted(): boolean {
 }
 
 /**
+ * [0.5 free tier quota states] The free tier's own 402 or 429, as last seen by AdsumFreeHandler's
+ * fetch interceptor — read by `quotaState()` (see quotaState.ts) to drive the `limited` state the
+ * webview will render. Module-level for the same cross-bundle reason as `quotaJustExhausted`
+ * above. Cleared on the next successful response: a temporary block that has lifted should not
+ * keep showing as limited.
+ */
+let lastFreeTierError: { status: 402 | 429; retryAfterSeconds?: number } | undefined
+
+export function markFreeTierLimited(status: 402 | 429, retryAfterSeconds?: number) {
+	lastFreeTierError = { status, retryAfterSeconds }
+}
+
+export function clearFreeTierLimited() {
+	lastFreeTierError = undefined
+}
+
+export function getFreeTierLastError(): { status: 402 | 429; retryAfterSeconds?: number } | undefined {
+	return lastFreeTierError
+}
+
+/**
  * Whether an EMPTY model response should be reported to the developer as "free tier quota exhausted".
  *
  * The rule used to be `flag || model.id === "free-default"` — on the free tier, ANY empty response
