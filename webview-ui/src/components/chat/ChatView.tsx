@@ -43,6 +43,7 @@ import AgentSessionRecap from "./handover/AgentSessionRecap"
 import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
 import SessionComposerFoot from "./SessionComposerFoot"
+import SessionHeader from "./SessionHeader"
 import { entryFirstPrompt } from "./welcome/entryTelemetry"
 import { handOverCard } from "./welcome/handOverCard"
 import { routeDemo, routeTypedTask } from "./welcome/runRouting"
@@ -564,6 +565,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				{/* A session opened from the history list OWNS the panel, exactly as opening a task does —
 				    the developer asked for this one by name. It is read-only history, so none of the live
 				    task furniture (recap, message stream, composer) renders behind it. */}
+				{/* [P4.1] The session tab's own header line — session view only; the component renders nothing
+				    in the sidebar, where TaskHeader below already carries this. */}
+				{!openedAgentSession && task ? (
+					<SessionHeader
+						currentTaskItem={currentTaskItem}
+						lastApiReqTotalTokens={lastApiReqTotalTokens}
+						messages={messages}
+						task={task}
+						totalCost={apiMetrics.totalCost}
+					/>
+				) : null}
 				{openedAgentSession ? (
 					<AgentSessionView onDismiss={() => openAgentSession(null)} session={openedAgentSession} />
 				) : task ? (
