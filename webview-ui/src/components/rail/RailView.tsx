@@ -211,16 +211,8 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 			) : (
 				<>
 					{/* The lockup, first: the mark in coral and the name in type, the same on every surface. */}
-					<div
-						data-testid="rail-lockup"
-						style={{
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							padding: "8px 0 10px",
-							borderBottom: "1px solid color-mix(in srgb, var(--vscode-foreground) 10%, transparent)",
-						}}>
-						<AdsumLogo size={34} />
+					<div data-testid="rail-lockup" style={{ display: "flex", alignItems: "center", padding: "4px 0 2px" }}>
+						<AdsumLogo size={26} />
 					</div>
 					<RailYou
 						onAccount={() => {
@@ -273,8 +265,8 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 								gap: 8,
 							}}>
 							<span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-								Cards moved to <b style={{ color: "var(--vscode-foreground)" }}>What can you ask</b>
-								<Info text="Everything the cards did is in the palette (⌘K); the relevant ones come first. A session now opens as a tab beside your code." />
+								<b style={{ color: "var(--vscode-foreground)" }}>Cards moved</b>
+								<Info text="Everything the cards did is in What can you ask (⌘K); the relevant ones come first. A session now opens as a tab beside your code." />
 							</span>
 							<button
 								aria-label="Dismiss"
