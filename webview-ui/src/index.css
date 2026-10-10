@@ -157,3 +157,12 @@ body.vscode-high-contrast:not(.vscode-high-contrast-light) {
 	display: flex;
 	flex-direction: column;
 }
+
+/* The composer is the centred piece of a session tab, like the reference: the conversation runs the full
+   width above it, the box sits on a 900 px axis beneath. */
+.session-composer {
+	width: 100%;
+	max-width: 900px;
+	margin: 0 auto;
+	box-sizing: border-box;
+}
