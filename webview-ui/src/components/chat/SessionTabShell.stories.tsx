@@ -3,7 +3,6 @@ import { fn } from "storybook/test"
 import { createStorybookDecorator } from "@/config/StorybookDecorator"
 import ChatTextArea from "./ChatTextArea"
 import EmptySession from "./EmptySession"
-import PreferSidebarHint from "./PreferSidebarHint"
 import SessionComposerFoot from "./SessionComposerFoot"
 import SessionWordmark from "./SessionWordmark"
 
@@ -26,7 +25,6 @@ const Shell = () => (
 			<EmptySession onPrefill={() => {}} onStartTask={() => {}} />
 		</div>
 		<div className="session-composer">
-			<PreferSidebarHint view="session" />
 			<ChatTextArea
 				activeQuote={null}
 				inputValue=""

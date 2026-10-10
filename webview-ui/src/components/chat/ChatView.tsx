@@ -44,7 +44,6 @@ import AgentSessionRecap from "./handover/AgentSessionRecap"
 import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
 import OfflineNotice from "./OfflineNotice"
-import PreferSidebarHint from "./PreferSidebarHint"
 import SessionComposerFoot from "./SessionComposerFoot"
 import SessionHeader from "./SessionHeader"
 import SessionPalette from "./SessionPalette"
@@ -708,10 +707,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 							task={task}
 						/>
 					)}
-					{/* [0.5 sessions first] New tab only — once a task exists the hint has nothing left to
-					    orient; a developer mid-task already knows where they are. */}
 					<div className={ADSUM_VIEW === "session" ? "session-composer" : undefined}>
-						{!task && <PreferSidebarHint />}
 						<InputSection
 							chatState={chatState}
 							messageHandlers={messageHandlers}
