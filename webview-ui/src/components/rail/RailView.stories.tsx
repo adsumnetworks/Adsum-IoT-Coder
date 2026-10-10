@@ -68,7 +68,7 @@ const Wrapped = ({
 	const real = useExtensionState()
 	return (
 		<ExtensionStateProviderMock value={{ ...real, ...base, ...state } as never}>
-			<div style={{ width: 420, minHeight: 820, background: "var(--vscode-sideBar-background)" }}>
+			<div style={{ width, minHeight: 820, background: "var(--vscode-sideBar-background)" }}>
 				<RailView initialPage={page} initialPalette={palette} />
 			</div>
 		</ExtensionStateProviderMock>
@@ -212,3 +212,18 @@ export const AllSessionsPage: Story = {
 	},
 }
 export const SettingsPage: Story = { args: { page: "settings", state: {} } }
+/** The narrowest sidebar VS Code allows is about 170 px; 260 is a common one. Nothing may overflow. */
+export const NarrowSidebar: Story = {
+	args: {
+		width: 260,
+		state: {
+			nrfEnvironment: blg20,
+			taskHistory: [
+				history("a", 2, "LEW840x gateway build with a very long title that keeps going", {
+					title: "LEW840x gateway build with a very long title that keeps going",
+				}),
+			],
+			openSessions: [{ taskId: "a", title: "LEW840x gateway build", waiting: true, streaming: false, active: false }],
+		},
+	},
+}

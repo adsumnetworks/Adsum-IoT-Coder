@@ -3,6 +3,7 @@ import type React from "react"
 import { useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { espDeviceLabels, nrfBoardLabels, useEnvRefresh } from "../chat/welcome/EnvStrip"
+import Info from "../common/Info"
 import { R } from "./railStyles"
 
 interface Props {
@@ -117,12 +118,22 @@ const RailHardware: React.FC<Props> = ({ onOpen }) => {
 				{open && (
 					<>
 						<Row dim={!nrfOk} pf="nRF">
-							{nrfOk
-								? `nRF Connect SDK ✓${nrfVersion ? ` · v${nrfVersion}` : ""}`
-								: "not detected · install nRF Connect SDK to enable"}
+							{nrfOk ? `nRF Connect SDK${nrfVersion ? ` v${nrfVersion}` : ""}` : "nRF Connect SDK"}
+							{!nrfOk && (
+								<>
+									{" "}
+									<Info text="Not found. Install the nRF Connect SDK and its VS Code extension; the agent builds and flashes nRF boards through them." />
+								</>
+							)}
 						</Row>
 						<Row dim={!espOk} pf="ESP">
-							{espOk ? "ESP-IDF ✓" : "not detected · install ESP-IDF to enable"}
+							{espOk ? "ESP-IDF" : "ESP-IDF"}
+							{!espOk && (
+								<>
+									{" "}
+									<Info text="Not found. Install ESP-IDF (the Espressif IDF extension is the easy way); the agent builds and flashes ESP32 boards through it." />
+								</>
+							)}
 						</Row>
 						<Row dim={!folder} pf="DIR">
 							{folder ?? "no folder open"}

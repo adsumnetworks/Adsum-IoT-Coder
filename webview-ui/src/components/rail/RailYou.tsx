@@ -4,6 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { SignInWaiting } from "../chat/welcome/GatePanel"
+import Info from "../common/Info"
 import { normalizeApiConfiguration } from "../settings/utils/providerUtils"
 import { R } from "./railStyles"
 
@@ -96,17 +97,16 @@ const RailYou: React.FC<Props> = ({ onSignIn, onAccount, onProvider }) => {
 				<span style={{ color: "var(--vscode-descriptionForeground)", overflow: "hidden", textOverflow: "ellipsis" }}>
 					· {adsumAccount ? `${word} · ` : free ? "Free tier · " : ""}
 					{tokens !== undefined ? (
-						<>
-							<b
-								style={{
-									color: zero ? "var(--vscode-errorForeground)" : low ? R.warn : "var(--vscode-foreground)",
-								}}>
-								{fmtTokens(tokens)}
-							</b>{" "}
-							left ·{" "}
-						</>
-					) : null}
-					{model}
+						<b
+							style={{
+								color: zero ? "var(--vscode-errorForeground)" : low ? R.warn : "var(--vscode-foreground)",
+							}}>
+							{fmtTokens(tokens)}
+						</b>
+					) : (
+						"your key"
+					)}
+					{limitedUntil !== undefined ? <b style={{ color: R.warn }}> · paused</b> : null}
 				</span>
 			</button>
 			{adsumSignInPending && <SignInWaiting compact />}
@@ -130,7 +130,10 @@ const RailYou: React.FC<Props> = ({ onSignIn, onAccount, onProvider }) => {
 								{adsumAccount.emailVerified === false ? " · not verified yet" : ""}
 							</>
 						) : (
-							"Not signed in · a free account opens cellular, LoRa, satellite and the gateway demos"
+							<span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+								Not signed in
+								<Info text="A free account, no card, opens cellular, LoRa, satellite and the gateway demos. Sign in with your email; the code arrives in a minute." />
+							</span>
 						)}
 					</span>
 					{sets.length > 0 && (

@@ -1,11 +1,11 @@
 import type React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { Ranked } from "../chat/welcome/suggest"
+import Info from "../common/Info"
 import { RunRow } from "./RailSuggested"
 import { R } from "./railStyles"
 import type { Run, RunGroup } from "./useRankedRuns"
 
-const HINT_KEY = "adsum.palette.hintSeen"
 const GROUPS: RunGroup[] = ["Runs", "Journeys", "Checks", "Samples"]
 
 interface Props {
@@ -25,13 +25,6 @@ interface Props {
 const Palette: React.FC<Props> = ({ open, runs, suggested, onClose, onRun, onLocked }) => {
 	const [filter, setFilter] = useState("")
 	const [index, setIndex] = useState(0)
-	const [hintSeen, setHintSeen] = useState(() => {
-		try {
-			return localStorage.getItem(HINT_KEY) === "1"
-		} catch {
-			return false
-		}
-	})
 	const inputRef = useRef<HTMLInputElement>(null)
 
 	const flat = useMemo(() => {
@@ -79,14 +72,6 @@ const Palette: React.FC<Props> = ({ open, runs, suggested, onClose, onRun, onLoc
 			if (hit) {
 				pick(hit.r)
 			}
-		}
-	}
-	const dismissHint = () => {
-		setHintSeen(true)
-		try {
-			localStorage.setItem(HINT_KEY, "1")
-		} catch {
-			// private window
 		}
 	}
 
@@ -137,41 +122,10 @@ const Palette: React.FC<Props> = ({ open, runs, suggested, onClose, onRun, onLoc
 					type="button">
 					×
 				</button>
-				<h3 style={{ ...R.headline, margin: "0 0 6px" }}>What can you ask</h3>
-				{!hintSeen && (
-					<div
-						style={{
-							...R.meta,
-							border: "1px solid color-mix(in srgb, var(--vscode-foreground) 20%, transparent)",
-							borderRadius: 6,
-							padding: "6px 8px",
-							marginBottom: 8,
-							display: "flex",
-							justifyContent: "space-between",
-							gap: 8,
-						}}>
-						<span>
-							<b style={{ color: "var(--vscode-foreground)" }}>Runs now</b> starts the session with the prompt sent.{" "}
-							<b style={{ color: "var(--vscode-foreground)" }}>Fills the box</b> opens the session with the prompt
-							in the composer; you press Enter. ↑↓ move, Enter picks, Esc closes.
-						</span>
-						<button
-							aria-label="Got it"
-							onClick={dismissHint}
-							style={{
-								background: "none",
-								border: 0,
-								color: "var(--vscode-descriptionForeground)",
-								cursor: "pointer",
-								fontSize: 13,
-								lineHeight: 1,
-								padding: 0,
-							}}
-							type="button">
-							×
-						</button>
-					</div>
-				)}
+				<h3 style={{ ...R.headline, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 6 }}>
+					What can you ask
+					<Info text="Every run, journey, check and sample. ▶ runs now in a new tab; ✎ opens a tab with the prompt written, Enter sends it. ↑↓ move, Enter picks, Esc closes." />
+				</h3>
 				<input
 					aria-activedescendant={flat[index] ? `pal-${index}` : undefined}
 					aria-controls="pal-list"
@@ -223,9 +177,6 @@ const Palette: React.FC<Props> = ({ open, runs, suggested, onClose, onRun, onLoc
 					})}
 					{flat.length === 0 && <div style={R.label}>nothing matches</div>}
 				</div>
-				<p style={{ ...R.meta, fontSize: 10.5, marginTop: 8 }}>
-					Every row here was a card; the relevant ones come first, the rest stay in reach.
-				</p>
 			</div>
 		</div>
 	)

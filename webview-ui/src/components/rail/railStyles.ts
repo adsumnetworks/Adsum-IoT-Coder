@@ -95,3 +95,12 @@ export const KIND_WORD: Record<string, string> = {
 	locked: "locked",
 	"open-folder": "opens a folder",
 }
+
+/** What a click does, said once in the hover, not on every row. */
+export const KIND_SENTENCE: Record<string, string> = {
+	fire: "Click: opens a session tab and sends this straight away.",
+	sample: "Click: opens a session tab and runs the sample straight away, about a minute.",
+	prefill: "Click: opens a session tab with this written in the box; Enter sends it.",
+	locked: "Locked: a registered account, or a request, opens it.",
+	"open-folder": "Click: opens a folder picker first.",
+}

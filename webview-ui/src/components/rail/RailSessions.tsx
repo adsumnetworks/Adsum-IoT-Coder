@@ -48,11 +48,18 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 		return { rows: sorted.slice(0, 5), elsewhere: all.length - mine.length }
 	}, [taskHistory, root])
 
-	const rename = async (item: HistoryItem) => {
-		const title = window.prompt("Name this session", item.title || item.task.slice(0, 60))
+	// VS Code webviews block window.prompt and window.confirm: renaming and deleting happen in the row.
+	const [editing, setEditing] = useState<{ id: string; title: string } | null>(null)
+	const [confirming, setConfirming] = useState<string | null>(null)
+	const rename = (item: HistoryItem) => {
 		setMenuFor(null)
-		if (title === null) return
-		await TaskServiceClient.renameTask(RenameTaskRequest.create({ taskId: item.id, title })).catch(() => {})
+		setEditing({ id: item.id, title: item.title || item.task.slice(0, 60) })
+	}
+	const saveRename = async () => {
+		if (!editing) return
+		const { id, title } = editing
+		setEditing(null)
+		await TaskServiceClient.renameTask(RenameTaskRequest.create({ taskId: id, title: title.trim() })).catch(() => {})
 	}
 	const favourite = async (item: HistoryItem) => {
 		setMenuFor(null)
@@ -60,10 +67,13 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 			TaskFavoriteRequest.create({ taskId: item.id, isFavorited: !item.isFavorited }),
 		).catch(() => {})
 	}
-	const remove = async (item: HistoryItem) => {
+	const remove = (item: HistoryItem) => {
+		setConfirming(item.id)
+	}
+	const reallyRemove = async (id: string) => {
+		setConfirming(null)
 		setMenuFor(null)
-		if (!window.confirm(`Delete "${item.title || item.task.slice(0, 60)}"?`)) return
-		await TaskServiceClient.deleteTasksWithIds(StringArrayRequest.create({ value: [item.id] })).catch(() => {})
+		await TaskServiceClient.deleteTasksWithIds(StringArrayRequest.create({ value: [id] })).catch(() => {})
 	}
 
 	return (
@@ -131,7 +141,31 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 											display: "block",
 										}}>
 										{h.isFavorited ? <span style={{ color: R.coral, marginRight: 4 }}>★</span> : null}
-										{h.title?.trim() || h.task}
+										{editing?.id === h.id ? (
+											<input
+												aria-label="Session name"
+												autoFocus
+												onBlur={() => void saveRename()}
+												onChange={(e) => setEditing({ id: h.id, title: e.target.value })}
+												onClick={(e) => e.stopPropagation()}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") void saveRename()
+													if (e.key === "Escape") setEditing(null)
+												}}
+												style={{
+													font: "inherit",
+													width: "100%",
+													background: "var(--vscode-input-background)",
+													color: "var(--vscode-input-foreground)",
+													border: "1px solid var(--vscode-focusBorder)",
+													borderRadius: 3,
+													padding: "0 4px",
+												}}
+												value={editing.title}
+											/>
+										) : (
+											h.title?.trim() || h.task
+										)}
 									</span>
 									<span
 										style={{
@@ -234,37 +268,58 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 										type="button">
 										{h.isFavorited ? "Unfavourite" : "Favourite"}
 									</button>
-									<button
-										onClick={() => void remove(h)}
-										role="menuitem"
-										style={{
-											...R.link,
-											color: "var(--vscode-foreground)",
-											textAlign: "left",
-											padding: "5px 10px",
-											fontSize: 12,
-										}}
-										type="button">
-										Delete…
-									</button>
+									{confirming === h.id ? (
+										<span
+											style={{
+												display: "flex",
+												gap: 8,
+												alignItems: "center",
+												padding: "5px 10px",
+												fontSize: 12,
+											}}>
+											Delete?
+											<button
+												onClick={() => void reallyRemove(h.id)}
+												role="menuitem"
+												style={{ ...R.link, color: "var(--vscode-errorForeground)" }}
+												type="button">
+												Yes
+											</button>
+											<button
+												onClick={() => setConfirming(null)}
+												role="menuitem"
+												style={R.link}
+												type="button">
+												No
+											</button>
+										</span>
+									) : (
+										<button
+											onClick={() => remove(h)}
+											role="menuitem"
+											style={{
+												...R.link,
+												color: "var(--vscode-foreground)",
+												textAlign: "left",
+												padding: "5px 10px",
+												fontSize: 12,
+											}}
+											type="button">
+											Delete…
+										</button>
+									)}
 								</div>
 							)}
 						</div>
 					)
 				})}
 				{here.rows.length === 0 && (
-					<div style={{ ...R.meta, padding: "2px 8px" }}>
-						Nothing has run {folder ? `in ${folder}` : "in this window"} yet. A suggestion, the palette or + starts
-						its first session.
-					</div>
+					<div style={{ ...R.meta, padding: "2px 8px" }}>No sessions {folder ? `in ${folder}` : "here"} yet</div>
 				)}
 				{(here.elsewhere > 0 || here.rows.length > 0) && (
 					<div style={{ ...R.meta, padding: "2px 8px" }}>
-						{here.elsewhere > 0
-							? `${here.elsewhere} session${here.elsewhere > 1 ? "s" : ""} in other folders · `
-							: ""}
 						<button onClick={onAll} style={R.link} type="button">
-							All sessions →
+							All sessions{here.elsewhere > 0 ? ` (${here.elsewhere} elsewhere)` : ""} →
 						</button>
 					</div>
 				)}

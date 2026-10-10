@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Ranked } from "../chat/welcome/suggest"
-import { KIND_WORD, R } from "./railStyles"
+import Info from "../common/Info"
+import { KIND_SENTENCE, R } from "./railStyles"
 import type { Run } from "./useRankedRuns"
 
 interface Props {
@@ -22,8 +23,17 @@ export const RunRow: React.FC<{
 }> = ({ r, focal, active, onRun, onLocked, id, role, selected }) => {
 	const run = r.item
 	const locked = run.kind === "locked"
+	const detail = [run.blurb, run.meta, KIND_SENTENCE[run.kind]].filter(Boolean).join(" · ")
 	return (
-		<div>
+		<div
+			style={{
+				...R.row(focal, locked),
+				padding: "4px 6px 4px 8px",
+				alignItems: "center",
+				background: active
+					? "color-mix(in srgb, var(--vscode-foreground) 10%, transparent)"
+					: R.row(focal, locked).background,
+			}}>
 			<button
 				aria-selected={selected}
 				data-testid={`run-${run.id}`}
@@ -31,47 +41,57 @@ export const RunRow: React.FC<{
 				onClick={() => (locked ? onLocked(run) : onRun(run))}
 				role={role}
 				style={{
-					...R.row(focal, locked),
-					background: active
-						? "color-mix(in srgb, var(--vscode-foreground) 10%, transparent)"
-						: R.row(focal, locked).background,
+					display: "flex",
+					alignItems: "center",
+					gap: 8,
+					flex: 1,
+					minWidth: 0,
+					background: "none",
+					border: 0,
+					padding: 0,
+					color: "inherit",
+					font: "inherit",
+					textAlign: "left",
+					cursor: "pointer",
 				}}
 				type="button">
 				<span aria-hidden="true" style={R.icon(focal, locked)}>
 					{locked ? "🔒" : run.kind === "fire" || run.kind === "sample" ? "▶" : run.kind === "open-folder" ? "⌂" : "✎"}
 				</span>
-				<span style={{ minWidth: 0 }}>
+				<span style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
 					<span
 						style={{
 							...R.title,
+							whiteSpace: "nowrap",
+							overflow: "hidden",
+							textOverflow: "ellipsis",
 							color: locked ? "color-mix(in srgb, var(--vscode-foreground) 78%, transparent)" : R.title.color,
 						}}>
 						{run.title}
-						<span style={R.kind}>{KIND_WORD[run.kind]}</span>
-					</span>
-					<br />
-					<span style={R.meta}>
-						{run.blurb}
-						{run.meta ? ` · ${run.meta}` : ""}
 					</span>
 					{r.grounded && r.why ? (
-						<>
-							<br />
-							<span style={{ ...R.meta, color: "var(--adsum-cyan-text)" }}>◆ {r.why}</span>
-						</>
+						<span
+							style={{
+								...R.meta,
+								color: "var(--adsum-cyan-text)",
+								whiteSpace: "nowrap",
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+							}}>
+							◆ {r.why}
+						</span>
 					) : null}
 				</span>
 			</button>
-			{locked && (
-				<div style={{ display: "flex", gap: 6, margin: "2px 0 0 34px", alignItems: "center", flexWrap: "wrap" }}>
-					<span style={R.meta}>
-						{run.lockPill === "Register" ? "needs a registered account ·" : "opened on request ·"}
-					</span>
-					<button onClick={() => onLocked(run)} style={R.pill("pri")} type="button">
-						{run.lockPill ?? "Register"}
-					</button>
-				</div>
-			)}
+			{locked ? (
+				<button
+					onClick={() => onLocked(run)}
+					style={{ ...R.pill("pri"), fontSize: 10.5, padding: "1px 7px" }}
+					type="button">
+					{run.lockPill ?? "Register"}
+				</button>
+			) : null}
+			<Info label={`About ${run.title}`} text={detail} />
 		</div>
 	)
 }

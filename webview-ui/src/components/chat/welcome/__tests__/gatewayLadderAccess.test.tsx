@@ -71,7 +71,8 @@ describe("BLG20x on its USB service port: set it up first (demo-1, one card, one
 			},
 		}
 		render(<GatewayLadder boards={[board]} onAsk={vi.fn()} onInstall={vi.fn()} onSetUp={onSetUp} onStart={vi.fn()} />)
-		expect(screen.getByTestId("ladder-setup").textContent).toContain("On USB")
+		// [0.5 simple] The sentence moved into the hover detail beside the button; the block carries one control.
+		expect(screen.getByTestId("ladder-setup").querySelector('button[aria-label="Details"]')).not.toBeNull()
 		fireEvent.click(screen.getByTestId("ladder-setup-start"))
 		expect(onSetUp).toHaveBeenCalledWith(board)
 	})

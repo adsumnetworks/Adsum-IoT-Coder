@@ -1,5 +1,6 @@
 import type React from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import Info from "../common/Info"
 import { BRAND_CORAL, BRAND_CYAN_UI } from "./brandColors"
 import { useEntrySignals } from "./welcome/useEntrySignals"
 
@@ -72,10 +73,7 @@ const EmptySession: React.FC<{ onStartTask: (text: string) => void | Promise<voi
 				marginBottom: "auto",
 			}}>
 			<div style={T.label}>{scopeName ? `New session · ${scopeName}` : "New session"}</div>
-			<div style={T.body}>
-				Describe the next thing. <b style={{ color: "var(--vscode-foreground)" }}>Enter starts a session.</b>{" "}
-				{expanded ? "Or start from one of these:" : "The others stay open as tabs and in the sidebar."}
-			</div>
+			<div style={T.body}>Say what you want done, then Enter.{expanded ? " Or pick one:" : ""}</div>
 			{expanded && (
 				<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
 					{rows.map((r) => (
@@ -85,9 +83,9 @@ const EmptySession: React.FC<{ onStartTask: (text: string) => void | Promise<voi
 							style={{
 								display: "flex",
 								gap: 8,
-								alignItems: "flex-start",
+								alignItems: "center",
 								textAlign: "left",
-								padding: "6px 8px",
+								padding: "5px 8px",
 								borderRadius: 6,
 								border: `1px solid ${r.focal ? BRAND_CYAN_UI : "transparent"}`,
 								background: r.focal ? `color-mix(in srgb, ${BRAND_CYAN_UI} 8%, transparent)` : "none",
@@ -113,24 +111,11 @@ const EmptySession: React.FC<{ onStartTask: (text: string) => void | Promise<voi
 								}}>
 								{r.kind === "sample" ? "▶" : "✎"}
 							</span>
-							<span>
-								<span style={{ fontSize: 12.5, fontWeight: 600 }}>
-									{r.title}
-									<span
-										style={{
-											fontSize: 9.5,
-											letterSpacing: ".06em",
-											textTransform: "uppercase",
-											color: "var(--vscode-descriptionForeground)",
-											marginLeft: 6,
-											fontWeight: 500,
-										}}>
-										{r.kind === "sample" ? "runs now" : "fills the box"}
-									</span>
-								</span>
-								<br />
-								<span style={{ fontSize: 11, color: "var(--vscode-descriptionForeground)" }}>{r.blurb}</span>
-							</span>
+							<span style={{ fontSize: 12.5, fontWeight: 600, flex: 1, minWidth: 0 }}>{r.title}</span>
+							<Info
+								label={`About ${r.title}`}
+								text={`${r.blurb}. ${r.kind === "sample" ? "Click runs it straight away." : "Click writes it in the box; Enter sends it."}`}
+							/>
 						</button>
 					))}
 				</div>

@@ -9,6 +9,7 @@ import { paletteOpen as countPaletteOpen, entryRunStart, gateShown, suggestionCl
 import GatePanel from "../chat/welcome/GatePanel"
 import RequestAccessForm from "../chat/welcome/RequestAccessForm"
 import { isRequestOnlyGroup, requestFamilyFor } from "../chat/welcome/welcomeIntents"
+import Info from "../common/Info"
 import HistoryView from "../history/HistoryView"
 import SettingsView from "../settings/SettingsView"
 import HardwarePage from "./HardwarePage"
@@ -217,9 +218,9 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 								justifyContent: "space-between",
 								gap: 8,
 							}}>
-							<span>
-								<b style={{ color: "var(--vscode-foreground)" }}>Cards moved.</b> Everything the cards did is in
-								What can you ask; the relevant ones come first. A session now opens as a tab beside your code.
+							<span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+								Cards moved to <b style={{ color: "var(--vscode-foreground)" }}>What can you ask</b>
+								<Info text="Everything the cards did is in the palette (⌘K); the relevant ones come first. A session now opens as a tab beside your code." />
 							</span>
 							<button
 								aria-label="Dismiss"

@@ -3,6 +3,7 @@ import { confirmedBlg20Units } from "@shared/blg20"
 import type { NrfEnvironment } from "@shared/nrf"
 import React, { useEffect } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import Info from "../../common/Info"
 import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI, brandAlpha } from "../brandColors"
 import { cardAction, cardShown } from "./entryTelemetry"
 import { ASK_FOR_DETAILS } from "./welcomeIntents"
@@ -322,17 +323,15 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 			</div>
 			{onUsb && onSetUp && (
 				<div data-testid="ladder-setup" style={{ margin: "7px 0 4px" }}>
-					<Body>{LADDER_COPY.setUp}</Body>
-					<Doing label="Set it up" onClick={setUp} testId="ladder-setup-start" />
+					<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+						<Doing label="Set it up" onClick={setUp} testId="ladder-setup-start" />
+						<Info text={LADDER_COPY.setUp} />
+					</div>
 				</div>
 			)}
-			<div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--vscode-foreground)", margin: "6px 0 2px" }}>
-				{LADDER_COPY.question}
-			</div>
 
 			<Rung badge="Free" icon="tools" testId="ladder-rung-build" title="Build it yourself">
-				<Body>{LADDER_COPY.build}</Body>
-				<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "7px" }}>
+				<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "4px" }}>
 					<button
 						data-testid="ladder-start"
 						onClick={start}
@@ -349,6 +348,7 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 						type="button">
 						Start in the editor
 					</button>
+					<Info text={LADDER_COPY.build} />
 				</div>
 				{/* The advanced set is a line, not a pitch — and no line at all for someone who holds it. */}
 				{!hasAdvanced && (
@@ -366,11 +366,11 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 				icon="verified"
 				testId="ladder-rung-license"
 				title="License ours">
-				<Body>{LADDER_COPY.license}</Body>
-				<div style={{ marginTop: "7px", display: "flex", flexDirection: "column", gap: "8px" }}>
+				<div style={{ marginTop: "4px", display: "flex", flexDirection: "column", gap: "8px" }}>
 					<div data-testid="ladder-way-demo">
 						<div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
 							<span style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>Demo</span>
+							<Info text={LADDER_COPY.license} />
 							{hasDemo && <Yours />}
 							<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
 								{LADDER_COPY.demoTerms}
@@ -399,10 +399,9 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 					</div>
 					<div data-testid="ladder-way-production">
 						<div style={{ fontSize: "12px", color: "var(--vscode-foreground)" }}>
-							Production licence
+							Production licence <Info text={LADDER_COPY.production} />
 							{hasProduction && <Yours />}
 						</div>
-						<Body>{LADDER_COPY.production}</Body>
 						{hasProduction ? (
 							<Doing
 								label="Install into this project"
@@ -423,9 +422,8 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 									: hasBleSource
 										? " · the BLE half"
 										: ""}
-							{hasAnySource && <Yours />}
+							{hasAnySource && <Yours />} <Info text={hasAnySource ? LADDER_COPY.sourceHeld : LADDER_COPY.source} />
 						</div>
-						<Body>{hasAnySource ? LADDER_COPY.sourceHeld : LADDER_COPY.source}</Body>
 						{hasAnySource && (
 							<Doing
 								label="Install into this project"
@@ -440,10 +438,9 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 			</Rung>
 
 			<Rung badge="By arrangement" icon="edit" testId="ladder-rung-built" title="Have it built">
-				<Body>{LADDER_COPY.built}</Body>
-				<div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
+				<div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
 					<Ask onClick={() => ask("built")} testId="ladder-ask-built" />
-					<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>{LADDER_COPY.reply}</span>
+					<Info text={`${LADDER_COPY.built} ${LADDER_COPY.reply}`} />
 				</div>
 			</Rung>
 
