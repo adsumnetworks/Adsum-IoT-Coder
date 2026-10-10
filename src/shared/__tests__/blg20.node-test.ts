@@ -4,6 +4,7 @@ import {
 	type Blg20NrfutilDevice,
 	type Blg20RawPort,
 	blg20BleTarget,
+	blg20BleUnitRoute,
 	blg20BleWords,
 	blg20FromProbes,
 	blg20Interface,
@@ -408,5 +409,32 @@ describe("a gateway seen over Bluetooth", () => {
 			[LINUX_ROW, { ...LINUX_ROW, name: "Adsum LBG20x D3588E7A1234", address: "D3:58:8E:7A:12:34" }],
 		)
 		assert.deepEqual(all.map(blg20Label), ["LBG20x AD50", "LBG20x 1234"])
+	})
+})
+
+describe("the Flash route for a unit over Bluetooth", () => {
+	const ROW = { address: "D3:58:8E:7A:AD:50", name: "Adsum LBG20x D3588E7AAD50", rssi: -64, bonded: true, window: true }
+	test("names the unit, the exact command on the version's usb/demo set, and the pairing", () => {
+		const [u] = blg20UnitsFromBle([ROW])
+		const r = blg20BleUnitRoute(u, "firmware/lbg20x/1.0.0/") ?? ""
+		assert.match(
+			r,
+			/^to LBG20x AD50 over Bluetooth with `blg20-service update-pair --ble AD50 firmware\/lbg20x\/1\.0\.0\/usb\/demo --json`/,
+		)
+		assert.match(r, /six digits on the unit's label$/)
+	})
+	test("a closed window says what opens it", () => {
+		const [u] = blg20UnitsFromBle([{ ...ROW, window: false }])
+		assert.match(blg20BleUnitRoute(u, "f") ?? "", /hold its button for three seconds first$/)
+	})
+	test("a unit on its cable keeps its own route", () => {
+		const [u] = blg20UnitsFromNrfutil([
+			{
+				serialNumber: "BBA605799DE4043E",
+				product: "BLG20 Gateway 286C",
+				ports: [{ path: "/dev/ttyACM3", interfaceNumber: 0 }],
+			},
+		])
+		assert.equal(blg20BleUnitRoute(u, "f"), undefined)
 	})
 })

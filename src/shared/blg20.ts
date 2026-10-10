@@ -352,6 +352,22 @@ export function blg20BleTarget(u: Blg20Unit): string | undefined {
 	return u.bleAddress ? (u.name ?? u.bleId ?? u.bleAddress) : undefined
 }
 
+/**
+ * The Flash prompt's way onto a unit reached over Bluetooth only (the LBG20x): one sentence the firmware rung puts
+ * first. `folder` is the version's folder in the workspace (firmware/<family>/<version>), whose usb/demo set is what
+ * Bluetooth flashes. Undefined for a unit on its cable or its probes: their own routes stand.
+ */
+export function blg20BleUnitRoute(u: Blg20Unit, folder: string): string | undefined {
+	if (!blg20OverBluetooth(u)) return undefined
+	const name = blg20BleTarget(u)
+	const set = `${folder.replace(/[\\/]+$/, "")}/usb/demo`
+	return (
+		`to ${blg20Label(u)} over Bluetooth with \`blg20-service update-pair --ble ${name} ${set} --json\` ` +
+		"(both halves, the Bluetooth half first); the first time, the computer asks to pair: type the six digits on the " +
+		`unit's label${u.windowOpen === false ? ". Its commissioning window is closed: hold its button for three seconds first" : ""}`
+	)
+}
+
 /** The Bluetooth facts in words, for a hover: "over Bluetooth · window open · paired · -64 dBm". */
 export function blg20BleWords(u: Blg20Unit): string {
 	if (!u.bleAddress) return ""
