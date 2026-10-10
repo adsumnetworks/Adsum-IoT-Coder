@@ -35,17 +35,16 @@
 
 <p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
 
-## What's New <sup>`v0.4.6`</sup>
+## What's New <sup>`v0.5.0`</sup>
 
-The Fanstel BLG20x from its own USB port, Wi-Fi on the units that have it, and your debug sessions left alone. BLE, Wi-Fi and Ethernet need no account, today or tomorrow.
+**Sessions first.** A session is an editor tab, like a file. The sidebar is the rail: you, what to do next, the
+hardware on the desk, your sessions, and What can you ask (⌘K). Open several sessions side by side; a port one
+session is using is named to the others. Every card became a prompt you see when the session starts.
 
-<img src="assets/icons/whatsnew-esp.png" width="18" valign="middle" alt="" /> &nbsp;**The BLG20x, from its USB port.** Plug the gateway into your computer and ask what it is. IoT Coder reads its ID card without a key, claims it only when you say so, compares it with the latest demo release and offers the update, then walks you through commissioning from the browser. A card on the home screen starts it in one click. [Gateway firmware](https://docs.adsumnetworks.com/gateway-firmware)
-
-<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Wi-Fi on the BLG20x.** Units with the Wi-Fi module send over Wi-Fi first, carrying the readings, the device table, your commands and the clock, and fall back to cellular on their own. Wi-Fi sleeps between reports, so Bluetooth keeps the air. Give it the network on the commissioning page.
-
-<img src="assets/icons/whatsnew-detect.png" width="18" valign="middle" alt="" /> &nbsp;**Your debug sessions left alone.** IoT Coder never ends a debugger or another program by name any more. When a probe or a port is busy, it tells you which program holds it and asks. Commands it runs no longer stop at a pager.
-
-**In `v0.4.3`:** LoRa and LoRaWAN knowledge with a free account, a guided first run for the Fanstel BLG20x, and an account in the panel header. **In `v0.4.2`:** runs that keep their pace with the editor in the background, and a reply that stops arriving retried once, then reported. **In `v0.4.0`:** a home that reads your desk, cellular and satellite work behind a free account, and a message sent to a working run that lands at its next step. **In `v0.3.1`:** nRF91 cellular, the first partner open-hardware gateway, and Tool bits downloaded on demand. **In `v0.2.0`:** a two-chip industrial gateway built, debugged and CRA-checked from one spec **in under 30 minutes**. [Watch the playlist](https://www.youtube.com/playlist?list=PLYh65pF22Elk) · *full history in the [changelog](./CHANGELOG.md).*
+**The firmware lane.** Licensed images and source download into `firmware/<family>/<version>/` in your
+workspace, with the licence and a receipt beside them, after a fresh check of your account. The agent flashes
+from the folder and says what it flashes, for whom and from where; it never reads, copies out or sends an
+image.
 
 ## Getting Started
 

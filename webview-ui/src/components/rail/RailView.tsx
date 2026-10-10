@@ -5,7 +5,7 @@ import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient } from "@/services/grpc-client"
-import { entryRunStart, gateShown } from "../chat/welcome/entryTelemetry"
+import { paletteOpen as countPaletteOpen, entryRunStart, gateShown, suggestionClick } from "../chat/welcome/entryTelemetry"
 import GatePanel from "../chat/welcome/GatePanel"
 import RequestAccessForm from "../chat/welcome/RequestAccessForm"
 import { isRequestOnlyGroup, requestFamilyFor } from "../chat/welcome/welcomeIntents"
@@ -70,6 +70,7 @@ const RailView: React.FC = () => {
 		const onKey = (e: KeyboardEvent) => {
 			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
 				e.preventDefault()
+				countPaletteOpen("keyboard")
 				setPaletteOpen(true)
 			}
 		}
@@ -205,11 +206,24 @@ const RailView: React.FC = () => {
 							</button>
 						</div>
 					)}
-					<RailSuggested onLocked={lockedRow} onRun={(r) => void runRow(r, "card")} rows={suggested} />
+					<RailSuggested
+						onLocked={lockedRow}
+						onRun={(r) => {
+							suggestionClick(
+								r.id,
+								suggested.some((s) => s.item.id === r.id && s.grounded),
+							)
+							void runRow(r, "card")
+						}}
+						rows={suggested}
+					/>
 					<RailHardware onOpen={() => setPage("hardware")} />
 					<RailSessions onAll={() => navigateToHistory()} onNew={() => void openSession({})} onOpen={openHistoryItem} />
 					<button
-						onClick={() => setPaletteOpen(true)}
+						onClick={() => {
+							countPaletteOpen("rail")
+							setPaletteOpen(true)
+						}}
 						style={{
 							display: "flex",
 							alignItems: "center",

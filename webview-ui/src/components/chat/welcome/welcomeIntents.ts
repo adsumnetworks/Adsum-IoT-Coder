@@ -404,6 +404,7 @@ export const REGISTERED_TIER_GROUPS: readonly string[] = [
 	"edge-ai-advanced",
 	"lora-advanced",
 	"lew840x-demo-hex",
+	"blg20-demo-hex",
 ]
 
 /**

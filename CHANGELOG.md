@@ -7,7 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-0.5.0 candidate (main, 10 Oct 2026): everything in 0.4.6, folded together with Omar's 0.4.5 bench line.
+0.5.0 candidate (10 Oct 2026): everything in 0.4.6, folded together with Omar's 0.4.5 bench line, and the
+sessions-first interface.
+
+### Sessions first
+- A session is an editor tab. The sidebar is the rail: who you are and what you have, what to do next, the
+  hardware on the desk, your sessions, and What can you ask. Several session tabs can be open at once, each
+  with its own run; a session that already has a tab is focused, never opened twice; closing a tab keeps the
+  session in the rail. The + button opens a new tab.
+- The cards moved into What can you ask (⌘K or Ctrl+K): runs, journeys, checks and samples, the ones for this
+  desk first. Every click becomes a prompt you see when the session starts: a run or a check fills the
+  composer and waits for Enter; a journey or a sample is sent as the first message. Suggested shows at most
+  three rows, and only when a detection or the open project is the reason.
+- Sessions live in the rail: five for this folder, the rest under All sessions; rename, favourite and delete
+  on the row. The history button opens the same list; Settings opens as a page of the sidebar.
+- One bench, several tabs: a port or a probe one session is using is named to the others instead of taken,
+  and the status bar leads with a session that is waiting on an answer. The status bar reads "Adsum", the
+  unit on the desk, and the tokens left on the free tier.
+
+### The firmware lane
+- Licensed firmware images and source are no longer tool bits. The Hardware page lists every version of a
+  board's firmware with one action per state: Download, Flash, Renew in the browser, Ask for more details.
+  Download checks the account on the server at that moment, fetches each file under a fifteen-minute
+  authorisation, verifies every hash, and writes the whole version into `firmware/<family>/<version>/` in
+  your workspace (or a folder you choose) with `LICENSE-ADSUM.txt` and a receipt beside the files.
+- The agent is told the paths and the licence, never the bytes: it flashes from the folder and says, before
+  every flash, what it flashes, for whom and from where. It cannot read an image into the transcript, copy
+  the folder outside the workspace, or send it anywhere. A licence whose term has ended keeps everything you
+  downloaded; the receipt says so, and renewal is on the web Hardware home.
 
 ### Added
 - A BLG20x on USB is named the way people name it, "BLG20x 286C": the last four digits of its Bluetooth address,

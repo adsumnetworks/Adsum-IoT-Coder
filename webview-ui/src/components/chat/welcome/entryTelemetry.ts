@@ -71,6 +71,16 @@ export function entryFirstPrompt(via: "typed" | "card" | "resume" | "sample"): v
 	send("entry_first_prompt", { via, ms_since_shown: String(Date.now() - shownAt) })
 }
 
+/** [0.5] The palette opened (⌘K, the rail row or the composer handle). */
+export function paletteOpen(via: "rail" | "keyboard" | "composer"): void {
+	send("entry_palette_open", { via })
+}
+
+/** [0.5] A Suggested row was clicked, with the reason that ranked it. */
+export function suggestionClick(runId: string, grounded: boolean): void {
+	send("entry_suggestion_click", { run: runId, grounded: String(grounded) })
+}
+
 export function entryDrawerOpen(hadNewRun: boolean): void {
 	// via: the "All runs" line under the cards — the ☰ that used to open it is gone (2026-09-09).
 	send("entry_drawer_open", { via: "all-runs", had_new_build: String(hadNewRun) })
