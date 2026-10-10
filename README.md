@@ -37,9 +37,10 @@
 
 ## What's New <sup>`v0.5.0`</sup>
 
-**Sessions first.** A session is an editor tab, like a file. The sidebar is the rail: you, what to do next, the
-hardware on the desk, your sessions, and What can you ask (⌘K). Open several sessions side by side; a port one
-session is using is named to the others. Every card became a prompt you see when the session starts.
+**Sessions first.** A session is an editor tab, like a file. The sidebar is the rail: you, what's new, the
+environment on the desk, what to do next, your sessions, and What can you ask (⌘K). Open several sessions side
+by side; a port one session is using is named to the others. Every card became a prompt you see when the
+session starts. One line per row, the detail one hover away.
 
 **The firmware lane.** Licensed images and source download into `firmware/<family>/<version>/` in your
 workspace, with the licence and a receipt beside them, after a fresh check of your account. The agent flashes

@@ -5,10 +5,9 @@ All notable changes to the **Adsum IoT Coder** extension are documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-10-10
 
-0.5.0 candidate (10 Oct 2026): everything in 0.4.6, folded together with Omar's 0.4.5 bench line, and the
-sessions-first interface.
+Everything in 0.4.6, folded together with Omar's 0.4.5 bench line, and the sessions-first interface.
 
 ### Sessions first
 - A session is an editor tab. The sidebar is the rail: who you are and what you have, what to do next, the
@@ -35,6 +34,30 @@ sessions-first interface.
   every flash, what it flashes, for whom and from where. It cannot read an image into the transcript, copy
   the folder outside the workspace, or send it anywhere. A licence whose term has ended keeps everything you
   downloaded; the receipt says so, and renewal is on the web Hardware home.
+
+### The rail and the tab, simpler
+- One line per row; the detail of a run, a toolchain or a notice sits behind a small (i) that opens on hover
+  and on keyboard focus, and any title cut by the sidebar's width shows in full on hover.
+- The rail carries the product's mark top-left, then you, What's new, Environment (the units, the
+  toolchains, the folder), Suggested, Sessions and What can you ask; each section folds and remembers how
+  you left it. Session rows carry a status dot (working, waiting on you, idle) and rename in place.
+- An empty session tab shows the mark, a First steps checklist and What's new; the composer has attach, slash
+  commands, the model and the Plan or Act mode in one row, and What can you ask opens inside the tab.
+  The conversation runs the full width of the tab; the × on the task header closes the tab.
+- The free tier shows tokens, never money; "Always allow" says it applies to every session; the settings
+  provider picker has three doors (Adsum free, your keys, coding plans).
+
+### Also new
+- Slash commands work anywhere in a message, and an MCP server's prompts appear as `/mcp:server:prompt`.
+- Usage streams live; a tool call repeated three times, or the same failure five times, stops and asks the
+  model to change approach; the free tier reports one state (ok, low, spent, paused until a time).
+- web_fetch reads vendor documentation from this machine and hands the page back as data, never as
+  instructions; an image the agent reads comes with a frame that asks for pins and nets, not prose.
+- An LBG20x is recognised from its USB product string beside the BLG20x.
+
+### Removed
+- The upstream-only slash commands (/reportbug, /subagent), the upstream MCP marketplace and banner fetches,
+  and the upstream's name from every screen.
 
 ### Added
 - A BLG20x on USB is named the way people name it, "BLG20x 286C": the last four digits of its Bluetooth address,
