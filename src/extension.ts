@@ -9,6 +9,7 @@ import { type PriceOverride, setManualPrices } from "@/core/api/pricing/priceOve
 import { loadCachedPrices, refreshDirectModelPrices } from "@/core/api/pricing/refreshDirectModelPrices"
 import { bleGatewaySeenBefore, scanBleGateways } from "@/services/blg20/bleGateways"
 import { nrfEnvironmentWithBlg20 } from "@/services/blg20/connectedBlg20"
+import { bundledPython } from "@/services/tools/ToolResolver"
 import { sendChatButtonClickedEvent } from "./core/controller/ui/subscribeToChatButtonClicked"
 import { sendHistoryButtonClickedEvent } from "./core/controller/ui/subscribeToHistoryButtonClicked"
 import { sendSettingsButtonClickedEvent } from "./core/controller/ui/subscribeToSettingsButtonClicked"
@@ -184,6 +185,18 @@ export async function activate(context: vscode.ExtensionContext) {
 	refreshWorkspaceClassification(roots)
 
 	const webview = (await initialize(context)) as VscodeWebviewProvider
+
+	// The extension's own Python, named to every terminal the editor opens (the agent's included) as ADSUM_PYTHON.
+	// The service tool's shipped launchers and the tool itself move onto it when the Python they were started with
+	// lacks the Bluetooth library, so a command typed from a knowledge bit's example works as the advertised one does.
+	// A universal build carries none, and clears the name a platform build may have left.
+	const ownPython = bundledPython()
+	if (ownPython) {
+		context.environmentVariableCollection.replace("ADSUM_PYTHON", ownPython)
+		context.environmentVariableCollection.description = "The Python Adsum IoT Coder carries for its device tools"
+	} else {
+		context.environmentVariableCollection.delete("ADSUM_PYTHON")
+	}
 
 	// Status-bar ▲ Adsum button — always visible, reveals the view from any dock.
 	createAdsumStatusBar(context, vscode)

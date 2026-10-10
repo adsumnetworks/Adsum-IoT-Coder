@@ -27,7 +27,7 @@ interface Props {
  */
 const HardwarePage: React.FC<Props> = ({ family: asked, onBack, onPrompt, onAsk, onRegister }) => {
 	const { signals, scopeName } = useEntrySignals()
-	const { nrfEnvironment } = useExtensionState()
+	const { nrfEnvironment, platform } = useExtensionState()
 	const boards = [...signals.nrfBoards, ...signals.espDevices]
 	// The firmware family: the one a row asked for, else the unit on the desk (the LBG20x shares the port,
 	// the tool and this page), else what the open project is about, else every family.
@@ -58,7 +58,7 @@ const HardwarePage: React.FC<Props> = ({ family: asked, onBack, onPrompt, onAsk,
 				// store to send anyone to yet.
 				onRenew={() => onAsk(family === "lew840x" ? "lew840x" : "blg20")}
 				unitDoor={bleUnit ? "over Bluetooth" : undefined}
-				unitRoute={bleUnit ? (folder: string) => blg20BleUnitRoute(bleUnit, folder) : undefined}
+				unitRoute={bleUnit ? (folder: string) => blg20BleUnitRoute(bleUnit, folder, platform) : undefined}
 			/>
 			{gatewayLadder && (
 				<GatewayLadder
@@ -67,10 +67,12 @@ const HardwarePage: React.FC<Props> = ({ family: asked, onBack, onPrompt, onAsk,
 					demoViaFirmware
 					onAsk={() => onAsk("blg20")}
 					onInstall={(way) => onPrompt(blg20InstallPrompt(way), false)}
-					onSetUp={(board) => onPrompt(bleUnit ? bleSetUpPrompt(bleUnit) : blg20SetUpPrompt(board), true)}
+					onSetUp={(board) => onPrompt(bleUnit ? bleSetUpPrompt(bleUnit, platform) : blg20SetUpPrompt(board), true)}
 					onStart={() => onPrompt(buildIntentPrompt("blg20Gateway", scopeName || undefined, "nrf", false), false)}
 					unitActions={
-						unit ? unitActions(unit).map((a) => ({ ...a, onClick: () => onPrompt(a.prompt, true) })) : undefined
+						unit
+							? unitActions(unit, platform).map((a) => ({ ...a, onClick: () => onPrompt(a.prompt, true) }))
+							: undefined
 					}
 				/>
 			)}

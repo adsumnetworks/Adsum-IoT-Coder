@@ -40,7 +40,7 @@ export const LADDER_COPY = {
 	/** A unit already on USB: set it up before choosing anything (demo-1). */
 	setUp: "On USB: read it, claim it, update it, commission it.",
 	setUpBle:
-		"Over Bluetooth: read it, claim it, update it, commission it. The first time, the computer asks for the six digits on the unit's label.",
+		"Over Bluetooth: read it, claim it, update it, commission it. The first time pairs with the six digits on the unit's label.",
 	question: "How do you want the firmware?",
 	build: "Board, chips, programming recipe, the traps.",
 	advanced: "Advanced set: on request",

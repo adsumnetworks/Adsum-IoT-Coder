@@ -423,6 +423,12 @@ describe("the Flash route for a unit over Bluetooth", () => {
 		)
 		assert.match(r, /six digits on the unit's label$/)
 	})
+	test("on Linux the pairing is the tool's --passkey, not a system dialog", () => {
+		const [u] = blg20UnitsFromBle([ROW])
+		const r = blg20BleUnitRoute(u, "f", "linux") ?? ""
+		assert.match(r, /add `--passkey <the six digits on the unit's label>` to the command \(Linux pairs through the tool\)$/)
+		assert.doesNotMatch(r, /computer asks/)
+	})
 	test("a closed window says what opens it", () => {
 		const [u] = blg20UnitsFromBle([{ ...ROW, window: false }])
 		assert.match(blg20BleUnitRoute(u, "f") ?? "", /hold its button for three seconds first$/)

@@ -220,13 +220,14 @@ export function bundledPython(): string | null {
 	if (bundledProbe) {
 		return bundledProbe.value
 	}
-	let value: string | null = null
+	let root: string
 	try {
-		const p = bundledPythonPath(HostProvider.get().extensionFsPath)
-		value = existsSync(p) ? p : null
+		root = HostProvider.get().extensionFsPath
 	} catch {
-		// no host yet (a unit test): no bundled Python
+		return null // no host yet (a unit test, or a resolve before activation finished): not an answer to keep
 	}
+	const p = bundledPythonPath(root)
+	const value = existsSync(p) ? p : null
 	bundledProbe = { value }
 	return value
 }

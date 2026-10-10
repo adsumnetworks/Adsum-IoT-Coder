@@ -1,4 +1,4 @@
-import { type Blg20Unit, blg20BleTarget, blg20Label, blg20OverBluetooth } from "@shared/blg20"
+import { type Blg20Unit, blg20BleTarget, blg20Label, blg20OverBluetooth, blg20PairingWords } from "@shared/blg20"
 
 /**
  * [10 Oct 2026] The unit's own actions on the Hardware page, each opening a session with its first line written:
@@ -11,13 +11,19 @@ export interface UnitAction {
 	prompt: string
 }
 
-export function unitActions(u: Blg20Unit): UnitAction[] {
+/** The pairing as a sentence of its own: "The first time, ...". */
+const pairingSentence = (platform?: string) => {
+	const w = blg20PairingWords(platform)
+	return `${w[0].toUpperCase()}${w.slice(1)}.`
+}
+
+export function unitActions(u: Blg20Unit, platform?: string): UnitAction[] {
 	const name = blg20Label(u)
 	const ble = blg20OverBluetooth(u)
 	const via = ble ? ` --ble ${blg20BleTarget(u)}` : ""
 	const door = ble ? "over Bluetooth" : "on its USB-C service port"
 	const pairing = ble
-		? " The first time, my computer asks to pair: I type the six digits on the unit's label. If it is not found, its commissioning window is closed: tell me to hold its button for three seconds."
+		? ` ${pairingSentence(platform)} If it is not found, its commissioning window is closed: tell me to hold its button for three seconds.`
 		: ""
 	return [
 		{
@@ -48,12 +54,12 @@ export function unitActions(u: Blg20Unit): UnitAction[] {
 }
 
 /** "Set it up" for a unit over Bluetooth: the new-unit journey, on the service port it actually has. */
-export function bleSetUpPrompt(u: Blg20Unit): string {
+export function bleSetUpPrompt(u: Blg20Unit, platform?: string): string {
 	return (
 		`A Fanstel ${blg20Label(u)} gateway is in Bluetooth range of this computer (its USB-C carries power only). ` +
 		"LOAD products/fanstel/blg20x/PRODUCT.md and follow its new-unit journey on the service port over Bluetooth " +
 		`(\`blg20-service <verb> --ble ${blg20BleTarget(u)} --json\`): tell me what the unit is and what it still needs, ` +
-		"claim it only when I say so, then check whether it needs an update, then guide me through commissioning. The " +
-		"first time, my computer asks to pair: I type the six digits on the unit's label."
+		"claim it only when I say so, then check whether it needs an update, then guide me through commissioning. " +
+		pairingSentence(platform)
 	)
 }

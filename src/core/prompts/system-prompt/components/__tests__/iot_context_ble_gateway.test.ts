@@ -1,7 +1,7 @@
 import { blg20UnitsFromBle, detectBlg20Units } from "@shared/blg20"
 import { expect } from "chai"
 import { describe, it } from "mocha"
-import { BLUETOOTH_GATEWAY_WORDS, blg20Evidence } from "../iot_context"
+import { blg20Evidence, bluetoothGatewayWords } from "../iot_context"
 
 /**
  * [10 Oct 2026] The LBG20x's service port is Bluetooth only. What the agent is told about a unit seen that way, and
@@ -58,7 +58,13 @@ describe("iot_context — a gateway over Bluetooth", () => {
 			"Never install Python packages for this tool",
 			"one JSON object",
 		]) {
-			expect(BLUETOOTH_GATEWAY_WORDS).to.contain(words)
+			expect(bluetoothGatewayWords("darwin")).to.contain(words)
 		}
+	})
+
+	it("on Linux (the bench over Remote SSH) the pairing rule is the tool's --passkey, not a system dialog", () => {
+		const w = bluetoothGatewayWords("linux")
+		expect(w).to.contain("add `--passkey <the six digits from the unit's label>` to that command")
+		expect(w).not.to.contain("when the computer asks")
 	})
 })

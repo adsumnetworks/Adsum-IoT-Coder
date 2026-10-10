@@ -353,18 +353,29 @@ export function blg20BleTarget(u: Blg20Unit): string | undefined {
 }
 
 /**
+ * How the first connection from this computer pairs, by its platform: macOS and Windows ask for the passkey in a
+ * system dialog; Linux has no such dialog, so the tool answers the pairing itself from `--passkey`. The computer is
+ * the one the extension host runs on (over Remote SSH, the remote machine), which is where the tool runs.
+ */
+export function blg20PairingWords(platform?: string): string {
+	return platform === "linux"
+		? "the first time, add `--passkey <the six digits on the unit's label>` to the command (Linux pairs through the tool)"
+		: "the first time, the computer asks to pair: type the six digits on the unit's label"
+}
+
+/**
  * The Flash prompt's way onto a unit reached over Bluetooth only (the LBG20x): one sentence the firmware rung puts
  * first. `folder` is the version's folder in the workspace (firmware/<family>/<version>), whose usb/demo set is what
  * Bluetooth flashes. Undefined for a unit on its cable or its probes: their own routes stand.
  */
-export function blg20BleUnitRoute(u: Blg20Unit, folder: string): string | undefined {
+export function blg20BleUnitRoute(u: Blg20Unit, folder: string, platform?: string): string | undefined {
 	if (!blg20OverBluetooth(u)) return undefined
 	const name = blg20BleTarget(u)
 	const set = `${folder.replace(/[\\/]+$/, "")}/usb/demo`
 	return (
 		`to ${blg20Label(u)} over Bluetooth with \`blg20-service update-pair --ble ${name} ${set} --json\` ` +
-		"(both halves, the Bluetooth half first); the first time, the computer asks to pair: type the six digits on the " +
-		`unit's label${u.windowOpen === false ? ". Its commissioning window is closed: hold its button for three seconds first" : ""}`
+		`(both halves, the Bluetooth half first); ${blg20PairingWords(platform)}` +
+		`${u.windowOpen === false ? ". Its commissioning window is closed: hold its button for three seconds first" : ""}`
 	)
 }
 

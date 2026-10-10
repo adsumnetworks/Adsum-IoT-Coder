@@ -21,6 +21,15 @@ describe("the unit's own actions (10 Oct 2026)", () => {
 		expect(logs.prompt).toContain("--chip lte --ble AD50 --json")
 		for (const a of [what, claim, logs]) expect(a.prompt).toContain("six digits on the unit's label")
 	})
+	it("on Linux (the bench over Remote SSH) the pairing is --passkey, said as a sentence", () => {
+		for (const a of unitActions(lbg, "linux")) {
+			expect(a.prompt).toContain(
+				"The first time, add `--passkey <the six digits on the unit's label>` to the command (Linux pairs through the tool).",
+			)
+			expect(a.prompt).not.toContain("computer asks")
+		}
+		expect(bleSetUpPrompt(lbg, "linux")).toContain("--passkey")
+	})
 	it("on its cable the tool finds the unit by itself: no --ble, no pairing", () => {
 		for (const a of unitActions(blg)) {
 			expect(a.prompt).not.toContain("--ble")
