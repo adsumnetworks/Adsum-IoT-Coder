@@ -25,7 +25,7 @@ const Shell = () => (
 			<SessionWordmark view="session" />
 			<EmptySession onPrefill={() => {}} onStartTask={() => {}} />
 		</div>
-		<div className="session-column">
+		<div className="session-composer">
 			<PreferSidebarHint view="session" />
 			<ChatTextArea
 				activeQuote={null}
