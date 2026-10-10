@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+0.5.0 candidate (main, 10 Oct 2026): everything in 0.4.6, folded together with Omar's 0.4.5 bench line.
+
+### Added
+- A BLG20x on USB is named the way people name it, "BLG20x 286C": the last four digits of its Bluetooth address,
+  read from the USB product string of Bluetooth half 0.3.3 and later. The unit id and ports are on the hover.
+- Settings and the account copy name LoRa among what a free account unlocks.
+
+### Fixed
+- An empty folder with a BLG20x on the desk led with the LEW840x card: the word "gateway" in a folder path no longer
+  means LEW840x, and each gateway card is matched by its own board.
+- The gate-copy check compared full paths and inverted itself on Windows.
+
 ## [0.4.6] - 2026-10-09
 
 ### Added
