@@ -2,11 +2,19 @@ import { ClineMessage } from "@shared/ExtensionMessage"
 import React, { useMemo } from "react"
 import BrowserSessionRow from "@/components/chat/BrowserSessionRow"
 import ChatRow from "@/components/chat/ChatRow"
+import FoldedToolRow from "@/components/chat/FoldedToolRow"
 import { KbitCredit, type KbitLoadedPayload, parseKbitPayload } from "@/components/chat/KbitCredit"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { cn } from "@/lib/utils"
+import { foldRows } from "@/utils/foldRows"
 import { MessageHandlers } from "../../types/chatTypes"
-import { findReasoningForApiReq, isKbitGroup, isTextMessagePendingToolCall, isToolGroup } from "../../utils/messageUtils"
+import {
+	findReasoningForApiReq,
+	isCommandFoldGroup,
+	isKbitGroup,
+	isTextMessagePendingToolCall,
+	isToolGroup,
+} from "../../utils/messageUtils"
 import { ToolGroupRenderer } from "./ToolGroupRenderer"
 
 interface MessageRendererProps {
@@ -78,6 +86,34 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
 
 	if (isToolGroup(messageOrGroup)) {
 		return <ToolGroupRenderer allMessages={modifiedMessages} messages={messageOrGroup} />
+	}
+
+	// [P4.2] A run of finished commands, folded to one worklog line (session view only — see
+	// groupFoldedCommands in ChatView.tsx for why the sidebar never produces this group).
+	if (isCommandFoldGroup(messageOrGroup)) {
+		const [row] = foldRows(messageOrGroup)
+		return row ? (
+			<FoldedToolRow
+				renderMessage={(message) => (
+					<ChatRow
+						inputValue={inputValue}
+						isExpanded={expandedRows[message.ts] || false}
+						isLast={false}
+						isRequestInProgress={false}
+						key={message.ts}
+						lastModifiedMessage={modifiedMessages.at(-1)}
+						message={message}
+						mode={mode}
+						onCancelCommand={() => messageHandlers.executeButtonAction("cancel")}
+						onHeightChange={onHeightChange}
+						onSetQuote={onSetQuote}
+						onToggleExpand={onToggleExpand}
+						sendMessageFromChatRow={messageHandlers.handleSendMessage}
+					/>
+				)}
+				row={row}
+			/>
+		) : null
 	}
 
 	// Browser session group

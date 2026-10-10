@@ -23,6 +23,7 @@ import {
 	ChatLayout,
 	convertHtmlToMarkdown,
 	filterVisibleMessages,
+	groupFoldedCommands,
 	groupKbitCredits,
 	groupLowStakesTools,
 	groupMessages,
@@ -497,7 +498,10 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 
 	const groupedMessages = useMemo(() => {
 		// kbit credits group LAST so a turn's several bits collapse into one credit line
-		return groupKbitCredits(groupLowStakesTools(groupMessages(visibleMessages)))
+		const base = groupKbitCredits(groupLowStakesTools(groupMessages(visibleMessages)))
+		// [P4.2] The session tab reads like a modern coding-agent chat: a run of FINISHED commands folds
+		// to one worklog line (FoldedToolRow), click to expand. Sidebar behaviour is untouched.
+		return ADSUM_VIEW === "session" ? groupFoldedCommands(base) : base
 	}, [visibleMessages])
 
 	// Bits credited this session — drives the header attribution pill + roster (design/01).

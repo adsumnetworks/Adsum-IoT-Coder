@@ -94,6 +94,41 @@ export function groupKbitCredits(items: (ClineMessage | ClineMessage[])[]): (Cli
 	return out
 }
 
+/** A run of consecutive, FINISHED command says — folded to one worklog line (P4.2, session view). */
+export function isCommandFoldGroup(item: ClineMessage | ClineMessage[]): item is ClineMessage[] & { _isCommandFoldGroup: true } {
+	return Array.isArray(item) && (item as any)._isCommandFoldGroup === true
+}
+
+/**
+ * [P4.2 sessions first] Merge consecutive, COMPLETED `command` says into one fold group (rendered by
+ * FoldedToolRow, labelled by the pure `foldRows` helper) so a worklog of past commands reads as one line
+ * each, click to expand. Deliberately narrower than `foldRows` itself: a command still running
+ * (`commandCompleted` not yet true) is exactly the one a developer needs to see live, so it is left out
+ * of the group and keeps rendering through ChatRow's own executing/pending UI untouched.
+ */
+export function groupFoldedCommands(items: (ClineMessage | ClineMessage[])[]): (ClineMessage | ClineMessage[])[] {
+	const out: (ClineMessage | ClineMessage[])[] = []
+	let run: ClineMessage[] = []
+	const flush = () => {
+		if (run.length > 0) {
+			const g = run as ClineMessage[] & { _isCommandFoldGroup: boolean }
+			g._isCommandFoldGroup = true
+			out.push(g)
+		}
+		run = []
+	}
+	for (const item of items) {
+		if (!Array.isArray(item) && item.type === "say" && item.say === "command" && item.commandCompleted === true) {
+			run.push(item)
+			continue
+		}
+		flush()
+		out.push(item)
+	}
+	flush()
+	return out
+}
+
 /**
  * Combine API requests and command sequences in messages
  */
