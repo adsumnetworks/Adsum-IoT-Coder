@@ -3568,6 +3568,7 @@ export class Task {
 				focusChainSettings,
 				useNativeToolCalls,
 				providerInfo,
+				this.mcpHub,
 			)
 
 			if (needsCheck) {

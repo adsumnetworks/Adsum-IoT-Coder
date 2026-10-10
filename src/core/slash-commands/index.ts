@@ -13,6 +13,7 @@ import {
 	subagentToolResponse,
 } from "../prompts/commands"
 import { StateManager } from "../storage/StateManager"
+import { applyMcpPromptCommand, McpPromptSource } from "./mcpPromptCommand"
 import { findSlashCommandMatch } from "./slashCommandMatch"
 
 type FileBasedWorkflow = {
@@ -42,7 +43,16 @@ export async function parseSlashCommands(
 	focusChainSettings?: { enabled: boolean },
 	enableNativeToolCalls?: boolean,
 	providerInfo?: ApiProviderInfo,
+	mcpHub?: McpPromptSource,
 ): Promise<{ processedText: string; needsClinerulesFileCheck: boolean }> {
+	// Resolve any `/mcp:<server>:<prompt>` token first — it is a different kind of substitution
+	// (a server's own text dropped in, not a built-in instruction), so it runs ahead of and
+	// independently from the built-in/workflow matching below, which still sees whatever came
+	// out the other side.
+	if (mcpHub) {
+		text = await applyMcpPromptCommand(text, mcpHub)
+	}
+
 	const SUPPORTED_DEFAULT_COMMANDS = [
 		"newtask",
 		"smol",
