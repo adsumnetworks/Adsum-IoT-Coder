@@ -3052,7 +3052,10 @@ export class Task {
 								if (updatedApiReqMessage) {
 									// Lighter than a full postStateToWebview — same channel the partial
 									// text/reasoning updates above already use.
-									await sendPartialMessageEvent(convertClineMessageToProto(updatedApiReqMessage))
+									await sendPartialMessageEvent(
+										convertClineMessageToProto(updatedApiReqMessage),
+										this.controller,
+									)
 								}
 							} catch (error) {
 								Logger.debug("[Task] Failed to post live usage update: " + error)

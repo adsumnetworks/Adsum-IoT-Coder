@@ -30,7 +30,7 @@ interface Props {
  * measured (the free tier). Expanded: the sets the account opens, the licences, the provider, the links.
  */
 const RailYou: React.FC<Props> = ({ onSignIn, onAccount, onProvider }) => {
-	const { adsumAccount, adsumSignInPending, freeTierRemainingTokens, apiConfiguration, mode } =
+	const { adsumAccount, adsumSignInPending, freeTierRemainingTokens, apiConfiguration, mode, quota } =
 		useExtensionState() as ReturnType<typeof useExtensionState> & {
 			adsumAccount?: AdsumAccountState
 			adsumSignInPending?: boolean
@@ -41,8 +41,15 @@ const RailYou: React.FC<Props> = ({ onSignIn, onAccount, onProvider }) => {
 	const model = cfg.selectedModelId || "model"
 	const free = provider === "adsum-free"
 	const tokens = free ? freeTierRemainingTokens : undefined
-	const low = tokens !== undefined && tokens > 0 && tokens < 100_000
-	const zero = tokens === 0
+	// The host's one quota word wins when it is there; the raw count is the fallback for an older state.
+	const low = quota ? quota.kind === "low" : tokens !== undefined && tokens > 0 && tokens < 100_000
+	const zero = quota ? quota.kind === "spent" : tokens === 0
+	const limitedUntil =
+		free && quota?.kind === "limited"
+			? quota.resetsAt
+				? new Date(quota.resetsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+				: ""
+			: undefined
 	const word = accountWord(adsumAccount)
 	const who = adsumSignInPending ? "Signing in…" : adsumAccount ? adsumAccount.email.split("@")[0] : "Not signed in"
 	const sets = (adsumAccount?.groups ?? []).map((g) => GROUP_WORDS[g]).filter(Boolean)
@@ -139,6 +146,11 @@ const RailYou: React.FC<Props> = ({ onSignIn, onAccount, onProvider }) => {
 						{tokens !== undefined ? ` · ${fmtTokens(tokens)} tokens left` : " · your key"}
 						{low ? <b style={{ color: R.warn }}> · running low</b> : null}
 						{zero ? <b style={{ color: "var(--vscode-errorForeground)" }}> · spent</b> : null}
+						{limitedUntil !== undefined ? (
+							<b style={{ color: R.warn }}>
+								{limitedUntil ? ` · paused until ${limitedUntil}` : " · paused, retrying"}
+							</b>
+						) : null}
 					</span>
 					<span />
 					<span style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

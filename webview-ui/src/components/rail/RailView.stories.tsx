@@ -131,6 +131,14 @@ export const TwoSessionsOpen: Story = {
 }
 export const FreeTierLow: Story = { args: { state: { freeTierRemainingTokens: 84_000 } } }
 export const FreeTierSpent: Story = { args: { state: { freeTierRemainingTokens: 0 } } }
+export const FreeTierPaused: Story = {
+	args: {
+		state: {
+			freeTierRemainingTokens: 2_100_000,
+			quota: { kind: "limited", remaining: 2_100_000, resetsAt: new Date(Date.now() + 15 * 60_000).toISOString() },
+		},
+	},
+}
 export const SignedOutLocked: Story = {
 	args: {
 		state: {
