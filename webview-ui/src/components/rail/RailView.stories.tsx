@@ -56,12 +56,20 @@ const history = (id: string, hoursAgo: number, task: string, extra: Partial<Hist
 	...extra,
 })
 
-const Wrapped = ({ state }: { state: Record<string, unknown> }) => {
+const Wrapped = ({
+	state,
+	page,
+	palette,
+}: {
+	state: Record<string, unknown>
+	page?: "home" | "settings" | "sessions" | "hardware"
+	palette?: boolean
+}) => {
 	const real = useExtensionState()
 	return (
 		<ExtensionStateProviderMock value={{ ...real, ...base, ...state } as never}>
 			<div style={{ width: 420, minHeight: 820, background: "var(--vscode-sideBar-background)" }}>
-				<RailView />
+				<RailView initialPage={page} initialPalette={palette} />
 			</div>
 		</ExtensionStateProviderMock>
 	)
@@ -179,3 +187,28 @@ export const TwoFolders: Story = {
 		},
 	},
 }
+
+const blg20 = {
+	status: "ready",
+	extensionPresent: true,
+	nrfutilPresent: true,
+	boards: [],
+	blg20Units: [{ serialNumber: "9802AF5C69DF1E66", servicePort: "/dev/tty.usbmodem2861", name: "286C", confirmed: true }],
+	projectSdk: { version: "3.2.1", source: "workspace" },
+}
+export const PaletteOpen: Story = { args: { palette: true, state: { nrfEnvironment: blg20 } } }
+export const HardwarePageOpen: Story = { args: { page: "hardware", state: { nrfEnvironment: blg20 } } }
+export const AllSessionsPage: Story = {
+	args: {
+		page: "sessions",
+		state: {
+			taskHistory: [
+				history("a", 2, "LEW840x gateway build", { title: "LEW840x gateway build", isFavorited: true }),
+				history("b", 26, "NUS throughput drop"),
+				history("c", 72, "CRA posture, first pass"),
+				history("d", 200, "BLG20x 286C · set it up", { cwdOnTaskInitialization: "/Users/dev/sensor-node" }),
+			],
+		},
+	},
+}
+export const SettingsPage: Story = { args: { page: "settings", state: {} } }

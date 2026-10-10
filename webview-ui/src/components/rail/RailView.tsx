@@ -48,7 +48,13 @@ export function migrateCockpitState(storage: Pick<Storage, "getItem" | "setItem"
  * the palette row. Settings, All sessions and the Hardware page are pages inside it. A session is never
  * rendered here: every card click asks the host for an editor tab, with its prompt shown there.
  */
-const RailView: React.FC = () => {
+interface RailViewProps {
+	/** Stories and tests start on a page or with the palette open; the product always starts home. */
+	initialPage?: Page
+	initialPalette?: boolean
+}
+
+const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalette = false }) => {
 	const {
 		adsumAccount,
 		showSettings,
@@ -60,8 +66,8 @@ const RailView: React.FC = () => {
 		navigateToHistory,
 		taskHistory,
 	} = useExtensionState() as ReturnType<typeof useExtensionState> & { adsumAccount?: AdsumAccountState }
-	const [page, setPage] = useState<Page>("home")
-	const [paletteOpen, setPaletteOpen] = useState(false)
+	const [page, setPage] = useState<Page>(initialPage)
+	const [paletteOpen, setPaletteOpen] = useState(initialPalette)
 	const [gateOpen, setGateOpen] = useState(false)
 	const [requesting, setRequesting] = useState<string | null>(null)
 	const [movedSeen, setMovedSeen] = useState(() => {
