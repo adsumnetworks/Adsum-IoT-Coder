@@ -216,10 +216,13 @@ const ModelContainer = styled.div`
 	position: relative;
 	display: flex;
 	flex: 1;
+	min-width: 0; // a flex item shrinks only with this; without it the chip slides under the mode pill
+	overflow: hidden; // and the chip's own ellipsis takes over inside; nothing paints under the pill
 	min-width: 0;
 `
 
 const ModelButtonWrapper = styled.div`
+	width: 100%;
 	display: inline-flex; // Make it shrink to content
 	min-width: 0; // Allow shrinking
 	max-width: 100%; // Don't overflow parent
@@ -282,6 +285,7 @@ const FreeTierChip = styled.div`
 	align-items: center;
 	min-width: 0;
 	max-width: 100%;
+	overflow: hidden;
 	padding: 0 6px;
 	border: 1px solid ${brandAlpha(BRAND_CYAN_600, 0.55)};
 	border-radius: 4px;
