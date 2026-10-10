@@ -27,6 +27,7 @@ import { HostProvider } from "@/hosts/host-provider"
 import { vscodeHostBridgeClient } from "@/hosts/vscode/hostbridge/client/host-grpc-client"
 import { readTextFromClipboard, writeTextToClipboard } from "@/utils/env"
 import { initialize, tearDown } from "./common"
+import { registerOpenSessionsProvider, registerSessionOpener } from "./core/controller/adsum/openSession"
 import { addToCline } from "./core/controller/commands/addToCline"
 import { explainWithCline } from "./core/controller/commands/explainWithCline"
 import { fixWithCline } from "./core/controller/commands/fixWithCline"
@@ -48,9 +49,11 @@ import {
 	getVscodeCommentReviewController,
 } from "./hosts/vscode/review/VscodeCommentReviewController"
 import { exportSessionCommand } from "./hosts/vscode/session-export/exportSessionCommand"
+import { openSessions as listOpenSessionTabs, onSessionsChanged } from "./hosts/vscode/sessionRegistry"
 import { runShellIntegrationDoctor } from "./hosts/vscode/terminal/ShellIntegrationDoctor"
 import { VscodeTerminalManager } from "./hosts/vscode/terminal/VscodeTerminalManager"
 import { VscodeDiffViewProvider } from "./hosts/vscode/VscodeDiffViewProvider"
+import { SESSION_PANEL_TYPE, type SessionPanelState, VscodeSessionPanel } from "./hosts/vscode/VscodeSessionPanel"
 import { VscodeWebviewProvider } from "./hosts/vscode/VscodeWebviewProvider"
 import { ExtensionRegistryInfo } from "./registry"
 import { getCachedFreeTokensRemaining, onFreeTokensChanged } from "./services/adsum/FreeTierState"
@@ -340,26 +343,41 @@ export async function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 
+	// [0.5 sessions first] A session is an editor tab. The rail opens them through the Adsum service; VS Code
+	// restores them after a reload through the serializer; the sidebar and the status bar follow the registry.
+	registerOpenSessionsProvider(listOpenSessionTabs)
+	registerSessionOpener(async (intent) => {
+		const session = await VscodeSessionPanel.open(context, {
+			taskId: intent.taskId,
+			prompt: intent.prompt,
+			send: intent.send,
+			title: intent.title,
+		})
+		return session.taskId
+	})
+	context.subscriptions.push(
+		vscode.window.registerWebviewPanelSerializer(SESSION_PANEL_TYPE, {
+			deserializeWebviewPanel: async (panel: vscode.WebviewPanel, state: SessionPanelState | undefined) => {
+				await VscodeSessionPanel.revive(context, panel, state)
+			},
+		}),
+		vscode.commands.registerCommand("adsum.session.new", async (prompt?: string, send?: boolean) => {
+			await VscodeSessionPanel.open(context, { prompt, send })
+		}),
+		vscode.commands.registerCommand("adsum.session.open", async (taskId: string) => {
+			if (taskId) {
+				await VscodeSessionPanel.open(context, { taskId })
+			}
+		}),
+		{ dispose: onSessionsChanged(() => refreshAdsumStatusBar(getCachedFreeTokensRemaining())) },
+	)
+
 	const { commands } = ExtensionRegistryInfo
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(commands.PlusButton, async () => {
-			console.log("[DEBUG] plusButtonClicked")
-
-			const sidebarInstance = WebviewProvider.getInstance()
-
-			// Use a timeout to prevent clearTask() from blocking indefinitely
-			// if the current task is stuck (e.g. in a pWaitFor loop)
-			try {
-				await Promise.race([
-					sidebarInstance.controller.clearTask(),
-					new Promise<void>((_, reject) => setTimeout(() => reject(new Error("clearTask timeout")), 5000)),
-				])
-			} catch (e) {
-				console.warn("[DEBUG] clearTask timed out or failed, forcing state reset:", e)
-			}
-
-			await sidebarInstance.controller.postStateToWebview()
+			// [0.5 sessions first] + opens a new session tab; the old one stays open and in the rail.
+			await VscodeSessionPanel.open(context, {})
 			await sendChatButtonClickedEvent()
 		}),
 	)
@@ -465,9 +483,9 @@ export async function activate(context: vscode.ExtensionContext) {
 					return
 				}
 				// Ensure the sidebar view is visible but preserve editor focus
-				await showWebview(true)
+				const target = await showWebview(true)
 
-				await sendAddToInputEvent(`Terminal output:\n\`\`\`\n${terminalContents}\n\`\`\``)
+				await sendAddToInputEvent(`Terminal output:\n\`\`\`\n${terminalContents}\n\`\`\``, target.controller)
 
 				console.log("addSelectedTerminalOutputToChat", terminalContents, terminal.name)
 			} catch (error) {
@@ -665,7 +683,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			return
 		}
 		await vscode.commands.executeCommand("adsum-iot-coder.focusChatInput")
-		const resumedTaskId = await WebviewProvider.getInstance().controller.initTask(resume.prompt)
+		const resumed = await VscodeSessionPanel.open(context, { prompt: resume.prompt, send: true })
+		const resumedTaskId = resumed.taskId
 		handover.markReturned(resume.id, resumedTaskId)
 		// The live view unmounts the moment the session is returned. Without a pointer the developer
 		// experiences it as "my agent conversation disappeared" — so offer the durable record right here.
@@ -740,19 +759,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(commands.FocusChatInput, async (preserveEditorFocus: boolean = false) => {
-			const webview = WebviewProvider.getInstance() as VscodeWebviewProvider
-
-			// Show the webview
-			const webviewView = webview.getWebview()
-			if (webviewView) {
-				if (preserveEditorFocus) {
-					// Only make webview visible without forcing focus
-					webviewView.show(false)
-				} else {
-					// Show and force focus (default behavior for explicit focus actions)
-					webviewView.show(true)
-				}
+			// [0.5 sessions first] The composer lives in a session tab: focus the active one, or open one.
+			const session = WebviewProvider.getActiveSession()
+			if (session instanceof VscodeSessionPanel) {
+				session.reveal(preserveEditorFocus)
+			} else {
+				await VscodeSessionPanel.open(context, { preserveFocus: preserveEditorFocus })
 			}
+			const webview = WebviewProvider.getSidebarInstance() as VscodeWebviewProvider
 
 			// Send show webview event with preserveEditorFocus flag
 			sendShowWebviewEvent(preserveEditorFocus)

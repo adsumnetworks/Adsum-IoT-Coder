@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useMount } from "react-use"
 import { collectSessionKbits } from "@/components/chat/task-header/KbitPill"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
+import { ADSUM_VIEW, setWebviewState } from "@/config/platform.config"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useShowNavbar } from "@/context/PlatformContext"
 import { FileServiceClient, StateServiceClient, UiServiceClient } from "@/services/grpc-client"
@@ -35,6 +36,7 @@ import {
 } from "./chat-view"
 import { getButtonConfig } from "./chat-view/shared/buttonConfig"
 import { DEMO_SCENARIOS } from "./demoScenarios"
+import EmptySession from "./EmptySession"
 import FreeTierStrip from "./FreeTierStrip"
 import AgentSessionBanner from "./handover/AgentSessionBanner"
 import AgentSessionRecap from "./handover/AgentSessionRecap"
@@ -88,7 +90,15 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	const shouldShowQuickWins = false
 
 	//const task = messages.length > 0 ? (messages[0].say === "task" ? messages[0] : undefined) : undefined) : undefined
-	const task = useMemo(() => messages.at(0), [messages]) // leaving this less safe version here since if the first message is not a task, then the extension is in a bad state and needs to be debugged (see Cline.abort)
+	const task = useMemo(() => messages.at(0), [messages])
+	// [0.5 sessions first] The tab remembers its session for VS Code's panel serializer, so a reload brings
+	// every open tab back on its own session.
+	const { currentTaskItem } = useExtensionState()
+	useEffect(() => {
+		if (ADSUM_VIEW === "session") {
+			setWebviewState({ taskId: currentTaskItem?.id })
+		}
+	}, [currentTaskItem?.id]) // leaving this less safe version here since if the first message is not a task, then the extension is in a bad state and needs to be debugged (see Cline.abort)
 	const modifiedMessages = useMemo(() => {
 		const slicedMessages = messages.slice(1)
 		// Only combine hook sequences if hooks are enabled
@@ -560,6 +570,15 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					/* Opened deliberately from the banner — the conversation rendering of mockup 12, with a
 					   way back that is always present. A local task still wins the slot outright. */
 					<AgentSessionView onDismiss={() => setSessionViewOpen(false)} />
+				) : ADSUM_VIEW === "session" ? (
+					/* [0.5 sessions first] A session tab holds the chat alone; the cards live in the sidebar. */
+					<EmptySession
+						onPrefill={(text) => {
+							setInputValue(text)
+							textAreaRef.current?.focus()
+						}}
+						onStartTask={handleStartTask}
+					/>
 				) : (
 					<WelcomeView
 						onSelectMode={handleModeSelect}

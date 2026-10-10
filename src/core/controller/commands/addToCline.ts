@@ -36,7 +36,7 @@ export async function addToCline(controller: Controller, request: CommandContext
 	} else if (notebookContext) {
 		await controller.initTask(input)
 	} else {
-		await sendAddToInputEvent(input)
+		await sendAddToInputEvent(input, controller)
 	}
 
 	console.log("addToCline", request.selectedText, filePath, request.language, notebookContext ? "with notebook context" : "")

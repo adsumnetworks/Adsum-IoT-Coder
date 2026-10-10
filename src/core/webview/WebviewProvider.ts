@@ -7,36 +7,122 @@ import { HostProvider } from "@/hosts/host-provider"
 import { ShowMessageType } from "@/shared/proto/host/window"
 import { getNonce } from "./getNonce"
 
+/** Which surface a webview hosts: the sidebar rail, or one session in an editor tab. */
+export type WebviewKind = "sidebar" | "session"
+
 export abstract class WebviewProvider {
-	private static instance: WebviewProvider | null = null
+	/**
+	 * [0.5 sessions first] Every live webview, the sidebar and one panel per session tab. There used to be
+	 * one static `instance`; eight callers asked for "the" webview and got whichever was built last. Now a
+	 * caller says which it means: `getSidebarInstance()` for the rail, `getActiveInstance()` for the surface
+	 * the developer is looking at, `getAllInstances()` to broadcast.
+	 */
+	private static readonly instances = new Map<string, WebviewProvider>()
+	private static activeId: string | null = null
+	private static seq = 0
+
+	readonly instanceId: string
 	controller: Controller
 
-	constructor(readonly context: vscode.ExtensionContext) {
-		WebviewProvider.instance = this
+	constructor(
+		readonly context: vscode.ExtensionContext,
+		readonly kind: WebviewKind = "sidebar",
+	) {
+		this.instanceId = `${kind}-${++WebviewProvider.seq}`
+		WebviewProvider.instances.set(this.instanceId, this)
+		if (kind === "sidebar" || WebviewProvider.activeId === null) {
+			WebviewProvider.activeId = this.instanceId
+		}
 
 		// Create controller with cache service
 		this.controller = new Controller(context)
 	}
 
+	/** The developer focused this surface: it is where editor commands (add to chat, focus input) land. */
+	markActive(): void {
+		WebviewProvider.activeId = this.instanceId
+	}
+
 	async dispose() {
 		await this.controller.dispose()
-		WebviewProvider.instance = null
-	}
-
-	public static getInstance(): WebviewProvider {
-		if (!WebviewProvider.instance) {
-			throw new Error("WebviewProvider instance not initialized. Make sure to create a WebviewProvider instance first.")
+		WebviewProvider.instances.delete(this.instanceId)
+		if (WebviewProvider.activeId === this.instanceId) {
+			WebviewProvider.activeId = WebviewProvider.getSidebarInstance()?.instanceId ?? null
 		}
-		return WebviewProvider.instance
 	}
 
+	/** The sidebar rail's webview. Throws before the sidebar exists, as `getInstance()` always did. */
+	public static getSidebarInstance(): WebviewProvider {
+		for (const w of WebviewProvider.instances.values()) {
+			if (w.kind === "sidebar") {
+				return w
+			}
+		}
+		throw new Error("WebviewProvider instance not initialized. Make sure to create a WebviewProvider instance first.")
+	}
+
+	/** Kept for the callers that meant the sidebar; new code says `getSidebarInstance()`. */
+	public static getInstance(): WebviewProvider {
+		return WebviewProvider.getSidebarInstance()
+	}
+
+	/** The surface the developer last focused: a session tab when one has focus, else the sidebar. */
+	public static getActiveInstance(): WebviewProvider | undefined {
+		const active = WebviewProvider.activeId ? WebviewProvider.instances.get(WebviewProvider.activeId) : undefined
+		if (active) {
+			return active
+		}
+		try {
+			return WebviewProvider.getSidebarInstance()
+		} catch {
+			return undefined
+		}
+	}
+
+	/** The active session tab when one is open, else undefined (never the sidebar). */
+	public static getActiveSession(): WebviewProvider | undefined {
+		const active = WebviewProvider.getActiveInstance()
+		if (active?.kind === "session") {
+			return active
+		}
+		for (const w of WebviewProvider.instances.values()) {
+			if (w.kind === "session" && w.isVisible()) {
+				return w
+			}
+		}
+		return undefined
+	}
+
+	/** A visible surface, the active one first; undefined when nothing of ours is on screen. */
 	public static getVisibleInstance(): WebviewProvider | undefined {
-		return WebviewProvider.instance?.isVisible() ? WebviewProvider.instance : undefined
+		const active = WebviewProvider.getActiveInstance()
+		if (active?.isVisible()) {
+			return active
+		}
+		for (const w of WebviewProvider.instances.values()) {
+			if (w.isVisible()) {
+				return w
+			}
+		}
+		return undefined
+	}
+
+	public static getAllInstances(): WebviewProvider[] {
+		return [...WebviewProvider.instances.values()]
+	}
+
+	public static getSessionInstances(): WebviewProvider[] {
+		return WebviewProvider.getAllInstances().filter((w) => w.kind === "session")
+	}
+
+	/** The session tab already showing this task, if any: a session is focused, never opened twice. */
+	public static findSession(taskId: string): WebviewProvider | undefined {
+		return WebviewProvider.getSessionInstances().find((w) => w.controller.task?.taskId === taskId)
 	}
 
 	public static async disposeAllInstances() {
-		if (WebviewProvider.instance) {
-			await WebviewProvider.instance.dispose()
+		for (const w of [...WebviewProvider.instances.values()]) {
+			await w.dispose()
 		}
 	}
 
@@ -61,6 +147,11 @@ export abstract class WebviewProvider {
 	 * @returns True if the webview is visible, false otherwise
 	 */
 	abstract isVisible(): boolean
+
+	/** The one line the React bundle reads before it mounts: which surface it is. */
+	protected viewKindScript(nonce: string): string {
+		return `<script nonce="${nonce}">window.__ADSUM_VIEW__=${JSON.stringify(this.kind)};</script>`
+	}
 
 	/**
 	 * Defines and returns the HTML that should be rendered within the webview panel.
@@ -107,10 +198,10 @@ export abstract class WebviewProvider {
 				<meta name="theme-color" content="#000000">
 				<link rel="stylesheet" type="text/css" href="${stylesUrl}">
 				<meta http-equiv="Content-Security-Policy" content="default-src 'none';
-					connect-src https://*.posthog.com https://*.cline.bot; 
-					font-src ${this.getCspSource()} data:; 
-					style-src ${this.getCspSource()} 'unsafe-inline'; 
-					img-src ${this.getCspSource()} https: data:; 
+					connect-src https://*.posthog.com https://*.cline.bot;
+					font-src ${this.getCspSource()} data:;
+					style-src ${this.getCspSource()} 'unsafe-inline';
+					img-src ${this.getCspSource()} https: data:;
 					script-src 'nonce-${nonce}' 'unsafe-eval';">
 				<title>Adsum IoT Coder</title>
 				<style>
@@ -136,6 +227,7 @@ export abstract class WebviewProvider {
 				<div id="root">
 					<div id="adsum-splash"><div class="adsum-splash-ring"></div></div>
 				</div>
+				${this.viewKindScript(nonce)}
 				<script type="module" nonce="${nonce}" src="${scriptUrl}"></script>
 				${process.env.IS_DEV ? '<script src="http://localhost:8097"></script>' : ""}
 			</body>
@@ -238,6 +330,7 @@ export abstract class WebviewProvider {
 				</head>
 				<body>
 					<div id="root"></div>
+					${this.viewKindScript(nonce)}
 					${reactRefresh}
 					<script type="module" src="${scriptUrl}"></script>
 				</body>

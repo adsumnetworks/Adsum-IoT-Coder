@@ -4,8 +4,21 @@ import { ExtensionState } from "@/shared/ExtensionMessage"
 import { getRequestRegistry, StreamingResponseHandler } from "../grpc-handler"
 import { Controller } from "../index"
 
-// Keep track of active state subscriptions
-const activeStateSubscriptions = new Set<StreamingResponseHandler<State>>()
+/**
+ * [0.5 sessions first] State streams are kept PER CONTROLLER. With one webview there was one set and one
+ * controller; with the rail plus N session tabs, a controller's state (its task's messages, its ask) must
+ * reach its own webview and no other, or every tab would repaint with the last tab's transcript.
+ */
+const activeStateSubscriptions = new WeakMap<Controller, Set<StreamingResponseHandler<State>>>()
+
+function streamsFor(controller: Controller): Set<StreamingResponseHandler<State>> {
+	let set = activeStateSubscriptions.get(controller)
+	if (!set) {
+		set = new Set()
+		activeStateSubscriptions.set(controller, set)
+	}
+	return set
+}
 
 /**
  * Subscribe to state updates
@@ -20,13 +33,12 @@ export async function subscribeToState(
 	responseStream: StreamingResponseHandler<State>,
 	requestId?: string,
 ): Promise<void> {
-	// Add this subscription to the active subscriptions
-	activeStateSubscriptions.add(responseStream)
+	const streams = streamsFor(controller)
+	streams.add(responseStream)
 
 	// Register cleanup when the connection is closed
 	const cleanup = () => {
-		activeStateSubscriptions.delete(responseStream)
-		//console.log(`[DEBUG] Cleaned up state subscription`)
+		streams.delete(responseStream)
 	}
 
 	// Register the cleanup function with the request registry if we have a requestId
@@ -38,8 +50,6 @@ export async function subscribeToState(
 	const initialState = await controller.getStateToPostToWebview()
 	const initialStateJson = JSON.stringify(initialState)
 
-	//console.log(`[DEBUG] set up state subscription`)
-
 	try {
 		await responseStream(
 			{
@@ -49,30 +59,33 @@ export async function subscribeToState(
 		)
 	} catch (error) {
 		console.error("Error sending initial state:", error)
-		activeStateSubscriptions.delete(responseStream)
+		streams.delete(responseStream)
 	}
 }
 
 /**
- * Send a state update to all active subscribers
+ * Send a state update to the webview(s) of ONE controller.
  * @param state The state to send
+ * @param controller The controller whose webview should repaint
  */
-export async function sendStateUpdate(state: ExtensionState): Promise<void> {
-	// Send the state to all active subscribers
-	const promises = Array.from(activeStateSubscriptions).map(async (responseStream) => {
+export async function sendStateUpdate(state: ExtensionState, controller: Controller): Promise<void> {
+	const streams = activeStateSubscriptions.get(controller)
+	if (!streams || streams.size === 0) {
+		return
+	}
+	const stateJson = JSON.stringify(state)
+	const promises = Array.from(streams).map(async (responseStream) => {
 		try {
-			const stateJson = JSON.stringify(state)
 			await responseStream(
 				{
 					stateJson,
 				},
 				false, // Not the last message
 			)
-			//console.log(`[DEBUG] sending followup state`, stateJson.length, "chars")
 		} catch (error) {
 			console.error("Error sending state update:", error)
 			// Remove the subscription if there was an error
-			activeStateSubscriptions.delete(responseStream)
+			streams.delete(responseStream)
 		}
 	})
 

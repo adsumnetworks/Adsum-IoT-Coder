@@ -2,8 +2,22 @@ import type { EmptyRequest, String as ProtoString } from "@shared/proto/cline/co
 import { getRequestRegistry, type StreamingResponseHandler } from "../grpc-handler"
 import type { Controller } from "../index"
 
-// Keep track of active addToInput subscriptions
-const activeAddToInputSubscriptions = new Set<StreamingResponseHandler<ProtoString>>()
+/**
+ * [0.5 sessions first] "Add to input" lands in ONE composer: the session tab that was asked for it. Streams
+ * are kept per controller, and text sent before that tab's composer has subscribed (a card click opens the
+ * tab and fills the box in the same breath) waits in a pending queue and is flushed on subscribe.
+ */
+const activeAddToInputSubscriptions = new WeakMap<Controller, Set<StreamingResponseHandler<ProtoString>>>()
+const pendingAddToInput = new WeakMap<Controller, string[]>()
+
+function streamsFor(controller: Controller): Set<StreamingResponseHandler<ProtoString>> {
+	let set = activeAddToInputSubscriptions.get(controller)
+	if (!set) {
+		set = new Set()
+		activeAddToInputSubscriptions.set(controller, set)
+	}
+	return set
+}
 
 /**
  * Subscribe to addToInput events
@@ -13,35 +27,52 @@ const activeAddToInputSubscriptions = new Set<StreamingResponseHandler<ProtoStri
  * @param requestId The ID of the request (passed by the gRPC handler)
  */
 export async function subscribeToAddToInput(
-	_controller: Controller,
+	controller: Controller,
 	_request: EmptyRequest,
 	responseStream: StreamingResponseHandler<ProtoString>,
 	requestId?: string,
 ): Promise<void> {
-	console.log("[DEBUG] set up addToInput subscription")
-
-	// Add this subscription to the active subscriptions
-	activeAddToInputSubscriptions.add(responseStream)
+	const streams = streamsFor(controller)
+	streams.add(responseStream)
 
 	// Register cleanup when the connection is closed
 	const cleanup = () => {
-		activeAddToInputSubscriptions.delete(responseStream)
-		console.log("[DEBUG] Cleaned up addToInput subscription")
+		streams.delete(responseStream)
 	}
 
 	// Register the cleanup function with the request registry if we have a requestId
 	if (requestId) {
 		getRequestRegistry().registerRequest(requestId, cleanup, { type: "addToInput_subscription" }, responseStream)
 	}
+
+	// Flush what arrived before the composer was listening.
+	const pending = pendingAddToInput.get(controller)
+	if (pending?.length) {
+		pendingAddToInput.delete(controller)
+		for (const text of pending) {
+			try {
+				await responseStream({ value: text }, false)
+			} catch (error) {
+				console.error("Error flushing pending addToInput event:", error)
+			}
+		}
+	}
 }
 
 /**
- * Send an addToInput event to all active subscribers
+ * Send an addToInput event to the composer of ONE controller. Queued until that composer subscribes.
  * @param text The text to add to the input
+ * @param controller The controller whose webview owns the composer
  */
-export async function sendAddToInputEvent(text: string): Promise<void> {
-	// Send the event to all active subscribers
-	const promises = Array.from(activeAddToInputSubscriptions).map(async (responseStream) => {
+export async function sendAddToInputEvent(text: string, controller: Controller): Promise<void> {
+	const streams = activeAddToInputSubscriptions.get(controller)
+	if (!streams || streams.size === 0) {
+		const pending = pendingAddToInput.get(controller) ?? []
+		pending.push(text)
+		pendingAddToInput.set(controller, pending)
+		return
+	}
+	const promises = Array.from(streams).map(async (responseStream) => {
 		try {
 			const event: ProtoString = {
 				value: text,
@@ -50,11 +81,10 @@ export async function sendAddToInputEvent(text: string): Promise<void> {
 				event,
 				false, // Not the last message
 			)
-			console.log("[DEBUG] sending addToInput event", text.length, "chars")
 		} catch (error) {
 			console.error("Error sending addToInput event:", error)
 			// Remove the subscription if there was an error
-			activeAddToInputSubscriptions.delete(responseStream)
+			streams.delete(responseStream)
 		}
 	})
 

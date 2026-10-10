@@ -66,6 +66,7 @@ import { fetchRemoteConfig } from "../storage/remote-config/fetch"
 import { clearRemoteConfig } from "../storage/remote-config/utils"
 import { type PersistenceErrorEvent, StateManager } from "../storage/StateManager"
 import { Task } from "../task"
+import { listOpenSessions } from "./adsum/openSession"
 import { sendMcpMarketplaceCatalogEvent } from "./mcp/subscribeToMcpMarketplaceCatalog"
 import { getClineOnboardingModels } from "./models/getClineOnboardingModels"
 import { appendClineStealthModels } from "./models/refreshOpenRouterModels"
@@ -846,7 +847,7 @@ export class Controller {
 
 	async postStateToWebview() {
 		const state = await this.getStateToPostToWebview()
-		await sendStateUpdate(state)
+		await sendStateUpdate(state, this)
 	}
 
 	private demoToolsWarming = false
@@ -961,6 +962,7 @@ export class Controller {
 			version,
 			apiConfiguration,
 			currentTaskItem,
+			openSessions: listOpenSessions(),
 			clineMessages,
 			currentFocusChainChecklist: this.task?.taskState.currentFocusChainChecklist || null,
 			checkpointManagerErrorMessage,

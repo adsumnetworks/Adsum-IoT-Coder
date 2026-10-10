@@ -41,4 +41,10 @@ service AdsumService {
   // Asks for access to a template-source family. Request value is JSON {family, chips[], message}.
   // Response value is JSON {ok} or {ok:false, reason}.
   rpc requestAccess(StringRequest) returns (String);
+
+  // [0.5 sessions first] The rail asks the host to open a session as an editor tab.
+  // Request value is JSON {taskId?, prompt?, send?, title?}: an existing session is focused, never opened
+  // twice; a prompt is sent as the first message when `send`, else placed in the composer.
+  // Response value is the task id, or "" when nothing started.
+  rpc openSession(StringRequest) returns (String);
 }

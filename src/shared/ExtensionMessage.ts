@@ -9,6 +9,17 @@ import type { WorkspaceFeatures } from "@shared/workspace-features"
 import type { Environment } from "../config"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
 import type { AdsumAccountState } from "./adsumAccount"
+
+/** [0.5 sessions first] One open session tab, as the rail and the status bar see it. */
+export interface OpenSessionSummary {
+	taskId: string
+	title: string
+	/** The last message is a question the developer has not answered. */
+	waiting: boolean
+	streaming: boolean
+	active: boolean
+}
+
 import { ApiConfiguration } from "./api"
 import { BrowserSettings } from "./BrowserSettings"
 import { ClineFeatureSetting } from "./ClineFeatureSetting"
@@ -151,6 +162,8 @@ export interface ExtensionState {
 	 *  is what puts the cellular cards behind the register gate. Never carries the session bearer: the
 	 *  webview renders a lock, the registry enforces it. */
 	adsumAccount?: AdsumAccountState
+	/** [0.5 sessions first] The session tabs open in this window, for the rail's rows and the status bar. */
+	openSessions?: OpenSessionSummary[]
 	/** A sign-in started in this window is waiting on the browser: the panel shows the waiting view with the paste field. */
 	adsumSignInPending?: boolean
 	/** Show the one-time "what you unlocked" card: signed in, and never dismissed. */

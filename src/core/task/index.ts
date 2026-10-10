@@ -684,7 +684,7 @@ export class Task {
 					// await this.saveClineMessagesAndUpdateHistory()
 					// await this.postStateToWebview()
 					const protoMessage = convertClineMessageToProto(lastMessage)
-					await sendPartialMessageEvent(protoMessage)
+					await sendPartialMessageEvent(protoMessage, this.controller)
 					throw new Error("Current ask promise was ignored 1")
 				} else {
 					// this is a new partial message, so add it with partial state
@@ -732,7 +732,7 @@ export class Task {
 					})
 					// await this.postStateToWebview()
 					const protoMessage = convertClineMessageToProto(lastMessage)
-					await sendPartialMessageEvent(protoMessage)
+					await sendPartialMessageEvent(protoMessage, this.controller)
 				} else {
 					// this is a new partial=false message, so add it like normal
 					this.taskState.askResponse = undefined
@@ -972,7 +972,7 @@ export class Task {
 					lastMessage.files = files
 					lastMessage.partial = partial
 					const protoMessage = convertClineMessageToProto(lastMessage)
-					await sendPartialMessageEvent(protoMessage)
+					await sendPartialMessageEvent(protoMessage, this.controller)
 					return undefined
 				} else {
 					// this is a new partial message, so add it with partial state
@@ -1006,7 +1006,7 @@ export class Task {
 					await this.messageStateHandler.saveClineMessagesAndUpdateHistory()
 					// await this.postStateToWebview()
 					const protoMessage = convertClineMessageToProto(lastMessage)
-					await sendPartialMessageEvent(protoMessage) // more performant than an entire postStateToWebview
+					await sendPartialMessageEvent(protoMessage, this.controller) // more performant than an entire postStateToWebview
 					return undefined
 				} else {
 					// this is a new partial=false message, so add it like normal

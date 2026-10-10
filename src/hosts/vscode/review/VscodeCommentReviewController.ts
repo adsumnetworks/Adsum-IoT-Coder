@@ -1,3 +1,4 @@
+import { WebviewProvider } from "@core/webview"
 import * as vscode from "vscode"
 import { sendAddToInputEvent } from "@/core/controller/ui/subscribeToAddToInput"
 import { CommentReviewController, type OnReplyCallback, type ReviewComment } from "@/integrations/editor/CommentReviewController"
@@ -397,7 +398,8 @@ export class VscodeCommentReviewController extends CommentReviewController imple
 		// Format the context message
 		const contextMessage = `Please continue helping the user with their question about this code.`
 
-		await sendAddToInputEvent(contextMessage)
+		const target = WebviewProvider.getActiveSession() ?? WebviewProvider.getSidebarInstance()
+		await sendAddToInputEvent(contextMessage, target.controller)
 	}
 
 	private getThreadKey(filePath: string, startLine: number, endLine: number): string {

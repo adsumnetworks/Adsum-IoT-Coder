@@ -3,10 +3,11 @@ import { useEffect } from "react"
 import ChatView from "./components/chat/ChatView"
 import HistoryView from "./components/history/HistoryView"
 import OnboardingView from "./components/onboarding/OnboardingView"
+import RailView from "./components/rail/RailView"
 import SettingsView from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
 import WorktreesView from "./components/worktrees/WorktreesView"
-import { useClineAuth } from "./context/ClineAuthContext"
+import { ADSUM_VIEW } from "./config/platform.config"
 import { useExtensionState } from "./context/ExtensionStateContext"
 import { Providers } from "./Providers"
 import { UiServiceClient } from "./services/grpc-client"
@@ -16,27 +17,20 @@ const AppContent = () => {
 		didHydrateState,
 		showWelcome,
 		shouldShowAnnouncement,
-		showMcp,
-		mcpTab,
 		showSettings,
 		settingsTargetSection,
 		showHistory,
-		showAccount,
 		showWorktrees,
 		showAnnouncement,
 		onboardingModels,
 		setShowAnnouncement,
 		setShouldShowAnnouncement,
-		closeMcpView,
 		navigateToHistory,
 		hideSettings,
 		hideHistory,
-		hideAccount,
 		hideWorktrees,
 		hideAnnouncement,
 	} = useExtensionState()
-
-	const { clineUser, organizations, activeOrganization } = useClineAuth()
 
 	useEffect(() => {
 		if (shouldShowAnnouncement) {
@@ -59,6 +53,13 @@ const AppContent = () => {
 
 	if (showWelcome) {
 		return onboardingModels ? <OnboardingView /> : <WelcomeView />
+	}
+
+	// [0.5 sessions first] Two surfaces from one bundle. The sidebar is the rail alone: you, what to do next,
+	// the hardware, the sessions, the palette, with Settings and All sessions as pages inside it. A session
+	// tab is the chat alone, like Claude Code's; nothing else ever renders there.
+	if (ADSUM_VIEW === "sidebar") {
+		return <RailView />
 	}
 
 	return (

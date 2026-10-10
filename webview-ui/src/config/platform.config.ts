@@ -47,12 +47,33 @@ declare global {
 		// !! Do not change the name of the handler without updating it on
 		// the JetBrains side as well. !!
 		standalonePostMessage?: (message: string) => void
+		/** [0.5 sessions first] Set by the host before the bundle runs: "sidebar" (the rail) or "session" (a tab). */
+		__ADSUM_VIEW__?: "sidebar" | "session"
 	}
 	function acquireVsCodeApi(): any
 }
 
 // Initialize the vscode API if available
 const vsCodeApi = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null
+
+/** Which surface this bundle is: the sidebar rail, or one session in an editor tab. */
+export const ADSUM_VIEW: "sidebar" | "session" = (typeof window !== "undefined" && window.__ADSUM_VIEW__) || "sidebar"
+
+/** The webview's own persisted state, read by the host's panel serializer after a reload. */
+export function setWebviewState(state: Record<string, unknown>): void {
+	try {
+		vsCodeApi?.setState?.(state)
+	} catch {
+		// not in a webview
+	}
+}
+export function getWebviewState<T = Record<string, unknown>>(): T | undefined {
+	try {
+		return vsCodeApi?.getState?.() as T | undefined
+	} catch {
+		return undefined
+	}
+}
 
 // Implementations for post message handling
 const postMessageStrategies: Record<string, PostMessageFunction> = {

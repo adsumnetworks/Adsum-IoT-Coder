@@ -103,5 +103,6 @@ export async function getContextForCommand(
 export async function showWebview(preserveEditorFocus: boolean = true): Promise<WebviewProvider> {
 	await vscode.commands.executeCommand(ExtensionRegistryInfo.commands.FocusChatInput, preserveEditorFocus)
 
-	return WebviewProvider.getInstance()
+	// [0.5 sessions first] Editor commands (add to chat, explain, improve) land in the active session tab.
+	return WebviewProvider.getActiveSession() ?? WebviewProvider.getSidebarInstance()
 }
