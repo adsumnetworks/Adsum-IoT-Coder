@@ -23,6 +23,7 @@ import {
 	ChatLayout,
 	convertHtmlToMarkdown,
 	filterVisibleMessages,
+	groupFoldedCommands,
 	groupKbitCredits,
 	groupLowStakesTools,
 	groupMessages,
@@ -42,6 +43,9 @@ import AgentSessionBanner from "./handover/AgentSessionBanner"
 import AgentSessionRecap from "./handover/AgentSessionRecap"
 import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
+import OfflineNotice from "./OfflineNotice"
+import SessionComposerFoot from "./SessionComposerFoot"
+import SessionHeader from "./SessionHeader"
 import { entryFirstPrompt } from "./welcome/entryTelemetry"
 import { handOverCard } from "./welcome/handOverCard"
 import { routeDemo, routeTypedTask } from "./welcome/runRouting"
@@ -76,6 +80,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		handoverUi,
 		openedAgentSession,
 		openAgentSession,
+		openFolderPaths,
+		hostOffline,
 	} = useExtensionState()
 	const { target: runTarget } = useRunTarget()
 	// The agent session is a BANNER by default and opens on demand. It must never own the panel: when it
@@ -356,6 +362,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		return normalizeApiConfiguration(apiConfiguration, mode)
 	}, [apiConfiguration, mode])
 
+	// [P3.3] The composer foot line's folder name and context-use percentage — the same contextWindow/
+	// lastApiReqTotalTokens pairing TaskHeader's ContextWindow uses, just reduced to one number.
+	const composerFootFolderName = useMemo(() => openFolderPaths[0]?.split("/").pop(), [openFolderPaths])
+	const composerFootContextPercent = useMemo(() => {
+		const contextWindow = selectedModelInfo?.contextWindow
+		if (!contextWindow || lastApiReqTotalTokens === undefined) {
+			return undefined
+		}
+		return (lastApiReqTotalTokens / contextWindow) * 100
+	}, [selectedModelInfo?.contextWindow, lastApiReqTotalTokens])
+
 	const selectFilesAndImages = useCallback(async () => {
 		try {
 			const response = await FileServiceClient.selectFiles(
@@ -483,7 +500,10 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 
 	const groupedMessages = useMemo(() => {
 		// kbit credits group LAST so a turn's several bits collapse into one credit line
-		return groupKbitCredits(groupLowStakesTools(groupMessages(visibleMessages)))
+		const base = groupKbitCredits(groupLowStakesTools(groupMessages(visibleMessages)))
+		// [P4.2] The session tab reads like a modern coding-agent chat: a run of FINISHED commands folds
+		// to one worklog line (FoldedToolRow), click to expand. Sidebar behaviour is untouched.
+		return ADSUM_VIEW === "session" ? groupFoldedCommands(base) : base
 	}, [visibleMessages])
 
 	// Bits credited this session — drives the header attribution pill + roster (design/01).
@@ -544,6 +564,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		<ChatLayout isHidden={isHidden}>
 			<div className="flex flex-col flex-1 overflow-hidden">
 				{showNavbar && <Navbar />}
+				<OfflineNotice hostOffline={hostOffline} />
 				<FreeTierStrip />
 				{!openedAgentSession && handoverUi?.strip && !handoverUi.strip.returned && !sessionViewOpen ? (
 					<AgentSessionBanner onOpen={() => setSessionViewOpen(true)} />
@@ -551,6 +572,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				{/* A session opened from the history list OWNS the panel, exactly as opening a task does —
 				    the developer asked for this one by name. It is read-only history, so none of the live
 				    task furniture (recap, message stream, composer) renders behind it. */}
+				{/* [P4.1] The session tab's own header line — session view only; the component renders nothing
+				    in the sidebar, where TaskHeader below already carries this. */}
+				{!openedAgentSession && task ? (
+					<SessionHeader
+						currentTaskItem={currentTaskItem}
+						lastApiReqTotalTokens={lastApiReqTotalTokens}
+						messages={messages}
+						task={task}
+						totalCost={apiMetrics.totalCost}
+					/>
+				) : null}
 				{openedAgentSession ? (
 					<AgentSessionView onDismiss={() => openAgentSession(null)} session={openedAgentSession} />
 				) : task ? (
@@ -648,6 +680,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						selectFilesAndImages={selectFilesAndImages}
 						shouldDisableFilesAndImages={shouldDisableFilesAndImages}
 					/>
+					<SessionComposerFoot contextPercent={composerFootContextPercent} folderName={composerFootFolderName} />
 					{/* Persistent AI-limitations disclaimer — visible while the dev acts on the agent's output.
 					    Kept per spec (design/13 A6); footprint minimized per operator direction 0707. */}
 					<AiLimitationsFooter style={{ padding: "1px 14px 3px" }} />

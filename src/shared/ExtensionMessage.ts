@@ -174,6 +174,15 @@ export interface ExtensionState {
 	adsumSignInPending?: boolean
 	/** Show the one-time "what you unlocked" card: signed in, and never dismissed. */
 	adsumUnlockedShow?: boolean
+	/**
+	 * [P4.9 sessions first] True when the host has found the model's API unreachable — a network error, a
+	 * dead connection, nothing provider-specific. Absent/false reads as reachable. No existing offline/
+	 * network-error flag was found on this type when this was added (grepped `offline`, `networkError`,
+	 * `unreachable`), so this is new.
+	 * TODO(host owner): populate this from the host's own connectivity signal and push it through
+	 * postStateToWebview; nothing on the host side sets it yet.
+	 */
+	hostOffline?: boolean
 }
 
 export interface ClineMessage {
