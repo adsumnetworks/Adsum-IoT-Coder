@@ -1,4 +1,6 @@
 import { type AdsumAccountState, accountHasGroup } from "@shared/adsumAccount"
+import { confirmedBlg20Units } from "@shared/blg20"
+import type { NrfEnvironment } from "@shared/nrf"
 import React, { useEffect } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { BRAND_CORAL, BRAND_CYAN_TEXT, BRAND_CYAN_UI, brandAlpha } from "../brandColors"
@@ -216,7 +218,10 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 	onInstall,
 	onBrowse,
 }) => {
-	const { adsumAccount } = useExtensionState() as { adsumAccount?: AdsumAccountState }
+	const { adsumAccount, nrfEnvironment } = useExtensionState() as {
+		adsumAccount?: AdsumAccountState
+		nrfEnvironment?: NrfEnvironment
+	}
 	const board = ladderBoard(boards)
 	const pair = board ? undefined : ladderChipPair(chips)
 	/*
@@ -268,7 +273,9 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 		onStart()
 	}
 	// A unit answering on its USB service port is already flashed: its next action is to set it up.
-	const onUsb = !!board && /\(USB /.test(board)
+	// Read from the unit, not from its label: the label is the unit's name ("BLG20x 286C"), and the
+	// ports behind it are the hover's. [10 Oct 2026]
+	const onUsb = !!board && confirmedBlg20Units(nrfEnvironment?.blg20Units).some((u) => !!u.servicePort)
 	const setUp = () => {
 		cardAction("blg20_ladder", "setup")
 		if (board) {

@@ -59,13 +59,26 @@ describe("BLG20x card — shown by access, not only by detection", () => {
 })
 
 describe("BLG20x on its USB service port: set it up first (demo-1, one card, one next action)", () => {
-	it("a unit named on USB gets one set-up action, and it starts that unit's journey", () => {
+	it("a unit on its USB port gets one set-up action, and it starts that unit's journey", () => {
 		const onSetUp = vi.fn()
-		const board = "BLG20 9802AF5C69DF1E66 (USB COM5 + LTE tunnel COM6)"
+		// The label is the unit's NAME; whether it is on USB is read from the unit itself. [10 Oct 2026]
+		const board = "BLG20x 286C"
+		state.current = {
+			nrfEnvironment: {
+				blg20Units: [
+					{ via: "usb", confirmed: true, serialNumber: "BBA605799DE4043E", name: "286C", servicePort: "COM5" },
+				],
+			},
+		}
 		render(<GatewayLadder boards={[board]} onAsk={vi.fn()} onInstall={vi.fn()} onSetUp={onSetUp} onStart={vi.fn()} />)
 		expect(screen.getByTestId("ladder-setup").textContent).toContain("On USB")
 		fireEvent.click(screen.getByTestId("ladder-setup-start"))
 		expect(onSetUp).toHaveBeenCalledWith(board)
+	})
+
+	it("the same name with no unit on USB behind it gets no set-up action", () => {
+		render(<GatewayLadder boards={["BLG20x 286C"]} onAsk={vi.fn()} onInstall={vi.fn()} onSetUp={vi.fn()} onStart={vi.fn()} />)
+		expect(screen.queryByTestId("ladder-setup")).toBeNull()
 	})
 
 	it("a board seen only through its probes or by name gets no set-up action: the first run is its way in", () => {
