@@ -46,6 +46,20 @@ describe("ApiOptions Component", () => {
 		})
 	})
 
+	it("the three doors: the keys door hides the free tier and the plans, and selects itself from the provider", () => {
+		mockExtensionState({ planModeApiProvider: "anthropic", actModeApiProvider: "anthropic" })
+		render(
+			<ExtensionStateContextProvider>
+				<ApiOptions currentMode="plan" showModelOptions={true} />
+			</ExtensionStateContextProvider>,
+		)
+		expect(screen.getByTestId("provider-tab-keys").getAttribute("aria-selected")).toBe("true")
+		expect(screen.getByTestId("provider-tab-free").getAttribute("aria-selected")).toBe("false")
+		fireEvent.focus(screen.getByTestId("provider-selector-input"))
+		expect(screen.queryByText(/Adsum Free Tier/i)).toBeNull()
+		expect(screen.queryByText(/GLM Coding Plan/i)).toBeNull()
+	})
+
 	it("renders Requesty API Key input", () => {
 		render(
 			<ExtensionStateContextProvider>

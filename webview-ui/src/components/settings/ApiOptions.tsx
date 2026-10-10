@@ -71,6 +71,16 @@ interface ApiOptionsProps {
 // This is necessary to ensure dropdown opens downward, important for when this is used in popup
 export const DROPDOWN_Z_INDEX = OPENROUTER_MODEL_PICKER_Z_INDEX + 2 // Higher than the OpenRouterModelPicker's and ModelSelectorTooltip's z-index
 
+type PickerTab = "free" | "keys" | "plans"
+const PLAN_PROVIDERS = ["zai-coding-plan"]
+const PICKER_TABS: ReadonlyArray<{ id: PickerTab; label: string; only?: string }> = [
+	{ id: "free", label: "Adsum free", only: "adsum-free" },
+	{ id: "keys", label: "Your keys" },
+	{ id: "plans", label: "Coding plans", only: PLAN_PROVIDERS.length === 1 ? PLAN_PROVIDERS[0] : undefined },
+]
+export const pickerTabOf = (provider: string): PickerTab =>
+	provider === "adsum-free" ? "free" : PLAN_PROVIDERS.includes(provider) ? "plans" : "keys"
+
 export const DropdownContainer = styled.div<{ zIndex?: number }>`
 	position: relative;
 	z-index: ${(props) => props.zIndex || DROPDOWN_Z_INDEX};
@@ -97,6 +107,12 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 	const { apiConfiguration, remoteConfigSettings } = useExtensionState()
 
 	const { selectedProvider } = normalizeApiConfiguration(apiConfiguration, currentMode)
+	// [0.5] Three doors, the way the pricing page says it: the free tier, your own keys, the coding plans. A
+	// door with one provider behind it selects that provider; the keys door keeps the searchable list.
+	const [pickerTab, setPickerTab] = useState<PickerTab>(pickerTabOf(selectedProvider))
+	useEffect(() => {
+		setPickerTab(pickerTabOf(selectedProvider))
+	}, [selectedProvider])
 
 	const { handleModeFieldChange } = useApiConfigurationHandlers()
 
@@ -180,8 +196,8 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 			providers = providers.filter((option) => remoteProviders.includes(option.value))
 		}
 
-		return providers
-	}, [remoteConfigSettings])
+		return providers.filter((option) => pickerTabOf(option.value) === pickerTab)
+	}, [pickerTab, remoteConfigSettings])
 
 	const currentProviderLabel = useMemo(() => {
 		return providerOptions.find((option) => option.value === selectedProvider)?.label || selectedProvider
@@ -303,6 +319,36 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 				}
 				`}
 			</style>
+			<div aria-label="Provider kind" className="flex gap-1 mb-2" role="tablist">
+				{PICKER_TABS.map((t) => (
+					<button
+						aria-selected={pickerTab === t.id}
+						data-testid={`provider-tab-${t.id}`}
+						key={t.id}
+						onClick={() => {
+							setPickerTab(t.id)
+							if (t.only) {
+								handleProviderChange(t.only)
+							} else {
+								setSearchTerm("")
+								setIsDropdownVisible(true)
+							}
+						}}
+						role="tab"
+						style={{
+							border: "1px solid var(--vscode-widget-border, transparent)",
+							borderRadius: 999,
+							padding: "2px 10px",
+							fontSize: 11,
+							cursor: "pointer",
+							background: pickerTab === t.id ? "var(--vscode-badge-background)" : "transparent",
+							color: pickerTab === t.id ? "var(--vscode-badge-foreground)" : "var(--vscode-descriptionForeground)",
+						}}
+						type="button">
+						{t.label}
+					</button>
+				))}
+			</div>
 			<DropdownContainer className="dropdown-container">
 				{remoteConfigSettings?.remoteConfiguredProviders && remoteConfigSettings.remoteConfiguredProviders.length > 0 ? (
 					<Tooltip>
