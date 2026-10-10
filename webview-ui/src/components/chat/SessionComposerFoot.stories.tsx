@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import { fn } from "storybook/test"
 import SessionComposerFoot from "./SessionComposerFoot"
 
 /**
@@ -8,11 +9,12 @@ import SessionComposerFoot from "./SessionComposerFoot"
 const meta: Meta<typeof SessionComposerFoot> = {
 	title: "Session/SessionComposerFoot",
 	component: SessionComposerFoot,
+	args: { onOpenPalette: fn() },
 	parameters: {
 		docs: {
 			description: {
 				component:
-					"The ◆ mark, the open folder, the context-use percentage when known, and the 'Something else · ⌘K' handle that starts a fresh session.",
+					"The ◆ mark, the open folder, the context-use percentage once a task exists, and the 'Something else · ⌘K' handle that opens the palette dialog.",
 			},
 		},
 	},
@@ -24,6 +26,7 @@ type Story = StoryObj<typeof SessionComposerFoot>
 export const NewSession: Story = {
 	args: {
 		folderName: "gateway-fw",
+		hasTask: false,
 		view: "session",
 	},
 }

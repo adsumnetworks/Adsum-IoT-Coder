@@ -46,6 +46,7 @@ import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
 import OfflineNotice from "./OfflineNotice"
 import SessionComposerFoot from "./SessionComposerFoot"
 import SessionHeader from "./SessionHeader"
+import SessionPalette from "./SessionPalette"
 import { entryFirstPrompt } from "./welcome/entryTelemetry"
 import { handOverCard } from "./welcome/handOverCard"
 import { routeDemo, routeTypedTask } from "./welcome/runRouting"
@@ -373,6 +374,25 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		return (lastApiReqTotalTokens / contextWindow) * 100
 	}, [selectedModelInfo?.contextWindow, lastApiReqTotalTokens])
 
+	// [0.5 simple] "Something else · ⌘K" opens the rail's own palette, mounted here in the session view's
+	// own tree (SessionPalette) rather than hand-rebuilding it. ⌘K/Ctrl+K anywhere in the session view
+	// opens it too; the rail already owns the same shortcut in its own webview, so this only ever fires
+	// where ADSUM_VIEW === "session".
+	const [palette, setPalette] = useState(false)
+	useEffect(() => {
+		if (ADSUM_VIEW !== "session") {
+			return
+		}
+		const onKeyDown = (e: KeyboardEvent) => {
+			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+				e.preventDefault()
+				setPalette(true)
+			}
+		}
+		document.addEventListener("keydown", onKeyDown)
+		return () => document.removeEventListener("keydown", onKeyDown)
+	}, [])
+
 	const selectFilesAndImages = useCallback(async () => {
 		try {
 			const response = await FileServiceClient.selectFiles(
@@ -680,7 +700,23 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						selectFilesAndImages={selectFilesAndImages}
 						shouldDisableFilesAndImages={shouldDisableFilesAndImages}
 					/>
-					<SessionComposerFoot contextPercent={composerFootContextPercent} folderName={composerFootFolderName} />
+					<SessionComposerFoot
+						contextPercent={composerFootContextPercent}
+						folderName={composerFootFolderName}
+						hasTask={!!task}
+						onOpenPalette={() => setPalette(true)}
+					/>
+					{ADSUM_VIEW === "session" && (
+						<SessionPalette
+							hasTask={!!task}
+							onClose={() => setPalette(false)}
+							onPrefill={(text) => {
+								setInputValue(text)
+								textAreaRef.current?.focus()
+							}}
+							open={palette}
+						/>
+					)}
 					{/* Persistent AI-limitations disclaimer — visible while the dev acts on the agent's output.
 					    Kept per spec (design/13 A6); footprint minimized per operator direction 0707. */}
 					<AiLimitationsFooter style={{ padding: "1px 14px 3px" }} />

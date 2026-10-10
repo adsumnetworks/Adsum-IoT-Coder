@@ -1,6 +1,4 @@
 import type React from "react"
-import { useEffect } from "react"
-import { openSession } from "@/components/rail/openSession"
 import { R } from "@/components/rail/railStyles"
 import { ADSUM_VIEW } from "@/config/platform.config"
 import { BRAND_CORAL } from "./brandColors"
@@ -10,6 +8,13 @@ export interface SessionComposerFootProps {
 	folderName?: string
 	/** Context-window usage, 0-100, when a context window size is known. */
 	contextPercent?: number
+	/** Whether this tab already has a task. With none yet, the context percentage has nothing to measure,
+	 *  so it stays hidden even if a stale value were ever passed in. Defaults to true, since most callers
+	 *  only pass a defined `contextPercent` once a task exists anyway. */
+	hasTask?: boolean
+	/** Opens the palette dialog — the same one the rail's ⌘K opens — mounted by the caller (ChatView) in
+	 *  the session view's own tree. This foot just asks for it; it owns no dialog state itself. */
+	onOpenPalette: () => void
 	/** Which surface this renders in. Defaults to the real `ADSUM_VIEW` — set only by tests and stories,
 	 *  since `window.__ADSUM_VIEW__` is read once at module load and the real host never varies it. */
 	view?: "sidebar" | "session"
@@ -17,37 +22,18 @@ export interface SessionComposerFootProps {
 
 /**
  * [P3.3 sessions first] A permanent, low-weight line under the session composer: the ◆ mark, the open
- * folder, the context-use percentage when it is known, and a "Something else · ⌘K" handle that starts a
- * fresh session. Session-tab only — the sidebar (the rail) already carries this information in its own
- * surfaces, so this would double it there.
+ * folder, the context-use percentage once a task exists, and a "Something else · ⌘K" handle. Session-tab
+ * only — the sidebar (the rail) already carries this information in its own surfaces, so this would
+ * double it there.
  */
-const SessionComposerFoot: React.FC<SessionComposerFootProps> = ({ folderName, contextPercent, view = ADSUM_VIEW }) => {
+const SessionComposerFoot: React.FC<SessionComposerFootProps> = ({
+	folderName,
+	contextPercent,
+	hasTask = true,
+	onOpenPalette,
+	view = ADSUM_VIEW,
+}) => {
 	const isSession = view === "session"
-
-	const handleSomethingElse = () => {
-		// [P3.3] Palette.tsx (what "⌘K" opens today) only renders inside RailView's own React tree — the
-		// rail/sidebar webview — and a session tab is a SEPARATE webview with no state in common with it,
-		// so the dialog itself cannot be reached from here without new host-side plumbing. The nearest
-		// already-wired equivalent reachable from a session tab is the same `openSession` gRPC call
-		// RailSessions' "New" button already makes (see openSession.ts): it asks the host to open a fresh
-		// session tab, which is the one door this surface can open without duplicating or rebuilding the
-		// rail's dialog.
-		void openSession({})
-	}
-
-	useEffect(() => {
-		if (!isSession) {
-			return
-		}
-		const onKeyDown = (e: KeyboardEvent) => {
-			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-				e.preventDefault()
-				handleSomethingElse()
-			}
-		}
-		window.addEventListener("keydown", onKeyDown)
-		return () => window.removeEventListener("keydown", onKeyDown)
-	}, [isSession])
 
 	// Never in the sidebar view — the rail has its own equivalents for every piece of this line.
 	if (!isSession) {
@@ -64,7 +50,7 @@ const SessionComposerFoot: React.FC<SessionComposerFootProps> = ({ folderName, c
 					◆
 				</span>
 				{folderName ? <span className="truncate">{folderName}</span> : null}
-				{contextPercent !== undefined ? (
+				{hasTask && contextPercent !== undefined ? (
 					<span className="shrink-0" title="Context window used">
 						{Math.round(contextPercent)}% context
 					</span>
@@ -73,7 +59,7 @@ const SessionComposerFoot: React.FC<SessionComposerFootProps> = ({ folderName, c
 			<button
 				aria-label="Something else"
 				className="bg-transparent border-0 p-0 cursor-pointer shrink-0"
-				onClick={handleSomethingElse}
+				onClick={onOpenPalette}
 				style={{ ...R.meta, color: "var(--vscode-descriptionForeground)" }}
 				type="button">
 				Something else · ⌘K
