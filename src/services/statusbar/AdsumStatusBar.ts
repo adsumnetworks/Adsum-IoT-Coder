@@ -55,10 +55,13 @@ function withV(v: string): string {
 
 /** The unit or board the label names, by its own name, when there is exactly one obvious one. */
 export function unitLabel(env?: NrfEnvironment, esp?: EspEnvironment): string | undefined {
-	const blg = (env as { blg20Units?: Array<{ name?: string; serialNumber?: string }> } | undefined)?.blg20Units ?? []
+	const blg =
+		(env as { blg20Units?: Array<{ name?: string; serialNumber?: string; family?: "blg20x" | "lbg20x" }> } | undefined)
+			?.blg20Units ?? []
 	if (blg.length) {
 		const u = blg[0]
-		return u.name ? `BLG20x ${u.name}` : "BLG20x"
+		const word = u.family === "lbg20x" ? "LBG20x" : "BLG20x"
+		return u.name ? `${word} ${u.name}` : word
 	}
 	const board = env?.boards?.[0]
 	if (board) {
@@ -108,7 +111,9 @@ export function buildStatusBarTooltip(
 		}
 		const blg = (env as { blg20Units?: Array<{ name?: string; servicePort?: string }> }).blg20Units ?? []
 		for (const u of blg) {
-			lines.push(`$(circuit-board) BLG20x ${u.name ?? ""}${u.servicePort ? ` · ${u.servicePort}` : ""}`.trim())
+			lines.push(
+				`$(circuit-board) ${(u as { family?: string }).family === "lbg20x" ? "LBG20x" : "BLG20x"} ${u.name ?? ""}${u.servicePort ? ` · ${u.servicePort}` : ""}`.trim(),
+			)
 		}
 	}
 	if (esp && esp.status !== "unknown") {

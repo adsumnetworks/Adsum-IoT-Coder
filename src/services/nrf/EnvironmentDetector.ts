@@ -562,7 +562,7 @@ async function probeBoards(devicePrefix: string): Promise<{ nrfutilPresent: bool
 		// A BLG20x's own USB port names no Nordic part ("BLG20 Gateway"), so the filter below drops it as a
 		// board. It is still the gateway: keep it for the BLG20 rule (shared/blg20.ts), which names it.
 		_blg20Usb = entries
-			.filter((e) => /blg20/i.test(e.usbProduct ?? ""))
+			.filter((e) => /(blg|lbg)20/i.test(e.usbProduct ?? ""))
 			.map((e) => ({ serialNumber: e.serialNumber, product: e.usbProduct, ports: e.serialPorts ?? [] }))
 
 		const boards: NrfBoard[] = []

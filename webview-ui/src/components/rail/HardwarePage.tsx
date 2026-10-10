@@ -1,4 +1,6 @@
+import { confirmedBlg20Units } from "@shared/blg20"
 import type React from "react"
+import { useExtensionState } from "@/context/ExtensionStateContext"
 import EnvStrip from "../chat/welcome/EnvStrip"
 import GatewayLadder from "../chat/welcome/GatewayLadder"
 import { useEntrySignals } from "../chat/welcome/useEntrySignals"
@@ -20,7 +22,10 @@ interface Props {
  */
 const HardwarePage: React.FC<Props> = ({ onBack, onPrompt, onAsk }) => {
 	const { signals, scopeName } = useEntrySignals()
+	const { nrfEnvironment } = useExtensionState()
 	const boards = [...signals.nrfBoards, ...signals.espDevices]
+	// The firmware family follows the unit on the desk (the LBG20x shares the port, the tool and this page).
+	const family = confirmedBlg20Units(nrfEnvironment?.blg20Units)[0]?.family ?? "blg20x"
 	return (
 		<div data-testid="rail-hardware-page" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 			<div style={R.blockHead}>
@@ -31,7 +36,7 @@ const HardwarePage: React.FC<Props> = ({ onBack, onPrompt, onAsk }) => {
 			</div>
 			<EnvStrip forceExpanded />
 			<FirmwareRungs
-				family="blg20x"
+				family={family}
 				onAsk={() => onAsk("blg20")}
 				onFlash={(prompt) => onPrompt(prompt, true)}
 				onRenew={() => onPrompt("Open the web Hardware home for the BLG20x licence: hardware.adsumnetworks.com", false)}

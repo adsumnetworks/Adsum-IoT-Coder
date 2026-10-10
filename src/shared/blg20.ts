@@ -65,9 +65,26 @@ export interface Blg20ProbeBoard {
 	deviceFamily?: string
 }
 
+/** The gateway families that share the service port, its tool and this rule. */
+export type GatewayFamily = "blg20x" | "lbg20x"
+
+/** The family a USB product string names: "LBG20 Gateway 1234" is an LBG20x, "BLG20 Gateway 286C" a BLG20x. */
+export function gatewayFamilyFromProduct(product: string | null | undefined): GatewayFamily | undefined {
+	if (!product) return undefined
+	if (/\bLBG20\b/i.test(product)) return "lbg20x"
+	if (/\bBLG20\b/i.test(product)) return "blg20x"
+	return undefined
+}
+
+/** The family's name as people say it ("LBG20x") and as the unnamed form reads ("LBG20"). */
+export const familyWord = (f: GatewayFamily | undefined): { x: string; bare: string } =>
+	f === "lbg20x" ? { x: "LBG20x", bare: "LBG20" } : { x: "BLG20x", bare: "BLG20" }
+
 export interface Blg20Unit {
 	/** How it was recognised: its own USB-C service port, or the two debug probes on its two chips. */
 	via: "usb" | "probes"
+	/** Which gateway this is, read from the product string; absent when nothing named it (a probe pair). */
+	family?: GatewayFamily
 	/** Named BLG20 by the device itself: its USB product string (from pyserial or from nrfutil). False for
 	 *  the test ids with no product string, and for a probe pair: "possibly a BLG20", to be confirmed. */
 	confirmed: boolean
@@ -93,7 +110,7 @@ const toNum = (v: number | string | null | undefined): number | undefined =>
 
 /** The four-digit name from a USB product string, "BLG20 Gateway 286C" -> "286C"; undefined when absent. */
 export function blg20NameFromProduct(product: string | null | undefined): string | undefined {
-	return product?.match(/\bBLG20 Gateway ([0-9A-F]{4})\b/i)?.[1]?.toUpperCase()
+	return product?.match(/\b(BLG|LBG)20 Gateway ([0-9A-F]{4})\b/i)?.[2]?.toUpperCase()
 }
 
 /** Is this port a BLG20x service-port interface? */
@@ -105,12 +122,12 @@ export function isBlg20Port(p: Blg20RawPort): boolean {
 	if (!product) {
 		return true // Windows: no product string — the ids are all the OS gives (the service tool's rule)
 	}
-	return /blg20/i.test(product) || /blg20/i.test(p.description ?? "")
+	return /(blg|lbg)20/i.test(product) || /(blg|lbg)20/i.test(p.description ?? "")
 }
 
 /** Does the port NAME itself a BLG20 (product string or description), rather than only carry the test ids? */
 export function blg20PortNamed(p: Blg20RawPort): boolean {
-	return isBlg20Port(p) && (/blg20/i.test(p.product ?? "") || /blg20/i.test(p.description ?? ""))
+	return isBlg20Port(p) && (/(blg|lbg)20/i.test(p.product ?? "") || /(blg|lbg)20/i.test(p.description ?? ""))
 }
 
 /** Which USB interface a port is: 0 = service port, 2 = LTE tunnel, undefined = the OS did not say. */
@@ -145,6 +162,12 @@ export function blg20UnitsFromPorts(ports: Blg20RawPort[]): Blg20Unit[] {
 		if (name) {
 			unit.name = name
 		}
+		const family = list
+			.map((p) => gatewayFamilyFromProduct(p.product) ?? gatewayFamilyFromProduct(p.description))
+			.find(Boolean)
+		if (family) {
+			unit.family = family
+		}
 		const unknown: Blg20RawPort[] = []
 		for (const p of list) {
 			const iface = blg20Interface(p)
@@ -173,7 +196,7 @@ export function blg20UnitsFromPorts(ports: Blg20RawPort[]): Blg20Unit[] {
 /** BLG20 units from nrfutil's device list: interface 0 is the service port, interface 2 the LTE tunnel. */
 export function blg20UnitsFromNrfutil(devices: Blg20NrfutilDevice[]): Blg20Unit[] {
 	return devices
-		.filter((d) => /blg20/i.test(d.product ?? ""))
+		.filter((d) => /(blg|lbg)20/i.test(d.product ?? ""))
 		.map((d) => {
 			const byIface = (n: number) => d.ports.find((p) => p.interfaceNumber === n)?.path
 			const ordered = [...d.ports].sort(
@@ -181,11 +204,13 @@ export function blg20UnitsFromNrfutil(devices: Blg20NrfutilDevice[]): Blg20Unit[
 			)
 			const known = d.ports.some((p) => p.interfaceNumber !== undefined)
 			const name = blg20NameFromProduct(d.product)
+			const family = gatewayFamilyFromProduct(d.product)
 			return {
 				via: "usb" as const,
-				confirmed: true, // nrfutil read the USB product string itself, and it says BLG20
+				confirmed: true, // nrfutil read the USB product string itself, and it names the family
 				serialNumber: d.serialNumber,
 				...(name ? { name } : {}),
+				...(family ? { family } : {}),
 				servicePort: known ? byIface(0) : ordered[0]?.path,
 				ltePort: known ? byIface(2) : ordered[1]?.path,
 			}
@@ -276,7 +301,8 @@ export function blg20Label(u: Blg20Unit): string {
 	if (!u.confirmed) {
 		return `Possibly a BLG20${blg20Where(u)}, not confirmed`
 	}
-	return u.name ? `BLG20x ${u.name}` : `BLG20 ${u.serialNumber ?? "gateway"}`
+	const w = familyWord(u.family)
+	return u.name ? `${w.x} ${u.name}` : `${w.bare} ${u.serialNumber ?? "gateway"}`
 }
 
 /** Everything behind the name: "BLG20x 286C, unit BBA605799DE4043E (USB /dev/ttyACM3 + LTE tunnel /dev/ttyACM4)". */
@@ -284,7 +310,7 @@ export function blg20LongLabel(u: Blg20Unit): string {
 	if (!u.confirmed) {
 		return blg20Label(u)
 	}
-	const id = u.name && u.serialNumber ? `BLG20x ${u.name}, unit ${u.serialNumber}` : blg20Label(u)
+	const id = u.name && u.serialNumber ? `${familyWord(u.family).x} ${u.name}, unit ${u.serialNumber}` : blg20Label(u)
 	return `${id}${blg20Where(u)}`
 }
 

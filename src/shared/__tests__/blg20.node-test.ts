@@ -13,6 +13,7 @@ import {
 	blg20UnitsFromPorts,
 	confirmedBlg20Units,
 	detectBlg20Units,
+	gatewayFamilyFromProduct,
 	isBlg20Port,
 } from "../blg20"
 
@@ -71,6 +72,7 @@ describe("BLG20x over its USB service port", () => {
 			{
 				via: "usb",
 				confirmed: true,
+				family: "blg20x",
 				serialNumber: "9802AF5C69DF1E66",
 				servicePort: "/dev/ttyACM0",
 				ltePort: "/dev/ttyACM1",
@@ -204,6 +206,7 @@ describe("both at once — the bench", () => {
 		assert.deepEqual(units[0], {
 			via: "usb",
 			confirmed: true,
+			family: "blg20x",
 			serialNumber: "9802AF5C69DF1E66",
 			servicePort: "/dev/ttyACM0",
 			ltePort: "/dev/ttyACM1",
@@ -236,6 +239,7 @@ describe("BLG20x from nrfutil's device list (no pyserial needed)", () => {
 			{
 				via: "usb",
 				confirmed: true,
+				family: "blg20x",
 				serialNumber: "9802AF5C69DF1E66",
 				servicePort: "/dev/ttyACM0",
 				ltePort: "/dev/ttyACM1",
@@ -257,6 +261,7 @@ describe("BLG20x from nrfutil's device list (no pyserial needed)", () => {
 		assert.deepEqual(blg20UnitsFromNrfutil(d)[0], {
 			via: "usb",
 			confirmed: true,
+			family: "blg20x",
 			serialNumber: "AB",
 			servicePort: "COM8",
 			ltePort: "COM9",
@@ -279,5 +284,26 @@ describe("BLG20x from nrfutil's device list (no pyserial needed)", () => {
 
 	test("pyserial and nrfutil both see it: still one unit", () => {
 		assert.equal(detectBlg20Units(LINUX, [], NRFUTIL).length, 1)
+	})
+})
+
+describe("LBG20x shares the port, the tool and the rule", () => {
+	test("an LBG20 product string names the family and the unit; the label says LBG20x", () => {
+		const units = blg20UnitsFromNrfutil([
+			{
+				serialNumber: "D3588E7AAD50",
+				product: "LBG20 Gateway AD50",
+				ports: [
+					{ path: "/dev/ttyACM5", interfaceNumber: 0 },
+					{ path: "/dev/ttyACM6", interfaceNumber: 2 },
+				],
+			},
+		])
+		assert.equal(units.length, 1)
+		assert.equal(units[0].family, "lbg20x")
+		assert.equal(units[0].name, "AD50")
+		assert.equal(blg20Label(units[0]), "LBG20x AD50")
+		assert.equal(gatewayFamilyFromProduct("BLG20 Gateway 286C"), "blg20x")
+		assert.equal(gatewayFamilyFromProduct("J-Link"), undefined)
 	})
 })
