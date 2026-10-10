@@ -90,7 +90,7 @@ const RailHardware: React.FC<Props> = ({ onOpen }) => {
 			<div style={R.blockHead}>
 				<button aria-expanded={shown} onClick={toggleShown} style={R.sectionToggle} type="button">
 					<Chevron open={shown} />
-					<span style={R.label}>Hardware</span>
+					<span style={R.label}>Environment</span>
 				</button>
 				<span style={{ display: "flex", gap: 8 }}>
 					<button aria-expanded={open} onClick={() => setOpen((v) => !v)} style={R.link} type="button">

@@ -5,6 +5,7 @@ import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient } from "@/services/grpc-client"
+import WhatsNewCard from "../chat/WhatsNewCard"
 import { paletteOpen as countPaletteOpen, entryRunStart, gateShown, suggestionClick } from "../chat/welcome/entryTelemetry"
 import GatePanel from "../chat/welcome/GatePanel"
 import RequestAccessForm from "../chat/welcome/RequestAccessForm"
@@ -24,7 +25,6 @@ import { R } from "./railStyles"
 import { type Run, useRankedRuns } from "./useRankedRuns"
 
 type Page = "home" | "settings" | "sessions" | "hardware"
-const MOVED_KEY = "adsum.rail.cardsMovedSeen"
 const MIGRATED_KEY = "adsum.rail.migrated"
 
 /** One notice slot, one look: coral for the product's own news, the warning tone for a state to act on. */
@@ -58,7 +58,7 @@ export function migrateCockpitState(storage: Pick<Storage, "getItem" | "setItem"
 }
 
 /**
- * [0.5 sessions first] The sidebar is the rail alone: You, the notice slot, Suggested, Hardware, Sessions,
+ * [0.5 sessions first] The sidebar is the rail alone: You, the notice slot, Environment, Suggested, Sessions,
  * the palette row. Settings, All sessions and the Hardware page are pages inside it. A session is never
  * rendered here: every card click asks the host for an editor tab, with its prompt shown there.
  */
@@ -86,13 +86,6 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 	const [paletteOpen, setPaletteOpen] = useState(initialPalette)
 	const [gateOpen, setGateOpen] = useState(false)
 	const [requesting, setRequesting] = useState<string | null>(null)
-	const [movedSeen, setMovedSeen] = useState(() => {
-		try {
-			return localStorage.getItem(MOVED_KEY) === "1"
-		} catch {
-			return true
-		}
-	})
 	const { all, suggested } = useRankedRuns()
 	const rootRef = useRef<HTMLDivElement>(null)
 
@@ -160,15 +153,6 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 		}
 		void openSession({ taskId: item.id })
 	}, [])
-
-	const dismissMoved = () => {
-		setMovedSeen(true)
-		try {
-			localStorage.setItem(MOVED_KEY, "1")
-		} catch {
-			// private window
-		}
-	}
 
 	if (page === "settings") {
 		return (
@@ -250,41 +234,22 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 							</span>
 						</div>
 					) : null}
-					{!hostOffline && quota?.kind !== "spent" && !movedSeen && (taskHistory?.length ?? 0) > 0 && (
+					{!hostOffline && quota?.kind !== "spent" && (taskHistory?.length ?? 0) > 0 && (
 						<div
 							aria-live="polite"
 							role="status"
 							style={{
-								...R.meta,
 								border: `1px solid color-mix(in srgb, ${R.coral} 45%, transparent)`,
 								background: `color-mix(in srgb, ${R.coral} 5%, transparent)`,
 								borderRadius: 6,
-								padding: "6px 8px",
-								display: "flex",
-								justifyContent: "space-between",
-								gap: 8,
+								padding: "2px 8px",
 							}}>
-							<span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-								<b style={{ color: "var(--vscode-foreground)" }}>Cards moved</b>
-								<Info text="Everything the cards did is in What can you ask (⌘K); the relevant ones come first. A session now opens as a tab beside your code." />
-							</span>
-							<button
-								aria-label="Dismiss"
-								onClick={dismissMoved}
-								style={{
-									background: "none",
-									border: 0,
-									color: "var(--vscode-descriptionForeground)",
-									cursor: "pointer",
-									fontSize: 13,
-									lineHeight: 1,
-									padding: 0,
-								}}
-								type="button">
-								×
-							</button>
+							<WhatsNewCard />
 						</div>
 					)}
+					<section aria-label="Environment">
+						<RailHardware onOpen={() => setPage("hardware")} />
+					</section>
 					<section aria-label="Suggested">
 						<RailSuggested
 							onLocked={lockedRow}
@@ -297,9 +262,6 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 							}}
 							rows={suggested}
 						/>
-					</section>
-					<section aria-label="Hardware">
-						<RailHardware onOpen={() => setPage("hardware")} />
 					</section>
 					<section aria-label="Sessions">
 						<RailSessions
