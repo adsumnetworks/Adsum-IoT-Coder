@@ -4,6 +4,7 @@ import { RenameTaskRequest } from "@shared/proto/cline/task"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import { R } from "@/components/rail/railStyles"
+import Truncate from "@/components/common/Truncate"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { ADSUM_VIEW } from "@/config/platform.config"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -116,9 +117,9 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
 							setDraft(name)
 							setEditing(true)
 						}}
-						style={R.title}
+						style={{ display: "block", width: "100%" }}
 						type="button">
-						{name}
+						<Truncate style={R.title} text={name} />
 					</button>
 				)}
 			</div>
