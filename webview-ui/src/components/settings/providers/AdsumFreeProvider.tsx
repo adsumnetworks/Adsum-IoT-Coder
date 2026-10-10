@@ -1,6 +1,7 @@
 import { Mode } from "@shared/storage/types"
 import { BRAND_CORAL, brandAlpha } from "@/components/chat/brandColors"
 import InviteCodeField from "@/components/chat/InviteCodeField"
+import { Info } from "@/components/common/Info"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 
 interface AdsumFreeProviderProps {
@@ -9,10 +10,9 @@ interface AdsumFreeProviderProps {
 }
 
 /**
- * Settings panel for the Adsum Free Tier provider.
- * Intentionally minimal — no API key, no model selector. The model and
- * quota are controlled server-side; the user just needs to know they're
- * on the free tier and how to upgrade.
+ * [0.5 simple] Settings panel for the Adsum free tier. One line, not two paragraphs — what it means and
+ * when to add a key is an Info away, not standing text. Intentionally minimal otherwise: no API key, no
+ * model selector, since the model and quota are controlled server-side.
  */
 export const AdsumFreeProvider = ({ currentMode: _currentMode, isPopup: _isPopup }: AdsumFreeProviderProps) => {
 	const { freeTierRemainingTokens } = useExtensionState()
@@ -25,8 +25,9 @@ export const AdsumFreeProvider = ({ currentMode: _currentMode, isPopup: _isPopup
 				border: `1px solid ${brandAlpha(BRAND_CORAL, 0.4)}`,
 			}}>
 			<div className="flex items-center justify-between mb-1">
-				<p className="m-0 font-semibold" style={{ color: "var(--vscode-foreground)" }}>
-					You're on the Adsum free tier
+				<p className="m-0 font-semibold flex items-center gap-1.5" style={{ color: "var(--vscode-foreground)" }}>
+					Adsum free tier · no key needed
+					<Info text="Adsum chooses the model and how hard it thinks here, at no cost to you. Add your own API key, from any provider, once your free usage runs out or to set those yourself." />
 				</p>
 				{freeTierRemainingTokens !== undefined && (
 					<span
@@ -39,14 +40,6 @@ export const AdsumFreeProvider = ({ currentMode: _currentMode, isPopup: _isPopup
 					</span>
 				)}
 			</div>
-			<p className="m-0 text-sm" style={{ color: "var(--vscode-descriptionForeground)" }}>
-				No API key required — inference is provided by Adsum Networks. When your free usage runs out, you can add your own
-				API key (any provider) for unlimited access.
-			</p>
-			<p className="m-0 mt-2 text-sm" style={{ color: "var(--vscode-descriptionForeground)" }}>
-				Adsum also chooses the model and how hard it thinks on this tier, so the thinking controls shown for other
-				providers do not apply here. Add your own key to set them yourself.
-			</p>
 			<InviteCodeField />
 		</div>
 	)

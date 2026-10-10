@@ -6,9 +6,10 @@ import SessionHeader from "./SessionHeader"
 const task: ClineMessage = { ts: 1, type: "say", say: "task", text: "Bring BLE NUS notifications up on the gateway" }
 
 /**
- * [P4.1 sessions first] The session tab's own header line: title (inline-editable), the journey step
- * banner when a journey k-bit's prompt is driving the turn, the model chip, context-use, and a cost that
- * is Adsum's own free-tier spend — never a BYOK developer's.
+ * [0.5 simple] The session tab's own header line: title (inline-editable), then one meta line — the
+ * journey step when one is driving the turn, the tier (or the model, BYOK only), context-use, and
+ * tokens or cost. The free tier shows tokens, never a dollar figure, since the developer paid nothing;
+ * BYOK shows a cost only once its own provider actually reports one.
  */
 const meta: Meta<typeof SessionHeader> = {
 	title: "Session/SessionHeader",
@@ -17,7 +18,7 @@ const meta: Meta<typeof SessionHeader> = {
 	parameters: {
 		docs: {
 			description: {
-				component: "Title, the journey banner, the model chip, context-use, and cost (free tier only).",
+				component: "Title, then one meta line: journey step, tier/model, context-use, tokens or cost.",
 			},
 		},
 	},
@@ -48,6 +49,7 @@ export const MidJourneyStep3of7: Story = {
 			},
 		],
 		task,
+		// Free tier: tokens, never a dollar figure — the developer paid nothing for these.
 		totalCost: 0.0421,
 		view: "session",
 	},
@@ -64,8 +66,26 @@ export const Byok: Story = {
 		lastApiReqTotalTokens: 120_000,
 		messages: [task],
 		task,
-		// A non-zero total on a BYOK key never renders — Adsum did not run these tokens.
+		// The developer's own key, their own provider's bill — a real cost, so it shows.
 		totalCost: 2.37,
+		view: "session",
+	},
+}
+
+export const ByokNoCostReported: Story = {
+	decorators: [
+		createStorybookDecorator({
+			apiConfiguration: { actModeApiProvider: "anthropic", actModeApiModelId: "claude-sonnet-5-20261001" },
+			mode: "act",
+		} as any),
+	],
+	args: {
+		lastApiReqTotalTokens: 120_000,
+		messages: [task],
+		task,
+		// This provider has not reported a cost yet — neither tokens (not Adsum's spend to show) nor a
+		// stale "$0" render.
+		totalCost: 0,
 		view: "session",
 	},
 }

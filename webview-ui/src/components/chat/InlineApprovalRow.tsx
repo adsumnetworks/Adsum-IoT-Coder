@@ -3,11 +3,11 @@ import { AskResponseRequest } from "@shared/proto/cline/task"
 import type React from "react"
 import { useState } from "react"
 import { updateAutoApproveSettings } from "@/components/chat/auto-approve-menu/AutoApproveSettingsAPI"
+import { Info } from "@/components/common/Info"
 import { R } from "@/components/rail/railStyles"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { TaskServiceClient } from "@/services/grpc-client"
 import { APPROVAL_ASK_TYPES, autoApproveActionFor } from "@/utils/autoApproveAction"
-import { BRAND_CYAN_TEXT } from "./brandColors"
 
 export interface InlineApprovalRowProps {
 	message: ClineMessage
@@ -18,10 +18,11 @@ export interface InlineApprovalRowProps {
 }
 
 /**
- * [P4.3 sessions first] Approvals as the exception path: an inline row with three controls — Allow,
- * Allow for this session, Deny — appearing only on an ask the mode did not already answer itself. Allow
- * for this session sets the matching entry in the existing auto-approve settings (the same RPC the
- * auto-approve menu uses) before approving, so the next matching ask in the task does not come back.
+ * [0.5 simple] Approvals as the exception path: Allow (the one action, a real primary pill), Always
+ * allow (a ghost pill, honestly named — the setting it touches is global, not this session) and Deny
+ * (ghost). "Always allow" sets the matching entry in the existing auto-approve settings (the same RPC
+ * the auto-approve menu uses) before approving, so the next matching ask anywhere does not come back;
+ * an Info beside it says so, since the label alone cannot carry "every session, change it in Settings".
  */
 const InlineApprovalRow: React.FC<InlineApprovalRowProps> = ({ message, isLast }) => {
 	const { autoApprovalSettings } = useExtensionState()
@@ -41,7 +42,7 @@ const InlineApprovalRow: React.FC<InlineApprovalRowProps> = ({ message, isLast }
 
 	const allow = () => respond("yesButtonClicked")
 
-	const allowForSession = () => {
+	const alwaysAllow = () => {
 		const actionKey = autoApproveActionFor(message)
 		if (actionKey) {
 			updateAutoApproveSettings({
@@ -56,28 +57,19 @@ const InlineApprovalRow: React.FC<InlineApprovalRowProps> = ({ message, isLast }
 
 	return (
 		<div className="flex items-center gap-2 px-4" data-testid="inline-approval-row" style={{ padding: "4px 14px" }}>
-			<button
-				data-testid="inline-approval-allow"
-				disabled={busy}
-				onClick={allow}
-				style={{ ...R.meta, color: BRAND_CYAN_TEXT, fontWeight: 600 }}
-				type="button">
+			<button data-testid="inline-approval-allow" disabled={busy} onClick={allow} style={R.pill("pri")} type="button">
 				Allow
 			</button>
 			<button
-				data-testid="inline-approval-allow-session"
+				data-testid="inline-approval-always-allow"
 				disabled={busy}
-				onClick={allowForSession}
-				style={{ ...R.meta, color: "var(--vscode-foreground)" }}
+				onClick={alwaysAllow}
+				style={R.pill("ghost")}
 				type="button">
-				Allow for this session
+				Always allow
 			</button>
-			<button
-				data-testid="inline-approval-deny"
-				disabled={busy}
-				onClick={deny}
-				style={{ ...R.meta, color: "var(--vscode-descriptionForeground)" }}
-				type="button">
+			<Info text="Allows this kind of action without asking, in every session. Change it in Settings." />
+			<button data-testid="inline-approval-deny" disabled={busy} onClick={deny} style={R.pill("ghost")} type="button">
 				Deny
 			</button>
 		</div>

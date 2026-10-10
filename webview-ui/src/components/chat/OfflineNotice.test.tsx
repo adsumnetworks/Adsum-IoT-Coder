@@ -13,10 +13,14 @@ describe("OfflineNotice", () => {
 		expect(container).toBeEmptyDOMElement()
 	})
 
-	it("says what still works when the host reports the API unreachable", () => {
+	it("is a single line — 'Offline', not a standing sentence — when the host reports the API unreachable", () => {
 		render(<OfflineNotice hostOffline={true} />)
-		expect(screen.getByTestId("offline-notice")).toHaveTextContent(
-			"Offline. Local tools, the knowledge already loaded and your files still work; the model and the registry do not.",
-		)
+		expect(screen.getByTestId("offline-notice")).toHaveTextContent("Offline")
+		expect(screen.getByTestId("offline-notice")).not.toHaveTextContent("Local tools")
+	})
+
+	it("puts the detail of what still works behind the Info, not on the line itself", () => {
+		render(<OfflineNotice hostOffline={true} />)
+		expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument()
 	})
 })

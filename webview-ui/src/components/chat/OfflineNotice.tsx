@@ -1,4 +1,5 @@
 import type React from "react"
+import { Info } from "@/components/common/Info"
 import { BRAND_WARNING } from "./brandColors"
 
 export interface OfflineNoticeProps {
@@ -6,9 +7,9 @@ export interface OfflineNoticeProps {
 }
 
 /**
- * [P4.9 sessions first] A one-line notice at the top of the session when the host reports the model's
- * API unreachable — what still works matters more than the failure itself, so the line says that rather
- * than just naming the outage.
+ * [0.5 simple] A one-line notice at the top of the session when the host reports the model's API
+ * unreachable: just "Offline", with an Info for what still works — that detail matters more than the
+ * failure, but it is a sentence, not a standing line every developer re-reads every time they see it.
  */
 const OfflineNotice: React.FC<OfflineNoticeProps> = ({ hostOffline }) => {
 	if (!hostOffline) {
@@ -28,9 +29,8 @@ const OfflineNotice: React.FC<OfflineNoticeProps> = ({ hostOffline }) => {
 			<span aria-hidden="true" style={{ color: BRAND_WARNING }}>
 				●
 			</span>
-			<span>
-				Offline. Local tools, the knowledge already loaded and your files still work; the model and the registry do not.
-			</span>
+			<span>Offline</span>
+			<Info text="Local tools, the knowledge already loaded and your files still work; the model and the registry do not." />
 		</div>
 	)
 }

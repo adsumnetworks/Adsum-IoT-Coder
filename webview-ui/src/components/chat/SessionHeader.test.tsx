@@ -42,6 +42,14 @@ describe("SessionHeader", () => {
 		expect(screen.getByTestId("session-header-title")).toHaveTextContent("Debug the NUS characteristic")
 	})
 
+	it("cuts a title longer than the tab allows with CSS, not JS — the full name is still the text content", () => {
+		const longTask: ClineMessage = { ts: 1, type: "say", say: "task", text: "x".repeat(300) }
+		render(<SessionHeader messages={[longTask]} task={longTask} totalCost={0} view="session" />)
+		const title = screen.getByTestId("session-header-title")
+		expect(title.className).toContain("truncate")
+		expect(title).toHaveTextContent("x".repeat(300))
+	})
+
 	it("renames through the existing renameTask RPC", () => {
 		render(
 			<SessionHeader
@@ -66,27 +74,41 @@ describe("SessionHeader", () => {
 		expect(renameTaskMock).toHaveBeenCalledWith(expect.objectContaining({ taskId: "t1", title: "NUS central" }))
 	})
 
-	it("shows the journey step banner when the latest assistant text carries a Step heading", () => {
+	it("shows the journey step banner, on the same meta line as everything else", () => {
 		const step: ClineMessage = { ts: 2, type: "say", say: "text", text: "### Step 3/7\n\nWorking on it." }
 		render(<SessionHeader messages={[task, step]} task={task} totalCost={0} view="session" />)
 		expect(screen.getByTestId("journey-step-banner")).toHaveTextContent("Step 3 of 7")
+		expect(screen.getByTestId("journey-step-banner").closest('[data-testid="session-meta"]')).not.toBeNull()
 	})
 
-	it("shows 'Adsum free' and a cost on the free tier", () => {
-		render(<SessionHeader lastApiReqTotalTokens={25_000} messages={[task]} task={task} totalCost={0.0123} view="session" />)
+	it("shows 'Adsum free' and tokens on the free tier — never a dollar figure, since the developer paid nothing", () => {
+		render(<SessionHeader lastApiReqTotalTokens={48_000} messages={[task]} task={task} totalCost={0.0421} view="session" />)
 		expect(screen.getByTestId("model-chip")).toHaveTextContent("Adsum free")
-		expect(screen.getByTestId("context-use")).toHaveTextContent("25% context")
-		expect(screen.getByTestId("session-cost")).toHaveTextContent("$0.0123")
+		expect(screen.getByTestId("session-tokens")).toHaveTextContent("48k tokens")
+		expect(screen.queryByTestId("session-cost")).not.toBeInTheDocument()
 	})
 
-	it("never shows a cost on BYOK, even with a non-zero total", () => {
+	it("shows the model name, not the provider, and a cost on BYOK once the provider reports one", () => {
 		normalizeMock.mockReturnValue({
 			selectedProvider: "anthropic",
 			selectedModelId: "claude-sonnet-5",
 			selectedModelInfo: { contextWindow: 200_000 },
 		})
 		render(<SessionHeader messages={[task]} task={task} totalCost={1.5} view="session" />)
-		expect(screen.getByTestId("model-chip")).toHaveTextContent("anthropic · claude-sonnet-5")
+		expect(screen.getByTestId("model-chip")).toHaveTextContent("claude-sonnet-5")
+		expect(screen.getByTestId("model-chip")).not.toHaveTextContent("anthropic")
+		expect(screen.getByTestId("session-cost")).toHaveTextContent("$1.5000")
+		expect(screen.queryByTestId("session-tokens")).not.toBeInTheDocument()
+	})
+
+	it("shows neither tokens nor cost on BYOK when the provider has not reported a cost yet", () => {
+		normalizeMock.mockReturnValue({
+			selectedProvider: "anthropic",
+			selectedModelId: "claude-sonnet-5",
+			selectedModelInfo: { contextWindow: 200_000 },
+		})
+		render(<SessionHeader lastApiReqTotalTokens={48_000} messages={[task]} task={task} totalCost={0} view="session" />)
 		expect(screen.queryByTestId("session-cost")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("session-tokens")).not.toBeInTheDocument()
 	})
 })
