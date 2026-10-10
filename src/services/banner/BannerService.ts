@@ -1,6 +1,10 @@
 import type { Banner, BannerRules, BannersResponse } from "@shared/ClineBanner"
 import { BannerActionType, type BannerCardData } from "@shared/cline/banner"
 import axios from "axios"
+
+/** No call to another company's banner service; our notices are ours. */
+const UPSTREAM_BANNERS_OFF = true
+
 import { ClineEnv } from "@/config"
 import type { Controller } from "@/core/controller"
 import { HostProvider } from "@/hosts/host-provider"
@@ -106,6 +110,11 @@ export class BannerService {
 	}
 
 	private async fetchActiveBanners(): Promise<Banner[]> {
+		// [0.5] Banners came from the upstream cloud; this product carries its own notices in the rail and the
+		// tab, so nothing is fetched. The dismissal ledger below stays, it is local.
+		if (UPSTREAM_BANNERS_OFF) {
+			return []
+		}
 		try {
 			const now = Date.now()
 			const ideType = await this.getIdeType()

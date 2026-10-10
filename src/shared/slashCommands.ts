@@ -20,25 +20,13 @@ export const BASE_SLASH_COMMANDS: SlashCommand[] = [
 	},
 	{
 		name: "newrule",
-		description: "Create a new Cline rule based on your conversation",
-		section: "default",
-		cliCompatible: true,
-	},
-	{
-		name: "reportbug",
-		description: "Create a Github issue with Cline",
+		description: "Write a project rule from this conversation",
 		section: "default",
 		cliCompatible: true,
 	},
 	{
 		name: "deep-planning",
 		description: "Create a comprehensive implementation plan before coding",
-		section: "default",
-		cliCompatible: true,
-	},
-	{
-		name: "subagent",
-		description: "Invoke a Cline CLI subagent for focused research tasks",
 		section: "default",
 		cliCompatible: true,
 	},

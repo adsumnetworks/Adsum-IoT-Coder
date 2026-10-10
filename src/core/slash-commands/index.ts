@@ -9,8 +9,6 @@ import {
 	explainChangesToolResponse,
 	newRuleToolResponse,
 	newTaskToolResponse,
-	reportBugToolResponse,
-	subagentToolResponse,
 } from "../prompts/commands"
 import { StateManager } from "../storage/StateManager"
 import { applyMcpPromptCommand, McpPromptSource } from "./mcpPromptCommand"
@@ -53,16 +51,7 @@ export async function parseSlashCommands(
 		text = await applyMcpPromptCommand(text, mcpHub)
 	}
 
-	const SUPPORTED_DEFAULT_COMMANDS = [
-		"newtask",
-		"smol",
-		"compact",
-		"newrule",
-		"reportbug",
-		"deep-planning",
-		"subagent",
-		"explain-changes",
-	]
+	const SUPPORTED_DEFAULT_COMMANDS = ["newtask", "smol", "compact", "newrule", "deep-planning", "explain-changes"]
 
 	// Determine if the current provider/model/setting actually uses native tool calling
 	const willUseNativeTools = isNativeToolCallingConfig(providerInfo!, enableNativeToolCalls || false)
@@ -72,9 +61,7 @@ export async function parseSlashCommands(
 		smol: condenseToolResponse(focusChainSettings),
 		compact: condenseToolResponse(focusChainSettings),
 		newrule: newRuleToolResponse(),
-		reportbug: reportBugToolResponse(),
 		"deep-planning": deepPlanningToolResponse(focusChainSettings, providerInfo, willUseNativeTools),
-		subagent: subagentToolResponse(),
 		"explain-changes": explainChangesToolResponse(),
 	}
 

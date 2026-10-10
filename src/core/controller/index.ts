@@ -82,6 +82,9 @@ https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default
 https://github.com/KumarVariable/vscode-extension-sidebar-html/blob/master/src/customSidebarViewProvider.ts
 */
 
+/** The upstream marketplace stays off: it is another company's catalogue, reached over their API. */
+const MCP_MARKETPLACE_OFF = true
+
 export class Controller {
 	task?: Task
 
@@ -671,6 +674,11 @@ export class Controller {
 
 	// MCP Marketplace
 	private async fetchMcpMarketplaceFromApi(): Promise<McpMarketplaceCatalog> {
+		// [0.5] The upstream MCP marketplace is the fork's own catalogue service; this product's agent never
+		// depends on live MCP, and nothing of ours is listed there. No call leaves the machine for it.
+		if (MCP_MARKETPLACE_OFF) {
+			return { items: [] }
+		}
 		const response = await axios.get(`${ClineEnv.config().mcpBaseUrl}/marketplace`, {
 			headers: {
 				"Content-Type": "application/json",
