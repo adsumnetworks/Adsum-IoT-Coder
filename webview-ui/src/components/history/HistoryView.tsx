@@ -1,4 +1,4 @@
-import { BooleanRequest, EmptyRequest, StringArrayRequest } from "@shared/proto/cline/common"
+import { EmptyRequest, StringArrayRequest } from "@shared/proto/cline/common"
 import { GetTaskHistoryRequest, TaskFavoriteRequest } from "@shared/proto/cline/task"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import Fuse, { FuseResult } from "fuse.js"
@@ -41,7 +41,10 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 	const [searchQuery, setSearchQuery] = useState("")
 	const [sortOption, setSortOption] = useState<SortOption>("newest")
 	const [lastNonRelevantSort, setLastNonRelevantSort] = useState<SortOption | null>("newest")
-	const [deleteAllDisabled, setDeleteAllDisabled] = useState(false)
+	// [0.5 simple] The bulk controls (Select all/none, the red Delete) exist only inside select mode — a
+	// developer who just wants to re-open or search their history never has to see a red button at all.
+	const [selectMode, setSelectMode] = useState(false)
+	const [confirmingDelete, setConfirmingDelete] = useState(false)
 	const [selectedItems, setSelectedItems] = useState<string[]>([])
 	const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
 	const [showCurrentWorkspaceOnly, setShowCurrentWorkspaceOnly] = useState(false)
@@ -121,11 +124,11 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 	// Use the onRelinquishControl hook instead of message event
 	useEffect(() => {
 		return onRelinquishControl(() => {
-			setDeleteAllDisabled(false)
+			setConfirmingDelete(false)
 		})
 	}, [onRelinquishControl])
 
-	const { totalTasksSize, setTotalTasksSize } = extensionStateContext
+	const { setTotalTasksSize } = extensionStateContext
 
 	const fetchTotalTasksSize = useCallback(async () => {
 		try {
@@ -301,7 +304,20 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 					}}>
 					History
 				</h3>
-				<Button onClick={() => onDone()}>Done</Button>
+				<div className="flex items-center gap-3">
+					<Button
+						aria-label={selectMode ? "Cancel selecting" : "Select sessions"}
+						className="h-auto p-0"
+						onClick={() => {
+							setSelectMode((v) => !v)
+							setSelectedItems([])
+							setConfirmingDelete(false)
+						}}
+						variant="link">
+						{selectMode ? "Cancel" : "Select"}
+					</Button>
+					<Button onClick={() => onDone()}>Done</Button>
+				</div>
 			</div>
 
 			{/* FILTERS */}
@@ -427,44 +443,60 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 				/>
 			</div>
 
-			{/* FOOTER */}
-			<div className="p-2.5 border-t border-t-border-panel">
-				<div className="flex gap-2.5 mb-2.5">
-					<Button className="flex-1" onClick={() => handleBatchHistorySelect(true)} variant="secondary">
-						Select All
-					</Button>
-					<Button className="flex-1" onClick={() => handleBatchHistorySelect(false)} variant="secondary">
-						Select None
-					</Button>
+			{/* FOOTER — the bulk controls exist only in select mode; outside it, there is nothing red to see. */}
+			{selectMode && (
+				<div className="p-2.5 border-t border-t-border-panel flex flex-col gap-2" data-testid="history-select-bar">
+					<div className="flex items-center justify-between">
+						<span className="text-xs text-description">
+							{selectedItems.length} selected
+							{selectedItemsSize > 0 ? ` (${formatSize(selectedItemsSize)})` : ""}
+						</span>
+						<div className="flex gap-3">
+							<Button onClick={() => handleBatchHistorySelect(true)} size="sm" variant="link">
+								Select all
+							</Button>
+							<Button onClick={() => handleBatchHistorySelect(false)} size="sm" variant="link">
+								Select none
+							</Button>
+						</div>
+					</div>
+					{confirmingDelete ? (
+						// VS Code webviews block window.confirm — this inline two-step is the only honest way
+						// to ask "are you sure" before a delete that cannot be undone.
+						<div className="flex items-center justify-between gap-2" data-testid="history-delete-confirm">
+							<span className="text-xs">Delete {selectedItems.length}?</span>
+							<div className="flex gap-2">
+								<Button
+									aria-label="Confirm delete"
+									onClick={() => {
+										handleDeleteSelectedHistoryItems(selectedItems)
+										setConfirmingDelete(false)
+									}}
+									size="sm"
+									variant="danger">
+									Yes
+								</Button>
+								<Button
+									aria-label="Cancel delete"
+									onClick={() => setConfirmingDelete(false)}
+									size="sm"
+									variant="secondary">
+									No
+								</Button>
+							</div>
+						</div>
+					) : (
+						<Button
+							aria-label="Delete selected sessions"
+							className="w-full"
+							disabled={selectedItems.length === 0}
+							onClick={() => setConfirmingDelete(true)}
+							variant="danger">
+							Delete {selectedItems.length}
+						</Button>
+					)}
 				</div>
-				{selectedItems.length > 0 ? (
-					<Button
-						aria-label="Delete selected items"
-						className="w-full"
-						onClick={() => {
-							handleDeleteSelectedHistoryItems(selectedItems)
-						}}
-						variant="danger">
-						Delete {selectedItems.length > 1 ? selectedItems.length : ""} Selected
-						{selectedItemsSize > 0 ? ` (${formatSize(selectedItemsSize)})` : ""}
-					</Button>
-				) : (
-					<Button
-						aria-label="Delete all history"
-						className="w-full"
-						disabled={deleteAllDisabled || taskHistory.length === 0}
-						onClick={() => {
-							setDeleteAllDisabled(true)
-							TaskServiceClient.deleteAllTaskHistory(BooleanRequest.create({}))
-								.then(() => fetchTotalTasksSize())
-								.catch((error) => console.error("Error deleting task history:", error))
-								.finally(() => setDeleteAllDisabled(false))
-						}}
-						variant="danger">
-						Delete All History{totalTasksSize !== null ? ` (${formatSize(totalTasksSize)})` : ""}
-					</Button>
-				)}
-			</div>
+			)}
 		</div>
 	)
 }
