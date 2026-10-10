@@ -169,3 +169,56 @@ const Page = ({ width }: { width: number }) => {
 
 export const HardwarePage420: StoryObj<typeof Page> = { render: () => <Page width={420} /> }
 export const HardwarePage260: StoryObj<typeof Page> = { render: () => <Page width={260} /> }
+
+/**
+ * [10 Oct 2026] The LBG20x over Bluetooth (its USB-C carries power only): the demo pair on disk flashes over
+ * Bluetooth, and the unit's own actions sit beside Set it up. The unit as the service tool's scan reports it.
+ */
+const LBG_FOLDER = "/Users/dev/gateway-fw/firmware/lbg20x/1.0.0"
+const lbg20Demo: Entry = {
+	...blg20Demo,
+	id: "adsum/firmware/lbg20x-demo-hex",
+	family: "lbg20x",
+	group: "lbg20-demo-hex",
+	title: "LBG20x demo pair",
+}
+const lbgBase = {
+	...base,
+	nrfEnvironment: {
+		...base.nrfEnvironment,
+		blg20Units: [
+			{
+				via: "ble",
+				family: "lbg20x",
+				confirmed: true,
+				name: "AD50",
+				bleAddress: "D3:58:8E:7A:AD:50",
+				bleId: "D3588E7AAD50",
+				bonded: true,
+				windowOpen: true,
+				rssi: -64,
+			},
+		],
+	},
+	adsumAccount: { ...base.adsumAccount, groups: ["lbg20-demo-hex"] },
+}
+const LbgPage = ({ width }: { width: number }) => {
+	const real = useExtensionState()
+	return (
+		<ExtensionStateContext.Provider value={{ ...real, ...lbgBase } as never}>
+			<FirmwareCallContext.Provider
+				value={fake([
+					row(lbg20Demo, "flash", {
+						folder: LBG_FOLDER,
+						intact: true,
+						receipt: { ...receipt("active"), family: "lbg20x" },
+					}),
+				])}>
+				<div style={{ width, minHeight: 820, background: "var(--vscode-sideBar-background)" }}>
+					<RailView initialPage="hardware" />
+				</div>
+			</FirmwareCallContext.Provider>
+		</ExtensionStateContext.Provider>
+	)
+}
+export const HardwarePageLbg20xOverBluetooth: StoryObj<typeof LbgPage> = { render: () => <LbgPage width={420} /> }

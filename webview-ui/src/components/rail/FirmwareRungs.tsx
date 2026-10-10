@@ -79,7 +79,9 @@ interface Props {
 	 * A way onto the unit only the unit on the desk can tell (the LBG20x over Bluetooth), one sentence the
 	 * Bluetooth lane supplies; the Flash prompt puts it first. Absent: the folder's own files decide.
 	 */
-	unitRoute?: string
+	unitRoute?: string | ((folder: string) => string | undefined)
+	/** How the route reaches the unit, said on the Flash button when there is a route: "over Bluetooth". */
+	unitDoor?: string
 }
 
 /**
@@ -88,7 +90,9 @@ interface Props {
  * opens a session with the line that names family, version, licensee and path; a version outside the
  * account's rungs is a state (Renew, Ask), never a wall; a receipt past its term still flashes.
  */
-const FirmwareRungs: React.FC<Props> = ({ family, onFlash, onAsk, onRenew, onRegister, unitRoute }) => {
+const FirmwareRungs: React.FC<Props> = ({ family, onFlash, onAsk, onRenew, onRegister, unitRoute, unitDoor }) => {
+	// The route names the version's own folder, so it is asked per row (a plain sentence is used as it is).
+	const routeFor = (folder: string) => (typeof unitRoute === "function" ? unitRoute(folder) : unitRoute)
 	const [rows, setRows] = useState<Row[] | null>(null)
 	const [busy, setBusy] = useState<string | null>(null)
 	const [confirm, setConfirm] = useState<Row | null>(null)
@@ -212,13 +216,14 @@ const FirmwareRungs: React.FC<Props> = ({ family, onFlash, onAsk, onRenew, onReg
 													files: (row.local?.receipt.artifacts ?? e.artifacts).map((a) => a.path),
 													family: e.family ?? row.local?.receipt.family,
 													expiredOn: expired ? term : undefined,
-													unitRoute,
+													unitRoute: routeFor(row.folder),
 												}),
 											)
 										}
 										style={lead}
 										type="button">
 										Flash v{e.version}
+										{unitDoor && routeFor(row.folder) ? ` ${unitDoor}` : ""}
 									</button>
 									<button
 										onClick={() => void call({ op: "open-folder", folder: row.folder })}
