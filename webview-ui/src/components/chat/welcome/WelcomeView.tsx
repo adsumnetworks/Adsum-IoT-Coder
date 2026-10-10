@@ -28,6 +28,7 @@ import UnlockedCard from "./UnlockedCard"
 import { useEntrySignals } from "./useEntrySignals"
 import {
 	ASK_FOR_DETAILS,
+	BLG20_BOARDS,
 	blg20InstallPrompt,
 	blg20SetUpPrompt,
 	CELLULAR_BOARDS,
@@ -36,6 +37,7 @@ import {
 	getTenure,
 	type IntentDef,
 	isRequestOnlyGroup,
+	LEW840X_BOARDS,
 	NO_PROJECT_INTENTS,
 	PROJECT_INTENTS,
 	resolveIntentPlatform,
@@ -143,6 +145,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			platform: "product",
 			need: "lew840x",
 			productLabel: "Fanstel LEW840x",
+			otherProduct: BLG20_BOARDS,
 			// The card title is the thing you would say; the product's full name is where there is
 			// room for it. "Fanstel LEW840x composable multi-radio gateway" ran to three bold lines
 			// at sidebar width and pushed the card's actual content below the fold of the card.
@@ -171,7 +174,11 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 				platform: "product",
 				need: i.id === "blg20Gateway" ? "blg20" : "cellular",
 				productLabel: i.id === "blg20Gateway" ? "Fanstel BLG20x" : undefined,
-				boardMatch: CELLULAR_BOARDS,
+				// Each card is matched by ITS board. One pattern for all five let a BLG20x on USB ground
+				// the LEW840x card ("BLG20 ... connected") above the BLG20x card itself. [10 Oct 2026]
+				boardMatch:
+					i.id === "blg20Gateway" ? BLG20_BOARDS : i.id === "cellularGateway" ? LEW840X_BOARDS : CELLULAR_BOARDS,
+				otherProduct: i.id === "blg20Gateway" ? LEW840X_BOARDS : BLG20_BOARDS,
 				whyNeutral:
 					i.id === "edgeAi" ? "needs an nRF54 with the Axon NPU" : "needs an nRF91-family board or a Fanstel gateway",
 				// Its own gap, so five rows do not print one sentence five times.
@@ -211,6 +218,7 @@ const WelcomeView: React.FC<WelcomeViewProps> = ({
 			platform: "product",
 			need: "lew840x",
 			productLabel: "Fanstel LEW840x",
+			otherProduct: BLG20_BOARDS,
 			whyNeutral: "needs the LEW840x and its programming kit; nrfutil and esptool on this machine",
 			needsAlso: "the LEW840x programming kit, with nrfutil and esptool on this machine",
 			title: "Flash the LEW840x demo",

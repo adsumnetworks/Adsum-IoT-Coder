@@ -14,9 +14,22 @@ import type { Signals } from "./suggest"
 
 /** A product this workspace is recognisably about. Only what we can actually tell from the path —
  *  a guess dressed as detection would put a wrong reason on a card. */
+/**
+ * A product the open folder is recognisably about, from its PATH alone (the host's tree-based
+ * recognition feeds the agent's prompt; this is the entry surface's cheap read). [10 Oct 2026] The
+ * bare word "gateway" used to count as the LEW840x: a folder called blg20x-new-gateway, empty but for
+ * a BLG20x on USB, led with "this looks like a Fanstel LEW840x project". A product is named by its
+ * own name or not at all.
+ */
 function detectProduct(paths: string[]): string | undefined {
 	const joined = paths.join(" ").toLowerCase()
-	return joined.includes("lew840") || joined.includes("gateway") ? "lew840x" : undefined
+	if (joined.includes("lew840")) {
+		return "lew840x"
+	}
+	if (/blg20|lbg20/.test(joined)) {
+		return "blg20"
+	}
+	return undefined
 }
 
 export interface EntryContext {

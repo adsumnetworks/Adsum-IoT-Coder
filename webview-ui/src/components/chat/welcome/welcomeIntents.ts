@@ -368,6 +368,9 @@ export const CELLULAR_INTENTS: IntentDef[] = [
 
 /** Board names that make the cellular group relevant enough to say so above the cards. */
 export const CELLULAR_BOARDS = /nrf91|9160|9151|9161|thingy:?91|lew840|blg20/i
+/** The two Fanstel gateways, each its own product: a card is matched by ITS board, never by the other's. */
+export const BLG20_BOARDS = /blg20|lbg20/i
+export const LEW840X_BOARDS = /lew840/i
 
 /**
  * The one-line hint above the locked group when the developer's own hardware is already the reason

@@ -134,3 +134,32 @@ describe("rank — never hides", () => {
 		}
 	})
 })
+
+describe("rank — another product's board is not evidence [10 Oct 2026]", () => {
+	// A BLG20x on USB used to ground the LEW840x card ("BLG20 ... connected"), above the BLG20x card.
+	const CARDS: Suggestable[] = [
+		{
+			id: "lew840x",
+			platform: "product",
+			need: "lew840x",
+			whyNeutral: "needs the LEW840x kit",
+			otherProduct: /blg20|lbg20/i,
+		},
+		{ id: "blg20", platform: "product", need: "blg20", boardMatch: /blg20|lbg20/i, otherProduct: /lew840/i },
+	]
+	const s = { ...base, nrfBoards: ["BLG20x 286C (USB /dev/ttyACM3)"], hasWorkspace: true }
+	const ranked = rank(CARDS, s)
+	it("the BLG20x card leads, by its own board", () => {
+		expect(ranked[0].item.id).toBe("blg20")
+		expect(ranked[0].why).toBe("BLG20x 286C (USB /dev/ttyACM3) connected")
+	})
+	it("the LEW840x card does not cite the BLG20x and falls to its requirement", () => {
+		const lew = ranked.find((r) => r.item.id === "lew840x")!
+		expect(lew.why).toBe("needs the LEW840x kit")
+		expect(lew.grounded).toBe(false)
+	})
+	it("fails on the old rule: without otherProduct the LEW840x card cites the BLG20x", () => {
+		const old = rank([{ id: "lew840x", platform: "product", need: "lew840x", whyNeutral: "needs the LEW840x kit" }], s)
+		expect(old[0].why).toBe("BLG20x 286C (USB /dev/ttyACM3) connected")
+	})
+})

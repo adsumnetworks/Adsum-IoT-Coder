@@ -71,6 +71,11 @@ export interface Suggestable {
 	 *  "any nRF". A modem bring-up ranked as a match because an nRF52840 DK is on the desk would be
 	 *  the ranking lying; this lets it say "nRF9151 DK connected" and mean it. */
 	boardMatch?: RegExp
+	/** Boards that are ANOTHER product and never evidence for this run. [10 Oct 2026] A BLG20x on USB
+	 *  grounded "Build the LEW840x gateway" ("BLG20x 286C connected"): the partial rule cited the first
+	 *  nRF board whatever it was. A board this matches is skipped; with nothing else on the desk the
+	 *  card falls to its requirement line, which is the truth. */
+	otherProduct?: RegExp
 }
 
 export interface Ranked<T> {
@@ -143,13 +148,12 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 			const what = s.features.hasBle && s.features.hasWifi ? "BLE and Wi-Fi" : s.features.hasWifi ? "Wi-Fi" : "BLE"
 			return { item, score: SCORE.craGrounded, why: `${what} in this project and no SBOM yet`, grounded: true }
 		}
-		if (item.platform === "product" && (hasNrf || hasEsp)) {
+		const ownBoard = [...s.nrfBoards, ...s.espDevices].find((b) => !item.otherProduct?.test(b))
+		if (item.platform === "product" && ownBoard) {
 			return {
 				item,
 				score: SCORE.productPartial,
-				why: item.needsAlso
-					? `${nrf ?? esp} connected · this one also needs ${item.needsAlso}`
-					: `${nrf ?? esp} connected`,
+				why: item.needsAlso ? `${ownBoard} connected · this one also needs ${item.needsAlso}` : `${ownBoard} connected`,
 				grounded: true,
 			}
 		}
