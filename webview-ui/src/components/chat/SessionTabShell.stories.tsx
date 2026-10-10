@@ -61,3 +61,25 @@ const meta: Meta<typeof Shell> = {
 export default meta
 type Story = StoryObj<typeof Shell>
 export const EmptyTab: Story = {}
+
+/** A developer with recent sessions in this folder: the mark and the two lines alone, in the middle. */
+const recent = (id: string, hoursAgo: number) => ({
+	id,
+	ts: Date.now() - hoursAgo * 3_600_000,
+	task: "Flash the demo pair",
+	tokensIn: 1000,
+	tokensOut: 500,
+	totalCost: 0,
+	cwdOnTaskInitialization: "/Users/dev/gateway-fw",
+})
+export const ReturningTab: Story = {
+	decorators: [
+		createStorybookDecorator({
+			apiConfiguration: { actModeApiProvider: "adsum-free", planModeApiProvider: "adsum-free" },
+			mode: "act",
+			taskHistory: [recent("a", 2), recent("b", 26), recent("c", 50)],
+			openFolderPaths: ["/Users/dev/gateway-fw"],
+			workspaceRoots: ["/Users/dev/gateway-fw"],
+		} as any),
+	],
+}

@@ -2,6 +2,7 @@ import type { AdsumAccountState } from "@shared/adsumAccount"
 import { StringRequest } from "@shared/proto/cline/common"
 import type React from "react"
 import { useState } from "react"
+import { AdsumMark } from "@/components/common/AdsumLogo"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient } from "@/services/grpc-client"
 import FirstSteps from "./FirstSteps"
@@ -32,6 +33,9 @@ const SAMPLE_PROMPT = "Demo: BLE NUS one-directional bug — no setup needed\n\n
  * sidebar's palette; here, while `entryMode()` says the developer is new to this folder (fewer than two
  * sessions, none in 30 days, or none here), the First steps ladder and the What's new card sit under the
  * "Say what you want done" line. After that the placeholder stands alone.
+ *
+ * The two lines sit in the middle of the tab, centred under the mark, the way a conversation page opens:
+ * the lockup stays at the top as the product's name, the mark here is the empty state's one glyph.
  */
 const EmptySession: React.FC<{ onStartTask: (text: string) => void | Promise<void>; onPrefill: (text: string) => void }> = ({
 	onStartTask,
@@ -54,8 +58,22 @@ const EmptySession: React.FC<{ onStartTask: (text: string) => void | Promise<voi
 				marginTop: "auto",
 				marginBottom: "auto",
 			}}>
-			<div style={T.label}>{scopeName ? `New session · ${scopeName}` : "New session"}</div>
-			<div style={T.body}>Say what you want done, then Enter.</div>
+			<div
+				data-testid="empty-session-hero"
+				style={{
+					display: "flex",
+					flexDirection: "column",
+					alignItems: "center",
+					textAlign: "center",
+					gap: 6,
+					marginBottom: expanded ? 10 : 0,
+				}}>
+				<span style={{ marginBottom: 6, lineHeight: 0 }}>
+					<AdsumMark size={36} />
+				</span>
+				<div style={T.label}>{scopeName ? `New session · ${scopeName}` : "New session"}</div>
+				<div style={T.body}>Say what you want done, then Enter.</div>
+			</div>
 			{expanded && (
 				<FirstSteps
 					onOpenProject={() => void FileServiceClient.openFolder(StringRequest.create({ value: "" }))}
