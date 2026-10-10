@@ -7,6 +7,8 @@ import * as vscode from "vscode"
 import { loadCachedLiveModelLists } from "@/core/api/models/liveModelLists"
 import { type PriceOverride, setManualPrices } from "@/core/api/pricing/priceOverlay"
 import { loadCachedPrices, refreshDirectModelPrices } from "@/core/api/pricing/refreshDirectModelPrices"
+import { bleGatewaySeenBefore, scanBleGateways } from "@/services/blg20/bleGateways"
+import { nrfEnvironmentWithBlg20 } from "@/services/blg20/connectedBlg20"
 import { sendChatButtonClickedEvent } from "./core/controller/ui/subscribeToChatButtonClicked"
 import { sendHistoryButtonClickedEvent } from "./core/controller/ui/subscribeToHistoryButtonClicked"
 import { sendSettingsButtonClickedEvent } from "./core/controller/ui/subscribeToSettingsButtonClicked"
@@ -242,7 +244,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Webview shows "detecting…" until caches populate and postStateToWebview fires.
 	void detectNrfEnvironment()
 		.then((env) => {
-			setAdsumStatusBarTooltip(env, getCachedEspEnvironment())
+			setAdsumStatusBarTooltip({ ...env, blg20Units: nrfEnvironmentWithBlg20().blg20Units }, getCachedEspEnvironment())
 			return webview.controller.postStateToWebview()
 		})
 		.catch(() => {})
@@ -250,6 +252,17 @@ export async function activate(context: vscode.ExtensionContext) {
 	void detectEspEnvironment()
 		.then(() => webview.controller.postStateToWebview())
 		.catch(() => {})
+
+	// A computer that has seen a gateway over Bluetooth before scans for it at start-up too; a first scan only ever
+	// comes from the Hardware page's ↻, so the operating system's Bluetooth question follows the developer's action.
+	if (bleGatewaySeenBefore()) {
+		void scanBleGateways("startup")
+			.then(() => {
+				setAdsumStatusBarTooltip(nrfEnvironmentWithBlg20(), getCachedEspEnvironment())
+				return webview.controller.postStateToWebview()
+			})
+			.catch(() => {})
+	}
 
 	// Windows only: probe for the fresh-install PowerShell execution policy (and terminal profile)
 	// that silently break shell integration, and auto-fix in the background before the first
@@ -275,7 +288,10 @@ export async function activate(context: vscode.ExtensionContext) {
 			refreshWorkspaceClassification(updated)
 			void detectNrfEnvironment()
 				.then((env) => {
-					setAdsumStatusBarTooltip(env, getCachedEspEnvironment())
+					setAdsumStatusBarTooltip(
+						{ ...env, blg20Units: nrfEnvironmentWithBlg20().blg20Units },
+						getCachedEspEnvironment(),
+					)
 					return webview.controller.postStateToWebview()
 				})
 				.catch(() => {})

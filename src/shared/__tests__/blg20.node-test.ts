@@ -3,12 +3,16 @@ import { describe, test } from "node:test"
 import {
 	type Blg20NrfutilDevice,
 	type Blg20RawPort,
+	blg20BleTarget,
+	blg20BleWords,
 	blg20FromProbes,
 	blg20Interface,
 	blg20Label,
 	blg20LongLabel,
 	blg20NameFromProduct,
+	blg20OverBluetooth,
 	blg20ProbeSerials,
+	blg20UnitsFromBle,
 	blg20UnitsFromNrfutil,
 	blg20UnitsFromPorts,
 	confirmedBlg20Units,
@@ -305,5 +309,104 @@ describe("LBG20x shares the port, the tool and the rule", () => {
 		assert.equal(blg20Label(units[0]), "LBG20x AD50")
 		assert.equal(gatewayFamilyFromProduct("BLG20 Gateway 286C"), "blg20x")
 		assert.equal(gatewayFamilyFromProduct("J-Link"), undefined)
+	})
+})
+
+// ── Bluetooth (10 Oct 2026): the LBG20x's only service port; rows exactly as `list --ble --json` printed them ──
+describe("a gateway seen over Bluetooth", () => {
+	const MAC_ROW = {
+		address: "D62DC578-D893-A8C5-FD0A-1AB00DEB3026",
+		name: "Adsum LBG20x D3588E7AAD50",
+		family: "LBG20",
+		short: "AD50",
+		id: "D3588E7AAD50",
+		rssi: -63,
+		bonded: null,
+		window: true,
+	}
+	const LINUX_ROW = { ...MAC_ROW, address: "D3:58:8E:7A:AD:50", rssi: -64, bonded: true }
+
+	test("names the family and the four digits from the advertised name, confirmed by the device itself", () => {
+		const [u] = blg20UnitsFromBle([MAC_ROW])
+		assert.equal(u.via, "ble")
+		assert.equal(u.family, "lbg20x")
+		assert.equal(u.name, "AD50")
+		assert.equal(u.confirmed, true)
+		assert.equal(blg20Label(u), "LBG20x AD50")
+		assert.equal(u.bonded, null, "macOS does not say whether it holds a pairing")
+	})
+
+	test("the BLG20's own advertised name, 'Adsum BLG20 …', is the BLG20x family", () => {
+		const [u] = blg20UnitsFromBle([{ ...LINUX_ROW, name: "Adsum BLG20 FAA08F0D286C" }])
+		assert.equal(u.family, "blg20x")
+		assert.equal(blg20Label(u), "BLG20x 286C")
+	})
+
+	test("anything else in range is not a gateway", () => {
+		assert.deepEqual(
+			blg20UnitsFromBle([
+				{ ...MAC_ROW, name: "Adsum LBG20x" },
+				{ ...MAC_ROW, name: "Polar H10 1234" },
+			]),
+			[],
+		)
+	})
+
+	test("hover words: over Bluetooth, the window, the pairing, the signal", () => {
+		const [u] = blg20UnitsFromBle([LINUX_ROW])
+		assert.equal(blg20BleWords(u), "over Bluetooth · window open · paired · -64 dBm")
+		assert.match(blg20LongLabel(u), /LBG20x AD50 \(over Bluetooth · window open · paired · -64 dBm, D3:58:8E:7A:AD:50\)/)
+		assert.equal(blg20BleTarget(u), "AD50")
+		assert.equal(blg20OverBluetooth(u), true)
+	})
+
+	test("one unit seen over USB and over Bluetooth counts once and keeps its USB port", () => {
+		const usb = blg20UnitsFromNrfutil([
+			{
+				serialNumber: "BBA605799DE4043E",
+				product: "BLG20 Gateway 286C",
+				ports: [{ path: "/dev/ttyACM3", interfaceNumber: 0 }],
+			},
+		])
+		const all = detectBlg20Units(
+			[],
+			[],
+			[
+				{
+					serialNumber: "BBA605799DE4043E",
+					product: "BLG20 Gateway 286C",
+					ports: [{ path: "/dev/ttyACM3", interfaceNumber: 0 }],
+				},
+			],
+			[{ ...LINUX_ROW, name: "Adsum BLG20 FAA08F0D286C", address: "FA:A0:8F:0D:28:6C" }],
+		)
+		assert.equal(usb.length, 1)
+		assert.equal(all.length, 1)
+		assert.equal(all[0].via, "usb")
+		assert.equal(all[0].servicePort, "/dev/ttyACM3")
+		assert.equal(all[0].bleAddress, "FA:A0:8F:0D:28:6C")
+		assert.equal(blg20OverBluetooth(all[0]), false, "a unit with its cable is driven over the cable")
+	})
+
+	test("the LBG20x on a bench: its two probes and its Bluetooth port are one board", () => {
+		const boards = [
+			{ serialNumber: "1050256273", deviceName: "nRF54LM20B" },
+			{ serialNumber: "1050215310", deviceName: "nRF9151" },
+		]
+		const all = detectBlg20Units([], boards, [], [LINUX_ROW])
+		assert.equal(all.length, 1)
+		assert.equal(all[0].via, "ble")
+		assert.equal(all[0].bleProbe, "1050256273")
+		assert.equal(confirmedBlg20Units(all).length, 1)
+	})
+
+	test("two units in range stay two", () => {
+		const all = detectBlg20Units(
+			[],
+			[],
+			[],
+			[LINUX_ROW, { ...LINUX_ROW, name: "Adsum LBG20x D3588E7A1234", address: "D3:58:8E:7A:12:34" }],
+		)
+		assert.deepEqual(all.map(blg20Label), ["LBG20x AD50", "LBG20x 1234"])
 	})
 })

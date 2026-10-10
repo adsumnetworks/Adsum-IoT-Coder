@@ -1,3 +1,4 @@
+import { type Blg20Unit, blg20BleWords } from "@shared/blg20"
 import type * as vscode from "vscode"
 import type { EspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import type { NrfEnvironment } from "@/services/nrf/EnvironmentDetector"
@@ -55,9 +56,7 @@ function withV(v: string): string {
 
 /** The unit or board the label names, by its own name, when there is exactly one obvious one. */
 export function unitLabel(env?: NrfEnvironment, esp?: EspEnvironment): string | undefined {
-	const blg =
-		(env as { blg20Units?: Array<{ name?: string; serialNumber?: string; family?: "blg20x" | "lbg20x" }> } | undefined)
-			?.blg20Units ?? []
+	const blg = ((env as { blg20Units?: Blg20Unit[] } | undefined)?.blg20Units ?? []).filter((u) => u.confirmed !== false)
 	if (blg.length) {
 		const u = blg[0]
 		const word = u.family === "lbg20x" ? "LBG20x" : "BLG20x"
@@ -109,11 +108,11 @@ export function buildStatusBarTooltip(
 				.join(", ")
 			lines.push(`$(plug) ${env.boards.length} board${env.boards.length > 1 ? "s" : ""}: ${names}`)
 		}
-		const blg = (env as { blg20Units?: Array<{ name?: string; servicePort?: string }> }).blg20Units ?? []
+		const blg = (env as { blg20Units?: Blg20Unit[] }).blg20Units ?? []
 		for (const u of blg) {
-			lines.push(
-				`$(circuit-board) ${(u as { family?: string }).family === "lbg20x" ? "LBG20x" : "BLG20x"} ${u.name ?? ""}${u.servicePort ? ` · ${u.servicePort}` : ""}`.trim(),
-			)
+			// The door, in words: the USB port, or over Bluetooth with the window and the pairing (the LBG20x).
+			const door = u.servicePort ? ` · ${u.servicePort}` : u.bleAddress ? ` · ${blg20BleWords(u)}` : ""
+			lines.push(`$(circuit-board) ${u.family === "lbg20x" ? "LBG20x" : "BLG20x"} ${u.name ?? ""}${door}`.trim())
 		}
 	}
 	if (esp && esp.status !== "unknown") {

@@ -20,7 +20,16 @@ import {
 	recogniseProduct,
 } from "@/services/platform/WorkspaceClassifier"
 import { type ResolvedTool, resolveToolsAsync } from "@/services/tools/ToolResolver"
-import { type Blg20Unit, blg20Label, blg20ProbeSerials, confirmedBlg20Units } from "@/shared/blg20"
+import {
+	type Blg20Unit,
+	blg20BleTarget,
+	blg20BleWords,
+	blg20Label,
+	blg20OverBluetooth,
+	blg20ProbeSerials,
+	confirmedBlg20Units,
+	familyWord,
+} from "@/shared/blg20"
 import { fileExistsAtPath } from "@/utils/fs"
 import { shouldInjectMap } from "../../../memory/workspace/mapGate"
 import { migrateLegacyMemory } from "../../../memory/workspace/migrate"
@@ -663,11 +672,36 @@ export function blg20Evidence(u: Blg20Unit): string {
 				(u.serialNumber ? `, unit id ${u.serialNumber}` : ""),
 		)
 	}
+	if (u.bleAddress) {
+		// The LBG20x's only door (its USB-C carries power, not data); the BLG20x's second from firmware 0.3.6.
+		parts.push(
+			`${u.servicePort ? "also " : `named ${blg20Label(u)}, `}reachable ${blg20BleWords(u)}: ` +
+				`\`blg20-service <verb> --ble ${blg20BleTarget(u)} --json\``,
+		)
+	}
 	if (u.bleProbe && u.lteProbe) {
 		parts.push(`probe ${u.bleProbe} reaches its nRF54LM20B (BLE half) and probe ${u.lteProbe} its nRF9151 (LTE half)`)
 	}
 	return parts.join("; ") || blg20Label(u)
 }
+
+/**
+ * [10 Oct 2026] The words for a gateway reached over Bluetooth, said once whenever one is on the desk. The rules
+ * come from the bench (the service port over Bluetooth, milestones 1 to 3): the window, the pairing, the claim, the
+ * two refusals, and that nothing is installed for the tool.
+ */
+export const BLUETOOTH_GATEWAY_WORDS =
+	"| **The service port over Bluetooth** | The LBG20x has no USB data path (its USB-C carries power only), so its " +
+	"service port is Bluetooth: run `blg20-service` with `--ble <its four digits>` and `--json` for every verb " +
+	"(passport, needs, claim, health, logs, images, update-check, update-ble, update-lte, update-pair). The unit is " +
+	"connectable only inside its commissioning window: at power-up, or after its button is held for three seconds (an " +
+	"uncommissioned unit keeps it open); if it is not found, say that. The first run from a computer pairs: tell the " +
+	"developer to type the six digits from the unit's label when the computer asks. If the tool says the computer kept a " +
+	"pairing from before the unit was wiped, the developer forgets the unit in the computer's Bluetooth settings and " +
+	"runs again. A claim over Bluetooth needs the window open. Never install Python packages for this tool: the " +
+	"extension runs it on its own Python. The tool refuses an image built for the other gateway family, and a unit " +
+	"below the release's floor takes the factory pair over the probes. Read the last line of the output: it is the " +
+	"result, one JSON object. |\n"
 
 function productLine(): string {
 	const found = recogniseProduct(getCachedWorkspaceRoots())
@@ -684,11 +718,17 @@ function productLine(): string {
 	const all = getConnectedBlg20Units()
 	const gateways = confirmedBlg20Units(all)
 	if (gateways.length > 0) {
+		const family = familyWord(gateways[0].family).x
+		const overBle = gateways.some(blg20OverBluetooth)
 		return (
-			`| **A Fanstel BLG20x gateway is connected to this computer** — ${gateways.map(blg20Evidence).join("; ")} | ` +
-			"load `products/fanstel/blg20x/PRODUCT.md` **before diagnosing anything about it**: its sub-bits carry the " +
-			"service port, the two halves, their probes and their fault ladders. Never open the service port just to " +
-			"look: opening it with DTR up starts a session on the unit. |\n\n"
+			`| **A Fanstel ${family} gateway is ${overBle ? "within Bluetooth range of" : "connected to"} this computer** — ` +
+			`${gateways.map(blg20Evidence).join("; ")} | ` +
+			"load `products/fanstel/blg20x/PRODUCT.md` **before diagnosing anything about it** (the LBG20x shares its " +
+			"firmware, its service port and its two halves): its sub-bits carry the service port, the two halves, their " +
+			"probes and their fault ladders. Never open the service port just to look: opening it starts a session on " +
+			"the unit. |\n" +
+			(overBle ? BLUETOOTH_GATEWAY_WORDS : "") +
+			"\n"
 		)
 	}
 	// demo-1 (red-team finding 7): a probe pair, or the shared test USB ids with no product name, is only

@@ -1,3 +1,4 @@
+import { blg20Label, blg20LongLabel, blg20OverBluetooth, confirmedBlg20Units } from "@shared/blg20"
 import type { EspEnvironment } from "@shared/esp"
 import type React from "react"
 import { useState } from "react"
@@ -29,6 +30,9 @@ const RailHardware: React.FC<Props> = ({ onOpen }) => {
 		espDevices: [],
 	}) as EspEnvironment
 	const nrf = nrfBoardLabels(nrfEnv)
+	// A gateway row reads its unit for what the label cannot carry: the Bluetooth mark (the LBG20x has no USB data
+	// path), a closed commissioning window (dim, with what opens it), and the long form on hover.
+	const unitByLabel = new Map(confirmedBlg20Units(nrfEnv.blg20Units).map((u) => [blg20Label(u), u]))
 	const esp = espDeviceLabels(espEnv)
 	const roots = openFolderPaths ?? []
 	const folder = roots[0]?.split("/").pop()
@@ -103,17 +107,33 @@ const RailHardware: React.FC<Props> = ({ onOpen }) => {
 			</div>
 			{shown && (
 				<div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-					{nrf.map((b) => (
-						<Row key={`nrf-${b}`} onClick={() => onOpen(b)} pf="nRF" title={`${b} · opens the Hardware page`}>
-							<b style={{ fontWeight: 600 }}>{b}</b>
-							{streaming ? (
-								<span style={{ color: "var(--adsum-cyan-text)" }}>
-									{" "}
-									· in use by {streaming.title || "a session"}
-								</span>
-							) : null}
-						</Row>
-					))}
+					{nrf.map((b) => {
+						const unit = unitByLabel.get(b)
+						const overBle = !!unit && blg20OverBluetooth(unit)
+						const closed = overBle && unit?.windowOpen === false
+						return (
+							<Row
+								dim={closed}
+								key={`nrf-${b}`}
+								onClick={() => onOpen(b)}
+								pf={unit ? "gw" : "nRF"}
+								title={`${unit ? blg20LongLabel(unit) : b} · opens the Hardware page`}>
+								<b style={{ fontWeight: 600 }}>{b}</b>
+								{overBle ? (
+									<span aria-label="over Bluetooth" data-testid="rail-ble-mark" style={{ marginLeft: 3 }}>
+										ᛒ
+									</span>
+								) : null}
+								{closed ? <span> · window closed: hold its button 3 s</span> : null}
+								{streaming ? (
+									<span style={{ color: "var(--adsum-cyan-text)" }}>
+										{" "}
+										· in use by {streaming.title || "a session"}
+									</span>
+								) : null}
+							</Row>
+						)
+					})}
 					{esp.map((d) => (
 						<Row key={`esp-${d}`} onClick={() => onOpen(d)} pf="ESP" title={`${d} · opens the Hardware page`}>
 							<b style={{ fontWeight: 600 }}>{d}</b>
