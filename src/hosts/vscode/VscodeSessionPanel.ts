@@ -108,9 +108,12 @@ export class VscodeSessionPanel extends WebviewProvider {
 
 	private async attach(panel: vscode.WebviewPanel): Promise<void> {
 		this.panel = panel
-		panel.iconPath = vscode.Uri.file(
-			require("node:path").join(HostProvider.get().extensionFsPath, "assets", "icons", "icon.svg"),
+		// The tab's mark in the brand coral on both themes: a currentColor SVG renders black in a tab, which
+		// vanishes on a dark theme.
+		const coral = vscode.Uri.file(
+			require("node:path").join(HostProvider.get().extensionFsPath, "assets", "icons", "icon-coral.svg"),
 		)
+		panel.iconPath = { light: coral, dark: coral }
 		panel.webview.options = {
 			enableScripts: true,
 			localResourceRoots: [vscode.Uri.file(HostProvider.get().extensionFsPath)],
