@@ -42,6 +42,7 @@ import AgentSessionBanner from "./handover/AgentSessionBanner"
 import AgentSessionRecap from "./handover/AgentSessionRecap"
 import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
+import SessionComposerFoot from "./SessionComposerFoot"
 import { entryFirstPrompt } from "./welcome/entryTelemetry"
 import { handOverCard } from "./welcome/handOverCard"
 import { routeDemo, routeTypedTask } from "./welcome/runRouting"
@@ -76,6 +77,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		handoverUi,
 		openedAgentSession,
 		openAgentSession,
+		openFolderPaths,
 	} = useExtensionState()
 	const { target: runTarget } = useRunTarget()
 	// The agent session is a BANNER by default and opens on demand. It must never own the panel: when it
@@ -355,6 +357,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	const { selectedModelInfo } = useMemo(() => {
 		return normalizeApiConfiguration(apiConfiguration, mode)
 	}, [apiConfiguration, mode])
+
+	// [P3.3] The composer foot line's folder name and context-use percentage — the same contextWindow/
+	// lastApiReqTotalTokens pairing TaskHeader's ContextWindow uses, just reduced to one number.
+	const composerFootFolderName = useMemo(() => openFolderPaths[0]?.split("/").pop(), [openFolderPaths])
+	const composerFootContextPercent = useMemo(() => {
+		const contextWindow = selectedModelInfo?.contextWindow
+		if (!contextWindow || lastApiReqTotalTokens === undefined) {
+			return undefined
+		}
+		return (lastApiReqTotalTokens / contextWindow) * 100
+	}, [selectedModelInfo?.contextWindow, lastApiReqTotalTokens])
 
 	const selectFilesAndImages = useCallback(async () => {
 		try {
@@ -648,6 +661,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						selectFilesAndImages={selectFilesAndImages}
 						shouldDisableFilesAndImages={shouldDisableFilesAndImages}
 					/>
+					<SessionComposerFoot contextPercent={composerFootContextPercent} folderName={composerFootFolderName} />
 					{/* Persistent AI-limitations disclaimer — visible while the dev acts on the agent's output.
 					    Kept per spec (design/13 A6); footprint minimized per operator direction 0707. */}
 					<AiLimitationsFooter style={{ padding: "1px 14px 3px" }} />
