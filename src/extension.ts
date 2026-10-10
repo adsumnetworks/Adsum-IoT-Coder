@@ -19,6 +19,7 @@ import { sessionTokenChangedElsewhere, setStoredSessionTokenReader, stopSignInCl
 import { setSignInElsewhereSurface } from "./services/adsum/signInElsewhere"
 import { Logger } from "./services/logging/Logger"
 import { cleanupTestMode, initializeTestMode } from "./services/test/TestMode"
+import { registerSeamSessionFactory } from "./services/test/TestServer"
 import "./utils/path" // necessary to have access to String.prototype.toPosix
 
 import path from "node:path"
@@ -53,7 +54,12 @@ import { openSessions as listOpenSessionTabs, onSessionsChanged } from "./hosts/
 import { runShellIntegrationDoctor } from "./hosts/vscode/terminal/ShellIntegrationDoctor"
 import { VscodeTerminalManager } from "./hosts/vscode/terminal/VscodeTerminalManager"
 import { VscodeDiffViewProvider } from "./hosts/vscode/VscodeDiffViewProvider"
-import { SESSION_PANEL_TYPE, type SessionPanelState, VscodeSessionPanel } from "./hosts/vscode/VscodeSessionPanel"
+import {
+	markHostShuttingDown,
+	SESSION_PANEL_TYPE,
+	type SessionPanelState,
+	VscodeSessionPanel,
+} from "./hosts/vscode/VscodeSessionPanel"
 import { VscodeWebviewProvider } from "./hosts/vscode/VscodeWebviewProvider"
 import { ExtensionRegistryInfo } from "./registry"
 import { getCachedFreeTokensRemaining, onFreeTokensChanged } from "./services/adsum/FreeTierState"
@@ -364,6 +370,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		})
 		return session.taskId
 	})
+	// The bench seam (test mode) starts its tasks in a session tab too; nothing of ours runs unseen.
+	registerSeamSessionFactory(() => VscodeSessionPanel.open(context, { title: "Bench session" }))
 	context.subscriptions.push(
 		vscode.window.registerWebviewPanelSerializer(SESSION_PANEL_TYPE, {
 			deserializeWebviewPanel: async (panel: vscode.WebviewPanel, state: SessionPanelState | undefined) => {
@@ -1067,6 +1075,7 @@ async function getBinaryLocation(name: string): Promise<string> {
 // This method is called when your extension is deactivated
 export async function deactivate() {
 	Logger.log("Cline extension deactivating, cleaning up resources...")
+	markHostShuttingDown()
 
 	// Stop periodic temp file cleanup
 	ClineTempManager.stopPeriodicCleanup()

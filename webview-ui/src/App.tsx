@@ -21,6 +21,7 @@ const AppContent = () => {
 		settingsTargetSection,
 		showHistory,
 		showWorktrees,
+		sessionsFirstRail,
 		showAnnouncement,
 		onboardingModels,
 		setShowAnnouncement,
@@ -58,7 +59,8 @@ const AppContent = () => {
 	// [0.5 sessions first] Two surfaces from one bundle. The sidebar is the rail alone: you, what to do next,
 	// the hardware, the sessions, the palette, with Settings and All sessions as pages inside it. A session
 	// tab is the chat alone, like Claude Code's; nothing else ever renders there.
-	if (ADSUM_VIEW === "sidebar") {
+	// The flag is the reversal switch: off, and the sidebar is the 0.4 cockpit (chat plus cards) again.
+	if (ADSUM_VIEW === "sidebar" && sessionsFirstRail !== false) {
 		return <RailView />
 	}
 

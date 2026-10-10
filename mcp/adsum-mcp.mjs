@@ -386,6 +386,13 @@ function toolLoadSkill(args, ctx) {
 			source: "closure",
 		})
 		patchState(id, {})
+		// [0.5 the firmware lane] A firmware bit is images and source under a licence, never a body to
+		// hand an agent: it is downloaded, hashed and receipted by the editor's Hardware page alone.
+		if (hit.kind === "firmware") {
+			return {
+				text: `${credit(hit)}\n\nThis is licensed firmware, not knowledge: its files are downloaded from the editor's Hardware page into the workspace, with the licence beside them. Ask the developer to download it there; then use the folder it names.${FOOTER}`,
+			}
+		}
 		return {
 			text: `${credit(hit)}\n\n${hit.body || "(body unavailable — the bit is entitlement-gated or was not cached at handover time)"}${FOOTER}`,
 		}

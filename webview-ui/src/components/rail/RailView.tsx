@@ -23,6 +23,25 @@ import { type Run, useRankedRuns } from "./useRankedRuns"
 
 type Page = "home" | "settings" | "sessions" | "hardware"
 const MOVED_KEY = "adsum.rail.cardsMovedSeen"
+const MIGRATED_KEY = "adsum.rail.migrated"
+/** The 0.4 cockpit's own browser-state keys; nothing reads them once the rail is the sidebar. */
+const RETIRED_KEYS = ["adsum.entry.seenRuns", "adsum.env.alwaysOpen", "adsum.dockCoachMarkDismissed"]
+
+/** [0.5 sessions first] One-time cleanup of the cockpit's keys on the rail's first mount; idempotent. */
+export function migrateCockpitState(storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> = localStorage): boolean {
+	try {
+		if (storage.getItem(MIGRATED_KEY) === "1") {
+			return false
+		}
+		for (const k of RETIRED_KEYS) {
+			storage.removeItem(k)
+		}
+		storage.setItem(MIGRATED_KEY, "1")
+		return true
+	} catch {
+		return false
+	}
+}
 
 /**
  * [0.5 sessions first] The sidebar is the rail alone: You, the notice slot, Suggested, Hardware, Sessions,
@@ -39,6 +58,7 @@ const RailView: React.FC = () => {
 		hideHistory,
 		navigateToSettings,
 		navigateToHistory,
+		taskHistory,
 	} = useExtensionState() as ReturnType<typeof useExtensionState> & { adsumAccount?: AdsumAccountState }
 	const [page, setPage] = useState<Page>("home")
 	const [paletteOpen, setPaletteOpen] = useState(false)
@@ -53,6 +73,10 @@ const RailView: React.FC = () => {
 	})
 	const { all, suggested } = useRankedRuns()
 	const rootRef = useRef<HTMLDivElement>(null)
+
+	useEffect(() => {
+		migrateCockpitState()
+	}, [])
 
 	// The title-bar buttons (⚙, ↺) still talk to the sidebar: they open its pages now.
 	useEffect(() => {
@@ -173,7 +197,7 @@ const RailView: React.FC = () => {
 						}}
 						onSignIn={() => setGateOpen(true)}
 					/>
-					{!movedSeen && (
+					{!movedSeen && (taskHistory?.length ?? 0) > 0 && (
 						<div
 							style={{
 								...R.meta,

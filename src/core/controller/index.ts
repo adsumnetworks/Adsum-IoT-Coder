@@ -1093,6 +1093,8 @@ export class Controller {
 			//   2. armed: the "ask on a high note" guard — set by a win, cleared on task start/cancel.
 			//   3. eligible: enough wins AND not retired via the banner-dismissal ledger (shared predicate +
 			//      threshold, so this show-gate cannot drift from the fire-gate in AttemptCompletionHandler).
+			// [0.5 sessions first] One switch for the whole shape; the webview falls back to the cockpit when off.
+			sessionsFirstRail: featureFlagsService.getBooleanFlagEnabled(FeatureFlag.SESSIONS_FIRST_RAIL),
 			reviewNudgeShow:
 				featureFlagsService.getBooleanFlagEnabled(FeatureFlag.REVIEW_NUDGE) &&
 				(this.stateManager.getGlobalStateKey("reviewNudgeArmed") ?? false) &&

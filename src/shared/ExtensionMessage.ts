@@ -164,6 +164,8 @@ export interface ExtensionState {
 	adsumAccount?: AdsumAccountState
 	/** [0.5 sessions first] The session tabs open in this window, for the rail's rows and the status bar. */
 	openSessions?: OpenSessionSummary[]
+	/** [0.5] false means the sidebar renders the 0.4 cockpit again (the reversal switch). */
+	sessionsFirstRail?: boolean
 	/** A sign-in started in this window is waiting on the browser: the panel shows the waiting view with the paste field. */
 	adsumSignInPending?: boolean
 	/** Show the one-time "what you unlocked" card: signed in, and never dismissed. */

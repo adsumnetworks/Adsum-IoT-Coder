@@ -1,0 +1,79 @@
+const { chromium } = require("@playwright/test")
+const http = require("http"),
+	fs = require("fs"),
+	path = require("path"),
+	url = require("url")
+const ROOT = process.argv[2],
+	OUT = process.argv[3]
+const MIME = {
+	".html": "text/html",
+	".js": "text/javascript",
+	".css": "text/css",
+	".json": "application/json",
+	".svg": "image/svg+xml",
+	".png": "image/png",
+	".woff2": "font/woff2",
+	".ttf": "font/ttf",
+	".map": "application/json",
+}
+const server = http.createServer((req, res) => {
+	let p = path.join(ROOT, decodeURIComponent(url.parse(req.url || "/").pathname || "/"))
+	if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, "index.html")
+	if (!fs.existsSync(p)) {
+		res.writeHead(404)
+		return res.end("no")
+	}
+	res.writeHead(200, { "Content-Type": MIME[path.extname(p)] || "application/octet-stream" })
+	fs.createReadStream(p).pipe(res)
+})
+const STORIES = [
+	["rail-sidebar--first-run-no-folder", "r01-first-run"],
+	["rail-sidebar--blg-20-on-usb", "r02-blg20-usb"],
+	["rail-sidebar--returning-here", "r03-returning"],
+	["rail-sidebar--two-sessions-open", "r04-two-sessions"],
+	["rail-sidebar--free-tier-low", "r05-free-low"],
+	["rail-sidebar--free-tier-spent", "r06-free-spent"],
+	["rail-sidebar--signed-out-locked", "r07-signed-out"],
+	["rail-sidebar--sign-in-pending", "r08-signin-pending"],
+	["rail-sidebar--licensed-byok", "r09-licensed"],
+	["rail-sidebar--two-folders", "r10-two-folders"],
+]
+const OLD_STORIES = [
+	["views-chat--entry-cold-start", "01-cold-start"],
+	["views-chat--entry-first-run-with-project", "02-first-run-project"],
+	["views-chat--entry-returning", "03-returning"],
+	["views-chat--entry-lapsed", "04-lapsed"],
+	["views-chat--entry-nothing-in-this-folder", "05-nothing-in-folder"],
+	["views-chat--entry-board-detected", "06-board-detected"],
+]
+;(async () => {
+	await new Promise((r) => server.listen(6199, r))
+	const b = await chromium.launch()
+	const errs = []
+	for (const [id, name] of STORIES) {
+		for (const theme of ["dark", "light"]) {
+			for (const [w, label] of [
+				[420, "sidebar"],
+				[900, "editor"],
+			]) {
+				// The theme is a Storybook GLOBAL, not the browser's colour-scheme preference: the webview
+				// paints from --vscode-* variables the preview decorator sets. Passing colorScheme alone
+				// rendered dark twice and filed one of them as "light", which is worse than not checking.
+				const p = await b.newPage({ viewport: { width: w, height: 820 }, colorScheme: theme })
+				p.on("pageerror", (e) => errs.push(`${name}/${theme}/${label}: ${e.message}`))
+				await p.goto(
+					`http://127.0.0.1:6199/iframe.html?id=${id}&viewMode=story&globals=theme:${theme === "dark" ? "vs_dark" : "vs_light"}`,
+					{
+						waitUntil: "networkidle",
+					},
+				)
+				await p.waitForTimeout(700)
+				await p.screenshot({ path: `${OUT}/${name}-${theme}-${label}.png` })
+				await p.close()
+			}
+		}
+	}
+	await b.close()
+	server.close()
+	console.log(errs.length ? "PAGE ERRORS:\n" + errs.join("\n") : `no page errors across ${STORIES.length * 4} renders`)
+})()

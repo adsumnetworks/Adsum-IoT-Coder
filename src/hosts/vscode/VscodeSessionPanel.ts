@@ -7,7 +7,13 @@ import { HostProvider } from "@/hosts/host-provider"
 import type { ExtensionMessage } from "@/shared/ExtensionMessage"
 import { WebviewMessage } from "@/shared/WebviewMessage"
 import { deliverToWebview } from "./deliverToWebview"
-import { sessionsChanged } from "./sessionRegistry"
+import { openSessions, sessionsChanged } from "./sessionRegistry"
+
+/** Set at deactivation so tabs VS Code tears down do not each offer to reopen. */
+let hostShuttingDown = false
+export function markHostShuttingDown(): void {
+	hostShuttingDown = true
+}
 
 /** The webview panel type VS Code uses to find the serializer after a reload. */
 export const SESSION_PANEL_TYPE = "adsum-iot-coder.session"
@@ -221,6 +227,9 @@ export class VscodeSessionPanel extends WebviewProvider {
 		}
 		const panel = this.panel
 		this.panel = undefined
+		// What this tab was doing, read before the controller goes: VS Code gives no "about to close" for a
+		// webview panel, so the honest shape is to say what stopped and offer the way back.
+		const summary = openSessions().find((s) => s.taskId === this.controller.task?.taskId)
 		try {
 			panel?.dispose()
 		} catch {
@@ -229,5 +238,20 @@ export class VscodeSessionPanel extends WebviewProvider {
 		await super.dispose()
 		sessionsChanged()
 		HostProvider.get().logToChannel("Session tab closed")
+		if (summary && !hostShuttingDown && (summary.waiting || summary.streaming)) {
+			void this.offerReopen(summary)
+		}
+	}
+
+	/** A closed tab that was mid-work or waiting on an answer: one line, one way back, never a modal. */
+	private async offerReopen(summary: { taskId: string; title: string; waiting: boolean }): Promise<void> {
+		const name = summary.title || "A session"
+		const text = summary.waiting
+			? `${name} was waiting on your answer when its tab closed.`
+			: `${name} was working when its tab closed; the work stopped where it was.`
+		const choice = await vscode.window.showInformationMessage(text, "Reopen")
+		if (choice === "Reopen") {
+			await VscodeSessionPanel.open(this.context, { taskId: summary.taskId })
+		}
 	}
 }

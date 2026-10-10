@@ -17,7 +17,8 @@
  */
 
 /** A bit's kind as the user sees it. `tool` → "Tool bit" (⚙); everything else → "Knowledge bit" (◆). */
-export type KbitKind = "knowledge" | "tool"
+/** [0.5] firmware: images and source under licence; credited like a bit, never served as a body. */
+export type KbitKind = "knowledge" | "tool" | "firmware"
 
 /** Hardware evidence for a bit. Absent until a real run witnesses it — never authored by hand. */
 export interface KbitWitness {
@@ -91,7 +92,7 @@ export function creditFromMeta(meta: KbitMetaLike, fallbackId?: string): KbitCre
 	return {
 		id,
 		title: meta.title?.trim() || titleFromId(id),
-		kind: meta.type?.trim().toLowerCase() === "tool" ? "tool" : "knowledge",
+		kind: ((t) => (t === "tool" || t === "firmware" ? t : "knowledge"))(meta.type?.trim().toLowerCase()),
 		author: attributed ? raw : ATTRIBUTION_FALLBACK,
 		attributed,
 		version: meta.version?.trim() || undefined,

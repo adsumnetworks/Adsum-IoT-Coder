@@ -14,6 +14,18 @@ import { checkInject } from "./injectQueue"
 import { checkClaim, claim, type Lease } from "./sessionLease"
 
 /**
+ * [0.5 sessions first] The seam used to drive whatever webview was visible, which was the sidebar's chat.
+ * The sidebar is the rail now and renders no chat, so a seam task opens a session tab like any other
+ * session: the host registers how (it needs the extension context), and every other endpoint reads the
+ * active session first, the sidebar only when no tab is open.
+ */
+let sessionFactory: (() => Promise<WebviewProvider>) | undefined
+export function registerSeamSessionFactory(fn: typeof sessionFactory): void {
+	sessionFactory = fn
+}
+const seamProvider = (): WebviewProvider | undefined => WebviewProvider.getActiveSession() ?? WebviewProvider.getVisibleInstance()
+
+/**
  * Creates a tracker to monitor tool calls and failures during task execution
  * @returns Object tracking tool calls and failures
  */
@@ -121,7 +133,7 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 		if (req.method === "GET" && req.url === "/status") {
 			void (async () => {
 				try {
-					const task = WebviewProvider.getVisibleInstance()?.controller?.task
+					const task = seamProvider()?.controller?.task
 					const msgs = task?.messageStateHandler.getClineMessages() ?? []
 					res.writeHead(200)
 					res.end(
@@ -161,7 +173,7 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 			void (async () => {
 				try {
 					const sinceTs = Number(new URL(req.url ?? "", "http://x").searchParams.get("sinceTs") ?? 0)
-					const task = WebviewProvider.getVisibleInstance()?.controller?.task
+					const task = seamProvider()?.controller?.task
 					if (!task) {
 						res.writeHead(200)
 						res.end(JSON.stringify({ messages: [], reason: "no active task" }))
@@ -187,7 +199,7 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 		if (req.method === "GET" && req.url === "/ask") {
 			void (async () => {
 				try {
-					const task = WebviewProvider.getVisibleInstance()?.controller?.task
+					const task = seamProvider()?.controller?.task
 					if (!task) {
 						res.writeHead(200)
 						res.end(JSON.stringify({ ask: null, reason: "no active task" }))
@@ -222,7 +234,7 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 			})
 			req.on("end", async () => {
 				try {
-					const task = WebviewProvider.getVisibleInstance()?.controller?.task
+					const task = seamProvider()?.controller?.task
 					if (!task) {
 						res.writeHead(409)
 						res.end(JSON.stringify({ error: "no active task" }))
@@ -281,7 +293,7 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 						res.end(JSON.stringify({ error: "need { taskId }" }))
 						return
 					}
-					const controller = WebviewProvider.getVisibleInstance()?.controller
+					const controller = seamProvider()?.controller
 					if (!controller) {
 						res.writeHead(500)
 						res.end(JSON.stringify({ error: "No active Adsum IoT Coder instance found" }))
@@ -326,7 +338,7 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 			})
 			req.on("end", async () => {
 				try {
-					const task = WebviewProvider.getVisibleInstance()?.controller?.task
+					const task = seamProvider()?.controller?.task
 					if (!task) {
 						res.writeHead(409)
 						res.end(JSON.stringify({ error: "no active task" }))
@@ -378,7 +390,7 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 				// replaced the first driver's run. Now it is an answer with a name in it, and a driver who
 				// means to take over says so.
 				{
-					const live = WebviewProvider.getVisibleInstance()?.controller?.task
+					const live = seamProvider()?.controller?.task
 					const state = sessionStateFrom(live?.messageStateHandler.getClineMessages() ?? [], Boolean(live))
 					const verdict = checkClaim(currentLease, state, driver, takeover === true)
 					if (!verdict.ok) {
@@ -394,8 +406,8 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 					return
 				}
 
-				// Get a visible webview instance
-				const visibleWebview = WebviewProvider.getVisibleInstance()
+				// A session tab when the host can open one, else whatever surface of ours is visible
+				const visibleWebview = sessionFactory ? await sessionFactory() : seamProvider()
 				if (!visibleWebview || !visibleWebview.controller) {
 					res.writeHead(500)
 					res.end(JSON.stringify({ error: "No active Cline instance found" }))

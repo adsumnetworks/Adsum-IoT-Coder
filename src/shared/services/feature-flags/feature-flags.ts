@@ -11,6 +11,9 @@ export enum FeatureFlag {
 	// until we have seeded a 5-star floor, then flipped on remotely. The completion counter runs regardless,
 	// so flipping it on lands on a warm pool of already-eligible users.
 	REVIEW_NUDGE = "review-nudge",
+	// [0.5 sessions first] The rail in the sidebar and sessions as editor tabs, with the cards off. Default ON for
+	// 0.5; the reversal rule (plan P0.2) flips it remotely and the sidebar is the 0.4 cockpit again.
+	SESSIONS_FIRST_RAIL = "sessions-first-rail",
 }
 
 export const FeatureFlagDefaultValue: Partial<Record<FeatureFlag, FeatureFlagPayload>> = {
@@ -22,6 +25,7 @@ export const FeatureFlagDefaultValue: Partial<Record<FeatureFlag, FeatureFlagPay
 	[FeatureFlag.FREE_TIER_STAGE0]: true,
 	// OFF until we choose to launch it — remote flag flips it on. See the enum comment.
 	[FeatureFlag.REVIEW_NUDGE]: false,
+	[FeatureFlag.SESSIONS_FIRST_RAIL]: true,
 }
 
 export const FEATURE_FLAGS = Object.values(FeatureFlag)
