@@ -13,6 +13,7 @@ import {
 	subagentToolResponse,
 } from "../prompts/commands"
 import { StateManager } from "../storage/StateManager"
+import { findSlashCommandMatch } from "./slashCommandMatch"
 
 type FileBasedWorkflow = {
 	fullPath: string
@@ -75,22 +76,8 @@ export async function parseSlashCommands(
 		{ tag: "user_message", regex: /<user_message>([\s\S]*?)<\/user_message>/i },
 	]
 
-	// Regex to find slash commands anywhere in text (not just at the beginning).
-	// This mirrors how @ mentions work - they can appear anywhere in a message.
-	//
-	// Pattern breakdown: /(^|\s)\/([a-zA-Z0-9_.-]+)(?=\s|$)/
-	//   - (^|\s)  : Must be at start of string OR preceded by whitespace
-	//   - \/      : The literal slash character
-	//   - ([a-zA-Z0-9_.-]+) : The command name (letters, numbers, underscore, dot, hyphen)
-	//   - (?=\s|$): Must be followed by whitespace or end of string (lookahead)
-	//
-	// This safely avoids false matches in:
-	//   - URLs: "http://example.com/newtask" - slash not preceded by whitespace
-	//   - File paths: "some/path/newtask" - same reason
-	//   - Partial words: "foo/bar" - same reason
-	//
-	// Only ONE slash command per message is processed (first match found).
-	const slashCommandInTextRegex = /(^|\s)\/([a-zA-Z0-9_.-]+)(?=\s|$)/
+	// Only ONE slash command per message is processed (first match found, skipping any that
+	// fall inside a fenced code block — see findSlashCommandMatch below).
 
 	// Helper function to calculate positions and remove slash command from text
 	const removeSlashCommand = (
@@ -121,7 +108,7 @@ export async function parseSlashCommands(
 			const contentStartIndex = text.indexOf(tagContent, tagStartIndex)
 
 			// Find slash command within the tag content
-			const slashMatch = slashCommandInTextRegex.exec(tagContent)
+			const slashMatch = findSlashCommandMatch(tagContent)
 
 			if (!slashMatch) {
 				continue

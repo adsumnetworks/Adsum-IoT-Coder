@@ -539,7 +539,7 @@
 		"test:memory": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/memory.test.ts",
 		"test:memory-migrate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/memory/workspace/migrate.test.ts",
 		"test:sniffer-payload": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/nrf/payloadHex.node-test.ts",
-		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:stream-watchdog test:telemetry-events test:workspace test:cve test:engine-config test:ask-bridge test:chip-identity test:standalone-package test:session-lease test:platform-roots test:classifier-refresh test:product-recognition test:inject-queue test:queued-messages test:native-tool-text test:terminal-events test:gnss-gate test:lora-gate test:blg20-detect",
+		"test:cra": "npm-run-all test:kbits test:context test:attribution test:cra-honesty test:cra-structure test:cra-artifact test:resting-ask test:resting-gate test:esp-fold test:stream-watchdog test:telemetry-events test:workspace test:cve test:engine-config test:ask-bridge test:chip-identity test:standalone-package test:session-lease test:platform-roots test:classifier-refresh test:product-recognition test:inject-queue test:queued-messages test:native-tool-text test:terminal-events test:gnss-gate test:lora-gate test:blg20-detect test:slash-anywhere test:mcp-prompts test:usage-accumulator test:loop-detector test:quota-state",
 		"kbit": "ts-node --transpile-only -P tsconfig.unit-test.json scripts/kbit.ts",
 		"qa": "bash qa/regression/run.sh",
 		"format": "biome format --changed --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error",
@@ -634,6 +634,11 @@
 		"test:gnss-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/gnssGate.node-test.ts",
 		"test:lora-gate": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/prompts/system-prompt/components/loraGate.node-test.ts",
 		"test:blg20-detect": "ts-node --transpile-only -P tsconfig.unit-test.json src/shared/__tests__/blg20.node-test.ts",
+		"test:slash-anywhere": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/slash-commands/slashCommandMatch.test.ts",
+		"test:mcp-prompts": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/slash-commands/mcpPromptCommand.test.ts",
+		"test:usage-accumulator": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/usageAccumulator.test.ts",
+		"test:loop-detector": "ts-node --transpile-only -P tsconfig.unit-test.json src/core/task/tools/loopDetector.test.ts",
+		"test:quota-state": "ts-node --transpile-only -P tsconfig.unit-test.json src/services/adsum/quotaState.node-test.ts",
 		"test:logger-tools": "python3 -m unittest discover -s iot-knowledge/platforms/nrf/tools/rtt-logger -p 'test_*.py' && python3 -m unittest discover -s iot-knowledge/platforms/esp/tools/esp-monitor -p 'test_*.py'"
 	},
 	"lint-staged": {
