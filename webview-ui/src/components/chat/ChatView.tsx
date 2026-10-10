@@ -47,6 +47,7 @@ import OfflineNotice from "./OfflineNotice"
 import SessionComposerFoot from "./SessionComposerFoot"
 import SessionHeader from "./SessionHeader"
 import SessionPalette from "./SessionPalette"
+import SessionWordmark from "./SessionWordmark"
 import { entryFirstPrompt } from "./welcome/entryTelemetry"
 import { handOverCard } from "./welcome/handOverCard"
 import { routeDemo, routeTypedTask } from "./welcome/runRouting"
@@ -623,14 +624,19 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					   way back that is always present. A local task still wins the slot outright. */
 					<AgentSessionView onDismiss={() => setSessionViewOpen(false)} />
 				) : ADSUM_VIEW === "session" ? (
-					/* [0.5 sessions first] A session tab holds the chat alone; the cards live in the sidebar. */
-					<EmptySession
-						onPrefill={(text) => {
-							setInputValue(text)
-							textAreaRef.current?.focus()
-						}}
-						onStartTask={handleStartTask}
-					/>
+					/* [0.5 sessions first] A session tab holds the chat alone; the cards live in the sidebar.
+					   The wordmark is the only thing in the header while the tab is empty — once a task
+					   exists this whole branch stops rendering and SessionHeader takes over. */
+					<>
+						<SessionWordmark />
+						<EmptySession
+							onPrefill={(text) => {
+								setInputValue(text)
+								textAreaRef.current?.focus()
+							}}
+							onStartTask={handleStartTask}
+						/>
+					</>
 				) : (
 					<WelcomeView
 						onSelectMode={handleModeSelect}
