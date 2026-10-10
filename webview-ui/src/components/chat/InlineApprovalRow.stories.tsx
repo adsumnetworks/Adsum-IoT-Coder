@@ -11,8 +11,9 @@ const readTool: ClineMessage = {
 }
 
 /**
- * [P4.3 sessions first] Approvals as the exception path: Allow · Allow for this session · Deny — inline,
- * right under the ask, only while that ask is the one actually waiting on an answer.
+ * [0.5 simple] Approvals as the exception path: Allow (primary pill) · Always allow (ghost, with an Info
+ * naming the global setting it touches) · Deny (ghost) — inline, right under the ask, only while that
+ * ask is the one actually waiting on an answer.
  */
 const meta: Meta<typeof InlineApprovalRow> = {
 	title: "Session/InlineApprovalRow",

@@ -57,11 +57,12 @@ describe("InlineApprovalRow", () => {
 		expect(container).toBeEmptyDOMElement()
 	})
 
-	it("renders the three controls for a live tool approval", () => {
+	it("renders the three controls for a live tool approval, plus the Info beside 'Always allow'", () => {
 		render(<InlineApprovalRow isLast={true} message={toolAsk("readFile")} />)
 		expect(screen.getByTestId("inline-approval-allow")).toBeInTheDocument()
-		expect(screen.getByTestId("inline-approval-allow-session")).toBeInTheDocument()
+		expect(screen.getByTestId("inline-approval-always-allow")).toHaveTextContent("Always allow")
 		expect(screen.getByTestId("inline-approval-deny")).toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument()
 	})
 
 	it("Allow sends yesButtonClicked and touches no settings", () => {
@@ -71,9 +72,9 @@ describe("InlineApprovalRow", () => {
 		expect(updateAutoApproveSettingsMock).not.toHaveBeenCalled()
 	})
 
-	it("Allow for this session enables the matching auto-approve action, then approves", () => {
+	it("Always allow enables the matching auto-approve action (a global setting), then approves", () => {
 		render(<InlineApprovalRow isLast={true} message={toolAsk("newFileCreated")} />)
-		fireEvent.click(screen.getByTestId("inline-approval-allow-session"))
+		fireEvent.click(screen.getByTestId("inline-approval-always-allow"))
 		expect(updateAutoApproveSettingsMock).toHaveBeenCalledWith(
 			expect.objectContaining({ actions: expect.objectContaining({ editFiles: true }) }),
 		)
