@@ -34,7 +34,7 @@ const ROW_COPY: Record<FirstStepId, { title: string; blurb: string }> = {
 	},
 	register: {
 		title: "Register for free",
-		blurb: "An account, not a card — it unlocks the cellular and gateway bits.",
+		blurb: "An account, not a card: it unlocks the cellular and gateway bits.",
 	},
 	gateway: {
 		title: "Set up a gateway",
