@@ -101,3 +101,8 @@ __pycache__/
 
 # The extension's workspace memory for this repo: local notes and paths, never committed or shipped.
 .adsum/
+
+# The Python the extension carries for its Python tools, per platform (scripts/build-python-runtime.mjs): a build
+# artifact, staged into a platform VSIX by scripts/package-vsix-target.mjs.
+runtimes/
+.cache/python-runtime/
