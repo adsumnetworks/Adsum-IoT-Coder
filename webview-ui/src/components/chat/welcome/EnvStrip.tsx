@@ -55,7 +55,7 @@ interface PlatformRowProps extends BlockFacts {
 	label: string
 	/** True when the platform's toolchain/board/project is present; false → a dimmed "not detected" row. */
 	detected: boolean
-	/** Muted setup nudge shown when not detected, e.g. "not detected — install ESP-IDF to enable". */
+	/** Muted setup nudge shown when not detected, e.g. "not found". */
 	notDetectedHint: string
 }
 
@@ -537,19 +537,9 @@ const EnvStrip: React.FC<{ forceExpanded?: boolean }> = ({ forceExpanded = false
 			<div id="envstrip-detail" style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
 				{expanded ? (
 					<>
-						<PlatformRow
-							detected={nrfDetected}
-							label="nRF"
-							notDetectedHint="not detected — install nRF Connect SDK to enable"
-							{...nrf}
-						/>
+						<PlatformRow detected={nrfDetected} label="nRF" notDetectedHint="not found" {...nrf} />
 						<div style={{ height: "1px", background: NEUTRAL_BORDER, width: "100%" }} />
-						<PlatformRow
-							detected={espDetected}
-							label="ESP"
-							notDetectedHint="not detected — install ESP-IDF to enable"
-							{...esp}
-						/>
+						<PlatformRow detected={espDetected} label="ESP" notDetectedHint="not found" {...esp} />
 						{!forceExpanded && (
 							<button
 								aria-controls="envstrip-detail"

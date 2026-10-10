@@ -1,4 +1,5 @@
 import type React from "react"
+import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
 import { ADSUM_MARK_PATHS, ADSUM_MARK_TRANSFORM, ADSUM_MARK_VIEWBOX } from "@/assets/adsumMarkPath"
 import { BRAND_CORAL } from "../chat/brandColors"
 
@@ -29,30 +30,22 @@ export const AdsumMark: React.FC<{ size?: number; color?: string; title?: string
 	</svg>
 )
 
-export const AdsumLogo: React.FC<{ size?: number; name?: string; muted?: boolean }> = ({
-	size = 16,
-	name = "Adsum IoT Coder",
-	muted = false,
-}) => (
+/**
+ * The product lockup is the brand artwork, never a typed name: the coral mark, "adsum" in the light geometric
+ * face, IOT CODER beneath (assets/branding, shipped as the two theme crops). `size` is the rendered height.
+ */
+export const AdsumLogo: React.FC<{ size?: number; name?: string; muted?: boolean }> = ({ size = 16, muted = false }) => (
 	<span
 		data-testid="adsum-logo"
-		style={{
-			display: "inline-flex",
-			alignItems: "center",
-			gap: Math.round(size * 0.5),
-			fontSize: Math.round(size * 0.95),
-			fontWeight: 700,
-			letterSpacing: "-0.02em",
-			lineHeight: 1,
-			// The wordmark sits a shade under the foreground, the way the proposed lockup draws it: the mark
-			// carries the colour, the name carries the weight.
-			color: muted
-				? "var(--vscode-descriptionForeground)"
-				: "color-mix(in srgb, var(--vscode-foreground) 82%, var(--vscode-editor-background))",
-			whiteSpace: "nowrap",
-		}}>
-		<AdsumMark size={size} title="Adsum IoT Coder" />
-		{name}
+		style={{ display: "inline-flex", alignItems: "center", opacity: muted ? 0.75 : 1, lineHeight: 0 }}>
+		<img alt="Adsum IoT Coder" className="adsum-wordmark-dark" src={adsumLogoDark} style={{ height: size, width: "auto" }} />
+		<img
+			alt=""
+			aria-hidden="true"
+			className="adsum-wordmark-light"
+			src={adsumLogoLight}
+			style={{ height: size, width: "auto" }}
+		/>
 	</span>
 )
 

@@ -220,7 +220,7 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 							padding: "8px 0 10px",
 							borderBottom: "1px solid color-mix(in srgb, var(--vscode-foreground) 10%, transparent)",
 						}}>
-						<AdsumLogo size={24} />
+						<AdsumLogo size={34} />
 					</div>
 					<RailYou
 						onAccount={() => {

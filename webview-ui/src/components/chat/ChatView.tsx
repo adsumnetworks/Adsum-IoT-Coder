@@ -634,7 +634,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					/* [0.5 sessions first] A session tab holds the chat alone; the cards live in the sidebar.
 					   The wordmark is the only thing in the header while the tab is empty — once a task
 					   exists this whole branch stops rendering and SessionHeader takes over. */
-					<>
+					/* The tab reads as one centred column, the way a conversation page does: the wordmark, the
+					   empty state, and below, the composer, all on the same 760 px axis. */
+					<div className="session-column grow">
 						<SessionWordmark />
 						<EmptySession
 							onPrefill={(text) => {
@@ -643,7 +645,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 							}}
 							onStartTask={handleStartTask}
 						/>
-					</>
+					</div>
 				) : (
 					<WelcomeView
 						onSelectMode={handleModeSelect}
@@ -655,21 +657,23 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				)}
 				{task && !openedAgentSession && <AgentSessionRecap />}
 				{task && !openedAgentSession && (
-					<MessagesArea
-						chatState={chatState}
-						// Messages typed while the agent is working sit at the tail of the transcript — inside
-						// the scroller, so a queued row occupies the place its bubble will take when it is
-						// delivered, rather than covering the conversation from a fixed position.
-						footer={<QueuedMessages queueRefusal={chatState.queueRefusal} />}
-						// No-ending sessions: the post-task NextStepChooser footer is gone — a completion renders
-						// in-stream as a handoff card and the conversation simply continues. (The persistent
-						// AI-limitations disclaimer lives under the always-present input footer below.)
-						groupedMessages={groupedMessages}
-						messageHandlers={messageHandlers}
-						modifiedMessages={modifiedMessages}
-						scrollBehavior={scrollBehavior}
-						task={task}
-					/>
+					<div className={ADSUM_VIEW === "session" ? "session-column grow" : "contents"}>
+						<MessagesArea
+							chatState={chatState}
+							// Messages typed while the agent is working sit at the tail of the transcript — inside
+							// the scroller, so a queued row occupies the place its bubble will take when it is
+							// delivered, rather than covering the conversation from a fixed position.
+							footer={<QueuedMessages queueRefusal={chatState.queueRefusal} />}
+							// No-ending sessions: the post-task NextStepChooser footer is gone — a completion renders
+							// in-stream as a handoff card and the conversation simply continues. (The persistent
+							// AI-limitations disclaimer lives under the always-present input footer below.)
+							groupedMessages={groupedMessages}
+							messageHandlers={messageHandlers}
+							modifiedMessages={modifiedMessages}
+							scrollBehavior={scrollBehavior}
+							task={task}
+						/>
+					</div>
 				)}
 			</div>
 			{/* The composer is present whether or not a task is running.
@@ -706,22 +710,24 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					)}
 					{/* [0.5 sessions first] New tab only — once a task exists the hint has nothing left to
 					    orient; a developer mid-task already knows where they are. */}
-					{!task && <PreferSidebarHint />}
-					<InputSection
-						chatState={chatState}
-						messageHandlers={messageHandlers}
-						morph={inputMorph}
-						placeholderText={placeholderText}
-						scrollBehavior={scrollBehavior}
-						selectFilesAndImages={selectFilesAndImages}
-						shouldDisableFilesAndImages={shouldDisableFilesAndImages}
-					/>
-					<SessionComposerFoot
-						contextPercent={composerFootContextPercent}
-						folderName={composerFootFolderName}
-						hasTask={!!task}
-						onOpenPalette={() => setPalette(true)}
-					/>
+					<div className={ADSUM_VIEW === "session" ? "session-column" : undefined}>
+						{!task && <PreferSidebarHint />}
+						<InputSection
+							chatState={chatState}
+							messageHandlers={messageHandlers}
+							morph={inputMorph}
+							placeholderText={placeholderText}
+							scrollBehavior={scrollBehavior}
+							selectFilesAndImages={selectFilesAndImages}
+							shouldDisableFilesAndImages={shouldDisableFilesAndImages}
+						/>
+						<SessionComposerFoot
+							contextPercent={composerFootContextPercent}
+							folderName={composerFootFolderName}
+							hasTask={!!task}
+							onOpenPalette={() => setPalette(true)}
+						/>
+					</div>
 					{ADSUM_VIEW === "session" && (
 						<SessionPalette
 							hasTask={!!task}

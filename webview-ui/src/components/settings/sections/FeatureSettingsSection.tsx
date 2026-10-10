@@ -101,7 +101,7 @@ const FeatureSettingsSection = ({ renderSectionHeader }: FeatureSettingsSectionP
 										className="codicon codicon-warning mr-1"
 										style={{ fontSize: "12px", marginTop: "1px", flexShrink: 0 }}></span>
 									<span>
-										Cline for CLI is required for subagents. Install it with:
+										A separate CLI is required for subagents. Install it with:
 										<code
 											className="ml-1 px-1 rounded"
 											style={{
@@ -274,7 +274,7 @@ const FeatureSettingsSection = ({ renderSectionHeader }: FeatureSettingsSectionP
 								value={String(focusChainSettings?.remindClineInterval || 6)}
 							/>
 							<p className="text-xs mt-[5px] text-(--vscode-descriptionForeground)">
-								Interval (in messages) to remind Cline about its focus chain checklist (1-100). Lower values
+								Interval (in messages) to remind the agent about its focus chain checklist (1-100). Lower values
 								provide more frequent reminders.
 							</p>
 						</div>

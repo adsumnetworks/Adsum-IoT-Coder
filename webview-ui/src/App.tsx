@@ -66,14 +66,18 @@ const AppContent = () => {
 
 	return (
 		<div className="flex h-screen w-full flex-col">
-			{showSettings && <SettingsView onDone={hideSettings} targetSection={settingsTargetSection} />}
-			{showHistory && <HistoryView onDone={hideHistory} />}
+			{/* [0.5] Settings and All sessions are pages of the rail; the title-bar gear and ↺ reach every
+			    webview, so a session tab lets the events pass and keeps its chat. */}
+			{showSettings && ADSUM_VIEW !== "session" && (
+				<SettingsView onDone={hideSettings} targetSection={settingsTargetSection} />
+			)}
+			{showHistory && ADSUM_VIEW !== "session" && <HistoryView onDone={hideHistory} />}
 			{/* MCP and Account views removed */}
 			{showWorktrees && <WorktreesView onDone={hideWorktrees} />}
 			{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
 			<ChatView
 				hideAnnouncement={hideAnnouncement}
-				isHidden={showSettings || showHistory || showWorktrees}
+				isHidden={(ADSUM_VIEW !== "session" && (showSettings || showHistory)) || showWorktrees}
 				showAnnouncement={showAnnouncement}
 				showHistoryView={navigateToHistory}
 			/>

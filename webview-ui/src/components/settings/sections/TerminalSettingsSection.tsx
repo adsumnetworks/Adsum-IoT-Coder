@@ -126,8 +126,8 @@ export const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = (
 							{inputError && <div className="text-(--vscode-errorForeground) text-xs mt-1">{inputError}</div>}
 						</div>
 						<p className="text-xs text-(--vscode-descriptionForeground)">
-							Set how long Cline waits for shell integration to activate before executing commands. Increase this
-							value if you experience terminal connection timeouts.
+							Set how long the agent waits for shell integration to activate before executing commands. Increase
+							this value if you experience terminal connection timeouts.
 						</p>
 					</div>
 
@@ -158,7 +158,7 @@ export const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = (
 								<VSCodeOption value="backgroundExec">Background Exec</VSCodeOption>
 							</VSCodeDropdown>
 							<p className="text-xs text-[var(--vscode-descriptionForeground)] mt-1">
-								Choose whether Cline runs commands in the VS Code terminal or a background process.
+								Choose whether the agent runs commands in the VS Code terminal or a background process.
 							</p>
 						</div>
 					)}

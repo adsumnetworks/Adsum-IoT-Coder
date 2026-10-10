@@ -180,21 +180,21 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 							color: "var(--vscode-descriptionForeground)",
 							borderTop: "1px solid var(--vscode-panel-border)",
 						}}>
-						<span className="flex items-center gap-2" style={{ marginBottom: 6 }}>
+						<span className="flex items-center gap-3" style={{ marginBottom: 10 }}>
 							<span style={{ color: "var(--vscode-descriptionForeground)" }}>by</span>
 							<img
 								alt="Adsum Networks"
 								className="adsum-wordmark-dark"
 								data-testid="about-company-logo"
 								src={adsumNetworksLogoOnDark}
-								style={{ height: "18px" }}
+								style={{ height: "44px" }}
 							/>
 							<img
 								alt=""
 								aria-hidden="true"
 								className="adsum-wordmark-light"
 								src={adsumNetworksLogoOnLight}
-								style={{ height: "18px" }}
+								style={{ height: "44px" }}
 							/>
 						</span>
 						© Adsum Networks · open source under{" "}

@@ -319,7 +319,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 				}
 				`}
 			</style>
-			<div aria-label="Provider kind" className="flex gap-1 mb-2" role="tablist">
+			<div aria-label="Provider kind" className="flex gap-1 mb-2 flex-wrap" role="tablist">
 				{PICKER_TABS.map((t) => (
 					<button
 						aria-selected={pickerTab === t.id}
@@ -341,6 +341,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 							padding: "2px 10px",
 							fontSize: 11,
 							cursor: "pointer",
+							whiteSpace: "nowrap",
 							background: pickerTab === t.id ? "var(--vscode-badge-background)" : "transparent",
 							color: pickerTab === t.id ? "var(--vscode-badge-foreground)" : "var(--vscode-descriptionForeground)",
 						}}

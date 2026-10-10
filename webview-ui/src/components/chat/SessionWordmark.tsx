@@ -23,7 +23,7 @@ const SessionWordmark: React.FC<SessionWordmarkProps> = ({ view = ADSUM_VIEW }) 
 	}
 	return (
 		<div data-testid="session-wordmark" style={{ display: "flex", justifyContent: "center", padding: "28px 0 2px" }}>
-			<AdsumLogo size={22} />
+			<AdsumLogo size={40} />
 		</div>
 	)
 }

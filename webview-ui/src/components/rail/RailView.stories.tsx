@@ -230,3 +230,5 @@ export const NarrowSidebar: Story = {
 	},
 }
 export const Offline: Story = { args: { state: { hostOffline: true, nrfEnvironment: blg20 } } }
+export const NarrowSettings: Story = { args: { width: 260, page: "settings", state: { freeTierRemainingTokens: 76_488_063 } } }
+export const NarrowHardware: Story = { args: { width: 260, page: "hardware", state: { nrfEnvironment: blg20 } } }

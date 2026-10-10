@@ -20,7 +20,7 @@ describe("AdsumFreeProvider", () => {
 	it("keeps the tokens pill when a remaining balance is known", () => {
 		state.current = { freeTierRemainingTokens: 42_000 }
 		render(<AdsumFreeProvider currentMode="act" />)
-		expect(screen.getByText("42,000 tokens left")).toBeInTheDocument()
+		expect(screen.getByText("42K left")).toBeInTheDocument()
 	})
 
 	it("keeps the invite-code link", () => {
