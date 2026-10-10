@@ -346,8 +346,8 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 	} else {
 		devices = nrfBoardLabels(env).join(", ")
 	}
-	// A BLG20x is named by four digits; the hover gives the unit id behind them.
-	const long = (env.blg20Units ?? []).filter((u) => u.name).map(blg20LongLabel)
+	// A BLG20x is named by four digits; the hover gives the unit id and the ports behind them.
+	const long = (env.blg20Units ?? []).filter((u) => u.confirmed).map(blg20LongLabel)
 
 	return {
 		toolchain,

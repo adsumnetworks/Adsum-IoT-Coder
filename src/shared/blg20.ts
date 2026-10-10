@@ -265,27 +265,27 @@ export function blg20ProbeSerials(units: Blg20Unit[] | undefined): Set<string> {
 }
 
 /**
- * One short label per unit, the way a person names it: "BLG20x 286C (USB COM5 + LTE tunnel COM6)", the
- * four digits being the end of its Bluetooth address, which firmware 0.3.3+ puts in the USB product
- * string. Older firmware gives no name, so the unit is named by its device id (the BLE half's hardware
- * id, which is also its USB serial number): "BLG20 9802AF5C69DF1E66 (USB COM5)". A unit nothing has
- * named says so: "Possibly a BLG20 (2 debug probes), not confirmed". The full id is always in
- * blg20LongLabel(), for a hover or a log.
+ * One short label per unit, the way a person names it: "BLG20x 286C", the four digits being the end of
+ * its Bluetooth address, which firmware 0.3.3+ puts in the USB product string. Nothing else: the ports
+ * were there for the agent, which now reads them from the tool's own `list`; people never type them. Older
+ * firmware gives no name, so the unit is named by its device id (the BLE half's hardware id, which is also
+ * its USB serial number): "BLG20 9802AF5C69DF1E66". A unit nothing has named says so: "Possibly a BLG20
+ * (2 debug probes), not confirmed". The ports and the id are in blg20LongLabel(), for a hover or a log.
  */
 export function blg20Label(u: Blg20Unit): string {
-	const where = blg20Where(u)
 	if (!u.confirmed) {
-		return `Possibly a BLG20${where}, not confirmed`
+		return `Possibly a BLG20${blg20Where(u)}, not confirmed`
 	}
-	return u.name ? `BLG20x ${u.name}${where}` : `BLG20 ${u.serialNumber ?? "gateway"}${where}`
+	return u.name ? `BLG20x ${u.name}` : `BLG20 ${u.serialNumber ?? "gateway"}`
 }
 
-/** The label with the unit id spelled out: "BLG20x 286C, unit BBA605799DE4043E (USB /dev/ttyACM3)". */
+/** Everything behind the name: "BLG20x 286C, unit BBA605799DE4043E (USB /dev/ttyACM3 + LTE tunnel /dev/ttyACM4)". */
 export function blg20LongLabel(u: Blg20Unit): string {
-	if (!u.confirmed || !u.name || !u.serialNumber) {
+	if (!u.confirmed) {
 		return blg20Label(u)
 	}
-	return `BLG20x ${u.name}, unit ${u.serialNumber}${blg20Where(u)}`
+	const id = u.name && u.serialNumber ? `BLG20x ${u.name}, unit ${u.serialNumber}` : blg20Label(u)
+	return `${id}${blg20Where(u)}`
 }
 
 function blg20Where(u: Blg20Unit): string {

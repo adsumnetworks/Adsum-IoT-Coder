@@ -96,7 +96,8 @@ describe("BLG20x over its USB service port", () => {
 		const units = detectBlg20Units(win, [], nrf)
 		assert.equal(units.length, 1)
 		assert.equal(units[0].confirmed, true)
-		assert.equal(blg20Label(units[0]), "BLG20 AB12 (USB COM5)")
+		assert.equal(blg20Label(units[0]), "BLG20 AB12")
+		assert.equal(blg20LongLabel(units[0]), "BLG20 AB12 (USB COM5)")
 	})
 
 	test("firmware 0.3.3+ names the unit by the end of its Bluetooth address: BLG20x 286C, the id behind it", () => {
@@ -121,7 +122,7 @@ describe("BLG20x over its USB service port", () => {
 		const units = blg20UnitsFromPorts(ports)
 		assert.equal(units[0].name, "286C")
 		assert.equal(units[0].serialNumber, "BBA605799DE4043E")
-		assert.equal(blg20Label(units[0]), "BLG20x 286C (USB /dev/ttyACM3 + LTE tunnel /dev/ttyACM4)")
+		assert.equal(blg20Label(units[0]), "BLG20x 286C")
 		assert.equal(blg20LongLabel(units[0]), "BLG20x 286C, unit BBA605799DE4043E (USB /dev/ttyACM3 + LTE tunnel /dev/ttyACM4)")
 		// nrfutil reads the same string; a Windows port with no product string takes the name from nrfutil
 		const win = detectBlg20Units(
@@ -129,7 +130,8 @@ describe("BLG20x over its USB service port", () => {
 			[],
 			[{ serialNumber: "BBA605799DE4043E", product: "BLG20 Gateway 286C", ports: [{ path: "COM5", interfaceNumber: 0 }] }],
 		)
-		assert.equal(blg20Label(win[0]), "BLG20x 286C (USB COM5)")
+		assert.equal(blg20Label(win[0]), "BLG20x 286C")
+		assert.equal(blg20LongLabel(win[0]), "BLG20x 286C, unit BBA605799DE4043E (USB COM5)")
 		// the name is never mistaken for the product match: a plain "BLG20 Gateway" has none
 		assert.equal(blg20NameFromProduct("BLG20 Gateway"), undefined)
 		assert.equal(blg20NameFromProduct("BLG20 Gateway 286c"), "286C")
@@ -139,7 +141,8 @@ describe("BLG20x over its USB service port", () => {
 		const locked = blg20UnitsFromPorts([LINUX[1]])
 		assert.equal(locked[0].servicePort, "/dev/ttyACM0")
 		assert.equal(locked[0].ltePort, undefined)
-		assert.equal(blg20Label(locked[0]), "BLG20 9802AF5C69DF1E66 (USB /dev/ttyACM0)")
+		assert.equal(blg20Label(locked[0]), "BLG20 9802AF5C69DF1E66")
+		assert.equal(blg20LongLabel(locked[0]), "BLG20 9802AF5C69DF1E66 (USB /dev/ttyACM0)")
 	})
 
 	test("macOS names no interface: the lower port name is the service port", () => {
@@ -207,7 +210,11 @@ describe("both at once — the bench", () => {
 			bleProbe: "960167369",
 			lteProbe: "1051878474",
 		})
-		assert.equal(blg20Label(units[0]), "BLG20 9802AF5C69DF1E66 (USB /dev/ttyACM0 + LTE tunnel /dev/ttyACM1, 2 debug probes)")
+		assert.equal(blg20Label(units[0]), "BLG20 9802AF5C69DF1E66")
+		assert.equal(
+			blg20LongLabel(units[0]),
+			"BLG20 9802AF5C69DF1E66 (USB /dev/ttyACM0 + LTE tunnel /dev/ttyACM1, 2 debug probes)",
+		)
 		assert.deepEqual([...blg20ProbeSerials(units)].sort(), ["1051878474", "960167369"])
 	})
 
@@ -263,7 +270,11 @@ describe("BLG20x from nrfutil's device list (no pyserial needed)", () => {
 	test("nrfutil alone (no pyserial) with the probes: one unit, named by its device id", () => {
 		const units = detectBlg20Units([], PROBES, NRFUTIL)
 		assert.equal(units.length, 1)
-		assert.equal(blg20Label(units[0]), "BLG20 9802AF5C69DF1E66 (USB /dev/ttyACM0 + LTE tunnel /dev/ttyACM1, 2 debug probes)")
+		assert.equal(blg20Label(units[0]), "BLG20 9802AF5C69DF1E66")
+		assert.equal(
+			blg20LongLabel(units[0]),
+			"BLG20 9802AF5C69DF1E66 (USB /dev/ttyACM0 + LTE tunnel /dev/ttyACM1, 2 debug probes)",
+		)
 	})
 
 	test("pyserial and nrfutil both see it: still one unit", () => {

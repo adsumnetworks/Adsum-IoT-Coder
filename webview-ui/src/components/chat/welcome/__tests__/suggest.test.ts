@@ -147,11 +147,11 @@ describe("rank — another product's board is not evidence [10 Oct 2026]", () =>
 		},
 		{ id: "blg20", platform: "product", need: "blg20", boardMatch: /blg20|lbg20/i, otherProduct: /lew840/i },
 	]
-	const s = { ...base, nrfBoards: ["BLG20x 286C (USB /dev/ttyACM3)"], hasWorkspace: true }
+	const s = { ...base, nrfBoards: ["BLG20x 286C"], hasWorkspace: true }
 	const ranked = rank(CARDS, s)
 	it("the BLG20x card leads, by its own board", () => {
 		expect(ranked[0].item.id).toBe("blg20")
-		expect(ranked[0].why).toBe("BLG20x 286C (USB /dev/ttyACM3) connected")
+		expect(ranked[0].why).toBe("BLG20x 286C connected")
 	})
 	it("the LEW840x card does not cite the BLG20x and falls to its requirement", () => {
 		const lew = ranked.find((r) => r.item.id === "lew840x")!
@@ -160,6 +160,6 @@ describe("rank — another product's board is not evidence [10 Oct 2026]", () =>
 	})
 	it("fails on the old rule: without otherProduct the LEW840x card cites the BLG20x", () => {
 		const old = rank([{ id: "lew840x", platform: "product", need: "lew840x", whyNeutral: "needs the LEW840x kit" }], s)
-		expect(old[0].why).toBe("BLG20x 286C (USB /dev/ttyACM3) connected")
+		expect(old[0].why).toBe("BLG20x 286C connected")
 	})
 })
