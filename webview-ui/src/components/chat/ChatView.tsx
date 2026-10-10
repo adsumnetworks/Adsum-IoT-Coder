@@ -657,7 +657,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				)}
 				{task && !openedAgentSession && <AgentSessionRecap />}
 				{task && !openedAgentSession && (
-					<div className={ADSUM_VIEW === "session" ? "session-column grow" : "contents"}>
+					<div className="contents">
 						<MessagesArea
 							chatState={chatState}
 							// Messages typed while the agent is working sit at the tail of the transcript — inside
@@ -710,7 +710,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					)}
 					{/* [0.5 sessions first] New tab only — once a task exists the hint has nothing left to
 					    orient; a developer mid-task already knows where they are. */}
-					<div className={ADSUM_VIEW === "session" ? "session-column" : undefined}>
+					<div className={ADSUM_VIEW === "session" && !task ? "session-column" : undefined}>
 						{!task && <PreferSidebarHint />}
 						<InputSection
 							chatState={chatState}
