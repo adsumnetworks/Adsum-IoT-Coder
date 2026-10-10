@@ -83,5 +83,10 @@ export interface NrfEnvironment {
 	 * (see shared/blg20.ts). Filled when the state is built, from the serial-port enumeration and `boards`.
 	 */
 	blg20Units?: Blg20Unit[]
+	/**
+	 * [11 Oct 2026] The last Bluetooth scan, for the Hardware page's Gateways-in-range block: when it ran and why it
+	 * found nothing when it did (Bluetooth off, the editor not allowed to use it); absent before the first scan.
+	 */
+	bleScan?: { at: number; error?: string }
 	lastDetectedAt?: number
 }

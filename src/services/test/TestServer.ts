@@ -7,6 +7,7 @@ import { execa } from "execa"
 import * as http from "http"
 import * as vscode from "vscode"
 import { Controller } from "@/core/controller"
+import { bluetooth } from "@/core/controller/adsum/bluetooth"
 import { firmware } from "@/core/controller/adsum/firmware"
 import { ExtensionRegistryInfo } from "@/registry"
 import { getCwd } from "@/utils/path"
@@ -148,6 +149,27 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 					return
 				}
 				const r = await firmware(controller, StringRequest.create({ value: body || "{}" }))
+				res.writeHead(200, { "Content-Type": "application/json" })
+				res.end(r.value)
+			})
+			return
+		}
+
+		// [11 Oct 2026] The Hardware page's Bluetooth door (scan, select, connect, claim, check, forget), the same
+		// function the page calls, so the journey is proven end to end from the bench.
+		if (req.method === "POST" && req.url === "/bluetooth") {
+			let body = ""
+			req.on("data", (chunk) => {
+				body += chunk.toString()
+			})
+			req.on("end", async () => {
+				const controller = seamProvider()?.controller
+				if (!controller) {
+					res.writeHead(500)
+					res.end(JSON.stringify({ error: "No active Cline instance found" }))
+					return
+				}
+				const r = await bluetooth(controller, StringRequest.create({ value: body || "{}" }))
 				res.writeHead(200, { "Content-Type": "application/json" })
 				res.end(r.value)
 			})

@@ -5,6 +5,7 @@ import EnvStrip from "../chat/welcome/EnvStrip"
 import GatewayLadder from "../chat/welcome/GatewayLadder"
 import { useEntrySignals } from "../chat/welcome/useEntrySignals"
 import { blg20InstallPrompt, blg20SetUpPrompt, buildIntentPrompt } from "../chat/welcome/welcomeIntents"
+import BleGateways from "./BleGateways"
 import FirmwareRungs from "./FirmwareRungs"
 import { R } from "./railStyles"
 import { bleSetUpPrompt, unitActions } from "./unitActions"
@@ -49,6 +50,13 @@ const HardwarePage: React.FC<Props> = ({ family: asked, onBack, onPrompt, onAsk,
 				</button>
 			</div>
 			<EnvStrip forceExpanded />
+			{gatewayLadder && (
+				<BleGateways
+					platform={platform}
+					scan={nrfEnvironment?.bleScan}
+					units={(nrfEnvironment?.blg20Units ?? []).filter((u) => !!u.bleAddress)}
+				/>
+			)}
 			<FirmwareRungs
 				family={family}
 				onAsk={() => onAsk(family === "lew840x" ? "lew840x" : "blg20")}

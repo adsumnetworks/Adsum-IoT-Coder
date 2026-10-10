@@ -131,6 +131,20 @@ export interface Blg20Unit {
 	windowOpen?: boolean
 	/** Bluetooth: the signal, in dBm, when it was seen. */
 	rssi?: number
+	/**
+	 * [11 Oct 2026] What the Hardware page's journey learnt from the unit over Bluetooth (the service tool's `status`,
+	 * `claim` and the registry): paired this session, claimed and by whose key, the halves' versions, the latest
+	 * release for the family and whether it is newer. Absent until the page connects.
+	 */
+	paired?: boolean
+	claimed?: boolean
+	/** The owner key is this computer's. */
+	mine?: boolean
+	bleFw?: string
+	lteFw?: string
+	latest?: { version: string; bleFw?: string | null; lteFw?: string | null; newer: boolean; ahead?: boolean; folder?: string }
+	/** The last words the journey had for this unit (the tool's own sentence), shown under its row. */
+	words?: string
 }
 
 /** The units the service tool saw over Bluetooth, as gateway units. Named by the device itself: confirmed. */

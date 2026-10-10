@@ -222,3 +222,61 @@ const LbgPage = ({ width }: { width: number }) => {
 	)
 }
 export const HardwarePageLbg20xOverBluetooth: StoryObj<typeof LbgPage> = { render: () => <LbgPage width={420} /> }
+
+/**
+ * [11 Oct 2026] The journey on the page before any session: the unit connected (paired, both halves read), claimed by
+ * this computer, and the latest release newer than what it runs, so the upgrade is proposed and the Flash row carries it.
+ */
+const journeyBase = {
+	...lbgBase,
+	nrfEnvironment: {
+		...lbgBase.nrfEnvironment,
+		bleScan: { at: Date.now() },
+		blg20Units: [
+			{
+				...lbgBase.nrfEnvironment.blg20Units[0],
+				paired: true,
+				claimed: true,
+				mine: true,
+				bleFw: "0.3.6",
+				lteFw: "0.2.8",
+				latest: { version: "1.1.0", bleFw: "0.3.7", lteFw: "0.2.9", newer: true },
+			},
+			{
+				via: "ble",
+				family: "blg20x",
+				confirmed: true,
+				name: "286C",
+				bleAddress: "FA:A0:8F:0D:28:6C",
+				bleId: "FAA08F0D286C",
+				bonded: false,
+				windowOpen: true,
+				rssi: -71,
+			},
+		],
+	},
+}
+const JourneyPage = ({ width, platform }: { width: number; platform?: string }) => {
+	const real = useExtensionState()
+	return (
+		<ExtensionStateContext.Provider value={{ ...real, ...journeyBase, ...(platform ? { platform } : {}) } as never}>
+			<FirmwareCallContext.Provider
+				value={fake([
+					row(lbg20Demo, "flash", {
+						folder: LBG_FOLDER,
+						intact: true,
+						receipt: { ...receipt("active"), family: "lbg20x" },
+					}),
+				])}>
+				<div style={{ width, minHeight: 820, background: "var(--vscode-sideBar-background)" }}>
+					<RailView initialPage="hardware" />
+				</div>
+			</FirmwareCallContext.Provider>
+		</ExtensionStateContext.Provider>
+	)
+}
+export const HardwarePageBluetoothJourney: StoryObj<typeof JourneyPage> = { render: () => <JourneyPage width={420} /> }
+export const HardwarePageBluetoothJourneyLinux: StoryObj<typeof JourneyPage> = {
+	render: () => <JourneyPage platform="linux" width={420} />,
+}
+export const HardwarePageBluetoothJourneyNarrow: StoryObj<typeof JourneyPage> = { render: () => <JourneyPage width={260} /> }
