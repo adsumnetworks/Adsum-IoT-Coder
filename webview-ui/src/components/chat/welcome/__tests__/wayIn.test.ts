@@ -52,12 +52,13 @@ describe("the way in", () => {
 			"lew840x-9160-src",
 			"lew840x-lora-src",
 			"lew840x-lora-adv",
-			"blg20-demo-hex",
 		]) {
 			expect(isRequestOnlyGroup(g), g).toBe(true)
 		}
-		// The LEW840x demo pair is back in the tier since 15 Sep 2026: registering is exactly what opens it.
+		// The LEW840x demo pair is back in the tier since 15 Sep 2026, and the BLG20x demo pair since 9 Oct
+		// (the fleet cap holds in the firmware itself): registering is exactly what opens them.
 		expect(isRequestOnlyGroup("lew840x-demo-hex")).toBe(false)
+		expect(isRequestOnlyGroup("blg20-demo-hex")).toBe(false)
 	})
 
 	it("no group, and the wildcard, are never a request", () => {
