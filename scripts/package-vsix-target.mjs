@@ -44,6 +44,10 @@ sh(process.execPath, [
 	"package",
 	"--no-dependencies",
 	"--allow-star-activation",
+	// The standalone engine's minified code reads as a SendGrid key to vsce's scanner (`SG.prototype._destroy`); the
+	// repo's publish scripts allow that one false positive the same way.
+	"--allow-package-secrets",
+	"sendgrid",
 	"--target",
 	target,
 	"--ignoreFile",

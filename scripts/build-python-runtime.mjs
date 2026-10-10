@@ -21,7 +21,7 @@
  */
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -108,7 +108,28 @@ function hostPython() {
 }
 
 function rmAll(p) {
-	if (existsSync(p)) rmSync(p, { recursive: true, force: true })
+	// rmSync looks at the path itself (lstat), so a dangling alias goes too; existsSync would follow it and say no.
+	rmSync(p, { recursive: true, force: true })
+}
+
+/**
+ * One interpreter, one name. A VSIX is a zip and keeps no symlink: every alias (python, python3 -> python3.12) would
+ * become another full copy of an 18 MB binary. The resolver runs bin/python3 (Windows: python.exe), so that is the one
+ * real file kept; the other launchers (pip, idle, pydoc, 2to3, -config) and the library's unversioned alias go.
+ */
+function oneInterpreter(pyRoot, win) {
+	if (win) return
+	const bin = path.join(pyRoot, "bin")
+	const real = path.join(bin, `python${CPYTHON.split(".").slice(0, 2).join(".")}`)
+	const want = path.join(bin, "python3")
+	rmAll(want)
+	renameSync(real, want)
+	for (const n of readdirSync(bin)) if (n !== "python3") rmAll(path.join(bin, n))
+	const lib = path.join(pyRoot, "lib")
+	for (const n of readdirSync(lib)) {
+		const p = path.join(lib, n)
+		if (lstatSync(p).isSymbolicLink()) rmAll(p)
+	}
 }
 
 function trim(pyRoot, libDir) {
@@ -197,6 +218,7 @@ async function build(key) {
 		...pkgs,
 	])
 	trim(pyRoot, libDir)
+	oneInterpreter(pyRoot, win)
 	for (const n of readdirSync(site)) if (/^(pip|setuptools)([-_.]|$)/i.test(n)) rmAll(path.join(site, n))
 	const installed = readdirSync(site)
 		.filter((n) => n.endsWith(".dist-info"))
