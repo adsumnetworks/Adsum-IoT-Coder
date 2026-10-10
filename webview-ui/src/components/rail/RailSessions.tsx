@@ -7,17 +7,28 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { TaskServiceClient } from "@/services/grpc-client"
 import { sameFolder } from "../chat/welcome/entryMode"
 import { R } from "./railStyles"
+import { Chevron, useSectionOpen } from "./useSectionOpen"
 
 const age = (ts: number): string => {
 	const d = Date.now() - ts
 	const m = Math.round(d / 60000)
-	if (m < 1) return "now"
-	if (m < 60) return `${m} min`
+	if (m < 1) {
+		return "now"
+	}
+	if (m < 60) {
+		return `${m} min`
+	}
 	const h = Math.round(m / 60)
-	if (h < 24) return `${h} h`
+	if (h < 24) {
+		return `${h} h`
+	}
 	const days = Math.round(h / 24)
-	if (days === 1) return "yesterday"
-	if (days < 14) return `${days} d`
+	if (days === 1) {
+		return "yesterday"
+	}
+	if (days < 14) {
+		return `${days} d`
+	}
 	return `${Math.round(days / 7)} w`
 }
 
@@ -34,6 +45,7 @@ interface Props {
  */
 const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 	const { taskHistory, openFolderPaths, openSessions } = useExtensionState()
+	const [shown, toggleShown] = useSectionOpen("sessions")
 	const [scope, setScope] = useState(0)
 	const [menuFor, setMenuFor] = useState<string | null>(null)
 	const roots = openFolderPaths ?? []
@@ -56,7 +68,9 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 		setEditing({ id: item.id, title: item.title || item.task.slice(0, 60) })
 	}
 	const saveRename = async () => {
-		if (!editing) return
+		if (!editing) {
+			return
+		}
 		const { id, title } = editing
 		setEditing(null)
 		await TaskServiceClient.renameTask(RenameTaskRequest.create({ taskId: id, title: title.trim() })).catch(() => {})
@@ -80,7 +94,10 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 		<div data-testid="rail-sessions" style={R.block}>
 			<div style={R.blockHead}>
 				<span style={{ ...R.label, display: "flex", gap: 6, alignItems: "center", minWidth: 0 }}>
-					Sessions
+					<button aria-expanded={shown} onClick={toggleShown} style={R.sectionToggle} type="button">
+						<Chevron open={shown} />
+						<span style={R.label}>Sessions</span>
+					</button>
 					{roots.length > 1 ? (
 						<button
 							onClick={() => setScope((s) => s + 1)}
@@ -102,200 +119,186 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 						<span style={{ textTransform: "none", letterSpacing: 0 }}>· {folder}</span>
 					) : null}
 				</span>
-				<button onClick={onNew} style={R.link} type="button">
-					+ new
-				</button>
 			</div>
-			<div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-				{here.rows.map((h, i) => {
-					const o = open.get(h.id)
-					return (
-						<div key={h.id} style={{ position: "relative" }}>
-							<button
-								onClick={() => onOpen(h)}
-								style={{
-									display: "flex",
-									justifyContent: "space-between",
-									gap: 8,
-									alignItems: "baseline",
-									padding: "4px 8px",
-									borderRadius: 5,
-									background: "none",
-									border: `1px solid ${i === 0 ? "var(--adsum-cyan)" : "transparent"}`,
-									color: "var(--vscode-foreground)",
-									font: "inherit",
-									textAlign: "left",
-									width: "100%",
-									cursor: "pointer",
-								}}
-								title={o ? "Open in a tab: click focuses it" : "Opens in a tab"}
-								type="button">
-								<span style={{ minWidth: 0 }}>
-									<span
-										style={{
-											...R.title,
-											fontSize: 12,
-											whiteSpace: "nowrap",
-											overflow: "hidden",
-											textOverflow: "ellipsis",
-											display: "block",
-										}}>
-										{h.isFavorited ? <span style={{ color: R.coral, marginRight: 4 }}>★</span> : null}
-										{editing?.id === h.id ? (
-											<input
-												aria-label="Session name"
-												autoFocus
-												onBlur={() => void saveRename()}
-												onChange={(e) => setEditing({ id: h.id, title: e.target.value })}
-												onClick={(e) => e.stopPropagation()}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") void saveRename()
-													if (e.key === "Escape") setEditing(null)
-												}}
+			{shown && (
+				<div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+					<button
+						data-testid="rail-new-session"
+						onClick={onNew}
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: 8,
+							padding: "5px 8px",
+							borderRadius: 5,
+							border: "1px solid transparent",
+							background: "none",
+							color: "var(--vscode-foreground)",
+							font: "inherit",
+							fontSize: 12,
+							textAlign: "left",
+							width: "100%",
+							cursor: "pointer",
+						}}
+						type="button">
+						<span
+							aria-hidden="true"
+							style={{ width: 8, textAlign: "center", color: "var(--adsum-cyan-text)", fontWeight: 700 }}>
+							+
+						</span>
+						New session
+					</button>
+					{here.rows.map((h, i) => {
+						const o = open.get(h.id)
+						return (
+							<div key={h.id} style={{ position: "relative" }}>
+								<button
+									onClick={() => onOpen(h)}
+									style={{
+										display: "flex",
+										justifyContent: "space-between",
+										gap: 8,
+										alignItems: "baseline",
+										padding: "4px 8px",
+										borderRadius: 5,
+										background: "none",
+										border: `1px solid ${i === 0 ? "var(--adsum-cyan)" : "transparent"}`,
+										color: "var(--vscode-foreground)",
+										font: "inherit",
+										textAlign: "left",
+										width: "100%",
+										cursor: "pointer",
+									}}
+									title={o ? "Open in a tab: click focuses it" : "Opens in a tab"}
+									type="button">
+									<span style={{ minWidth: 0 }}>
+										<span
+											style={{
+												...R.title,
+												fontSize: 12,
+												whiteSpace: "nowrap",
+												overflow: "hidden",
+												textOverflow: "ellipsis",
+												display: "block",
+											}}>
+											<span
+												aria-label={
+													o?.streaming ? "working" : o?.waiting ? "waiting on you" : o ? "open" : "idle"
+												}
+												role="img"
 												style={{
-													font: "inherit",
-													width: "100%",
-													background: "var(--vscode-input-background)",
-													color: "var(--vscode-input-foreground)",
-													border: "1px solid var(--vscode-focusBorder)",
-													borderRadius: 3,
-													padding: "0 4px",
+													display: "inline-block",
+													width: 7,
+													height: 7,
+													borderRadius: "50%",
+													marginRight: 6,
+													verticalAlign: "middle",
+													background: o?.streaming
+														? "var(--vscode-testing-iconPassed, #3fb950)"
+														: o?.waiting
+															? R.warn
+															: o
+																? "var(--vscode-foreground)"
+																: "color-mix(in srgb, var(--vscode-foreground) 28%, transparent)",
 												}}
-												value={editing.title}
 											/>
-										) : (
-											h.title?.trim() || h.task
-										)}
+											{h.isFavorited ? <span style={{ color: R.coral, marginRight: 4 }}>★</span> : null}
+											{editing?.id === h.id ? (
+												<input
+													aria-label="Session name"
+													autoFocus
+													onBlur={() => void saveRename()}
+													onChange={(e) => setEditing({ id: h.id, title: e.target.value })}
+													onClick={(e) => e.stopPropagation()}
+													onKeyDown={(e) => {
+														if (e.key === "Enter") {
+															void saveRename()
+														}
+														if (e.key === "Escape") {
+															setEditing(null)
+														}
+													}}
+													style={{
+														font: "inherit",
+														width: "100%",
+														background: "var(--vscode-input-background)",
+														color: "var(--vscode-input-foreground)",
+														border: "1px solid var(--vscode-focusBorder)",
+														borderRadius: 3,
+														padding: "0 4px",
+													}}
+													value={editing.title}
+												/>
+											) : (
+												h.title?.trim() || h.task
+											)}
+										</span>
+										<span
+											style={{
+												...R.meta,
+												whiteSpace: "nowrap",
+												overflow: "hidden",
+												textOverflow: "ellipsis",
+												display: "block",
+											}}>
+											{h.handoverId ? (
+												<span
+													style={{
+														...R.kind,
+														marginLeft: 0,
+														marginRight: 6,
+														color: "var(--adsum-cyan-text)",
+													}}>
+													handover
+												</span>
+											) : null}
+											{o?.waiting ? (
+												<span style={{ ...R.kind, marginLeft: 0, marginRight: 6, color: R.warn }}>
+													waiting on you
+												</span>
+											) : null}
+											{o?.streaming ? "working…" : h.modelId ? h.modelId : ""}
+										</span>
 									</span>
-									<span
-										style={{
-											...R.meta,
-											whiteSpace: "nowrap",
-											overflow: "hidden",
-											textOverflow: "ellipsis",
-											display: "block",
-										}}>
-										{h.handoverId ? (
-											<span
-												style={{
-													...R.kind,
-													marginLeft: 0,
-													marginRight: 6,
-													color: "var(--adsum-cyan-text)",
-												}}>
-												handover
-											</span>
-										) : null}
-										{o ? (
-											<span
-												style={{
-													...R.kind,
-													marginLeft: 0,
-													marginRight: 6,
-													color: "var(--adsum-cyan-text)",
-												}}>
-												open
-											</span>
-										) : null}
-										{o?.waiting ? (
-											<span style={{ ...R.kind, marginLeft: 0, marginRight: 6, color: R.warn }}>
-												waiting on you
-											</span>
-										) : null}
-										{o?.streaming ? "working…" : h.modelId ? h.modelId : ""}
-									</span>
-								</span>
-								<span style={{ ...R.meta, flex: "none" }}>{age(h.ts)}</span>
-							</button>
-							<button
-								aria-label="Rename, favourite, delete"
-								onClick={() => setMenuFor(menuFor === h.id ? null : h.id)}
-								style={{
-									position: "absolute",
-									right: 4,
-									top: 3,
-									font: "inherit",
-									fontSize: 12,
-									color: "var(--vscode-descriptionForeground)",
-									background: "var(--vscode-sideBar-background)",
-									border: "1px solid color-mix(in srgb, var(--vscode-foreground) 20%, transparent)",
-									borderRadius: 3,
-									padding: "0 5px",
-									cursor: "pointer",
-								}}
-								type="button">
-								⋯
-							</button>
-							{menuFor === h.id && (
-								<div
-									role="menu"
+									<span style={{ ...R.meta, flex: "none" }}>{age(h.ts)}</span>
+								</button>
+								<button
+									aria-label="Rename, favourite, delete"
+									onClick={() => setMenuFor(menuFor === h.id ? null : h.id)}
 									style={{
 										position: "absolute",
 										right: 4,
-										top: 22,
-										zIndex: 4,
-										background: "var(--vscode-editorWidget-background)",
-										border: "1px solid var(--vscode-panel-border, color-mix(in srgb, var(--vscode-foreground) 20%, transparent))",
-										borderRadius: 6,
-										padding: 4,
-										display: "flex",
-										flexDirection: "column",
-										minWidth: 140,
-									}}>
-									<button
-										onClick={() => void rename(h)}
-										role="menuitem"
+										top: 3,
+										font: "inherit",
+										fontSize: 12,
+										color: "var(--vscode-descriptionForeground)",
+										background: "var(--vscode-sideBar-background)",
+										border: "1px solid color-mix(in srgb, var(--vscode-foreground) 20%, transparent)",
+										borderRadius: 3,
+										padding: "0 5px",
+										cursor: "pointer",
+									}}
+									type="button">
+									⋯
+								</button>
+								{menuFor === h.id && (
+									<div
+										role="menu"
 										style={{
-											...R.link,
-											color: "var(--vscode-foreground)",
-											textAlign: "left",
-											padding: "5px 10px",
-											fontSize: 12,
-										}}
-										type="button">
-										Rename
-									</button>
-									<button
-										onClick={() => void favourite(h)}
-										role="menuitem"
-										style={{
-											...R.link,
-											color: "var(--vscode-foreground)",
-											textAlign: "left",
-											padding: "5px 10px",
-											fontSize: 12,
-										}}
-										type="button">
-										{h.isFavorited ? "Unfavourite" : "Favourite"}
-									</button>
-									{confirming === h.id ? (
-										<span
-											style={{
-												display: "flex",
-												gap: 8,
-												alignItems: "center",
-												padding: "5px 10px",
-												fontSize: 12,
-											}}>
-											Delete?
-											<button
-												onClick={() => void reallyRemove(h.id)}
-												role="menuitem"
-												style={{ ...R.link, color: "var(--vscode-errorForeground)" }}
-												type="button">
-												Yes
-											</button>
-											<button
-												onClick={() => setConfirming(null)}
-												role="menuitem"
-												style={R.link}
-												type="button">
-												No
-											</button>
-										</span>
-									) : (
+											position: "absolute",
+											right: 4,
+											top: 22,
+											zIndex: 4,
+											background: "var(--vscode-editorWidget-background)",
+											border: "1px solid var(--vscode-panel-border, color-mix(in srgb, var(--vscode-foreground) 20%, transparent))",
+											borderRadius: 6,
+											padding: 4,
+											display: "flex",
+											flexDirection: "column",
+											minWidth: 140,
+										}}>
 										<button
-											onClick={() => remove(h)}
+											onClick={() => void rename(h)}
 											role="menuitem"
 											style={{
 												...R.link,
@@ -305,25 +308,78 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 												fontSize: 12,
 											}}
 											type="button">
-											Delete…
+											Rename
 										</button>
-									)}
-								</div>
-							)}
+										<button
+											onClick={() => void favourite(h)}
+											role="menuitem"
+											style={{
+												...R.link,
+												color: "var(--vscode-foreground)",
+												textAlign: "left",
+												padding: "5px 10px",
+												fontSize: 12,
+											}}
+											type="button">
+											{h.isFavorited ? "Unfavourite" : "Favourite"}
+										</button>
+										{confirming === h.id ? (
+											<span
+												style={{
+													display: "flex",
+													gap: 8,
+													alignItems: "center",
+													padding: "5px 10px",
+													fontSize: 12,
+												}}>
+												Delete?
+												<button
+													onClick={() => void reallyRemove(h.id)}
+													role="menuitem"
+													style={{ ...R.link, color: "var(--vscode-errorForeground)" }}
+													type="button">
+													Yes
+												</button>
+												<button
+													onClick={() => setConfirming(null)}
+													role="menuitem"
+													style={R.link}
+													type="button">
+													No
+												</button>
+											</span>
+										) : (
+											<button
+												onClick={() => remove(h)}
+												role="menuitem"
+												style={{
+													...R.link,
+													color: "var(--vscode-foreground)",
+													textAlign: "left",
+													padding: "5px 10px",
+													fontSize: 12,
+												}}
+												type="button">
+												Delete…
+											</button>
+										)}
+									</div>
+								)}
+							</div>
+						)
+					})}
+					{here.rows.length === 0 && (
+						<div style={{ ...R.meta, padding: "2px 8px" }}>No sessions {folder ? `in ${folder}` : "here"} yet</div>
+					)}
+					{(here.elsewhere > 0 || here.rows.length > 0) && (
+						<div style={{ ...R.meta, padding: "2px 8px" }}>
+							<button onClick={onAll} style={R.link} type="button">
+								All sessions{here.elsewhere > 0 ? ` (${here.elsewhere} elsewhere)` : ""} →
+							</button>
 						</div>
-					)
-				})}
-				{here.rows.length === 0 && (
-					<div style={{ ...R.meta, padding: "2px 8px" }}>No sessions {folder ? `in ${folder}` : "here"} yet</div>
-				)}
-				{(here.elsewhere > 0 || here.rows.length > 0) && (
-					<div style={{ ...R.meta, padding: "2px 8px" }}>
-						<button onClick={onAll} style={R.link} type="button">
-							All sessions{here.elsewhere > 0 ? ` (${here.elsewhere} elsewhere)` : ""} →
-						</button>
-					</div>
-				)}
-			</div>
+					)}
+				</div>
+			)}
 		</div>
 	)
 }

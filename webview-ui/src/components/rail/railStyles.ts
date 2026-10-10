@@ -32,6 +32,18 @@ export const R = {
 		flex: "none",
 	} as CSSProperties,
 	block: { display: "flex", flexDirection: "column", gap: 5 } as CSSProperties,
+	/** A section label that folds its block: the chevron and the label, one button, no chrome. */
+	sectionToggle: {
+		display: "inline-flex",
+		alignItems: "center",
+		gap: 5,
+		background: "none",
+		border: 0,
+		padding: 0,
+		cursor: "pointer",
+		font: "inherit",
+		color: "inherit",
+	} as CSSProperties,
 	blockHead: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 } as CSSProperties,
 	link: {
 		font: "inherit",

@@ -1,6 +1,7 @@
 import { RELEASE_NOTES } from "@shared/releaseNotes"
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { adsumLogoDark, adsumLogoLight } from "@/assets/adsumLogoBase64"
+import { adsumNetworksLogoOnDark, adsumNetworksLogoOnLight } from "@/assets/adsumNetworksLogoBase64"
 import { BRAND_CORAL, BRAND_CYAN_TEXT } from "../../chat/brandColors"
 import { TYPE } from "../../chat/welcome/typography"
 import Section from "../Section"
@@ -179,6 +180,23 @@ const AboutSection = ({ version, renderSectionHeader }: AboutSectionProps) => {
 							color: "var(--vscode-descriptionForeground)",
 							borderTop: "1px solid var(--vscode-panel-border)",
 						}}>
+						<span className="flex items-center gap-2" style={{ marginBottom: 6 }}>
+							<span style={{ color: "var(--vscode-descriptionForeground)" }}>by</span>
+							<img
+								alt="Adsum Networks"
+								className="adsum-wordmark-dark"
+								data-testid="about-company-logo"
+								src={adsumNetworksLogoOnDark}
+								style={{ height: "18px" }}
+							/>
+							<img
+								alt=""
+								aria-hidden="true"
+								className="adsum-wordmark-light"
+								src={adsumNetworksLogoOnLight}
+								style={{ height: "18px" }}
+							/>
+						</span>
 						© Adsum Networks · open source under{" "}
 						<VSCodeLink href={`${REPO}/blob/main/LICENSE`} style={{ color: BRAND_CYAN_TEXT, fontSize: "inherit" }}>
 							Apache 2.0

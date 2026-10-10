@@ -22,8 +22,8 @@ export const AdsumMark: React.FC<{ size?: number; color?: string; title?: string
 		width={size}>
 		{title ? <title>{title}</title> : null}
 		<g fill="currentColor" stroke="none" transform={ADSUM_MARK_TRANSFORM}>
-			{ADSUM_MARK_PATHS.map((d, i) => (
-				<path d={d} key={i} />
+			{ADSUM_MARK_PATHS.map((d) => (
+				<path d={d} key={d.slice(0, 24)} />
 			))}
 		</g>
 	</svg>

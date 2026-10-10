@@ -3,6 +3,7 @@ import type { Ranked } from "../chat/welcome/suggest"
 import Info from "../common/Info"
 import { KIND_SENTENCE, R } from "./railStyles"
 import type { Run } from "./useRankedRuns"
+import { Chevron, useSectionOpen } from "./useSectionOpen"
 
 interface Props {
 	rows: Ranked<Run>[]
@@ -105,26 +106,32 @@ export const RunRow: React.FC<{
  * reason), the first one focal. Nothing grounded, nothing shown: the whole catalogue is one keystroke away.
  */
 const RailSuggested: React.FC<Props> = ({ rows, onRun, onLocked }) => {
+	const [open, toggle] = useSectionOpen("suggested")
 	if (!rows.length) {
 		return null
 	}
 	return (
 		<div data-testid="rail-suggested" style={R.block}>
 			<div style={R.blockHead}>
-				<span style={R.label}>Suggested</span>
+				<button aria-expanded={open} onClick={toggle} style={R.sectionToggle} type="button">
+					<Chevron open={open} />
+					<span style={R.label}>Suggested</span>
+				</button>
 			</div>
-			<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-				{rows.map((r, i) => (
-					<RunRow
-						focal={i === 0 && r.item.kind !== "locked"}
-						key={r.item.id}
-						onLocked={onLocked}
-						onRun={onRun}
-						r={r}
-						showWhy={i === 0 || rows[i - 1].why !== r.why}
-					/>
-				))}
-			</div>
+			{open && (
+				<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+					{rows.map((r, i) => (
+						<RunRow
+							focal={i === 0 && r.item.kind !== "locked"}
+							key={r.item.id}
+							onLocked={onLocked}
+							onRun={onRun}
+							r={r}
+							showWhy={i === 0 || rows[i - 1].why !== r.why}
+						/>
+					))}
+				</div>
+			)}
 		</div>
 	)
 }

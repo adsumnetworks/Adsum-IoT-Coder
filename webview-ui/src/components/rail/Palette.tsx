@@ -1,6 +1,7 @@
 import type React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { Ranked } from "../chat/welcome/suggest"
+import { AdsumMark } from "../common/AdsumLogo"
 import Info from "../common/Info"
 import { RunRow } from "./RailSuggested"
 import { R } from "./railStyles"
@@ -123,7 +124,7 @@ const Palette: React.FC<Props> = ({ open, runs, suggested, onClose, onRun, onLoc
 					×
 				</button>
 				<h3 style={{ ...R.headline, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 6 }}>
-					What can you ask
+					<AdsumMark size={14} /> What can you ask
 					<Info text="Every run, journey, check and sample. ▶ runs now in a new tab; ✎ opens a tab with the prompt written, Enter sends it. ↑↓ move, Enter picks, Esc closes." />
 				</h3>
 				<input
