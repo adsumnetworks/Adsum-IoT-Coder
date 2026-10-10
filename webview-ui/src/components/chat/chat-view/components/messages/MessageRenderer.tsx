@@ -3,7 +3,9 @@ import React, { useMemo } from "react"
 import BrowserSessionRow from "@/components/chat/BrowserSessionRow"
 import ChatRow from "@/components/chat/ChatRow"
 import FoldedToolRow from "@/components/chat/FoldedToolRow"
+import InlineApprovalRow from "@/components/chat/InlineApprovalRow"
 import { KbitCredit, type KbitLoadedPayload, parseKbitPayload } from "@/components/chat/KbitCredit"
+import { ADSUM_VIEW } from "@/config/platform.config"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { cn } from "@/lib/utils"
 import { foldRows } from "@/utils/foldRows"
@@ -157,6 +159,9 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
 				responseStarted={reasoningData.responseStarted}
 				sendMessageFromChatRow={messageHandlers.handleSendMessage}
 			/>
+			{/* [P4.3] The exception path, inline, right under the ask it answers — session view only; the
+			    sidebar keeps its existing bottom Approve/Reject bar (ActionButtons) untouched. */}
+			{ADSUM_VIEW === "session" ? <InlineApprovalRow isLast={isLastMessage} message={messageOrGroup} /> : null}
 		</div>
 	)
 }
