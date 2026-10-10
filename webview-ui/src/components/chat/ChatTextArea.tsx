@@ -52,6 +52,7 @@ import {
 	validateSlashCommand,
 } from "@/utils/slash-commands"
 import { validateApiConfiguration, validateModelId } from "@/utils/validate"
+import ImageModelNotice from "./ImageModelNotice"
 import VoiceRecorder from "./VoiceRecorder"
 
 const { MAX_IMAGES_AND_FILES_PER_MESSAGE } = CHAT_CONSTANTS
@@ -312,6 +313,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			setShowChatModelSelector: setShowModelSelector,
 			dictationSettings,
 			freeTierRemainingTokens,
+			navigateToSettings,
 		} = useExtensionState()
 		const { clineUser } = useClineAuth()
 		const [isTextAreaFocused, setIsTextAreaFocused] = useState(false)
@@ -1185,6 +1187,14 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			setShowModelSelector(!showModelSelector)
 		}
 
+		// [P5.1 / P7.7] The free tier's model (and some BYOK ones) cannot read an attached image — the
+		// paste/drop still lands in the composer (see handlePaste below; nothing there gates on this),
+		// ImageModelNotice just names why it will not be acted on.
+		const supportsImages = useMemo(() => {
+			const { selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, mode)
+			return selectedModelInfo?.supportsImages ?? false
+		}, [apiConfiguration, mode])
+
 		// Get model display name
 		const modelDisplayName = useMemo(() => {
 			const { selectedProvider, selectedModelId } = normalizeApiConfiguration(apiConfiguration, mode)
@@ -1913,6 +1923,10 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						</ButtonGroup>
 					</div>
 				</div>
+				<ImageModelNotice
+					onOpenSettings={() => navigateToSettings()}
+					show={!supportsImages && selectedImages.length > 0}
+				/>
 			</div>
 		)
 	},
