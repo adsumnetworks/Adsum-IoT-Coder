@@ -98,6 +98,11 @@ interface GatewayLadderProps {
 	onInstall: (way: LadderInstall) => void
 	/** Opens the hardware list, for someone whose board is not this one. */
 	onBrowse?: () => void
+	/**
+	 * [0.5 the firmware lane] The demo is downloaded and flashed from the Firmware versions above (the Hardware
+	 * page), so the ladder points there instead of offering a second install. One home per feature.
+	 */
+	demoViaFirmware?: boolean
 }
 
 const Rung: React.FC<{
@@ -218,6 +223,7 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 	onAsk,
 	onInstall,
 	onBrowse,
+	demoViaFirmware = false,
 }) => {
 	const { adsumAccount, nrfEnvironment } = useExtensionState() as {
 		adsumAccount?: AdsumAccountState
@@ -332,6 +338,7 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 
 			<Rung badge="Free" icon="tools" testId="ladder-rung-build" title="Build it yourself">
 				<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "4px" }}>
+					{/* On the Hardware page the firmware rows above carry the one focal action, so this one is quiet. */}
 					<button
 						data-testid="ladder-start"
 						onClick={start}
@@ -341,9 +348,13 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 							fontSize: "12px",
 							fontWeight: 600,
 							cursor: "pointer",
-							border: `1px solid ${BRAND_CYAN_UI}`,
-							background: BRAND_CYAN_UI,
-							color: "#04222b",
+							...(demoViaFirmware
+								? {
+										border: "1px solid color-mix(in srgb, var(--vscode-foreground) 30%, transparent)",
+										background: "none",
+										color: "var(--vscode-foreground)",
+									}
+								: { border: `1px solid ${BRAND_CYAN_UI}`, background: BRAND_CYAN_UI, color: "#04222b" }),
 						}}
 						type="button">
 						Start in the editor
@@ -377,7 +388,14 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 							</span>
 							{hasDemo ? null : <Ask onClick={() => ask("demo")} testId="ladder-ask-demo" />}
 						</div>
-						{hasDemo && (
+						{hasDemo && demoViaFirmware && (
+							<div
+								data-testid="ladder-demo-via-firmware"
+								style={{ marginTop: "4px", fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
+								Download and flash it from Firmware versions above.
+							</div>
+						)}
+						{hasDemo && !demoViaFirmware && (
 							<button
 								data-testid="ladder-flash-demo"
 								onClick={() => install("demo")}

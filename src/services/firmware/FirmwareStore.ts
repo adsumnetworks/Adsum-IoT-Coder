@@ -58,13 +58,17 @@ function addMonths(iso: string, months: number): string {
 	return d.toISOString()
 }
 
-/** The licence file's text: the registry's own words when it has them, else the template licence's. */
+/**
+ * The licence file's text: who it is licensed to, the term and the watermark, then the licence itself, in
+ * the words the bundle ships (its own LICENSE-ADSUM.txt), else the registry's, else the template's summary.
+ */
 export function licenceText(
 	entry: FirmwareEntry,
 	licensee: string,
 	termStart: string,
 	termEnd: string,
 	watermark: string,
+	bundleText?: string,
 ): string {
 	const head = [
 		`${entry.title} · ${entry.id} ${entry.version}`,
@@ -75,9 +79,10 @@ export function licenceText(
 		"",
 	].join("\n")
 	const body =
-		entry.licence.text ??
+		bundleText?.trim() ||
+		entry.licence.text ||
 		[
-			"Adsum Template Licence (summary; the full text is on the web Hardware home).",
+			"Adsum Template Licence (summary; ask Adsum Networks for the full text: support@adsumnetworks.com).",
 			"",
 			"This firmware and any source beside it are licensed, not sold, to the organisation named above for use on",
 			"its own products. It may be flashed onto that organisation's units without limit and modified where it is",
@@ -162,11 +167,18 @@ export async function downloadFirmware(
 	mkdirSync(staging, { recursive: true })
 	try {
 		const artifacts: ReceiptArtifact[] = []
+		// The bundle's own licence file is folded into the one written below, which names the licensee: two
+		// files with one name would leave the folder looking tampered with the moment it lands.
+		let bundleLicence: string | undefined
 		for (const a of entry.artifacts) {
 			const bytes = await client.artifact(a.sha256, auth.token, a.path)
 			const got = sha256(bytes)
 			if (got !== a.sha256) {
 				throw new Error(`${a.path}: the bytes do not match their hash (${got.slice(0, 12)} vs ${a.sha256.slice(0, 12)})`)
+			}
+			if (a.path === LICENCE_FILE) {
+				bundleLicence = bytes.toString("utf8")
+				continue
 			}
 			const dest = path.join(staging, a.path)
 			if (!path.resolve(dest).startsWith(path.resolve(staging) + path.sep)) {
@@ -197,7 +209,10 @@ export async function downloadFirmware(
 			downloaded_at: now,
 			status: "active",
 		}
-		writeFileSync(path.join(staging, LICENCE_FILE), licenceText(entry, auth.licensee, termStart, termEnd, watermark))
+		const licence = Buffer.from(licenceText(entry, auth.licensee, termStart, termEnd, watermark, bundleLicence))
+		writeFileSync(path.join(staging, LICENCE_FILE), licence)
+		// The receipt records what is on disk, so the folder reads intact; the registry hash was checked above.
+		receipt.artifacts.push({ path: LICENCE_FILE, sha256: sha256(licence), size: licence.length })
 		writeFileSync(path.join(staging, RECEIPT_FILE), `${JSON.stringify(receipt, null, 2)}\n`)
 		if (existsSync(folder)) {
 			// A re-download replaces the folder whole; nothing half-old, half-new.

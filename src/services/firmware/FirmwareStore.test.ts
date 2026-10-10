@@ -44,8 +44,12 @@ const entry: FirmwareEntry = {
 	],
 }
 
-/** A fetch that plays the registry: authorise, then the two files under the token. */
-function fakeFetch(opts: { tamper?: boolean } = {}): typeof fetch {
+/** A licence file the bundle ships itself, as the published demo bundles do. */
+const BUNDLE_LICENCE = Buffer.from("Adsum Template Licence, demo terms: the bundle's own words.\n")
+const BYTES: Record<string, Buffer> = { [sha256(HEX)]: HEX, [sha256(BIN)]: BIN, [sha256(BUNDLE_LICENCE)]: BUNDLE_LICENCE }
+
+/** A fetch that plays the registry: authorise, then the files under the token. */
+function fakeFetch(opts: { tamper?: boolean; firmware?: FirmwareEntry } = {}): typeof fetch {
 	return (async (url: string, init?: RequestInit) => {
 		const u = String(url)
 		if (u.endsWith("/v1/firmware/authorise")) {
@@ -56,7 +60,7 @@ function fakeFetch(opts: { tamper?: boolean } = {}): typeof fetch {
 					expires_in: 900,
 					expires_at: "",
 					licensee: "ops@acme.example",
-					firmware: entry,
+					firmware: opts.firmware ?? entry,
 				}),
 				{ status: 200 },
 			)
@@ -64,7 +68,7 @@ function fakeFetch(opts: { tamper?: boolean } = {}): typeof fetch {
 		if (u.includes("/v1/firmware/artifact/")) {
 			assert.match(u, /token=adf_test/)
 			const sha = u.split("/artifact/")[1].split("?")[0]
-			const bytes = sha === sha256(HEX) ? HEX : BIN
+			const bytes = BYTES[sha] ?? BIN
 			return new Response(opts.tamper ? Buffer.concat([bytes, Buffer.from("x")]) : bytes, { status: 200 })
 		}
 		return new Response("not found", { status: 404 })
@@ -94,7 +98,9 @@ describe("the firmware lane on disk", () => {
 		assert.equal(receipt.status, "active")
 		assert.equal(receipt.term_start, entry.released_at)
 		assert.match(receipt.term_end, /^2027-10-01/)
-		assert.equal(receipt.artifacts.length, 2)
+		// The two files, and the licence written beside them, recorded as it is on disk.
+		assert.equal(receipt.artifacts.length, 3)
+		assert.ok(receipt.artifacts.some((a: { path: string }) => a.path === LICENCE_FILE))
 		const licence = readFileSync(path.join(folder, LICENCE_FILE), "utf8")
 		assert.match(licence, /Licensed to: ops@acme.example/)
 		assert.match(licence, /Watermark: [0-9a-f]{16}/)
@@ -153,6 +159,36 @@ describe("the firmware lane on disk", () => {
 		assert.match(t, /The real licence\./)
 		assert.match(t, /Licence: ATL-1/)
 		assert.doesNotMatch(t, /summary/)
+	})
+
+	test("a bundle that ships its own licence: one licence file, the licensee above the bundle's words, and the folder reads intact", async () => {
+		const withLicence: FirmwareEntry = {
+			...entry,
+			id: "adsum/firmware/blg20x-demo-hex",
+			version: "1.0.0",
+			rung: "demo-hex",
+			group: "blg20-demo-hex",
+			title: "BLG20x demo pair",
+			artifacts: [
+				{ path: LICENCE_FILE, sha256: sha256(BUNDLE_LICENCE), size: BUNDLE_LICENCE.length, group: null },
+				...entry.artifacts,
+			],
+		}
+		const client = new FirmwareClient("https://registry.test", fakeFetch({ firmware: withLicence }))
+		const folder = path.join(root, "firmware", "blg20x", "1.0.0")
+		const local = await downloadFirmware(client, withLicence.id, withLicence.version, folder)
+		assert.equal(local.intact, true)
+		const licence = readFileSync(path.join(folder, LICENCE_FILE), "utf8")
+		assert.match(licence, /^BLG20x demo pair · adsum\/firmware\/blg20x-demo-hex 1\.0\.0\nLicensed to: ops@acme\.example\n/)
+		assert.match(licence, /Watermark: [0-9a-f]{16}\n/)
+		assert.match(licence, /the bundle's own words/)
+		assert.doesNotMatch(licence, /summary; ask Adsum Networks/, "the bundle's words replace the summary")
+		assert.equal(readLocal(folder)?.intact, true, "a fresh folder must never read as altered")
+		const receipt = JSON.parse(readFileSync(path.join(folder, RECEIPT_FILE), "utf8"))
+		const licenceRows = receipt.artifacts.filter((a: { path: string }) => a.path === LICENCE_FILE)
+		assert.equal(licenceRows.length, 1)
+		assert.equal(licenceRows[0].sha256, sha256(Buffer.from(licence)))
+		assert.equal(receipt.artifacts.length, 3)
 	})
 })
 

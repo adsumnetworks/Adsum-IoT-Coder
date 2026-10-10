@@ -42,6 +42,12 @@ export interface Run extends Suggestable {
 	/** The intent's entitlement group, for the request form. */
 	entitlement?: string
 	intentId?: string
+	/**
+	 * [0.5 the firmware lane] In the rail, this row opens the Hardware page on this firmware family instead of a
+	 * session: the demo images are downloaded there, with their licence, and flashed from the folder. A session
+	 * tab's palette, which cannot open a rail page, still sends the prompt.
+	 */
+	hardwareFamily?: string
 }
 
 export interface RankedRuns {
@@ -165,6 +171,7 @@ export function useRankedRuns(): RankedRuns {
 				entitlement: "lew840x-demo-hex",
 				group: "Journeys",
 				prompt: DEMO_HEX_PROMPT,
+				hardwareFamily: "lew840x",
 			},
 			{
 				id: "demoPairBlg20",
@@ -186,6 +193,7 @@ export function useRankedRuns(): RankedRuns {
 				entitlement: "blg20-demo-hex",
 				group: "Journeys",
 				prompt: DEMO_PAIR_PROMPT_BLG20,
+				hardwareFamily: "blg20x",
 			},
 		]
 		const samples: Run[] = Object.values(DEMO_SCENARIOS).map((d) => ({

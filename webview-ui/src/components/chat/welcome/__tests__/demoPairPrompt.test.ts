@@ -13,4 +13,9 @@ describe("BLG20x demo pair install prompt", () => {
 	it("never asks for a writing step before the probes are named", () => {
 		expect(DEMO_PAIR_PROMPT_BLG20).toMatch(/ask me which probe is which before you program anything/)
 	})
+
+	it("[0.5] prefers the folder downloaded from the Hardware page, with its receipt", () => {
+		expect(DEMO_PAIR_PROMPT_BLG20).toMatch(/^If this workspace has firmware\/blg20x\/<version>\/adsum-firmware\.json/)
+		expect(DEMO_PAIR_PROMPT_BLG20).toContain("say the flash line first")
+	})
 })

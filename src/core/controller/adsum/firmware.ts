@@ -10,6 +10,7 @@ import {
 	listLocalFirmware,
 	setReceiptStatus,
 } from "@/services/firmware/FirmwareStore"
+import { type FirmwareRowState, firmwareRowState } from "@/services/firmware/firmwareRows"
 import { ShowMessageType } from "@/shared/proto/host/window"
 import type { Controller } from "../index"
 
@@ -17,8 +18,8 @@ import type { Controller } from "../index"
 export interface FirmwareRow {
 	entry: FirmwareEntry
 	local: LocalFirmware | null
-	/** download · flash · renew · ask · coming */
-	state: "download" | "flash" | "renew" | "ask" | "coming"
+	/** flash · download · register · renew · ask (firmwareRows.ts holds the rules) */
+	state: FirmwareRowState
 	folder: string
 }
 
@@ -123,15 +124,7 @@ async function list(family?: string, id?: string): Promise<FirmwareListResult> {
 			setReceiptStatus(local.folder, entitled ? "active" : "expired")
 			local.receipt.status = entitled ? "active" : "expired"
 		}
-		const state: FirmwareRow["state"] = local
-			? local.intact
-				? "flash"
-				: "download"
-			: entitled
-				? "download"
-				: entry.group && /-src$|-prod-hex$/.test(entry.group)
-					? "renew"
-					: "ask"
+		const state = firmwareRowState({ entitled, group: entry.group, signedIn: !!account, local })
 		rows.push({ entry, local, state, folder: local?.folder ?? (ws ? defaultFolder(ws, entry) : "") })
 		seen.add(`${entry.id}@${entry.version}`)
 	}
@@ -160,7 +153,12 @@ async function list(family?: string, id?: string): Promise<FirmwareListResult> {
 				artifacts: l.receipt.artifacts.map((a) => ({ ...a, group: null })),
 			},
 			local: l,
-			state: l.intact ? "flash" : "download",
+			state: firmwareRowState({
+				entitled: l.receipt.status === "active",
+				group: l.receipt.group,
+				signedIn: !!getAccount(),
+				local: l,
+			}),
 			folder: l.folder,
 		})
 	}

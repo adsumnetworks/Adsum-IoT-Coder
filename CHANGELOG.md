@@ -5,6 +5,22 @@ All notable changes to the **Adsum IoT Coder** extension are documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-10-10
+
+The firmware lane, end to end.
+
+- Flash the BLG20x demo pair and Flash the LEW840x demo open the Hardware page on that board: the demo is
+  downloaded there with its licence and flashed from the folder, instead of being installed through a tool.
+- The BLG20x demo pair now carries its USB update set beside the factory images. Flash offers both ways onto
+  the unit: an update over the service port for a claimed unit, or the factory load over the debug probes.
+  Each way names the procedure that carries it. The LEW840x demo flashes its three chips as its flash
+  procedure lays them out, the ESP32 through the flash-cycle tool, one scanner image for the card fitted.
+- Without an account, a demo version reads "free with an account" beside Register. A production version you
+  do not hold is a request to the team: Ask to renew. There is no web page for renewal.
+- A version's own licence text is kept in the licence file written beside its files, so a fresh download
+  never reads as altered. A folder with a file missing or altered offers Download again.
+- The Hardware page has one filled action at a time, and a long licence line shows in full on hover.
+
 ## [0.5.0] - 2026-10-10
 
 Everything in 0.4.6, folded together with Omar's 0.4.5 bench line, and the sessions-first interface.

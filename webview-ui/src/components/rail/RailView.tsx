@@ -83,6 +83,8 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 		hostOffline,
 	} = useExtensionState() as ReturnType<typeof useExtensionState> & { adsumAccount?: AdsumAccountState }
 	const [page, setPage] = useState<Page>(initialPage)
+	/** The family a row asked the Hardware page for; the Environment block opens it on the desk's own. */
+	const [hardwareFamily, setHardwareFamily] = useState<string | undefined>(undefined)
 	const [paletteOpen, setPaletteOpen] = useState(initialPalette)
 	const [gateOpen, setGateOpen] = useState(false)
 	const [requesting, setRequesting] = useState<string | null>(null)
@@ -121,6 +123,13 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 		setPaletteOpen(false)
 		if (run.kind === "open-folder") {
 			void FileServiceClient.openFolder(StringRequest.create({ value: "" }))
+			return
+		}
+		if (run.hardwareFamily) {
+			// The demo images are downloaded on the Hardware page, with their licence, and flashed from there.
+			entryRunStart(run.id, via)
+			setHardwareFamily(run.hardwareFamily)
+			setPage("hardware")
 			return
 		}
 		entryRunStart(run.id, run.kind === "sample" ? "sample" : via)
@@ -188,9 +197,11 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 			<style>{`.rail-row:hover{background:color-mix(in srgb, var(--vscode-foreground) 7%, transparent)}.rail-row:focus-visible{outline:1px solid var(--vscode-focusBorder);outline-offset:-1px}`}</style>
 			{page === "hardware" ? (
 				<HardwarePage
+					family={hardwareFamily}
 					onAsk={(family) => setRequesting(family)}
 					onBack={() => setPage("home")}
 					onPrompt={(prompt, send) => void openSession({ prompt, send })}
+					onRegister={() => setGateOpen(true)}
 				/>
 			) : (
 				<>
@@ -248,7 +259,12 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 						</div>
 					)}
 					<section aria-label="Environment">
-						<RailHardware onOpen={() => setPage("hardware")} />
+						<RailHardware
+							onOpen={() => {
+								setHardwareFamily(undefined)
+								setPage("hardware")
+							}}
+						/>
 					</section>
 					<section aria-label="Suggested">
 						<RailSuggested

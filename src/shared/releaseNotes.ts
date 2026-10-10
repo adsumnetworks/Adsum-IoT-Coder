@@ -48,7 +48,8 @@ export const RELEASE_NOTES = {
 	/** Hotfixes on top of `version`. `{ silent: true }` means "nothing to announce", and no toast fires. */
 	// 0.5.0 is a CANDIDATE on main (10 Oct 2026): 0.4.6 plus Omar's 0.4.5 bench line. Silent until its own
 	// notes are written, so nobody is toasted with 0.4.6's story under a 0.5 number.
-	patches: { "0.5.0": { silent: true } } as Record<string, PatchNote>,
+	// 0.5.1 (10 Oct 2026): the firmware lane end to end, on top of the 0.5.0 candidate; silent for the same reason.
+	patches: { "0.5.0": { silent: true }, "0.5.1": { silent: true } } as Record<string, PatchNote>,
 
 	/** One line, plain words. The update toast is built from it. */
 	headline:

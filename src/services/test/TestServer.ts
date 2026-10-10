@@ -2,10 +2,12 @@ import { WebviewProvider } from "@core/webview"
 import { Logger } from "@services/logging/Logger"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "@shared/AutoApprovalSettings"
 import { ApiProvider } from "@shared/api"
+import { StringRequest } from "@shared/proto/cline/common"
 import { execa } from "execa"
 import * as http from "http"
 import * as vscode from "vscode"
 import { Controller } from "@/core/controller"
+import { firmware } from "@/core/controller/adsum/firmware"
 import { ExtensionRegistryInfo } from "@/registry"
 import { getCwd } from "@/utils/path"
 import { checkRespond, messagesSince, pendingAskFrom, sessionStateFrom } from "./askBridge"
@@ -130,6 +132,28 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 		 * whoever answers first wins, identically to two clicks racing.
 		 */
 		// What is this run doing? The one question the seam could not answer.
+		// [0.5 the firmware lane] The Hardware page's own firmware door (list, download, open-folder), reachable
+		// from the bench in test mode so a download can be proven end to end through the real extension with the
+		// window's own signed-in account. Same function the page calls; the seam adds nothing to it.
+		if (req.method === "POST" && req.url === "/firmware") {
+			let body = ""
+			req.on("data", (chunk) => {
+				body += chunk.toString()
+			})
+			req.on("end", async () => {
+				const controller = seamProvider()?.controller
+				if (!controller) {
+					res.writeHead(500)
+					res.end(JSON.stringify({ error: "No active Cline instance found" }))
+					return
+				}
+				const r = await firmware(controller, StringRequest.create({ value: body || "{}" }))
+				res.writeHead(200, { "Content-Type": "application/json" })
+				res.end(r.value)
+			})
+			return
+		}
+
 		if (req.method === "GET" && req.url === "/status") {
 			void (async () => {
 				try {

@@ -500,14 +500,19 @@ export function blg20InstallPrompt(way: "demo" | "production" | "source"): strin
 // the pair was not open to their account while the real tool sat downloaded and advertised. The limits and
 // the flash order live in step 2's bit, which the agent can read — the tool's own descriptor it cannot.
 export const DEMO_PAIR_PROMPT_BLG20 =
-	"Install the BLG20x demo pair into this project with the blg20-hex-demo-pair tool. Run it with --list " +
+	// [0.5 the firmware lane] The folder from the Hardware page first: licence, receipt and hashes beside it.
+	"If this workspace has firmware/blg20x/<version>/adsum-firmware.json (the demo pair downloaded from the " +
+	"Hardware page), flash from that folder and say the flash line first. Otherwise, " +
+	"install the BLG20x demo pair into this project with the blg20-hex-demo-pair tool. Run it with --list " +
 	"first, then --into this project, so each image is checked against its hash before it is written. Read " +
 	"products/fanstel/blg20x/beats/s2-flash-the-demo.md for what is limited about this demo, and tell me " +
 	"plainly before anything is written. Show me where the files landed, and ask me which probe is which " +
 	"before you program anything."
 
 export const DEMO_HEX_PROMPT =
-	"Flash the Fanstel LEW840x demo. LOAD the lew840x demo-hex tool bit first — it carries the demo " +
+	"Flash the Fanstel LEW840x demo. If this workspace has firmware/lew840x/<version>/adsum-firmware.json " +
+	"(the demo downloaded from the Hardware page), flash those images and say the flash line first; otherwise " +
+	"LOAD the lew840x demo-hex tool bit first — it carries the demo " +
 	"images and their hashes, and I want the ones you verify, not ones you build. Then walk me " +
 	"through it: check nrfutil and esptool are on this machine and say plainly if they are not, ask me " +
 	"which serial port is which, and flash the BLE scanner, the ESP32 uplink and the nRF9160 bearer in " +

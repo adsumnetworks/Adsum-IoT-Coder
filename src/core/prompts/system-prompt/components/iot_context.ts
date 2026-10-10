@@ -1080,7 +1080,7 @@ function renderLicensedFirmware(cwd: string): string {
 		out += `- **${r.title} v${r.version}** (${r.id}) licensed to ${r.licensee}, term to ${r.term_end.slice(0, 10)}, ${r.status}${l.intact ? "" : ", a file is missing or altered"}. Files: ${r.artifacts.map((a) => `\`${l.folder}/${a.path}\``).join(", ")}.\n`
 	}
 	out +=
-		'\nFlash these from their paths with the device tools; never read an image into the context, never copy or send it outside the workspace, and never paste licensed source outside the editor. Before any flash say, in one line: "Flashing <title> v<version>, licensed to <licensee>, from <path>". A receipt marked expired still flashes; say the term ended and that renewal is on the web Hardware home.\n\n'
+		'\nFlash these from their paths with the device tools; never read an image into the context, never copy or send it outside the workspace, and never paste licensed source outside the editor. Before any flash say, in one line: "Flashing <title> v<version>, licensed to <licensee>, from <path>". A receipt marked expired still flashes; say the term ended and that renewal is asked for from the Hardware page.\n\n'
 	return out
 }
 
