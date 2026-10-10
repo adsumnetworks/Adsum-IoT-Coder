@@ -5,7 +5,8 @@ import { useId, useState } from "react"
  * [0.5 simple] The one place detail lives: a small ⓘ that shows its text on hover and on keyboard focus,
  * so a row stays one line and the explanation is a glance away. Pure CSS positioning, no portal; the
  * tooltip is a real element with role="tooltip" (a screen reader reads it through aria-describedby),
- * never a native `title`, which VS Code webviews show late or not at all.
+ * never a native `title`, which VS Code webviews show late or not at all. It is a focusable glyph, not a
+ * button: a rung with one action keeps one button.
  */
 export const Info: React.FC<{ text: string; label?: string; side?: "below" | "above" }> = ({
 	text,
@@ -16,7 +17,7 @@ export const Info: React.FC<{ text: string; label?: string; side?: "below" | "ab
 	const [show, setShow] = useState(false)
 	return (
 		<span style={{ position: "relative", display: "inline-flex", verticalAlign: "middle" }}>
-			<button
+			<span
 				aria-describedby={show ? id : undefined}
 				aria-label={label}
 				onBlur={() => setShow(false)}
@@ -25,8 +26,12 @@ export const Info: React.FC<{ text: string; label?: string; side?: "below" | "ab
 					setShow((v) => !v)
 				}}
 				onFocus={() => setShow(true)}
+				onKeyDown={(e) => {
+					if (e.key === "Escape") setShow(false)
+				}}
 				onMouseEnter={() => setShow(true)}
 				onMouseLeave={() => setShow(false)}
+				role="img"
 				style={{
 					width: 14,
 					height: 14,
@@ -40,10 +45,14 @@ export const Info: React.FC<{ text: string; label?: string; side?: "below" | "ab
 					cursor: "help",
 					flex: "none",
 					fontFamily: "var(--vscode-font-family)",
+					display: "inline-flex",
+					alignItems: "center",
+					justifyContent: "center",
+					boxSizing: "border-box",
 				}}
-				type="button">
+				tabIndex={0}>
 				i
-			</button>
+			</span>
 			{show && (
 				<span
 					id={id}

@@ -422,8 +422,9 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 									: hasBleSource
 										? " · the BLE half"
 										: ""}
-							{hasAnySource && <Yours />} <Info text={hasAnySource ? LADDER_COPY.sourceHeld : LADDER_COPY.source} />
+							{hasAnySource && <Yours />} {!hasAnySource && <Info text={LADDER_COPY.source} />}
 						</div>
+						{hasAnySource && <Body>{LADDER_COPY.sourceHeld}</Body>}
 						{hasAnySource && (
 							<Doing
 								label="Install into this project"
@@ -440,7 +441,8 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 			<Rung badge="By arrangement" icon="edit" testId="ladder-rung-built" title="Have it built">
 				<div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
 					<Ask onClick={() => ask("built")} testId="ladder-ask-built" />
-					<Info text={`${LADDER_COPY.built} ${LADDER_COPY.reply}`} />
+					<span style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>{LADDER_COPY.reply}</span>
+					<Info text={LADDER_COPY.built} />
 				</div>
 			</Rung>
 

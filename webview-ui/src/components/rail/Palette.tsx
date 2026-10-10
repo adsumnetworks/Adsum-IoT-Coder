@@ -171,6 +171,7 @@ const Palette: React.FC<Props> = ({ open, runs, suggested, onClose, onRun, onLoc
 									r={r}
 									role="option"
 									selected={k === index}
+									showWhy={k === 0 || flat[k - 1].group !== group || flat[k - 1].r.why !== r.why}
 								/>
 							</div>
 						)

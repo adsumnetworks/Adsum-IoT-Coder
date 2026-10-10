@@ -20,9 +20,13 @@ export const RunRow: React.FC<{
 	id?: string
 	role?: string
 	selected?: boolean
-}> = ({ r, focal, active, onRun, onLocked, id, role, selected }) => {
+	/** The reason line repeats across rows the same detection grounded; the list says it once. */
+	showWhy?: boolean
+}> = ({ r, focal, active, onRun, onLocked, id, role, selected, showWhy = true }) => {
 	const run = r.item
 	const locked = run.kind === "locked"
+	// The pill is a verb; the sentence behind it is in the hover.
+	const pill = (run.lockPill ?? "Register").startsWith("Ask") ? "Ask" : (run.lockPill ?? "Register")
 	const detail = [run.blurb, run.meta, KIND_SENTENCE[run.kind]].filter(Boolean).join(" · ")
 	return (
 		<div
@@ -69,7 +73,7 @@ export const RunRow: React.FC<{
 						}}>
 						{run.title}
 					</span>
-					{r.grounded && r.why ? (
+					{showWhy && r.grounded && r.why ? (
 						<span
 							style={{
 								...R.meta,
@@ -88,7 +92,7 @@ export const RunRow: React.FC<{
 					onClick={() => onLocked(run)}
 					style={{ ...R.pill("pri"), fontSize: 10.5, padding: "1px 7px" }}
 					type="button">
-					{run.lockPill ?? "Register"}
+					{pill}
 				</button>
 			) : null}
 			<Info label={`About ${run.title}`} text={detail} />
@@ -111,7 +115,14 @@ const RailSuggested: React.FC<Props> = ({ rows, onRun, onLocked }) => {
 			</div>
 			<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
 				{rows.map((r, i) => (
-					<RunRow focal={i === 0 && r.item.kind !== "locked"} key={r.item.id} onLocked={onLocked} onRun={onRun} r={r} />
+					<RunRow
+						focal={i === 0 && r.item.kind !== "locked"}
+						key={r.item.id}
+						onLocked={onLocked}
+						onRun={onRun}
+						r={r}
+						showWhy={i === 0 || rows[i - 1].why !== r.why}
+					/>
 				))}
 			</div>
 		</div>

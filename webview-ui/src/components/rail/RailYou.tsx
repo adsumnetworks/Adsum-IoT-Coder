@@ -102,6 +102,7 @@ const RailYou: React.FC<Props> = ({ onSignIn, onAccount, onProvider }) => {
 								color: zero ? "var(--vscode-errorForeground)" : low ? R.warn : "var(--vscode-foreground)",
 							}}>
 							{fmtTokens(tokens)}
+							{low || zero ? " left" : ""}
 						</b>
 					) : (
 						"your key"
