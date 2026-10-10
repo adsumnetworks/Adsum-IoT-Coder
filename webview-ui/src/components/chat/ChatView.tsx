@@ -43,6 +43,7 @@ import AgentSessionBanner from "./handover/AgentSessionBanner"
 import AgentSessionRecap from "./handover/AgentSessionRecap"
 import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
+import OfflineNotice from "./OfflineNotice"
 import SessionComposerFoot from "./SessionComposerFoot"
 import SessionHeader from "./SessionHeader"
 import { entryFirstPrompt } from "./welcome/entryTelemetry"
@@ -80,6 +81,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		openedAgentSession,
 		openAgentSession,
 		openFolderPaths,
+		hostOffline,
 	} = useExtensionState()
 	const { target: runTarget } = useRunTarget()
 	// The agent session is a BANNER by default and opens on demand. It must never own the panel: when it
@@ -562,6 +564,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		<ChatLayout isHidden={isHidden}>
 			<div className="flex flex-col flex-1 overflow-hidden">
 				{showNavbar && <Navbar />}
+				<OfflineNotice hostOffline={hostOffline} />
 				<FreeTierStrip />
 				{!openedAgentSession && handoverUi?.strip && !handoverUi.strip.returned && !sessionViewOpen ? (
 					<AgentSessionBanner onOpen={() => setSessionViewOpen(true)} />
