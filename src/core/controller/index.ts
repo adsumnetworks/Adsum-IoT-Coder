@@ -1104,7 +1104,11 @@ export class Controller {
 			// The one-time "what you unlocked" card. Computed here, not in the panel, so it uses the same
 			// dismissal ledger every other one-time card uses — and so a dismissal survives a reload
 			// rather than coming back on the next paint.
-			adsumUnlockedShow: !!getAccount() && !BannerService.get().isBannerDismissed(ADSUM_REGISTERED_BANNER),
+			// Never shown until the ledger can be read: a dismissed card must not flash back during start-up.
+			adsumUnlockedShow:
+				!!getAccount() &&
+				BannerService.isInitialized() &&
+				!BannerService.get().isBannerDismissed(ADSUM_REGISTERED_BANNER),
 			adsumSignInPending: isSignInPending(),
 			queuedUserMessages: this.task?.noteQueue.snapshot(),
 			// One-time "leave a review" nudge — three independent gates must ALL hold:

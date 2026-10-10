@@ -195,6 +195,9 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 	await FileContextTracker.cleanupOrphanedWarnings(context)
 
 	const webview = HostProvider.get().createWebviewProvider()
+	// The banner service holds the one-time cards' dismissal ledger, which every state post reads, so it is
+	// ready before the first await below gives a webview the chance to ask for state. It fetches nothing.
+	BannerService.initialize(webview.controller)
 
 	// Show the version/update toast first; if it fired, suppress the re-engagement nudge this launch
 	// so a version-bump launch never double-toasts.
@@ -209,10 +212,6 @@ export async function initialize(context: vscode.ExtensionContext): Promise<Webv
 
 	// Reveal Adsum sidebar if this window was opened via the "Open my nRF project" card
 	await checkAdsumRevealAfterOpen(context)
-
-	// Initialize banner service (TEMPORARILY DISABLED - not fetching banners to prevent API hammering)
-	BannerService.initialize(webview.controller)
-	// DISABLED: .getActiveBanners(true)
 
 	telemetryService.captureExtensionActivated()
 

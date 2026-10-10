@@ -79,9 +79,10 @@ async function updateAutoApprovalSettings(controller?: Controller) {
  * @returns The created HTTP server instance
  */
 export async function createTestServer(controller: Controller): Promise<http.Server> {
-	// Try to show the Cline sidebar
-	Logger.log("[createTestServer] Opening Cline in sidebar...")
-	vscode.commands.executeCommand(`workbench.view.${ExtensionRegistryInfo.name}-ActivityBar`)
+	// Show the sidebar. Its container is named from the sidebar view's own prefix (package.json declares
+	// "adsum-iot-coder-ActivityBar"), never from the package name, which names no container.
+	Logger.log("[createTestServer] Opening Adsum in the sidebar...")
+	vscode.commands.executeCommand(`workbench.view.${ExtensionRegistryInfo.views.Sidebar.split(".")[0]}-ActivityBar`)
 
 	// Then ensure the webview is focused/loaded
 	vscode.commands.executeCommand(`${ExtensionRegistryInfo.views.Sidebar}.focus`)
