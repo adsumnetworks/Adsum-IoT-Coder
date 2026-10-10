@@ -140,7 +140,7 @@ export const TwoSessionsOpen: Story = {
 	},
 }
 export const FreeTierLow: Story = { args: { state: { freeTierRemainingTokens: 84_000 } } }
-export const FreeTierSpent: Story = { args: { state: { freeTierRemainingTokens: 0 } } }
+export const FreeTierSpent: Story = { args: { state: { freeTierRemainingTokens: 0, quota: { kind: "spent", remaining: 0 } } } }
 export const FreeTierPaused: Story = {
 	args: {
 		state: {
@@ -229,3 +229,4 @@ export const NarrowSidebar: Story = {
 		},
 	},
 }
+export const Offline: Story = { args: { state: { hostOffline: true, nrfEnvironment: blg20 } } }

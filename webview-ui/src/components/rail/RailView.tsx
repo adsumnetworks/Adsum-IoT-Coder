@@ -25,6 +25,18 @@ import { type Run, useRankedRuns } from "./useRankedRuns"
 type Page = "home" | "settings" | "sessions" | "hardware"
 const MOVED_KEY = "adsum.rail.cardsMovedSeen"
 const MIGRATED_KEY = "adsum.rail.migrated"
+
+/** One notice slot, one look: coral for the product's own news, the warning tone for a state to act on. */
+const noticeStyle = (tone: "coral" | "warn"): React.CSSProperties => ({
+	...R.meta,
+	border: `1px solid color-mix(in srgb, ${tone === "coral" ? R.coral : R.warn} 45%, transparent)`,
+	background: `color-mix(in srgb, ${tone === "coral" ? R.coral : R.warn} 5%, transparent)`,
+	borderRadius: 6,
+	padding: "6px 8px",
+	display: "flex",
+	justifyContent: "space-between",
+	gap: 8,
+})
 /** The 0.4 cockpit's own browser-state keys; nothing reads them once the rail is the sidebar. */
 const RETIRED_KEYS = ["adsum.entry.seenRuns", "adsum.env.alwaysOpen", "adsum.dockCoachMarkDismissed"]
 
@@ -66,6 +78,8 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 		navigateToSettings,
 		navigateToHistory,
 		taskHistory,
+		quota,
+		hostOffline,
 	} = useExtensionState() as ReturnType<typeof useExtensionState> & { adsumAccount?: AdsumAccountState }
 	const [page, setPage] = useState<Page>(initialPage)
 	const [paletteOpen, setPaletteOpen] = useState(initialPalette)
@@ -204,7 +218,32 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 						}}
 						onSignIn={() => setGateOpen(true)}
 					/>
-					{!movedSeen && (taskHistory?.length ?? 0) > 0 && (
+					{hostOffline ? (
+						<div aria-live="polite" role="status" style={noticeStyle("warn")}>
+							<span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+								<b style={{ color: "var(--vscode-foreground)" }}>Offline.</b> Local tools and loaded knowledge
+								still work
+								<Info text="The model and the registry are not reachable. Your files, the device tools and the knowledge already loaded in a session keep working; a new session waits for the connection." />
+							</span>
+						</div>
+					) : quota?.kind === "spent" ? (
+						<div aria-live="polite" role="status" style={noticeStyle("warn")}>
+							<span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+								<b style={{ color: "var(--vscode-foreground)" }}>Free tier spent.</b>
+								<button
+									onClick={() => {
+										navigateToSettings("api-config")
+										setPage("settings")
+									}}
+									style={R.link}
+									type="button">
+									Add a key
+								</button>
+								<Info text="The free allowance is used up for now; it comes back on its own. A key of your own, any provider, keeps you going without waiting." />
+							</span>
+						</div>
+					) : null}
+					{!hostOffline && quota?.kind !== "spent" && !movedSeen && (taskHistory?.length ?? 0) > 0 && (
 						<div
 							aria-live="polite"
 							role="status"
