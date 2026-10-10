@@ -6,6 +6,8 @@ import {
 	blg20FromProbes,
 	blg20Interface,
 	blg20Label,
+	blg20LongLabel,
+	blg20NameFromProduct,
 	blg20ProbeSerials,
 	blg20UnitsFromNrfutil,
 	blg20UnitsFromPorts,
@@ -95,6 +97,42 @@ describe("BLG20x over its USB service port", () => {
 		assert.equal(units.length, 1)
 		assert.equal(units[0].confirmed, true)
 		assert.equal(blg20Label(units[0]), "BLG20 AB12 (USB COM5)")
+	})
+
+	test("firmware 0.3.3+ names the unit by the end of its Bluetooth address: BLG20x 286C, the id behind it", () => {
+		const ports: Blg20RawPort[] = [
+			{
+				device: "/dev/ttyACM3",
+				vid: 0x1209,
+				pid: 1,
+				product: "BLG20 Gateway 286C",
+				serial_number: "BBA605799DE4043E",
+				location: "1-4:1.0",
+			},
+			{
+				device: "/dev/ttyACM4",
+				vid: 0x1209,
+				pid: 1,
+				product: "BLG20 Gateway 286C",
+				serial_number: "BBA605799DE4043E",
+				location: "1-4:1.2",
+			},
+		]
+		const units = blg20UnitsFromPorts(ports)
+		assert.equal(units[0].name, "286C")
+		assert.equal(units[0].serialNumber, "BBA605799DE4043E")
+		assert.equal(blg20Label(units[0]), "BLG20x 286C (USB /dev/ttyACM3 + LTE tunnel /dev/ttyACM4)")
+		assert.equal(blg20LongLabel(units[0]), "BLG20x 286C, unit BBA605799DE4043E (USB /dev/ttyACM3 + LTE tunnel /dev/ttyACM4)")
+		// nrfutil reads the same string; a Windows port with no product string takes the name from nrfutil
+		const win = detectBlg20Units(
+			[{ device: "COM5", vid: 0x1209, pid: 1, serial_number: "BBA605799DE4043E", location: "1-2:x.0" }],
+			[],
+			[{ serialNumber: "BBA605799DE4043E", product: "BLG20 Gateway 286C", ports: [{ path: "COM5", interfaceNumber: 0 }] }],
+		)
+		assert.equal(blg20Label(win[0]), "BLG20x 286C (USB COM5)")
+		// the name is never mistaken for the product match: a plain "BLG20 Gateway" has none
+		assert.equal(blg20NameFromProduct("BLG20 Gateway"), undefined)
+		assert.equal(blg20NameFromProduct("BLG20 Gateway 286c"), "286C")
 	})
 
 	test("a locked unit shows its service port only", () => {

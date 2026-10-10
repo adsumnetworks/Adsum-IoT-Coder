@@ -73,6 +73,11 @@ export interface Blg20Unit {
 	confirmed: boolean
 	/** USB serial number of the service port — the unit's identity when seen over USB. */
 	serialNumber?: string
+	/** The last four hex digits of the unit's Bluetooth address, as firmware 0.3.3+ puts them in the USB
+	 *  product string ("BLG20 Gateway 286C"): how people name a unit (the case label, the commissioner's
+	 *  chooser, "Adsum BLG20 FAA08F0D286C"). A NAME, never an identity: 65 536 values, so the serial
+	 *  number stays the key for every action. Absent on older firmware. */
+	name?: string
 	/** The BLE half's service port (interface 0), e.g. "COM5" or "/dev/ttyACM0". */
 	servicePort?: string
 	/** The LTE tunnel (interface 2) — present only while the service port is unlocked. */
@@ -85,6 +90,11 @@ export interface Blg20Unit {
 
 const toNum = (v: number | string | null | undefined): number | undefined =>
 	v == null ? undefined : typeof v === "string" ? parseInt(v, 16) : v
+
+/** The four-digit name from a USB product string, "BLG20 Gateway 286C" -> "286C"; undefined when absent. */
+export function blg20NameFromProduct(product: string | null | undefined): string | undefined {
+	return product?.match(/\bBLG20 Gateway ([0-9A-F]{4})\b/i)?.[1]?.toUpperCase()
+}
 
 /** Is this port a BLG20x service-port interface? */
 export function isBlg20Port(p: Blg20RawPort): boolean {
@@ -131,6 +141,10 @@ export function blg20UnitsFromPorts(ports: Blg20RawPort[]): Blg20Unit[] {
 			confirmed: list.some(blg20PortNamed),
 			serialNumber: key.startsWith("port:") ? undefined : key,
 		}
+		const name = list.map((p) => blg20NameFromProduct(p.product) ?? blg20NameFromProduct(p.description)).find(Boolean)
+		if (name) {
+			unit.name = name
+		}
 		const unknown: Blg20RawPort[] = []
 		for (const p of list) {
 			const iface = blg20Interface(p)
@@ -166,10 +180,12 @@ export function blg20UnitsFromNrfutil(devices: Blg20NrfutilDevice[]): Blg20Unit[
 				(a, b) => (a.vcom ?? 99) - (b.vcom ?? 99) || a.path.localeCompare(b.path, undefined, { numeric: true }),
 			)
 			const known = d.ports.some((p) => p.interfaceNumber !== undefined)
+			const name = blg20NameFromProduct(d.product)
 			return {
 				via: "usb" as const,
 				confirmed: true, // nrfutil read the USB product string itself, and it says BLG20
 				serialNumber: d.serialNumber,
+				...(name ? { name } : {}),
 				servicePort: known ? byIface(0) : ordered[0]?.path,
 				ltePort: known ? byIface(2) : ordered[1]?.path,
 			}
@@ -186,6 +202,7 @@ function mergeUsbUnits(fromPorts: Blg20Unit[], fromNrfutil: Blg20Unit[]): Blg20U
 			out[same] = {
 				...u,
 				confirmed: u.confirmed || n.confirmed,
+				...((u.name ?? n.name) ? { name: u.name ?? n.name } : {}),
 				servicePort: u.servicePort ?? n.servicePort,
 				ltePort: u.ltePort ?? n.ltePort,
 			}
@@ -248,11 +265,30 @@ export function blg20ProbeSerials(units: Blg20Unit[] | undefined): Set<string> {
 }
 
 /**
- * One short label per unit, named by its device id (the BLE half's hardware id, which is also its USB
- * serial number), e.g. "BLG20 9802AF5C69DF1E66 (USB COM5 + LTE tunnel COM6)". A unit nothing has named
- * says so: "Possibly a BLG20 (2 debug probes), not confirmed".
+ * One short label per unit, the way a person names it: "BLG20x 286C (USB COM5 + LTE tunnel COM6)", the
+ * four digits being the end of its Bluetooth address, which firmware 0.3.3+ puts in the USB product
+ * string. Older firmware gives no name, so the unit is named by its device id (the BLE half's hardware
+ * id, which is also its USB serial number): "BLG20 9802AF5C69DF1E66 (USB COM5)". A unit nothing has
+ * named says so: "Possibly a BLG20 (2 debug probes), not confirmed". The full id is always in
+ * blg20LongLabel(), for a hover or a log.
  */
 export function blg20Label(u: Blg20Unit): string {
+	const where = blg20Where(u)
+	if (!u.confirmed) {
+		return `Possibly a BLG20${where}, not confirmed`
+	}
+	return u.name ? `BLG20x ${u.name}${where}` : `BLG20 ${u.serialNumber ?? "gateway"}${where}`
+}
+
+/** The label with the unit id spelled out: "BLG20x 286C, unit BBA605799DE4043E (USB /dev/ttyACM3)". */
+export function blg20LongLabel(u: Blg20Unit): string {
+	if (!u.confirmed || !u.name || !u.serialNumber) {
+		return blg20Label(u)
+	}
+	return `BLG20x ${u.name}, unit ${u.serialNumber}${blg20Where(u)}`
+}
+
+function blg20Where(u: Blg20Unit): string {
 	const how: string[] = []
 	if (u.servicePort) {
 		how.push(`USB ${u.servicePort}${u.ltePort ? ` + LTE tunnel ${u.ltePort}` : ""}`)
@@ -260,6 +296,5 @@ export function blg20Label(u: Blg20Unit): string {
 	if (u.bleProbe && u.lteProbe) {
 		how.push("2 debug probes")
 	}
-	const where = how.length ? ` (${how.join(", ")})` : ""
-	return u.confirmed ? `BLG20 ${u.serialNumber ?? "gateway"}${where}` : `Possibly a BLG20${where}, not confirmed`
+	return how.length ? ` (${how.join(", ")})` : ""
 }

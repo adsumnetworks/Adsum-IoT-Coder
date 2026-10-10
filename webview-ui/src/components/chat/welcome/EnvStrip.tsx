@@ -1,4 +1,4 @@
-import { blg20Label, blg20ProbeSerials } from "@shared/blg20"
+import { blg20Label, blg20LongLabel, blg20ProbeSerials } from "@shared/blg20"
 import { type EspDevice, type EspEnvironment, espUnresolvedDeviceLabel } from "@shared/esp"
 import type { NrfBoard, NrfEnvironment } from "@shared/nrf"
 import { EmptyRequest } from "@shared/proto/cline/common"
@@ -45,6 +45,8 @@ interface BlockFacts {
 	sdkMuted: boolean
 	devices: string
 	devicesMuted: boolean
+	/** The devices line with every id spelled out (a BLG20x's unit id behind its four-digit name), for the hover. */
+	devicesTitle?: string
 	detecting: boolean
 }
 
@@ -116,6 +118,7 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 	sdkMuted,
 	devices,
 	devicesMuted,
+	devicesTitle,
 }) => {
 	// Not detected → one dimmed line (badge + setup nudge), reusing the inactive-card opacity. The badge
 	// stays neutral; detected-vs-not is shown by opacity, not colour (cyan stays "primary action" only).
@@ -163,7 +166,7 @@ const PlatformRow: React.FC<PlatformRowProps> = ({
 			<div
 				style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: devicesMuted ? MUTED : FG }}>
 				<i className="codicon codicon-plug" style={FACT_ICON} />
-				<span>{devices}</span>
+				<span title={devicesTitle}>{devices}</span>
 			</div>
 		</div>
 	)
@@ -343,6 +346,8 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 	} else {
 		devices = nrfBoardLabels(env).join(", ")
 	}
+	// A BLG20x is named by four digits; the hover gives the unit id behind them.
+	const long = (env.blg20Units ?? []).filter((u) => u.name).map(blg20LongLabel)
 
 	return {
 		toolchain,
@@ -353,6 +358,7 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 		sdkMuted,
 		devices,
 		devicesMuted,
+		devicesTitle: long.length ? long.join(", ") : undefined,
 		detecting: env.status === "detecting",
 	}
 }

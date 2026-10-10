@@ -657,7 +657,8 @@ export function blg20Evidence(u: Blg20Unit): string {
 	const parts: string[] = []
 	if (u.servicePort) {
 		parts.push(
-			`USB service port ${u.servicePort}${u.ltePort ? ` and LTE tunnel ${u.ltePort}` : " (LTE tunnel closed: the port is locked)"}` +
+			(u.name ? `named BLG20x ${u.name} (the last four digits of its Bluetooth address), ` : "") +
+				`USB service port ${u.servicePort}${u.ltePort ? ` and LTE tunnel ${u.ltePort}` : " (LTE tunnel closed: the port is locked)"}` +
 				(u.serialNumber ? `, unit id ${u.serialNumber}` : ""),
 		)
 	}
