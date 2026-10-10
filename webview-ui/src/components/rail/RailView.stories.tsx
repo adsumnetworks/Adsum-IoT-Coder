@@ -60,10 +60,12 @@ const Wrapped = ({
 	state,
 	page,
 	palette,
+	width = 420,
 }: {
 	state: Record<string, unknown>
 	page?: "home" | "settings" | "sessions" | "hardware"
 	palette?: boolean
+	width?: number
 }) => {
 	const real = useExtensionState()
 	return (
