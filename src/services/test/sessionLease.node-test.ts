@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import type { SessionState } from "./askBridge"
-import { checkClaim, claim, type Lease } from "./sessionLease"
+import { checkClaim, claim, type Lease, pickSeamSession } from "./sessionLease"
 
 /**
  * One extension host, one visible session, one fixed port. Before the lease, a second POST /task simply
@@ -72,5 +72,29 @@ describe("who is driving this session", () => {
 		for (const state of states) {
 			assert.equal(typeof checkClaim(held, state, "ismail", false).ok, "boolean", state)
 		}
+	})
+})
+
+describe("pickSeamSession: the seam follows the driver's own session, not the editor's focus", () => {
+	const tabs = new Map([
+		["t-driver", "driver's tab"],
+		["t-other", "the tab the operator just focused"],
+	])
+	const find = (id: string) => tabs.get(id)
+	const active = () => "the tab the operator just focused"
+
+	test("a leased session is followed wherever focus has gone", () => {
+		assert.equal(pickSeamSession({ driver: "1b", taskId: "t-driver", since: 1 }, find, active), "driver's tab")
+	})
+
+	test("no lease: the active tab, as before", () => {
+		assert.equal(pickSeamSession(null, find, active), "the tab the operator just focused")
+	})
+
+	test("a leased session whose tab has closed falls back to the active tab", () => {
+		assert.equal(
+			pickSeamSession({ driver: "1b", taskId: "t-closed", since: 1 }, find, active),
+			"the tab the operator just focused",
+		)
 	})
 })

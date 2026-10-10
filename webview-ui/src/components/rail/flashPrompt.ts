@@ -95,6 +95,8 @@ export function flashPrompt(i: FlashPromptInput): string {
 		: ""
 	return (
 		`Flash ${i.title} v${i.version}, licensed to ${i.licensee}, from ${i.folder}.` +
+		// The bits that carry a flash also run inside guided journeys; the host knows this one came on its own.
+		" This is a flash on its own, from the Hardware page, not a guided first run." +
 		` Read ${at("adsum-firmware.json")} for the files and their hashes, and say the flash line first.` +
 		how +
 		term +

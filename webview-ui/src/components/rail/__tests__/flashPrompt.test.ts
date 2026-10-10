@@ -42,6 +42,8 @@ describe("flashPrompt: the ways onto the unit come from the folder's own files",
 		expect(p).toMatch(/^Flash BLG20x demo pair v1\.0\.0, licensed to Acme Ltd, from \/ws\/firmware\/blg20x\/1\.0\.0\./)
 		expect(p).toContain("/ws/firmware/blg20x/1.0.0/adsum-firmware.json")
 		expect(p).toContain("say the flash line first")
+		// The flash bit keeps its journey heading for the guided first run; this prompt says it is not one.
+		expect(p).toContain("This is a flash on its own, from the Hardware page, not a guided first run.")
 		expect(p).toMatch(/Ask me which way, and which probe or port is which, before you program anything\.$/)
 	})
 

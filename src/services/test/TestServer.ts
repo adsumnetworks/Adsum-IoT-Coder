@@ -13,7 +13,7 @@ import { getCwd } from "@/utils/path"
 import { checkRespond, messagesSince, pendingAskFrom, sessionStateFrom } from "./askBridge"
 import { initializeGitRepository, validateWorkspacePath } from "./GitHelper"
 import { checkInject } from "./injectQueue"
-import { checkClaim, claim, type Lease } from "./sessionLease"
+import { checkClaim, claim, type Lease, pickSeamSession } from "./sessionLease"
 
 /**
  * [0.5 sessions first] The seam used to drive whatever webview was visible, which was the sidebar's chat.
@@ -25,7 +25,13 @@ let sessionFactory: (() => Promise<WebviewProvider>) | undefined
 export function registerSeamSessionFactory(fn: typeof sessionFactory): void {
 	sessionFactory = fn
 }
-const seamProvider = (): WebviewProvider | undefined => WebviewProvider.getActiveSession() ?? WebviewProvider.getVisibleInstance()
+// The driver's own session wherever focus goes (pickSeamSession); else the active session, else what is visible.
+const seamProvider = (): WebviewProvider | undefined =>
+	pickSeamSession(
+		currentLease,
+		(taskId) => WebviewProvider.findSession(taskId),
+		() => WebviewProvider.getActiveSession() ?? WebviewProvider.getVisibleInstance(),
+	)
 
 /**
  * Creates a tracker to monitor tool calls and failures during task execution

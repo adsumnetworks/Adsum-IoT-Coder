@@ -65,3 +65,17 @@ export function checkClaim(lease: Lease | null, state: SessionState, driver: str
 export function claim(driver: string | undefined, taskId: string): Lease {
 	return { driver: driver?.trim() || "an unnamed driver", taskId, since: Date.now() }
 }
+
+/**
+ * [0.5 sessions first] Which session the seam talks to. With several session tabs, "the active one" follows the
+ * editor's focus: when someone opens or focuses another tab, a driver polling /status would start reading that
+ * tab, and its own session would look as if it had gone quiet. So the session a driver started or resumed is
+ * followed wherever focus goes; with no lease, or once that session has no tab, the active one, as before.
+ */
+export function pickSeamSession<T>(
+	lease: Lease | null,
+	findByTaskId: (taskId: string) => T | undefined,
+	fallback: () => T | undefined,
+): T | undefined {
+	return (lease ? findByTaskId(lease.taskId) : undefined) ?? fallback()
+}
