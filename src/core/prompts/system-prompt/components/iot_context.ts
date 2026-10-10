@@ -678,6 +678,17 @@ export function blg20Evidence(u: Blg20Unit): string {
 			`${u.servicePort ? "also " : `named ${blg20Label(u)}, `}reachable ${blg20BleWords(u)}: ` +
 				`\`blg20-service <verb> --ble ${blg20BleTarget(u)} --json\``,
 		)
+		// [11 Oct 2026] What the Hardware page's journey established, so the agent never pairs or claims twice.
+		const facts: string[] = []
+		if (u.paired) facts.push("paired with this computer")
+		if (u.claimed) facts.push(u.mine ? "claimed by this computer's key" : "claimed by another computer's key")
+		if (u.bleFw) facts.push(`Bluetooth half ${u.bleFw}, cellular half ${u.lteFw ?? "?"}`)
+		if (u.latest) {
+			facts.push(
+				u.latest.newer ? `a newer release v${u.latest.version} is listed` : `the latest release is v${u.latest.version}`,
+			)
+		}
+		if (facts.length) parts.push(`from the Hardware page: ${facts.join(", ")}`)
 	}
 	if (u.bleProbe && u.lteProbe) {
 		parts.push(`probe ${u.bleProbe} reaches its nRF54LM20B (BLE half) and probe ${u.lteProbe} its nRF9151 (LTE half)`)
@@ -701,6 +712,8 @@ export const bluetoothGatewayWords = (platform: string = process.platform): stri
 			"`list --ble --json` says with `bonded` whether this computer is paired with the unit already, and the tool " +
 			"refuses at once, naming --passkey, when it is not). "
 		: "tell the developer to type the six digits from the unit's label when the computer asks. ") +
+	"The Hardware page may have done the first steps already (Scan, Connect which pairs, Claim, Check firmware): when the " +
+	"unit's facts below say paired or claimed by this computer, take that as done and go on. " +
 	"If the tool says the computer kept a " +
 	"pairing from before the unit was wiped, the developer forgets the unit in the computer's Bluetooth settings and " +
 	"runs again. A claim over Bluetooth needs the window open. Never install Python packages for this tool: the " +

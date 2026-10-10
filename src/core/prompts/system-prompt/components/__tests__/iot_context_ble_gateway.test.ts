@@ -67,4 +67,21 @@ describe("iot_context — a gateway over Bluetooth", () => {
 		expect(w).to.contain("add `--passkey <the six digits from the unit's label>` to that command")
 		expect(w).not.to.contain("when the computer asks")
 	})
+
+	it("what the Hardware page's journey established is said, so the agent never pairs or claims twice", () => {
+		const [u] = blg20UnitsFromBle([ROW])
+		const e = blg20Evidence({
+			...u,
+			paired: true,
+			claimed: true,
+			mine: true,
+			bleFw: "0.3.6",
+			lteFw: "0.2.8",
+			latest: { version: "1.1.0", newer: true },
+		})
+		expect(e).to.contain(
+			"from the Hardware page: paired with this computer, claimed by this computer's key, Bluetooth half 0.3.6, cellular half 0.2.8, a newer release v1.1.0 is listed",
+		)
+		expect(blg20Evidence(u)).not.to.contain("from the Hardware page")
+	})
 })
