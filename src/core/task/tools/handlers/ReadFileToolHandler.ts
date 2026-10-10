@@ -118,6 +118,19 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		let { absolutePath, displayPath } =
 			typeof pathResult === "string" ? { absolutePath: pathResult, displayPath: relPath! } : pathResult
 
+		// [0.5 the firmware lane] A licensed image is flashed from its path, never read into the context:
+		// there is no reason to, and a transcript is a durable copy. Source rungs stay readable; that is
+		// what a source licence is for.
+		if (
+			/[/\\]firmware[/\\].*\.(hex|bin|zip|elf)$/i.test(absolutePath) ||
+			/firmware[/\\].*\.signed\.(hex|bin)$/i.test(absolutePath)
+		) {
+			return formatResponse.toolError(
+				`${displayPath} is a licensed firmware image. It is flashed from its path with the device tools, not read; ` +
+					"adsum-firmware.json and LICENSE-ADSUM.txt beside it say what it is and whose it is.",
+			)
+		}
+
 		// Determine workspace context for telemetry
 		const fallbackAbsolutePath = path.resolve(config.cwd, relPath ?? "")
 		const workspaceContext = {

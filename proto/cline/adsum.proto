@@ -47,4 +47,9 @@ service AdsumService {
   // twice; a prompt is sent as the first message when `send`, else placed in the composer.
   // Response value is the task id, or "" when nothing started.
   rpc openSession(StringRequest) returns (String);
+
+  // [0.5 the firmware lane] The Hardware page's door to licensed firmware. Request value is JSON
+  // {op:"list", family?} | {op:"download", id, version, folder?, pick?} | {op:"open-folder", folder}.
+  // Response value is JSON: {ok, rows[]} for list; {ok, local} or {ok:false, locked, group} for download.
+  rpc firmware(StringRequest) returns (String);
 }

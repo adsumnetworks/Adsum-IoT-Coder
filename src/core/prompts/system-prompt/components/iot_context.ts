@@ -3,6 +3,7 @@ import path from "path"
 import { HostProvider } from "@/hosts/host-provider"
 import { getConnectedBlg20Units } from "@/services/blg20/connectedBlg20"
 import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
+import { listLocalFirmware } from "@/services/firmware/FirmwareStore"
 import { bitSdkRequirement, deriveIdFromRel, loadBit } from "@/services/knowledge/KnowledgeResolver"
 import { stripFrontmatter } from "@/services/knowledge/kbit/frontmatter"
 import { ncsGateNotice } from "@/services/knowledge/kbit/ncsGate"
@@ -1059,6 +1060,30 @@ const MULTI_PLATFORM_NOTE = `> **MULTI-PLATFORM WORKSPACE.** This workspace cont
  * tells the developer, whereas an agent that sees nothing improvises its own script. That failure is
  * why device tools are advertised at all.
  */
+/**
+ * [0.5 the firmware lane] Licensed firmware on disk, by path and licence, never by content. The agent flashes
+ * from these paths and edits source rungs in place; it is told on every flash to say what, for whom, from where.
+ */
+function renderLicensedFirmware(cwd: string): string {
+	let locals: ReturnType<typeof listLocalFirmware> = []
+	try {
+		locals = listLocalFirmware([cwd])
+	} catch {
+		return ""
+	}
+	if (locals.length === 0) {
+		return ""
+	}
+	let out = "#### Licensed firmware in this workspace\n\n"
+	for (const l of locals) {
+		const r = l.receipt
+		out += `- **${r.title} v${r.version}** (${r.id}) licensed to ${r.licensee}, term to ${r.term_end.slice(0, 10)}, ${r.status}${l.intact ? "" : ", a file is missing or altered"}. Files: ${r.artifacts.map((a) => `\`${l.folder}/${a.path}\``).join(", ")}.\n`
+	}
+	out +=
+		'\nFlash these from their paths with the device tools; never read an image into the context, never copy or send it outside the workspace, and never paste licensed source outside the editor. Before any flash say, in one line: "Flashing <title> v<version>, licensed to <licensee>, from <path>". A receipt marked expired still flashes; say the term ended and that renewal is on the web Hardware home.\n\n'
+	return out
+}
+
 function renderDeviceTools(tools: ResolvedTool[]): string {
 	if (tools.length === 0) {
 		return ""
@@ -1144,6 +1169,7 @@ async function buildIotContextTemplateText(cwd: string): Promise<string> {
 	// 1b. Device tools — resolved from tool-bit descriptors, never a hard-coded path. `cwd` lets the
 	//     resolver shorten each command to a workspace-relative path for readable terminal output.
 	iotContext += renderDeviceTools(await resolveToolsAsync(summary, `prompt:${cwd}`, cwd))
+	iotContext += renderLicensedFirmware(cwd)
 
 	// 2. Platform knowledge — load each platform the classification allows AND the
 	//    cwd confirms as a real project. A single-platform workspace loads exactly

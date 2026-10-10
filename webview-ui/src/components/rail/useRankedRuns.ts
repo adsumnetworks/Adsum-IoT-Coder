@@ -193,7 +193,7 @@ export function useRankedRuns(): RankedRuns {
 			icon: "play",
 			platform: "both",
 			title: d.title,
-			blurb: d.description,
+			blurb: d.honestLabel,
 			meta: "about a minute · nothing to install",
 			kind: "sample",
 			group: "Samples",

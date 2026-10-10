@@ -42,6 +42,7 @@ import { nrfEnvironmentWithBlg20 } from "@/services/blg20/connectedBlg20"
 import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import { featureFlagsService } from "@/services/feature-flags"
 import { getHandoverUiState } from "@/services/handover/HandoverUiState"
+import { releaseAll } from "@/services/hardware/HardwarePortGuard"
 import { consumeCraRanThisSession, servedIdsSnapshot, warmDownloadedManifest } from "@/services/knowledge/KnowledgeResolver"
 import { getDistinctId } from "@/services/logging/distinctId"
 import { Logger } from "@/services/logging/Logger"
@@ -1122,6 +1123,10 @@ export class Controller {
 			} catch (e) {
 				console.error("[Controller] clearTask failed (non-fatal):", e)
 			}
+		}
+		if (this.task?.taskId) {
+			// [0.5 sessions first] Whatever ports this session claimed are free for the other tabs.
+			releaseAll(this.task.taskId)
 		}
 		this.task = undefined // removes reference to it, so once promises end it will be garbage collected
 	}

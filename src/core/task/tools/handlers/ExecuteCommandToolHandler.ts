@@ -6,6 +6,7 @@ import { withLinks } from "@services/knowledge/kbit/people"
 import { COMMAND_REQ_APP_STRING } from "@shared/combineCommandSequences"
 import { ClineAsk } from "@shared/ExtensionMessage"
 import { arePathsEqual } from "@utils/path"
+import { claimPorts, heldElsewhereMessage, portsInCommand } from "@/services/hardware/HardwarePortGuard"
 import { getCachedWorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { telemetryService } from "@/services/telemetry"
 import { resolveToolsAsync } from "@/services/tools/ToolResolver"
@@ -117,10 +118,27 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 		// Route-and-safety guards: writing project memory by shell, or running an SDK tool outside the
 		// nRF terminal. Both were observed in real sessions and both dead-end; reject with the correct
 		// tool named so the model can retry immediately instead of asking the developer.
-		const guardRejection = checkCommandGuards(command)
+		const guardRejection = checkCommandGuards(command, config.workspaceManager?.getRoots().map((r) => r.path) ?? [config.cwd])
 		if (guardRejection) {
 			config.taskState.consecutiveMistakeCount++
 			return formatResponse.toolError(guardRejection)
+		}
+
+		// [0.5 sessions first] One bench, several session tabs: a port another session holds is named, never
+		// taken. The guard is a registry of who said they use what; the operating system still decides.
+		const ports = portsInCommand(command)
+		if (ports.length) {
+			const history = config.services.stateManager.getGlobalStateKey("taskHistory") || []
+			const item = history.find((h) => h.id === config.taskId)
+			const others = claimPorts(ports, {
+				taskId: config.taskId,
+				title: (item?.title || item?.task || "").slice(0, 60),
+				since: Date.now(),
+			})
+			if (others.length) {
+				config.taskState.consecutiveMistakeCount++
+				return formatResponse.toolError(heldElsewhereMessage(others))
+			}
 		}
 
 		if (!requiresApprovalRaw) {

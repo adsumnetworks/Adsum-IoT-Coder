@@ -3,6 +3,7 @@ import EnvStrip from "../chat/welcome/EnvStrip"
 import GatewayLadder from "../chat/welcome/GatewayLadder"
 import { useEntrySignals } from "../chat/welcome/useEntrySignals"
 import { blg20InstallPrompt, blg20SetUpPrompt, buildIntentPrompt } from "../chat/welcome/welcomeIntents"
+import FirmwareRungs from "./FirmwareRungs"
 import { R } from "./railStyles"
 
 interface Props {
@@ -29,6 +30,12 @@ const HardwarePage: React.FC<Props> = ({ onBack, onPrompt, onAsk }) => {
 				</button>
 			</div>
 			<EnvStrip forceExpanded />
+			<FirmwareRungs
+				family="blg20x"
+				onAsk={() => onAsk("blg20")}
+				onFlash={(prompt) => onPrompt(prompt, true)}
+				onRenew={() => onPrompt("Open the web Hardware home for the BLG20x licence: hardware.adsumnetworks.com", false)}
+			/>
 			<GatewayLadder
 				boards={boards}
 				chips={signals.nrfChips ?? []}

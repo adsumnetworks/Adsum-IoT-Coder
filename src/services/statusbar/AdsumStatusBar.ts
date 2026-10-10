@@ -1,5 +1,7 @@
 import type * as vscode from "vscode"
+import type { EspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import type { NrfEnvironment } from "@/services/nrf/EnvironmentDetector"
+import type { OpenSessionSummary } from "@/shared/ExtensionMessage"
 
 const FOCUS_COMMAND = "adsum-iot-coder.SidebarProvider.focus"
 const ICON = "$(adsum-iot-coder-icon)"
@@ -15,12 +17,35 @@ function formatTokens(n: number): string {
 	return `${n}`
 }
 
-/** Formats the status-bar label. Pure — no VS Code imports, exportable for unit tests. */
-export function formatStatusText(tokens?: number): string {
-	if (tokens === undefined) {
-		return `${ICON} Adsum Coder`
+/** A held port as the tooltip names it. */
+export interface HeldPort {
+	port: string
+	title: string
+}
+
+/**
+ * [0.5 sessions first] The one word after the mark. A session waiting on an answer comes first (it is the
+ * thing to look at), then a session in error, then the unit on the desk. Never two things: the status bar is
+ * one line wide and the ESP-IDF extension already crowds it.
+ */
+export function pickHeadline(sessions: readonly OpenSessionSummary[] = [], unit?: string): string | undefined {
+	const waiting = sessions.find((s) => s.waiting)
+	if (waiting) {
+		return `${(waiting.title || "a session").split(" · ")[0].slice(0, 24)} waiting`
 	}
-	return `${ICON} Adsum Coder · $(zap) ${formatTokens(tokens)}`
+	return unit
+}
+
+/** Formats the status-bar label. Pure — no VS Code imports, exportable for unit tests. */
+export function formatStatusText(tokens?: number, headline?: string): string {
+	let text = `${ICON} Adsum`
+	if (headline) {
+		text += ` · ${headline}`
+	}
+	if (tokens !== undefined) {
+		text += ` · $(zap) ${formatTokens(tokens)}`
+	}
+	return text
 }
 
 /** Ensures a single leading "v" on a version string. */
@@ -28,48 +53,93 @@ function withV(v: string): string {
 	return v.startsWith("v") ? v : `v${v}`
 }
 
-/** Builds a multi-line tooltip that includes nRF Connect + board facts when available. */
-export function buildStatusBarTooltip(env?: NrfEnvironment): string {
-	if (!env || env.status === "unknown") {
-		return "Open Adsum IoT Coder"
+/** The unit or board the label names, by its own name, when there is exactly one obvious one. */
+export function unitLabel(env?: NrfEnvironment, esp?: EspEnvironment): string | undefined {
+	const blg = (env as { blg20Units?: Array<{ name?: string; serialNumber?: string }> } | undefined)?.blg20Units ?? []
+	if (blg.length) {
+		const u = blg[0]
+		return u.name ? `BLG20x ${u.name}` : "BLG20x"
 	}
+	const board = env?.boards?.[0]
+	if (board) {
+		return (board.productName || board.deviceName || board.deviceFamily || "").toString() || undefined
+	}
+	const dev = esp?.espDevices?.[0]
+	if (dev) {
+		return dev.chip || "ESP32"
+	}
+	return undefined
+}
 
+/** Builds a multi-line tooltip: both platforms, the units with their holders, the open sessions. */
+export function buildStatusBarTooltip(
+	env?: NrfEnvironment,
+	esp?: EspEnvironment,
+	sessions: readonly OpenSessionSummary[] = [],
+	held: readonly HeldPort[] = [],
+): string {
 	const lines: string[] = ["Open Adsum IoT Coder", ""]
-
-	const extLine = env.extensionPresent ? `nRF Connect ext v${env.extensionVersion ?? "?"}` : "nRF Connect not detected"
-	lines.push(`$(server-environment) ${extLine}`)
-
-	if (env.projectSdk) {
-		const where = env.projectSdk.source === "build" ? "this build" : "workspace"
-		lines.push(`$(package) NCS ${withV(env.projectSdk.version)} · ${where}`)
-	} else {
-		const sdkVersions = env.installedSdkVersions ?? []
-		if (sdkVersions.length > 0) {
-			lines.push(`$(package) NCS ${sdkVersions.map(withV).join(", ")} installed`)
+	if (env && env.status !== "unknown") {
+		const extLine = env.extensionPresent ? `nRF Connect ext v${env.extensionVersion ?? "?"}` : "nRF Connect not detected"
+		lines.push(`$(server-environment) ${extLine}`)
+		if (env.projectSdk) {
+			const where = env.projectSdk.source === "build" ? "this build" : "workspace"
+			lines.push(`$(package) NCS ${withV(env.projectSdk.version)} · ${where}`)
+		} else {
+			const sdkVersions = env.installedSdkVersions ?? []
+			if (sdkVersions.length > 0) {
+				lines.push(`$(package) NCS ${sdkVersions.map(withV).join(", ")} installed`)
+			}
+		}
+		if (env.status === "detecting") {
+			lines.push("$(plug) detecting boards…")
+		} else if (!env.nrfutilPresent) {
+			lines.push("$(plug) nrfutil not found")
+		} else if (env.boards.length === 0) {
+			lines.push("$(plug) no boards connected")
+		} else {
+			const names = env.boards
+				.map((b) => {
+					const name = b.deviceName ?? b.deviceFamily ?? b.serialNumber
+					return b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name
+				})
+				.join(", ")
+			lines.push(`$(plug) ${env.boards.length} board${env.boards.length > 1 ? "s" : ""}: ${names}`)
+		}
+		const blg = (env as { blg20Units?: Array<{ name?: string; servicePort?: string }> }).blg20Units ?? []
+		for (const u of blg) {
+			lines.push(`$(circuit-board) BLG20x ${u.name ?? ""}${u.servicePort ? ` · ${u.servicePort}` : ""}`.trim())
 		}
 	}
-
-	if (env.status === "detecting") {
-		lines.push("$(plug) detecting boards…")
-	} else if (!env.nrfutilPresent) {
-		lines.push("$(plug) nrfutil not found")
-	} else if (env.boards.length === 0) {
-		lines.push("$(plug) no boards connected")
-	} else {
-		const names = env.boards
-			.map((b) => {
-				const name = b.deviceName ?? b.deviceFamily ?? b.serialNumber
-				return b.boardVersion && b.deviceName ? `${name} (${b.boardVersion})` : name
-			})
-			.join(", ")
-		lines.push(`$(plug) ${env.boards.length} board${env.boards.length > 1 ? "s" : ""}: ${names}`)
+	if (esp && esp.status !== "unknown") {
+		lines.push(`$(server-environment) ${esp.extensionPresent || esp.idfPresent ? "ESP-IDF present" : "ESP-IDF not detected"}`)
+		const devs = esp.espDevices ?? []
+		if (devs.length) {
+			lines.push(`$(plug) ${devs.map((d) => d.chip || "ESP32").join(", ")}`)
+		}
 	}
-
+	for (const h of held) {
+		lines.push(`$(lock) ${h.port} held by ${h.title}`)
+	}
+	if (sessions.length) {
+		lines.push("")
+		for (const s of sessions) {
+			lines.push(
+				`$(comment-discussion) ${s.title || "New session"}${s.waiting ? " · waiting on you" : s.streaming ? " · working" : ""}`,
+			)
+		}
+	}
 	return lines.join("\n")
 }
 
 let _item: vscode.StatusBarItem | undefined
 let _vscodeApi: typeof vscode | undefined
+let _tokens: number | undefined
+let _headline: string | undefined
+let _sessions: () => OpenSessionSummary[] = () => []
+let _held: () => HeldPort[] = () => []
+let _nrf: NrfEnvironment | undefined
+let _esp: EspEnvironment | undefined
 
 /** Creates and shows the status-bar item, pushing disposal onto context.subscriptions. */
 export function createAdsumStatusBar(context: vscode.ExtensionContext, vscodeApi: typeof vscode): vscode.StatusBarItem {
@@ -84,27 +154,57 @@ export function createAdsumStatusBar(context: vscode.ExtensionContext, vscodeApi
 	return item
 }
 
-/** Refreshes the status-bar text and ensures it is visible. */
-export function refreshAdsumStatusBar(tokens?: number): void {
+/** The host tells the bar where to read the open sessions and the held ports from. */
+export function bindStatusBarSources(sessions: () => OpenSessionSummary[], held: () => HeldPort[]): void {
+	_sessions = sessions
+	_held = held
+}
+
+function repaint(): void {
 	if (!_item) {
 		return
 	}
-	_item.text = formatStatusText(tokens)
+	let sessions: OpenSessionSummary[] = []
+	let held: HeldPort[] = []
+	try {
+		sessions = _sessions()
+		held = _held()
+	} catch {
+		// the sources must never break the bar
+	}
+	_headline = pickHeadline(sessions, unitLabel(_nrf, _esp))
+	_item.text = formatStatusText(_tokens, _headline)
+	if (_vscodeApi) {
+		const md = new _vscodeApi.MarkdownString(buildStatusBarTooltip(_nrf, _esp, sessions, held), true)
+		md.isTrusted = true
+		_item.tooltip = md
+	}
 	_item.show()
 }
 
-/** Enriches the status-bar tooltip with nRF environment facts (non-breaking if env absent). */
-export function setAdsumStatusBarTooltip(env: NrfEnvironment): void {
-	if (!_item || !_vscodeApi) {
-		return
+/** Refreshes the status-bar text and ensures it is visible. */
+export function refreshAdsumStatusBar(tokens?: number): void {
+	_tokens = tokens
+	repaint()
+}
+
+/** Enriches the status-bar tooltip with the platform facts (non-breaking if either is absent). */
+export function setAdsumStatusBarTooltip(env: NrfEnvironment, esp?: EspEnvironment): void {
+	_nrf = env
+	if (esp) {
+		_esp = esp
 	}
-	const md = new _vscodeApi.MarkdownString(buildStatusBarTooltip(env), true)
-	md.isTrusted = true
-	_item.tooltip = md
+	repaint()
 }
 
 /** Resets the singleton (used in tests to avoid cross-test leakage). */
 export function resetAdsumStatusBarForTest(): void {
 	_item = undefined
 	_vscodeApi = undefined
+	_tokens = undefined
+	_headline = undefined
+	_nrf = undefined
+	_esp = undefined
+	_sessions = () => []
+	_held = () => []
 }

@@ -130,7 +130,60 @@ export function rejectKillByName(command: string): CommandRejection {
 	)
 }
 
+/**
+ * [0.5 the firmware lane] Licensed firmware stays where it was downloaded. A `firmware/<family>/<version>/`
+ * folder holds images and source licensed to one organisation; the agent flashes from it and edits in it,
+ * and that is all. Printing a binary into the transcript, or copying the folder outside the workspace or
+ * to the network, is refused with the reason, so a prompt that asks for it cannot be obeyed by accident.
+ */
+const FIRMWARE_PATH = /(^|[\s"'=/\\])firmware[/\\][^\s"']+/i
+const FIRMWARE_BINARY = /firmware[/\\][^\s"']*\.(hex|bin|zip|signed|elf)\b/i
+const PRINTS = /(^|[\s;&|])(cat|less|more|head|tail|xxd|hexdump|od|base64|strings|type|Get-Content|gc|certutil)\b/i
+const EXFIL =
+	/(^|[\s;&|])(scp|rsync|curl|wget|sftp|ftp|nc|ncat|aws|gsutil|az|rclone|Invoke-WebRequest|iwr|Invoke-RestMethod|Send-MailMessage)\b/i
+const COPY = /(^|[\s;&|])(cp|mv|copy|xcopy|robocopy|Copy-Item|Move-Item|tar|zip|7z)\b/i
+
+export function rejectFirmwareExfil(command: string, workspaceRoots: readonly string[] = []): CommandRejection {
+	const c = command.replace(/\s+/g, " ")
+	if (!FIRMWARE_PATH.test(c)) {
+		return null
+	}
+	if (FIRMWARE_BINARY.test(c) && PRINTS.test(c)) {
+		return (
+			"Refused: this prints a licensed firmware image into the transcript. The images under firmware/ are " +
+			"licensed to the account that downloaded them; flash them from their path with the device tools, and " +
+			"read adsum-firmware.json or LICENSE-ADSUM.txt beside them when you need to know what they are."
+		)
+	}
+	if (EXFIL.test(c)) {
+		return (
+			"Refused: this sends licensed firmware off this machine. Files under firmware/ stay in the workspace " +
+			"they were downloaded into; the licence beside them says so. Flash from the path instead."
+		)
+	}
+	if (COPY.test(c)) {
+		// A copy INSIDE the workspace (into a build folder, say) is ordinary work; one that leaves it is not.
+		const targets = [...c.matchAll(/(?:^|\s)(?!-)(["']?)([^\s"']+)\1(?=\s|$)/g)].map((m) => m[2])
+		const last = targets[targets.length - 1] ?? ""
+		const leaves =
+			/^[~/]|^[A-Za-z]:[\\/]|^\\\\/.test(last) &&
+			!workspaceRoots.some((r) => r && last.replace(/\\/g, "/").startsWith(r.replace(/\\/g, "/")))
+		if (leaves) {
+			return (
+				"Refused: this copies licensed firmware outside the workspace. Files under firmware/ stay in the " +
+				"workspace they were downloaded into (copies inside it, into a build folder for instance, are fine)."
+			)
+		}
+	}
+	return null
+}
+
 /** All command guards, in order. Returns the first rejection, or null when the command is allowed. */
-export function checkCommandGuards(command: string): CommandRejection {
-	return rejectAdsumShellWrite(command) ?? rejectRawNrfToolCommand(command) ?? rejectKillByName(command)
+export function checkCommandGuards(command: string, workspaceRoots: readonly string[] = []): CommandRejection {
+	return (
+		rejectAdsumShellWrite(command) ??
+		rejectRawNrfToolCommand(command) ??
+		rejectKillByName(command) ??
+		rejectFirmwareExfil(command, workspaceRoots)
+	)
 }

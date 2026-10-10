@@ -62,12 +62,14 @@ import { LogoutReason } from "./services/auth/types"
 import {
 	clearEspEnvironmentCache,
 	detectEspEnvironment,
+	getCachedEspEnvironment,
 	setEspExtensionInfo,
 	setEspIdfPathHint,
 	setEspWorkspaceRoots,
 } from "./services/esp/EspEnvironmentDetector"
 import { setIdfToolsPathHint } from "./services/esp/espChipProbe"
 import { registerHandoverActions } from "./services/handover/HandoverActions"
+import { allHolders, onHoldersChanged } from "./services/hardware/HardwarePortGuard"
 import {
 	clearNrfEnvironmentCache,
 	detectNrfEnvironment,
@@ -75,7 +77,12 @@ import {
 	setNrfWorkspaceRoots,
 } from "./services/nrf/EnvironmentDetector"
 import { refreshWorkspaceClassification } from "./services/platform/WorkspaceClassifier"
-import { createAdsumStatusBar, refreshAdsumStatusBar, setAdsumStatusBarTooltip } from "./services/statusbar/AdsumStatusBar"
+import {
+	bindStatusBarSources,
+	createAdsumStatusBar,
+	refreshAdsumStatusBar,
+	setAdsumStatusBarTooltip,
+} from "./services/statusbar/AdsumStatusBar"
 import { telemetryService } from "./services/telemetry"
 import { setEditorIdentity } from "./services/telemetry/editorIdentity"
 import { ClineTempManager } from "./services/temp"
@@ -172,6 +179,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Status-bar ▲ Adsum button — always visible, reveals the view from any dock.
 	createAdsumStatusBar(context, vscode)
+	bindStatusBarSources(listOpenSessionTabs, () => allHolders().map((h) => ({ port: h.port, title: h.holder.title })))
+	context.subscriptions.push({ dispose: onHoldersChanged(() => refreshAdsumStatusBar(getCachedFreeTokensRemaining())) })
 	refreshAdsumStatusBar(getCachedFreeTokensRemaining())
 	context.subscriptions.push({ dispose: onFreeTokensChanged(refreshAdsumStatusBar) })
 
@@ -227,7 +236,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Webview shows "detecting…" until caches populate and postStateToWebview fires.
 	void detectNrfEnvironment()
 		.then((env) => {
-			setAdsumStatusBarTooltip(env)
+			setAdsumStatusBarTooltip(env, getCachedEspEnvironment())
 			return webview.controller.postStateToWebview()
 		})
 		.catch(() => {})
@@ -260,7 +269,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			refreshWorkspaceClassification(updated)
 			void detectNrfEnvironment()
 				.then((env) => {
-					setAdsumStatusBarTooltip(env)
+					setAdsumStatusBarTooltip(env, getCachedEspEnvironment())
 					return webview.controller.postStateToWebview()
 				})
 				.catch(() => {})

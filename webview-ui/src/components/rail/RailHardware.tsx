@@ -1,3 +1,4 @@
+import type { EspEnvironment } from "@shared/esp"
 import type React from "react"
 import { useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -18,7 +19,12 @@ const RailHardware: React.FC<Props> = ({ onOpen }) => {
 	const { refresh, busy } = useEnvRefresh()
 	const [open, setOpen] = useState(true)
 	const nrfEnv = nrfEnvironment ?? { status: "unknown" as const, extensionPresent: false, nrfutilPresent: false, boards: [] }
-	const espEnv = espEnvironment ?? { status: "unknown" as const, extensionPresent: false, idfPresent: false, espDevices: [] }
+	const espEnv = (espEnvironment ?? {
+		status: "unknown" as const,
+		extensionPresent: false,
+		idfPresent: false,
+		espDevices: [],
+	}) as EspEnvironment
 	const nrf = nrfBoardLabels(nrfEnv)
 	const esp = espDeviceLabels(espEnv)
 	const roots = openFolderPaths ?? []
