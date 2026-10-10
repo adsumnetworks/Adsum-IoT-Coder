@@ -1,6 +1,7 @@
 import type { ClineMessage } from "@shared/ExtensionMessage"
 import type React from "react"
 import { useState } from "react"
+import Truncate from "@/components/common/Truncate"
 import { R } from "@/components/rail/railStyles"
 import type { FoldedRow } from "@/utils/foldRows"
 
@@ -37,7 +38,7 @@ const FoldedToolRow: React.FC<FoldedToolRowProps> = ({ row, renderMessage }) => 
 				style={{ ...R.meta, padding: "2px 0" }}
 				type="button">
 				<span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
-				<span>{row.label}</span>
+				<Truncate text={row.label} />
 			</button>
 			{expanded ? (
 				<div className="flex flex-col" data-testid="folded-tool-row-detail">

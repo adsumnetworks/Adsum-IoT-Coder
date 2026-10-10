@@ -1,7 +1,8 @@
 import type React from "react"
+import { AdsumMark } from "@/components/common/AdsumLogo"
+import Truncate from "@/components/common/Truncate"
 import { R } from "@/components/rail/railStyles"
 import { ADSUM_VIEW } from "@/config/platform.config"
-import { BRAND_CORAL } from "./brandColors"
 
 export interface SessionComposerFootProps {
 	/** The open workspace folder's name (basename only — never the full path). */
@@ -21,10 +22,10 @@ export interface SessionComposerFootProps {
 }
 
 /**
- * [P3.3 sessions first] A permanent, low-weight line under the session composer: the ◆ mark, the open
- * folder, the context-use percentage once a task exists, and a "Something else · ⌘K" handle. Session-tab
- * only — the sidebar (the rail) already carries this information in its own surfaces, so this would
- * double it there.
+ * [P3.3 sessions first] A permanent, low-weight line under the session composer: the Adsum mark, the
+ * open folder, the context-use percentage once a task exists, and a "Something else · ⌘K" handle.
+ * Session-tab only — the sidebar (the rail) already carries this information in its own surfaces, so
+ * this would double it there.
  */
 const SessionComposerFoot: React.FC<SessionComposerFootProps> = ({
 	folderName,
@@ -46,10 +47,8 @@ const SessionComposerFoot: React.FC<SessionComposerFootProps> = ({
 			data-testid="session-composer-foot"
 			style={{ ...R.meta, padding: "2px 14px 0" }}>
 			<span className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-				<span aria-hidden="true" style={{ color: BRAND_CORAL }}>
-					◆
-				</span>
-				{folderName ? <span className="truncate">{folderName}</span> : null}
+				<AdsumMark size={12} title="Adsum IoT Coder" />
+				{folderName ? <Truncate text={folderName} /> : null}
 				{hasTask && contextPercent !== undefined ? (
 					<span className="shrink-0" title="Context window used">
 						{Math.round(contextPercent)}% context

@@ -44,9 +44,11 @@ import AgentSessionRecap from "./handover/AgentSessionRecap"
 import AgentSessionView from "./handover/AgentSessionView"
 import { NORDIC_MODES, type NordicModeId } from "./nordicModes"
 import OfflineNotice from "./OfflineNotice"
+import PreferSidebarHint from "./PreferSidebarHint"
 import SessionComposerFoot from "./SessionComposerFoot"
 import SessionHeader from "./SessionHeader"
 import SessionPalette from "./SessionPalette"
+import SessionWordmark from "./SessionWordmark"
 import { entryFirstPrompt } from "./welcome/entryTelemetry"
 import { handOverCard } from "./welcome/handOverCard"
 import { routeDemo, routeTypedTask } from "./welcome/runRouting"
@@ -548,6 +550,12 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		// not ask the developer to pick a mode first. "Select a mode to start" turned the one
 		// control that starts everything into a control that appears to want something else.
 		if (!task) {
+			// [0.5 composer polish] The session tab names its own controls here (⌘⏎, /, @) now that the
+			// toolbar actually carries them — the sidebar keeps the shorter line below, since the rail's
+			// own surfaces already explain those.
+			if (ADSUM_VIEW === "session") {
+				return "Say what you want done. ⌘⏎ sends, / for commands, @ to mention"
+			}
 			// [SWEEP 2026-09-04, F13] "what you want to build" — a daily user is here to debug as
 			// often as to build. Neutral, and shorter, so it does not wrap into a grey wall.
 			// Fits one line at sidebar width; "new session" made it two, which is a lot of wrapping for
@@ -623,14 +631,19 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					   way back that is always present. A local task still wins the slot outright. */
 					<AgentSessionView onDismiss={() => setSessionViewOpen(false)} />
 				) : ADSUM_VIEW === "session" ? (
-					/* [0.5 sessions first] A session tab holds the chat alone; the cards live in the sidebar. */
-					<EmptySession
-						onPrefill={(text) => {
-							setInputValue(text)
-							textAreaRef.current?.focus()
-						}}
-						onStartTask={handleStartTask}
-					/>
+					/* [0.5 sessions first] A session tab holds the chat alone; the cards live in the sidebar.
+					   The wordmark is the only thing in the header while the tab is empty — once a task
+					   exists this whole branch stops rendering and SessionHeader takes over. */
+					<>
+						<SessionWordmark />
+						<EmptySession
+							onPrefill={(text) => {
+								setInputValue(text)
+								textAreaRef.current?.focus()
+							}}
+							onStartTask={handleStartTask}
+						/>
+					</>
 				) : (
 					<WelcomeView
 						onSelectMode={handleModeSelect}
@@ -691,6 +704,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 							task={task}
 						/>
 					)}
+					{/* [0.5 sessions first] New tab only — once a task exists the hint has nothing left to
+					    orient; a developer mid-task already knows where they are. */}
+					{!task && <PreferSidebarHint />}
 					<InputSection
 						chatState={chatState}
 						messageHandlers={messageHandlers}

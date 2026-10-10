@@ -14,7 +14,7 @@ const meta: Meta<typeof SessionComposerFoot> = {
 		docs: {
 			description: {
 				component:
-					"The ◆ mark, the open folder, the context-use percentage once a task exists, and the 'Something else · ⌘K' handle that opens the palette dialog.",
+					"The Adsum mark, the open folder, the context-use percentage once a task exists, and the 'Something else · ⌘K' handle that opens the palette dialog.",
 			},
 		},
 	},

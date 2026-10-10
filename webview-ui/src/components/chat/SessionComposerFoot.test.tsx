@@ -9,7 +9,7 @@ describe("SessionComposerFoot", () => {
 		expect(screen.getByTestId("session-composer-foot")).toBeInTheDocument()
 		expect(screen.getByText("gateway-fw")).toBeInTheDocument()
 		expect(screen.getByText("43% context")).toBeInTheDocument()
-		expect(screen.getByText("◆")).toBeInTheDocument()
+		expect(screen.getByTitle("Adsum IoT Coder")).toBeInTheDocument()
 	})
 
 	it("omits the folder name and the percentage when neither is known", () => {
