@@ -5,6 +5,7 @@ import { useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient } from "@/services/grpc-client"
 import FirstSteps from "./FirstSteps"
+import WhatsNewCard from "./WhatsNewCard"
 import GatePanel from "./welcome/GatePanel"
 import { useEntrySignals } from "./welcome/useEntrySignals"
 
@@ -65,6 +66,7 @@ const EmptySession: React.FC<{ onStartTask: (text: string) => void | Promise<voi
 					state={{ adsumAccount, openFolderPaths: roots, taskHistory }}
 				/>
 			)}
+			<WhatsNewCard />
 			<GatePanel onClose={() => setRegisterOpen(false)} open={registerOpen} surface="first-steps" />
 		</div>
 	)
