@@ -6,7 +6,7 @@ describe("SessionWordmark", () => {
 	it("renders the mark and the name, centred, in the session view", () => {
 		render(<SessionWordmark view="session" />)
 		expect(screen.getByTestId("session-wordmark")).toBeInTheDocument()
-		expect(screen.getByTestId("adsum-logo")).toHaveTextContent("Adsum IoT Coder")
+		expect(screen.getByTestId("adsum-logo").querySelector('img[alt="Adsum IoT Coder"]')).not.toBeNull()
 	})
 
 	it("never renders in the sidebar view", () => {
