@@ -549,6 +549,12 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		// not ask the developer to pick a mode first. "Select a mode to start" turned the one
 		// control that starts everything into a control that appears to want something else.
 		if (!task) {
+			// [0.5 composer polish] The session tab names its own controls here (⌘⏎, /, @) now that the
+			// toolbar actually carries them — the sidebar keeps the shorter line below, since the rail's
+			// own surfaces already explain those.
+			if (ADSUM_VIEW === "session") {
+				return "Say what you want done. ⌘⏎ sends, / for commands, @ to mention"
+			}
 			// [SWEEP 2026-09-04, F13] "what you want to build" — a daily user is here to debug as
 			// often as to build. Neutral, and shorter, so it does not wrap into a grey wall.
 			// Fits one line at sidebar width; "new session" made it two, which is a lot of wrapping for

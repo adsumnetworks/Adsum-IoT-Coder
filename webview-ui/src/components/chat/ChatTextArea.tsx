@@ -8,7 +8,7 @@ import { convertApiConfigurationToProto } from "@shared/proto-conversions/models
 import { type SlashCommand } from "@shared/slashCommands"
 import { Mode } from "@shared/storage/types"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
-import { AtSignIcon } from "lucide-react"
+import { AtSignIcon, PenIcon, PlusIcon, SlashIcon, ZapIcon } from "lucide-react"
 import type React from "react"
 import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import DynamicTextArea from "react-textarea-autosize"
@@ -140,6 +140,26 @@ const ButtonGroup = styled.div`
 	gap: 4px;
 	flex: 1;
 	min-width: 0;
+`
+
+/** [0.5 composer polish] The Plan/Act toggle, restyled as a pill for the toolbar row's right side —
+ *  same `mode`/`onModeToggle` the keyboard shortcut already drove, just given a visible control. Colour
+ *  is the existing mode colour (never cyan: a mode is not "the one action", so this never competes with
+ *  the send button for that meaning). */
+const ModeChip = styled.button<{ $plan: boolean }>`
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex: none;
+	font: inherit;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 9px;
+	border-radius: 10px;
+	border: 1px solid ${(props) => (props.$plan ? PLAN_MODE_COLOR : ACT_MODE_COLOR)};
+	background: none;
+	color: ${(props) => (props.$plan ? PLAN_MODE_COLOR : ACT_MODE_COLOR)};
+	cursor: pointer;
 `
 
 const ButtonContainer = styled.div`
@@ -1183,6 +1203,38 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			updateHighlights()
 		}, [inputValue, handleInputChange, updateHighlights])
 
+		// [0.5 composer polish] The toolbar's "/" button opens the same slash list a typed "/" already
+		// does — handleInputChange runs the slash-menu check on every change regardless of how the new
+		// value arrived, so inserting the character here is the whole trick, same shape as the "@"
+		// button above.
+		const handleSlashButtonClick = useCallback(() => {
+			textAreaRef.current?.focus()
+
+			if (!inputValue.trim()) {
+				const event = {
+					target: { value: "/", selectionStart: 1 },
+				} as React.ChangeEvent<HTMLTextAreaElement>
+				handleInputChange(event)
+				updateHighlights()
+				return
+			}
+
+			if (inputValue.endsWith(" ")) {
+				const event = {
+					target: { value: inputValue + "/", selectionStart: inputValue.length + 1 },
+				} as React.ChangeEvent<HTMLTextAreaElement>
+				handleInputChange(event)
+				updateHighlights()
+				return
+			}
+
+			const event = {
+				target: { value: inputValue + " /", selectionStart: inputValue.length + 2 },
+			} as React.ChangeEvent<HTMLTextAreaElement>
+			handleInputChange(event)
+			updateHighlights()
+		}, [inputValue, handleInputChange, updateHighlights])
+
 		const handleModelButtonClick = () => {
 			setShowModelSelector(!showModelSelector)
 		}
@@ -1797,7 +1849,21 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 											onSend()
 										}
 									}}
-									style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+									// [0.5 composer polish] A filled circle, not a bare arrow — the one control on
+									// this row that is always "the action" gets the cyan fill + white glyph
+									// treatment (UI golden rules: cyan = action), muted to the input's own disabled
+									// grey rather than losing the circle entirely when there is nothing to send.
+									style={{
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "center",
+										width: 22,
+										height: 22,
+										borderRadius: "50%",
+										background: sendingDisabled
+											? "color-mix(in srgb, var(--vscode-foreground) 20%, transparent)"
+											: BRAND_CYAN_UI,
+									}}
 									title={
 										morph?.kind === "resume"
 											? "Resume task"
@@ -1805,16 +1871,16 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 												? "Send — delivers with the agent's next step"
 												: "Send"
 									}>
-									{/* S1 "Lift" — clean up-arrow (cyan = action; muted via currentColor when disabled). */}
+									{/* S1 "Lift" — clean up-arrow, white on the cyan fill. */}
 									<svg
 										fill="none"
-										height="20"
-										stroke={sendingDisabled ? "currentColor" : BRAND_CYAN_600}
+										height="14"
+										stroke="#fff"
 										strokeLinecap="round"
 										strokeLinejoin="round"
-										strokeWidth="2.1"
+										strokeWidth="2.3"
 										viewBox="0 0 24 24"
-										width="20">
+										width="14">
 										<path d="M12 19.5V6.5" />
 										<path d="M6.3 12.2 L12 6.3 L17.7 12.2" />
 									</svg>
@@ -1828,6 +1894,47 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					<div className="relative flex-1 min-w-0 h-5">
 						{/* ButtonGroup - always in DOM but visibility controlled */}
 						<ButtonGroup className="absolute top-0 left-0 right-0 ease-in-out w-full h-5 z-10 flex items-center gap-2">
+							{/* [0.5 composer polish] + and / lead the row (Claude Code reference), restyled from
+							    the attach control this already had — the handler and the disabled state were
+							    already wired (onSelectFilesAndImages/shouldDisableFilesAndImages are the same
+							    props InputSection has always passed), only the button itself was commented out. */}
+							<Tooltip>
+								<TooltipContent>Add files & images</TooltipContent>
+								<TooltipTrigger>
+									<VSCodeButton
+										appearance="icon"
+										aria-label="Add files & images"
+										className="p-0 m-0 flex items-center"
+										data-testid="attach-button"
+										disabled={shouldDisableFilesAndImages}
+										onClick={() => {
+											if (!shouldDisableFilesAndImages) {
+												onSelectFilesAndImages()
+											}
+										}}>
+										<ButtonContainer>
+											<PlusIcon size={13} />
+										</ButtonContainer>
+									</VSCodeButton>
+								</TooltipTrigger>
+							</Tooltip>
+
+							<Tooltip>
+								<TooltipContent>Slash commands</TooltipContent>
+								<TooltipTrigger>
+									<VSCodeButton
+										appearance="icon"
+										aria-label="Slash commands"
+										className="p-0 m-0 flex items-center"
+										data-testid="slash-button"
+										onClick={handleSlashButtonClick}>
+										<ButtonContainer>
+											<SlashIcon size={12} />
+										</ButtonContainer>
+									</VSCodeButton>
+								</TooltipTrigger>
+							</Tooltip>
+
 							<Tooltip>
 								<TooltipContent>Add Context</TooltipContent>
 								<TooltipTrigger>
@@ -1850,28 +1957,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							    (operator 0707: Claude Code-style, next to @). */}
 							<AutoApproveChip />
 
-							{/* <Tooltip>
-								<TooltipContent>Add Files & Images</TooltipContent>
-								<TooltipTrigger>
-									<VSCodeButton
-										appearance="icon"
-										aria-label="Add Files & Images"
-										className="p-0 m-0 flex items-center"
-										data-testid="files-button"
-										disabled={shouldDisableFilesAndImages}
-										onClick={() => {
-											if (!shouldDisableFilesAndImages) {
-												onSelectFilesAndImages()
-											}
-										}}>
-										<ButtonContainer>
-											<PlusIcon size={13} />
-										</ButtonContainer>
-									</VSCodeButton>
-								</TooltipTrigger>
-							</Tooltip>
-
-							<ServersToggleModal />
+							{/* <ServersToggleModal />
 
 							<ClineRulesToggleModal /> */}
 
@@ -1922,6 +2008,13 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							</ModelContainer>
 						</ButtonGroup>
 					</div>
+					{/* [0.5 composer polish] The toolbar row's right side: the mode pill (lightning for Act, a
+					    pen for Plan), restyling the toggle the ⌘/Ctrl+Shift+A shortcut already drove — see
+					    onModeToggle above, defined once and shared with the keyboard path. */}
+					<ModeChip $plan={mode === "plan"} data-testid="mode-chip" onClick={onModeToggle} type="button">
+						{mode === "plan" ? <PenIcon size={11} /> : <ZapIcon size={11} />}
+						{mode === "plan" ? "Plan" : "Act"}
+					</ModeChip>
 				</div>
 				<ImageModelNotice
 					onOpenSettings={() => navigateToSettings()}
