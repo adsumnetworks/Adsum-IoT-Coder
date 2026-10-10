@@ -6,35 +6,42 @@ const ICON = "$(adsum-iot-coder-icon)"
 
 describe("formatStatusText", () => {
 	it("returns bare label when tokens are undefined (BYOK / not on free tier)", () => {
-		formatStatusText(undefined).should.equal(`${ICON} Adsum Coder`)
+		formatStatusText(undefined).should.equal(`${ICON} Adsum`)
 	})
 
 	it("returns bare label when called with no args", () => {
-		formatStatusText().should.equal(`${ICON} Adsum Coder`)
+		formatStatusText().should.equal(`${ICON} Adsum`)
 	})
 
 	it("shows raw count for sub-1k values", () => {
-		formatStatusText(0).should.equal(`${ICON} Adsum Coder · $(zap) 0`)
-		formatStatusText(1).should.equal(`${ICON} Adsum Coder · $(zap) 1`)
-		formatStatusText(999).should.equal(`${ICON} Adsum Coder · $(zap) 999`)
+		formatStatusText(0).should.equal(`${ICON} Adsum · $(zap) 0`)
+		formatStatusText(1).should.equal(`${ICON} Adsum · $(zap) 1`)
+		formatStatusText(999).should.equal(`${ICON} Adsum · $(zap) 999`)
 	})
 
 	it("formats exactly 1000 as 1K", () => {
-		formatStatusText(1000).should.equal(`${ICON} Adsum Coder · $(zap) 1K`)
+		formatStatusText(1000).should.equal(`${ICON} Adsum · $(zap) 1K`)
 	})
 
 	it("rounds to nearest K (matching FreeTierStrip rule: Math.round(n/1000))", () => {
-		formatStatusText(487000).should.equal(`${ICON} Adsum Coder · $(zap) 487K`)
-		formatStatusText(500000).should.equal(`${ICON} Adsum Coder · $(zap) 500K`)
-		formatStatusText(486500).should.equal(`${ICON} Adsum Coder · $(zap) 487K`) // rounds up
-		formatStatusText(486499).should.equal(`${ICON} Adsum Coder · $(zap) 486K`) // rounds down
+		formatStatusText(487000).should.equal(`${ICON} Adsum · $(zap) 487K`)
+		formatStatusText(500000).should.equal(`${ICON} Adsum · $(zap) 500K`)
+		formatStatusText(486500).should.equal(`${ICON} Adsum · $(zap) 487K`) // rounds up
+		formatStatusText(486499).should.equal(`${ICON} Adsum · $(zap) 486K`) // rounds down
 	})
 
 	it("formats values at or above 1M with one decimal", () => {
-		formatStatusText(1_000_000).should.equal(`${ICON} Adsum Coder · $(zap) 1M`)
-		formatStatusText(1_300_000).should.equal(`${ICON} Adsum Coder · $(zap) 1.3M`)
-		formatStatusText(1_250_000).should.equal(`${ICON} Adsum Coder · $(zap) 1.3M`) // rounds up
-		formatStatusText(2_500_000).should.equal(`${ICON} Adsum Coder · $(zap) 2.5M`)
+		formatStatusText(1_000_000).should.equal(`${ICON} Adsum · $(zap) 1M`)
+		formatStatusText(1_300_000).should.equal(`${ICON} Adsum · $(zap) 1.3M`)
+		formatStatusText(1_250_000).should.equal(`${ICON} Adsum · $(zap) 1.3M`) // rounds up
+		formatStatusText(2_500_000).should.equal(`${ICON} Adsum · $(zap) 2.5M`)
+	})
+})
+
+describe("formatStatusText — the unit on the desk (0.5)", () => {
+	it("names the unit between the label and the tokens", () => {
+		formatStatusText(6_600_000, "BLG20x 286C").should.equal(`${ICON} Adsum · BLG20x 286C · $(zap) 6.6M`)
+		formatStatusText(undefined, "BLG20x 286C").should.equal(`${ICON} Adsum · BLG20x 286C`)
 	})
 })
 
@@ -46,8 +53,8 @@ describe("formatStatusText — BYOK regression (no credit shown off free tier)",
 	})
 
 	it("label is present regardless of provider (button always reveals sidebar)", () => {
-		formatStatusText(undefined).should.containEql("Adsum Coder")
-		formatStatusText(100000).should.containEql("Adsum Coder")
+		formatStatusText(undefined).should.containEql("Adsum")
+		formatStatusText(100000).should.containEql("Adsum")
 	})
 })
 
@@ -66,7 +73,7 @@ describe("formatStatusText — consistency with FreeTierStrip", () => {
 		it(`token count ${n}: status bar and strip use identical label`, () => {
 			const stripLabel = freeTierStripRule(n)
 			const barText = formatStatusText(n)
-			barText.should.equal(`${ICON} Adsum Coder · $(zap) ${stripLabel}`)
+			barText.should.equal(`${ICON} Adsum · $(zap) ${stripLabel}`)
 		})
 	}
 })

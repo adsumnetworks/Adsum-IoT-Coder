@@ -10,7 +10,8 @@
  * It proves, for every published firmware version: the version is named to everyone and its files to no one
  * who may not download it; a registered account is entitled to the demo rungs; a download through
  * FirmwareClient + FirmwareStore lands every file with its hash, the licence and the receipt; a bearer alone
- * never opens the bytes (402); a token never opens a file it does not cover (403); the receipt is recorded
+ * never opens the bytes (402); a token never opens a file it does not cover (403), and travels in its header
+ * only (in the URL it opens nothing); the receipt is recorded
  * server side; a file altered after the download is noticed. Not part of `npm test`: it writes receipts for
  * the test account on production and needs the network. A caller whose token file is absent is "not run".
  */
@@ -146,8 +147,18 @@ async function main() {
 				const auth = await reg.authorise(one.entry.id, one.entry.version)
 				const foreign = other.entry.artifacts.find((x) => !one.entry.artifacts.some((y) => y.sha256 === x.sha256))
 				assert.ok(foreign, "no file unique to the other version")
-				const r = await fetch(`${BASE}/v1/firmware/artifact/${foreign.sha256}?token=${encodeURIComponent(auth.token)}`)
+				const r = await fetch(`${BASE}/v1/firmware/artifact/${foreign.sha256}`, {
+					headers: { "X-Adsum-Firmware-Token": auth.token },
+				})
 				assert.equal(r.status, 403)
+			})
+
+			await check("a token in the URL opens nothing: it travels in its header only (402)", async () => {
+				const [one] = downloaded
+				const auth = await reg.authorise(one.entry.id, one.entry.version)
+				const own = one.entry.artifacts.find((x) => x.group) ?? one.entry.artifacts[0]
+				const r = await fetch(`${BASE}/v1/firmware/artifact/${own.sha256}?token=${encodeURIComponent(auth.token)}`)
+				assert.equal(r.status, 402)
 			})
 		}
 
