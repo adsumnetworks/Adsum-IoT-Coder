@@ -9,6 +9,8 @@ import { getDefaultEnvironment, StdioClientTransport } from "@modelcontextprotoc
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
 import {
 	CallToolResultSchema,
+	GetPromptResultSchema,
+	ListPromptsResultSchema,
 	ListResourcesResultSchema,
 	ListResourceTemplatesResultSchema,
 	ListToolsResultSchema,
@@ -16,6 +18,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js"
 import {
 	DEFAULT_MCP_TIMEOUT_SECONDS,
+	McpPrompt,
 	McpResource,
 	McpResourceResponse,
 	McpResourceTemplate,
@@ -1170,6 +1173,62 @@ export class McpHub {
 			},
 			ReadResourceResultSchema,
 		)
+	}
+
+	/**
+	 * [0.5 mcp prompts] A minimal, on-demand prompt lookup — not wired into the connect lifecycle
+	 * that fetches tools/resources, because nothing surfaces prompts in the webview yet. Guarded
+	 * by the server's declared capability and degrades to an empty list on any error: a server
+	 * that does not support prompts, or one that answers slowly or badly, never blocks a message
+	 * from being sent.
+	 */
+	async getPrompts(serverName: string): Promise<McpPrompt[]> {
+		try {
+			const connection = this.connections.find((conn) => conn.server.name === serverName)
+			if (!connection || connection.server.disabled || !connection.client) {
+				return []
+			}
+			if (!connection.client.getServerCapabilities()?.prompts) {
+				return []
+			}
+			const response = await connection.client.request({ method: "prompts/list" }, ListPromptsResultSchema, {
+				timeout: DEFAULT_REQUEST_TIMEOUT_MS,
+			})
+			return response?.prompts || []
+		} catch (error) {
+			console.error(`Failed to fetch prompts for ${serverName}:`, error)
+			return []
+		}
+	}
+
+	/**
+	 * [0.5 mcp prompts] Fetches one prompt's rendered text, for substitution into a message
+	 * (see `/mcp:<server>:<prompt>` in src/core/slash-commands). Several messages can come back;
+	 * only their text content is kept, joined in order. Returns undefined — never throws — so the
+	 * caller can leave the token as literal text rather than stall the turn on a flaky server.
+	 */
+	async getPrompt(serverName: string, promptName: string, args?: Record<string, string>): Promise<string | undefined> {
+		try {
+			const connection = this.connections.find((conn) => conn.server.name === serverName)
+			if (!connection || connection.server.disabled || !connection.client) {
+				return undefined
+			}
+			if (!connection.client.getServerCapabilities()?.prompts) {
+				return undefined
+			}
+			const response = await connection.client.request(
+				{ method: "prompts/get", params: { name: promptName, arguments: args } },
+				GetPromptResultSchema,
+				{ timeout: DEFAULT_REQUEST_TIMEOUT_MS },
+			)
+			const textParts = (response?.messages || [])
+				.map((message) => (message.content?.type === "text" ? message.content.text : undefined))
+				.filter((text): text is string => Boolean(text))
+			return textParts.length > 0 ? textParts.join("\n\n") : undefined
+		} catch (error) {
+			console.error(`Failed to fetch prompt ${promptName} for ${serverName}:`, error)
+			return undefined
+		}
 	}
 
 	async callTool(

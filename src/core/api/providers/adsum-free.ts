@@ -2,7 +2,13 @@ import { adsumFreeDefaultModelId, adsumFreeModels, type ModelInfo } from "@share
 import OpenAI from "openai"
 import type { ChatCompletionTool } from "openai/resources/chat/completions"
 import { ClineEnv } from "@/config"
-import { markQuotaExhausted, persistCachedFreeTokensRemaining, shouldFireFirstRunStarted } from "@/services/adsum/FreeTierState"
+import {
+	clearFreeTierLimited,
+	markFreeTierLimited,
+	markQuotaExhausted,
+	persistCachedFreeTokensRemaining,
+	shouldFireFirstRunStarted,
+} from "@/services/adsum/FreeTierState"
 import { getInstallId } from "@/services/adsum/InstallIdentity"
 import { Logger } from "@/services/logging/Logger"
 import { telemetryService } from "@/services/telemetry"
@@ -19,6 +25,25 @@ import { ChunkLogSampler, guardedChunks, StreamStalledError } from "./streamGuar
 // budget flows from this `contextWindow` → getContextWindowInfo → ContextManager truncation/auto-compact.
 export const ADSUM_FREE_MODEL_ID = adsumFreeDefaultModelId
 export const ADSUM_FREE_MODEL_INFO: ModelInfo = adsumFreeModels[ADSUM_FREE_MODEL_ID]
+
+/**
+ * [0.5 free tier quota states] Retry-After is seconds (the common case) or an HTTP date; either
+ * way this returns seconds from now, or undefined when the header is absent or unreadable.
+ */
+function parseRetryAfterSeconds(header: string | null): number | undefined {
+	if (!header) {
+		return undefined
+	}
+	const asSeconds = Number(header)
+	if (Number.isFinite(asSeconds)) {
+		return Math.max(0, asSeconds)
+	}
+	const asDate = Date.parse(header)
+	if (!Number.isNaN(asDate)) {
+		return Math.max(0, Math.round((asDate - Date.now()) / 1000))
+	}
+	return undefined
+}
 
 /**
  * Thrown when the backend returns HTTP 402 (quota exhausted).
@@ -94,15 +119,23 @@ export class AdsumFreeHandler implements ApiHandler {
 						this.remainingQuota = 0
 						persistCachedFreeTokensRemaining(0)
 						markQuotaExhausted()
+						// [0.5 free tier quota states] A 402 is "limited", not merely "spent" — see
+						// quotaState.ts — in case the backend means a temporary hold rather than the
+						// account's balance itself being zero; a Retry-After, if sent, says which.
+						markFreeTierLimited(402, parseRetryAfterSeconds(resp.headers.get("retry-after")))
 						telemetryService.captureFreeTierQuotaExhausted(getInstallId(), 0)
 						throw new QuotaExhaustedError(payload)
 					}
 
 					if (resp.status === 429) {
+						markFreeTierLimited(429, parseRetryAfterSeconds(resp.headers.get("retry-after")))
 						throw new Error(
 							"adsum:rate_limited — Too many requests. Please wait a moment before sending another message.",
 						)
 					}
+
+					// A real answer means whatever block was in effect has lifted.
+					clearFreeTierLimited()
 
 					const remaining = resp.headers.get("x-free-quota-remaining")
 					if (remaining !== null) {

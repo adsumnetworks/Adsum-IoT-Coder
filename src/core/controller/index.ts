@@ -33,7 +33,8 @@ import { ClineEnv } from "@/config"
 import { HostProvider } from "@/hosts/host-provider"
 import { ExtensionRegistryInfo } from "@/registry"
 import { getAccount, isSignInPending, onAccountChanged } from "@/services/adsum/AccountState"
-import { getFreeTierTokensForDisplay } from "@/services/adsum/FreeTierState"
+import { getFreeTierLastError, getFreeTierTokensForDisplay } from "@/services/adsum/FreeTierState"
+import { quotaState } from "@/services/adsum/quotaState"
 import { AuthService } from "@/services/auth/AuthService"
 import { OcaAuthService } from "@/services/auth/oca/OcaAuthService"
 import { LogoutReason } from "@/services/auth/types"
@@ -948,6 +949,19 @@ export class Controller {
 		const version = ExtensionRegistryInfo.version
 		const environment = ClineEnv.config().environment
 		const banners = await this.getBanners()
+		// [0.5 free tier quota states] One remaining-tokens read, shared by the legacy
+		// freeTierRemainingTokens field and the typed `quota` state below — they must never drift.
+		const freeTierRemainingTokens =
+			this.task?.api instanceof AdsumFreeHandler
+				? (this.task.api.remainingQuota ?? getFreeTierTokensForDisplay())
+				: getFreeTierTokensForDisplay()
+		const freeTierLastError = getFreeTierLastError()
+		// Absent (not just "ok") when nothing says the free tier is even active — getFreeTierTokensForDisplay()
+		// itself returns undefined for a BYOK configuration, which is the only signal available here.
+		const quota =
+			freeTierRemainingTokens !== undefined || freeTierLastError
+				? quotaState(freeTierRemainingTokens, freeTierLastError)
+				: undefined
 
 		// Check OpenAI Codex authentication status
 		const { openAiCodexOAuthManager } = await import("@/integrations/openai-codex/oauth")
@@ -1047,10 +1061,8 @@ export class Controller {
 			optOutOfRemoteConfig: this.stateManager.getGlobalSettingsKey("optOutOfRemoteConfig"),
 			banners,
 			openAiCodexIsAuthenticated,
-			freeTierRemainingTokens:
-				this.task?.api instanceof AdsumFreeHandler
-					? (this.task.api.remainingQuota ?? getFreeTierTokensForDisplay())
-					: getFreeTierTokensForDisplay(),
+			freeTierRemainingTokens,
+			quota,
 			nrfEnvironment: nrfEnvironmentWithBlg20(),
 			espEnvironment: getCachedEspEnvironment(),
 			workspaceClassification: getCachedWorkspaceSummary(),

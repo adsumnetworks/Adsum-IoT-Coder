@@ -127,6 +127,7 @@ import { reconcileNativeToolContent } from "./nativeToolContent"
 import { StreamResponseHandler } from "./StreamResponseHandler"
 import { TaskState } from "./TaskState"
 import { ToolExecutor } from "./ToolExecutor"
+import { accumulateUsage } from "./usageAccumulator"
 import { detectAvailableCliTools, extractProviderDomainFromUrl, updateApiReqMsg } from "./utils"
 import { buildUserFeedbackContent } from "./utils/buildUserFeedbackContent"
 
@@ -3032,11 +3033,30 @@ export class Task {
 						case "usage":
 							this.streamHandler.setRequestId(chunk.id)
 							didReceiveUsageChunk = true
-							taskMetrics.inputTokens += chunk.inputTokens
-							taskMetrics.outputTokens += chunk.outputTokens
-							taskMetrics.cacheWriteTokens += chunk.cacheWriteTokens ?? 0
-							taskMetrics.cacheReadTokens += chunk.cacheReadTokens ?? 0
-							taskMetrics.totalCost = chunk.totalCost ?? taskMetrics.totalCost
+							Object.assign(taskMetrics, accumulateUsage(taskMetrics, chunk, this.api.getModel().info))
+							// [0.5 live usage streaming] Update api_req_started on every chunk, not only once
+							// the stream ends, so the developer watches tokens and cost climb as the turn runs.
+							// A failure here is never worth stalling the stream over.
+							try {
+								await updateApiReqMsg({
+									messageStateHandler: this.messageStateHandler,
+									lastApiReqIndex,
+									inputTokens: taskMetrics.inputTokens,
+									outputTokens: taskMetrics.outputTokens,
+									cacheWriteTokens: taskMetrics.cacheWriteTokens,
+									cacheReadTokens: taskMetrics.cacheReadTokens,
+									api: this.api,
+									totalCost: taskMetrics.totalCost,
+								})
+								const updatedApiReqMessage = this.messageStateHandler.getClineMessages()[lastApiReqIndex]
+								if (updatedApiReqMessage) {
+									// Lighter than a full postStateToWebview — same channel the partial
+									// text/reasoning updates above already use.
+									await sendPartialMessageEvent(convertClineMessageToProto(updatedApiReqMessage))
+								}
+							} catch (error) {
+								Logger.debug("[Task] Failed to post live usage update: " + error)
+							}
 							break
 						case "reasoning": {
 							// A reasoning block is now open. It stays open until the next text chunk
@@ -3568,6 +3588,7 @@ export class Task {
 				focusChainSettings,
 				useNativeToolCalls,
 				providerInfo,
+				this.mcpHub,
 			)
 
 			if (needsCheck) {

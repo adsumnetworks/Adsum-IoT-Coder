@@ -16,6 +16,7 @@ export type McpServer = {
 	tools?: McpTool[]
 	resources?: McpResource[]
 	resourceTemplates?: McpResourceTemplate[]
+	prompts?: McpPrompt[]
 	disabled?: boolean
 	timeout?: number
 	uid?: string
@@ -44,6 +45,13 @@ export type McpResourceTemplate = {
 	name: string
 	description?: string
 	mimeType?: string
+}
+
+/** [0.5 mcp prompts] A prompt or prompt template an MCP server offers, reachable as `/mcp:<server>:<name>`. */
+export type McpPrompt = {
+	name: string
+	description?: string
+	arguments?: Array<{ name: string; description?: string; required?: boolean }>
 }
 
 export type McpResourceResponse = {

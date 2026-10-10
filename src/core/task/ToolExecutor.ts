@@ -43,8 +43,10 @@ import { UpdateProjectMemoryHandler } from "./tools/handlers/UpdateProjectMemory
 import { UseMcpToolHandler } from "./tools/handlers/UseMcpToolHandler"
 import { UseSkillToolHandler } from "./tools/handlers/UseSkillToolHandler"
 import { WriteToFileToolHandler } from "./tools/handlers/WriteToFileToolHandler"
+import { LoopDetector } from "./tools/loopDetector"
 import { IPartialBlockHandler, SharedToolHandler, ToolExecutorCoordinator } from "./tools/ToolExecutorCoordinator"
 import { ToolValidator } from "./tools/ToolValidator"
+import { appendNote, extractToolErrorText } from "./tools/toolErrorText"
 import { TaskConfig, validateTaskConfig } from "./tools/types/TaskConfig"
 import { createUIHelpers } from "./tools/types/UIHelpers"
 import { ToolDisplayUtils } from "./tools/utils/ToolDisplayUtils"
@@ -53,6 +55,9 @@ import { ToolResultUtils } from "./tools/utils/ToolResultUtils"
 export class ToolExecutor {
 	private autoApprover: AutoApprove
 	private coordinator: ToolExecutorCoordinator
+	// [0.5 loop detection] One detector per task, so a streak never crosses from one task into
+	// the next — see loopDetector.ts for the thresholds and the verdicts it hands back.
+	private loopDetector = new LoopDetector()
 
 	// Auto-approval methods using the AutoApprove class
 	private shouldAutoApproveTool(toolName: ClineDefaultTool): boolean | [boolean, boolean] {
@@ -295,6 +300,20 @@ export class ToolExecutor {
 	 * @param block The tool use block that generated this result
 	 */
 	private pushToolResult = (content: ToolResponse, block: ToolUse) => {
+		// [0.5 loop detection] Every result funnels through here, success or `<error>`-wrapped
+		// failure alike, so this is the one place that can see both halves of the guard: clear
+		// the streak on a success, grow it on a failure, and hand the model a note once it has
+		// failed the same way enough times running.
+		const errorText = extractToolErrorText(content)
+		if (errorText !== undefined) {
+			const verdict = this.loopDetector.observeFailure(block.name, errorText)
+			if (verdict) {
+				content = appendNote(content, verdict.message)
+			}
+		} else {
+			this.loopDetector.observeSuccess(block.name)
+		}
+
 		// Use the ToolResultUtils to properly format and push the tool result
 		ToolResultUtils.pushToolResult(
 			content,
@@ -399,6 +418,15 @@ export class ToolExecutor {
 			// Handle partial blocks
 			if (block.partial) {
 				await this.handlePartialBlock(block, config)
+				return true
+			}
+
+			// [0.5 loop detection] A complete block is the real call — a streamed partial never
+			// counts, since its params are still being filled in. Three in a row with identical
+			// params stop here rather than running a third time.
+			const loopVerdict = this.loopDetector.observeCall(block.name, block.params)
+			if (loopVerdict) {
+				this.pushToolResult(formatResponse.toolError(loopVerdict.message), block)
 				return true
 			}
 
