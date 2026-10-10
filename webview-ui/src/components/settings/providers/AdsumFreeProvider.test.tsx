@@ -11,7 +11,7 @@ describe("AdsumFreeProvider", () => {
 		state.current = {}
 		render(<AdsumFreeProvider currentMode="act" />)
 		expect(screen.getByText("Adsum free tier · no key needed")).toBeInTheDocument()
-		expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument()
+		expect(screen.getByLabelText("Details")).toBeInTheDocument()
 		// No standing paragraph text left over from the old two-paragraph explainer.
 		expect(screen.queryByText(/inference is provided by Adsum Networks/i)).not.toBeInTheDocument()
 		expect(screen.queryByText(/thinking controls shown for other providers/i)).not.toBeInTheDocument()

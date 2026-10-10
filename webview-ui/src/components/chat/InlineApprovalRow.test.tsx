@@ -62,7 +62,7 @@ describe("InlineApprovalRow", () => {
 		expect(screen.getByTestId("inline-approval-allow")).toBeInTheDocument()
 		expect(screen.getByTestId("inline-approval-always-allow")).toHaveTextContent("Always allow")
 		expect(screen.getByTestId("inline-approval-deny")).toBeInTheDocument()
-		expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument()
+		expect(screen.getByLabelText("Details")).toBeInTheDocument()
 	})
 
 	it("Allow sends yesButtonClicked and touches no settings", () => {

@@ -21,6 +21,6 @@ describe("OfflineNotice", () => {
 
 	it("puts the detail of what still works behind the Info, not on the line itself", () => {
 		render(<OfflineNotice hostOffline={true} />)
-		expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument()
+		expect(screen.getByLabelText("Details")).toBeInTheDocument()
 	})
 })
