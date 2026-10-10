@@ -2,6 +2,8 @@ import type { ClineMessage } from "@shared/ExtensionMessage"
 import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
 import { AskResponseRequest, NewTaskRequest, QueueUserMessageRequest } from "@shared/proto/cline/task"
 import { useCallback } from "react"
+import { openSession } from "@/components/rail/openSession"
+import { ADSUM_VIEW } from "@/config/platform.config"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient, SlashServiceClient, TaskServiceClient } from "@/services/grpc-client"
 import type { ButtonActionType } from "../shared/buttonConfig"
@@ -12,7 +14,7 @@ import type { ChatState, MessageHandlers } from "../types/chatTypes"
  * Handles sending messages, button clicks, and task management
  */
 export function useMessageHandlers(messages: ClineMessage[], chatState: ChatState): MessageHandlers {
-	const { backgroundCommandRunning, queuedUserMessages } = useExtensionState()
+	const { backgroundCommandRunning, queuedUserMessages, currentTaskItem } = useExtensionState()
 	const {
 		setInputValue,
 		activeQuote,
@@ -349,10 +351,16 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 		],
 	)
 
-	// Handle task close button click
+	// Handle task close button click. [0.5 sessions first] In a session tab the × closes the tab (the session
+	// stays in the rail); in the sidebar it clears the task, as it always did.
 	const handleTaskCloseButtonClick = useCallback(() => {
+		const taskId = currentTaskItem?.id
+		if (ADSUM_VIEW === "session" && taskId) {
+			void openSession({ taskId, close: true })
+			return
+		}
 		startNewTask()
-	}, [startNewTask])
+	}, [startNewTask, currentTaskItem?.id])
 
 	return {
 		handleSendMessage,

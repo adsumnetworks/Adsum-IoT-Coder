@@ -8,6 +8,8 @@ export interface OpenSessionIntent {
 	prompt?: string
 	send?: boolean
 	title?: string
+	/** With taskId: close that session's tab. */
+	close?: boolean
 }
 
 /**

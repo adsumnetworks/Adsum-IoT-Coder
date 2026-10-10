@@ -7,6 +7,8 @@ export interface OpenSessionIntent {
 	prompt?: string
 	send?: boolean
 	title?: string
+	/** With taskId: close that session's tab (the task header's × in a tab means close, not clear). */
+	close?: boolean
 }
 
 /** The host registers how a session tab is opened; the controller never imports VS Code for it. */

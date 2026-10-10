@@ -362,6 +362,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	// restores them after a reload through the serializer; the sidebar and the status bar follow the registry.
 	registerOpenSessionsProvider(listOpenSessionTabs)
 	registerSessionOpener(async (intent) => {
+		if (intent.close && intent.taskId) {
+			// The × on a tab's task header: the tab goes, the session stays in the rail.
+			await WebviewProvider.findSession(intent.taskId)?.dispose()
+			return undefined
+		}
 		const session = await VscodeSessionPanel.open(context, {
 			taskId: intent.taskId,
 			prompt: intent.prompt,
