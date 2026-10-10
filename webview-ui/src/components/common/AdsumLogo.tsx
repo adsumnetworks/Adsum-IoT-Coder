@@ -39,11 +39,16 @@ export const AdsumLogo: React.FC<{ size?: number; name?: string; muted?: boolean
 		style={{
 			display: "inline-flex",
 			alignItems: "center",
-			gap: Math.round(size * 0.45),
-			fontSize: Math.round(size * 0.85),
-			fontWeight: 600,
-			letterSpacing: "-0.01em",
-			color: muted ? "var(--vscode-descriptionForeground)" : "var(--vscode-foreground)",
+			gap: Math.round(size * 0.5),
+			fontSize: Math.round(size * 0.95),
+			fontWeight: 700,
+			letterSpacing: "-0.02em",
+			lineHeight: 1,
+			// The wordmark sits a shade under the foreground, the way the proposed lockup draws it: the mark
+			// carries the colour, the name carries the weight.
+			color: muted
+				? "var(--vscode-descriptionForeground)"
+				: "color-mix(in srgb, var(--vscode-foreground) 82%, var(--vscode-editor-background))",
 			whiteSpace: "nowrap",
 		}}>
 		<AdsumMark size={size} title="Adsum IoT Coder" />

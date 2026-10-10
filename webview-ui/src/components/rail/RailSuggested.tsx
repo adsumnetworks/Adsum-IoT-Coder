@@ -32,6 +32,7 @@ export const RunRow: React.FC<{
 	const detail = [run.blurb, run.meta, KIND_SENTENCE[run.kind]].filter(Boolean).join(" · ")
 	return (
 		<div
+			className="rail-row"
 			style={{
 				...R.row(focal, locked),
 				padding: "4px 6px 4px 8px",

@@ -200,6 +200,8 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 		<div
 			ref={rootRef}
 			style={{ padding: "8px 12px 12px", display: "flex", flexDirection: "column", gap: 12, minHeight: "100vh" }}>
+			{/* Rows light up under the pointer, the way a list does; inline styles cannot say :hover. */}
+			<style>{`.rail-row:hover{background:color-mix(in srgb, var(--vscode-foreground) 7%, transparent)}.rail-row:focus-visible{outline:1px solid var(--vscode-focusBorder);outline-offset:-1px}`}</style>
 			{page === "hardware" ? (
 				<HardwarePage
 					onAsk={(family) => setRequesting(family)}
@@ -209,8 +211,16 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 			) : (
 				<>
 					{/* The lockup, first: the mark in coral and the name in type, the same on every surface. */}
-					<div data-testid="rail-lockup" style={{ display: "flex", alignItems: "center", padding: "2px 0 0" }}>
-						<AdsumLogo size={18} />
+					<div
+						data-testid="rail-lockup"
+						style={{
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							padding: "8px 0 10px",
+							borderBottom: "1px solid color-mix(in srgb, var(--vscode-foreground) 10%, transparent)",
+						}}>
+						<AdsumLogo size={24} />
 					</div>
 					<RailYou
 						onAccount={() => {

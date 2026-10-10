@@ -98,6 +98,18 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 					<button aria-expanded={shown} onClick={toggleShown} style={R.sectionToggle} type="button">
 						<Chevron open={shown} />
 						<span style={R.label}>Sessions</span>
+						{here.rows.length > 0 ? (
+							<span
+								style={{
+									...R.label,
+									letterSpacing: 0,
+									padding: "0 5px",
+									borderRadius: 8,
+									background: "color-mix(in srgb, var(--vscode-foreground) 12%, transparent)",
+								}}>
+								{here.rows.length}
+							</span>
+						) : null}
 					</button>
 					{roots.length > 1 ? (
 						<button
@@ -124,6 +136,7 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 			{shown && (
 				<div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
 					<button
+						className="rail-row"
 						data-testid="rail-new-session"
 						onClick={onNew}
 						style={{
@@ -154,6 +167,7 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 						return (
 							<div key={h.id} style={{ position: "relative" }}>
 								<button
+									className="rail-row"
 									onClick={() => onOpen(h)}
 									style={{
 										display: "flex",
