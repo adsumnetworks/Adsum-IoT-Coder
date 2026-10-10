@@ -6,6 +6,14 @@ import { AuthService } from "@/services/auth/AuthService"
 import { buildClineExtraHeaders } from "@/services/EnvUtils"
 import { featureFlagsService } from "@/services/feature-flags"
 import { telemetryService } from "@/services/telemetry"
+import {
+	FETCH_MAX_BYTES,
+	FETCH_TIMEOUT_MS,
+	fenceFetched,
+	htmlToText,
+	isPrivateUrl,
+	isVendorUrl,
+} from "@/services/web/vendorFetch"
 import { CLINE_ACCOUNT_AUTH_ERROR_MESSAGE } from "@/shared/ClineAccount"
 import { getAxiosSettings } from "@/shared/net"
 import { ToolUse } from "../../../assistant-message"
@@ -51,13 +59,6 @@ export class WebFetchToolHandler implements IFullyManagedTool {
 			const currentMode = config.services.stateManager.getGlobalSettingsKey("mode")
 			const provider = (currentMode === "plan" ? apiConfig.planModeApiProvider : apiConfig.actModeApiProvider) as string
 
-			// Check if Cline web tools are enabled (both user setting and feature flag)
-			const clineWebToolsEnabled = config.services.stateManager.getGlobalSettingsKey("clineWebToolsEnabled")
-			const featureFlagEnabled = featureFlagsService.getWebtoolsEnabled()
-			if (provider !== "cline" || !clineWebToolsEnabled || !featureFlagEnabled) {
-				return formatResponse.toolError("Adsum IoT Coder web tools are currently disabled.")
-			}
-
 			// Validate required parameters
 			if (!url) {
 				config.taskState.consecutiveMistakeCount++
@@ -69,6 +70,19 @@ export class WebFetchToolHandler implements IFullyManagedTool {
 			}
 			config.taskState.consecutiveMistakeCount = 0
 
+			// The cloud road needs a cloud account, the user setting and the flag. [0.5 browsing] Without them
+			// the fetch runs from this machine instead: vendor documentation under the session's auto-approve
+			// rules, any other host only when the developer says yes to that call, private addresses never,
+			// and the text comes back fenced as data.
+			const clineWebToolsEnabled = config.services.stateManager.getGlobalSettingsKey("clineWebToolsEnabled")
+			const featureFlagEnabled = featureFlagsService.getWebtoolsEnabled()
+			const localRoad = provider !== "cline" || !clineWebToolsEnabled || !featureFlagEnabled
+			if (localRoad && isPrivateUrl(url)) {
+				return formatResponse.toolError(
+					`${url} is a local or private address. web_fetch reads public documentation only; for a device on the bench use execute_command (curl) under its own guards.`,
+				)
+			}
+
 			// Create message for approval
 			const sharedMessageProps: ClineSayTool = {
 				tool: "webFetch",
@@ -78,7 +92,7 @@ export class WebFetchToolHandler implements IFullyManagedTool {
 			}
 			const completeMessage = JSON.stringify(sharedMessageProps)
 
-			if (config.callbacks.shouldAutoApproveTool(this.name)) {
+			if (config.callbacks.shouldAutoApproveTool(this.name) && (!localRoad || isVendorUrl(url))) {
 				// Auto-approve flow
 				await config.callbacks.removeLastPartialMessageIfExistsWithType("ask", "tool")
 				await config.callbacks.say("tool", completeMessage, undefined, undefined, false)
@@ -137,6 +151,25 @@ export class WebFetchToolHandler implements IFullyManagedTool {
 					return formatResponse.toolDenied()
 				}
 				throw error
+			}
+
+			if (localRoad) {
+				const res = await axios.get<string>(url, {
+					timeout: FETCH_TIMEOUT_MS,
+					maxContentLength: FETCH_MAX_BYTES * 10,
+					maxRedirects: 3,
+					responseType: "text",
+					headers: { Accept: "text/html, text/plain;q=0.9, */*;q=0.5" },
+					validateStatus: () => true,
+					...getAxiosSettings(),
+				})
+				if (res.status >= 400) {
+					return formatResponse.toolError(`web_fetch: ${url} answered ${res.status}`)
+				}
+				const type = String(res.headers["content-type"] ?? "")
+				const body = typeof res.data === "string" ? res.data : JSON.stringify(res.data)
+				const text = type.includes("html") ? htmlToText(body) : htmlToText(`<pre>${body}</pre>`)
+				return formatResponse.toolResult(fenceFetched(url, prompt, text))
 			}
 
 			// Execute the actual fetch

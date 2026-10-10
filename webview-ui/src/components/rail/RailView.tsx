@@ -199,6 +199,8 @@ const RailView: React.FC = () => {
 					/>
 					{!movedSeen && (taskHistory?.length ?? 0) > 0 && (
 						<div
+							aria-live="polite"
+							role="status"
 							style={{
 								...R.meta,
 								border: `1px solid color-mix(in srgb, ${R.coral} 45%, transparent)`,
@@ -230,19 +232,29 @@ const RailView: React.FC = () => {
 							</button>
 						</div>
 					)}
-					<RailSuggested
-						onLocked={lockedRow}
-						onRun={(r) => {
-							suggestionClick(
-								r.id,
-								suggested.some((s) => s.item.id === r.id && s.grounded),
-							)
-							void runRow(r, "card")
-						}}
-						rows={suggested}
-					/>
-					<RailHardware onOpen={() => setPage("hardware")} />
-					<RailSessions onAll={() => navigateToHistory()} onNew={() => void openSession({})} onOpen={openHistoryItem} />
+					<section aria-label="Suggested">
+						<RailSuggested
+							onLocked={lockedRow}
+							onRun={(r) => {
+								suggestionClick(
+									r.id,
+									suggested.some((s) => s.item.id === r.id && s.grounded),
+								)
+								void runRow(r, "card")
+							}}
+							rows={suggested}
+						/>
+					</section>
+					<section aria-label="Hardware">
+						<RailHardware onOpen={() => setPage("hardware")} />
+					</section>
+					<section aria-label="Sessions">
+						<RailSessions
+							onAll={() => navigateToHistory()}
+							onNew={() => void openSession({})}
+							onOpen={openHistoryItem}
+						/>
+					</section>
 					<button
 						onClick={() => {
 							countPaletteOpen("rail")

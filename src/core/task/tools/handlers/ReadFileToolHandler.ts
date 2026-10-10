@@ -472,6 +472,13 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		// same safety net as a whole-file read. Knowledge bits are exempt: they are curated, short, and
 		// their loaded-once bookkeeping assumes the whole bit — a range there is ignored silently.
 		let bodyText = fileContent.text
+		// [0.5 images and schematics] An image goes to the model with a frame that says what to read it for:
+		// pins and nets, not prose. A PDF arrives as text; a schematic page wants to be a PNG first.
+		if (fileContent.imageBlock) {
+			bodyText = `${bodyText}\n${schematicFrame(displayPath)}`.trim()
+		} else if (supportsImages && /\.pdf$/i.test(absolutePath)) {
+			bodyText = `${bodyText}\n\n[This PDF was read as text. For a schematic or a drawing, export the page as a PNG (or ask the developer for one) and read that image: the model reads pins from pixels, not from extracted text.]`
+		}
 		if (!isKnowledgeFile) {
 			const range = sliceLineRange(bodyText, block.params.start_line, block.params.end_line)
 			if (range.applied) {
@@ -481,6 +488,18 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 
 		return capFileContentForContext(bodyText, absolutePath)
 	}
+}
+
+/** What an image is read for on an embedded desk. Said to the model next to the pixels, every time. */
+export function schematicFrame(displayPath: string): string {
+	const looksLikeSchematic = /sch|schematic|pinout|wiring|layout|pcb/i.test(displayPath)
+	return (
+		`[Image ${displayPath}: read it for facts you can see, not for prose. ` +
+		(looksLikeSchematic
+			? "It looks like a schematic or a board drawing: name the part references, the net names at each connector pin, the test points and the jumpers you can read. "
+			: "If it shows a board, a connector or a diagram, name the labels, pins and nets you can read. ") +
+		"Quote a pin only when its label is readable; say which labels you cannot read rather than guessing. Where this matters for a flash or a wiring step, confirm with the developer before acting on it.]"
+	)
 }
 
 // Also matches FLAT capture paths (logs/*.log) and logs/sniffer/** — 3 of 5 capture paths
