@@ -55,6 +55,7 @@ describe("W — registered", () => {
 		render(<UnlockedCard onDismiss={onDismiss} />)
 		expect(screen.getByText("You’re registered — cellular is unlocked")).toBeTruthy()
 		expect(screen.getByText("Advanced cellular knowledge: LTE-M, NB-IoT, NTN, DECT NR+")).toBeTruthy()
+		expect(screen.getByText("LoRa: the radios, and building a node on nRF or ESP32")).toBeTruthy()
 		expect(screen.getByText("On-device inference on nRF54")).toBeTruthy()
 		// [14 Sep 2026] Registering grants no demo images; the card must not claim it does.
 		expect(screen.queryByText(/demo hexes|demo images/i)).toBeNull()

@@ -201,6 +201,7 @@ describe("W — the register gate", () => {
 		expect(screen.getByText("A free account. It unlocks:")).toBeTruthy()
 		for (const bullet of [
 			"LTE-M, NB-IoT, NTN and DECT NR+ knowledge and tools",
+			"LoRa: the radios, and building a node on nRF or ESP32",
 			"On-device inference on nRF54",
 			"Template source, by request",
 		]) {

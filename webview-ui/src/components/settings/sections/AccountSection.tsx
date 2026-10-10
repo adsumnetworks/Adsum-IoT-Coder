@@ -67,8 +67,8 @@ const AccountSection: React.FC<AccountSectionProps> = ({ renderSectionHeader }) 
 				{!adsumAccount ? (
 					<div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start" }}>
 						<p data-testid="account-signed-out" style={{ fontSize: "12px", margin: 0, lineHeight: 1.5 }}>
-							Not signed in. A free account unlocks LTE-M, NB-IoT, NTN, DECT NR+ and on-device inference — and the
-							Fanstel gateway demo hexes.
+							Not signed in. A free account unlocks LTE-M, NB-IoT, NTN, DECT NR+, LoRa and on-device inference — and
+							the Fanstel gateway demo hexes.
 						</p>
 						{adsumSignInPending ? (
 							<SignInWaiting />

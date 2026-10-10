@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs"
-import { join } from "node:path"
+import { basename, join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 /**
@@ -41,7 +41,7 @@ function userVisible(source: string): string {
 }
 
 describe("W-22 the gate's copy lint", () => {
-	const files = GATE_FILES.map((f) => [f.split("/").pop() as string, userVisible(readFileSync(f, "utf8"))] as const)
+	const files = GATE_FILES.map((f) => [basename(f), userVisible(readFileSync(f, "utf8"))] as const)
 
 	it("never says Pro — this ladder asks for an account, not for money", () => {
 		for (const [name, text] of files) {
@@ -63,7 +63,9 @@ describe("W-22 the gate's copy lint", () => {
 
 	it("covers every file in the gate — a new surface cannot escape the lint by being new", () => {
 		// The lint is only worth having if it is impossible to add an ungated file to this group.
-		const known = new Set(GATE_FILES.map((f) => f.split("/").pop()))
+		// basename(), not split("/"): join() uses backslashes on Windows and this check silently
+		// inverted itself there -- every listed file read as unlisted.
+		const known = new Set(GATE_FILES.map((f) => basename(f)))
 		const suspects = readdirSync(dir).filter(
 			(f) =>
 				/^(Gate|Account|Unlocked|DemoHex|RequestAccess|Cellular)/.test(f) &&

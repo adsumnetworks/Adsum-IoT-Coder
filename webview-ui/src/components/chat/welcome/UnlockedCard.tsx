@@ -56,6 +56,7 @@ const UnlockedCard: React.FC<UnlockedCardProps> = ({ onDismiss }) => (
 				color: "var(--vscode-descriptionForeground)",
 			}}>
 			<li>Advanced cellular knowledge: LTE-M, NB-IoT, NTN, DECT NR+</li>
+			<li>LoRa: the radios, and building a node on nRF or ESP32</li>
 			<li>On-device inference on nRF54</li>
 			<li>LoRa and LoRaWAN knowledge, with the node bits for NCS and ESP-IDF</li>
 		</ul>

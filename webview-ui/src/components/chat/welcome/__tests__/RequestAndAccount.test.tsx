@@ -138,7 +138,7 @@ describe("W — asking, and the account tab", () => {
 		state.current = {}
 		render(<AccountSection renderSectionHeader={header} />)
 		expect(screen.getByTestId("account-signed-out").textContent).toBe(
-			"Not signed in. A free account unlocks LTE-M, NB-IoT, NTN, DECT NR+ and on-device inference — and the Fanstel gateway demo hexes.",
+			"Not signed in. A free account unlocks LTE-M, NB-IoT, NTN, DECT NR+, LoRa and on-device inference — and the Fanstel gateway demo hexes.",
 		)
 		fireEvent.click(screen.getByTestId("account-signin"))
 		expect(screen.getByTestId("gate-panel")).toBeTruthy()
