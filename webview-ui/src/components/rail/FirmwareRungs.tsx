@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import { AdsumServiceClient } from "@/services/grpc-client"
 import Info from "../common/Info"
 import { Truncate } from "../common/Truncate"
-import { flashPrompt } from "./flashPrompt"
+import { flashPrompt, flashTitle } from "./flashPrompt"
 import { R } from "./railStyles"
 
 interface Artifact {
@@ -69,8 +69,11 @@ export const FirmwareCallContext = createContext<FirmwareCall>(hostCall)
 
 interface Props {
 	family?: string
-	/** Starts a session that flashes from the folder; the prompt names family, version, licensee and path. */
-	onFlash: (prompt: string) => void
+	/**
+	 * Starts a session that flashes from the folder; the prompt names family, version, licensee and path, and
+	 * the title names its tab ("Flash BLG20x production pair v2.3.0").
+	 */
+	onFlash: (prompt: string, title: string) => void
 	onAsk: () => void
 	onRenew: () => void
 	/** No account yet: the free registration opens the demo rungs. */
@@ -218,6 +221,7 @@ const FirmwareRungs: React.FC<Props> = ({ family, onFlash, onAsk, onRenew, onReg
 													expiredOn: expired ? term : undefined,
 													unitRoute: routeFor(row.folder),
 												}),
+												flashTitle({ title: e.title, version: e.version }),
 											)
 										}
 										style={lead}

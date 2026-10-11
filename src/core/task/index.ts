@@ -98,6 +98,7 @@ import {
 } from "@/integrations/terminal"
 import { consumeQuotaExhausted, getCachedFreeTokensRemaining, isQuotaExhaustionEvidenced } from "@/services/adsum/FreeTierState"
 import { ClineError, ClineErrorType, ErrorService } from "@/services/error"
+import { releaseWhenParked } from "@/services/hardware/HardwarePortGuard"
 import { creditFor, deriveIdFromRel, hasBit, lockedBits, provenanceOf } from "@/services/knowledge/KnowledgeResolver"
 import { telemetryService } from "@/services/telemetry"
 import {
@@ -774,6 +775,14 @@ export class Task {
 				text,
 			})
 			await this.postStateToWebview()
+		}
+
+		// [0.5 sessions first] Parked on words (a question, a plan, "done, anything else?") with nothing of its
+		// own still running: the ports and the unit this session named are free for the other tabs while it waits.
+		try {
+			releaseWhenParked(this.taskId, type, this.terminalManager.getTerminals(true).length)
+		} catch {
+			// the guard never breaks an ask
 		}
 
 		await pWaitFor(() => this.taskState.askResponse !== undefined || this.taskState.lastMessageTs !== askTs, {

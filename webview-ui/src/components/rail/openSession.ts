@@ -10,6 +10,18 @@ export interface OpenSessionIntent {
 	title?: string
 	/** With taskId: close that session's tab. */
 	close?: boolean
+	/** The unit this request is about; the host continues in the open session that already holds it. */
+	unit?: string
+}
+
+/** What a button says about the session it opens, beside its prompt. */
+export interface PromptOptions {
+	/** Sent as the first message; else the prompt fills the box and waits for Enter. */
+	send: boolean
+	/** The tab's first title. Without one the tab reads "New session" until the session has a name of its own. */
+	title?: string
+	/** The unit the prompt is about (see OpenSessionIntent.unit). Left out for a request that gets its own session. */
+	unit?: string
 }
 
 /**

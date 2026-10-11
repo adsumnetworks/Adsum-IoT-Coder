@@ -151,6 +151,111 @@ describe("where a typed message goes", () => {
 	})
 })
 
+/**
+ * [0.5.1 bench] One prompt started four sessions in nine seconds. `newTask` takes seconds, the box was only
+ * cleared once it had returned, and with no task nothing disables sending, so every extra Enter (or a second
+ * click on send) in that gap started another session.
+ */
+describe("one prompt starts one session", () => {
+	/** A newTask the test settles by hand, so sends can land while the first is still starting. */
+	const pending = () => {
+		let resolve!: (v: unknown) => void
+		let reject!: (e: unknown) => void
+		const promise = new Promise((res, rej) => {
+			resolve = res
+			reject = rej
+		})
+		rpc.newTask.mockImplementationOnce(() => promise as any)
+		return { resolve, reject }
+	}
+
+	it("ignores a second and a third send while the first is still starting", async () => {
+		const first = pending()
+		const state = chatState({ inputValue: "read the logs" })
+		const { result } = renderHook(() => useMessageHandlers([], state))
+		let one!: Promise<void>
+		await act(async () => {
+			one = result.current.handleSendMessage("read the logs", [], [])
+			await result.current.handleSendMessage("read the logs", [], [])
+			await result.current.handleSendMessage("read the logs", [], [])
+		})
+		expect(rpc.newTask).toHaveBeenCalledOnce()
+		await act(async () => {
+			first.resolve({})
+			await one
+		})
+		expect(rpc.newTask).toHaveBeenCalledOnce()
+		expect(state.setSendingDisabled).toHaveBeenCalledWith(true)
+	})
+
+	it("empties the box as the send starts, not when the host answers", async () => {
+		const first = pending()
+		const state = chatState({ inputValue: "read the logs", selectedImages: ["a.png"], selectedFiles: ["b.log"] })
+		const { result } = renderHook(() => useMessageHandlers([], state))
+		let one!: Promise<void>
+		await act(async () => {
+			one = result.current.handleSendMessage("read the logs", ["a.png"], ["b.log"])
+		})
+		expect(state.setInputValue).toHaveBeenCalledWith("")
+		expect(state.setSelectedImages).toHaveBeenCalledWith([])
+		expect(state.setSelectedFiles).toHaveBeenCalledWith([])
+		// Once: a second clear when the host answers would take what the developer has typed since.
+		await act(async () => {
+			first.resolve({})
+			await one
+		})
+		expect(state.setInputValue).toHaveBeenCalledTimes(1)
+	})
+
+	it("puts the text, the images and the files back when the session could not start, and the next send works", async () => {
+		const first = pending()
+		const state = chatState({ inputValue: "read the logs", selectedImages: ["a.png"], selectedFiles: ["b.log"] })
+		const { result } = renderHook(() => useMessageHandlers([], state))
+		let one!: Promise<void>
+		await act(async () => {
+			one = result.current.handleSendMessage("read the logs", ["a.png"], ["b.log"])
+		})
+		await act(async () => {
+			first.reject(new Error("host unreachable"))
+			await expect(one).rejects.toThrow("host unreachable")
+		})
+		// The restore is a function of what the box holds now: an empty box gets the draft back...
+		const text = state.setInputValue.mock.calls.at(-1)?.[0]
+		expect(text("")).toBe("read the logs")
+		expect(state.setSelectedImages.mock.calls.at(-1)?.[0]([])).toEqual(["a.png"])
+		expect(state.setSelectedFiles.mock.calls.at(-1)?.[0]([])).toEqual(["b.log"])
+		// ...and anything typed while the send was starting is kept.
+		expect(text("typed meanwhile")).toBe("typed meanwhile")
+		// Nothing was sent, so the composer is not put into its "sent" state.
+		expect(state.setSendingDisabled).not.toHaveBeenCalled()
+
+		// The guard is down again: the same prompt, sent again, starts the session.
+		await act(async () => {
+			await result.current.handleSendMessage("read the logs", ["a.png"], ["b.log"])
+		})
+		expect(rpc.newTask).toHaveBeenCalledTimes(2)
+	})
+
+	it("lets a later new session start in the same tab once this one is cleared, even if the first reply never came", async () => {
+		pending() // never settled: the reply to the first newTask is lost
+		const state = chatState({ inputValue: "read the logs" })
+		const { result, rerender } = renderHook(({ messages }) => useMessageHandlers(messages, state), {
+			initialProps: { messages: [] as ClineMessage[] },
+		})
+		await act(async () => {
+			void result.current.handleSendMessage("read the logs", [], [])
+		})
+		expect(rpc.newTask).toHaveBeenCalledOnce()
+		// The session shows up through state, then the tab's task is cleared.
+		rerender({ messages: [say({ say: "task" })] })
+		rerender({ messages: [] })
+		await act(async () => {
+			await result.current.handleSendMessage("claim it", [], [])
+		})
+		expect(rpc.newTask).toHaveBeenCalledTimes(2)
+	})
+})
+
 describe("stopping a run hands back what was not delivered", () => {
 	it("returns the developer's own undelivered messages to the box", async () => {
 		mockState.queuedUserMessages = [

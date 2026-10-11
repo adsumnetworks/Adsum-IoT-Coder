@@ -31,7 +31,7 @@ import { HostProvider } from "@/hosts/host-provider"
 import { vscodeHostBridgeClient } from "@/hosts/vscode/hostbridge/client/host-grpc-client"
 import { readTextFromClipboard, writeTextToClipboard } from "@/utils/env"
 import { initialize, tearDown } from "./common"
-import { registerOpenSessionsProvider, registerSessionOpener } from "./core/controller/adsum/openSession"
+import { registerHistoryListener, registerOpenSessionsProvider, registerSessionOpener } from "./core/controller/adsum/openSession"
 import { addToCline } from "./core/controller/commands/addToCline"
 import { explainWithCline } from "./core/controller/commands/explainWithCline"
 import { fixWithCline } from "./core/controller/commands/fixWithCline"
@@ -78,7 +78,7 @@ import {
 } from "./services/esp/EspEnvironmentDetector"
 import { setIdfToolsPathHint } from "./services/esp/espChipProbe"
 import { registerHandoverActions } from "./services/handover/HandoverActions"
-import { allHolders, onHoldersChanged } from "./services/hardware/HardwarePortGuard"
+import { allHolders, onHoldersChanged, rememberUnitSession, sessionForUnit } from "./services/hardware/HardwarePortGuard"
 import {
 	clearNrfEnvironmentCache,
 	detectNrfEnvironment,
@@ -396,13 +396,34 @@ export async function activate(context: vscode.ExtensionContext) {
 			await WebviewProvider.findSession(intent.taskId)?.dispose()
 			return undefined
 		}
+		// A Hardware page button for a unit an open session already works with continues in that session: one
+		// more tab would be refused the unit by the first, and the developer would be sent back to it anyway
+		// (11 Oct 2026, the bench: "LBG20x AD50 is in use by another session", four minutes lost).
+		if (intent.unit && intent.prompt && intent.send && !intent.taskId) {
+			const held = sessionForUnit(intent.unit)
+			const tab = held ? WebviewProvider.findSession(held) : undefined
+			if (tab instanceof VscodeSessionPanel && (await tab.continueWith(intent.prompt))) {
+				return tab.taskId
+			}
+		}
 		const session = await VscodeSessionPanel.open(context, {
 			taskId: intent.taskId,
 			prompt: intent.prompt,
 			send: intent.send,
 			title: intent.title,
 		})
+		if (intent.unit && session.taskId) {
+			rememberUnitSession(intent.unit, session.taskId)
+		}
 		return session.taskId
+	})
+	// A session's tab carries the session's own title from its first save on, and the rail hears when it starts
+	// waiting or working, not only when a tab opens or closes.
+	registerHistoryListener((item) => {
+		const tab = WebviewProvider.findSession(item.id)
+		if (tab instanceof VscodeSessionPanel) {
+			tab.historySaved(item)
+		}
 	})
 	// The bench seam (test mode) starts its tasks in a session tab too; nothing of ours runs unseen.
 	registerSeamSessionFactory(() => VscodeSessionPanel.open(context, { title: "Bench session" }))

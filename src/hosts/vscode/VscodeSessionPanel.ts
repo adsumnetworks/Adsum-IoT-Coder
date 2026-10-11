@@ -4,8 +4,11 @@ import * as vscode from "vscode"
 import { handleGrpcRequest, handleGrpcRequestCancel } from "@/core/controller/grpc-handler"
 import { sendAddToInputEvent } from "@/core/controller/ui/subscribeToAddToInput"
 import { HostProvider } from "@/hosts/host-provider"
+import { type ContinueRoute, continueRoute } from "@/services/hardware/HardwarePortGuard"
 import type { ExtensionMessage } from "@/shared/ExtensionMessage"
+import type { HistoryItem } from "@/shared/HistoryItem"
 import { WebviewMessage } from "@/shared/WebviewMessage"
+import { SESSION_PANEL_TYPE } from "./besideSessionColumn"
 import { deliverToWebview } from "./deliverToWebview"
 import { openSessions, sessionsChanged } from "./sessionRegistry"
 
@@ -16,7 +19,7 @@ export function markHostShuttingDown(): void {
 }
 
 /** The webview panel type VS Code uses to find the serializer after a reload. */
-export const SESSION_PANEL_TYPE = "adsum-iot-coder.session"
+export { SESSION_PANEL_TYPE }
 
 /** What a webview stores for the serializer (`vscode.setState` on the webview side). */
 export interface SessionPanelState {
@@ -47,6 +50,10 @@ export class VscodeSessionPanel extends WebviewProvider {
 	private panel?: vscode.WebviewPanel
 	private disposables: vscode.Disposable[] = []
 	private disposed = false
+	/** The title the opener gave (a Hardware page button, a card): shown until the session has a name, then its name. */
+	private givenTitle?: string
+	/** What the rail last heard of this tab (title, waiting, working), so a save repaints it only on a change. */
+	private lastMark = ""
 
 	private constructor(context: vscode.ExtensionContext) {
 		super(context, "session")
@@ -56,7 +63,8 @@ export class VscodeSessionPanel extends WebviewProvider {
 	public static async open(context: vscode.ExtensionContext, opts: OpenSessionOptions = {}): Promise<VscodeSessionPanel> {
 		if (opts.taskId) {
 			const existing = WebviewProvider.findSession(opts.taskId)
-			if (existing instanceof VscodeSessionPanel) {
+			// A tab that is closing has no panel left to show: reveal() on it did nothing, and the row "opened nothing".
+			if (existing instanceof VscodeSessionPanel && existing.panel) {
 				existing.reveal(opts.preserveFocus)
 				return existing
 			}
@@ -72,11 +80,14 @@ export class VscodeSessionPanel extends WebviewProvider {
 			},
 		)
 		const session = new VscodeSessionPanel(context)
+		session.givenTitle = opts.title?.trim() || undefined
 		await session.attach(panel)
 		if (opts.taskId) {
 			await session.showTask(opts.taskId)
 			session.refreshTitle()
 		} else if (opts.prompt && opts.send) {
+			// The session's history row is written by its first message, after this returns: the tab keeps the
+			// opener's title meanwhile, and `historySaved` names it for good.
 			await session.controller.initTask(opts.prompt)
 			session.refreshTitle()
 		} else if (opts.prompt) {
@@ -153,17 +164,79 @@ export class VscodeSessionPanel extends WebviewProvider {
 		this.markActive()
 	}
 
-	/** The tab reads the session's own title once it has one; "New session" until then. */
-	refreshTitle(): void {
+	/**
+	 * The tab reads the session's own name, else the title its opener gave, else its first words; "New session"
+	 * until it has any of them. Called on open, on restore, and on every save of the session's history row
+	 * (`historySaved`), which is what names a tab whose first message was typed in it.
+	 */
+	refreshTitle(saved?: HistoryItem): void {
 		if (!this.panel) {
 			return
 		}
 		const task = this.controller.task
 		const history = this.controller.stateManager.getGlobalStateKey("taskHistory") || []
-		const item = task ? history.find((h) => h.id === task.taskId) : undefined
-		const title = (item?.title || item?.task || "").trim()
-		this.panel.title = title ? (title.length > 48 ? `${title.slice(0, 47)}…` : title) : "New session"
-		sessionsChanged()
+		const item = saved ?? (task ? history.find((h) => h.id === task.taskId) : undefined)
+		const title = (item?.title || this.givenTitle || item?.task || "").trim()
+		const shown = title ? (title.length > 48 ? `${title.slice(0, 47)}…` : title) : "New session"
+		if (this.panel.title !== shown) {
+			this.panel.title = shown
+		}
+		const messages = task?.messageStateHandler.getClineMessages() ?? []
+		const last = messages[messages.length - 1]
+		const mark = `${shown}|${!!last && last.type === "ask" && !last.partial}|${!!task?.taskState.isStreaming}`
+		if (mark !== this.lastMark) {
+			this.lastMark = mark
+			sessionsChanged()
+		}
+	}
+
+	/**
+	 * A save of this tab's session. The first one gives the row the opener's short title ("Logs · LBG20x AD50"), so
+	 * the rail does not list a button's session by its two-hundred-word prompt; a name the developer gave is kept.
+	 */
+	historySaved(item: HistoryItem): void {
+		if (this.givenTitle && !item.title) {
+			const title = this.givenTitle
+			this.givenTitle = undefined
+			const history = this.controller.stateManager.getGlobalStateKey("taskHistory") || []
+			const idx = history.findIndex((h) => h.id === item.id)
+			if (idx !== -1) {
+				const updated = [...history]
+				updated[idx] = { ...updated[idx], title }
+				this.controller.stateManager.setGlobalState("taskHistory", updated)
+				item = updated[idx]
+			}
+		}
+		this.refreshTitle(item)
+	}
+
+	/**
+	 * A request for the unit this session already works with (a Hardware page button) continues here instead of
+	 * opening one more tab. Returns how it was delivered, or undefined when this tab has no live task to take it.
+	 */
+	async continueWith(prompt: string): Promise<ContinueRoute | undefined> {
+		const task = this.controller.task
+		if (!this.panel || !task || task.taskState.abort) {
+			return undefined
+		}
+		this.reveal()
+		const messages = task.messageStateHandler.getClineMessages()
+		const route = continueRoute(messages[messages.length - 1], !!task.taskState.isStreaming)
+		if (route === "answer") {
+			await task.handleWebviewAskResponse("messageResponse", prompt)
+		} else if (route === "queue") {
+			const queued = await task.queueUserMessage(prompt)
+			if (!queued.accepted) {
+				void vscode.window.showInformationMessage(
+					"That session is busy and its queue is full. Wait for it, then press the button again.",
+				)
+			}
+		} else {
+			void vscode.window.showInformationMessage(
+				"That session is waiting on your yes or no. Answer it there, then press the button again.",
+			)
+		}
+		return route
 	}
 
 	/** The task this tab holds, for the rail and the status bar. */

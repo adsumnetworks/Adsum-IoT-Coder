@@ -47,6 +47,7 @@ import OfflineNotice from "./OfflineNotice"
 import SessionComposerFoot from "./SessionComposerFoot"
 import SessionHeader from "./SessionHeader"
 import SessionPalette from "./SessionPalette"
+import SessionStartNotice from "./SessionStartNotice"
 import SessionWordmark from "./SessionWordmark"
 import { entryFirstPrompt } from "./welcome/entryTelemetry"
 import { handOverCard } from "./welcome/handOverCard"
@@ -662,7 +663,14 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 							// Messages typed while the agent is working sit at the tail of the transcript — inside
 							// the scroller, so a queued row occupies the place its bubble will take when it is
 							// delivered, rather than covering the conversation from a fixed position.
-							footer={<QueuedMessages queueRefusal={chatState.queueRefusal} />}
+							// Above them, while the session has no row of its own yet, one line says it is starting (or
+							// that it stopped before its first reply), so a new tab is never just a header.
+							footer={
+								<>
+									<SessionStartNotice messages={messages} />
+									<QueuedMessages queueRefusal={chatState.queueRefusal} />
+								</>
+							}
 							// No-ending sessions: the post-task NextStepChooser footer is gone — a completion renders
 							// in-stream as a handoff card and the conversation simply continues. (The persistent
 							// AI-limitations disclaimer lives under the always-present input footer below.)

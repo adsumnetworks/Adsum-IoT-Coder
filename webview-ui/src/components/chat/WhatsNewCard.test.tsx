@@ -46,4 +46,27 @@ describe("WhatsNewCard", () => {
 		render(<WhatsNewCard />)
 		expect(screen.queryByTestId("whats-new-card")).not.toBeInTheDocument()
 	})
+
+	// [0.5.1 bench] The rail drew the coral frame around the card; the × removed the card and left the frame,
+	// an empty orange strip. The frame is the card's own now, so nothing at all is left behind.
+	it("framed, it draws the coral notice frame itself and announces like the rail's other notices", () => {
+		render(<WhatsNewCard framed />)
+		const frame = screen.getByTestId("whats-new-frame")
+		expect(frame).toHaveAttribute("role", "status")
+		expect(frame).toHaveAttribute("aria-live", "polite")
+		expect(frame.getAttribute("style")).toContain("border")
+		expect(frame).toContainElement(screen.getByTestId("whats-new-card"))
+	})
+
+	it("framed, the × leaves an empty container: no frame stays behind", () => {
+		const { container } = render(<WhatsNewCard framed />)
+		expect(container).not.toBeEmptyDOMElement()
+		fireEvent.click(screen.getByLabelText("Dismiss What's new"))
+		expect(container).toBeEmptyDOMElement()
+	})
+
+	it("bare (an empty session tab), there is no frame at all", () => {
+		render(<WhatsNewCard />)
+		expect(screen.queryByTestId("whats-new-frame")).not.toBeInTheDocument()
+	})
 })

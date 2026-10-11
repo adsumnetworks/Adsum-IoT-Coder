@@ -30,6 +30,11 @@ type HistoryViewItemProps = {
 	handleDeleteHistoryItem: (id: string) => void
 	toggleFavorite: (id: string, isCurrentlyFavorited: boolean) => void
 	handleHistorySelect: (itemId: string, checked: boolean) => void
+	/**
+	 * Opens the session somewhere other than this webview's own chat. The rail passes it: in the sessions-first
+	 * sidebar a session is a tab, and loading it into the sidebar's own controller shows nothing.
+	 */
+	onOpen?: (item: HistoryItem) => void
 }
 
 const HistoryViewItem = ({
@@ -39,6 +44,7 @@ const HistoryViewItem = ({
 	toggleFavorite,
 	handleHistorySelect,
 	selectedItems,
+	onOpen,
 }: HistoryViewItemProps) => {
 	const [expanded, setExpanded] = useState(false)
 	const { openAgentSession } = useExtensionState()
@@ -80,11 +86,15 @@ const HistoryViewItem = ({
 					.catch((error) => console.error("Error opening agent session:", error))
 				return
 			}
+			if (onOpen) {
+				onOpen(item)
+				return
+			}
 			TaskServiceClient.showTaskWithId(StringRequest.create({ value: item.id })).catch((error) =>
 				console.error("Error showing task:", error),
 			)
 		},
-		[openAgentSession],
+		[openAgentSession, onOpen],
 	)
 
 	const formatDate = useCallback((timestamp: number) => {

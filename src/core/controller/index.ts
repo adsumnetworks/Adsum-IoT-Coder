@@ -43,7 +43,7 @@ import { nrfEnvironmentWithBlg20 } from "@/services/blg20/connectedBlg20"
 import { getCachedEspEnvironment } from "@/services/esp/EspEnvironmentDetector"
 import { featureFlagsService } from "@/services/feature-flags"
 import { getHandoverUiState } from "@/services/handover/HandoverUiState"
-import { releaseAll } from "@/services/hardware/HardwarePortGuard"
+import { isParkedOnWords, releaseAll } from "@/services/hardware/HardwarePortGuard"
 import { consumeCraRanThisSession, servedIdsSnapshot, warmDownloadedManifest } from "@/services/knowledge/KnowledgeResolver"
 import { getDistinctId } from "@/services/logging/distinctId"
 import { Logger } from "@/services/logging/Logger"
@@ -68,7 +68,7 @@ import { fetchRemoteConfig } from "../storage/remote-config/fetch"
 import { clearRemoteConfig } from "../storage/remote-config/utils"
 import { type PersistenceErrorEvent, StateManager } from "../storage/StateManager"
 import { Task } from "../task"
-import { listOpenSessions } from "./adsum/openSession"
+import { historyItemSaved, listOpenSessions } from "./adsum/openSession"
 import { sendMcpMarketplaceCatalogEvent } from "./mcp/subscribeToMcpMarketplaceCatalog"
 import { getClineOnboardingModels } from "./models/getClineOnboardingModels"
 import { appendClineStealthModels } from "./models/refreshOpenRouterModels"
@@ -446,10 +446,17 @@ export class Controller {
 				)
 
 				return true
-			} else {
-				this.cancelTask()
+			}
+			// [0.5] A session that is only waiting on the developer's words (a question, "done, anything else?")
+			// has nothing to cancel: the mode is read at the next request. Cancelling reloaded the whole
+			// conversation and parked it on "Resume" (Omar, 0.5: "changing plan/act refreshes the page").
+			// A session that is working, or waiting on an approval, is still cancelled as before.
+			const messages = this.task.messageStateHandler.getClineMessages()
+			if (isParkedOnWords(messages[messages.length - 1], !!this.task.taskState.isStreaming)) {
 				return false
 			}
+			this.cancelTask()
+			return false
 		}
 
 		return false
@@ -1179,11 +1186,16 @@ export class Controller {
 		const history = this.stateManager.getGlobalStateKey("taskHistory")
 		const existingItemIndex = history.findIndex((h) => h.id === item.id)
 		if (existingItemIndex !== -1) {
+			// A save rebuilds the row from the transcript and knows nothing of the name the developer (or the
+			// button that opened the session) gave it: without this the name was erased on the next message.
+			const kept = history[existingItemIndex].title
+			item = item.title === undefined && kept ? { ...item, title: kept } : item
 			history[existingItemIndex] = item
 		} else {
 			history.push(item)
 		}
 		this.stateManager.setGlobalState("taskHistory", history)
+		historyItemSaved(item)
 		return history
 	}
 

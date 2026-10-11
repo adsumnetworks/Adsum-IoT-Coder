@@ -9,7 +9,61 @@ export interface UnitAction {
 	label: string
 	testId: string
 	prompt: string
+	/** The session tab's first title: what was asked and of which unit ("Claim · LBG20x AD50"). */
+	title: string
+	/** The unit's guard key, so the host continues in the session that already holds the unit. */
+	unit?: string
 }
+
+/** The host cuts a tab's first title at this length; a title built here is cut the same way, where it is made. */
+export const TAB_TITLE_MAX = 48
+
+/** One line for a tab, never longer than the host shows. */
+export const tabTitle = (title: string): string => {
+	const t = title.split(" ").filter(Boolean).join(" ")
+	return t.length > TAB_TITLE_MAX ? `${t.slice(0, TAB_TITLE_MAX - 1).trimEnd()}…` : t
+}
+
+/** The door a unit's commands go through: Bluetooth when it has no service port on USB, else its cable. */
+export type UnitDoor = "ble" | "usb"
+
+export const unitDoor = (u: Blg20Unit): UnitDoor => (blg20OverBluetooth(u) ? "ble" : "usb")
+
+const FOUR_HEX = /^[0-9A-F]{4}$/
+const TWELVE_HEX = /^[0-9A-F]{12}$/
+
+/**
+ * [0.5.1] The name the host's port guard keeps a unit under, so a Hardware page button can continue in the session
+ * that already holds the unit instead of opening one more tab the first would refuse it to. Over Bluetooth it is
+ * `BLE:` and the unit's four digits ("BLE:AD50"), read from its name, from the address in its advertised name, or
+ * from a MAC. On its cable it is the service port as the guard stores it: upper-cased, with macOS's `/dev/cu.`
+ * read as `/dev/tty.` ("/DEV/TTYACM4", "COM7"). A unit that cannot be named this way (a probe pair, nothing
+ * known) has no key, and its button opens a session of its own as before.
+ */
+export function unitGuardKey(u: Blg20Unit | undefined, door?: UnitDoor): string | undefined {
+	if (!u) {
+		return undefined
+	}
+	if ((door ?? unitDoor(u)) === "ble") {
+		if (!u.bleAddress) {
+			return undefined
+		}
+		const mac = u.bleAddress.split(/[:-]/).join("").toUpperCase()
+		const digits = [u.name, u.bleId?.slice(-4), TWELVE_HEX.test(mac) ? mac.slice(-4) : undefined]
+			.map((d) => d?.trim().toUpperCase())
+			.find((d) => !!d && FOUR_HEX.test(d))
+		return digits ? `BLE:${digits}` : undefined
+	}
+	const port = u.servicePort?.trim()
+	if (!port) {
+		return undefined
+	}
+	const CU = "/dev/cu."
+	return (port.startsWith(CU) ? `/dev/tty.${port.slice(CU.length)}` : port).toUpperCase()
+}
+
+/** The tab title of the set-up journey: "Set up LBG20x AD50". `name` is the board's label when no unit is known. */
+export const setUpTitle = (name: string): string => tabTitle(`Set up ${name}`)
 
 /** The pairing as a sentence of its own ("The first time, ..."), or nothing when this computer is paired already. */
 const pairingSentence = (platform?: string, bonded?: boolean | null, bleId?: string) => {
@@ -25,8 +79,12 @@ export function unitActions(u: Blg20Unit, platform?: string): UnitAction[] {
 	const pairing = ble
 		? ` ${pairingSentence(platform, u.bonded, u.bleId)}If it is not found, its commissioning window is closed: tell me to hold its button for three seconds.`
 		: ""
+	// Every action names its tab and the unit it is about, by the door its own commands use.
+	const unit = unitGuardKey(u, ble ? "ble" : "usb")
+	const titled = (what: string) => ({ title: tabTitle(`${what} · ${name}`), ...(unit ? { unit } : {}) })
 	return [
 		{
+			...titled("What is this gateway?"),
 			label: "What is this gateway?",
 			testId: "unit-action-passport",
 			prompt:
@@ -35,6 +93,7 @@ export function unitActions(u: Blg20Unit, platform?: string): UnitAction[] {
 				`what it is and what it still needs. Reading needs no key and changes nothing.${pairing}`,
 		},
 		{
+			...titled("Claim"),
 			label: "Claim it",
 			testId: "unit-action-claim",
 			prompt:
@@ -44,6 +103,7 @@ export function unitActions(u: Blg20Unit, platform?: string): UnitAction[] {
 				pairing,
 		},
 		{
+			...titled("Logs"),
 			label: "Read the logs",
 			testId: "unit-action-logs",
 			prompt:

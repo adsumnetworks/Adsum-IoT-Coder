@@ -1,7 +1,7 @@
 import type { ClineMessage } from "@shared/ExtensionMessage"
 import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
 import { AskResponseRequest, NewTaskRequest, QueueUserMessageRequest } from "@shared/proto/cline/task"
-import { useCallback } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { openSession } from "@/components/rail/openSession"
 import { ADSUM_VIEW } from "@/config/platform.config"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -31,6 +31,17 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 		setNordicPhase,
 	} = chatState
 
+	// One prompt, one session. `newTask` takes seconds, the box was only cleared once it had returned, and
+	// with no task nothing disables sending: every extra Enter in that gap started another session (four in
+	// nine seconds on the bench, from one composer). While the first send is starting, later ones are ignored.
+	const startingTaskRef = useRef(false)
+	// The guard belongs to one empty transcript. A session arriving, or the tab's task being cleared, ends it:
+	// a reply that never came back cannot leave a later new session in the same tab unable to start.
+	const noSession = messages.length === 0
+	useEffect(() => {
+		startingTaskRef.current = false
+	}, [noSession])
+
 	// Handle sending a message
 	const handleSendMessage = useCallback(
 		async (text: string, images: string[], files: string[]) => {
@@ -51,16 +62,44 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 				console.log("[ChatView] handleSendMessage - Sending message:", messageToSend)
 				let messageSent = false
 				let queued = false
+				let clearedUpFront = false
 
 				if (messages.length === 0) {
-					await TaskServiceClient.newTask(
-						NewTaskRequest.create({
-							text: messageToSend,
-							images,
-							files,
-						}),
-					)
-					messageSent = true
+					if (startingTaskRef.current) {
+						return
+					}
+					startingTaskRef.current = true
+					// The box empties as the send starts, so the developer sees it was taken and has nothing to
+					// send twice. What it held comes back if the session could not start.
+					const draft = {
+						text: chatState.inputValue ?? "",
+						images: chatState.selectedImages ?? [],
+						files: chatState.selectedFiles ?? [],
+					}
+					setInputValue("")
+					setActiveQuote(null)
+					setSelectedImages([])
+					setSelectedFiles([])
+					clearedUpFront = true
+					try {
+						await TaskServiceClient.newTask(
+							NewTaskRequest.create({
+								text: messageToSend,
+								images,
+								files,
+							}),
+						)
+						messageSent = true
+					} catch (error) {
+						// Anything typed while the send was starting stays; an empty box gets its draft back.
+						setInputValue((now) => now || draft.text)
+						setActiveQuote((now) => now ?? activeQuote)
+						setSelectedImages((now) => (now.length > 0 ? now : draft.images))
+						setSelectedFiles((now) => (now.length > 0 ? now : draft.files))
+						throw error
+					} finally {
+						startingTaskRef.current = false
+					}
 				} else if (clineAsk && lastMessage?.partial !== true) {
 					// Non-partial only, matching pendingAskFrom on the host: a still-streaming ask has thrown
 					// out of ask() before pWaitFor, so nothing is awaiting an answer yet. Answering one would
@@ -132,10 +171,14 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 
 				// Only clear input and disable UI if message was actually sent
 				if (messageSent) {
-					setInputValue("")
-					setActiveQuote(null)
-					setSelectedImages([])
-					setSelectedFiles([])
+					// A new session's box was emptied when the send started; emptying it again here would take
+					// whatever the developer has typed since.
+					if (!clearedUpFront) {
+						setInputValue("")
+						setActiveQuote(null)
+						setSelectedImages([])
+						setSelectedFiles([])
+					}
 
 					// A queued message did not start anything: the run is still going and the developer may
 					// well want to queue another. Disabling the box here would re-create the problem this

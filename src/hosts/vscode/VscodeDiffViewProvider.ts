@@ -1,6 +1,7 @@
 import { DiffViewProvider } from "@integrations/editor/DiffViewProvider"
 import * as path from "path"
 import * as vscode from "vscode"
+import { viewColumnBesideSession } from "@/hosts/vscode/besideSession"
 import { DecorationController } from "@/hosts/vscode/DecorationController"
 import { arePathsEqual } from "@/utils/path"
 
@@ -46,34 +47,51 @@ export class VscodeDiffViewProvider extends DiffViewProvider {
 			)
 
 		if (diffTab && diffTab.input instanceof vscode.TabInputTextDiff) {
-			// Use already open diff editor.
+			// Use already open diff editor, in the group it is in (never on top of the session tab in front).
 			this.activeDiffEditor = await vscode.window.showTextDocument(diffTab.input.modified, {
 				preserveFocus: true,
+				viewColumn: vscode.window.tabGroups.all.find((g) => g.tabs.includes(diffTab))?.viewColumn,
 			})
 		} else {
 			// Open new diff editor.
 			this.activeDiffEditor = await new Promise<vscode.TextEditor>((resolve, reject) => {
 				const fileName = path.basename(uri.fsPath)
 				const fileExists = this.editType === "modify"
-				const disposable = vscode.window.onDidChangeActiveTextEditor((editor) => {
-					if (editor && arePathsEqual(editor.document.uri.fsPath, uri.fsPath)) {
+				// [0.5 sessions first] With a session tab in front, the change view opens beside it, not over the
+				// conversation. Focus stays in the session, so the view never becomes the ACTIVE text editor there:
+				// it is found among the visible ones as well.
+				const viewColumn = viewColumnBesideSession()
+				const isOurs = (editor: vscode.TextEditor | undefined) =>
+					!!editor && arePathsEqual(editor.document.uri.fsPath, uri.fsPath)
+				const subscriptions: vscode.Disposable[] = []
+				const disposable = { dispose: () => subscriptions.splice(0).forEach((d) => d.dispose()) }
+				const found = (editor: vscode.TextEditor | undefined) => {
+					if (editor && isOurs(editor)) {
 						disposable.dispose()
 						resolve(editor)
 					}
-				})
-				vscode.commands.executeCommand(
-					"vscode.diff",
-					vscode.Uri.from({
-						scheme: DIFF_VIEW_URI_SCHEME,
-						path: fileName,
-						query: Buffer.from(this.originalContent ?? "").toString("base64"),
-					}),
-					uri,
-					`${fileName}: ${fileExists ? "Original ↔ Adsum IoT Coder's Changes" : "New File"} (Editable)`,
-					{
-						preserveFocus: true,
-					},
+				}
+				subscriptions.push(
+					vscode.window.onDidChangeActiveTextEditor((editor) => found(editor)),
+					vscode.window.onDidChangeVisibleTextEditors((editors) => found(editors.find(isOurs))),
 				)
+				void vscode.commands
+					.executeCommand(
+						"vscode.diff",
+						vscode.Uri.from({
+							scheme: DIFF_VIEW_URI_SCHEME,
+							path: fileName,
+							query: Buffer.from(this.originalContent ?? "").toString("base64"),
+						}),
+						uri,
+						`${fileName}: ${fileExists ? "Original ↔ Adsum IoT Coder's Changes" : "New File"} (Editable)`,
+						{
+							preserveFocus: true,
+							...(viewColumn !== undefined ? { viewColumn } : {}),
+						},
+					)
+					// Opened without either event (the view was already laid out): look once more.
+					.then(() => found(vscode.window.visibleTextEditors.find(isOurs)))
 				// This may happen on very slow machines ie project idx
 				setTimeout(() => {
 					disposable.dispose()

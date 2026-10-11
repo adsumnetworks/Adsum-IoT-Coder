@@ -44,11 +44,19 @@ export abstract class WebviewProvider {
 	}
 
 	async dispose() {
-		await this.controller.dispose()
+		// Out of the registry first: disposing the controller aborts its task and can take three seconds, and a
+		// session row clicked in that time found this dying tab and "opened" it (11 Oct 2026, the bench).
 		WebviewProvider.instances.delete(this.instanceId)
 		if (WebviewProvider.activeId === this.instanceId) {
-			WebviewProvider.activeId = WebviewProvider.getSidebarInstance()?.instanceId ?? null
+			let sidebar: WebviewProvider | undefined
+			try {
+				sidebar = WebviewProvider.getSidebarInstance()
+			} catch {
+				// no sidebar (deactivation)
+			}
+			WebviewProvider.activeId = sidebar?.instanceId ?? null
 		}
+		await this.controller.dispose()
 	}
 
 	/** The sidebar rail's webview. Throws before the sidebar exists, as `getInstance()` always did. */

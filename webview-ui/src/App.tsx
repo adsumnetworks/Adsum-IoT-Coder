@@ -1,6 +1,7 @@
 import type { Boolean, EmptyRequest } from "@shared/proto/cline/common"
 import { useEffect } from "react"
 import ChatView from "./components/chat/ChatView"
+import StartingPlaceholder from "./components/common/StartingPlaceholder"
 import HistoryView from "./components/history/HistoryView"
 import OnboardingView from "./components/onboarding/OnboardingView"
 import RailView from "./components/rail/RailView"
@@ -48,8 +49,9 @@ const AppContent = () => {
 		}
 	}, [shouldShowAnnouncement, setShouldShowAnnouncement, setShowAnnouncement])
 
+	// Until the host's first state arrives there is nothing to draw, but an empty page reads as a dead tab.
 	if (!didHydrateState) {
-		return null
+		return <StartingPlaceholder />
 	}
 
 	if (showWelcome) {

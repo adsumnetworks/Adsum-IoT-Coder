@@ -184,6 +184,9 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 						hideHistory()
 						setPage("home")
 					}}
+					// A session is a tab: the sidebar's own chat is never shown, so loading it there shows nothing.
+					// The page stays as it is, the way the rail's own rows leave the rail where it was.
+					onOpen={(item) => void openSession({ taskId: item.id })}
 				/>
 			</div>
 		)
@@ -200,7 +203,7 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 					family={hardwareFamily}
 					onAsk={(family) => setRequesting(family)}
 					onBack={() => setPage("home")}
-					onPrompt={(prompt, send) => void openSession({ prompt, send })}
+					onPrompt={(prompt, options) => void openSession({ prompt, ...options })}
 					onRegister={() => setGateOpen(true)}
 				/>
 			) : (
@@ -245,19 +248,8 @@ const RailView: React.FC<RailViewProps> = ({ initialPage = "home", initialPalett
 							</span>
 						</div>
 					) : null}
-					{!hostOffline && quota?.kind !== "spent" && (taskHistory?.length ?? 0) > 0 && (
-						<div
-							aria-live="polite"
-							role="status"
-							style={{
-								border: `1px solid color-mix(in srgb, ${R.coral} 45%, transparent)`,
-								background: `color-mix(in srgb, ${R.coral} 5%, transparent)`,
-								borderRadius: 6,
-								padding: "2px 8px",
-							}}>
-							<WhatsNewCard />
-						</div>
-					)}
+					{/* The card draws its own coral frame: dismissed, it renders nothing and the frame goes with it. */}
+					{!hostOffline && quota?.kind !== "spent" && (taskHistory?.length ?? 0) > 0 && <WhatsNewCard framed />}
 					<section aria-label="Environment">
 						<RailHardware
 							onOpen={() => {

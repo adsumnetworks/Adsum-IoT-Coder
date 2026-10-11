@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+import { viewColumnBesideSession } from "@/hosts/vscode/besideSession"
 import { ShowTextDocumentRequest, TextEditorInfo } from "@/shared/proto/host/window"
 import { arePathsEqual } from "@/utils/path"
 
@@ -34,6 +35,12 @@ export async function showTextDocument(request: ShowTextDocumentRequest): Promis
 	}
 	if (request.options?.viewColumn !== undefined) {
 		options.viewColumn = request.options.viewColumn
+	} else {
+		// [0.5 sessions first] Not over the session tab the developer is reading.
+		const beside = viewColumnBesideSession()
+		if (beside !== undefined) {
+			options.viewColumn = beside
+		}
 	}
 
 	const editor = await vscode.window.showTextDocument(uri, options)

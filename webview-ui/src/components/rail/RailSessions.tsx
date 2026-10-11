@@ -188,7 +188,13 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 					{here.rows.map((h, i) => {
 						const o = open.get(h.id)
 						return (
-							<div key={h.id} style={{ position: "relative" }}>
+							// The row and its ⋯ sit side by side. The ⋯ used to float over the row's top right corner,
+							// which is where the age is: "12 min" read as a clipped number under it. The menu panel
+							// still hangs from this wrapper.
+							<div
+								data-testid="rail-session-row"
+								key={h.id}
+								style={{ position: "relative", display: "flex", alignItems: "flex-start", gap: 4 }}>
 								<button
 									className="rail-row"
 									onClick={() => onOpen(h)}
@@ -204,7 +210,8 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 										color: "var(--vscode-foreground)",
 										font: "inherit",
 										textAlign: "left",
-										width: "100%",
+										flex: 1,
+										minWidth: 0,
 										cursor: "pointer",
 									}}
 									title={o ? "Open in a tab: click focuses it" : "Opens in a tab"}
@@ -297,20 +304,25 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 											{o?.streaming ? "working…" : h.modelId ? h.modelId : ""}
 										</span>
 									</span>
-									<span style={{ ...R.meta, flex: "none" }}>{age(h.ts)}</span>
+									<span
+										data-testid="rail-session-age"
+										style={{ ...R.meta, flex: "none", whiteSpace: "nowrap" }}>
+										{age(h.ts)}
+									</span>
 								</button>
 								<button
+									aria-expanded={menuFor === h.id}
+									aria-haspopup="menu"
 									aria-label="Rename, favourite, delete"
 									data-session-menu="button"
 									onClick={() => setMenuFor(menuFor === h.id ? null : h.id)}
 									style={{
-										position: "absolute",
-										right: 4,
-										top: 3,
+										flex: "none",
+										marginTop: 3,
 										font: "inherit",
 										fontSize: 12,
 										color: "var(--vscode-descriptionForeground)",
-										background: "var(--vscode-sideBar-background)",
+										background: "none",
 										border: "1px solid color-mix(in srgb, var(--vscode-foreground) 20%, transparent)",
 										borderRadius: 3,
 										padding: "0 5px",
@@ -325,8 +337,8 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 										role="menu"
 										style={{
 											position: "absolute",
-											right: 4,
-											top: 22,
+											right: 0,
+											top: 24,
 											zIndex: 4,
 											background: "var(--vscode-editorWidget-background)",
 											border: "1px solid var(--vscode-panel-border, color-mix(in srgb, var(--vscode-foreground) 20%, transparent))",

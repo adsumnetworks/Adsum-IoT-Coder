@@ -1,3 +1,4 @@
+import type { HistoryItem } from "@shared/HistoryItem"
 import { EmptyRequest, StringArrayRequest } from "@shared/proto/cline/common"
 import { GetTaskHistoryRequest, TaskFavoriteRequest } from "@shared/proto/cline/task"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
@@ -15,6 +16,8 @@ import HistoryViewItem from "./HistoryViewItem"
 
 type HistoryViewProps = {
 	onDone: () => void
+	/** Where a clicked session opens, when it is not this webview's own chat (the rail opens a tab). */
+	onOpen?: (item: HistoryItem) => void
 }
 
 type SortOption = "newest" | "oldest" | "mostExpensive" | "mostTokens" | "mostRelevant"
@@ -35,7 +38,7 @@ const HISTORY_FILTERS = {
 	favoritesOnly: "Favorites Only",
 }
 
-const HistoryView = ({ onDone }: HistoryViewProps) => {
+const HistoryView = ({ onDone, onOpen }: HistoryViewProps) => {
 	const extensionStateContext = useExtensionState()
 	const { taskHistory, onRelinquishControl, environment } = extensionStateContext
 	const [searchQuery, setSearchQuery] = useState("")
@@ -434,6 +437,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 								handleHistorySelect={handleHistorySelect}
 								index={index}
 								item={item}
+								onOpen={onOpen}
 								pendingFavoriteToggles={pendingFavoriteToggles}
 								selectedItems={selectedItems}
 								toggleFavorite={toggleFavorite}

@@ -1,6 +1,7 @@
 import { Empty } from "@shared/proto/cline/common"
 import { RenameTaskRequest } from "@shared/proto/cline/task"
 import { Controller } from "../"
+import { historyItemSaved } from "../adsum/openSession"
 
 /**
  * Name a session. Same shape as toggleTaskFavorite: one field on the history row, state re-posted.
@@ -25,6 +26,7 @@ export async function renameTask(controller: Controller, request: RenameTaskRequ
 			const { title: _old, ...rest } = updated[idx]
 			updated[idx] = title ? { ...rest, title } : rest
 			controller.stateManager.setGlobalState("taskHistory", updated)
+			historyItemSaved(updated[idx])
 		}
 		await controller.postStateToWebview()
 	} catch (error) {

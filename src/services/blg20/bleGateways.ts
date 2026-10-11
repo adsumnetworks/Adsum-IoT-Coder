@@ -277,6 +277,7 @@ export async function bleStatus(target: string, passkey?: string): Promise<BleSt
 		return { ok: false, words, facts: remember(id, { words }) }
 	}
 	const p = (run.last.passport ?? {}) as Record<string, unknown>
+	markBonded(id, true)
 	const f = remember(id, {
 		paired: true,
 		claimed: run.last.claimed === true,
@@ -302,6 +303,7 @@ export async function bleClaim(target: string, passkey?: string): Promise<BleSte
 	}
 	const why = typeof run.last.why === "string" ? run.last.why : ""
 	if (run.last.ok === true) {
+		markBonded(id, true)
 		const f = remember(id, { paired: true, claimed: true, mine: true, words: undefined })
 		const key = typeof run.last.key === "string" ? run.last.key : ""
 		return {
@@ -324,6 +326,16 @@ export async function bleClaim(target: string, passkey?: string): Promise<BleSte
 	}
 }
 
+/**
+ * The last scan's word on the pairing, corrected by what a step just proved: a session started from the page after
+ * Connect was still told "this computer has no pairing with the unit yet" until the next scan (11 Oct 2026, the bench).
+ */
+function markBonded(id: string, bonded: boolean): void {
+	const key = id.toUpperCase()
+	const row = seen.get(key) ?? [...seen.values()].find((r) => (r.id ?? "").toUpperCase() === key)
+	if (row) seen.set((row.id ?? row.name ?? row.address).toUpperCase(), { ...row, bonded })
+}
+
 /** Drop this computer's pairing with the unit (Linux and Windows through the tool; macOS says where). */
 export async function bleForget(target: string): Promise<BleStepResult> {
 	const id = idOf(target)
@@ -335,9 +347,7 @@ export async function bleForget(target: string): Promise<BleStepResult> {
 		const words = wordsOf(run)
 		return { ok: false, words, facts: remember(id, { words }) }
 	}
-	const key = id.toUpperCase()
-	const row = seen.get(key) ?? [...seen.values()].find((r) => (r.id ?? "").toUpperCase() === key)
-	if (row) seen.set((row.id ?? row.name ?? row.address).toUpperCase(), { ...row, bonded: false })
+	markBonded(id, false)
 	return {
 		ok: true,
 		words: "pairing forgotten: the next connection pairs again",

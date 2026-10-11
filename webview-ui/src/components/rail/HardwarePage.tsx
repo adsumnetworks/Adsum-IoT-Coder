@@ -1,4 +1,4 @@
-import { blg20BleUnitRoute, blg20OverBluetooth, confirmedBlg20Units } from "@shared/blg20"
+import { blg20BleUnitRoute, blg20Label, blg20OverBluetooth, confirmedBlg20Units } from "@shared/blg20"
 import type React from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import EnvStrip from "../chat/welcome/EnvStrip"
@@ -7,8 +7,9 @@ import { useEntrySignals } from "../chat/welcome/useEntrySignals"
 import { blg20InstallPrompt, blg20SetUpPrompt, buildIntentPrompt } from "../chat/welcome/welcomeIntents"
 import BleGateways from "./BleGateways"
 import FirmwareRungs from "./FirmwareRungs"
+import type { PromptOptions } from "./openSession"
 import { R } from "./railStyles"
-import { bleSetUpPrompt, unitActions } from "./unitActions"
+import { bleSetUpPrompt, setUpTitle, unitActions, unitGuardKey } from "./unitActions"
 
 interface Props {
 	/** The family to show, when a row asked for one ("Flash the LEW840x demo"); else the desk decides. */
@@ -16,8 +17,12 @@ interface Props {
 	onBack: () => void
 	/** No account yet: the free registration opens the demo rungs. */
 	onRegister: () => void
-	/** Starts a session with a prompt; `send` sends it as the first message, else it fills the box. */
-	onPrompt: (prompt: string, send: boolean) => void
+	/**
+	 * Starts a session with a prompt; `send` sends it as the first message, else it fills the box. A button that
+	 * sends names its tab (`title`), and one about the unit on the desk names the unit, so the host continues in
+	 * the session that already holds it.
+	 */
+	onPrompt: (prompt: string, options: PromptOptions) => void
 	onAsk: (family: "blg20" | "lew840x") => void
 }
 
@@ -60,7 +65,8 @@ const HardwarePage: React.FC<Props> = ({ family: asked, onBack, onPrompt, onAsk,
 			<FirmwareRungs
 				family={family}
 				onAsk={() => onAsk(family === "lew840x" ? "lew840x" : "blg20")}
-				onFlash={(prompt) => onPrompt(prompt, true)}
+				// A flash always gets a session of its own: it names its tab and no unit.
+				onFlash={(prompt, title) => onPrompt(prompt, { send: true, title })}
 				onRegister={onRegister}
 				// Renewal is a request to the team for now: money never moves in the editor, and there is no web
 				// store to send anyone to yet.
@@ -74,12 +80,25 @@ const HardwarePage: React.FC<Props> = ({ family: asked, onBack, onPrompt, onAsk,
 					chips={signals.nrfChips ?? []}
 					demoViaFirmware
 					onAsk={() => onAsk("blg20")}
-					onInstall={(way) => onPrompt(blg20InstallPrompt(way), false)}
-					onSetUp={(board) => onPrompt(bleUnit ? bleSetUpPrompt(bleUnit, platform) : blg20SetUpPrompt(board), true)}
-					onStart={() => onPrompt(buildIntentPrompt("blg20Gateway", scopeName || undefined, "nrf", false), false)}
+					onInstall={(way) => onPrompt(blg20InstallPrompt(way), { send: false })}
+					onSetUp={(board) =>
+						onPrompt(bleUnit ? bleSetUpPrompt(bleUnit, platform) : blg20SetUpPrompt(board), {
+							send: true,
+							title: setUpTitle(unit ? blg20Label(unit) : board),
+							// The door the prompt itself uses: Bluetooth for a unit with no service port, else its cable.
+							unit: unitGuardKey(unit, bleUnit ? "ble" : "usb"),
+						})
+					}
+					onStart={() =>
+						onPrompt(buildIntentPrompt("blg20Gateway", scopeName || undefined, "nrf", false), { send: false })
+					}
 					unitActions={
 						unit
-							? unitActions(unit, platform).map((a) => ({ ...a, onClick: () => onPrompt(a.prompt, true) }))
+							? unitActions(unit, platform).map((a) => ({
+									label: a.label,
+									testId: a.testId,
+									onClick: () => onPrompt(a.prompt, { send: true, title: a.title, unit: a.unit }),
+								}))
 							: undefined
 					}
 				/>

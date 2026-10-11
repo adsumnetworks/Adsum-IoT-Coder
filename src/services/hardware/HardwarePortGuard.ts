@@ -32,7 +32,14 @@ function bleKey(value: string | undefined): string {
 }
 
 const holders = new Map<string, PortHolder>()
+/**
+ * The session that last worked with a port or a unit, kept after it lets go: a Hardware page button for that unit
+ * continues there instead of opening one more tab. Only an open tab counts; the host checks that.
+ */
+const lastUsers = new Map<string, string>()
 let listeners: Array<() => void> = []
+
+const norm = (port: string) => port.replace(/^\/dev\/cu\./, "/dev/tty.").toUpperCase()
 
 const notify = () => {
 	for (const l of listeners) {
@@ -71,6 +78,7 @@ export function claimPorts(ports: readonly string[], holder: PortHolder): PortHo
 			continue
 		}
 		holders.set(p, { ...holder, since: h?.since ?? Date.now() })
+		lastUsers.set(p, holder.taskId)
 	}
 	if (ports.length) {
 		notify()
@@ -93,7 +101,69 @@ export function releaseAll(taskId: string): void {
 }
 
 export function holderOf(port: string): PortHolder | undefined {
-	return holders.get(port.replace(/^\/dev\/cu\./, "/dev/tty.").toUpperCase())
+	return holders.get(norm(port))
+}
+
+/**
+ * A session parked on a question, a plan answer or "done, anything else?" runs nothing on the desk: what it named is
+ * free for the other tabs now, not only when its tab closes (11 Oct 2026, the bench: "Read the logs" was refused for
+ * four minutes by a tab that had answered and was only waiting). A command still running in one of its terminals
+ * keeps the hold; a later command claims again.
+ */
+const PARKED_ASKS = new Set([
+	"followup",
+	"plan_mode_respond",
+	"act_mode_respond",
+	"completion_result",
+	"resume_task",
+	"resume_completed_task",
+])
+
+export function releaseWhenParked(taskId: string, ask: string, busyTerminals: number): boolean {
+	if (!PARKED_ASKS.has(ask) || busyTerminals > 0) {
+		return false
+	}
+	releaseAll(taskId)
+	return true
+}
+
+/** A session was opened for this unit (a Hardware page button): the next button for the unit continues there. */
+export function rememberUnitSession(unit: string, taskId: string): void {
+	if (unit && taskId) {
+		lastUsers.set(norm(unit), taskId)
+	}
+}
+
+/** The session holding the unit now, else the one that last worked with it. */
+export function sessionForUnit(unit: string): string | undefined {
+	const key = norm(unit)
+	return holders.get(key)?.taskId ?? lastUsers.get(key)
+}
+
+/**
+ * How a new request reaches a session that is already open, read from its last message:
+ *  - "answer": it waits on words (a question, a plan, done, resume); the request is its answer.
+ *  - "queue": it is working; the request waits its turn in the session's queue.
+ *  - "approval": it waits on a yes or no for a command or a tool; words there would mean "no", so nothing is sent.
+ */
+export type ContinueRoute = "answer" | "queue" | "approval"
+
+export function continueRoute(
+	last: { type?: string; ask?: string; partial?: boolean } | undefined,
+	streaming: boolean,
+): ContinueRoute {
+	if (!last || last.type !== "ask" || last.partial || streaming || last.ask === "command_output") {
+		return "queue"
+	}
+	return PARKED_ASKS.has(last.ask ?? "") ? "answer" : "approval"
+}
+
+/** The session is waiting on the developer's words and nothing else: no request in flight, no approval pending. */
+export function isParkedOnWords(
+	last: { type?: string; ask?: string; partial?: boolean } | undefined,
+	streaming: boolean,
+): boolean {
+	return !!last && continueRoute(last, streaming) === "answer"
 }
 
 /** Everything held right now, for the rail and the status bar. */
@@ -121,5 +191,6 @@ export function heldElsewhereMessage(others: readonly PortHolder[]): string {
 /** Test seam. */
 export function resetPortGuardForTest(): void {
 	holders.clear()
+	lastUsers.clear()
 	listeners = []
 }
