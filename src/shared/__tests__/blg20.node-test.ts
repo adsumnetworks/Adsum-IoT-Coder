@@ -446,6 +446,12 @@ describe("the Flash route for a unit over Bluetooth", () => {
 		const [u] = blg20UnitsFromBle([ROW])
 		assert.match(blg20BleUnitRoute(u, "f", "darwin") ?? "", /the computer asks to pair: type 776803 \(DEMO firmware/)
 	})
+	test("what the Hardware page read is carried, so the flash session compares versions without a second look", () => {
+		const [u] = blg20UnitsFromBle([ROW])
+		const r = blg20BleUnitRoute({ ...u, paired: true, bleFw: "0.3.7", lteFw: "0.2.9" }, "f", "linux") ?? ""
+		assert.match(r, /; it runs Bluetooth half 0\.3\.7, cellular half 0\.2\.9 as the Hardware page read it$/)
+		assert.doesNotMatch(blg20BleUnitRoute(u, "f", "linux") ?? "", /it runs/)
+	})
 	test("a closed window says what opens it", () => {
 		const [u] = blg20UnitsFromBle([{ ...ROW, window: false }])
 		assert.match(blg20BleUnitRoute(u, "f") ?? "", /hold its button for three seconds first$/)

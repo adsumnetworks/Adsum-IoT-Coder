@@ -415,9 +415,14 @@ export function blg20BleUnitRoute(u: Blg20Unit, folder: string, platform?: strin
 	const name = blg20BleTarget(u)
 	const set = `${folder.replace(/[\\/]+$/, "")}/usb/demo`
 	const pairing = blg20PairingWords(platform, u.bonded, u.bleId)
+	// What the Hardware page read from the unit, so the session compares versions before it writes (a downgrade is
+	// said and asked about) without connecting a second time just to look.
+	const runs = u.bleFw
+		? `; it runs Bluetooth half ${u.bleFw}, cellular half ${u.lteFw ?? "?"} as the Hardware page read it`
+		: ""
 	return (
 		`to ${blg20Label(u)} over Bluetooth with \`blg20-service update-pair --ble ${name} ${set} --json\` ` +
-		`(both halves, the Bluetooth half first)${pairing ? `; ${pairing}` : ""}` +
+		`(both halves, the Bluetooth half first)${pairing ? `; ${pairing}` : ""}${runs}` +
 		`${u.windowOpen === false ? ". Its commissioning window is closed: hold its button for three seconds first" : ""}`
 	)
 }
