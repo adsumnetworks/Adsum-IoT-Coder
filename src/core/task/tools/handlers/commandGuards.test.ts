@@ -1,8 +1,11 @@
 import assert from "node:assert/strict"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import path from "node:path"
 import { describe, test } from "node:test"
 import {
 	checkCommandGuards,
+	receiptBelow,
 	rejectAdsumShellWrite,
 	rejectFirmwareExfil,
 	rejectKillByName,
@@ -218,5 +221,57 @@ describe("licensed firmware is the folder with a receipt, not any folder named f
 			underFirmwareReceipt("firmware/x/a.hex", [], () => false),
 			true,
 		)
+	})
+})
+
+describe("a folder that holds a downloaded version is guarded as a whole; wildcards and quoted paths too", () => {
+	const root = path.resolve("/work/My Project")
+	const receipt = path.join(root, "firmware", "blg20x", "1.1.0", "adsum-firmware.json")
+	const exists = (p: string) => path.resolve(p) === receipt
+	const below = (d: string) => receipt.startsWith(path.resolve(d) + path.sep)
+	const licensed = (p: string) => underFirmwareReceipt(p, [root], exists, below)
+
+	test("the family folder and firmware/ itself hold a version, so they are licensed", () => {
+		assert.equal(licensed("firmware/blg20x"), true)
+		assert.equal(licensed("firmware"), true)
+		assert.equal(licensed("firmware/own"), false)
+	})
+
+	test("a wildcard is judged by the folder it starts from", () => {
+		assert.equal(licensed("firmware/blg20x/*/bm20/*.hex"), true)
+		assert.equal(licensed("firmware/*"), true)
+		assert.equal(licensed("firmware/bl*"), true)
+		assert.equal(licensed("firmware/own/*.hex"), false)
+	})
+
+	test("copying the family folder out is refused; the project's own folder still is not", () => {
+		assert.match(rejectFirmwareExfil("cp -r firmware/blg20x /tmp/out", [root], licensed) as string, /outside the workspace/)
+		assert.match(
+			rejectFirmwareExfil("cp firmware/blg20x/*/bm20/*.hex /tmp/out", [root], licensed) as string,
+			/outside the workspace/,
+		)
+		assert.equal(rejectFirmwareExfil("cp -r firmware/own /tmp/out", [root], licensed), null)
+	})
+
+	test("a quoted absolute path with a space in it is read whole", () => {
+		const abs = path.join(root, "firmware", "blg20x", "1.1.0", "bm20", "merged.hex")
+		assert.match(rejectFirmwareExfil(`cp "${abs}" /tmp/x`, [root], licensed) as string, /outside the workspace/)
+		assert.match(rejectFirmwareExfil(`cat '${abs}'`, [root], licensed) as string, /prints/)
+	})
+
+	test("receiptBelow reads a real folder: a family folder holds one, a project's own folder does not", () => {
+		const ws = mkdtempSync(path.join(tmpdir(), "adsum-guard-"))
+		try {
+			const version = path.join(ws, "firmware", "blg20x", "1.1.0")
+			mkdirSync(path.join(version, "bm20"), { recursive: true })
+			writeFileSync(path.join(version, "adsum-firmware.json"), "{}")
+			mkdirSync(path.join(ws, "firmware", "own"), { recursive: true })
+			assert.equal(receiptBelow(path.join(ws, "firmware", "blg20x")), true)
+			assert.equal(receiptBelow(path.join(ws, "firmware")), true)
+			assert.equal(receiptBelow(path.join(ws, "firmware", "own")), false)
+			assert.equal(receiptBelow(path.join(ws, "firmware", "blg20x", "1.1.0", "bm20", "merged.hex")), false)
+		} finally {
+			rmSync(ws, { recursive: true, force: true })
+		}
 	})
 })

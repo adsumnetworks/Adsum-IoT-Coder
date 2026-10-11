@@ -6,7 +6,7 @@
  * more usefully, tell the model exactly what to do instead.
  */
 
-import { existsSync } from "node:fs"
+import { type Dirent, existsSync, readdirSync } from "node:fs"
 import { homedir } from "node:os"
 import path from "node:path"
 
@@ -156,11 +156,16 @@ const RECEIPT = "adsum-firmware.json"
  * read and copy (11 Oct 2026, the bench: `cat firmware/own/a.hex` was refused). The receipt is looked for from the
  * path's own folder up to the `firmware` folder. A relative path with no workspace root to resolve it against is
  * treated as licensed, the careful answer.
+ *
+ * A folder is licensed as a whole when a downloaded version sits anywhere below it (`firmware/blg20x`, or
+ * `firmware` itself): copying it copies the versions inside. A wildcard names whatever it matches, so it is judged
+ * by the folder it starts from (`firmware/blg20x/*` is the family folder).
  */
 export function underFirmwareReceipt(
 	target: string,
 	workspaceRoots: readonly string[] = [],
 	exists: (p: string) => boolean = existsSync,
+	holdsBelow: (dir: string) => boolean = (d) => receiptBelow(d),
 ): boolean {
 	const t = target.replace(/^~(?=[\\/])/, homedir())
 	const bases =
@@ -169,7 +174,18 @@ export function underFirmwareReceipt(
 		return true
 	}
 	for (const abs of bases) {
-		let dir = abs
+		const wild = abs.search(/[*?[]/)
+		const start =
+			wild >= 0
+				? abs
+						.slice(0, wild)
+						.replace(/[^\\/]*$/, "")
+						.replace(/[\\/]+$/, "")
+				: abs
+		if (holdsBelow(start)) {
+			return true
+		}
+		let dir = start
 		for (let i = 0; i < 12; i++) {
 			if (exists(path.join(dir, RECEIPT))) {
 				return true
@@ -184,6 +200,23 @@ export function underFirmwareReceipt(
 	return false
 }
 
+/** Does this folder hold a downloaded version below it? Bounded: a version sits two levels under `firmware/`. */
+export function receiptBelow(dir: string, depth = 3): boolean {
+	if (depth < 0) {
+		return false
+	}
+	let entries: Dirent[]
+	try {
+		entries = readdirSync(dir, { withFileTypes: true })
+	} catch {
+		return false
+	}
+	if (entries.some((e) => e.isFile() && e.name === RECEIPT)) {
+		return true
+	}
+	return entries.some((e) => e.isDirectory() && receiptBelow(path.join(dir, e.name), depth - 1))
+}
+
 export function rejectFirmwareExfil(
 	command: string,
 	workspaceRoots: readonly string[] = [],
@@ -195,7 +228,10 @@ export function rejectFirmwareExfil(
 	}
 	if (licensed) {
 		// Only the folders with a receipt are licensed; the rest of the rules below are about those.
-		const named = [...c.matchAll(/([^\s"'=]*firmware[/\\][^\s"']+)/gi)].map((m) => m[1])
+		// A quoted path is read whole (a workspace under a folder with a space in its name), then the bare ones.
+		const quoted = [...c.matchAll(/"([^"]*firmware[/\\][^"]*)"|'([^']*firmware[/\\][^']*)'/gi)].map((m) => m[1] ?? m[2])
+		const bare = [...c.matchAll(/([^\s"'=]*firmware[/\\][^\s"']+)/gi)].map((m) => m[1])
+		const named = [...quoted, ...bare]
 		if (named.length && !named.some((p) => licensed(p))) {
 			return null
 		}
