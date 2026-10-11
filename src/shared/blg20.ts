@@ -145,6 +145,22 @@ export interface Blg20Unit {
 	latest?: { version: string; bleFw?: string | null; lteFw?: string | null; newer: boolean; ahead?: boolean; folder?: string }
 	/** The last words the journey had for this unit (the tool's own sentence), shown under its row. */
 	words?: string
+	/**
+	 * [11 Oct 2026] What the unit holds as commissioned, read by the service tool on the same Bluetooth link as the
+	 * passport (the commissioner's own characteristics): absent until the page connects, or on a tool without them.
+	 */
+	commission?: Blg20Commission
+}
+
+/** A unit's commissioning, in the unit's own words: the facts line and its verdict, never a guess of the page. */
+export interface Blg20Commission {
+	commissioned: boolean
+	/** "commissioned · 53.24508, -1.44321 ±14 m · sends over LTE-M · MQTT without TLS to broker.emqx.io" */
+	line: string
+	/** The unit's own verdict, as the commissioner page draws it: go (working), warn (still checking), stop. */
+	verdict?: { state: "go" | "warn" | "stop"; words: string }
+	/** The commissioning window, in words ("open, closes 3:52 after you disconnect"). */
+	window?: string | null
 }
 
 /** The units the service tool saw over Bluetooth, as gateway units. Named by the device itself: confirmed. */

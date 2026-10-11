@@ -31,6 +31,8 @@ interface Props {
 	platform?: string
 	/** The family the firmware check compares against: the unit's own. */
 	onAfter?: () => void
+	/** The commissioning step's action: a session with its first line written (the conversation is the form). */
+	onCommission?: (u: Blg20Unit) => void
 }
 
 /**
@@ -40,7 +42,7 @@ interface Props {
  * halves with the latest release and proposes the upgrade, which the Flash row below carries out. Every outcome is
  * the tool's own sentence under the row, never a verdict of the page.
  */
-const BleGateways: React.FC<Props> = ({ units, scan, platform }) => {
+const BleGateways: React.FC<Props> = ({ units, scan, platform, onCommission }) => {
 	const call = useContext(BleCallContext)
 	const [busy, setBusy] = useState<string | null>(null)
 	const [note, setNote] = useState<Record<string, string>>({})
@@ -64,7 +66,7 @@ const BleGateways: React.FC<Props> = ({ units, scan, platform }) => {
 		<div data-testid="ble-gateways" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
 			<div style={{ ...R.label, display: "flex", alignItems: "center", gap: 6 }}>
 				Gateways in range
-				<Info text="Over Bluetooth, the LBG20x's service port (its USB-C carries power only) and the BLG20x's second one. A unit shows while its commissioning window is open: at power-up, or after its button is held for three seconds. Connect pairs the first time and reads what the unit is; Claim makes this computer's key its owner key; Check firmware compares both halves with the latest release. Nothing here starts a session." />
+				<Info text="Over Bluetooth, the LBG20x's service port (its USB-C carries power only) and the BLG20x's second one. A unit shows while its commissioning window is open: at power-up, or after its button is held for three seconds. Connect pairs the first time and reads what the unit is and how it is commissioned; Claim makes this computer's key its owner key; Check firmware compares both halves with the latest release. Commission opens a session that asks one question at a time." />
 				<span style={{ flex: 1 }} />
 				<button
 					data-testid="ble-scan"
@@ -102,7 +104,7 @@ const BleGateways: React.FC<Props> = ({ units, scan, platform }) => {
 							gap: 4,
 							opacity: u.windowOpen === false ? 0.75 : 1,
 						}}>
-						<label style={{ display: "flex", alignItems: "baseline", gap: 8, cursor: "pointer" }}>
+						<label style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 8, cursor: "pointer" }}>
 							<input
 								aria-label={`Work with ${label}`}
 								checked={i === 0}
@@ -112,12 +114,17 @@ const BleGateways: React.FC<Props> = ({ units, scan, platform }) => {
 								type="radio"
 							/>
 							<span style={R.title}>{label}</span>
-							<span style={{ ...R.meta, whiteSpace: "nowrap" }}>{rowWords(u)}</span>
+							<span style={R.meta}>{rowWords(u)}</span>
 						</label>
 						<ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 3 }}>
 							{steps.map((s) => (
 								<li key={s.id} style={R.meta}>
 									{s.done ? <span>{s.done}</span> : null}
+									{s.info ? (
+										<span style={{ marginLeft: 4 }}>
+											<Info text={s.info} />
+										</span>
+									) : null}
 									{s.blocked && !s.done ? <span>{s.blocked}</span> : null}
 									{s.blocked && s.done ? <span> · {s.blocked}</span> : null}
 									{s.passkeyHint ? <span data-testid="ble-passkey-hint">{s.passkeyHint} · </span> : null}
@@ -186,6 +193,10 @@ const BleGateways: React.FC<Props> = ({ units, scan, platform }) => {
 															setConfirmClaim(id)
 															return
 														}
+														if (s.id === "commission") {
+															onCommission?.(u)
+															return
+														}
 														const req =
 															s.id === "connect"
 																? {
@@ -196,7 +207,7 @@ const BleGateways: React.FC<Props> = ({ units, scan, platform }) => {
 																: { op: "check", target: id, family: u.family ?? "lbg20x" }
 														void run(`${s.id}:${id}`, req)
 													}}
-													style={s.done ? R.pill() : R.pill("pri")}
+													style={s.done && !s.primary ? R.pill() : R.pill("pri")}
 													type="button">
 													{busy === `${s.id}:${id}` ? "working…" : s.action}
 												</button>

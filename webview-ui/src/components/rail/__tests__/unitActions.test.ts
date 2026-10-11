@@ -1,7 +1,16 @@
 import { blg20BleUnitRoute, blg20Label, blg20UnitsFromBle, blg20UnitsFromNrfutil } from "@shared/blg20"
 import { describe, expect, it } from "vitest"
 import { flashPrompt, flashTitle } from "../flashPrompt"
-import { bleSetUpPrompt, setUpTitle, TAB_TITLE_MAX, tabTitle, unitActions, unitGuardKey } from "../unitActions"
+import {
+	bleCommissionPrompt,
+	bleSetUpPrompt,
+	commissionTitle,
+	setUpTitle,
+	TAB_TITLE_MAX,
+	tabTitle,
+	unitActions,
+	unitGuardKey,
+} from "../unitActions"
 
 // As the service tool's scan reported the bench unit, 10 Oct 2026.
 const [lbg] = blg20UnitsFromBle([
@@ -178,5 +187,28 @@ describe("the unit's guard key", () => {
 		const uuid = { ...lbg, name: undefined, bleId: undefined, bleAddress: "6F1C2B0A-93D4-4E57-A1B2-0C3D4E5F6A7B" }
 		expect(unitGuardKey(uuid)).toBeUndefined()
 		for (const a of unitActions(uuid)) expect("unit" in a).toBe(false)
+	})
+})
+
+describe("the commissioning session (11 Oct 2026)", () => {
+	const [ad50] = blg20UnitsFromBle([
+		{ address: "D3:58:8E:7A:AD:50", name: "Adsum LBG20x D3588E7AAD50", rssi: -59, bonded: true, window: true },
+	])
+	it("opens the knowledge bit and reads the unit first, by its four digits", () => {
+		const p = bleCommissionPrompt(ad50, "darwin")
+		expect(p).toContain("LOAD products/fanstel/blg20x/commission-from-the-coder.md")
+		expect(p).toContain("`blg20-service prov status --ble AD50 --json`")
+		expect(p).toContain("one question at a time")
+		expect(p).toContain("fleet register only")
+		expect(commissionTitle(ad50)).toBe("Commission LBG20x AD50")
+	})
+	it("a commissioned unit is changed, not commissioned again: only what the developer names is written", () => {
+		const u = { ...ad50, commission: { commissioned: true, line: "commissioned" } }
+		expect(bleCommissionPrompt(u, "darwin")).toContain("ask me what to change, write only that")
+		expect(commissionTitle(u)).toBe("Change LBG20x AD50")
+	})
+	it("on Linux with no pairing yet it says how the first connection pairs", () => {
+		const u = { ...ad50, bonded: false }
+		expect(bleCommissionPrompt(u, "linux")).toMatch(/passkey/i)
 	})
 })

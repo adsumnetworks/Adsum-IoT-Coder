@@ -4,6 +4,7 @@ import {
 	type BleStepResult,
 	bleCheckFirmware,
 	bleClaim,
+	bleCommission,
 	bleForget,
 	bleStatus,
 	scanBleGateways,
@@ -21,6 +22,7 @@ type BluetoothRequest =
 	| { op: "claim"; target: string; passkey?: string }
 	| { op: "check"; target: string; family: string }
 	| { op: "forget"; target: string }
+	| { op: "commission"; target: string; passkey?: string }
 
 /**
  * [11 Oct 2026] The Hardware page's door to a gateway over Bluetooth, before any session: scan, pick the unit,
@@ -74,6 +76,11 @@ export async function bluetooth(controller: Controller, request: StringRequest):
 				ws = undefined
 			}
 			const r = await bleCheckFirmware(req.target, req.family, ws)
+			await refresh()
+			return reply(r)
+		}
+		if (req.op === "commission") {
+			const r = await bleCommission(req.target, req.passkey)
 			await refresh()
 			return reply(r)
 		}

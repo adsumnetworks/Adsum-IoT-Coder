@@ -290,3 +290,36 @@ export const TwoGatewaysTwoDoors: Story = {
 	},
 }
 export const HardwarePageLbg20OverBluetooth: Story = { args: { page: "hardware", state: { nrfEnvironment: lbg20 } } }
+
+/**
+ * [11 Oct 2026] The Hardware page's fourth step: AD50 as the bench read it (commissioned, the unit still checking its
+ * first send), and a unit not commissioned yet. One action each, in words; the long facts behind (i).
+ */
+const lbg20Commissioned = {
+	...lbg20Ble,
+	paired: true,
+	claimed: true,
+	mine: true,
+	bleFw: "0.3.6",
+	lteFw: "0.2.8",
+	latest: { version: "1.0.0", bleFw: "0.3.6", lteFw: "0.2.8", newer: false },
+	commission: {
+		commissioned: true,
+		line: "commissioned · 53.24508, -1.44321 ±14 m · sends over LTE-M · MQTT without TLS to broker.emqx.io",
+		verdict: { state: "warn", words: "Still checking: a first send can take a few minutes; read the status again." },
+		window: "open, closes 3:52 after you disconnect",
+	},
+}
+const lbg20NotCommissioned = {
+	...lbg20Commissioned,
+	commission: { commissioned: false, line: "not commissioned", window: "open (not commissioned, so it stays open)" },
+}
+export const HardwarePageLbg20Commissioned: Story = {
+	args: { page: "hardware", state: { nrfEnvironment: { ...lbg20, blg20Units: [lbg20Commissioned] } } },
+}
+export const HardwarePageLbg20Commissioned260: Story = {
+	args: { width: 260, page: "hardware", state: { nrfEnvironment: { ...lbg20, blg20Units: [lbg20Commissioned] } } },
+}
+export const HardwarePageLbg20NotCommissioned: Story = {
+	args: { page: "hardware", state: { nrfEnvironment: { ...lbg20, blg20Units: [lbg20NotCommissioned] } } },
+}

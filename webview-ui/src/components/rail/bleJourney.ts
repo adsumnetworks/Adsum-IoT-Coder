@@ -1,4 +1,4 @@
-import { type Blg20Unit, blg20Passkey } from "@shared/blg20"
+import { type Blg20Commission, type Blg20Unit, blg20Passkey } from "@shared/blg20"
 
 /**
  * [11 Oct 2026] The journey the Hardware page runs on a gateway over Bluetooth before any session, as the operator
@@ -6,7 +6,7 @@ import { type Blg20Unit, blg20Passkey } from "@shared/blg20"
  * Pure: one row of steps from the unit's facts, so every state is tested and the component only draws.
  */
 export interface JourneyStep {
-	id: "connect" | "claim" | "firmware"
+	id: "connect" | "claim" | "firmware" | "commission"
 	/** The fact, when the step is done: "paired · Bluetooth half 0.3.6, cellular half 0.2.8". */
 	done?: string
 	/** The action to offer, when the step is next: "Connect", "Claim", "Check firmware". */
@@ -17,6 +17,23 @@ export interface JourneyStep {
 	needsPasskey?: boolean
 	/** macOS and Windows: the computer's dialog asks; these are the demo firmware's digits to type there. */
 	passkeyHint?: string
+	/** The long facts behind the step's (i): the unit's own line, its verdict, its window. */
+	info?: string
+	/** The step's action is the next thing to do although the step has a fact (a unit read and not commissioned). */
+	primary?: boolean
+}
+
+/** The commissioning step's short words: the state and the unit's own verdict, so the line fits a narrow rail. */
+export function commissionWords(c: Blg20Commission): string {
+	if (!c.commissioned) return "not commissioned"
+	const v = c.verdict?.state
+	return v === "go"
+		? "commissioned · working"
+		: v === "stop"
+			? "commissioned · not working yet"
+			: v === "warn"
+				? "commissioned · still checking"
+				: "commissioned"
 }
 
 export function journeySteps(u: Blg20Unit, platform?: string): JourneyStep[] {
@@ -64,6 +81,21 @@ export function journeySteps(u: Blg20Unit, platform?: string): JourneyStep[] {
 		})
 	} else {
 		steps.push({ id: "firmware", action: "Check firmware" })
+	}
+	// [11 Oct 2026] The fourth step: what the unit holds as commissioned, read on the same link as the passport, and one
+	// action that opens a session (the conversation is the form). It needs no claim: the commissioner's characteristics
+	// answer any paired computer.
+	const c = u.commission
+	if (!c) {
+		steps.push({ id: "commission", action: "Commission it" })
+	} else {
+		steps.push({
+			id: "commission",
+			done: commissionWords(c),
+			action: c.commissioned ? "Change…" : "Commission it",
+			...(c.commissioned ? {} : { primary: true }),
+			info: [c.line, c.verdict?.words, c.window ? `Window: ${c.window}.` : ""].filter(Boolean).join(" "),
+		})
 	}
 	return steps
 }

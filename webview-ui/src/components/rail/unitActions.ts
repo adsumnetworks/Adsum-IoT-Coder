@@ -113,6 +113,32 @@ export function unitActions(u: Blg20Unit, platform?: string): UnitAction[] {
 	]
 }
 
+/** The commissioning session's tab: "Commission LBG20x AD50", or "Change LBG20x AD50" once it is commissioned. */
+export const commissionTitle = (u: Blg20Unit): string =>
+	tabTitle(`${u.commission?.commissioned ? "Change" : "Commission"} ${blg20Label(u)}`)
+
+/**
+ * [11 Oct 2026] The Hardware page's fourth step: commission the unit from this computer, over the Bluetooth link the
+ * page already paired. The knowledge bit carries the order, the questions and the words; the prompt only opens it.
+ */
+export function bleCommissionPrompt(u: Blg20Unit, platform?: string): string {
+	const name = blg20Label(u)
+	const d = blg20BleTarget(u)
+	const done = u.commission?.commissioned === true
+	return (
+		(done
+			? `Change how ${name} is commissioned, from this computer over Bluetooth. `
+			: `Commission ${name} from this computer over Bluetooth. `) +
+		"LOAD products/fanstel/blg20x/commission-from-the-coder.md and follow it: read the unit first with " +
+		`\`blg20-service prov status --ble ${d} --json\` and tell me in one sentence what it holds, ` +
+		(done
+			? "then ask me what to change, write only that and read it back, then start the unit again and give me its verdict. "
+			: "then guide me one question at a time (where it is, its name and key, its Wi-Fi if it has the part, the network, the platform), writing each step and reading it back, then start it and give me its verdict. ") +
+		"Use the site profile adsum-site.json when there is one, and keep the key in the fleet register only. " +
+		pairingSentence(platform, u.bonded, u.bleId)
+	).trimEnd()
+}
+
 /** "Set it up" for a unit over Bluetooth: the new-unit journey, on the service port it actually has. */
 export function bleSetUpPrompt(u: Blg20Unit, platform?: string): string {
 	return (

@@ -5,7 +5,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import type { Blg20BleRow } from "@shared/blg20"
-import { foldScan } from "./bleGateways"
+import { commissionFrom, foldScan } from "./bleGateways"
 
 // As the tool printed it on the bench, 10 Oct 2026.
 const AD50: Blg20BleRow = {
@@ -48,4 +48,35 @@ test("a failed scan keeps what was known and says why", () => {
 	assert.equal(rows.length, 1)
 	assert.match(error ?? "", /Bluetooth is off/)
 	assert.match(foldScan(known, null).error ?? "", /no answer/)
+})
+
+// As tool 0.4.0 printed `prov status --json` on the bench, 11 Oct 2026 (unit AD50).
+const AD50_PROV = {
+	ok: true,
+	commissioned: true,
+	line: "commissioned · 53.24508, -1.44321 ±14 m · sends over LTE-M · MQTT without TLS to broker.emqx.io",
+	window: "open, closes 3:52 after you disconnect",
+	health: { verdict: { state: "warn", words: "Still checking: a first send can take a few minutes; read the status again." } },
+}
+
+test("the commissioning facts come from the tool's answer, the unit's verdict with them", () => {
+	assert.deepEqual(commissionFrom(AD50_PROV), {
+		commissioned: true,
+		line: AD50_PROV.line,
+		verdict: { state: "warn", words: AD50_PROV.health.verdict.words },
+		window: AD50_PROV.window,
+	})
+	assert.equal(commissionFrom({ ok: true, passport: {} }), undefined, "a tool without them: no facts, no guess")
+	assert.equal(commissionFrom(null), undefined)
+	const fresh = commissionFrom({
+		commissioned: false,
+		line: "not commissioned",
+		window: null,
+		health: { verdict: { state: "nope" } },
+	})
+	assert.deepEqual(
+		fresh,
+		{ commissioned: false, line: "not commissioned", window: null },
+		"an unknown verdict is dropped, never coloured",
+	)
 })

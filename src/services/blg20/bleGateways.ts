@@ -2,7 +2,7 @@ import { execFile } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { Logger } from "@services/logging/Logger"
-import type { Blg20BleRow, Blg20Unit } from "@shared/blg20"
+import type { Blg20BleRow, Blg20Commission, Blg20Unit } from "@shared/blg20"
 import { HostProvider } from "@/hosts/host-provider"
 import { getAccount, hasGroup } from "@/services/adsum/AccountState"
 import { FirmwareClient, type FirmwareEntry } from "@/services/firmware/FirmwareClient"
@@ -152,6 +152,27 @@ export interface BleFacts {
 	lteFw?: string
 	latest?: Blg20Unit["latest"]
 	words?: string
+	commission?: Blg20Commission
+}
+
+/**
+ * Pure: the commissioning facts from the tool's answer (`status` carries them as `commission`, `prov status` is them),
+ * or undefined when the answer has none (a tool or a firmware without the commissioner's characteristics).
+ * Exported for the tests.
+ */
+export function commissionFrom(answer: unknown): Blg20Commission | undefined {
+	const a = answer as Record<string, unknown> | null
+	if (!a || typeof a.commissioned !== "boolean" || typeof a.line !== "string") return undefined
+	const v = ((a.health as Record<string, unknown> | undefined)?.verdict ?? undefined) as
+		| { state?: unknown; words?: unknown }
+		| undefined
+	const state = v?.state === "go" || v?.state === "warn" || v?.state === "stop" ? v.state : undefined
+	return {
+		commissioned: a.commissioned,
+		line: a.line,
+		...(state ? { verdict: { state, words: typeof v?.words === "string" ? v.words : "" } } : {}),
+		...(typeof a.window === "string" || a.window === null ? { window: a.window as string | null } : {}),
+	}
 }
 
 const facts = new Map<string, BleFacts>()
@@ -285,9 +306,28 @@ export async function bleStatus(target: string, passkey?: string): Promise<BleSt
 		bleFw: typeof p.ble_fw === "string" ? p.ble_fw : undefined,
 		lteFw: typeof p.lte_fw === "string" ? p.lte_fw : undefined,
 		words: undefined,
+		// The same link read the commissioner's characteristics too (tool 0.4.0): the fourth step needs no second run.
+		commission: commissionFrom(run.last.commission),
 	})
 	const owner = f.claimed ? (f.mine ? "claimed by this computer" : "claimed by another computer's key") : "not claimed yet"
 	return { ok: true, words: `paired · Bluetooth half ${f.bleFw ?? "?"}, cellular half ${f.lteFw ?? "?"} · ${owner}`, facts: f }
+}
+
+/** Read what the unit holds as commissioned again (after a session changed it): one run of `prov status`, read-only. */
+export async function bleCommission(target: string, passkey?: string): Promise<BleStepResult> {
+	const id = idOf(target)
+	if (!id) return { ok: false, words: `no gateway named ${target} was seen in the last scan` }
+	const held = heldWords(id)
+	if (held) return { ok: false, words: held }
+	const run = await runTool(["prov", "status", "--ble", id, "--json", "--passkey", passkey || "auto"], 160)
+	const c = run.last && run.last.ok === true ? commissionFrom(run.last) : undefined
+	if (!c) {
+		const words = wordsOf(run)
+		return { ok: false, words, facts: remember(id, { words }) }
+	}
+	markBonded(id, true)
+	const f = remember(id, { paired: true, commission: c, words: undefined })
+	return { ok: true, words: c.verdict ? `${c.line} · ${c.verdict.words}` : c.line, facts: f }
 }
 
 /** The one write: this computer's key becomes the unit's owner key (the tool creates the key when there is none). */

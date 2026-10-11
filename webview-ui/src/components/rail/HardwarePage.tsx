@@ -9,7 +9,7 @@ import BleGateways from "./BleGateways"
 import FirmwareRungs from "./FirmwareRungs"
 import type { PromptOptions } from "./openSession"
 import { R } from "./railStyles"
-import { bleSetUpPrompt, setUpTitle, unitActions, unitGuardKey } from "./unitActions"
+import { bleCommissionPrompt, bleSetUpPrompt, commissionTitle, setUpTitle, unitActions, unitGuardKey } from "./unitActions"
 
 interface Props {
 	/** The family to show, when a row asked for one ("Flash the LEW840x demo"); else the desk decides. */
@@ -57,6 +57,14 @@ const HardwarePage: React.FC<Props> = ({ family: asked, onBack, onPrompt, onAsk,
 			<EnvStrip forceExpanded />
 			{gatewayLadder && (
 				<BleGateways
+					// The fourth step's action: a session about this unit, continued in the one that already holds it.
+					onCommission={(u) =>
+						onPrompt(bleCommissionPrompt(u, platform), {
+							send: true,
+							title: commissionTitle(u),
+							unit: unitGuardKey(u, "ble"),
+						})
+					}
 					platform={platform}
 					scan={nrfEnvironment?.bleScan}
 					units={(nrfEnvironment?.blg20Units ?? []).filter((u) => !!u.bleAddress)}
