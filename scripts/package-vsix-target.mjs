@@ -12,7 +12,7 @@
  * Run `npm run package` first (as `npm run vsix` does), or pass --build to do it here.
  */
 import { execFileSync } from "node:child_process"
-import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -32,6 +32,8 @@ if (args.includes("--build")) {
 	sh("npm", ["run", "package"])
 }
 const ignore = path.join(ROOT, ".cache", `vscodeignore-${target}`)
+// .cache is not in a fresh clone (11 Oct 2026: the release dry run failed here after a clean checkout).
+mkdirSync(path.dirname(ignore), { recursive: true })
 const base = readFileSync(path.join(ROOT, ".vscodeignore"), "utf8")
 writeFileSync(
 	ignore,

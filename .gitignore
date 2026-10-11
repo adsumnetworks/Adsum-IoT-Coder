@@ -106,3 +106,5 @@ __pycache__/
 # artifact, staged into a platform VSIX by scripts/package-vsix-target.mjs.
 runtimes/
 .cache/python-runtime/
+# the platform packager's generated ignore files (scripts/package-vsix-target.mjs)
+.cache/vscodeignore-*
