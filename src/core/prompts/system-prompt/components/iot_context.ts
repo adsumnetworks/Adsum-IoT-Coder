@@ -694,6 +694,14 @@ export function blg20Evidence(u: Blg20Unit): string {
 				u.latest.newer ? `a newer release v${u.latest.version} is listed` : `the latest release is v${u.latest.version}`,
 			)
 		}
+		// [11 Oct 2026] What the unit holds as commissioned, read on the same link: the agent starts from it, never asks.
+		if (u.commission) {
+			facts.push(
+				u.commission.commissioned
+					? `${u.commission.line}${u.commission.verdict ? ` (the unit says: ${u.commission.verdict.words})` : ""}`
+					: "not commissioned",
+			)
+		}
 		if (facts.length) parts.push(`from the Hardware page: ${facts.join(", ")}`)
 	}
 	if (u.bleProbe && u.lteProbe) {
@@ -724,7 +732,10 @@ export const bluetoothGatewayWords = (platform: string = process.platform): stri
 	"unit's facts below say paired or claimed by this computer, take that as done and go on. " +
 	"If the tool says the computer kept a " +
 	"pairing from before the unit was wiped, the developer forgets the unit in the computer's Bluetooth settings and " +
-	"runs again. A claim over Bluetooth needs the window open. Never install Python packages for this tool: the " +
+	"runs again. A claim over Bluetooth needs the window open. To commission the unit (its position, name and key, " +
+	"Wi-Fi, network, platform, start and check) or change any of it, do it from this computer: load " +
+	"`products/fanstel/blg20x/commission-from-the-coder.md` (`blg20-service prov ... --ble <its four digits> --json`, " +
+	"or `commission --site adsum-site.json`); the browser page is for an installer with a phone. Never install Python packages for this tool: the " +
 	"extension runs it on its own Python. The tool refuses an image built for the other gateway family, and a unit " +
 	"below the release's floor takes the factory pair over the probes. Read the last line of the output: it is the " +
 	"result, one JSON object. |\n"

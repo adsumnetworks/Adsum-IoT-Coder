@@ -84,4 +84,25 @@ describe("iot_context — a gateway over Bluetooth", () => {
 		)
 		expect(blg20Evidence(u)).not.to.contain("from the Hardware page")
 	})
+
+	it("what the unit holds as commissioned is said with the unit's own verdict (11 Oct 2026)", () => {
+		const [u] = blg20UnitsFromBle([ROW])
+		const line = "commissioned · 53.24508, -1.44321 ±14 m · sends over LTE-M · MQTT without TLS to broker.emqx.io"
+		const e = blg20Evidence({
+			...u,
+			paired: true,
+			commission: { commissioned: true, line, verdict: { state: "warn", words: "Still checking." } },
+		})
+		expect(e).to.contain(`from the Hardware page: paired with this computer, ${line} (the unit says: Still checking.)`)
+		expect(blg20Evidence({ ...u, paired: true, commission: { commissioned: false, line: "not commissioned" } })).to.contain(
+			"paired with this computer, not commissioned",
+		)
+	})
+
+	it("commissioning is done from this computer, with the bit and the verbs named", () => {
+		const w = bluetoothGatewayWords("darwin")
+		expect(w).to.contain("products/fanstel/blg20x/commission-from-the-coder.md")
+		expect(w).to.contain("`blg20-service prov ... --ble <its four digits> --json`")
+		expect(w).to.contain("the browser page is for an installer with a phone")
+	})
 })
