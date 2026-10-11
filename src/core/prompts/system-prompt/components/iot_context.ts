@@ -26,6 +26,7 @@ import {
 	blg20BleWords,
 	blg20Label,
 	blg20OverBluetooth,
+	blg20Passkey,
 	blg20ProbeSerials,
 	confirmedBlg20Units,
 	familyWord,
@@ -679,6 +680,11 @@ export function blg20Evidence(u: Blg20Unit): string {
 				`\`blg20-service <verb> --ble ${blg20BleTarget(u)} --json\``,
 		)
 		// [11 Oct 2026] What the Hardware page's journey established, so the agent never pairs or claims twice.
+		if (!u.paired && u.bleId && process.platform !== "linux") {
+			// The demo firmware's digits for the computer's dialog, derived as the label printer derives them.
+			const digits = blg20Passkey(u.bleId)
+			if (digits) parts.push(`pairing digits ${digits} (DEMO firmware)`)
+		}
 		const facts: string[] = []
 		if (u.paired) facts.push("paired with this computer")
 		if (u.claimed) facts.push(u.mine ? "claimed by this computer's key" : "claimed by another computer's key")
@@ -708,10 +714,12 @@ export const bluetoothGatewayWords = (platform: string = process.platform): stri
 	"connectable only inside its commissioning window: at power-up, or after its button is held for three seconds (an " +
 	"uncommissioned unit keeps it open); if it is not found, say that. The first run from a computer pairs: " +
 	(platform === "linux"
-		? "add `--passkey <the six digits from the unit's label>` to that command (Linux pairs through the tool; " +
+		? "add `--passkey auto` to that command (Linux pairs through the tool; the demo firmware's digits are derived " +
+			"from the unit's address; a labelled production unit takes `--passkey <its six digits>`; " +
 			"`list --ble --json` says with `bonded` whether this computer is paired with the unit already, and the tool " +
 			"refuses at once, naming --passkey, when it is not). "
-		: "tell the developer to type the six digits from the unit's label when the computer asks. ") +
+		: "tell the developer to type the six digits when the computer asks: the unit's evidence line names them for " +
+			"the DEMO firmware (derived from its address); a labelled production unit's are on its label. ") +
 	"The Hardware page may have done the first steps already (Scan, Connect which pairs, Claim, Check firmware): when the " +
 	"unit's facts below say paired or claimed by this computer, take that as done and go on. " +
 	"If the tool says the computer kept a " +

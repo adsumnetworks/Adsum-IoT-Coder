@@ -120,6 +120,7 @@ const BleGateways: React.FC<Props> = ({ units, scan, platform }) => {
 									{s.done ? <span>{s.done}</span> : null}
 									{s.blocked && !s.done ? <span>{s.blocked}</span> : null}
 									{s.blocked && s.done ? <span> · {s.blocked}</span> : null}
+									{s.passkeyHint ? <span data-testid="ble-passkey-hint">{s.passkeyHint} · </span> : null}
 									{s.action && !s.blocked ? (
 										<span
 											style={{

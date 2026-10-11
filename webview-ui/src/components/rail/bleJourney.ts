@@ -1,4 +1,4 @@
-import type { Blg20Unit } from "@shared/blg20"
+import { type Blg20Unit, blg20Passkey } from "@shared/blg20"
 
 /**
  * [11 Oct 2026] The journey the Hardware page runs on a gateway over Bluetooth before any session, as the operator
@@ -13,8 +13,10 @@ export interface JourneyStep {
 	action?: string
 	/** A step that cannot run yet says why in a few words. */
 	blocked?: string
-	/** Linux only: the first connection takes the six digits on the unit's label. */
+	/** Linux only: the first connection takes the six digits; the demo firmware's are derived, so the host fills them. */
 	needsPasskey?: boolean
+	/** macOS and Windows: the computer's dialog asks; these are the demo firmware's digits to type there. */
+	passkeyHint?: string
 }
 
 export function journeySteps(u: Blg20Unit, platform?: string): JourneyStep[] {
@@ -24,8 +26,16 @@ export function journeySteps(u: Blg20Unit, platform?: string): JourneyStep[] {
 		steps.push({ id: "connect", done: `paired · Bluetooth half ${u.bleFw ?? "?"}, cellular half ${u.lteFw ?? "?"}` })
 	} else if (u.windowOpen === false) {
 		steps.push({ id: "connect", action: "Connect", blocked: "window closed: hold its button for three seconds, then scan" })
+	} else if (platform === "linux") {
+		steps.push({ id: "connect", action: "Connect", needsPasskey: false })
 	} else {
-		steps.push({ id: "connect", action: "Connect", needsPasskey: platform === "linux" && u.bonded !== true })
+		const digits = u.bleId ? blg20Passkey(u.bleId) : undefined
+		steps.push({
+			id: "connect",
+			action: "Connect",
+			needsPasskey: false,
+			...(digits && u.bonded !== true ? { passkeyHint: `the computer asks to pair: type ${digits} (DEMO firmware)` } : {}),
+		})
 	}
 	if (!paired) {
 		return steps

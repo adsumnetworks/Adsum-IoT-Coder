@@ -271,7 +271,7 @@ export async function bleStatus(target: string, passkey?: string): Promise<BleSt
 	if (!id) return { ok: false, words: `no gateway named ${target} was seen in the last scan` }
 	const held = heldWords(id)
 	if (held) return { ok: false, words: held }
-	const run = await runTool(["status", "--ble", id, "--json", ...(passkey ? ["--passkey", passkey] : [])], 160)
+	const run = await runTool(["status", "--ble", id, "--json", "--passkey", passkey || "auto"], 160)
 	if (!run.last || run.last.ok !== true) {
 		const words = wordsOf(run)
 		return { ok: false, words, facts: remember(id, { words }) }
@@ -295,7 +295,7 @@ export async function bleClaim(target: string, passkey?: string): Promise<BleSte
 	if (!id) return { ok: false, words: `no gateway named ${target} was seen in the last scan` }
 	const held = heldWords(id)
 	if (held) return { ok: false, words: held }
-	const run = await runTool(["claim", "--ble", id, "--json", ...(passkey ? ["--passkey", passkey] : [])], 160)
+	const run = await runTool(["claim", "--ble", id, "--json", "--passkey", passkey || "auto"], 160)
 	if (!run.last) {
 		const words = wordsOf(run)
 		return { ok: false, words, facts: remember(id, { words }) }

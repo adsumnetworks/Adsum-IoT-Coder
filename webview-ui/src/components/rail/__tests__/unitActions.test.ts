@@ -19,7 +19,7 @@ describe("the unit's own actions (10 Oct 2026)", () => {
 		expect(claim.prompt).toContain("`blg20-service claim --ble AD50 --json`")
 		expect(claim.prompt).toContain("commissioning window open")
 		expect(logs.prompt).toContain("--chip lte --ble AD50 --json")
-		for (const a of [what, claim, logs]) expect(a.prompt).toContain("six digits on the unit's label")
+		for (const a of [what, claim, logs]) expect(a.prompt).toContain("type 776803")
 	})
 	it("on Linux (the bench over Remote SSH) the bond decides: paired says nothing, not yet paired says --passkey as a fact", () => {
 		for (const a of unitActions(lbg, "linux")) {
@@ -31,9 +31,10 @@ describe("the unit's own actions (10 Oct 2026)", () => {
 			{ address: "D3:58:8E:7A:AD:50", name: "Adsum LBG20x D3588E7AAD50", rssi: -64, bonded: false, window: true },
 		])
 		for (const a of unitActions(fresh, "linux")) {
-			expect(a.prompt).toContain(
-				"This computer has no pairing with the unit yet: add `--passkey <the six digits on the unit's label>` to the command (Linux pairs through the tool).",
-			)
+			expect(a.prompt).toContain("This computer has no pairing with the unit yet: add `--passkey auto` to the command")
+		}
+		for (const a of unitActions(fresh, "darwin")) {
+			expect(a.prompt).toContain("type 776803")
 		}
 		expect(bleSetUpPrompt(fresh, "linux")).toContain("--passkey")
 		expect(bleSetUpPrompt(lbg, "linux")).not.toContain("passkey")

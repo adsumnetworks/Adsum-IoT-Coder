@@ -53,7 +53,7 @@ describe("iot_context — a gateway over Bluetooth", () => {
 		for (const words of [
 			"`--ble <its four digits>`",
 			"held for three seconds",
-			"six digits from the unit's label",
+			"six digits when the computer asks",
 			"forgets the unit in the computer's Bluetooth settings",
 			"Never install Python packages for this tool",
 			"one JSON object",
@@ -64,7 +64,7 @@ describe("iot_context — a gateway over Bluetooth", () => {
 
 	it("on Linux (the bench over Remote SSH) the pairing rule is the tool's --passkey, not a system dialog", () => {
 		const w = bluetoothGatewayWords("linux")
-		expect(w).to.contain("add `--passkey <the six digits from the unit's label>` to that command")
+		expect(w).to.contain("add `--passkey auto` to that command")
 		expect(w).not.to.contain("when the computer asks")
 	})
 

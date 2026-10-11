@@ -6,10 +6,11 @@ const ROW = { address: "D3:58:8E:7A:AD:50", name: "Adsum LBG20x D3588E7AAD50", r
 const [fresh] = blg20UnitsFromBle([ROW])
 
 describe("the Bluetooth journey on the Hardware page (11 Oct 2026)", () => {
-	it("a unit never connected offers Connect first, with the passkey on Linux only", () => {
-		expect(journeySteps(fresh, "darwin")).toEqual([{ id: "connect", action: "Connect", needsPasskey: false }])
-		expect(journeySteps(fresh, "linux")[0].needsPasskey).toBe(true)
-		expect(journeySteps({ ...fresh, bonded: true }, "linux")[0].needsPasskey).toBe(false)
+	it("a unit never connected offers Connect first: Linux fills the demo digits itself, the Mac shows them for its dialog", () => {
+		expect(journeySteps(fresh, "linux")).toEqual([{ id: "connect", action: "Connect", needsPasskey: false }])
+		const mac = journeySteps(fresh, "darwin")[0]
+		expect(mac.passkeyHint).toBe("the computer asks to pair: type 776803 (DEMO firmware)")
+		expect(journeySteps({ ...fresh, bonded: true }, "darwin")[0].passkeyHint).toBeUndefined()
 	})
 	it("a closed window blocks the connection and says what opens it", () => {
 		const s = journeySteps({ ...fresh, windowOpen: false }, "darwin")

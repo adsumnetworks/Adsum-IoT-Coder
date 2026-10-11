@@ -12,6 +12,7 @@ import {
 	blg20LongLabel,
 	blg20NameFromProduct,
 	blg20OverBluetooth,
+	blg20Passkey,
 	blg20ProbeSerials,
 	blg20UnitsFromBle,
 	blg20UnitsFromNrfutil,
@@ -421,19 +422,29 @@ describe("the Flash route for a unit over Bluetooth", () => {
 			r,
 			/^to LBG20x AD50 over Bluetooth with `blg20-service update-pair --ble AD50 firmware\/lbg20x\/1\.0\.0\/usb\/demo --json`/,
 		)
-		assert.match(r, /six digits on the unit's label$/)
+		assert.match(
+			r,
+			/type 776803 \(DEMO firmware: its digits are derived from its address; a labelled unit takes the label's\)$/,
+		)
 	})
-	test("on Linux the pairing is the tool's --passkey, not a system dialog, and the bond decides the words", () => {
+	test("on Linux the pairing is the tool's --passkey auto, not a system dialog, and the bond decides the words", () => {
 		const [paired] = blg20UnitsFromBle([ROW])
 		assert.match(blg20BleUnitRoute(paired, "f", "linux") ?? "", /the Bluetooth half first\)$/)
 		const [fresh] = blg20UnitsFromBle([{ ...ROW, bonded: false }])
 		assert.match(
 			blg20BleUnitRoute(fresh, "f", "linux") ?? "",
-			/; this computer has no pairing with the unit yet: add `--passkey <the six digits on the unit's label>` to the command \(Linux pairs through the tool\)$/,
+			/; this computer has no pairing with the unit yet: add `--passkey auto` to the command \(Linux pairs through the tool;/,
 		)
 		const [unknown] = blg20UnitsFromBle([{ ...ROW, bonded: null }])
-		assert.match(blg20BleUnitRoute(unknown, "f", "linux") ?? "", /; the first time, add `--passkey/)
+		assert.match(blg20BleUnitRoute(unknown, "f", "linux") ?? "", /; the first time, add `--passkey auto`/)
 		for (const u of [paired, fresh, unknown]) assert.doesNotMatch(blg20BleUnitRoute(u, "f", "linux") ?? "", /computer asks/)
+	})
+	test("the demo firmware's digits are derived as the firmware derives them: AD50 is 776803, and the Mac's words say so", () => {
+		assert.equal(blg20Passkey("D3588E7AAD50"), "776803")
+		assert.equal(blg20Passkey("d3:58:8e:7a:ad:50"), "776803")
+		assert.equal(blg20Passkey("AD50"), undefined)
+		const [u] = blg20UnitsFromBle([ROW])
+		assert.match(blg20BleUnitRoute(u, "f", "darwin") ?? "", /the computer asks to pair: type 776803 \(DEMO firmware/)
 	})
 	test("a closed window says what opens it", () => {
 		const [u] = blg20UnitsFromBle([{ ...ROW, window: false }])
