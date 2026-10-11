@@ -43,32 +43,31 @@ export interface CardAction {
 export type PatchNote = { silent: true } | { note: string }
 
 export const RELEASE_NOTES = {
-	version: "0.4.6",
+	version: "0.5.2",
 
 	/** Hotfixes on top of `version`. `{ silent: true }` means "nothing to announce", and no toast fires. */
-	// 0.5.0 is a CANDIDATE on main (10 Oct 2026): 0.4.6 plus Omar's 0.4.5 bench line. Silent until its own
-	// notes are written, so nobody is toasted with 0.4.6's story under a 0.5 number.
-	// 0.5.1 (10 Oct 2026): the firmware lane end to end, on top of the 0.5.0 candidate; silent for the same reason.
-	patches: { "0.5.0": { silent: true }, "0.5.1": { silent: true } } as Record<string, PatchNote>,
+	// 0.5.0 and 0.5.1 were tagged on 10 Oct 2026 and never published; 0.5.2 is the first 0.5 release users receive,
+	// so these notes tell the whole 0.5 story: sessions, the firmware lane, gateways over Bluetooth.
+	patches: {} as Record<string, PatchNote>,
 
 	/** One line, plain words. The update toast is built from it. */
 	headline:
-		"the BLG20x from its own USB port: plug it in, claim it, update it · Wi-Fi on BLG20x units that have it · your debug sessions left alone",
+		"sessions open as editor tabs, side by side · firmware downloads into your workspace · gateways over Bluetooth: pair, update, commission",
 
 	/** The panel card. Three lines, each a thing then what to do with it. */
 	card: {
 		lines: [
 			{
-				head: "BLG20x",
-				body: "plug the gateway into your computer and ask what it is. IoT Coder reads its ID card, claims it when you say so, offers the latest demo release and walks you to commissioning.",
+				head: "Sessions",
+				body: "a session is an editor tab and the sidebar is the rail. Open several side by side; a port or a probe one session is using is named to the others instead of taken.",
 			},
 			{
-				head: "Wi-Fi",
-				body: "a BLG20x with the Wi-Fi module sends over Wi-Fi first and falls back to cellular by itself. Give it the network on the commissioning page.",
+				head: "Firmware",
+				body: "a licensed demo image downloads into your workspace with its licence and a receipt. The agent flashes from that folder and says what it flashes, for whom and from where.",
 			},
 			{
-				head: "Debug",
-				body: "IoT Coder no longer ends a debugger by name, so your other sessions keep running. When a probe or a port is busy, it says which program holds it.",
+				head: "Bluetooth",
+				body: "find a BLG20x or LBG20x in range on the Hardware page, pair, claim and update it. Then commission it from a session: each step is written to the unit and read back.",
 			},
 		] as readonly ReleaseLine[],
 		/** Optional: the one click this release earns. Hidden when it no longer applies (already registered). */
@@ -107,7 +106,7 @@ export const RELEASE_NOTES = {
 			{
 				family: "Products",
 				sdk: "both chips, one workspace",
-				chips: ["Fanstel LEW840X", "Fanstel BWG840X", "Fanstel BLG20x"],
+				chips: ["Fanstel LEW840X", "Fanstel BWG840X", "Fanstel BLG20x", "Fanstel LBG20x"],
 				protocols: ["BLE", "Ethernet", "Wi-Fi", "cellular", "NB-NTN"],
 			},
 		] as readonly RunsOnRow[],

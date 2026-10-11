@@ -5,6 +5,27 @@ All notable changes to the **Adsum IoT Coder** extension are documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-10-11
+
+Gateways over Bluetooth, and the first public release of 0.5 (sessions first and the firmware lane, below).
+
+- The Hardware page finds a BLG20x or LBG20x gateway in Bluetooth range before any session. Scan lists the units
+  whose commissioning window is open; Connect pairs the first time (the computer's own dialog, or the six digits on
+  Linux, which a demo unit's label carries) and reads both halves' versions and whose key owns the unit; Claim makes
+  this computer its owner; Check compares its firmware with the latest release.
+- An update goes over Bluetooth too: both halves, the Bluetooth half first, and the unit keeps its settings. The
+  Flash route says which way it takes and names a downgrade before it writes anything.
+- The fourth step, Commission. Connect also reads what the unit holds as commissioned, in the unit's own words,
+  and one action opens a session that commissions it from this computer: where it is, its name and key, its Wi-Fi,
+  the mobile network, the platform and its sensors, each written and read back, then started and checked. A site
+  profile answers the same questions for the next unit; the device key is shown once and kept in the fleet
+  register beside your work.
+- The extension carries its own Python for its tools on every platform, so nothing needs installing to reach a
+  gateway over Bluetooth.
+- A session that reports done frees the ports, probes and units it named, and the hardware guards name the session
+  holding a unit. A downloaded firmware folder is licensed as a whole, and its download token travels in a header
+  only.
+
 ## [0.5.1] - 2026-10-10
 
 The firmware lane, end to end.
