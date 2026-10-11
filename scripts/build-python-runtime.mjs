@@ -136,7 +136,9 @@ function trim(pyRoot, libDir) {
 	for (const t of TRIM) rmAll(path.join(libDir, t))
 	for (const d of ["include", "share"]) rmAll(path.join(pyRoot, d))
 	const lib = path.join(pyRoot, "lib")
-	if (existsSync(lib)) {
+	// Windows keeps its standard library in python/Lib, and on a case-insensitive disk "lib" IS that folder:
+	// the Tcl/Tk sweep below then deleted threading.py. Only sweep where lib holds shared libraries.
+	if (existsSync(lib) && path.dirname(libDir) !== pyRoot) {
 		for (const n of readdirSync(lib)) {
 			if (/^(libtcl|libtk|tcl|tk|itcl|thread|pkgconfig)/.test(n)) rmAll(path.join(lib, n))
 		}
