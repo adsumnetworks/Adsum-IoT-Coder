@@ -38,6 +38,7 @@ import type { ToolValidator } from "../ToolValidator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
+import { underFirmwareReceipt } from "./commandGuards"
 import { type CommandOutputFoldOptions, foldCommandOutputText } from "./commandOutputFold"
 import { creditBitOnce, serveNearMissBit } from "./kbitCredit"
 import { formatRangeHeader, sliceLineRange } from "./readFileRange"
@@ -122,8 +123,10 @@ export class ReadFileToolHandler implements IFullyManagedTool {
 		// there is no reason to, and a transcript is a durable copy. Source rungs stay readable; that is
 		// what a source licence is for.
 		if (
-			/[/\\]firmware[/\\].*\.(hex|bin|zip|elf)$/i.test(absolutePath) ||
-			/firmware[/\\].*\.signed\.(hex|bin)$/i.test(absolutePath)
+			(/[/\\]firmware[/\\].*\.(hex|bin|zip|elf)$/i.test(absolutePath) ||
+				/firmware[/\\].*\.signed\.(hex|bin)$/i.test(absolutePath)) &&
+			// Licensed means downloaded by the Hardware page, with its receipt: a project's own firmware/ folder is not.
+			underFirmwareReceipt(absolutePath)
 		) {
 			return formatResponse.toolError(
 				`${displayPath} is a licensed firmware image. It is flashed from its path with the device tools, not read; ` +

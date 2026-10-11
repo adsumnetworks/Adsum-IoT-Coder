@@ -190,7 +190,11 @@ export async function executeInNordicTerminal(request: ExecuteInNordicTerminalRe
 
 		// Show the terminal and execute the command
 		terminal.show()
-		terminal.sendText(request.command, true)
+		// A leading space, because the first byte typed into this terminal is sometimes lost (11 Oct 2026, the
+		// bench, twice in five minutes: `"/home/…/nrfutil" device list` arrived without its opening quote and the
+		// shell sat at a continuation prompt for three minutes). The cause is not known. A shell ignores a
+		// leading space, so when a byte is lost it is this one and the command still runs whole.
+		terminal.sendText(` ${request.command}`, true)
 
 		return {
 			success: true,

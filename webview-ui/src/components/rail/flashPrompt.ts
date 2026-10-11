@@ -1,3 +1,5 @@
+import { TAB_TITLE_MAX, tabTitle } from "./unitActions"
+
 /**
  * [0.5 the firmware lane] The prompt the Flash button sends: what to flash, for whom, from where, and the
  * ways onto the unit that THIS folder makes possible, read from its own files rather than assumed from the
@@ -30,6 +32,17 @@ const LEW840X_FLASH_BIT = "products/fanstel/lew840x/gateway-flash.md"
 
 const has = (files: readonly string[], re: RegExp) => files.some((f) => re.test(f))
 const list = (paths: readonly string[], at: (p: string) => string, joiner = ", ") => paths.map((p) => `\`${at(p)}\``).join(joiner)
+
+/**
+ * The tab title of a flash session: "Flash LBG20x demo pair v1.0.0". A long product name gives way before the
+ * version does: the version is what tells two flash tabs apart.
+ */
+export function flashTitle(i: Pick<FlashPromptInput, "title" | "version">): string {
+	const version = ` v${i.version}`
+	const room = Math.max(TAB_TITLE_MAX - "Flash ".length - version.length, 1)
+	const name = i.title.length > room ? `${i.title.slice(0, room - 1).trimEnd()}…` : i.title
+	return tabTitle(`Flash ${name}${version}`)
+}
 
 export function flashPrompt(i: FlashPromptInput): string {
 	const f = i.files
@@ -100,6 +113,9 @@ export function flashPrompt(i: FlashPromptInput): string {
 		` Read ${at("adsum-firmware.json")} for the files and their hashes, and say the flash line first.` +
 		how +
 		term +
+		// 11 Oct 2026, the bench: a unit on a newer build was taken down two versions without a word, and the
+		// summary named the wrong ones. The button names a folder; it does not say the developer wants older.
+		" Before you write anything, read what the unit runs now and say it beside this version: if this is older than what it runs, say plainly that it is a downgrade and ask me first." +
 		" Ask me which way, and which probe or port is which, before you program anything."
 	)
 }

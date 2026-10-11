@@ -108,7 +108,13 @@ export function applyMemoryWrite(cwd: string | undefined, w: WriteAccepted, nowI
 				"attempt_completion so the developer gets the 'Open project folder' button. Do not work around " +
 				"this with absolute paths, do not write the memory elsewhere, and do not carry on as though it " +
 				"succeeded. Observed 2026-08-20: an agent hit this twice, called it 'a host-side binding detail, " +
-				"not a blocker', kept going, and the whole session's findings were discarded.",
+				"not a blocker', kept going, and the whole session's findings were discarded.\n\n" +
+				// 11 Oct 2026, the bench: five gateway sessions in an empty test folder hit this; one re-typed two
+				// logs into files to make the write pass. There the rule above has nothing to protect.
+				"The one case where this is not a blocker: the session built or scaffolded NOTHING in this folder " +
+				"(a gateway read over its service port, a question, a one-off check on the desk). Then there is no " +
+				"project to remember: do not retry this write, do not reshape it to make it pass, say nothing of " +
+				"it, and carry on with what was asked.",
 		)
 	}
 	switch (w.target) {

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import path from "node:path"
 import { describe, test } from "node:test"
 import {
 	checkCommandGuards,
@@ -6,6 +7,7 @@ import {
 	rejectFirmwareExfil,
 	rejectKillByName,
 	rejectRawNrfToolCommand,
+	underFirmwareReceipt,
 } from "./commandGuards"
 
 /**
@@ -178,6 +180,43 @@ describe("rejectFirmwareExfil — licensed firmware stays where it was downloade
 		assert.match(
 			checkCommandGuards("cat firmware/blg20x/2.3.0/nrf9151/zephyr.signed.hex") as string,
 			/licensed firmware image/,
+		)
+	})
+})
+
+describe("licensed firmware is the folder with a receipt, not any folder named firmware", () => {
+	const root = path.resolve("/work/project")
+	const receipt = path.join(root, "firmware", "blg20x", "1.1.0", "adsum-firmware.json")
+	const exists = (p: string) => path.resolve(p) === receipt
+	const licensed = (p: string) => underFirmwareReceipt(p, [root], exists)
+
+	test("a file in a downloaded version, at any depth, is licensed", () => {
+		assert.equal(licensed("firmware/blg20x/1.1.0/bm20/merged.hex"), true)
+		assert.equal(licensed("firmware/blg20x/1.1.0/usb/demo/ble.signed.bin"), true)
+		assert.equal(licensed(path.join(root, "firmware", "blg20x", "1.1.0", "nrf9151", "merged.hex")), true)
+		assert.equal(licensed("firmware/blg20x/1.1.0"), true)
+	})
+	test("a project's own firmware folder is not (the bench, 11 Oct 2026: cat firmware/own/a.hex)", () => {
+		assert.equal(licensed("firmware/own/a.hex"), false)
+		assert.equal(licensed("firmware/blg20x/9.9.9/bm20/merged.hex"), false)
+		assert.equal(rejectFirmwareExfil("cat firmware/own/a.hex", [root], licensed), null)
+		assert.equal(rejectFirmwareExfil("cp -r firmware/own /tmp/", [root], licensed), null)
+	})
+	test("the downloaded folder is still guarded when the command names both", () => {
+		assert.match(rejectFirmwareExfil("cat firmware/blg20x/1.1.0/bm20/merged.hex", [root], licensed) as string, /prints/)
+		assert.match(
+			rejectFirmwareExfil("cat firmware/own/a.hex firmware/blg20x/1.1.0/bm20/merged.hex", [root], licensed) as string,
+			/prints/,
+		)
+		assert.match(
+			rejectFirmwareExfil("cp -r firmware/blg20x/1.1.0 /tmp/", [root], licensed) as string,
+			/outside the workspace/,
+		)
+	})
+	test("a relative path with no workspace root to resolve it is treated as licensed", () => {
+		assert.equal(
+			underFirmwareReceipt("firmware/x/a.hex", [], () => false),
+			true,
 		)
 	})
 })

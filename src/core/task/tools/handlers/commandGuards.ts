@@ -6,6 +6,10 @@
  * more usefully, tell the model exactly what to do instead.
  */
 
+import { existsSync } from "node:fs"
+import { homedir } from "node:os"
+import path from "node:path"
+
 /** Result of a guard check: `null` means allowed. */
 export type CommandRejection = string | null
 
@@ -143,10 +147,58 @@ const EXFIL =
 	/(^|[\s;&|])(scp|rsync|curl|wget|sftp|ftp|nc|ncat|aws|gsutil|az|rclone|Invoke-WebRequest|iwr|Invoke-RestMethod|Send-MailMessage)\b/i
 const COPY = /(^|[\s;&|])(cp|mv|copy|xcopy|robocopy|Copy-Item|Move-Item|tar|zip|7z)\b/i
 
-export function rejectFirmwareExfil(command: string, workspaceRoots: readonly string[] = []): CommandRejection {
+/** The receipt the Hardware page writes beside a downloaded version (FirmwareStore.RECEIPT_FILE). */
+const RECEIPT = "adsum-firmware.json"
+
+/**
+ * Is this path inside a firmware folder the Hardware page downloaded? Licensed firmware is the folder that holds a
+ * receipt, not any folder that happens to be called `firmware`: a customer's own `firmware/` tree is theirs to
+ * read and copy (11 Oct 2026, the bench: `cat firmware/own/a.hex` was refused). The receipt is looked for from the
+ * path's own folder up to the `firmware` folder. A relative path with no workspace root to resolve it against is
+ * treated as licensed, the careful answer.
+ */
+export function underFirmwareReceipt(
+	target: string,
+	workspaceRoots: readonly string[] = [],
+	exists: (p: string) => boolean = existsSync,
+): boolean {
+	const t = target.replace(/^~(?=[\\/])/, homedir())
+	const bases =
+		path.isAbsolute(t) || /^[A-Za-z]:[\\/]/.test(t) ? [t] : workspaceRoots.filter(Boolean).map((r) => path.resolve(r, t))
+	if (!bases.length) {
+		return true
+	}
+	for (const abs of bases) {
+		let dir = abs
+		for (let i = 0; i < 12; i++) {
+			if (exists(path.join(dir, RECEIPT))) {
+				return true
+			}
+			const parent = path.dirname(dir)
+			if (path.basename(dir).toLowerCase() === "firmware" || parent === dir) {
+				break
+			}
+			dir = parent
+		}
+	}
+	return false
+}
+
+export function rejectFirmwareExfil(
+	command: string,
+	workspaceRoots: readonly string[] = [],
+	licensed?: (firmwarePath: string) => boolean,
+): CommandRejection {
 	const c = command.replace(/\s+/g, " ")
 	if (!FIRMWARE_PATH.test(c)) {
 		return null
+	}
+	if (licensed) {
+		// Only the folders with a receipt are licensed; the rest of the rules below are about those.
+		const named = [...c.matchAll(/([^\s"'=]*firmware[/\\][^\s"']+)/gi)].map((m) => m[1])
+		if (named.length && !named.some((p) => licensed(p))) {
+			return null
+		}
 	}
 	if (FIRMWARE_BINARY.test(c) && PRINTS.test(c)) {
 		return (
@@ -184,6 +236,6 @@ export function checkCommandGuards(command: string, workspaceRoots: readonly str
 		rejectAdsumShellWrite(command) ??
 		rejectRawNrfToolCommand(command) ??
 		rejectKillByName(command) ??
-		rejectFirmwareExfil(command, workspaceRoots)
+		rejectFirmwareExfil(command, workspaceRoots, (p) => underFirmwareReceipt(p, workspaceRoots))
 	)
 }

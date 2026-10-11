@@ -47,6 +47,14 @@ describe("flashPrompt: the ways onto the unit come from the folder's own files",
 		expect(p).toMatch(/Ask me which way, and which probe or port is which, before you program anything\.$/)
 	})
 
+	it("asks for the unit's own versions first, and names a downgrade before it happens", () => {
+		const p = flashPrompt(blg20)
+		expect(p).toContain("read what the unit runs now and say it beside this version")
+		expect(p).toContain("say plainly that it is a downgrade and ask me first")
+		// The version check comes before the ask about the way: nothing is programmed before either.
+		expect(p.indexOf("downgrade")).toBeLessThan(p.indexOf("Ask me which way"))
+	})
+
 	it("a BLG20x folder offers both, each through the bit that carries its procedure", () => {
 		const p = flashPrompt(blg20)
 		expect(p).toContain(
