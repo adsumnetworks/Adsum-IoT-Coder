@@ -8,6 +8,7 @@ import { describe, test } from "node:test"
 import { commandPrefix, launcherName, renderCommand } from "./launchers"
 import {
 	buildResolvedTool,
+	bundledPythonPath,
 	bundleHasPlatformLauncher,
 	noWiderThan,
 	type ResolvedTool,
@@ -692,5 +693,46 @@ describe("generated launchers for node tools", () => {
 		})!
 		assert.equal(t.launcherPath, undefined)
 		assert.equal(t.command, `python3 ${path.join(DIR, "nrf_rtt_logger.py")}`)
+	})
+})
+
+// ── the extension's own Python (operator, 10 Oct 2026: the tool's packages ship inside the extension) ──
+describe("the service tool on the Python the extension carries", () => {
+	const SVC_DIR = "/cache/adsum/nrf/tools/blg20-service/0.3.0"
+	const svc = {
+		...base,
+		id: "adsum/nrf/tools/blg20-service",
+		dir: SVC_DIR,
+		delivery: "downloaded" as const,
+		meta: { ...META, id: "adsum/nrf/tools/blg20-service", entry: "blg20_service.py" } as Record<string, unknown>,
+	}
+	const script = path.join(SVC_DIR, "blg20_service.py")
+	const launcher = path.join(SVC_DIR, "blg20-service")
+	const own = "/ext/runtimes/python/darwin-arm64/python/bin/python3"
+
+	test("runs the script on the bundled Python with -s, not through the shipped launcher, and needs no system Python", () => {
+		const t = buildResolvedTool({ ...svc, interpreter: null, bundledPython: own, fileExists: exists(script, launcher) })
+		assert.ok(t)
+		assert.equal(t.launcherPath, undefined)
+		assert.equal(t.unavailable, undefined)
+		assert.equal(t.command, `${own} -s ${script}`)
+	})
+
+	test("a build with no bundled Python keeps the shipped launcher, as before", () => {
+		const t = buildResolvedTool({ ...svc, bundledPython: null, fileExists: exists(script, launcher) })
+		assert.equal(t?.launcherPath, launcher)
+	})
+
+	test("a tool not on the list keeps the developer's Python even when the extension carries one", () => {
+		const t = buildResolvedTool({ ...base, bundledPython: own, fileExists: exists(path.join(DIR, "nrf_rtt_logger.py")) })
+		assert.equal(t?.command, `python3 ${path.join(DIR, "nrf_rtt_logger.py")}`)
+	})
+
+	test("the runtime sits under runtimes/python/<os>-<arch>", () => {
+		assert.equal(bundledPythonPath("/ext", "darwin", "arm64"), "/ext/runtimes/python/darwin-arm64/python/bin/python3")
+		assert.equal(
+			bundledPythonPath("C:\\ext", "win32", "x64").replace(/\\/g, "/"),
+			"C:/ext/runtimes/python/win32-x64/python/python.exe",
+		)
 	})
 })

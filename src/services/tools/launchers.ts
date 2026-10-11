@@ -28,6 +28,8 @@ export function commandPrefix(args: {
 	entryPath: string
 	/** Interpreter resolved by the probe, for `python3`. */
 	interpreter?: string
+	/** Flags for the interpreter, before the entry: `-s` (no user site) for the extension's own Python. */
+	interpreterArgs?: string[]
 	/** VS Code's own Node — `process.execPath`. Needs nothing installed. */
 	nodePath?: string
 }): string[] {
@@ -41,7 +43,7 @@ export function commandPrefix(args: {
 			// is why they are the default for new tools — nothing for the developer to install.
 			return [args.nodePath ?? process.execPath, args.entryPath]
 		case "python3":
-			return [args.interpreter ?? "python3", args.entryPath]
+			return [args.interpreter ?? "python3", ...(args.interpreterArgs ?? []), args.entryPath]
 		case "native":
 			return [args.entryPath]
 	}

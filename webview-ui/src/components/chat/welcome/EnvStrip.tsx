@@ -1,4 +1,4 @@
-import { blg20Label, blg20LongLabel, blg20ProbeSerials } from "@shared/blg20"
+import { blg20Label, blg20LongLabel, blg20OverBluetooth, blg20ProbeSerials } from "@shared/blg20"
 import { type EspDevice, type EspEnvironment, espUnresolvedDeviceLabel } from "@shared/esp"
 import type { NrfBoard, NrfEnvironment } from "@shared/nrf"
 import { EmptyRequest } from "@shared/proto/cline/common"
@@ -344,7 +344,11 @@ function nrfFacts(env: NrfEnvironment, hasWorkspace: boolean): BlockFacts {
 		devices = "no boards connected"
 		devicesMuted = true
 	} else {
-		devices = nrfBoardLabels(env).join(", ")
+		// A gateway reached over Bluetooth only (the LBG20x) carries the Bluetooth mark; the hover says the rest.
+		const ble = new Set((env.blg20Units ?? []).filter((u) => u.confirmed && blg20OverBluetooth(u)).map(blg20Label))
+		devices = nrfBoardLabels(env)
+			.map((l) => (ble.has(l) ? `${l} ᛒ` : l))
+			.join(", ")
 	}
 	// A BLG20x is named by four digits; the hover gives the unit id and the ports behind them.
 	const long = (env.blg20Units ?? []).filter((u) => u.confirmed).map(blg20LongLabel)

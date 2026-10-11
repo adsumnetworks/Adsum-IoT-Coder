@@ -1,4 +1,4 @@
-import { blg20Label, confirmedBlg20Units } from "@shared/blg20"
+import { blg20Label, blg20OverBluetooth, confirmedBlg20Units } from "@shared/blg20"
 import { useMemo } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { type EntryMode, type EntrySession, entryMode } from "./entryMode"
@@ -72,6 +72,13 @@ export function useEntrySignals(): EntryContext {
 				...confirmedBlg20Units(nrfEnvironment?.blg20Units).map(blg20Label),
 				...(nrfEnvironment?.boards ?? []).map((b) => b.productName || b.deviceName || b.deviceFamily || ""),
 			].filter(Boolean),
+			// A gateway reached over Bluetooth only (the LBG20x) is in range, not connected; with its window closed it is
+			// not reachable until its button is held.
+			reach: Object.fromEntries(
+				confirmedBlg20Units(nrfEnvironment?.blg20Units)
+					.filter(blg20OverBluetooth)
+					.map((u) => [blg20Label(u), u.windowOpen === false ? "· window closed" : "in range over Bluetooth"]),
+			),
 			espDevices: (espEnvironment?.espDevices ?? []).map((d) => d.chip || "ESP32").filter(Boolean),
 			// What each probe says its TARGET is, which is not what the board list shows: a BLG20x
 			// debugged through a kit lists the kit, while the probe reports nRF54LM20B and nRF9151.

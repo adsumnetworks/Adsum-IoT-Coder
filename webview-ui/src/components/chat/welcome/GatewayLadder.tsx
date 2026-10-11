@@ -39,6 +39,7 @@ import { ASK_FOR_DETAILS } from "./welcomeIntents"
 export const LADDER_COPY = {
 	/** A unit already on USB: set it up before choosing anything (demo-1). */
 	setUp: "On USB: read it, claim it, update it, commission it.",
+	setUpBle: "Over Bluetooth: read it, claim it, update it, commission it.",
 	question: "How do you want the firmware?",
 	build: "Board, chips, programming recipe, the traps.",
 	advanced: "Advanced set: on request",
@@ -103,6 +104,8 @@ interface GatewayLadderProps {
 	 * page), so the ladder points there instead of offering a second install. One home per feature.
 	 */
 	demoViaFirmware?: boolean
+	/** [10 Oct 2026] The unit's own actions beside Set it up (what it is, claim it, read its logs), each a session. */
+	unitActions?: ReadonlyArray<{ label: string; testId: string; onClick: () => void }>
 }
 
 const Rung: React.FC<{
@@ -224,6 +227,7 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 	onInstall,
 	onBrowse,
 	demoViaFirmware = false,
+	unitActions,
 }) => {
 	const { adsumAccount, nrfEnvironment } = useExtensionState() as {
 		adsumAccount?: AdsumAccountState
@@ -282,7 +286,10 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 	// A unit answering on its USB service port is already flashed: its next action is to set it up.
 	// Read from the unit, not from its label: the label is the unit's name ("BLG20x 286C"), and the
 	// ports behind it are the hover's. [10 Oct 2026]
-	const onUsb = !!board && confirmedBlg20Units(nrfEnvironment?.blg20Units).some((u) => !!u.servicePort)
+	// [10 Oct 2026] Either door: its USB service port, or Bluetooth (the LBG20x, whose USB-C carries power only).
+	const units = confirmedBlg20Units(nrfEnvironment?.blg20Units)
+	const onUsb = !!board && units.some((u) => !!u.servicePort || !!u.bleAddress)
+	const overBle = !!board && !units.some((u) => !!u.servicePort) && units.some((u) => !!u.bleAddress)
 	const setUp = () => {
 		cardAction("blg20_ladder", "setup")
 		if (board) {
@@ -331,8 +338,32 @@ const GatewayLadder: React.FC<GatewayLadderProps> = ({
 				<div data-testid="ladder-setup" style={{ margin: "7px 0 4px" }}>
 					<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 						<Doing label="Set it up" onClick={setUp} testId="ladder-setup-start" />
-						<Info text={LADDER_COPY.setUp} />
+						<Info text={overBle ? LADDER_COPY.setUpBle : LADDER_COPY.setUp} />
 					</div>
+					{unitActions?.length ? (
+						<div
+							data-testid="ladder-unit-actions"
+							style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+							{unitActions.map((a) => (
+								<button
+									data-testid={a.testId}
+									key={a.testId}
+									onClick={a.onClick}
+									style={{
+										padding: "3px 10px",
+										borderRadius: "6px",
+										fontSize: "12px",
+										cursor: "pointer",
+										border: "1px solid color-mix(in srgb, var(--vscode-foreground) 30%, transparent)",
+										background: "none",
+										color: "var(--vscode-foreground)",
+									}}
+									type="button">
+									{a.label}
+								</button>
+							))}
+						</div>
+					) : null}
 				</div>
 			)}
 

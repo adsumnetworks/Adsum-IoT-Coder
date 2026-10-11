@@ -25,6 +25,9 @@ const MUST_SHIP = ["cline-core.js", "build-info.json", "proto/descriptor_set.pb"
  * node_modules each blows straight through it.
  */
 const VSIX_BUDGET_MB = 26
+/** A platform VSIX (nrf-ai-debugger-<v>-<os>-<arch>.vsix) carries the extension's own Python for that platform. */
+const PLATFORM_VSIX_BUDGET_MB = 80
+const PLATFORM_VSIX_RE = /-(darwin|linux|win32)-(arm64|x64)\.vsix$/
 
 describe("headlessEngineAt", () => {
 	test("an extension dir with no engine reports absent, never a guess", () => {
@@ -115,9 +118,23 @@ describe("what the VSIX ships", () => {
 		}
 		const p = path.join(dist, vsix)
 		const mb = fs.statSync(p).size / 1048576
-		assert.ok(mb < VSIX_BUDGET_MB, `${vsix} is ${mb.toFixed(1)} MB, over the ${VSIX_BUDGET_MB} MB budget`)
+		const target = PLATFORM_VSIX_RE.exec(vsix)
+		const budget = target ? PLATFORM_VSIX_BUDGET_MB : VSIX_BUDGET_MB
+		assert.ok(mb < budget, `${vsix} is ${mb.toFixed(1)} MB, over the ${budget} MB budget`)
 
 		const listing = execFileSync("unzip", ["-l", p], { encoding: "utf8", maxBuffer: 32e6 })
+		if (target) {
+			// Its own runtime, and no other platform's.
+			const own = `runtimes/python/${target[1]}-${target[2]}/`
+			assert.ok(listing.includes(`${own}ADSUM-RUNTIME.json`), `${vsix} carries no ${own} runtime`)
+			const others = listing.match(/runtimes\/python\/[a-z0-9]+-[a-z0-9]+\//g) ?? []
+			assert.ok(
+				others.every((o) => o === own),
+				`${vsix} carries another platform's runtime: ${[...new Set(others)].join(", ")}`,
+			)
+		} else {
+			assert.ok(!listing.includes("runtimes/python/"), `${vsix} is universal and must carry no Python runtime`)
+		}
 		assert.ok(listing.includes("dist-standalone/cline-core.js"), "the engine must ship")
 		assert.ok(listing.includes("dist-standalone/build-info.json"), "the build stamp must ship")
 		for (const leak of [

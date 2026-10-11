@@ -9,6 +9,7 @@ import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { showSystemNotification } from "@integrations/notifications"
 import { getInstallId } from "@services/adsum/InstallIdentity"
 import { looksLikeCraReportContent, looksLikeInlineCraReport } from "@services/cra/reportIntegrity"
+import { releaseAll } from "@services/hardware/HardwarePortGuard"
 import { scanForVerdictLeaks } from "@services/knowledge/honesty/verdictScan"
 import { telemetryService } from "@services/telemetry"
 import { findLastIndex } from "@shared/array"
@@ -366,6 +367,10 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 		} else {
 			// Send the complete completion_result message (partial was already removed above)
 			const completionMessageTs = await config.callbacks.say("completion_result", result, undefined, undefined, false)
+			// [11 Oct 2026] A session that reports done runs nothing on the desk: the ports, probes and the unit over
+			// Bluetooth it named are free for the other tabs now, not only when its tab closes (a second session's
+			// claim over Bluetooth was refused by a finished one on the bench). A later command re-claims them.
+			releaseAll(config.taskId)
 			await config.callbacks.saveCheckpoint(true, completionMessageTs)
 			await addNewChangesFlagToLastCompletionResultMessage()
 			telemetryService.captureTaskCompleted(config.ulid)

@@ -7,6 +7,9 @@ import * as vscode from "vscode"
 import { loadCachedLiveModelLists } from "@/core/api/models/liveModelLists"
 import { type PriceOverride, setManualPrices } from "@/core/api/pricing/priceOverlay"
 import { loadCachedPrices, refreshDirectModelPrices } from "@/core/api/pricing/refreshDirectModelPrices"
+import { bleGatewaySeenBefore, scanBleGateways } from "@/services/blg20/bleGateways"
+import { nrfEnvironmentWithBlg20 } from "@/services/blg20/connectedBlg20"
+import { bundledPython } from "@/services/tools/ToolResolver"
 import { sendChatButtonClickedEvent } from "./core/controller/ui/subscribeToChatButtonClicked"
 import { sendHistoryButtonClickedEvent } from "./core/controller/ui/subscribeToHistoryButtonClicked"
 import { sendSettingsButtonClickedEvent } from "./core/controller/ui/subscribeToSettingsButtonClicked"
@@ -183,6 +186,18 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	const webview = (await initialize(context)) as VscodeWebviewProvider
 
+	// The extension's own Python, named to every terminal the editor opens (the agent's included) as ADSUM_PYTHON.
+	// The service tool's shipped launchers and the tool itself move onto it when the Python they were started with
+	// lacks the Bluetooth library, so a command typed from a knowledge bit's example works as the advertised one does.
+	// A universal build carries none, and clears the name a platform build may have left.
+	const ownPython = bundledPython()
+	if (ownPython) {
+		context.environmentVariableCollection.replace("ADSUM_PYTHON", ownPython)
+		context.environmentVariableCollection.description = "The Python Adsum IoT Coder carries for its device tools"
+	} else {
+		context.environmentVariableCollection.delete("ADSUM_PYTHON")
+	}
+
 	// Status-bar ▲ Adsum button — always visible, reveals the view from any dock.
 	createAdsumStatusBar(context, vscode)
 	bindStatusBarSources(listOpenSessionTabs, () => allHolders().map((h) => ({ port: h.port, title: h.holder.title })))
@@ -242,7 +257,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Webview shows "detecting…" until caches populate and postStateToWebview fires.
 	void detectNrfEnvironment()
 		.then((env) => {
-			setAdsumStatusBarTooltip(env, getCachedEspEnvironment())
+			setAdsumStatusBarTooltip({ ...env, blg20Units: nrfEnvironmentWithBlg20().blg20Units }, getCachedEspEnvironment())
 			return webview.controller.postStateToWebview()
 		})
 		.catch(() => {})
@@ -250,6 +265,17 @@ export async function activate(context: vscode.ExtensionContext) {
 	void detectEspEnvironment()
 		.then(() => webview.controller.postStateToWebview())
 		.catch(() => {})
+
+	// A computer that has seen a gateway over Bluetooth before scans for it at start-up too; a first scan only ever
+	// comes from the Hardware page's ↻, so the operating system's Bluetooth question follows the developer's action.
+	if (bleGatewaySeenBefore()) {
+		void scanBleGateways("startup")
+			.then(() => {
+				setAdsumStatusBarTooltip(nrfEnvironmentWithBlg20(), getCachedEspEnvironment())
+				return webview.controller.postStateToWebview()
+			})
+			.catch(() => {})
+	}
 
 	// Windows only: probe for the fresh-install PowerShell execution policy (and terminal profile)
 	// that silently break shell integration, and auto-fix in the background before the first
@@ -275,7 +301,10 @@ export async function activate(context: vscode.ExtensionContext) {
 			refreshWorkspaceClassification(updated)
 			void detectNrfEnvironment()
 				.then((env) => {
-					setAdsumStatusBarTooltip(env, getCachedEspEnvironment())
+					setAdsumStatusBarTooltip(
+						{ ...env, blg20Units: nrfEnvironmentWithBlg20().blg20Units },
+						getCachedEspEnvironment(),
+					)
 					return webview.controller.postStateToWebview()
 				})
 				.catch(() => {})

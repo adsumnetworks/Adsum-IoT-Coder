@@ -232,3 +232,61 @@ export const NarrowSidebar: Story = {
 export const Offline: Story = { args: { state: { hostOffline: true, nrfEnvironment: blg20 } } }
 export const NarrowSettings: Story = { args: { width: 260, page: "settings", state: { freeTierRemainingTokens: 76_488_063 } } }
 export const NarrowHardware: Story = { args: { width: 260, page: "hardware", state: { nrfEnvironment: blg20 } } }
+
+/**
+ * [10 Oct 2026] The LBG20x, whose USB-C carries power only, reached over Bluetooth: the rows as the service tool's scan
+ * reports them on the bench (unit AD50, paired from Linux; macOS does not say whether it is paired).
+ */
+const lbg20Ble = {
+	via: "ble",
+	family: "lbg20x",
+	confirmed: true,
+	name: "AD50",
+	bleAddress: "D3:58:8E:7A:AD:50",
+	bleId: "D3588E7AAD50",
+	bonded: true,
+	windowOpen: true,
+	rssi: -64,
+}
+const lbg20 = {
+	status: "ready",
+	extensionPresent: true,
+	nrfutilPresent: true,
+	boards: [],
+	blg20Units: [lbg20Ble],
+	projectSdk: { version: "3.4.0", source: "workspace" },
+}
+export const Lbg20OverBluetooth: Story = {
+	args: {
+		state: {
+			nrfEnvironment: lbg20,
+			taskHistory: [history("a", 3, "LBG20x AD50 · read the passport")],
+		},
+	},
+}
+/** A unit seen earlier whose commissioning window has closed: dim, with what opens it. */
+export const Lbg20WindowClosed: Story = {
+	args: { state: { nrfEnvironment: { ...lbg20, blg20Units: [{ ...lbg20Ble, windowOpen: false, rssi: undefined }] } } },
+}
+/** Both gateways on one desk: the BLG20x on its cable, the LBG20x over Bluetooth. */
+export const TwoGatewaysTwoDoors: Story = {
+	args: {
+		state: {
+			nrfEnvironment: {
+				...lbg20,
+				blg20Units: [
+					{
+						via: "usb",
+						family: "blg20x",
+						serialNumber: "9802AF5C69DF1E66",
+						servicePort: "/dev/tty.usbmodem2861",
+						name: "286C",
+						confirmed: true,
+					},
+					lbg20Ble,
+				],
+			},
+		},
+	},
+}
+export const HardwarePageLbg20OverBluetooth: Story = { args: { page: "hardware", state: { nrfEnvironment: lbg20 } } }

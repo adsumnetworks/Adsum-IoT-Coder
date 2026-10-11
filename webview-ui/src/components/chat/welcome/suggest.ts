@@ -28,6 +28,11 @@ export interface Signals {
 	nrfChips?: string[]
 	/** Nordic boards the detector currently reports. */
 	nrfBoards: string[]
+	/**
+	 * How a board on the desk is reached when it is not "connected": a gateway seen over Bluetooth is in range, and one
+	 * whose commissioning window closed is not reachable until its button is held. Keyed by the label in nrfBoards.
+	 */
+	reach?: Record<string, string>
 	/** ESP devices the detector currently reports. */
 	espDevices: string[]
 	/** How the open workspace classifies. */
@@ -115,6 +120,9 @@ const SCORE = {
  *
  * Never filters. The caller decides how many to show; everything else stays reachable.
  */
+/** "LBG20x AD50 in range over Bluetooth" where the desk says so, "nRF52840 DK connected" otherwise. */
+const onDesk = (s: Signals, label: string) => `${label} ${s.reach?.[label] ?? "connected"}`
+
 export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[] {
 	const nrf = s.nrfBoards[0]
 	const esp = s.espDevices[0]
@@ -126,7 +134,7 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 		if (item.boardMatch) {
 			const hit = [...s.nrfBoards, ...s.espDevices].find((b) => item.boardMatch!.test(b))
 			if (hit) {
-				return { item, score: SCORE.boardMatch, why: `${hit} connected`, grounded: true }
+				return { item, score: SCORE.boardMatch, why: onDesk(s, hit), grounded: true }
 			}
 		}
 		if (item.need && s.product === item.need) {
@@ -138,7 +146,7 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 			}
 		}
 		if (item.platform === "nrf" && hasNrf) {
-			return { item, score: SCORE.boardMatch, why: `${nrf} connected`, grounded: true }
+			return { item, score: SCORE.boardMatch, why: onDesk(s, nrf), grounded: true }
 		}
 		if (item.platform === "esp" && hasEsp) {
 			return { item, score: SCORE.boardMatch, why: `${esp} connected`, grounded: true }
@@ -153,7 +161,7 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 			return {
 				item,
 				score: SCORE.productPartial,
-				why: item.needsAlso ? `${ownBoard} connected · this one also needs ${item.needsAlso}` : `${ownBoard} connected`,
+				why: item.needsAlso ? `${onDesk(s, ownBoard)} · this one also needs ${item.needsAlso}` : onDesk(s, ownBoard),
 				grounded: true,
 			}
 		}
@@ -170,7 +178,7 @@ export function rank<T extends Suggestable>(items: T[], s: Signals): Ranked<T>[]
 			// and useless — the developer wants to know the suggestion noticed their hardware.
 			// Only when exactly one platform is present: with both, "either" is the honest answer.
 			if (hasNrf && !hasEsp) {
-				return { item, score: SCORE.boardMatch - 5, why: `${nrf} connected`, grounded: true }
+				return { item, score: SCORE.boardMatch - 5, why: onDesk(s, nrf), grounded: true }
 			}
 			if (hasEsp && !hasNrf) {
 				return { item, score: SCORE.boardMatch - 5, why: `${esp} connected`, grounded: true }

@@ -1,14 +1,20 @@
 import type { AdsumAccountState } from "@shared/adsumAccount"
 import { StringRequest } from "@shared/proto/cline/common"
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AdsumMark } from "@/components/common/AdsumLogo"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { FileServiceClient } from "@/services/grpc-client"
+import Palette from "../rail/Palette"
+import { R } from "../rail/railStyles"
+import { type Run, useRankedRuns } from "../rail/useRankedRuns"
 import FirstSteps from "./FirstSteps"
 import WhatsNewCard from "./WhatsNewCard"
+import { paletteOpen as countPaletteOpen, entryRunStart, gateShown } from "./welcome/entryTelemetry"
 import GatePanel from "./welcome/GatePanel"
+import RequestAccessForm from "./welcome/RequestAccessForm"
 import { useEntrySignals } from "./welcome/useEntrySignals"
+import { isRequestOnlyGroup, requestFamilyFor } from "./welcome/welcomeIntents"
 
 const T = {
 	label: {
@@ -47,6 +53,50 @@ const EmptySession: React.FC<{ onStartTask: (text: string) => void | Promise<voi
 	}
 	const expanded = mode.mode === "expanded"
 	const [registerOpen, setRegisterOpen] = useState(false)
+	// [11 Oct 2026] What can you ask, in the tab itself: the rail's palette under the two lines, so the developer
+	// picks a run, a journey, a check or a sample where they are about to type. A row runs in THIS tab: ▶ sends,
+	// ✎ fills the box; a locked row opens the gate or the request form, as in the rail. ⌘K opens it here too.
+	const [paletteOpen, setPaletteOpen] = useState(false)
+	const [requesting, setRequesting] = useState<string | null>(null)
+	const { all, suggested } = useRankedRuns()
+	useEffect(() => {
+		const onKey = (e: KeyboardEvent) => {
+			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+				e.preventDefault()
+				countPaletteOpen("composer")
+				setPaletteOpen(true)
+			}
+		}
+		window.addEventListener("keydown", onKey)
+		return () => window.removeEventListener("keydown", onKey)
+	}, [])
+	const runRow = (run: Run) => {
+		setPaletteOpen(false)
+		if (run.kind === "open-folder") {
+			void FileServiceClient.openFolder(StringRequest.create({ value: "" }))
+			return
+		}
+		if (!run.prompt) {
+			return
+		}
+		entryRunStart(run.id, run.kind === "sample" ? "sample" : "drawer")
+		if (run.kind === "fire" || run.kind === "sample") {
+			void onStartTask(run.prompt)
+		} else {
+			onPrefill(run.prompt)
+		}
+	}
+	const lockedRow = (run: Run) => {
+		setPaletteOpen(false)
+		if (!adsumAccount) {
+			gateShown("first-steps", run.id)
+			setRegisterOpen(true)
+			return
+		}
+		if (isRequestOnlyGroup(run.entitlement)) {
+			setRequesting(requestFamilyFor(run.entitlement))
+		}
+	}
 
 	return (
 		<div
@@ -73,6 +123,30 @@ const EmptySession: React.FC<{ onStartTask: (text: string) => void | Promise<voi
 				</span>
 				<div style={T.label}>{scopeName ? `New session · ${scopeName}` : "New session"}</div>
 				<div style={T.body}>Say what you want done, then Enter.</div>
+				<button
+					data-testid="empty-session-palette"
+					onClick={() => {
+						countPaletteOpen("composer")
+						setPaletteOpen(true)
+					}}
+					style={{
+						marginTop: 10,
+						display: "inline-flex",
+						alignItems: "center",
+						gap: 7,
+						padding: "6px 10px",
+						borderRadius: 6,
+						border: "1px solid color-mix(in srgb, var(--vscode-foreground) 22%, transparent)",
+						background: "none",
+						color: "var(--vscode-foreground)",
+						font: "inherit",
+						cursor: "pointer",
+					}}
+					type="button">
+					<AdsumMark size={13} />
+					What can you ask
+					<span style={R.pf}>⌘K</span>
+				</button>
 			</div>
 			{expanded && (
 				<FirstSteps
@@ -86,6 +160,15 @@ const EmptySession: React.FC<{ onStartTask: (text: string) => void | Promise<voi
 			)}
 			<WhatsNewCard />
 			<GatePanel onClose={() => setRegisterOpen(false)} open={registerOpen} surface="first-steps" />
+			<Palette
+				onClose={() => setPaletteOpen(false)}
+				onLocked={lockedRow}
+				onRun={runRow}
+				open={paletteOpen}
+				runs={all}
+				suggested={suggested}
+			/>
+			<RequestAccessForm family={requesting ?? undefined} onClose={() => setRequesting(null)} open={!!requesting} />
 		</div>
 	)
 }

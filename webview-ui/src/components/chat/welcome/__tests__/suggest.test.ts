@@ -163,3 +163,16 @@ describe("rank — another product's board is not evidence [10 Oct 2026]", () =>
 		expect(old[0].why).toBe("BLG20x 286C connected")
 	})
 })
+
+describe("rank — a gateway over Bluetooth is in range, not connected (10 Oct 2026)", () => {
+	it("says in range over Bluetooth, and window closed when it is", () => {
+		const s = { ...base, nrfBoards: ["LBG20x AD50"], reach: { "LBG20x AD50": "in range over Bluetooth" }, hasWorkspace: true }
+		expect(whyOf(s, "nrfProto")).toBe("LBG20x AD50 in range over Bluetooth")
+		const closed = { ...s, reach: { "LBG20x AD50": "· window closed" } }
+		expect(whyOf(closed, "nrfProto")).toBe("LBG20x AD50 · window closed")
+	})
+	it("a board on its cable still reads connected", () => {
+		const s = { ...base, nrfBoards: ["BLG20x 286C", "LBG20x AD50"], reach: { "LBG20x AD50": "in range over Bluetooth" } }
+		expect(whyOf(s, "nrfProto")).toBe("BLG20x 286C connected")
+	})
+})

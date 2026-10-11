@@ -20,7 +20,17 @@ import {
 	recogniseProduct,
 } from "@/services/platform/WorkspaceClassifier"
 import { type ResolvedTool, resolveToolsAsync } from "@/services/tools/ToolResolver"
-import { type Blg20Unit, blg20Label, blg20ProbeSerials, confirmedBlg20Units } from "@/shared/blg20"
+import {
+	type Blg20Unit,
+	blg20BleTarget,
+	blg20BleWords,
+	blg20Label,
+	blg20OverBluetooth,
+	blg20Passkey,
+	blg20ProbeSerials,
+	confirmedBlg20Units,
+	familyWord,
+} from "@/shared/blg20"
 import { fileExistsAtPath } from "@/utils/fs"
 import { shouldInjectMap } from "../../../memory/workspace/mapGate"
 import { migrateLegacyMemory } from "../../../memory/workspace/migrate"
@@ -663,11 +673,61 @@ export function blg20Evidence(u: Blg20Unit): string {
 				(u.serialNumber ? `, unit id ${u.serialNumber}` : ""),
 		)
 	}
+	if (u.bleAddress) {
+		// The LBG20x's only door (its USB-C carries power, not data); the BLG20x's second from firmware 0.3.6.
+		parts.push(
+			`${u.servicePort ? "also " : `named ${blg20Label(u)}, `}reachable ${blg20BleWords(u)}: ` +
+				`\`blg20-service <verb> --ble ${blg20BleTarget(u)} --json\``,
+		)
+		// [11 Oct 2026] What the Hardware page's journey established, so the agent never pairs or claims twice.
+		if (!u.paired && u.bleId && process.platform !== "linux") {
+			// The demo firmware's digits for the computer's dialog, derived as the label printer derives them.
+			const digits = blg20Passkey(u.bleId)
+			if (digits) parts.push(`pairing digits ${digits} (DEMO firmware)`)
+		}
+		const facts: string[] = []
+		if (u.paired) facts.push("paired with this computer")
+		if (u.claimed) facts.push(u.mine ? "claimed by this computer's key" : "claimed by another computer's key")
+		if (u.bleFw) facts.push(`Bluetooth half ${u.bleFw}, cellular half ${u.lteFw ?? "?"}`)
+		if (u.latest) {
+			facts.push(
+				u.latest.newer ? `a newer release v${u.latest.version} is listed` : `the latest release is v${u.latest.version}`,
+			)
+		}
+		if (facts.length) parts.push(`from the Hardware page: ${facts.join(", ")}`)
+	}
 	if (u.bleProbe && u.lteProbe) {
 		parts.push(`probe ${u.bleProbe} reaches its nRF54LM20B (BLE half) and probe ${u.lteProbe} its nRF9151 (LTE half)`)
 	}
 	return parts.join("; ") || blg20Label(u)
 }
+
+/**
+ * [10 Oct 2026] The words for a gateway reached over Bluetooth, said once whenever one is on the desk. The rules
+ * come from the bench (the service port over Bluetooth, milestones 1 to 3): the window, the pairing, the claim, the
+ * two refusals, and that nothing is installed for the tool.
+ */
+export const bluetoothGatewayWords = (platform: string = process.platform): string =>
+	"| **The service port over Bluetooth** | The LBG20x has no USB data path (its USB-C carries power only), so its " +
+	"service port is Bluetooth: run `blg20-service` with `--ble <its four digits>` and `--json` for every verb " +
+	"(passport, needs, claim, health, logs, images, update-check, update-ble, update-lte, update-pair). The unit is " +
+	"connectable only inside its commissioning window: at power-up, or after its button is held for three seconds (an " +
+	"uncommissioned unit keeps it open); if it is not found, say that. The first run from a computer pairs: " +
+	(platform === "linux"
+		? "add `--passkey auto` to that command (Linux pairs through the tool; the demo firmware's digits are derived " +
+			"from the unit's address; a labelled production unit takes `--passkey <its six digits>`; " +
+			"`list --ble --json` says with `bonded` whether this computer is paired with the unit already, and the tool " +
+			"refuses at once, naming --passkey, when it is not). "
+		: "tell the developer to type the six digits when the computer asks: the unit's evidence line names them for " +
+			"the DEMO firmware (derived from its address); a labelled production unit's are on its label. ") +
+	"The Hardware page may have done the first steps already (Scan, Connect which pairs, Claim, Check firmware): when the " +
+	"unit's facts below say paired or claimed by this computer, take that as done and go on. " +
+	"If the tool says the computer kept a " +
+	"pairing from before the unit was wiped, the developer forgets the unit in the computer's Bluetooth settings and " +
+	"runs again. A claim over Bluetooth needs the window open. Never install Python packages for this tool: the " +
+	"extension runs it on its own Python. The tool refuses an image built for the other gateway family, and a unit " +
+	"below the release's floor takes the factory pair over the probes. Read the last line of the output: it is the " +
+	"result, one JSON object. |\n"
 
 function productLine(): string {
 	const found = recogniseProduct(getCachedWorkspaceRoots())
@@ -684,11 +744,17 @@ function productLine(): string {
 	const all = getConnectedBlg20Units()
 	const gateways = confirmedBlg20Units(all)
 	if (gateways.length > 0) {
+		const family = familyWord(gateways[0].family).x
+		const overBle = gateways.some(blg20OverBluetooth)
 		return (
-			`| **A Fanstel BLG20x gateway is connected to this computer** — ${gateways.map(blg20Evidence).join("; ")} | ` +
-			"load `products/fanstel/blg20x/PRODUCT.md` **before diagnosing anything about it**: its sub-bits carry the " +
-			"service port, the two halves, their probes and their fault ladders. Never open the service port just to " +
-			"look: opening it with DTR up starts a session on the unit. |\n\n"
+			`| **A Fanstel ${family} gateway is ${overBle ? "within Bluetooth range of" : "connected to"} this computer** — ` +
+			`${gateways.map(blg20Evidence).join("; ")} | ` +
+			"load `products/fanstel/blg20x/PRODUCT.md` **before diagnosing anything about it** (the LBG20x shares its " +
+			"firmware, its service port and its two halves): its sub-bits carry the service port, the two halves, their " +
+			"probes and their fault ladders. Never open the service port just to look: opening it starts a session on " +
+			"the unit. |\n" +
+			(overBle ? bluetoothGatewayWords() : "") +
+			"\n"
 		)
 	}
 	// demo-1 (red-team finding 7): a probe pair, or the shared test USB ids with no product name, is only

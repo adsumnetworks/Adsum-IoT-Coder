@@ -231,3 +231,8 @@ storybook-static
 # CRA pre-built reference bundles — MUST ship: the CRA Sample run scans these (SPDX + .config + symbols.nm
 # + version.h) with NO local build. Explicit keep-rule so a future broad ignore can't silently drop them.
 !demo-scenarios/cra-prebuilt/**
+
+# The extension's own Python per platform (scripts/build-python-runtime.mjs): only a platform VSIX carries one,
+# and only its own (scripts/package-vsix-target.mjs re-includes it).
+runtimes/**
+.cache/**

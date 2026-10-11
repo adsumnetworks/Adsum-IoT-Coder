@@ -27,6 +27,13 @@ describe("portsInCommand — the ports a command names", () => {
 		assert.deepEqual(portsInCommand("nrfutil device program --serial-number 683335182 --firmware a.hex"), ["683335182"])
 		assert.deepEqual(portsInCommand("echo 683335182"), [])
 	})
+	test("a gateway over Bluetooth is held by its four digits, however the command names it", () => {
+		assert.deepEqual(portsInCommand("blg20-service passport --ble AD50 --json"), ["BLE:AD50"])
+		assert.deepEqual(portsInCommand("blg20-service update-ble --ble D3588E7AAD50 a.bin"), ["BLE:AD50"])
+		assert.deepEqual(portsInCommand("blg20-service health --ble=D3:58:8E:7A:AD:50"), ["BLE:AD50"])
+		assert.deepEqual(portsInCommand("blg20-service list --ble --json"), ["BLE:ANY"])
+		assert.deepEqual(portsInCommand("blg20-service update-pair --ble firmware/lbg20x/1.0.0/usb/demo"), ["BLE:ANY"])
+	})
 	test("no port, no claim", () => {
 		assert.deepEqual(portsInCommand("west build -b nrf52840dk"), [])
 	})

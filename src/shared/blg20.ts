@@ -18,6 +18,12 @@
  *    every nRF developer has nrfutil, while pyserial is only certain where ESP-IDF is installed. So both
  *    listings feed the same rule and are merged by the unit's serial number.
  *
+ *  - ITS BLUETOOTH SERVICE PORT (the LBG20x, whose USB-C carries power only; firmware 0.3.6+ on either
+ *    gateway). The service tool's `list --ble --json` reads the advertised name, "Adsum LBG20x D3588E7AAD50":
+ *    the family word, then the unit's address, whose last four digits are the same name the USB product string
+ *    carries. A unit advertises only inside its commissioning window, so "seen" also means "window open".
+ *    The host runs the scan (services/blg20/bleGateways.ts); this rule only turns its rows into units.
+ *
  *  - TWO DEBUG PROBES, one on each chip. On the bench the board is reached through two kits, and
  *    `nrfutil device device-info` names the TARGET behind each: an nRF54LM20B and an nRF9151. The
  *    nRF54LM20 DK carries A silicon and the XIAO too, so the B part together with an nRF9151 is the
@@ -80,9 +86,21 @@ export function gatewayFamilyFromProduct(product: string | null | undefined): Ga
 export const familyWord = (f: GatewayFamily | undefined): { x: string; bare: string } =>
 	f === "lbg20x" ? { x: "LBG20x", bare: "LBG20" } : { x: "BLG20x", bare: "BLG20" }
 
+/** One unit as the service tool's `list --ble --json` reports it. */
+export interface Blg20BleRow {
+	address: string
+	name: string
+	family?: string | null
+	short?: string | null
+	id?: string | null
+	rssi?: number | null
+	bonded?: boolean | null
+	window?: boolean | null
+}
+
 export interface Blg20Unit {
-	/** How it was recognised: its own USB-C service port, or the two debug probes on its two chips. */
-	via: "usb" | "probes"
+	/** How it was recognised: its own USB-C service port, its Bluetooth service port, or the two debug probes. */
+	via: "usb" | "ble" | "probes"
 	/** Which gateway this is, read from the product string; absent when nothing named it (a probe pair). */
 	family?: GatewayFamily
 	/** Named BLG20 by the device itself: its USB product string (from pyserial or from nrfutil). False for
@@ -103,6 +121,68 @@ export interface Blg20Unit {
 	bleProbe?: string
 	/** J-Link serial of the probe that reaches the nRF9151 (LTE half). */
 	lteProbe?: string
+	/** Bluetooth: how the computer addresses the unit (a MAC on Linux and Windows, a per-computer UUID on macOS). */
+	bleAddress?: string
+	/** Bluetooth: the unit's own address, the 12 hex digits of its advertised name. */
+	bleId?: string
+	/** Bluetooth: whether this computer holds a pairing with the unit (null: the OS does not say, as on macOS). */
+	bonded?: boolean | null
+	/** Bluetooth: its commissioning window is open (it advertises only then, so a seen unit says true). */
+	windowOpen?: boolean
+	/** Bluetooth: the signal, in dBm, when it was seen. */
+	rssi?: number
+	/**
+	 * [11 Oct 2026] What the Hardware page's journey learnt from the unit over Bluetooth (the service tool's `status`,
+	 * `claim` and the registry): paired this session, claimed and by whose key, the halves' versions, the latest
+	 * release for the family and whether it is newer. Absent until the page connects.
+	 */
+	paired?: boolean
+	claimed?: boolean
+	/** The owner key is this computer's. */
+	mine?: boolean
+	bleFw?: string
+	lteFw?: string
+	latest?: { version: string; bleFw?: string | null; lteFw?: string | null; newer: boolean; ahead?: boolean; folder?: string }
+	/** The last words the journey had for this unit (the tool's own sentence), shown under its row. */
+	words?: string
+}
+
+/** The units the service tool saw over Bluetooth, as gateway units. Named by the device itself: confirmed. */
+export function blg20UnitsFromBle(rows: Blg20BleRow[]): Blg20Unit[] {
+	const out: Blg20Unit[] = []
+	for (const r of rows) {
+		const m = /^Adsum (BLG20|LBG20)x? ([0-9A-F]{12})$/i.exec(r.name ?? "")
+		if (!m) continue
+		const family: GatewayFamily = m[1].toUpperCase() === "LBG20" ? "lbg20x" : "blg20x"
+		const id = m[2].toUpperCase()
+		out.push({
+			via: "ble",
+			family,
+			confirmed: true,
+			name: id.slice(-4),
+			bleAddress: r.address,
+			bleId: id,
+			bonded: r.bonded ?? null,
+			windowOpen: r.window !== false,
+			...(typeof r.rssi === "number" ? { rssi: r.rssi } : {}),
+		})
+	}
+	return out
+}
+
+/** A unit seen over USB (or probes) and over Bluetooth is one unit: same family and same four digits. */
+function mergeBleUnits(units: Blg20Unit[], ble: Blg20Unit[]): Blg20Unit[] {
+	const out = [...units]
+	for (const b of ble) {
+		const same = out.findIndex((u) => u.confirmed && u.name && u.name === b.name && (u.family ?? "blg20x") === b.family)
+		if (same >= 0) {
+			const { via: _via, confirmed: _c, ...rest } = b
+			out[same] = { ...out[same], ...rest, via: out[same].via }
+		} else {
+			out.push(b)
+		}
+	}
+	return out
 }
 
 const toNum = (v: number | string | null | undefined): number | undefined =>
@@ -258,16 +338,98 @@ export function detectBlg20Units(
 	ports: Blg20RawPort[],
 	boards: Blg20ProbeBoard[],
 	nrfutilDevices: Blg20NrfutilDevice[] = [],
+	bleRows: Blg20BleRow[] = [],
 ): Blg20Unit[] {
 	const usb = mergeUsbUnits(blg20UnitsFromPorts(ports), blg20UnitsFromNrfutil(nrfutilDevices))
+	const ble = blg20UnitsFromBle(bleRows)
 	const probes = blg20FromProbes(boards)
 	if (!probes) {
-		return usb
+		return mergeBleUnits(usb, ble)
 	}
 	if (usb.length === 1) {
-		return [{ ...usb[0], bleProbe: probes.bleProbe, lteProbe: probes.lteProbe }]
+		return mergeBleUnits([{ ...usb[0], bleProbe: probes.bleProbe, lteProbe: probes.lteProbe }], ble)
 	}
-	return [...usb, probes]
+	if (usb.length === 0 && ble.length === 1) {
+		// The LBG20x on a bench: its probes and its Bluetooth port are the same board.
+		return [{ ...ble[0], bleProbe: probes.bleProbe, lteProbe: probes.lteProbe }]
+	}
+	return mergeBleUnits([...usb, probes], ble)
+}
+
+/** True when the unit is reached over Bluetooth only (no service port on USB): the LBG20x's normal case. */
+export function blg20OverBluetooth(u: Blg20Unit): boolean {
+	return !!u.bleAddress && !u.servicePort
+}
+
+/** The name a command gives the tool for this unit over Bluetooth: its four digits ("--ble AD50"). */
+export function blg20BleTarget(u: Blg20Unit): string | undefined {
+	return u.bleAddress ? (u.name ?? u.bleId ?? u.bleAddress) : undefined
+}
+
+/**
+ * How the first connection from this computer pairs, by its platform: macOS and Windows ask for the passkey in a
+ * system dialog; Linux has no such dialog, so the tool answers the pairing itself from `--passkey`. The computer is
+ * the one the extension host runs on (over Remote SSH, the remote machine), which is where the tool runs.
+ */
+/**
+ * [11 Oct 2026, operator] The demo firmware's six digits, derived from the unit's twelve hex digits exactly as the
+ * firmware derives them for its label (FNV-1a over the address bytes least-significant first, modulo a million):
+ * the Coder fills them on Linux and shows them beside the computer's dialog elsewhere. A production unit with a
+ * factory passkey refuses them, and the label's digits are asked for instead.
+ */
+export function blg20Passkey(bleId: string): string | undefined {
+	const hex = bleId.replace(/[:\-\s]/g, "").toUpperCase()
+	if (!/^[0-9A-F]{12}$/.test(hex)) return undefined
+	let h = 2166136261
+	for (let i = 10; i >= 0; i -= 2) {
+		h = Math.imul(h ^ Number.parseInt(hex.slice(i, i + 2), 16), 16777619) >>> 0
+	}
+	return String(h % 1000000).padStart(6, "0")
+}
+
+export function blg20PairingWords(platform?: string, bonded?: boolean | null, bleId?: string): string {
+	const digits = bleId ? blg20Passkey(bleId) : undefined
+	if (platform !== "linux") {
+		return digits
+			? `the first time, the computer asks to pair: type ${digits} (DEMO firmware: its digits are derived from its address; a labelled unit takes the label's)`
+			: "the first time, the computer asks to pair: type the six digits on the unit's label"
+	}
+	// Linux says whether this computer holds the pairing (the scan's `bonded`): paired needs nothing; not yet paired
+	// needs the passkey on this very command, said as a fact rather than an "if". The demo firmware's digits are
+	// derived, so `--passkey auto` is the whole of it.
+	if (bonded === true) {
+		return ""
+	}
+	return bonded === false
+		? "this computer has no pairing with the unit yet: add `--passkey auto` to the command (Linux pairs through the tool; the demo firmware's digits are derived from its address, a labelled unit takes `--passkey <its six digits>`)"
+		: "the first time, add `--passkey auto` to the command (Linux pairs through the tool; the demo firmware's digits are derived from its address)"
+}
+
+/**
+ * The Flash prompt's way onto a unit reached over Bluetooth only (the LBG20x): one sentence the firmware rung puts
+ * first. `folder` is the version's folder in the workspace (firmware/<family>/<version>), whose usb/demo set is what
+ * Bluetooth flashes. Undefined for a unit on its cable or its probes: their own routes stand.
+ */
+export function blg20BleUnitRoute(u: Blg20Unit, folder: string, platform?: string): string | undefined {
+	if (!blg20OverBluetooth(u)) return undefined
+	const name = blg20BleTarget(u)
+	const set = `${folder.replace(/[\\/]+$/, "")}/usb/demo`
+	const pairing = blg20PairingWords(platform, u.bonded, u.bleId)
+	return (
+		`to ${blg20Label(u)} over Bluetooth with \`blg20-service update-pair --ble ${name} ${set} --json\` ` +
+		`(both halves, the Bluetooth half first)${pairing ? `; ${pairing}` : ""}` +
+		`${u.windowOpen === false ? ". Its commissioning window is closed: hold its button for three seconds first" : ""}`
+	)
+}
+
+/** The Bluetooth facts in words, for a hover: "over Bluetooth · window open · paired · -64 dBm". */
+export function blg20BleWords(u: Blg20Unit): string {
+	if (!u.bleAddress) return ""
+	const parts = ["over Bluetooth", u.windowOpen === false ? "window closed: hold its button 3 s" : "window open"]
+	if (u.bonded === true) parts.push("paired")
+	else if (u.bonded === false) parts.push("not paired yet")
+	if (typeof u.rssi === "number") parts.push(`${u.rssi} dBm`)
+	return parts.join(" · ")
 }
 
 /** The units something has named BLG20: the only ones a card may claim, or the agent may treat as a gateway. */
@@ -318,6 +480,9 @@ function blg20Where(u: Blg20Unit): string {
 	const how: string[] = []
 	if (u.servicePort) {
 		how.push(`USB ${u.servicePort}${u.ltePort ? ` + LTE tunnel ${u.ltePort}` : ""}`)
+	}
+	if (u.bleAddress) {
+		how.push(`${blg20BleWords(u)}, ${u.bleAddress}`)
 	}
 	if (u.bleProbe && u.lteProbe) {
 		how.push("2 debug probes")

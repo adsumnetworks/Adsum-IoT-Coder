@@ -16,6 +16,20 @@ const PORT_RE = /(\/dev\/(tty|cu)\.[A-Za-z0-9_.-]+|\/dev\/tty(ACM|USB)\d+|\bCOM\
 /** A nine-digit number is a J-Link serial only beside a probe tool; alone it is a number. */
 const PROBE_TOOL = /nrfutil|jlink|j-link|--serial-number|--snr\b|nrfjprog|pyocd|openocd/i
 const SERIAL_RE = /\b[0-9]{9}\b/g
+/**
+ * A gateway reached over Bluetooth (the service tool's --ble, the LBG20x's only door) is held by its four-digit name:
+ * "--ble AD50", "--ble D3588E7AAD50" and "--ble D3:58:8E:7A:AD:50" are one unit, "BLE:AD50". A bare --ble (the only
+ * unit in range) is "BLE:ANY". A value that is a path is the command's folder, not a unit (update-pair --ble FOLDER).
+ */
+const BLE_RE = /(?:^|\s)--ble(?:[ =]([^\s-][^\s]*))?/g
+
+function bleKey(value: string | undefined): string {
+	const v = (value ?? "").trim().replace(/^["']|["']$/g, "")
+	if (!v || /[\\/]/.test(v)) return "BLE:ANY"
+	const hex = v.replace(/[:-]/g, "").toUpperCase()
+	if (/^[0-9A-F]{12}$/.test(hex) || /^[0-9A-F]{4}$/.test(hex)) return `BLE:${hex.slice(-4)}`
+	return `BLE:${v.toUpperCase()}`
+}
 
 const holders = new Map<string, PortHolder>()
 let listeners: Array<() => void> = []
@@ -40,6 +54,9 @@ export function portsInCommand(command: string): string[] {
 		for (const m of command.matchAll(SERIAL_RE)) {
 			out.add(m[0])
 		}
+	}
+	for (const m of command.matchAll(BLE_RE)) {
+		out.add(bleKey(m[1]))
 	}
 	return [...out]
 }

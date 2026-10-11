@@ -2,7 +2,7 @@ import type { HistoryItem } from "@shared/HistoryItem"
 import { StringArrayRequest } from "@shared/proto/cline/common"
 import { RenameTaskRequest, TaskFavoriteRequest } from "@shared/proto/cline/task"
 import type React from "react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { TaskServiceClient } from "@/services/grpc-client"
 import { sameFolder } from "../chat/welcome/entryMode"
@@ -49,6 +49,29 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 	const [shown, toggleShown] = useSectionOpen("sessions")
 	const [scope, setScope] = useState(0)
 	const [menuFor, setMenuFor] = useState<string | null>(null)
+	// An open row menu closes on a click anywhere outside it and on Escape, as any menu does (the ⋯ toggles it;
+	// a click elsewhere used to leave it open over the next row).
+	useEffect(() => {
+		if (!menuFor) {
+			return
+		}
+		const onDown = (e: PointerEvent) => {
+			if (!(e.target instanceof Element) || !e.target.closest("[data-session-menu]")) {
+				setMenuFor(null)
+			}
+		}
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				setMenuFor(null)
+			}
+		}
+		document.addEventListener("pointerdown", onDown)
+		document.addEventListener("keydown", onKey)
+		return () => {
+			document.removeEventListener("pointerdown", onDown)
+			document.removeEventListener("keydown", onKey)
+		}
+	}, [menuFor])
 	const roots = openFolderPaths ?? []
 	const root = roots.length ? roots[scope % roots.length] : ""
 	const folder = root ? root.split("/").pop() : undefined
@@ -278,6 +301,7 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 								</button>
 								<button
 									aria-label="Rename, favourite, delete"
+									data-session-menu="button"
 									onClick={() => setMenuFor(menuFor === h.id ? null : h.id)}
 									style={{
 										position: "absolute",
@@ -297,6 +321,7 @@ const RailSessions: React.FC<Props> = ({ onAll, onNew, onOpen }) => {
 								</button>
 								{menuFor === h.id && (
 									<div
+										data-session-menu="panel"
 										role="menu"
 										style={{
 											position: "absolute",
