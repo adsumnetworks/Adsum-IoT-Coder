@@ -57,7 +57,8 @@ describe("refreshLiveModelList", () => {
 	test("a fetched list replaces the shipped one, and the retired ids are gone", async () => {
 		const { get, calls } = fakeGet([async () => ({ status: 200, data: served })])
 		const models = await refreshLiveModelList(request, deepSeekModels, { get, cacheDir: async () => dir, log: silent })
-		assert.deepEqual(Object.keys(models), ["deepseek-v4-pro", "deepseek-flash"])
+		// deepseek-flash has been in the shipped table since 16 Sep (a095377e4), so it keeps the table's place.
+		assert.deepEqual(Object.keys(models), ["deepseek-flash", "deepseek-v4-pro"])
 		assert.equal(calls[0].url, "https://api.deepseek.com/models")
 		assert.equal(calls[0].headers.Authorization, "Bearer sk-test")
 		// And the request path now accepts the served id it does not know, but not a stray one.

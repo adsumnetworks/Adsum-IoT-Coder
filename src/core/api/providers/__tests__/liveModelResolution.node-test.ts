@@ -36,9 +36,10 @@ afterEach(async () => {
 
 describe("DeepSeek", () => {
 	test("a served id the shipped table does not know is sent as chosen, with no prices", async () => {
-		await serve({ deepseek: ["deepseek-flash", "deepseek-v4-pro"] })
-		const model = new DeepSeekHandler({ apiModelId: "deepseek-flash" }).getModel()
-		assert.equal(model.id, "deepseek-flash")
+		// deepseek-flash is shipped (priced) since 16 Sep, so the unknown served id here is one no table names.
+		await serve({ deepseek: ["deepseek-v5-preview", "deepseek-v4-pro"] })
+		const model = new DeepSeekHandler({ apiModelId: "deepseek-v5-preview" }).getModel()
+		assert.equal(model.id, "deepseek-v5-preview")
 		assert.equal(hasUnknownPrices(model.info), true)
 	})
 

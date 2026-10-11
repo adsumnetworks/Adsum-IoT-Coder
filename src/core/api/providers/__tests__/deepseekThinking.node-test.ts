@@ -46,7 +46,7 @@ describe("DeepSeek thinking toggle is reachable", () => {
 		// the panel let one be chosen without ever writing a budget. Still never guessed — with
 		// neither signal present nothing is sent and DeepSeek's own default stands.
 		assert.ok(
-			/takesThinkingParams && \(budget !== undefined \|\| effort\) \? \{ thinking: \{ type: wantsThinking \? "enabled" : "disabled" \} \} : \{\}/.test(
+			/takesThinkingParams\s*&&\s*\(budget !== undefined \|\| effort\)\s*\?\s*\{\s*thinking:\s*\{\s*type:\s*wantsThinking\s*\?\s*"enabled"\s*:\s*"disabled"\s*\}\s*\}\s*:\s*\{\}/.test(
 				handler,
 			),
 			"with neither a budget nor an effort, no thinking parameter may be sent",

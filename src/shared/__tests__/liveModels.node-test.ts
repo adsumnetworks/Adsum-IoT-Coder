@@ -60,7 +60,8 @@ describe("reconcileModelList", () => {
 		assert.equal("deepseek-v4-flash" in result, false)
 		assert.equal("deepseek-chat" in result, false)
 		assert.equal("deepseek-reasoner" in result, false)
-		assert.deepEqual(Object.keys(result), ["deepseek-v4-pro", "deepseek-flash"])
+		// deepseek-flash has been in the shipped table since 16 Sep (a095377e4), so it keeps the table's place.
+		assert.deepEqual(Object.keys(result), ["deepseek-flash", "deepseek-v4-pro"])
 		assert.equal(result["deepseek-v4-pro"], deepSeekModels["deepseek-v4-pro"])
 	})
 
