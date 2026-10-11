@@ -165,8 +165,8 @@ describe("announcement copy names the shipping release", () => {
 		]
 		// Distinctive nouns from the release, not filler. Each must appear in the changelog (proving it is
 		// really this release's story) and in at least one live surface (proving users are told).
-		// 0.5.2: gateways over Bluetooth (the BLG20x and the LBG20x), commissioned from a session. The 0.5.0 and 0.5.1
-		// tags were never published, so the card also tells their story; this list holds the words of 0.5.2's own entry.
+		// 0.5.1: gateways over Bluetooth (the BLG20x and the LBG20x), commissioned from a session. 0.5.0 was tagged and
+		// never published, so the card also tells its story; this list holds the words of 0.5.1's own entry.
 		const themes = ["bluetooth", "commission", "lbg20x"]
 		for (const theme of themes) {
 			assert.ok(

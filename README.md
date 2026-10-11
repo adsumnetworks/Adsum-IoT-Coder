@@ -35,7 +35,7 @@
 
 <p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
 
-## What's New <sup>`v0.5.2`</sup>
+## What's New <sup>`v0.5.1`</sup>
 
 **Sessions first.** A session is an editor tab, like a file. The sidebar is the rail: you, what's new, the
 environment on the desk, what to do next, your sessions, and What can you ask (⌘K). Open several sessions side

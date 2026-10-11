@@ -43,10 +43,10 @@ export interface CardAction {
 export type PatchNote = { silent: true } | { note: string }
 
 export const RELEASE_NOTES = {
-	version: "0.5.2",
+	version: "0.5.1",
 
 	/** Hotfixes on top of `version`. `{ silent: true }` means "nothing to announce", and no toast fires. */
-	// 0.5.0 and 0.5.1 were tagged on 10 Oct 2026 and never published; 0.5.2 is the first 0.5 release users receive,
+	// 0.5.0 was tagged on 10 Oct 2026 and never published; 0.5.1 (11 Oct) is the first 0.5 release users receive,
 	// so these notes tell the whole 0.5 story: sessions, the firmware lane, gateways over Bluetooth.
 	patches: {} as Record<string, PatchNote>,
 

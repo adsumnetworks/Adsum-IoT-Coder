@@ -5,10 +5,12 @@ All notable changes to the **Adsum IoT Coder** extension are documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.2] - 2026-10-11
+## [0.5.1] - 2026-10-11
 
-Gateways over Bluetooth, and the first public release of 0.5 (sessions first and the firmware lane, below).
+The first public release of 0.5: gateways over Bluetooth and the firmware lane end to end, on top of the
+sessions-first interface (0.5.0, below).
 
+### Gateways over Bluetooth
 - The Hardware page finds a BLG20x or LBG20x gateway in Bluetooth range before any session. Scan lists the units
   whose commissioning window is open; Connect pairs the first time (the computer's own dialog, or the six digits on
   Linux, which a demo unit's label carries) and reads both halves' versions and whose key owns the unit; Claim makes
@@ -26,10 +28,7 @@ Gateways over Bluetooth, and the first public release of 0.5 (sessions first and
   holding a unit. A downloaded firmware folder is licensed as a whole, and its download token travels in a header
   only.
 
-## [0.5.1] - 2026-10-10
-
-The firmware lane, end to end.
-
+### The firmware lane, end to end
 - Flash the BLG20x demo pair and Flash the LEW840x demo open the Hardware page on that board: the demo is
   downloaded there with its licence and flashed from the folder, instead of being installed through a tool.
 - The BLG20x demo pair now carries its USB update set beside the factory images. Flash offers both ways onto
