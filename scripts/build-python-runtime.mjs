@@ -41,6 +41,9 @@ const DARWIN = [
 	"pyobjc-framework-libdispatch==12.2.2",
 ]
 const WIN = [
+	// winrt-runtime imports typing_extensions on every Python; pip runs with --no-deps here, so it is named.
+	// Without it bleak imports, and its Windows backend fails at the first scan (found on Windows, 11 Oct 2026).
+	"typing-extensions==4.16.0",
 	"winrt-runtime",
 	"winrt-Windows.Devices.Bluetooth",
 	"winrt-Windows.Devices.Bluetooth.Advertisement",
@@ -237,8 +240,14 @@ async function build(key) {
 	// The target this machine can run: prove the packages import, with user-site isolated as the tools run it.
 	if (key === `${process.platform}-${process.arch}`) {
 		const exe = win ? path.join(pyRoot, "python.exe") : path.join(pyRoot, "bin", "python3")
-		const v = run(exe, ["-s", "-c", "import bleak, cryptography, serial, sys; print(sys.version.split()[0])"]).trim()
-		console.log(`${key}: Python ${v} runs bleak, cryptography and pyserial`)
+		// bleak loads its OS backend at the first scan, not at import: name it, or a missing dependency passes here.
+		const backend = win ? "winrt" : key.startsWith("darwin") ? "corebluetooth" : "bluezdbus"
+		const v = run(exe, [
+			"-s",
+			"-c",
+			`import bleak, bleak.backends.${backend}.scanner, bleak.backends.${backend}.client, cryptography, serial, sys; print(sys.version.split()[0])`,
+		]).trim()
+		console.log(`${key}: Python ${v} runs bleak with its ${backend} backend, cryptography and pyserial`)
 	}
 	console.log(`${key}: ${installed.length} packages -> ${path.relative(ROOT, dest)}`)
 }
