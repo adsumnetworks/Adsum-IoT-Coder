@@ -37,7 +37,9 @@ mkdirSync(path.dirname(ignore), { recursive: true })
 const base = readFileSync(path.join(ROOT, ".vscodeignore"), "utf8")
 writeFileSync(
 	ignore,
-	`${base}\n# ${target}: this platform's Python, and nothing else of runtimes/ (scripts/package-vsix-target.mjs)\n!runtimes/python/${target}/**\n`,
+	// The re-include brings back the bytecode caches the base file excludes. Running the bundled Python on a developer's
+	// machine writes them, and they carry that machine's paths (13 Oct 2026: the release dry run's privacy check caught them).
+	`${base}\n# ${target}: this platform's Python, and nothing else of runtimes/ (scripts/package-vsix-target.mjs)\n!runtimes/python/${target}/**\nruntimes/python/${target}/**/__pycache__/**\nruntimes/python/${target}/**/*.pyc\n`,
 )
 const pkg = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"))
 const out = path.join("dist", `${pkg.name}-${pkg.version}-${target}.vsix`)
