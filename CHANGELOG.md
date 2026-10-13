@@ -7,590 +7,185 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.1] - 2026-10-11
 
-The first public release of 0.5: gateways over Bluetooth and the firmware lane end to end, on top of the
-sessions-first interface (0.5.0, below).
+### Added
+- Gateways over Bluetooth: the Hardware page finds a Fanstel BLG20x or LBG20x in range, pairs with it, claims it and checks its firmware against the latest release.
+- Firmware updates over Bluetooth for both halves of a gateway, keeping its settings.
+- Commission a gateway from a session. Each setting is written to the unit and read back, and a site profile reuses your answers for the next unit.
+- Demo and licensed firmware download into your workspace with their licence, and flash from there.
 
-### Gateways over Bluetooth
-- The Hardware page finds a BLG20x or LBG20x gateway in Bluetooth range before any session. Scan lists the units
-  whose commissioning window is open; Connect pairs the first time (the computer's own dialog, or the six digits on
-  Linux, which a demo unit's label carries) and reads both halves' versions and whose key owns the unit; Claim makes
-  this computer its owner; Check compares its firmware with the latest release.
-- An update goes over Bluetooth too: both halves, the Bluetooth half first, and the unit keeps its settings. The
-  Flash route says which way it takes and names a downgrade before it writes anything.
-- The fourth step, Commission. Connect also reads what the unit holds as commissioned, in the unit's own words,
-  and one action opens a session that commissions it from this computer: where it is, its name and key, its Wi-Fi,
-  the mobile network, the platform and its sensors, each written and read back, then started and checked. A site
-  profile answers the same questions for the next unit; the device key is shown once and kept in the fleet
-  register beside your work.
-- The extension carries its own Python for its tools on every platform, so nothing needs installing to reach a
-  gateway over Bluetooth.
-- A session that reports done frees the ports, probes and units it named, and the hardware guards name the session
-  holding a unit. A downloaded firmware folder is licensed as a whole, and its download token travels in a header
-  only.
-
-### The firmware lane, end to end
-- Flash the BLG20x demo pair and Flash the LEW840x demo open the Hardware page on that board: the demo is
-  downloaded there with its licence and flashed from the folder, instead of being installed through a tool.
-- The BLG20x demo pair now carries its USB update set beside the factory images. Flash offers both ways onto
-  the unit: an update over the service port for a claimed unit, or the factory load over the debug probes.
-  Each way names the procedure that carries it. The LEW840x demo flashes its three chips as its flash
-  procedure lays them out, the ESP32 through the flash-cycle tool, one scanner image for the card fitted.
-- Without an account, a demo version reads "free with an account" beside Register. A production version you
-  do not hold is a request to the team: Ask to renew. There is no web page for renewal.
-- A version's own licence text is kept in the licence file written beside its files, so a fresh download
-  never reads as altered. A folder with a file missing or altered offers Download again.
-- The Hardware page has one filled action at a time, and a long licence line shows in full on hover.
+### Changed
+- The extension includes the Python its tools need on every platform.
 
 ## [0.5.0] - 2026-10-10
 
-Everything in 0.4.6, folded together with Omar's 0.4.5 bench line, and the sessions-first interface.
+### Added
+- Sessions as editor tabs: open several side by side, each with its own run, listed in the sidebar.
+- What can you ask (⌘K or Ctrl+K): runs, journeys, checks and samples, the ones for your desk first.
+- Licensed firmware and source download per version into your workspace.
+- Slash commands anywhere in a message, and an MCP server's prompts as slash commands.
+- The Fanstel LBG20x is recognised over USB.
 
-### Sessions first
-- A session is an editor tab. The sidebar is the rail: who you are and what you have, what to do next, the
-  hardware on the desk, your sessions, and What can you ask. Several session tabs can be open at once, each
-  with its own run; a session that already has a tab is focused, never opened twice; closing a tab keeps the
-  session in the rail. The + button opens a new tab.
-- The cards moved into What can you ask (⌘K or Ctrl+K): runs, journeys, checks and samples, the ones for this
-  desk first. Every click becomes a prompt you see when the session starts: a run or a check fills the
-  composer and waits for Enter; a journey or a sample is sent as the first message. Suggested shows at most
-  three rows, and only when a detection or the open project is the reason.
-- Sessions live in the rail: five for this folder, the rest under All sessions; rename, favourite and delete
-  on the row. The history button opens the same list; Settings opens as a page of the sidebar.
-- One bench, several tabs: a port or a probe one session is using is named to the others instead of taken,
-  and the status bar leads with a session that is waiting on an answer. The status bar reads "Adsum", the
-  unit on the desk, and the tokens left on the free tier.
-
-### The firmware lane
-- Licensed firmware images and source are no longer tool bits. The Hardware page lists every version of a
-  board's firmware with one action per state: Download, Flash, Renew in the browser, Ask for more details.
-  Download checks the account on the server at that moment, fetches each file under a fifteen-minute
-  authorisation, verifies every hash, and writes the whole version into `firmware/<family>/<version>/` in
-  your workspace (or a folder you choose) with `LICENSE-ADSUM.txt` and a receipt beside the files.
-- The agent is told the paths and the licence, never the bytes: it flashes from the folder and says, before
-  every flash, what it flashes, for whom and from where. It cannot read an image into the transcript, copy
-  the folder outside the workspace, or send it anywhere. A licence whose term has ended keeps everything you
-  downloaded; the receipt says so, and renewal is on the web Hardware home.
-
-### The rail and the tab, simpler
-- One line per row; the detail of a run, a toolchain or a notice sits behind a small (i) that opens on hover
-  and on keyboard focus, and any title cut by the sidebar's width shows in full on hover.
-- The rail carries the product's mark top-left, then you, What's new, Environment (the units, the
-  toolchains, the folder), Suggested, Sessions and What can you ask; each section folds and remembers how
-  you left it. Session rows carry a status dot (working, waiting on you, idle) and rename in place.
-- An empty session tab shows the mark, a First steps checklist and What's new; the composer has attach, slash
-  commands, the model and the Plan or Act mode in one row, and What can you ask opens inside the tab.
-  The conversation runs the full width of the tab; the × on the task header closes the tab.
-- The free tier shows tokens, never money; "Always allow" says it applies to every session; the settings
-  provider picker has three doors (Adsum free, your keys, coding plans).
-
-### Also new
-- Slash commands work anywhere in a message, and an MCP server's prompts appear as `/mcp:server:prompt`.
-- Usage streams live; a tool call repeated three times, or the same failure five times, stops and asks the
-  model to change approach; the free tier reports one state (ok, low, spent, paused until a time).
-- web_fetch reads vendor documentation from this machine and hands the page back as data, never as
-  instructions; an image the agent reads comes with a frame that asks for pins and nets, not prose.
-- An LBG20x is recognised from its USB product string beside the BLG20x.
+### Changed
+- A simpler sidebar, with details shown on hover.
+- A tool call that keeps failing now stops and asks you.
 
 ### Removed
-- The upstream-only slash commands (/reportbug, /subagent), the upstream MCP marketplace and banner fetches,
-  and the upstream's name from every screen.
-
-### Added
-- A BLG20x on USB is named the way people name it, "BLG20x 286C": the last four digits of its Bluetooth address,
-  read from the USB product string of Bluetooth half 0.3.3 and later. The unit id and ports are on the hover.
-- Settings and the account copy name LoRa among what a free account unlocks.
-
-### Fixed
-- An empty folder with a BLG20x on the desk led with the LEW840x card: the word "gateway" in a folder path no longer
-  means LEW840x, and each gateway card is matched by its own board.
-- The gate-copy check compared full paths and inverted itself on Windows.
+- Some inherited commands, and the built-in MCP marketplace.
 
 ## [0.4.6] - 2026-10-09
 
 ### Added
-- The BLG20 gateway's USB-C service port, from IoT Coder: plug the unit in and ask what it is. The agent reads its
-  ID card without any key, shows what it still needs, and, only when you ask, claims it for this PC's key and says
-  where that key is. It reads the logs of both halves and updates either half to the demo or the production image,
-  or to your own build, over the cable. The tool, the guide and the images come from the registry per account:
-  the demo images with the demo firmware, the production images with a production licence.
-- A connected BLG20 gateway is detected, like an nRF DK or an ESP board: by its USB-C service port (and its LTE
-  tunnel when unlocked), or by the two debug probes that reach its nRF54LM20B and nRF9151. The service port is
-  found through nrfutil, so no extra Python package is needed. The environment strip names it by its device id
-  ("BLG20 9802AF5C69DF1E66"), and the agent knows the gateway is on the desk and loads its product guide first,
-  instead of reading its two chips as two separate development kits.
-
-- A BLG20 on USB gets one next action on its card: set it up. It starts the journey above (read, claim when you
-  ask, the update offer, then commissioning) instead of the first run for a blank board.
-- The update offer: after a claim, the gateway's two firmware versions are compared with the latest demo release
-  and the update is offered in one sentence, over the cable; a unit that needs a one-time load over its debug
-  headers is told so instead.
+- The Fanstel BLG20x over its USB-C service port: identify the unit, claim it and offer the latest demo firmware.
 
 ### Changed
-- A BLG20 seen only through its two debug probes, or through the shared test USB ids without a product name, is
-  shown as possibly a BLG20: the agent confirms it before treating it as one, and no card claims it.
-- The RTT and UART log tools no longer end other programs' debugger sessions when they start or stop; they say
-  which program holds a busy probe.
-- The BLG20x card says Wi-Fi where the module is fitted: the demo firmware now uses it.
+- Log tools no longer end other programs' debugger sessions.
+- The BLG20x card names Wi-Fi where the module is fitted.
 
 ### Fixed
-- A downloaded tool's launcher is always executable on Linux and macOS, whatever the umask.
-- The agent can no longer end processes by name (pkill, killall, taskkill /IM, Stop-Process -Name) in any terminal;
-  it names the program that holds a port or a probe and asks.
-- Commands the agent runs no longer wait on a pager.
+- Downloaded tools stay executable on Linux and macOS.
+- Terminal commands no longer wait on a pager.
 
 ## [0.4.3] - 2026-09-30
 
 ### Added
-- LoRa and LoRaWAN knowledge, included with a free account: point-to-point LoRa and LoRaWAN on nRF and ESP32 boards
-  with a Semtech radio. The modulation and its parameters, regions, duty cycles and link budgets, the Semtech SX126x,
-  SX127x, LR2021 and SX130x parts, LoRaWAN internals (join, class A receive windows, frame counters, MAC commands,
-  payload codecs, keys), and how to build a node on nRF Connect SDK or ESP-IDF. Verified on an nRF52840 with an
-  SX1262. Knowledge contributed by Omar Morceli.
-- LoRa is detected from the project, as cellular and GNSS are: `CONFIG_LORA` in the configuration or a Semtech
-  `sx12xx` devicetree node on nRF Connect SDK, a LoRa driver or RadioLib among the components or in the configuration
-  on ESP-IDF. The LoRa knowledge then loads on its own.
-- Tool bits for LoRa: time on air and the duty-cycle budget of a packet, to check before a spreading factor is
-  chosen; an SX126x status, IRQ or error word decoded into plain words, with what to try next; a capture turned into
-  a report that says which devices were heard and how much of the band was listened to.
-
-### Changed
-- A free registered account now opens LoRa knowledge beside cellular, satellite and on-device inference. The gate
-  panel and the unlocked card say so.
-- The account screen names the sets your account opens; a set this build has no word for is left off rather than
-  shown as a raw id.
+- LoRa and LoRaWAN for nRF and ESP32 boards, with a free account, including time-on-air and duty-cycle checks.
 
 ## [0.4.2] - 2026-09-17
 
 ### Changed
-- Packaging cleanup: a smaller, tidier extension package.
+- A smaller extension package.
 
 ## [0.4.1] - 2026-09-17
 
 ### Added
-- A guided first run for the Fanstel BLG20x gateway. It starts with the plan and the parts to have on the desk,
-  then identifies the board from its probes, flashes the prebuilt image pair onto both halves, commissions the unit
-  from a browser, shows the unit's own view, and brings the first reading to your own tenant, with an update and a
-  command back as optional steps. Every step says where you are, what it ends with, and how to pick it up again.
-  Needs a free registered account.
-- Advanced knowledge for building on the BLG20x (bearer switching, satellite payloads, updates between the two halves,
-  commissioning internals and more), opened per account on request.
-- The Fanstel LEW840x cellular images: the demo pair (the card's bearer, in windows, and the ESP32 application with
-  the cellular rung) comes with a free registered account; the production bearer, with no limit, is opened per account.
-- The LEW840x BLE scanner source and the ESP32 application source without the cellular rung are free, like their
-  prebuilt images.
-- An account item in the panel header, next to history and settings: sign in when you are signed out; your account
-  and sign out when you are signed in. Every window of the editor follows the same session.
-- OpenRouter: choose which sellers may serve a model, with price ceilings, from Settings.
-
-### Changed
-- Sign-in finishes in the window that started it, even when the editor hands the browser's link to another window.
-  If it still cannot, the sign-in page shows the link once, and the sign-in window has a field to paste it into.
-- A knowledge bit your account cannot open is named as such, with the one way in: register, when a free account
-  opens it; ask for more details, when the set is opened on request. Signed in, the row says the set is not in your
-  account and names it, and never offers Register; asking re-reads your account, so a set opened for you meanwhile is
-  there for the next task. The answer continues from what it has read and never fills the missing steps from general
-  knowledge.
-- The LEW840x request form asks for one thing: the full source with the cellular rung.
-- The BLG20x request form can ask for the demo firmware, which the card's Demo line has always offered to ask
-  about. The card no longer lists Wi-Fi, which this firmware does not use, and Start begins the guided first run.
-- The BLG20x image pair now carries each half's bootloader, so a unit straight from the box comes up, and its
-  programming steps write the protection back before the reset, so the part stays unlocked.
-- Each provider's model list is read live at startup and when the picker opens; retired models are no longer offered,
-  and DeepSeek's current model shows its own context size, cache prices and thinking setting.
-- A log or monitor capture reads the device and never resets it unless you ask, on nRF and on ESP.
-- Anonymous usage counts now cover the new gateway and demo cards, the locked-bit row, the request form and the
-  sign-in link: which card and which action, never what you typed. See [TELEMETRY.md](./TELEMETRY.md).
+- A guided first run for the Fanstel BLG20x gateway.
+- Cellular demo images for the Fanstel LEW840x.
+- Your account in the panel header.
+- OpenRouter: choose which sellers may serve a model, with price ceilings.
 
 ### Fixed
-- A task no longer slows to a step a minute while the editor window is hidden or behind another app.
-- A reply that stops arriving is ended, retried once, and then reported with a sentence you can act on, instead of
-  leaving the task waiting.
-- The account icon draws correctly in remote windows.
-- The request form says when an option cannot be granted for that board, and that nothing was sent, instead of
-  asking you to try again.
-- On the free tier, a task could fail to write a file and retry with less each time; the model is now asked for tool
-  calls in the format it makes them.
-- One downloaded tool with a bad descriptor no longer hides every tool after it, and signing in reaches the tool list
-  without a reload.
-- An account with BLG20x access sees the BLG20x card even before the board is detected.
-
+- Tasks no longer slow down while the editor window is hidden.
+- A reply that stalls is retried once, then reported clearly.
+- Sign-in finishes in the window that started it.
 
 ## [0.4.0] - 2026-09-09
 
-*0.3.2 and 0.3.3 were bench pre-releases and were never published; their work ships here.*
-
 ### Added
-- A redesigned entry surface. The panel opens on where you are and what is on your desk (folder,
-  detected boards, toolchains), then the runs worth starting, ranked by what was actually detected,
-  each saying why. Typing in the box *is* the new session. One named resume is always offered when
-  there is a past session for the folder you are in.
-- The environment in two densities. A header row carries the folder and one verdict per platform
-  from the toolchain check itself (the board by name; *no toolchain yet, what to install*; a serial
-  device that will not answer, in the warning colour, with *why*), and one click opens the full view
-  in place. The row can never tick a platform the check calls missing.
-- Past sessions have one home, the editor's History: search by a session's given name, rename,
-  delete. The entry surface offers one named resume and one door to every other run.
-- Guided builds for partner hardware are offered from a cold start, alongside three sample runs that
-  need no hardware and nothing installed.
-- A free registered account (GitHub or email, no card) unlocks cellular, satellite NB-NTN and
-  nRF54 edge-AI basics, and the LEW840x gateway firmware as signed images (BLE scanner, ESP32 uplink,
-  nRF9160 bearer), free to flash and evaluate, with licensed source per module available on request
-  from Settings. BLE, Wi-Fi and Ethernet are
-  unchanged and need nothing. A card that needs an account says so, says what registering unlocks,
-  and takes you there in your browser; the extension never sees a password, and your projects and
-  logs stay on your machine.
-- An Account section in Settings: what your account has unlocked, in words; a way to ask for the
-  prebuilt gateway template source; sign out; and delete your account, which removes everything keyed
-  on you and leaves this machine's projects, logs and free-tier allowance untouched.
-- A task that needs a bit your account cannot open keeps going and says which bit it went without,
-  and still credits whoever curated it.
-- Send a message to a session that is already working. It is queued, shown at the end of the
-  conversation with a way to take it back, and delivered at the agent's next step, so a run can be
-  steered without cancelling it. Stop is still its own button, and returns anything undelivered to
-  the chat box.
-- Your own model prices. `adsum-iot-coder.modelPricing` takes a price per model in USD per million
-  tokens and overrides everything else. Built-in prices can also update without an extension
-  release, the way advisory data already does.
-- The board on your desk is named from the connected hardware, including the nRF9151 SMA DK; on ESP
-  the USB-UART bridge is named and esptool's own reason for a silent chip is reported.
-- A pre-flash check on nRF reads the reset vector first, so an image that would flash clean and never
-  execute is caught before it is written.
-- Contributor profiles come from the registry, so a new co-author is credited with a link without
-  waiting for a release.
-
-### Changed
-- Session handover to an external coding agent is not offered in this release.
-- Knowledge is loaded, not "skilled". The agent's own vocabulary now says **bit** everywhere it used
-  to say skill: the instruction it follows is `MANDATORY BIT LOAD`, governed by `rules/bit-loading.md`.
-  Your editor's own Skills feature is untouched; the two were colliding in one place.
-- One notice at a time. The CRA finding, the registered receipt, the layout tip, the upgrade card and
-  the review nudge no longer stack; the review nudge is last, because a favour must never interrupt
-  work. The free-tier strip is dismissible and the account chip lives in the runs drawer.
-- The environment line reports the exception when there is one (a serial device that will not
-  answer, nrfutil missing beside the nRF extension) instead of the same line every day.
-- Guided builds load the measurement doctrine instead of a summary of it, so gates report evidence
-  where they owe you evidence.
-- A tool's own limit is reported as a limit, not as a fact about the device: the board shell waits
-  for a cellular round trip, and the loggers fail on a zero capture instead of summarising it.
-- The About page names what Adsum runs on today: Nordic nRF52/53/54L and nRF91 with NB-IoT, LTE-M
-  and GNSS, Espressif ESP32/S3/C6, and the supported partner gateways.
-- The message shown when a run is stuck says what unsticks it (narrow the step, name the file, give
-  the command) rather than recommending a different vendor's model.
-- Bench guidance no longer tells the agent to kill every J-Link process on a shared bench; it
-  identifies its own probe first.
-- "Bring your own coding agent" is marked *Coming soon* and cannot be selected while it is unproven.
+- A redesigned home that shows your folder, your boards and toolchains, and what to do next.
+- A free account (GitHub or email, no card) opens cellular, satellite NB-NTN and on-device inference.
+- You can send a message to a session while it works.
+- Set your own model prices.
+- A check before flashing on nRF that catches an image that would not boot.
 
 ### Fixed
-- **DeepSeek and GLM ignored the thinking depth you chose.** Picking *Low* stored and displayed the
-  choice, but neither the setting nor the depth reached the request, so the provider applied
-  full-depth thinking on every call. A depth chosen now counts as thinking on, and an existing
-  configuration starts working without being touched.
-- **The OpenAI reasoning-effort setting did nothing.** It was read, stored and counted, but the
-  request never carried it.
-- **DeepSeek costs were understated four to five times.** Built-in prices are re-read from the
-  vendor, and DeepSeek's off-peak half-price window is applied from the clock.
-- A provider stream that went silent without erroring left the task running forever with a
-  half-written sentence (11% of bench runs). A stalled stream is now aborted and retried like any
-  other stream error.
-- "Free tier quota exhausted" was shown for any empty reply, including provider hiccups, while the
-  strip above it still showed tokens left. Exhaustion is now reported only on the backend's word.
-- Sign-in from a Remote-SSH window, a codespace or a dev container opened the browser on the remote
-  machine, so the button looked dead. The editor now opens the link where you are.
-- Sign-in with more than one editor window open could land in a window that refused it. The
-  round trip now completes in whichever window receives it, and says which window to return to.
-- The four cellular cards stayed behind the "Register to unlock" panel after a successful sign-in.
-- The registered receipt appeared below the suggested runs; it is now at the top of the panel.
-- A request for template source never showed as sent, so people asked twice.
-- Two board-name rows were wrong: PCA10112 is the nRF21540 DK, not the nRF9160 DK (PCA10090), which
-  was missing. Every row is now read from Nordic's own tables, and the name has one home, the
-  board-identity bit.
-- A Node-based tool bit could not run on Windows (the advertised command opened a cache file in the
-  editor); tools now ship a launcher, and product knowledge paths resolve as bits.
-- The composer could be left permanently disabled, with no way to send, after a task finished.
-- Text the agent had already finished saying could be re-rendered when a tool call followed it, and
-  a stalled reply that the host had already retried was left on screen as a stray fragment.
-- A message typed while the agent was working could be taken as the answer to a tool approval that
-  had not been shown yet. Nothing typed mid-run can approve a tool.
-- A guided build's step banner was hard-coded to five steps, so a seven-step product build rendered
-  "Step 4/7" as a plain heading.
-- A workspace whose applications sit in subfolders (a gateway with its ESP app in `esp32/` and its
-  Zephyr apps beside it) loaded no platform or product knowledge at all. Each platform's knowledge is
-  now built from the application folder the classifier found, and a folder that was empty when the
-  extension activated is classified again once files land in it.
-- A compound terminal command (`a; b; c`) waited out the four-minute silence backstop instead of
-  completing when its last sub-command did.
-- GNSS knowledge was gated on NTN, so a GNSS task on an nRF9161 could never load it.
-- The agent could invent a `load_skill` call against an `iot-knowledge` MCP server that does not
-  exist; both rule bits now refuse the whole class and say the paths are files.
-- The terminal tab was named for the upstream project in one of the two places that create it.
-- The bits roster scrolls and says how many bits there are.
-- 93 reference screenshots used only by the visual tests were shipping inside the package; it is
-  10 MB smaller.
-- The update card and toast describe this release, and the "New" badges two sample runs had carried
-  since 0.1.7 are gone. Release messages now live in one place, so a version bump without a copy
-  review fails the build.
+- The thinking depth you choose is honoured for DeepSeek and GLM, and the reasoning-effort setting for OpenAI models.
+- Model costs are reported correctly.
+- Sign-in works from Remote-SSH windows, codespaces and dev containers.
 
 ## [0.3.1] - 2026-08-26
 
-*0.2.2 and 0.3.0 were never published; their work ships here.*
-
 ### Added
-- nRF91 cellular: NB-IoT, LTE-M, NTN and DECT NR+, each loaded only for the project that needs it.
-- GNSS positioning knowledge for nRF91.
-- Board knowledge for the nRF9161 DK, nRF9151 DK and nRF9160 DK.
-- Board shell: send AT and Zephyr shell commands and read until the board finishes, on all platforms.
-- Modem trace: capture, decode and explain registration state, refusal reason, radio mode and search events.
-- `log-shape`: describe a log's structure in one call, then read any message kind in context.
-- Knowledge is named when it loads, not only when the agent reads a file.
-- Every device tool is a Tool bit: versioned, credited, and hash-verified before it runs.
-- CRA advisory hints and package mappings update from the registry instead of a release.
-- Crash-address decoder that picks `addr2line` by chip architecture and reports where it looked.
-- Board and chip names come from knowledge, including a catalogue of ten shipping ESP32 targets.
-- Fanstel LEW840X boards route to their own product knowledge.
-
-### Changed
-- A newer registry copy of a bit or tool wins over the bundled one; bundled remains the fallback.
-- An update cannot widen what a tool may do on its own; the stricter rule stands.
-- Credit reports the copy that actually served, not always the bundled one.
-- About names both platforms and the CRA check, and links the docs rather than a chip vendor.
-- Building the extension no longer depends on the build machine's Node version.
+- nRF91 cellular: NB-IoT, LTE-M, NB-NTN and DECT NR+, and GNSS positioning.
+- Board knowledge for the nRF9160, nRF9161 and nRF9151 DKs, and the Fanstel LEW840X.
+- A board shell for AT and Zephyr shell commands, and modem trace decoding.
 
 ### Fixed
-- A tool that could not run no longer reports as though it had.
-- Device tools no longer try to install Python packages; the wrappers no longer hide the install location.
-- An empty answer from a device is no longer reported as a finding.
-- The "Open project folder" button did nothing, could point at the wrong project, and never appeared for copied samples.
-- A scaffolded project you never opened stopped following you into unrelated tasks.
-- Refusing to write project memory now says plainly that it is a blocker.
-- Log and code search: the search program was not found, so nearly every search returned no results.
-- Mermaid diagrams render more reliably.
-- A CVE scan that could not run no longer reads as a clean one.
-- Large captures no longer return truncated with a success status.
-- A tool improved in the registry could still be read back from an older copy on disk.
-- Third-party code bundled into a tool is now named in its notice file.
-- Two links pointed at a repository that had been renamed.
-- A multi-chip product had nowhere to keep its project memory.
-- The ESP monitor put the chip into the bootloader when opening the port.
-- A silent ESP capture now retries the reset once, and a retry never leaves less evidence than the first attempt.
-- ESP commands source the toolchain environment in the terminal that actually runs them.
-- `idf.py is not recognized` is reported as a broken virtual environment, not a missing source step.
-- Native modules now load on Windows.
+- The ESP monitor no longer drops the chip into the bootloader when it opens the port.
+- Log and code search, and native modules on Windows.
 
 ## [0.2.1] - 2026-08-17
 
 ### Added
-- Project memory: an `.adsum/` folder per project holding the board, transport, goal, open defects, and researched notes, written when something is learned and read at the start of every task. Multi-app repositories get one memory per app plus a shared one above them.
-- Log search: captured RTT, UART, HCI, and sniffer logs are searched by pattern and read by line range instead of loaded whole. A real capture that cost 333,000 tokens now costs a few thousand. A search with no matches falls back to the log's structure and the firmware's own vocabulary, or asks, instead of reading thousands of lines.
-- nRF54 board knowledge: the nRF54L15 DK, the nRF54LM20 DK, and the nRF54LM20A, plus a migration guide from nRF52840 to nRF54L.
-- The board is identified from connected hardware and the project's own board settings before the first build, instead of guessed from build output that does not exist yet.
-- Board knowledge can state the nRF Connect SDK version it needs; you are warned when yours is older, at the point the knowledge is used.
-- DeepSeek as a native provider: correct context length, pricing, and cache rates. Extended thinking can be turned off for routine steps, or set to Low, High, or Max.
-- Export a session as a single redacted file, and hand a running task to your own coding agent (beta).
+- Project memory in an `.adsum/` folder.
+- Search across RTT, UART, HCI and sniffer logs.
+- nRF54L15 and nRF54LM20 board knowledge, and an nRF52840 to nRF54L migration guide.
+- DeepSeek as a native provider.
+- Export a session as one redacted file.
 
 ### Fixed
-- Three context-window accounting bugs: cached tokens were counted twice; the window ignored the space a model reserves for its reply, which caused `Prompt exceeds max length`; and an oversized-request refusal went unrecognised, so the existing recovery never ran.
-- Compaction is announced before it happens, reports what it kept, and preserves the goal, the board, the bug being chased, and the file in hand.
-- Tool results are bounded: file edits return a diff with surrounding lines instead of echoing the file, and long command output is folded with every error and warning kept.
-- Typing while the agent works no longer loses your draft when an approval request arrives.
-- Espressif boards are no longer re-probed in the terminal when the chip, revision, and port are already detected.
-- Checkpoint messages say what is happening: a slow first snapshot on a large repo reads as work in progress, says so once, and takes itself down; nothing is shown where checkpoints simply do not apply.
-- A prototype run ends on an "Open project folder" button instead of a paragraph of instructions; the conversation is saved and returns from History after the reload.
-- GLM 4.7 and 5.x are recognised, so they are no longer scored as unreliable models.
+- More reliable handling of long sessions.
 
 ## [0.2.0] - 2026-07-21
 
-A full end-to-end gateway build, your model or your key, credited expertise, and a second marketplace.
-
 ### Added
-
-- **Long-horizon builds.** Curated knowledge now carries a complete two-chip gateway from one spec: an nRF52840 BLE scanner on Zephyr and an ESP32 Wi-Fi and MQTT uplink on ESP-IDF, on a Fanstel board, with the developer approving each step. See the [walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway).
-- **A curated model picker.** The free tier, the GLM Coding Plan (glm-5.2 with 1M context, glm-5-turbo, glm-4.7), Claude (Sonnet 5, now the default, Opus 4.8, Haiku 4.5), DeepSeek V4 (flash and pro), and any OpenAI- or Anthropic-compatible endpoint, cloud or local. Switchable on a live task with no restart.
-- **Credited expertise.** When the agent uses a piece of curated knowledge it names the engineer who wrote it, linked, with a provenance popover: author, maintainer, version, licence, source.
-- **A next step, everywhere.** The forward handoff CRA runs got in 0.1.8 now applies to every workflow: a finished task offers concrete next actions instead of a dead-end "done".
-- **Token-aware context handling.** Replaces blunt transcript truncation, so a long session is less likely to lose the data it needs mid-run.
-- **Published to [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger).** Installable in Cursor, Windsurf, VSCodium and other VS Code-compatible editors.
-- **Agent handover (beta).** Hand a running task to your own coding agent, with Adsum supplying the embedded knowledge and driving the toolchain. Rolling out gradually.
+- Build a complete two-chip gateway from one specification.
+- A model picker with the free tier, the GLM Coding Plan, Claude and other providers.
+- Curated knowledge names the engineer who wrote it.
+- Published to Open VSX, for Cursor, Windsurf and VSCodium.
 
 ### Fixed
-
-- ESP-IDF version parsing fixed for more install layouts.
-- The Stop button now interrupts a hanging terminal command.
-- The CRA nudge no longer fires on Adsum's own repository.
+- ESP-IDF version detection.
+- Stop now interrupts a command that hangs.
 
 ## [0.1.8] - 2026-07-07
 
-3-layer debug lands (app, HCI, and radio), alongside a hardening pass for the CRA Readiness Check driven by real field runs on Windows and macOS.
-
 ### Added
-
-- **3-layer BLE debug.** The application log, the HCI host-controller bus, and the over-the-air radio, correlated to show where a flow actually broke. Builds on the HCI decoding shipped in 0.1.7.
-- **The guided HCI + Sniffer sample run**, promised in 0.1.7, is the on-ramp: a real one-directional BLE bug walked to its one-line fix, then bridged into the CRA readiness check. Runs on a bundled sample with no hardware.
-- **A much slimmer input stack.** One-line input that grows as you type, auto-approve as a compact chip beside **@**, and the wide Cancel/Resume buttons replaced by a morphing send-stop icon.
-- The "What's new" card icon is now theme-consistent, with no OS-style emoji.
+- Three-layer BLE debug: application log, HCI and over-the-air sniffer, correlated.
+- A slimmer input box.
 
 ### Fixed
-
-- **A CRA run rests on an open question, never a "task complete" box.** No dead-end endings and no "I'll continue later" traps: the run always offers concrete forward actions, and you leave by moving on. The old pass/fail completion scorecards are blocked at the source.
-- **Knowledge loading is self-healing.** A transient fetch blip retries silently, and a mistyped knowledge path auto-corrects when the catalog has exactly one match (a real run dead-ended on `cra/rules/core.md` against `cra/core.md`). Errors now name the cause: transient fetch, not in catalog, or registry unreachable.
-- **The readiness-report integrity guard is fairer.** It no longer misreads honest phrasing such as "62 total packages: 10 queryable" as a wrong count, and every rejection quotes the line it objected to, so a rewrite lands first time.
-- **The agent never weakens your project to make a scan work.** It may not disable secure boot, flash encryption or signed OTA to force a build, and may not edit your SDK installation (a run had patched a script inside `C:\ncs\`; now banned). If an earlier run left your config modified, the posture check offers a restore instead of counting those as your gaps.
-- **ESP SBOM generation fixed for IDF 5.x.** The documented `--output-file` flag is used, and `idf.py sbom-create --spdx-file`, absent on IDF 5.5.4, is version-checked before use rather than failing.
-- **Silent commands are no longer reported as failures.** Commands that legitimately produce no output (`mkdir`, `cp`) no longer raise a "technical issue": the agent is told plainly that this is silent success.
-- **The terminal works on a fresh Windows install.** New machines ship PowerShell Restricted, which silently blocks shell integration so the agent cannot read command output. This is now detected and repaired at startup, with a dismissible note of what changed. Group Policy-managed machines are left untouched.
+- ESP SBOM generation on ESP-IDF 5.x, and the terminal on fresh Windows installs.
 
 ## [0.1.7] - 2026-06-24
 
-The one-click CRA Readiness Check arrives, on both nRF and ESP, alongside HCI decoding and a version-aware nRF terminal.
-
 ### Added
-
-- **A one-click CRA Readiness Check**, on both nRF and ESP. A readiness snapshot to help you prepare: not a conformity assessment, and not legal advice. It tells you up front which CRA date applies to you, the Dec 2027 essential requirements or the Sep 2026 reporting duty.
-- **An SBOM from your real build.** A machine-readable SPDX bill of materials, the CRA's named artifact, generated from the actual build rather than guessed.
-- **A secure-by-design posture check.** Measured against your build's real configuration (secure boot, signed updates, debug-port lock, secure pairing, secure storage), each item evidence-grounded in the literal config fact and ordered so prerequisites come first.
-- **Advisories for your SDK version**, surfaced with links to review, never as an automatic verdict.
-- **An offer to start closing the top gap**, routing into the normal add-feature flow.
-- **A `compliance/` folder** holding a human-readable report, a JSON companion, and the SBOM. Run it on your project or on a bundled sample with nothing open.
-- **HCI decoding.** Host Controller Interface event streams are parsed into human-readable BLE protocol events, so you can see what happens at the controller level, not just in the application log. When a BLE project is open (`CONFIG_BT=y` detected), the welcome screen surfaces the full debug stack: app logs, HCI, radio sniffer.
-- **A version-aware nRF terminal.** It detects which NCS version your build uses and runs commands against that SDK. With several installs it follows the build directory's version, not whichever was compiled most recently.
-- **A "try it on a sample" picker**, listing the available demos when no project is open, and becoming a re-run link once you have tried one.
-- **A CRA nudge for BLE projects** with no `compliance/` folder yet. Dismissible, evidence-grounded, never a verdict.
-- **A compact platform status strip.** The nRF/ESP detection panel collapses to one line per platform (`nRF · NCS 3.2.1 · nRF5340 DK`), expandable for detail.
-
-### Changed
-
-- Mermaid diagrams in chat now follow your VS Code theme and the Adsum palette, instead of a fixed dark theme that was hard to read in light mode.
-- `NOTICE` file added, for Apache 2.0 section 4(c) attribution.
-- `iot-knowledge/LICENSE` makes the open bits' licence explicit.
-- README updated for the open-core model, AI limitations and trademark notices.
-
-### Fixed
-
-- **CRA output is verified against a 108-fixture scanner before it leaves the model.** The agent can no longer produce numeric readiness scores, "non-compliant" verdicts, or citations to CRA articles that do not exist. Posture items are evidence-mode only, with "verify" always the next step.
-- **Multi-board builds.** With several ESP-IDF versions installed, all of them are shown rather than only the first, removing the state where a project pinned to a different version than the global install stayed ambiguous.
-- **Version detection on git-clone installs.** ESP-IDF checkouts have no `version.txt`, so `tools/cmake/version.cmake` is read as a fallback and the platform strip shows the right version regardless of install method.
+- A CRA readiness check on nRF and ESP, with an SBOM in SPDX, a secure-by-design check and advisories for your SDK, written to a `compliance/` folder.
+- HCI decoding, and an nRF terminal that follows your project's SDK version.
 
 ## [0.1.6] - 2026-06-16
 
-Adsum IoT Coder now speaks **Espressif ESP32 / ESP-IDF** as well as Nordic nRF, in a single install. It reads what's on your desk and in your workspace and shows the right tools, workflows, and guidance for each platform, nothing to switch.
-
 ### Added
-
-- **ESP32 / ESP-IDF support.** Build, flash, monitor, and test ESP-IDF firmware with the same guided agent workflows you already use for nRF, `idf.py`/`esptool`-driven, with chip, flash, and PSRAM detection and serial-log capture built in.
-- **Automatic platform detection.** The home screen recognizes whether your workspace is nRF, ESP, both, or a fresh start, and routes every workflow card and the agent's expertise to the right platform automatically.
-- **Prototyping for both platforms.** *Start a prototype* now scaffolds complete ESP-IDF projects too, it sets the target chip, lays out the project, and gets you to a first build, the same way it already does for nRF.
-- **Always-current knowledge, leaner install.** Platform expertise is delivered on demand and cached locally, so the extension stays small and the guidance stays up to date without waiting for a new release.
+- ESP32 and ESP-IDF support, with automatic platform detection and new ESP-IDF projects.
 
 ### Fixed
-
-- **Stronger Windows support.** Board and toolchain detection now handle the full range of real-world install layouts on Windows, nRF boards and NCS versions surface correctly, ESP-IDF is found wherever it's installed, and serial-log capture runs cleanly. Verified on real nRF and ESP hardware.
-- **Smarter ESP toolchain selection.** When more than one ESP-IDF version is installed, the agent uses the one your project pins, and asks you when it's genuinely ambiguous instead of guessing.
-- **Steadier file editing.** Edits now apply cleanly even on large, streamed changes.
-- **Cleaner diagrams.** Architecture and sequence diagrams render reliably across models.
+- Board and toolchain detection on Windows, and ESP-IDF version selection.
 
 ## [0.1.5] - 2026-06-08
 
-A full first-run redesign, built around the cold start rather than the agent.
-
 ### Added
-
-- **See it debug a real bug in 30 seconds, before you set anything up.** A first-run demo runs capture, analyse and fix on a genuine BLE failure in bundled firmware, with no board, key or project of your own.
-- **Zero-config first run.** Fresh installs land on a working home screen with no provider-selection gate. The free tier is on by default.
-- **A home screen that offers the next step.** With a project open it reads what the project is and offers one-click workflow cards: *Build, flash & debug*, *Add a feature*, *Test & validate*. With none open it points to starting a prototype or opening an existing project.
-- **Test & validate works on Windows and macOS**, not only Linux. It picks a host simulator where one fits or runs the same tests on your connected board with no extra install, is honest about what a simulator cannot prove (real radio, sensor and timing), and walks you through the one-time QEMU setup only when you actually need board-free runs.
-- **Prototyping handles two-device and sensor builds.** A central-peripheral system scaffolds both apps from the matching Nordic samples and flashes each to its own board; an I²C sensor gets its devicetree overlay wired correctly.
-- **Debug a running board without reflashing.** *Build, flash & debug* can skip straight to capturing and analysing logs when the device already runs the firmware you want to inspect.
+- A first-run demo on a real BLE bug.
+- The free tier is on by default, with nothing to set up.
+- A home screen that suggests the next step.
+- Test and validate on Windows and macOS.
 
 ### Fixed
-
-- **The free-tier "tokens left" counter is accurate.** It decrements by each request's real usage and shows 0 the moment the quota is exhausted, rather than plateauing at, say, "~20k left" after the free tier ran out. Resolves the 0.1.3 known issue.
-- **The token counter shows on first launch**, instead of only after switching providers and back.
-- **Invite codes** can be redeemed in the free-tier panel or the quota-exhausted card, for extra free-tier tokens.
-- **Windows nRF tooling detection.** `nrfutil` is found in more locations, including `NRFUTIL_HOME` and common Windows paths, fixing a spurious "nrfutil not found".
-- **"What's new" reappears on updates.** Patch releases now show the note to existing users, not only to fresh installs.
-
-### Removed
-
-- The two-button home (*Analyze Logs* and *Generate Logging Code*), replaced by the demo and the workflow cards above. The same capabilities are reachable through *Build, flash & debug*.
+- The free-tier token counter, and `nrfutil` detection on Windows.
 
 ## [0.1.3] - 2026-06-01
 
 ### Added
-
-- **Run the agent without an API key.** New built-in free tier backed by a managed model hosted by Adsum Networks, no key, account, or card to evaluate the tool. Acted on the most-requested item from the previous release.
-- **Instant BYOK switchover.** Adding your own key swaps the provider on the live task, no restart, the in-flight session continues.
-- **Quota conversion card.** When the free quota runs out, a single-click prompt routes you to add a key and resumes the same task on your provider, instead of failing with a raw error.
-
-### Fixed
-
-- Quota exhaustion (HTTP 402) is handled cleanly, no spurious auto-retries or "Invalid API Response" noise.
-- Rate-limit (429) responses surface a readable message instead of raw JSON.
-- Free-tier usage telemetry corrected: funnel-entry fires once per install (was firing on every step), and the BYOK-conversion event now fires on the code path the settings form actually uses.
-
-### Known issues
-
-- Free-tier "tokens left" chip can briefly show a stale value until the next prompt; balance is backend-authoritative and harmless. *(Fixed in 0.1.5, the chip now decrements live and shows 0 on exhaustion.)*
+- A built-in free tier that needs no API key, account or card.
+- Switch to your own API key at any time, even during a task.
 
 ## [0.1.2] - 2026-05-31
 
 ### Changed
-
-- Reduced the extension download size by around 6 MB.
-- Improved Marketplace search keywords (nRF52/53/54, Zephyr, BLE, RTT, J-Link).
+- A smaller download.
 
 ### Fixed
-
-- Toolbar and chat icons showed as blank squares, and the chat send button was missing on Linux. Icons now render correctly on macOS, Windows and Linux.
+- Icons on Linux.
 
 ## [0.1.0] - 2026-05-26
 
-The first release built around the **skill-first architecture**: domain expertise lives in versioned Markdown modules (workflows, actions, rules, board specs) that are loaded into the system prompt on demand based on what the agent detects in your workspace, not baked into a fixed prompt. Same model, smaller context, fewer wrong turns. Backed by an open hardware-in-the-loop benchmark.
-
 ### Added
-
-- **Knowledge loads on demand.** The agent reads your project (`prj.conf`, build targets) and pulls only the modules that match: the BLE guide for a BLE build, the right board file, the SDK reference. Adding a new SoC, protocol, or debug procedure is a knowledge change, not a code change.
-- **Enters through a workflow, never improvises.** Before any build, flash, capture, or analyze, the agent loads the matching workflow first, closing the failure mode where smaller models skip it and guess from pre-training.
-- **Works across models.** Tool-call handling hardened for Claude, DeepSeek, and small local models, including mid-task model switches.
-- **Reliable on Windows.** Process cleanup, J-Link resolution, and RTT log capture fixed across PowerShell, cmd, and bash.
-- **Open benchmark, IoT-FirmwareDebugBench v0.1.** Six BLE tasks on real nRF52 hardware: 5/6 vs a general agent's 3/6 at 3.8x fewer tokens, same model on both sides.
-- **New Adsum brand and redesigned welcome/home screen.** Supported SoCs broadened to nRF52 / nRF53 / nRF54. Pseudonymous product analytics keyed to a random install id; opt out anytime.
+- Knowledge matched to your project.
+- An open benchmark, IoT-FirmwareDebugBench v0.1.
+- A new home screen.
 
 ## [0.0.4] - 2026-03-23
 
-### Added
-
-- **Trademark disclaimer** added for nRF and Nordic Semiconductor compliance.
-- Pseudonymous usage analytics, to catch missing dependencies and toolchain errors automatically. Opt out anytime.
-
 ### Changed
-
-- **Major rebrand.** The extension was renamed from "nRF AI Debugger" to **Adsum IoT Coder, for nRF**.
-- **Repository move.** All internal links and configuration point to the new repository.
+- Renamed from nRF AI Debugger to Adsum IoT Coder.
 
 ### Fixed
-
-- **Log analyser reliability.** Significant improvements to cross-platform UART and RTT log capture stability.
-- **Terminal routing.** Named terminals (nRF Connect) were incorrectly routed to hidden `cmd.exe` processes in background execution mode.
+- UART and RTT log capture reliability.
 
 ## [0.0.2] - 2026-03-02
 
 ### Fixed
-- **Terminal Warning Suppression:** Removed the annoying "Shell Integration Unavailable" warning for nRF Connect terminals.
-- **Background Execution:** Fixed a critical bug where named terminals (e.g., nRF Connect) were routed to hidden `cmd.exe` processes instead of the proper PowerShell terminal when the terminal execution mode was set to "Background Exec". This ensures `nrfutil` and `west` commands work reliably.
-- **Terminal Timeout:** Increased the shell integration timeout to ensure slower PCs (e.g., Windows 10) have enough time to initialize the nRF Connect SDK environment before executing commands.
+- nRF Connect terminal routing and warnings.
 
-## [0.0.1] - Initial Release
+## [0.0.1]
 
 ### Added
-- Initial release of Adsum IoT Coder!
-- Seamless integration with the nRF Connect SDK terminal in VS Code.
-- AI-powered assistant for Zephyr-based projects capable of automatically analyzing UAR/RTT logs, executing Nordic toolchain commands, and debugging code.
-
-[Unreleased]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.3.1...v0.4.0
-[0.3.1]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.2.1...v0.3.1
-[0.2.1]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.1.8...v0.2.0
-[0.1.8]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.1.7...v0.1.8
-[0.1.7]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.1.2...v0.1.7
-[0.1.2]: https://github.com/adsumnetworks/Adsum-IoT-Coder/compare/v0.1.0...v0.1.2
-[0.1.0]: https://github.com/adsumnetworks/Adsum-IoT-Coder/releases/tag/v0.1.0
+- First release: an assistant for nRF Connect SDK projects that analyses UART and RTT logs and runs the Nordic toolchain.

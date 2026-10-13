@@ -4,206 +4,136 @@
 
 ### ESP &amp; nRF · IoT Firmware Debug, Dev &amp; CRA Readiness
 
-**An IoT coding agent for VS Code that works your whole firmware dev loop on Espressif ESP and Nordic nRF: scaffold, build, flash, test, observe, fix. It automates the routine firmware work you would rather not do, and cracks the runtime bugs general agents cannot, because it reads your board, not just your code.**
-
-**What makes it different is real human expertise, not just the AI model.** Adsum is augmented with curated firmware knowledge authored by engineers who have shipped, loaded on demand and validated by an [open benchmark](#benchmark) on real hardware. Human-curated, not AI-generated.
-
-**Shipping today:** Espressif ESP32 (incl. S3, C6) on ESP-IDF · Nordic nRF52 / nRF53 / nRF54L / nRF91 on nRF Connect SDK (Zephyr) · BLE, Wi-Fi, Ethernet, LoRa / LoRaWAN, and cellular (NB-IoT, LTE-M, GNSS, satellite NB-NTN) · **one-click EU Cyber Resilience Act (CRA) readiness: an SBOM plus a secure-by-design posture check.** Open source under Apache 2.0.
+**A coding agent for IoT firmware on Espressif ESP and Nordic nRF. It works in VS Code: it builds and flashes your project, reads your board's logs, and helps you fix what it finds.**
 
 <p>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://badgen.net/vs-marketplace/v/AdsumNetwork.nrf-ai-debugger?label=version&color=161311" alt="VS Code Marketplace version"></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger"><img src="https://badgen.net/vs-marketplace/i/AdsumNetwork.nrf-ai-debugger?label=VS%20Code&color=007ACC" alt="VS Code Marketplace installs"></a>
   <a href="https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger"><img src="https://badgen.net/open-vsx/d/AdsumNetwork/nrf-ai-debugger?label=Open%20VSX&color=C160EF" alt="Open VSX installs"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-D76947" alt="License"></a>
-  <a href="https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions"><img src="https://img.shields.io/badge/Community-discussions-D76947" alt="Discussions"></a>
-  <a href="https://www.youtube.com/@adsumnetworks"><img src="https://img.shields.io/badge/YouTube-watch-FF0000?logo=youtube&logoColor=white" alt="YouTube"></a>
 </p>
 
-**[Install →](#getting-started)** · **[Docs →](https://docs.adsumnetworks.com)** · **[CRA readiness →](#cra-readiness-sbom-cve-and-secure-by-design)** · **[Benchmark →](#benchmark)** · **[Contribute →](#contributing)**
+**[Install](#getting-started)** · **[Docs](https://docs.adsumnetworks.com)** · **[NTN Relay](#adsum-ntn-relay)** · **[CRA readiness](#cra-readiness)** · **[Contributing](#contributing)**
 
-<a href="https://docs.adsumnetworks.com/#run" target="_blank" rel="noopener noreferrer"><img src="assets/docs/hero.gif" width="100%" alt="One real run on the Fanstel BLG20x satellite gateway: Adsum IoT Coder recognises the board, asks before it writes, flashes hash-checked firmware, the unit is commissioned from a browser, refuses a bad setting with the fix, and the first readings arrive on your own platform" /></a>
+<a href="https://docs.adsumnetworks.com/#run" target="_blank" rel="noopener noreferrer"><img src="assets/docs/hero.gif" width="100%" alt="A run on the Fanstel BLG20x gateway: Adsum IoT Coder recognises the board, asks before it writes, flashes the firmware, the unit is commissioned, and the first readings arrive on the user's platform" /></a>
 
-*Above: one real run on the Fanstel BLG20x satellite gateway, from an unflashed board to live data on your own platform.* **[Step through it at your own pace →](https://docs.adsumnetworks.com/#run)** · **[Read that run →](https://docs.adsumnetworks.com/supported-hardware/fanstel/blg20x-first-run)** · **[▶ Watch a dual-chip gateway built, debugged and CRA-checked in under 30 minutes →](https://www.youtube.com/playlist?list=PLYh65pF22Elk)**
+*A run on the Fanstel BLG20x, from an unflashed board to data on your platform. [Step through it](https://docs.adsumnetworks.com/#run)*
 
-**No key, no account, no card.** The free tier is on by default: install and see it work on a real bug in your first minute.
+The free tier needs no API key, account or card.
 
 </div>
 
----
-
-> **On our open benchmark, running the identical model as Claude Code (Claude Haiku 4.5), Adsum fixed 4× more firmware bugs on the first device flash, at 3.8× fewer tokens on average and up to 13× on individual tasks. Anyone can rerun it.**
-
-<p align="center"><img src="docs/benchmarks/assets/figure3.png" width="78%" alt="Token consumption per task: Adsum IoT Coder vs Claude Code on the same model" /></p>
-
 ## What's New <sup>`v0.5.1`</sup>
 
-**Sessions first.** A session is an editor tab, like a file. The sidebar is the rail: you, what's new, the
-environment on the desk, what to do next, your sessions, and What can you ask (⌘K). Open several sessions side
-by side; a port one session is using is named to the others. Every card became a prompt you see when the
-session starts. One line per row, the detail one hover away.
-
-**The firmware lane.** Licensed images and source download into `firmware/<family>/<version>/` in your
-workspace, with the licence and a receipt beside them, after a fresh check of your account. The agent flashes
-from the folder and says what it flashes, for whom and from where; it never reads, copies out or sends an
-image.
-
-**Gateways over Bluetooth.** The Hardware page finds a BLG20x or LBG20x gateway in Bluetooth range, pairs with
-the six digits on its label, claims it when you say so and checks its firmware against the latest release; an
-update goes over Bluetooth, both halves, and the unit keeps its settings. Then commission it from a session: you
-answer, each step is written to the unit and read back, and a site profile answers the same questions for the
-next unit.
+- Each session opens in its own editor tab, and you can run several sessions side by side.
+- Demo and licensed firmware download into your workspace with their licence, and the agent flashes them from there.
+- The Hardware page finds a BLG20x or LBG20x gateway over Bluetooth, pairs with it, claims it, updates both of its processors and commissions it, reading each setting back.
 
 ## Getting Started
 
-Search **Adsum IoT Coder** in the VS Code Extensions panel, or install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) or [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) (Cursor, Windsurf, VSCodium), on Windows, macOS and Linux. **No key, no account, no card**: the free tier is on by default and is a real working tier, enough to scaffold a project and run a full debug loop.
+Install **Adsum IoT Coder** from the Extensions panel, the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) or [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) (Cursor, Windsurf, VSCodium). It runs on Windows, macOS and Linux.
 
-**Prerequisites:** the [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) for nRF, or an ESP-IDF installation for ESP. nRF54LM20 needs nRF Connect SDK 3.3.0 or newer; cellular needs an nRF91 DK and a SIM. [Full requirements](https://docs.adsumnetworks.com/getting-started)
+You also need the [nRF Connect Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack) for nRF, or an ESP-IDF installation for ESP. See the [requirements](https://docs.adsumnetworks.com/getting-started).
 
-1. Start with a **sample run**, no board needed: a real BLE bug, the same bug one layer deeper with a sniffer and HCI tracing, or a CRA readiness check on a pre-built gateway.
-2. Open your **nRF or ESP project**. The home detects your boards and toolchains and ranks the runs worth starting: *Build, flash & debug*, *Add a feature*, *Test & validate*, *CRA SBOM & Fix*, or a guided partner-gateway build.
-3. **Describe the task** or pick a run. Enter starts the session; a message sent while it works lands at the next step.
-4. **Register (free, no card)** when you reach cellular, satellite, LoRa or edge AI. Everything else keeps working without it.
-5. **Bring your own model** whenever you want: the GLM Coding Plan, Claude, DeepSeek, or any OpenAI- or Anthropic-compatible endpoint, cloud or local (Ollama, LM Studio), switched instantly on a running task.
+1. Try a sample run. It needs no board.
+2. Open your nRF or ESP project. Adsum detects your boards and toolchains and suggests runs: build, flash and debug; add a feature; test; CRA readiness.
+3. Describe your task, or pick a run.
+4. Register for free to work on cellular, satellite NB-NTN, LoRa and edge AI.
+5. To use your own model, choose it in Settings: the GLM Coding Plan, Claude, DeepSeek, OpenRouter, or any OpenAI- or Anthropic-compatible endpoint, including local servers such as Ollama and LM Studio.
 
-Field-tested on our own builds: the budget tiers handle routine work with thinking on; the full models can switch it off, which is where the token saving lives. [Free tier →](https://docs.adsumnetworks.com/free-tier) · [Models →](https://docs.adsumnetworks.com/models)
+## Supported platforms
 
-## Supported platforms: ESP32 / ESP-IDF and nRF / nRF Connect SDK
-
-| Platform | Chips (today) | SDK | Protocols (today) |
+| Platform | Chips | SDK | Protocols |
 |:---|:---|:---|:---|
-| **Nordic** | nRF52, nRF53, nRF54L (L15, LM20), **nRF91 (9160, 9161, 9151)** | nRF Connect SDK (Zephyr) | BLE, **LoRa / LoRaWAN**, **NB-IoT, LTE-M, GNSS, NB-NTN** |
-| **Espressif** | ESP32, ESP32-S3, ESP32-C6, and the rest of the shipping range | ESP-IDF | Wi-Fi, BLE, **LoRa / LoRaWAN** |
-| **Products** | **Fanstel LEW840X, BWG840X, BLG20x, LBG20x** gateways, with their own product knowledge | both, one workspace | BLE, Ethernet, Wi-Fi, cellular, NB-NTN |
-| **Roadmap** | nRF7x (Wi-Fi), on-device AI on nRF54 / ESP32, Linux devices (NVIDIA Jetson, Raspberry Pi) | | 5G / 5G RedCap via hats |
+| **Nordic** | nRF52, nRF53, nRF54L, nRF91 (9160, 9161, 9151) | nRF Connect SDK (Zephyr) | BLE, LoRa / LoRaWAN, NB-IoT, LTE-M, GNSS, NB-NTN |
+| **Espressif** | ESP32, ESP32-S3, ESP32-C6 and the rest of the range | ESP-IDF | Wi-Fi, BLE, LoRa / LoRaWAN |
+| **Products** | Fanstel LEW840X, BWG840X, BLG20x, LBG20x gateways | both | BLE, Ethernet, Wi-Fi, cellular, NB-NTN |
 
-Adsum works on **any board built with a supported chip**: your own design, a reference board, a development kit, or a product off the shelf. There is no list your board has to be on. LoRa needs a Semtech radio on the board, wired over SPI; the node path is verified on an nRF52840 with an SX1262. Cellular, NB-NTN, LoRa and edge-AI runs, and the gateway firmware below, need a free registered account; nothing else does. NTN firmware is a public download but runs only on an nRF9151 of the LACA A1A revision; DECT NR+ knowledge ships and needs a modem image from Nordic sales. [Chips and protocols](https://docs.adsumnetworks.com/supported-hardware) · [cellular](https://docs.adsumnetworks.com/cellular) · [partner open hardware](https://docs.adsumnetworks.com/supported-hardware/partner-open-hardware)
+Adsum works with any board built on a supported chip, including your own designs. Cellular, NB-NTN, LoRa and edge-AI runs, and the gateway firmware, need a free registered account; nothing else does. The nRF54LM20 needs nRF Connect SDK 3.3.0 or later, and NB-NTN needs an nRF9151 of the LACA A1A revision. See [chips and protocols](https://docs.adsumnetworks.com/supported-hardware).
 
-## Gateway firmware: flash it, license it, extend it
+## Adsum NTN Relay
 
-Working firmware for the Fanstel composable LEW gateway, two ways: **signed images** you flash to judge it on your own network, and **licensed source, per module**, so your team owns what it ships. The agent already knows these boards, so extending either is a task, not a project.
+The Adsum NTN Relay is our firmware for two Fanstel gateways. It connects any Bluetooth device to satellite in hours.
 
-| Gateway | Radios | Signed images | Licensed source | You need |
-|:---|:---|:---|:---|:---|
-| **LEW840x** · BLE to Ethernet / Wi-Fi | BLE in; Ethernet, Wi-Fi out | **Available**: scanner + uplink, unlimited | **Available**, on request | LEW840x · free account |
-| **LEW840x** · cellular | + LTE-M, NB-IoT (nRF9160 / 9161) | **Demo**: cellular bearer, 60-minute sessions | On request | + LTE M.2 card, SIM |
-| Satellite **NB-NTN** on nRF9151 | NB-NTN | Bring-up run + knowledge | · | nRF9151 DK (LACA A1A) |
-| **Edge AI** on nRF54 | On-device inference basics | Knowledge + guided run | · | An nRF54 board |
-| **BWG840X** · BLE to Wi-Fi | BLE in; Wi-Fi out | Build it from a prompt today; curated images soon | Soon | BWG840X |
-| **BLG20x** · BLE 6 terrestrial + non-terrestrial gateway | BLE 6 in; LTE-M, NB-IoT, NB-NTN out (nRF54LM20 + nRF9151) | **Demo**, on request, with a guided first run | On request | BLG20x, SIM · free account |
+- The BLG20x is for indoor use at a fixed site. The LBG20x is for outdoor use, fixed or moving, and finds its own position by GNSS.
+- Each relay carries up to 60 Bluetooth IoT devices and sends their data over satellite NB-NTN, or over LTE-M and NB-IoT when a cell is in reach. It uses Wi-Fi where fitted.
+- Both gateways are built on Nordic's nRF9151 and nRF54LM20B.
+- The [catalogue](https://www.adsumnetworks.com/catalogue/) lists 442 Bluetooth IoT devices, and growing.
+- The demo firmware is free. Production licences are sold per relay at [adsumnetworks.com](https://www.adsumnetworks.com), where you can pre-order now; they ship in November.
+- In Adsum IoT Coder you can pair, claim, update and commission a relay over Bluetooth, and customise its firmware.
 
-- **Flash to judge**: register (free), flash, watch tags reach your broker. Wi-Fi and Ethernet unlimited; cellular in 60-minute sessions; needs `nrfutil` and `esptool`.
-- **License to ship**: ask for the modules you need from *Settings › Account › Request template source*, or write to support@adsumnetworks.com. Per module, production use, your modifications stay yours; the images are for evaluation.
-- **Extend with the agent**: it holds the LEW840x pinouts, connectors and M.2 cards, and runs the CRA check on every build. Verified with nRF Connect SDK 3.2.1, ESP-IDF 5.5, extension 0.4.0.
+Fanstel designs, makes and sells the hardware. Adsum Networks writes and licenses the firmware. See the [first run](https://docs.adsumnetworks.com/supported-hardware/fanstel/blg20x-first-run).
 
-Fanstel makes and sells the hardware; Adsum writes, signs and licenses the firmware. [Gateway firmware →](https://docs.adsumnetworks.com/gateway-firmware) · [LEW840x walkthrough →](https://docs.adsumnetworks.com/supported-hardware/fanstel/lew840x)
+## What it does
 
-## What it does: debug, build, and prototype ESP and nRF firmware
+- Detects your board and toolchains, and tells you what is missing.
+- Builds, flashes and debugs on the hardware, with live RTT and UART logs on nRF and serial logs on ESP.
+- Correlates the application log, HCI and an over-the-air sniffer capture to debug Bluetooth LE.
+- Sends AT and Zephyr shell commands, and decodes modem traces.
+- Creates projects, and adds features such as a BLE service, a LoRa link, a sensor or storage.
+- Keeps a project memory in `.adsum/` in your repository. Any session can be exported as one redacted file.
 
-- **Tells you what is on your desk.** Names your board, says which toolchain is missing and what to install, and when a serial device will not answer it says so in the header, with the why one click away.
-- **Carries a full product build.** One spec to a working two-chip gateway, across both toolchains, in under 30 minutes, you approving each step. [Walkthrough](https://docs.adsumnetworks.com/ble-wifi-gateway)
-- **Builds, flashes and debugs on real hardware.** Live RTT (J-Link) and UART logs on nRF, serial on ESP, read against your source. The reset vector is checked before an image is flashed.
-- **Debugs across three layers.** App log, HCI bus and over-the-air radio (an nRF52840 dongle the agent flashes as an nRF Sniffer for Bluetooth LE), correlated. [A real one](https://docs.adsumnetworks.com/ble-wifi-gateway/troubleshooting): 36 advertisements on the air, 0 received, a radio front end never switched on.
-- **Talks to the board.** AT and Zephyr shell commands, and a modem trace with the network's own reason for refusing a connection.
-- **Scaffolds, extends, tests.** A new project, or a BLE service, a LoRa link, sensor, shell or storage wired into yours; host tests and on-hardware checks.
-- **Remembers and can be steered.** An `.adsum/` project memory read at the start of every task; a message mid-run lands at the next step; any session exports as one redacted file.
+## CRA readiness
 
-## CRA Readiness: SBOM, CVE, and secure-by-design
+The CRA readiness check runs on your nRF or ESP build. It helps you prepare for the EU Cyber Resilience Act. It is not a conformity assessment and not legal advice.
 
-One click runs a build-time readiness check for the **EU Cyber Resilience Act (CRA)**, on both nRF and ESP. A readiness snapshot to help you prepare, **not a conformity assessment and not legal advice.**
+- An SBOM of your build, in SPDX.
+- A scan for known CVEs in EUVD, NVD and OSV, with its coverage stated.
+- A check of your configuration for secure boot, signed updates, debug-port lock, secure pairing and secure storage, with a fix for each gap.
+- Help to update an affected component, rebuild and check again.
 
-**[▶ Watch the CRA check on a real gateway build →](https://www.youtube.com/watch?v=uwl76c6FuY0)** · **[the run, with its numbers →](https://docs.adsumnetworks.com/ble-wifi-gateway/cra)**
-
-- **An SBOM from your real build.** Machine-readable SPDX, the CRA's named artifact, generated with the vendor-native tools.
-- **A known-CVE scan across it.** Identifiable components (CPE/PURL) matched against EUVD, NVD and OSV, coverage stated on every report, never a pass/fail verdict.
-- **A secure-by-design posture check** against your actual configuration: secure boot, signed updates, debug-port lock, secure pairing, secure storage, each with the requirement and the fix, biggest gap first.
-- **Bring a CVE and close it**, and **fix in the loop**: confirm the component is in your build, bump, rebuild, re-verify, without leaving the agent.
-- **Advisory data updates without a release.** The scan engine and its CVE tables are a Tool bit served from the registry.
-
-It tells you which CRA date applies to you and writes a `compliance/` folder: report, JSON companion and SBOM. Run it on your firmware, or on a bundled sample with nothing open. [Full walkthrough](https://docs.adsumnetworks.com/cra-readiness)
-
-<p align="center">
-  <img src="assets/docs/cra-report-glance.png" width="46%" alt="Adsum IoT Coder CRA readiness report (CRA_READINESS.md): the 'readiness aid, not a conformity assessment' header, an at-a-glance count of components, CVEs found, likely-not-reachable, and secure-by-design gaps, and the SBOM (SPDX) section, for the EU Cyber Resilience Act" />
-</p>
+Reports are written to a `compliance/` folder in your project. See the [walkthrough](https://docs.adsumnetworks.com/cra-readiness).
 
 ## Benchmark
 
-Both agents ran the same model, Claude Haiku 4.5, on real nRF52 hardware, so the gap measures architecture, not model power. Adsum IoT Coder closed 5 of 6 bugs versus Claude Code's 3, using 3.8× fewer tokens on average and up to 13× fewer on the hardest tasks. IoT-FirmwareDebugBench v0.1 is open source; anyone can rerun it.
+IoT-FirmwareDebugBench v0.1 runs six Bluetooth LE bugs on nRF52 hardware. With the same model (Claude Haiku 4.5), Adsum IoT Coder fixed 5 of them and Claude Code fixed 3, and Adsum used 3.8 times fewer tokens on average. The benchmark is open source.
 
 | Metric | Adsum IoT Coder | Claude Code |
 |:---|:---|:---|
-| Bugs closed (within 7 flashes) | **5 / 6** | 3 / 6 |
-| Resolved on the first flash | **4 / 6** | 1 / 6 |
-| Cross-device tasks (L3) | **1 / 2** | 0 / 2 |
-| Tokens per resolved task | **1.86M** | 7.15M |
+| Bugs fixed (within 7 flashes) | **5 / 6** | 3 / 6 |
+| Fixed on the first flash | **4 / 6** | 1 / 6 |
+| Tokens per fixed bug | **1.86M** | 7.15M |
 
-Methodology, per-task results and limitations: [benchmark report](./docs/benchmarks/v0.1-report.md). Methodology adapted from [arXiv:2603.19583](https://arxiv.org/abs/2603.19583).
-
-## Roadmap
-
-**Next:** nRF7x Wi-Fi; the on-device AI features of nRF54 and ESP32 in the same build, flash, observe, fix loop; Linux devices (NVIDIA Jetson, Raspberry Pi) with cellular hats beside nRF and ESP radios; edge-AI inference on the Fanstel BLG20x's nRF54 NPU, and open-hardware designs adding LoRa and battery backup in an IP67 enclosure; and Adsum working inside your own coding agent. Shaped by what the community asks for and contributes. [Full roadmap](https://docs.adsumnetworks.com/platforms-and-roadmap)
+See the [benchmark report](./docs/benchmarks/v0.1-report.md).
 
 ## Contributing
 
-The agent gets stronger as its curated knowledge grows. **Contribute knowledge** if you have shipped nRF or ESP firmware: the fixes and idioms that only come from real hardware, credited to you, with a link to your profile, in every session that loads them. **Contribute code** to the extension itself, which is Apache-2.0.
-
-[Contributing →](https://docs.adsumnetworks.com/contributing) · [Issues and PRs](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues) · [Discussions](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions)
+You can contribute firmware knowledge, credited to you, or code to the extension. See [contributing](https://docs.adsumnetworks.com/contributing), [issues](https://github.com/adsumnetworks/Adsum-IoT-Coder/issues) and [discussions](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions).
 
 ## Limits, privacy and security
 
-**You stay the engineer of record: review every change before you build, flash or ship.** The CRA workflow is a readiness aid, not a conformity assessment and not legal advice. The CVE scan covers components carrying identifiers (CPE/PURL) and **does not find undisclosed or zero-day vulnerabilities**. The benchmark is six BLE tasks on one NCS version: a first version, not statistical significance.
+Review every change the agent makes before you build, flash or ship. The CVE scan covers components with identifiers (CPE/PURL); it does not find undisclosed vulnerabilities.
 
-The runtime runs on your machine, and so does your project memory: `.adsum/` lives in your repo and is never uploaded. Only the log snippets and code context a task needs go to the AI provider you choose. The optional account is a key to registry knowledge and nothing more: sign-in happens in your browser with GitHub or email, the extension never sees a password, the token stays in your OS keychain, and deleting the account removes everything keyed on you while leaving this machine's projects, logs and free-tier allowance untouched. Analytics are pseudonymous product events only, keyed to a random install ID, never your source, chat or device logs; opt out with `telemetry.telemetryLevel: off`. The source is open and auditable.
+The agent and your project memory stay on your machine. Only the context a task needs is sent to the model provider you choose. The optional account signs in through your browser with GitHub or email, and its token is kept in your OS keychain. Analytics are pseudonymous product events and never include your source, chat or device logs. Turn them off with `telemetry.telemetryLevel: off`.
 
-[Limitations in full](https://docs.adsumnetworks.com/legal/limitations) · [privacy and security](https://docs.adsumnetworks.com/privacy-and-security)
+See [limitations](https://docs.adsumnetworks.com/legal/limitations) and [privacy and security](https://docs.adsumnetworks.com/privacy-and-security).
 
-nRF, nRF Connect SDK and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA; ESP32 and ESP-IDF are trademarks of Espressif Systems; Zephyr is a trademark of the Linux Foundation; Visual Studio Code is a trademark of Microsoft. This is an independent project, not affiliated with or endorsed by any of them.
+nRF, nRF Connect SDK and Nordic Semiconductor are trademarks of Nordic Semiconductor ASA; ESP32 and ESP-IDF are trademarks of Espressif Systems; Zephyr is a trademark of the Linux Foundation; Visual Studio Code is a trademark of Microsoft. Fanstel is a trademark of its owner. This is an independent project, not affiliated with or endorsed by any of them.
 
-## FAQ: editors, boards, accounts, SDK versions
+## FAQ
 
-### Does it work in Cursor, Windsurf or VSCodium?
+**Does it work in Cursor, Windsurf or VSCodium?** Yes. Install it from [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger).
 
-Yes. Install from [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) in those editors and from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) in VS Code, on Windows, macOS and Linux.
+**Do I need an API key or an account?** No. A free account is needed only for cellular, satellite NB-NTN, LoRa, edge AI and the gateway firmware.
 
-### Which boards does it support?
+**Does it replace the nRF Connect or ESP-IDF extensions?** No. It works alongside them and uses `west`, `nrfutil`, `idf.py` and `esptool` through those toolchains.
 
-Any board built on a supported chip: nRF52, nRF53, nRF54L and nRF91 on nRF Connect SDK; ESP32, ESP32-S3 and ESP32-C6 on ESP-IDF. A development kit, your own design, or a product off the shelf. There is no list your board has to be on.
+**Can it run with a local model?** Yes, with any OpenAI- or Anthropic-compatible endpoint such as Ollama or LM Studio, if the model supports tool calling well.
 
-### Do I need an API key or an account?
-
-No. The free tier is on by default, with no key and no card. A free account (GitHub or email) is needed only for cellular, satellite NB-NTN, LoRa, nRF54 edge AI and the gateway firmware images.
-
-### Does it replace the nRF Connect for VS Code or ESP-IDF extensions?
-
-No. It works beside them: it needs the nRF Connect Extension Pack for nRF and an ESP-IDF installation for ESP, and drives `west`, `nrfutil`, `idf.py` and `esptool` through those toolchains.
-
-### Can it run with a local model?
-
-Yes. Any OpenAI- or Anthropic-compatible endpoint works, including a local Ollama or LM Studio server, as long as the model handles native tool calling well. Your code and logs then stay on your machine.
-
-### Is the CRA check a conformity assessment?
-
-No. It is a readiness aid for the EU Cyber Resilience Act: an SBOM (SPDX) from your real build, a known-CVE scan and a secure-by-design posture check. Not a certification and not legal advice.
-
-### Which SDK versions are verified?
-
-The gateway builds are verified with nRF Connect SDK 3.2.1 and ESP-IDF 5.5 on extension 0.4.0; nRF54LM20 needs nRF Connect SDK 3.3.0 or newer. [Getting started](https://docs.adsumnetworks.com/getting-started)
+**Is the CRA check a certification?** No. It is a readiness aid, not a conformity assessment and not legal advice.
 
 ## About
 
-**[Adsum Networks](https://github.com/adsumnetworks)** are embedded engineers who shipped IoT gateways and devices on Nordic nRF and other SoC platforms for nine years before shipping an agent. General coding agents leave embedded developers without reliable help for the two jobs that fill the day: the routine setup worth automating, and the runtime bugs that never show up in source review. Adsum does not replace the embedded engineer; it accelerates them.
-
-[Why it exists →](https://docs.adsumnetworks.com/why-it-exists) · [How it works →](https://docs.adsumnetworks.com/architecture) · [The team →](https://docs.adsumnetworks.com/about-and-contact)
+[Adsum Networks](https://www.adsumnetworks.com) makes firmware and tools for IoT engineers. The team has shipped IoT gateways and devices on Nordic nRF for nine years.
 
 ## License
 
-Open-core. The extension is Apache-2.0 © 2026 Adsum Networks, a derivative of [Cline](https://github.com/cline/cline) (see [NOTICE](NOTICE)). Bundled knowledge is CC-BY-SA-4.0 (see [iot-knowledge/LICENSE](iot-knowledge/LICENSE)). Bits delivered from the registry carry their own licence, named in the credit line when they load. Gateway firmware images and source for partner hardware are licensed separately; the images are free to evaluate.
+The extension is open source under Apache-2.0, © 2026 Adsum Networks, and is derived from [Cline](https://github.com/cline/cline) (see [NOTICE](NOTICE)). Bundled knowledge is under CC-BY-SA-4.0 (see [iot-knowledge/LICENSE](iot-knowledge/LICENSE)). Knowledge delivered to registered accounts carries its own licence, shown when it loads. Gateway firmware is licensed separately; the demo images are free to evaluate.
 
 ---
 
 <div align="center" markdown="1">
 
-**Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdsumNetwork.nrf-ai-debugger) or [Open VSX](https://open-vsx.org/extension/AdsumNetwork/nrf-ai-debugger) and see it work in your first minute. No key, no account.**
-
-**[adsumnetworks.com](https://adsumnetworks.com)** · **[GitHub](https://github.com/adsumnetworks/Adsum-IoT-Coder)** · **[Discussions](https://github.com/adsumnetworks/Adsum-IoT-Coder/discussions)** · **[YouTube](https://www.youtube.com/@adsumnetworks)**
+[www.adsumnetworks.com](https://www.adsumnetworks.com) · [Docs](https://docs.adsumnetworks.com) · [GitHub](https://github.com/adsumnetworks/Adsum-IoT-Coder) · [YouTube](https://www.youtube.com/@adsumnetworks)
 
 </div>
