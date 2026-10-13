@@ -164,7 +164,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 		)
 	}
 
-	// Morphing send icon supersedes these rows (operator 0707, Claude Code-style): the streaming state's
+	// Morphing send icon supersedes these rows (operator 0707): the streaming state's
 	// lone wide "Cancel" is the input's stop icon now, and the lone wide "Resume Task" is the send arrow
 	// (ChatView computes the morph from this same buttonConfig). Escape-to-cancel above keeps working —
 	// these early returns sit after every hook. All other button states render unchanged.

@@ -6,7 +6,7 @@ import AutoApproveModal from "./AutoApproveModal"
 import { ACTION_METADATA } from "./constants"
 
 /**
- * Compact auto-approve trigger for the input's bottom controls row (operator 0707: Claude Code-style mode
+ * Compact auto-approve trigger for the input's bottom controls row (operator 0707: a mode
  * chip next to the @ button) — replaces the full-width AutoApproveBar row that sat ABOVE the input. Reuses
  * the existing AutoApproveModal, opening it UPWARD as a popover instead of expanding inline.
  */

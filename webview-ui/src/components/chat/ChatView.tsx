@@ -248,7 +248,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	// Use message handlers hook
 	const messageHandlers = useMessageHandlers(messages, chatState)
 
-	// Send-icon morph (operator 0707, Claude Code-style): while streaming the lone wide "Cancel" row is
+	// Send-icon morph (operator 0707): while streaming the lone wide "Cancel" row is
 	// replaced by a stop icon on the input; a paused task's wide "Resume Task" row is replaced by the send
 	// arrow (any typed text rides along as feedback). ActionButtons hides those two rows; every other
 	// button state (Approve/Reject, Start New Task, …) is untouched.

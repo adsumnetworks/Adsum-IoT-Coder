@@ -93,7 +93,7 @@ interface ChatTextAreaProps {
 	shouldDisableFilesAndImages: boolean
 	onHeightChange?: (height: number) => void
 	onFocusChange?: (isFocused: boolean) => void
-	/** Claude Code-style morph of the send icon (operator 0707): "stop" while streaming (fires cancel),
+	/** Morph of the send icon (operator 0707): "stop" while streaming (fires cancel),
 	 *  "resume" when a paused task waits (send arrow resumes, with any typed text as feedback). */
 	morph?: { kind: "stop" | "resume"; run: () => void }
 }
@@ -1656,7 +1656,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							borderRadius: 2,
 							// The RESTING frame of the composer.
 							//
-							// [OPERATOR 2026-09-04, side-by-side against Claude Code] "the chat section is
+							// [OPERATOR 2026-09-04, side-by-side review] "the chat section is
 							// almost invisible in our UI". It was: this border was `border-input-border`,
 							// and most light themes never define `input.border` at all, so VS Code emits no
 							// such variable and the border resolved to nothing. The fill underneath is
@@ -1743,7 +1743,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							// Focus ring in brand CYAN (UI golden rules: cyan = the interactive/affordance layer;
 							// coral = identity, never the focal interactive treatment) + a soft glow, so the
 							// focused input reads as one action surface with the cyan send icon (operator 0707,
-							// Claude Code-style focus highlight).
+							// focus highlight).
 							outline:
 								isDraggingOver && !showUnsupportedFileError // Only show drag outline if not showing error
 									? `2px dashed ${BRAND_CYAN_UI}`
@@ -1816,7 +1816,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									}}
 								/>
 							)}
-							{/* Stop + Send (operator 0707, Claude Code-style). Brand palette: cyan = action
+							{/* Stop + Send (operator 0707). Brand palette: cyan = action
 							    (UI golden rules) — both icons are actions, never semantic red.
 
 						    These used to be a morph: while the agent worked there was a stop button and no way
@@ -1898,7 +1898,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					<div className="relative flex-1 min-w-0 h-5">
 						{/* ButtonGroup - always in DOM but visibility controlled */}
 						<ButtonGroup className="absolute top-0 left-0 right-0 ease-in-out w-full h-5 z-10 flex items-center gap-2">
-							{/* [0.5 composer polish] + and / lead the row (Claude Code reference), restyled from
+							{/* [0.5 composer polish] + and / lead the row, restyled from
 							    the attach control this already had — the handler and the disabled state were
 							    already wired (onSelectFilesAndImages/shouldDisableFilesAndImages are the same
 							    props InputSection has always passed), only the button itself was commented out. */}
@@ -1958,7 +1958,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							</Tooltip>
 
 							{/* Auto-approve chip — moved here from the full-width bar above the input
-							    (operator 0707: Claude Code-style, next to @). */}
+							    (operator 0707: next to @). */}
 							<AutoApproveChip />
 
 							{/* <ServersToggleModal />
