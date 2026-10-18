@@ -7,6 +7,7 @@ import {
 	bleCommission,
 	bleForget,
 	bleStatus,
+	lastBleScanError,
 	scanBleGateways,
 	selectBleGateway,
 } from "@/services/blg20/bleGateways"
@@ -45,12 +46,14 @@ export async function bluetooth(controller: Controller, request: StringRequest):
 	}
 	try {
 		if (req.op === "scan") {
-			const rows = await scanBleGateways("refresh")
+			const rows = await scanBleGateways("scan")
 			await refresh()
 			const n = rows.filter((r) => r.window).length
+			// A scan that could not run (Bluetooth off, the setup failed) says why, not "power one up".
+			const why = n ? undefined : lastBleScanError()
 			return reply({
-				ok: true,
-				words: n ? `${n} in range` : "no gateway in range: power one up, or hold its button for three seconds",
+				ok: !why,
+				words: n ? `${n} in range` : (why ?? "no gateway in range: power one up, or hold its button for three seconds"),
 			})
 		}
 		if (req.op === "select") {

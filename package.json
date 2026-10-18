@@ -125,6 +125,16 @@
 				"category": "Adsum"
 			},
 			{
+				"command": "adsum.repairBluetoothSupport",
+				"title": "Repair Bluetooth support",
+				"category": "Adsum"
+			},
+			{
+				"command": "adsum.showBluetoothSetupLog",
+				"title": "Show the Bluetooth setup log",
+				"category": "Adsum"
+			},
+			{
 				"command": "adsum-iot-coder.plusButtonClicked",
 				"title": "New Task",
 				"icon": "$(add)"

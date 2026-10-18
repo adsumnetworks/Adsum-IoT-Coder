@@ -78,8 +78,9 @@ const BleGateways: React.FC<Props> = ({ units, scan, platform, onCommission }) =
 				</button>
 			</div>
 			{scan?.error ? <div style={{ ...R.meta, color: "var(--vscode-errorForeground)" }}>{scan.error}</div> : null}
-			{note.scan ? <div style={R.meta}>{note.scan}</div> : null}
-			{units.length === 0 ? (
+			{note.scan && note.scan !== scan?.error ? <div style={R.meta}>{note.scan}</div> : null}
+			{/* A scan that could not run says why above; "power one up" would send the developer to the wrong fix. */}
+			{units.length === 0 && !scan?.error ? (
 				<div style={R.meta}>
 					{scan
 						? "No gateway in range: power one up, or hold its button for three seconds, then Scan."

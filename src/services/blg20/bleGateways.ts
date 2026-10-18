@@ -8,6 +8,14 @@ import { getAccount, hasGroup } from "@/services/adsum/AccountState"
 import { FirmwareClient, type FirmwareEntry } from "@/services/firmware/FirmwareClient"
 import { defaultFolder } from "@/services/firmware/FirmwareStore"
 import { holderOf } from "@/services/hardware/HardwarePortGuard"
+import {
+	type EnsureResult,
+	ensureManagedPython,
+	invalidateManagedPython,
+	managedPythonNow,
+	toolProcessEnv,
+} from "@/services/tools/pythonRuntime/ManagedPython"
+import { looksLikeMissingModule } from "@/services/tools/pythonRuntime/targets"
 import { resolveToolAsync } from "@/services/tools/ToolResolver"
 
 /**
@@ -89,32 +97,95 @@ export function foldScan(known: Map<string, Blg20BleRow>, answer: unknown): { ro
 	return { rows: [...known.values()] }
 }
 
-/** Run one scan (a second caller shares the running one). Never throws: a failed scan keeps what was known. */
-export function scanBleGateways(reason: "refresh" | "startup"): Promise<Blg20BleRow[]> {
+/**
+ * The Python the service tool runs on, set up the first time a gateway needs it (ManagedPython). Only a press on the
+ * Hardware page, or a computer that has used a gateway before, may start that setup: the Environment's refresh of a
+ * developer who never touched a gateway must never download anything.
+ */
+async function toolPython(explicit: boolean): Promise<EnsureResult | null> {
+	if (!explicit && !managedPythonNow() && !bleGatewaySeenBefore()) return null
+	return ensureManagedPython({ reason: "the gateway service tool", interactive: explicit })
+}
+
+/** One run of the scan, its last JSON line parsed (null when it printed none). */
+function scanOnce(argv: string[]): Promise<{ answer: unknown; stderr: string }> {
+	return new Promise((resolve) => {
+		execFile(
+			argv[0],
+			argv.slice(1),
+			{ timeout: (SCAN_S + 25) * 1000, maxBuffer: 1 << 20, windowsHide: true, env: toolProcessEnv() },
+			(_err, stdout, stderr) => {
+				let answer: unknown = null
+				try {
+					answer = JSON.parse(
+						String(stdout ?? "")
+							.trim()
+							.split(/\r?\n/)
+							.pop() ?? "",
+					)
+				} catch {
+					answer = null
+				}
+				resolve({ answer, stderr: String(stderr ?? "") })
+			},
+		)
+	})
+}
+
+/**
+ * Run one scan (a second caller shares the running one). Never throws: a failed scan keeps what was known. `scan` is
+ * the Hardware page's Scan button; `refresh` is the Environment's ↻; `startup` runs on a computer that used one before.
+ */
+export function scanBleGateways(reason: "scan" | "refresh" | "startup"): Promise<Blg20BleRow[]> {
 	if (running) {
 		return running
 	}
 	running = (async () => {
 		try {
+			const python = await toolPython(reason === "scan")
+			if (!python) {
+				return getCachedBleRows() // nothing set up and nothing asked for: no scan, no download
+			}
+			if (!python.ok) {
+				lastError = python.message
+				lastScanAt = Date.now() // the page shows a scan's error only for a scan that happened
+				return getCachedBleRows()
+			}
 			const r = await resolveToolAsync(TOOL_ID)
 			if (!("tool" in r) || !r.tool.argv?.length || r.tool.unavailable) {
 				lastError = "unavailable" in r ? `the service tool is not available (${r.unavailable})` : r.tool?.unavailable
+				lastScanAt = Date.now()
 				return getCachedBleRows()
 			}
 			const argv = [...r.tool.argv, "list", "--ble", "--json", "--timeout", String(SCAN_S)]
-			const out = await new Promise<string>((resolve) => {
-				execFile(
-					argv[0],
-					argv.slice(1),
-					{ timeout: (SCAN_S + 25) * 1000, maxBuffer: 1 << 20, windowsHide: true },
-					(_err, stdout) => resolve(String(stdout ?? "")),
+			let { answer, stderr } = await scanOnce(argv)
+			// A Python that broke since its check (a file removed, an antivirus): repair it once and scan again.
+			const said = (answer as { error?: unknown } | null)?.error
+			if (looksLikeMissingModule(typeof said === "string" ? said : stderr)) {
+				Logger.warn(
+					`bleGateways: the tool's Python is missing a module (${typeof said === "string" ? said : stderr.trim()}); repairing`,
 				)
-			})
-			let answer: unknown = null
-			try {
-				answer = JSON.parse(out.trim().split(/\r?\n/).pop() ?? "")
-			} catch {
-				answer = null
+				invalidateManagedPython()
+				const again = await ensureManagedPython({
+					reason: "a scan found a missing module",
+					interactive: reason === "scan",
+				})
+				if (!again.ok) {
+					lastError = again.message
+					lastScanAt = Date.now()
+					return getCachedBleRows()
+				}
+				const r2 = await resolveToolAsync(TOOL_ID)
+				if ("tool" in r2 && r2.tool.argv?.length && !r2.tool.unavailable) {
+					;({ answer, stderr } = await scanOnce([
+						...r2.tool.argv,
+						"list",
+						"--ble",
+						"--json",
+						"--timeout",
+						String(SCAN_S),
+					]))
+				}
 			}
 			const { rows, error } = foldScan(seen, answer)
 			lastError = error
@@ -222,8 +293,29 @@ interface ToolRun {
 	stderr: string
 }
 
-/** One run of the service tool on the extension's Python, the last JSON line parsed. Never throws. */
+/**
+ * One run of the service tool on the extension's Python, the last JSON line parsed. Never throws. Every caller is a
+ * press on the Hardware page, so the Python is set up here if it is not yet, and repaired once if the tool's answer
+ * says a module is missing.
+ */
 async function runTool(args: string[], timeoutS: number): Promise<ToolRun> {
+	const python = await ensureManagedPython({ reason: "the gateway service tool", interactive: true })
+	if (!python.ok) {
+		return { rc: null, last: { ok: false, error: python.message }, stderr: python.message }
+	}
+	const first = await runToolOnce(args, timeoutS)
+	const said = first.last && typeof first.last.error === "string" ? first.last.error : first.stderr
+	if (!looksLikeMissingModule(said)) return first
+	Logger.warn(`bleGateways: the tool's Python is missing a module (${said.trim().split("\n").pop()}); repairing`)
+	invalidateManagedPython()
+	const again = await ensureManagedPython({ reason: "a tool run found a missing module", interactive: true })
+	if (!again.ok) {
+		return { rc: null, last: { ok: false, error: again.message }, stderr: again.message }
+	}
+	return runToolOnce(args, timeoutS)
+}
+
+async function runToolOnce(args: string[], timeoutS: number): Promise<ToolRun> {
 	const r = await resolveToolAsync(TOOL_ID)
 	if (!("tool" in r) || !r.tool.argv?.length || r.tool.unavailable) {
 		const why = "unavailable" in r ? `the service tool is not available (${r.unavailable})` : (r.tool?.unavailable ?? "")
@@ -234,7 +326,7 @@ async function runTool(args: string[], timeoutS: number): Promise<ToolRun> {
 		execFile(
 			argv[0],
 			argv.slice(1),
-			{ timeout: timeoutS * 1000, maxBuffer: 1 << 20, windowsHide: true },
+			{ timeout: timeoutS * 1000, maxBuffer: 1 << 20, windowsHide: true, env: toolProcessEnv() },
 			(err, stdout, stderr) => {
 				const lines = String(stdout ?? "")
 					.trim()

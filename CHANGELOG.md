@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Windows: the Hardware page finds BLG20x and LBG20x gateways over Bluetooth again. The Python included for Windows lacked a module its Bluetooth part needs, so every scan failed.
 
+### Changed
+- One package for every system. The first time you use a gateway, Adsum IoT Coder sets up the Python its gateway tool needs on your computer (once, about a minute), checks it before each use and repairs it by itself if it breaks. If it cannot, the Hardware page says why and offers Retry; **Adsum: Repair Bluetooth support** rebuilds it.
+
 ## [0.5.1] - 2026-10-11
 
 ### Added

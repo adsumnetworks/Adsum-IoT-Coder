@@ -12,6 +12,7 @@ import { espToolActive, nrfToolActive } from "@/services/platform/platformRoutin
 import type { WorkspaceSummary } from "@/services/platform/WorkspaceClassifier"
 import { ensureGeneratedLauncher } from "./generatedLauncher"
 import { commandPrefix, launcherName, renderCommand, type ToolRuntime } from "./launchers"
+import { managedPythonNow } from "./pythonRuntime/ManagedPython"
 import { safeSegment, type ToolCache } from "./ToolCache"
 import { signatureAllowsRun, verifyVersionSignature } from "./verifySignature"
 
@@ -191,19 +192,20 @@ export function probePython(): string | null {
 /** Test seam: forget the cached probe. */
 export function resetProbeCache(): void {
 	interpreterProbe = null
-	bundledProbe = null
 }
 
 // ── the extension's own Python ───────────────────────────────────────────────
-// A platform build of the extension carries a portable CPython with the packages its Python tools need
-// (scripts/build-python-runtime.mjs): bleak and its native Bluetooth bindings, cryptography, pyserial. Operator,
-// 10 Oct 2026: "whatever tool you choose should be included in the extension". The TOOLS stay registry bits, per
-// account (the service tool left the bundle in 0.4.5); only the runtime they need ships here. Listed tools run on
-// it with `-s` (no user site, the launchers' PYTHONNOUSERSITE rule) and need nothing installed; every other tool
-// keeps the developer's Python, so a tool that relies on a package installed there is never broken by this.
+// The extension gives its Python tools a Python of its own, with the packages they need: bleak and its native
+// Bluetooth bindings, cryptography, pyserial. Operator, 10 Oct 2026: "whatever tool you choose should be included
+// in the extension". The TOOLS stay registry bits, per account (the service tool left the bundle in 0.4.5). Since
+// 0.5.2 the Python is set up on the developer's computer the first time a gateway needs it, and repaired when it
+// breaks (pythonRuntime/ManagedPython.ts): one universal VSIX instead of five platform builds, whose hand-written
+// Windows package list missed a dependency. Listed tools run on it with `-s` (no user site, the launchers'
+// PYTHONNOUSERSITE rule); every other tool keeps the developer's Python, so a tool that relies on a package
+// installed there is never broken by this.
 export const BUNDLED_PYTHON_TOOLS: ReadonlySet<string> = new Set(["adsum/nrf/tools/blg20-service"])
 
-/** Where this build keeps its Python for a platform: runtimes/python/<os>-<arch>/python/(bin/python3 | python.exe). */
+/** Where a 0.5.1 platform build kept its Python: runtimes/python/<os>-<arch>/python/(bin/python3 | python.exe). */
 export function bundledPythonPath(
 	extensionRoot: string,
 	platform: NodeJS.Platform = process.platform,
@@ -213,23 +215,13 @@ export function bundledPythonPath(
 	return platform === "win32" ? path.join(base, "python.exe") : path.join(base, "bin", "python3")
 }
 
-let bundledProbe: { value: string | null } | null = null
-
-/** The extension's own Python on this computer, or null when this build carries none (a universal VSIX). */
+/** The extension's own Python on this computer once it is set up, or null before the first setup. */
 export function bundledPython(): string | null {
-	if (bundledProbe) {
-		return bundledProbe.value
-	}
-	let root: string
 	try {
-		root = HostProvider.get().extensionFsPath
+		return managedPythonNow()
 	} catch {
-		return null // no host yet (a unit test, or a resolve before activation finished): not an answer to keep
+		return null // no host yet (a unit test, or a resolve before activation finished)
 	}
-	const p = bundledPythonPath(root)
-	const value = existsSync(p) ? p : null
-	bundledProbe = { value }
-	return value
 }
 
 /** True if an external executable the tool shells out to is on PATH and runs. */

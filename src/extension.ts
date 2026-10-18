@@ -9,6 +9,12 @@ import { type PriceOverride, setManualPrices } from "@/core/api/pricing/priceOve
 import { loadCachedPrices, refreshDirectModelPrices } from "@/core/api/pricing/refreshDirectModelPrices"
 import { bleGatewaySeenBefore, scanBleGateways } from "@/services/blg20/bleGateways"
 import { nrfEnvironmentWithBlg20 } from "@/services/blg20/connectedBlg20"
+import {
+	managedPythonLog,
+	onManagedPythonReady,
+	repairManagedPython,
+	setManagedPythonHost,
+} from "@/services/tools/pythonRuntime/ManagedPython"
 import { bundledPython } from "@/services/tools/ToolResolver"
 import { sendChatButtonClickedEvent } from "./core/controller/ui/subscribeToChatButtonClicked"
 import { sendHistoryButtonClickedEvent } from "./core/controller/ui/subscribeToHistoryButtonClicked"
@@ -186,17 +192,46 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	const webview = (await initialize(context)) as VscodeWebviewProvider
 
-	// The extension's own Python, named to every terminal the editor opens (the agent's included) as ADSUM_PYTHON.
-	// The service tool's shipped launchers and the tool itself move onto it when the Python they were started with
-	// lacks the Bluetooth library, so a command typed from a knowledge bit's example works as the advertised one does.
-	// A universal build carries none, and clears the name a platform build may have left.
-	const ownPython = bundledPython()
-	if (ownPython) {
-		context.environmentVariableCollection.replace("ADSUM_PYTHON", ownPython)
-		context.environmentVariableCollection.description = "The Python Adsum IoT Coder carries for its device tools"
-	} else {
-		context.environmentVariableCollection.delete("ADSUM_PYTHON")
+	// The extension's own Python, set up on this computer the first time a gateway needs it (ManagedPython), named to
+	// every terminal the editor opens (the agent's included) as ADSUM_PYTHON. The service tool's shipped launchers and
+	// the tool itself move onto it when the Python they were started with lacks the Bluetooth library, so a command
+	// typed from a knowledge bit's example works as the advertised one does. Before the first setup there is none, and
+	// the name a 0.5.1 platform build left (a path inside its own, now removed, folder) is cleared.
+	setManagedPythonHost({
+		version: String(context.extension.packageJSON?.version ?? ""),
+		proxy: () => vscode.workspace.getConfiguration("http").get<string>("proxy") || undefined,
+		withProgress: (title, task) =>
+			Promise.resolve(
+				vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title, cancellable: false }, (p) =>
+					task((message) => p.report({ message })),
+				),
+			),
+		notifyFailure: (message, logFile, retry) => {
+			void vscode.window.showWarningMessage(message, "Retry", "Show details").then((pick) => {
+				if (pick === "Retry") retry()
+				if (pick === "Show details") void vscode.window.showTextDocument(vscode.Uri.file(logFile), { preview: true })
+			})
+		},
+	})
+	const nameOwnPython = (python: string | null) => {
+		if (python) {
+			context.environmentVariableCollection.replace("ADSUM_PYTHON", python)
+			context.environmentVariableCollection.description = "The Python Adsum IoT Coder set up for its device tools"
+		} else {
+			context.environmentVariableCollection.delete("ADSUM_PYTHON")
+		}
 	}
+	nameOwnPython(bundledPython())
+	context.subscriptions.push(onManagedPythonReady((python) => nameOwnPython(python)))
+	context.subscriptions.push(
+		vscode.commands.registerCommand("adsum.repairBluetoothSupport", async () => {
+			const r = await repairManagedPython()
+			if (r.ok) void vscode.window.showInformationMessage(`Bluetooth support is ready (${r.python}).`)
+		}),
+		vscode.commands.registerCommand("adsum.showBluetoothSetupLog", async () => {
+			await vscode.window.showTextDocument(vscode.Uri.file(managedPythonLog()), { preview: true })
+		}),
+	)
 
 	// Status-bar ▲ Adsum button — always visible, reveals the view from any dock.
 	createAdsumStatusBar(context, vscode)

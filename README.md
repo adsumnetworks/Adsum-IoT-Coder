@@ -25,7 +25,7 @@ The free tier needs no API key, account or card.
 
 ## What's New <sup>`v0.5.2`</sup>
 
-- Windows: the Hardware page finds gateways over Bluetooth again (0.5.1 could not scan on Windows).
+- One package for every system: the first time you use a gateway, the extension sets up its Bluetooth tools on your computer by itself, and repairs them if they break. Windows finds gateways again.
 - Each session opens in its own editor tab, and you can run several sessions side by side.
 - Demo and licensed firmware download into your workspace with their licence, and the agent flashes them from there.
 - The Hardware page finds a BLG20x or LBG20x gateway over Bluetooth, pairs with it, claims it, updates both of its processors and commissions it, reading each setting back.

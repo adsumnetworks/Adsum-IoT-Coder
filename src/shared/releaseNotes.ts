@@ -49,7 +49,9 @@ export const RELEASE_NOTES = {
 	// 0.5.0 was tagged on 10 Oct 2026 and never published; 0.5.1 (11 Oct) is the first 0.5 release users receive,
 	// so these notes tell the whole 0.5 story: sessions, the firmware lane, gateways over Bluetooth.
 	patches: {
-		"0.5.2": { note: "Windows: the Hardware page finds gateways over Bluetooth again." },
+		"0.5.2": {
+			note: "One package for every system: the gateway tools set themselves up on first use and repair themselves.",
+		},
 	} as Record<string, PatchNote>,
 
 	/** One line, plain words. The update toast is built from it. */
