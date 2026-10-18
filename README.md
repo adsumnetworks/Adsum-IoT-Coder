@@ -23,8 +23,9 @@ The free tier needs no API key, account or card.
 
 </div>
 
-## What's New <sup>`v0.5.1`</sup>
+## What's New <sup>`v0.5.2`</sup>
 
+- Windows: the Hardware page finds gateways over Bluetooth again (0.5.1 could not scan on Windows).
 - Each session opens in its own editor tab, and you can run several sessions side by side.
 - Demo and licensed firmware download into your workspace with their licence, and the agent flashes them from there.
 - The Hardware page finds a BLG20x or LBG20x gateway over Bluetooth, pairs with it, claims it, updates both of its processors and commissions it, reading each setting back.

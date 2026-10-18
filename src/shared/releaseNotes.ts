@@ -48,7 +48,9 @@ export const RELEASE_NOTES = {
 	/** Hotfixes on top of `version`. `{ silent: true }` means "nothing to announce", and no toast fires. */
 	// 0.5.0 was tagged on 10 Oct 2026 and never published; 0.5.1 (11 Oct) is the first 0.5 release users receive,
 	// so these notes tell the whole 0.5 story: sessions, the firmware lane, gateways over Bluetooth.
-	patches: {} as Record<string, PatchNote>,
+	patches: {
+		"0.5.2": { note: "Windows: the Hardware page finds gateways over Bluetooth again." },
+	} as Record<string, PatchNote>,
 
 	/** One line, plain words. The update toast is built from it. */
 	headline:
