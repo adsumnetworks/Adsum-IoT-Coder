@@ -85,6 +85,17 @@ describe("FirmwareRungs", () => {
 		expect(dl.version).toBe("2.3.0")
 	})
 
+	it("download with no folder open: the one button chooses a folder (18 Oct: Download here had nowhere to go)", async () => {
+		rowsToServe = [{ ...row("download"), folder: "" }]
+		render(<FirmwareRungs onAsk={() => {}} onFlash={() => {}} onRegister={() => {}} onRenew={() => {}} />)
+		fireEvent.click(await screen.findByRole("button", { name: /Download v2\.3\.0/ }))
+		expect(screen.getByText(/No folder is open\. Choose where to keep/)).toBeTruthy()
+		expect(screen.queryByRole("button", { name: "Download here" })).toBeNull()
+		fireEvent.click(screen.getByRole("button", { name: "Choose a folder…" }))
+		await waitFor(() => expect(calls.some((c) => c.op === "download")).toBe(true))
+		expect(calls.find((c) => c.op === "download")!.pick).toBe(true)
+	})
+
 	it("flash: the prompt carries family, version, licensee and the folder, and Open folder stands beside it", async () => {
 		rowsToServe = [row("flash", local())]
 		const onFlash = vi.fn()

@@ -275,24 +275,44 @@ const FirmwareRungs: React.FC<Props> = ({ family, onFlash, onAsk, onRenew, onReg
 									gap: 6,
 								}}>
 								<div style={{ ...R.body, display: "flex", gap: 6, alignItems: "flex-start" }}>
-									<span>
-										Download{" "}
-										<b>
-											{e.title} v{e.version}
-										</b>{" "}
-										into <code style={{ fontSize: 11 }}>{shortFolder(row.folder)}</code>
-										{shortFolder(row.folder) !== row.folder ? " in this workspace" : ""}, with its licence and
-										a receipt beside it.
-									</span>
+									{row.folder ? (
+										<span>
+											Download{" "}
+											<b>
+												{e.title} v{e.version}
+											</b>{" "}
+											into <code style={{ fontSize: 11 }}>{shortFolder(row.folder)}</code>
+											{shortFolder(row.folder) !== row.folder ? " in this workspace" : ""}, with its licence
+											and a receipt beside it.
+										</span>
+									) : (
+										// No folder is open (18 Oct 2026: "Download here" then had nowhere to go and looked
+										// like it did nothing): the one way is to choose where the release is kept.
+										<span>
+											No folder is open. Choose where to keep{" "}
+											<b>
+												{e.title} v{e.version}
+											</b>
+											, with its licence and a receipt beside it. This page finds it there afterwards.
+										</span>
+									)}
 									<Info text="Your account is checked on the server now, not from a cached copy, and each file is checked against its hash before it is kept. The agent is told the path and the licence, never the bytes." />
 								</div>
 								<div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-									<button onClick={() => void download(row, false)} style={R.pill("pri")} type="button">
-										Download here
-									</button>
-									<button onClick={() => void download(row, true)} style={R.pill()} type="button">
-										Choose another folder…
-									</button>
+									{row.folder ? (
+										<>
+											<button onClick={() => void download(row, false)} style={R.pill("pri")} type="button">
+												Download here
+											</button>
+											<button onClick={() => void download(row, true)} style={R.pill()} type="button">
+												Choose another folder…
+											</button>
+										</>
+									) : (
+										<button onClick={() => void download(row, true)} style={R.pill("pri")} type="button">
+											Choose a folder…
+										</button>
+									)}
 									<button onClick={() => setConfirm(null)} style={R.pill()} type="button">
 										Not now
 									</button>

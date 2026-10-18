@@ -1,3 +1,4 @@
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { String as ProtoString, StringRequest } from "@shared/proto/cline/common"
 import { HostProvider } from "@/hosts/host-provider"
@@ -8,6 +9,7 @@ import {
 	downloadFirmware,
 	type LocalFirmware,
 	listLocalFirmware,
+	readLocal,
 	receiptStatusNow,
 	setReceiptStatus,
 } from "@/services/firmware/FirmwareStore"
@@ -41,6 +43,48 @@ async function roots(): Promise<string[]> {
 	} catch {
 		return []
 	}
+}
+
+// Folders the developer chose for a download, outside the open folder (18 Oct 2026, found on Windows: "Choose another
+// folder…" saved the release, then the page never listed it and kept offering Download, because only
+// <workspace>/firmware/<family>/<version> was read). Remembered per computer, newest first.
+const CHOSEN_FOLDERS_FILE = "firmware-folders.json"
+
+function chosenFoldersFile(): string | null {
+	try {
+		const base = HostProvider.get().globalStorageFsPath
+		return base ? path.join(base, CHOSEN_FOLDERS_FILE) : null
+	} catch {
+		return null
+	}
+}
+
+function chosenFolders(): string[] {
+	const f = chosenFoldersFile()
+	if (!f) return []
+	try {
+		const list = JSON.parse(readFileSync(f, "utf8"))
+		return Array.isArray(list) ? list.filter((p): p is string => typeof p === "string") : []
+	} catch {
+		return []
+	}
+}
+
+function rememberFolder(folder: string): void {
+	const f = chosenFoldersFile()
+	if (!f) return
+	const list = [folder, ...chosenFolders().filter((p) => p !== folder)].slice(0, 20)
+	try {
+		mkdirSync(path.dirname(f), { recursive: true })
+		writeFileSync(f, `${JSON.stringify(list, null, 2)}\n`)
+	} catch {
+		// the page then only lists what the open folder holds, as before
+	}
+}
+
+function insideAny(folder: string, wsRoots: readonly string[]): boolean {
+	const norm = (p: string) => path.resolve(p).toLowerCase()
+	return wsRoots.some((r) => norm(folder).startsWith(norm(r) + path.sep) || norm(folder) === norm(r))
 }
 
 /**
@@ -86,6 +130,7 @@ export async function firmware(_controller: Controller, request: StringRequest):
 				folder = defaultFolder(ws, entry ?? { family: null, id: req.id, version: req.version })
 			}
 			const local = await downloadFirmware(client, req.id, req.version, folder)
+			if (!insideAny(folder, await roots())) rememberFolder(folder)
 			void HostProvider.window.showMessage({
 				type: ShowMessageType.INFORMATION,
 				message: `Downloaded ${local.receipt.title} v${local.receipt.version}, licensed to ${local.receipt.licensee}, into ${folder} with its licence file.`,
@@ -111,6 +156,13 @@ async function list(family?: string, id?: string): Promise<FirmwareListResult> {
 	const account = getAccount()
 	const wsRoots = await roots()
 	const locals = listLocalFirmware(wsRoots)
+	// A release downloaded into a folder the developer chose is as flashable as one in the open folder.
+	for (const folder of chosenFolders()) {
+		const l = readLocal(folder)
+		if (l && !locals.some((x) => x.receipt.id === l.receipt.id && x.receipt.version === l.receipt.version)) {
+			locals.push(l)
+		}
+	}
 	const ws = wsRoots[0] ?? ""
 	const rows: FirmwareRow[] = []
 	const seen = new Set<string>()
